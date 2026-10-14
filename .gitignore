@@ -1,0 +1,53 @@
+# === Dependencies ===
+/node_modules
+/.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+
+# === Next.js build output ===
+/.next/
+/out/
+/build
+/dist
+
+# === Production / misc ===
+*.tsbuildinfo
+next-env.d.ts
+
+# === Environment / secrets (ห้าม commit ตาม CLAUDE.md ข้อ 8) ===
+.env
+.env.*
+!.env.example
+# Supabase service key, GitHub token ใช้ env ของ Vercel เท่านั้น
+
+# === Supabase local ===
+/supabase/.branches
+/supabase/.temp
+/supabase/.env
+
+# === Fixtures: มีข้อมูลลูกค้าจริง — ห้าม commit ขึ้น repo (CLAUDE.md) ===
+/fixtures/
+
+# === Vercel ===
+/.vercel
+
+# === Testing ===
+/coverage
+
+# === Logs ===
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+*.log
+
+# === Editor / OS ===
+.DS_Store
+Thumbs.db
+desktop.ini
+.idea/
+.vscode/*
+!.vscode/extensions.json
