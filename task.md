@@ -60,7 +60,8 @@
 - ✅ สร้าง `.gitignore` (กัน fixtures ข้อมูลจริง, secrets, build output)
 - ✅ เชื่อม remote + push commit แรกขึ้น `github.com/13azukaoab/AGA-Bait-Registry`
 - ✅ สร้าง `task.md` (ไฟล์นี้)
-- **ไฟล์ที่แตะ:** `.gitignore`, `task.md`
+- ✅ ปรับ `CLAUDE.md` ให้ตรง project (เดิมบน disk เป็นกฎบอท LINE คนละ project) — รวมฐาน registry + กฎ generic ดีๆ (commit discipline, Vercel deploy, root-cause debug, team handoff, UI mockup)
+- **ไฟล์ที่แตะ:** `.gitignore`, `task.md`, `CLAUDE.md`
 - **ถัดไป:** รอเจ้าของเลือกเริ่มจาก (ก) โครง Next.js (ข) lib/rules+test (ค) DB schema+RLS
 
 ---
