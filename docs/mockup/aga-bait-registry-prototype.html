@@ -1,0 +1,772 @@
+<title>AGA Bait Registry</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@300;400;500;600;700&display=swap">
+<style>
+/* Layout: fixed left nav + scrollable main; brand = AGA navy-blue on slate neutrals */
+:root{
+  --bg:#eef2f7; --surface:#ffffff; --surface-2:#f4f7fb; --surface-3:#e9eff6;
+  --fg:#17212e; --fg-muted:#5a6b7e; --fg-faint:#8a98a8;
+  --border:#d8e0ea; --border-strong:#c3cedb;
+  --accent:#1f5fa8; --accent-strong:#164a85; --accent-fg:#ffffff; --accent-soft:#e6f0fb;
+  --ok:#1a8a5c; --ok-soft:#e3f4ec; --warn:#b4740a; --warn-soft:#fbf0db; --danger:#c23b2e; --danger-soft:#fbe8e5;
+  --tier-s:#64748b; --tier-s-soft:#eef1f5; --tier-m:#1f5fa8; --tier-m-soft:#e6f0fb;
+  --tier-l:#b4740a; --tier-l-soft:#fbf0db; --tier-xl:#6d47b8; --tier-xl-soft:#efeafa;
+  --radius:10px; --shadow:0 1px 2px rgba(20,40,70,.06),0 1px 3px rgba(20,40,70,.05);
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0e1621; --surface:#16202c; --surface-2:#1b2733; --surface-3:#222f3d;
+  --fg:#e7eef5; --fg-muted:#9fb0c1; --fg-faint:#718394;
+  --border:#2a3744; --border-strong:#36485a;
+  --accent:#4a90d9; --accent-strong:#5fa0e3; --accent-fg:#0b1420; --accent-soft:#16304a;
+  --ok:#3bb183; --ok-soft:#133227; --warn:#d99b3e; --warn-soft:#332713; --danger:#e26657; --danger-soft:#331a16;
+  --tier-s:#94a3b4; --tier-s-soft:#222d39; --tier-m:#5fa0e3; --tier-m-soft:#16304a;
+  --tier-l:#d99b3e; --tier-l-soft:#332713; --tier-xl:#a588e0; --tier-xl-soft:#241c38;
+  --shadow:0 1px 2px rgba(0,0,0,.3);
+  color-scheme:dark;
+}}
+:root[data-theme="dark"]{
+  --bg:#0e1621; --surface:#16202c; --surface-2:#1b2733; --surface-3:#222f3d;
+  --fg:#e7eef5; --fg-muted:#9fb0c1; --fg-faint:#718394;
+  --border:#2a3744; --border-strong:#36485a;
+  --accent:#4a90d9; --accent-strong:#5fa0e3; --accent-fg:#0b1420; --accent-soft:#16304a;
+  --ok:#3bb183; --ok-soft:#133227; --warn:#d99b3e; --warn-soft:#332713; --danger:#e26657; --danger-soft:#331a16;
+  --tier-s:#94a3b4; --tier-s-soft:#222d39; --tier-m:#5fa0e3; --tier-m-soft:#16304a;
+  --tier-l:#d99b3e; --tier-l-soft:#332713; --tier-xl:#a588e0; --tier-xl-soft:#241c38;
+  --shadow:0 1px 2px rgba(0,0,0,.3);
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--fg);
+  font-family:"Noto Sans Thai","Segoe UI",system-ui,sans-serif;font-size:14px;line-height:1.55;
+  -webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums}
+.num{font-variant-numeric:tabular-nums}
+
+/* Header */
+.topbar{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;display:flex;align-items:center;gap:14px;
+  padding:10px 18px;background:var(--surface);border-bottom:1px solid var(--border)}
+.logo{display:flex;align-items:center;gap:11px;min-width:0}
+.logo .mark{width:38px;height:38px;border-radius:9px;background:var(--accent);color:#fff;display:grid;place-items:center;
+  font-weight:700;font-size:15px;letter-spacing:.5px;flex:none}
+.logo .txt b{display:block;font-size:15px;font-weight:600;line-height:1.2}
+.logo .txt span{display:block;font-size:11.5px;color:var(--fg-muted)}
+.topbar .spacer{flex:1}
+.pill{display:inline-flex;align-items:center;gap:6px;padding:5px 11px;border:1px solid var(--border);
+  border-radius:999px;background:var(--surface-2);font-size:12.5px;color:var(--fg-muted);white-space:nowrap}
+.pill b{color:var(--fg);font-weight:600}
+select.role{font-family:inherit;font-size:12.5px;color:var(--fg);background:var(--surface-2);
+  border:1px solid var(--border);border-radius:999px;padding:5px 10px;cursor:pointer}
+.theme-btn{border:1px solid var(--border);background:var(--surface-2);color:var(--fg-muted);border-radius:8px;
+  width:34px;height:32px;cursor:pointer;font-size:15px;line-height:1}
+.avatar{width:32px;height:32px;border-radius:50%;background:var(--surface-3);color:var(--fg-muted);
+  display:grid;place-items:center;font-weight:600;font-size:12px;flex:none}
+.hdr-search{flex:0 1 320px;min-width:0;font-family:inherit;font-size:13px;color:var(--fg);
+  background:var(--surface-2);border:1px solid var(--border-strong);border-radius:999px;padding:7px 14px}
+@media(max-width:760px){.hdr-search{display:none}}
+
+/* Shell */
+.shell{display:flex;align-items:flex-start;min-height:calc(100% - 59px)}
+.nav{width:238px;flex:none;padding:14px 10px;border-right:1px solid var(--border);background:var(--surface)}
+.nav .group{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--fg-faint);padding:12px 10px 5px}
+.nav a{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;color:var(--fg-muted);
+  text-decoration:none;font-size:13.5px;cursor:pointer;margin-bottom:1px}
+.nav a .ic{width:17px;text-align:center;flex:none;opacity:.85}
+.nav a:hover{background:var(--surface-2);color:var(--fg)}
+.nav a.active{background:var(--accent-soft);color:var(--accent-strong);font-weight:600}
+.nav a.soon{opacity:.5;cursor:default}
+.nav a.soon:hover{background:transparent;color:var(--fg-muted)}
+.nav a .soon-tag{margin-left:auto;font-size:10px;color:var(--fg-faint);border:1px solid var(--border);border-radius:5px;padding:1px 5px}
+main{flex:1;min-width:0;padding:20px 24px 48px}
+.page-head h1{margin:0;font-size:20px;font-weight:600}
+.page-head p{margin:3px 0 0;color:var(--fg-muted);font-size:13px}
+.toolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin:16px 0 18px}
+.field{display:flex;flex-direction:column;gap:3px}
+.field label{font-size:11px;color:var(--fg-muted)}
+.field select,.field input{font-family:inherit;font-size:13px;color:var(--fg);background:var(--surface);
+  border:1px solid var(--border-strong);border-radius:8px;padding:7px 10px;min-width:140px}
+.btn{font-family:inherit;font-size:13px;font-weight:500;border-radius:8px;padding:8px 14px;cursor:pointer;
+  border:1px solid var(--border-strong);background:var(--surface);color:var(--fg)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-fg)}
+.btn.ghost{background:transparent;border-color:transparent;color:var(--accent-strong)}
+.btn.danger{color:var(--danger);border-color:transparent;background:transparent}
+.btn.sm{padding:5px 10px;font-size:12px}
+.btn:hover{filter:brightness(.98)}
+
+/* Cards + grid */
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:20px}
+.stat{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;box-shadow:var(--shadow)}
+.stat .lab{font-size:12px;color:var(--fg-muted);display:flex;align-items:center;gap:7px}
+.stat .val{font-size:26px;font-weight:700;margin-top:6px;line-height:1}
+.stat .sub{font-size:11.5px;color:var(--fg-faint);margin-top:5px}
+.stat.danger .val{color:var(--danger)} .stat.warn .val{color:var(--warn)} .stat.accent .val{color:var(--accent)} .stat.ok .val{color:var(--ok)}
+.dot{width:9px;height:9px;border-radius:50%;flex:none}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}
+.card>h3{margin:0;padding:13px 16px;font-size:14px;font-weight:600;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:9px}
+.card>h3 .count{margin-left:auto;font-size:12px;font-weight:600;padding:2px 9px;border-radius:999px}
+.badge-danger{background:var(--danger-soft);color:var(--danger)} .badge-warn{background:var(--warn-soft);color:var(--warn)}
+.badge-ok{background:var(--ok-soft);color:var(--ok)} .badge-accent{background:var(--accent-soft);color:var(--accent-strong)}
+.rowlist{display:flex;flex-direction:column}
+.rowlist .r{display:flex;align-items:center;gap:12px;padding:11px 16px;border-top:1px solid var(--border);cursor:pointer}
+.rowlist .r:first-child{border-top:0}
+.rowlist .r:hover{background:var(--surface-2)}
+.rowlist .r.sel{background:var(--accent-soft)}
+.rowlist .r .main{min-width:0;flex:1}
+.rowlist .r .main b{font-weight:600;font-size:13.5px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rowlist .r .main small{color:var(--fg-muted);font-size:11.5px}
+.rowlist .r .meta{text-align:right;font-size:12px;color:var(--fg-muted);white-space:nowrap}
+.rowlist .r .meta b{display:block;color:var(--fg)}
+
+/* Table */
+.tablewrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:13px;white-space:nowrap}
+thead th{background:var(--surface-2);color:var(--fg-muted);font-weight:600;font-size:11.5px;text-align:left;
+  padding:10px 12px;border-bottom:1px solid var(--border);position:sticky;top:0}
+tbody td{padding:9px 12px;border-bottom:1px solid var(--border)}
+tbody tr:last-child td{border-bottom:0}
+tbody tr:hover{background:var(--surface-2)}
+td.r,th.r{text-align:right} td.c,th.c{text-align:center}
+.tier{display:inline-block;font-size:11.5px;font-weight:700;padding:2px 8px;border-radius:6px;letter-spacing:.3px}
+.tier.s{background:var(--tier-s-soft);color:var(--tier-s)} .tier.m{background:var(--tier-m-soft);color:var(--tier-m)}
+.tier.l{background:var(--tier-l-soft);color:var(--tier-l)} .tier.xl{background:var(--tier-xl-soft);color:var(--tier-xl)}
+.chip{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;padding:2px 9px;border-radius:999px;white-space:nowrap}
+.chip.ok{background:var(--ok-soft);color:var(--ok)} .chip.miss{background:var(--danger-soft);color:var(--danger)}
+.chip.pend{background:var(--warn-soft);color:var(--warn)} .chip.na{background:var(--surface-3);color:var(--fg-muted)}
+.chip.info{background:var(--accent-soft);color:var(--accent-strong)} .chip.done{background:var(--surface-3);color:var(--fg-faint)}
+.auto-tag{font-size:10px;color:var(--fg-faint);border:1px dashed var(--border-strong);border-radius:5px;padding:1px 5px;margin-left:6px}
+.sttype{font-size:10.5px;font-weight:600;padding:1px 7px;border-radius:5px;background:var(--accent-soft);color:var(--accent-strong)}
+
+/* Split + panel + entry */
+.split{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start}
+.panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow)}
+.panel>h3{margin:0;padding:13px 16px;font-size:14px;font-weight:600;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.panel .body{padding:14px 16px}
+.hint{font-size:11.5px;color:var(--fg-muted);background:var(--surface-2);border:1px solid var(--border);
+  border-left:3px solid var(--accent);border-radius:0 8px 8px 0;padding:9px 12px;margin:0 0 13px}
+.sumchips{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 12px}
+.pt{border:1px solid var(--border);border-radius:9px;padding:12px;margin-bottom:11px;background:var(--surface-2)}
+.pt.done{opacity:.6}
+.pt .top{display:flex;align-items:center;gap:9px;margin-bottom:10px;flex-wrap:wrap}
+.pt .top b{font-size:13.5px}
+.pt .fno{margin-left:auto;font-size:11px;color:var(--fg-muted);background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:2px 8px}
+.pt .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:9px}
+.mini{display:flex;flex-direction:column;gap:3px}
+.mini label{font-size:10.5px;color:var(--fg-muted)}
+.mini input,.mini select{font-family:inherit;font-size:12.5px;color:var(--fg);background:var(--surface);border:1px solid var(--border-strong);border-radius:7px;padding:5px 8px;width:100%}
+.st-tbl{border:1px solid var(--border);border-radius:9px;overflow:hidden}
+.st-tbl .tablewrap{border:0;box-shadow:none;border-radius:0}
+.st-tbl table{font-size:12.5px}
+.st-tbl td,.st-tbl th{padding:6px 10px}
+.st-tbl select,.st-tbl input{font-family:inherit;font-size:12px;color:var(--fg);background:var(--surface);border:1px solid var(--border-strong);border-radius:6px;padding:4px 7px;width:100%}
+.note{font-size:12px;color:var(--fg-muted);margin-top:14px;display:flex;gap:8px;align-items:flex-start}
+.note .ic{color:var(--accent);flex:none}
+.legend{display:flex;flex-wrap:wrap;gap:14px;margin:14px 0 2px;font-size:12px;color:var(--fg-muted)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.usebars{display:flex;flex-direction:column;gap:9px}
+.userow{display:grid;grid-template-columns:90px 1fr 70px;gap:10px;align-items:center;font-size:12.5px}
+.usetrack{height:10px;border-radius:999px;background:var(--surface-3);overflow:hidden}
+.usefill{height:100%;background:var(--accent);border-radius:999px}
+
+@media (max-width:860px){
+  .shell{display:block}
+  .nav{width:auto;border-right:0;border-bottom:1px solid var(--border);display:flex;gap:4px;overflow-x:auto;padding:8px 10px}
+  .nav .group{display:none}
+  .nav a{white-space:nowrap;margin-bottom:0}
+  .nav a.soon{display:none}
+  .split{grid-template-columns:1fr}
+  .pt .grid{grid-template-columns:1fr}
+  main{padding:16px}
+}
+/* summary = dashboard look */
+.seg{display:inline-flex;background:var(--surface-2);border:1px solid var(--border);border-radius:10px;padding:3px;gap:3px;margin:16px 0 14px}
+.segbtn{font-family:inherit;font-size:12.5px;border:0;background:transparent;color:var(--fg-muted);padding:6px 14px;border-radius:7px;cursor:pointer}
+.segbtn.on{background:var(--ok);color:#fff;font-weight:600}
+.tierrow{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:0 0 16px;font-size:12.5px;color:var(--fg-muted)}
+.tierchip{font-size:12px;font-weight:600;padding:4px 12px;border-radius:999px;cursor:pointer}
+.tierchip.s{background:var(--tier-s-soft);color:var(--tier-s)} .tierchip.m{background:var(--tier-m-soft);color:var(--tier-m)}
+.tierchip.l{background:var(--tier-l-soft);color:var(--tier-l)} .tierchip.xl{background:var(--tier-xl-soft);color:var(--tier-xl)}
+.kpigrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-bottom:18px}
+.kpi{background:var(--surface);border:1px solid var(--border);border-left:4px solid var(--ok);border-radius:12px;padding:16px 18px;box-shadow:var(--shadow)}
+.kpi .lab{font-size:12px;color:var(--fg-muted)}
+.kpi .big{font-size:28px;font-weight:700;margin-top:6px;line-height:1.1;color:var(--ok)}
+.kpi .dl{font-size:12px;margin-top:7px;color:var(--ok)}
+.kpi .sub{font-size:11.5px;color:var(--fg-faint);margin-top:3px}
+.divwrap{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:18px}
+.divcard{border-radius:12px;padding:15px 18px;border:1px solid var(--border)}
+.divcard.c{background:var(--accent-soft)} .divcard.p{background:var(--warn-soft)}
+.divcard h4{margin:0 0 8px;font-size:14px;font-weight:600;display:flex;justify-content:space-between}
+.divcard .ln{display:flex;justify-content:space-between;font-size:12.5px;padding:4px 0;border-top:1px solid var(--border)}
+.divcard .ln:first-of-type{border-top:0}
+.chartcard{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;box-shadow:var(--shadow);margin-bottom:18px}
+.chartcard h3{margin:0 0 12px;font-size:14px;font-weight:600}
+.ranklist{display:flex;flex-direction:column}
+.ranklist .r{display:flex;align-items:center;gap:11px;padding:10px 0;border-top:1px solid var(--border);font-size:13px}
+.ranklist .r:first-child{border-top:0}
+.rankno{width:24px;height:24px;border-radius:7px;background:var(--surface-3);color:var(--fg-muted);display:grid;place-items:center;font-size:12px;font-weight:600;flex:none}
+.rankno.g1{background:#f5c84c;color:#5a4502} .rankno.g2{background:#cdd3da;color:#2c3540} .rankno.g3{background:#e0a373;color:#4a2a12}
+@media(max-width:860px){.divwrap{grid-template-columns:1fr}}
+.fastclose{display:flex;align-items:center;gap:14px;justify-content:space-between;flex-wrap:wrap;background:var(--ok-soft);border:1px solid var(--ok);border-radius:10px;padding:13px 15px;margin-bottom:12px}
+.fastclose b{color:var(--ok)}
+.orsep{text-align:center;font-size:12px;color:var(--fg-faint);margin:0 0 12px}
+.sech{font-weight:600;font-size:13px;margin:16px 0 8px}
+</style>
+
+<div class="topbar">
+  <div class="logo">
+    <div class="mark">AGA</div>
+    <div class="txt"><b>ข้อมูลหลังบ้านระบบเหยื่อ</b><span>Advance Group Asia · ส่วนกลาง</span></div>
+  </div>
+  <input class="hdr-search" aria-label="ค้นหาลูกค้า" placeholder="ค้นหาลูกค้า / เลขที่สัญญา (ทุกหน้า)">
+  <div class="spacer"></div>
+  <span class="pill">เดือน <b>ต.ค. 2026</b></span>
+  <select class="role" id="roleSel" aria-label="เลือกบทบาท" onchange="setRole(this.value)">
+    <option value="host">host · ส่วนกลาง</option>
+    <option value="admin">admin · แอดมิน</option>
+    <option value="recorder" selected>recorder · หัวหน้างาน</option>
+    <option value="viewer">viewer · ผู้บริหาร</option>
+  </select>
+  <button class="theme-btn" id="themeBtn" aria-label="สลับธีม" onclick="toggleTheme()">◐</button>
+  <div class="avatar">นท</div>
+</div>
+
+<div class="shell">
+  <nav class="nav" id="nav">
+    <div class="group">งานประจำวัน</div>
+    <a data-s="todo" class="active" onclick="go('todo')"><span class="ic">◉</span> หน้า "ต้องทำ"</a>
+    <a data-s="service" onclick="go('service')"><span class="ic">✎</span> กรอกผลบริการ (IG/IC)</a>
+    <a data-s="bait" onclick="go('bait')"><span class="ic">▣</span> กล่องเหยื่อ (AG)</a>
+    <a data-s="collect" onclick="go('collect')"><span class="ic">⇲</span> รอเก็บสถานี (หมดสัญญา)</a>
+    <a data-s="registry" onclick="go('registry')"><span class="ic">▤</span> ทะเบียนลูกค้า/สัญญา</a>
+    <a data-s="summary" onclick="go('summary')"><span class="ic">▦</span> สรุปตัวเลข</a>
+    <div class="group">เฟสถัดไป</div>
+    <a class="soon"><span class="ic">◷</span> รายละเอียดลูกค้า <span class="soon-tag">เร็วๆนี้</span></a>
+    <a class="soon"><span class="ic">⇪</span> นำเข้าสัญญา Excel <span class="soon-tag">เร็วๆนี้</span></a>
+    <a class="soon"><span class="ic">🔒</span> ปิดเดือน <span class="soon-tag">เร็วๆนี้</span></a>
+    <a class="soon"><span class="ic">⇅</span> Dashboard Sync <span class="soon-tag">เร็วๆนี้</span></a>
+  </nav>
+
+  <main>
+    <!-- ========== 1. TODO ========== -->
+    <section id="s-todo">
+      <div class="page-head"><h1>หน้า "ต้องทำ"</h1>
+        <p>งานค้างของสาขาในเดือนนี้ — ลูกค้าที่ยังไม่มีข้อมูลรอบประจำเดือน (ยังไม่กรอก) สัญญาใกล้หมด และกล่องเหยื่อรอถอด</p></div>
+      <div class="toolbar">
+        <div class="field"><label>เขต</label><select><option>เขต 1</option><option>ทุกเขต</option></select></div>
+        <div class="field"><label>สาขา</label><select><option>พุทธมณฑล</option><option>นครปฐม</option><option>หัวหิน</option><option>ทุกสาขา (หน่วยงาน)</option></select></div>
+        <div class="field"><label>ทีม</label><select><option>ทีมของฉัน (A)</option><option>ทุกทีม</option></select></div>
+        <div class="field"><label>เดือน</label><select><option>ตุลาคม 2026</option><option>กันยายน 2026</option></select></div>
+      </div>
+      <div class="card" style="margin-bottom:18px">
+        <h3><span class="dot" style="background:var(--accent)"></span> สถานะงานกรอกผล · ต.ค. 2026</h3>
+        <div class="body" style="padding:15px 16px">
+          <div style="display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:7px">
+            <span>กรอกผลแล้ว <b class="num">188</b> / 206 ราย</span>
+            <span class="num" style="color:var(--ok);font-weight:600">91%</span>
+          </div>
+          <div class="usetrack" style="height:12px"><div class="usefill" style="width:91%;background:var(--ok)"></div></div>
+          <div style="font-size:12px;color:var(--fg-muted);margin-top:7px">เหลือยังไม่กรอก <b class="num" style="color:var(--danger)">18</b> ราย</div>
+        </div>
+      </div>
+      <div class="stats">
+        <div class="stat danger"><div class="lab"><span class="dot" style="background:var(--danger)"></span> ยังไม่กรอกข้อมูล</div><div class="val num">18</div><div class="sub">อาจบริการแล้วแต่ยังไม่กรอก</div></div>
+        <div class="stat warn"><div class="lab"><span class="dot" style="background:var(--warn)"></span> สัญญาใกล้หมด (≤90 วัน)</div><div class="val num">7</div><div class="sub">ควรติดต่อต่อสัญญา</div></div>
+        <div class="stat accent"><div class="lab"><span class="dot" style="background:var(--accent)"></span> กล่องเหยื่อรอถอด</div><div class="val num">12</div><div class="sub">พบปลวกตาย</div></div>
+        <div class="stat ok"><div class="lab"><span class="dot" style="background:var(--ok)"></span> เหยื่อที่ใช้เดือนนี้ (AG)</div><div class="val num" style="font-size:22px">8,750 ก.</div><div class="sub">เหยื่อ NEMESIS · ทุกสาขา</div></div>
+        <div class="stat"><div class="lab"><span class="dot" style="background:var(--tier-l)"></span> ไม้ล่อที่เปลี่ยนเดือนนี้</div><div class="val num">1,240 ชิ้น</div><div class="sub">IG 520 จุด×2 + IC 200 จุด×1</div></div>
+        <div class="stat"><div class="lab"><span class="dot" style="background:var(--tier-xl)"></span> กล่องเหยื่อในพื้นที่</div><div class="val num">86</div><div class="sub">ที่ยังไม่ถอด ณ ตอนนี้</div></div>
+      </div>
+      <div class="cards">
+        <div class="card">
+          <h3><span class="dot" style="background:var(--danger)"></span> ยังไม่มีข้อมูล (ยังไม่กรอก) <span class="count badge-danger">18</span></h3>
+          <div class="rowlist">
+            <div class="r" onclick="go('service')"><div class="main"><b>บมจ. สยามพัฒนาเฮ้าส์</b><small>ทีม A · 120 สถานี IG/IC · C-2569-0142</small></div><div class="meta"><b>ครบ 15 วัน</b>ยังไม่กรอก</div></div>
+            <div class="r" onclick="go('service')"><div class="main"><b>คุณวิรัช ตั้งมั่น (บ้านพัก)</b><small>ทีม A · 8 สถานี · C-2569-0088</small></div><div class="meta"><b>ครบ 15 วัน</b>ยังไม่กรอก</div></div>
+            <div class="r" onclick="go('service')"><div class="main"><b>โรงแรมบ้านสวนรีสอร์ท</b><small>ทีม B · 45 สถานี · C-2568-0311</small></div><div class="meta"><b>ครบ 15 วัน</b>ยังไม่กรอก</div></div>
+          </div>
+          <div style="padding:10px 16px;border-top:1px solid var(--border)"><a class="btn ghost sm" onclick="go('service')">เปิดหน้ากรอกผลบริการ →</a></div>
+        </div>
+        <div class="card">
+          <h3><span class="dot" style="background:var(--warn)"></span> สัญญาใกล้หมด (≤90 วัน) <span class="count badge-warn">7</span></h3>
+          <div class="rowlist">
+            <div class="r"><div class="main"><b>บจก. เมืองทองคลังสินค้า</b><small>XL3 · มูลค่า 450,000 · C-2566-0017</small></div><div class="meta"><b>29 วัน</b>หมด 13 พ.ย. 69</div></div>
+            <div class="r"><div class="main"><b>อาคารชุดลุมพินีวิว</b><small>L3 · มูลค่า 180,000 · C-2566-0041</small></div><div class="meta"><b>41 วัน</b>หมด 25 พ.ย. 69</div></div>
+            <div class="r"><div class="main"><b>คุณสมหญิง รุ่งเรือง</b><small>S1 · มูลค่า 24,000 · C-2569-0009</small></div><div class="meta"><b>52 วัน</b>หมด 6 ธ.ค. 69</div></div>
+          </div>
+        </div>
+        <div class="card">
+          <h3><span class="dot" style="background:var(--accent)"></span> กล่องเหยื่อรอถอด <span class="count badge-accent">12</span></h3>
+          <div class="rowlist">
+            <div class="r" onclick="go('bait')"><div class="main"><b>AG จุดที่ 4 · บมจ. สยามพัฒนาเฮ้าส์</b><small>พบปลวกตาย · ถอดรอบถัดไป</small></div><div class="meta"><b>รอถอด</b>ตั้งแต่ ก.ย.</div></div>
+            <div class="r" onclick="go('bait')"><div class="main"><b>AG จุดที่ 2 · โรงแรมบ้านสวนรีสอร์ท</b><small>พบปลวกตาย · ถอดรอบถัดไป</small></div><div class="meta"><b>รอถอด</b>ตั้งแต่ ก.ย.</div></div>
+            <div class="r" onclick="go('bait')"><div class="main"><b>AG จุดที่ 7 · บจก. เมืองทองคลังสินค้า</b><small>พบปลวกตาย · ถอดรอบถัดไป</small></div><div class="meta"><b>รอถอด</b>ตั้งแต่ ต.ค.</div></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========== 2. SERVICE IG/IC (exception-based) ========== -->
+    <section id="s-service" hidden>
+      <div class="page-head"><h1>กรอกผลบริการรายเดือน (IG/IC)</h1>
+        <p>ตรวจสถานีในดิน/ในคอนกรีตรอบประจำเดือน — ลูกค้าบางรายมีเป็นร้อยจุด จึงกรอก <b>เฉพาะจุดที่พบปลวก</b> ที่เหลือถือว่าปกติ</p></div>
+      <div style="display:flex;gap:10px;align-items:flex-end;margin:16px 0 8px">
+        <div class="field" style="flex:1"><label>ค้นหาลูกค้าด่วน (เลขที่สัญญา / ชื่อลูกค้า)</label>
+          <input value="สยามพัฒนา" placeholder="เช่น C-2569-0142 หรือ สยามพัฒนา..." style="width:100%"></div>
+      </div>
+      <div class="card" style="margin:0 0 18px;max-width:560px">
+        <div class="rowlist">
+          <div class="r"><div class="main"><b>บมจ. สยามพัฒนาเฮ้าส์</b><small>C-2569-0142 · พุทธมณฑล · ทีม A · 120 สถานี</small></div><div class="meta"><span class="chip ok">ตรงตัว</span></div></div>
+          <div class="r"><div class="main"><b>บจก. สยามคอมเพล็กซ์</b><small>C-2568-0255 · พุทธมณฑล · ทีม B</small></div><div class="meta"><span class="chip info">ชื่อใกล้เคียง</span></div></div>
+          <div class="r"><div class="main"><b>หจก. สยามการช่าง</b><small>C-2567-0190 · นครปฐม · ทีม A</small></div><div class="meta"><span class="chip info">ชื่อใกล้เคียง</span></div></div>
+        </div>
+        <div style="padding:9px 14px;border-top:1px solid var(--border);font-size:11.5px;color:var(--fg-muted)">
+          รองรับพิมพ์ผิดเล็กน้อย (fuzzy) · ค้นเลขสัญญาบางส่วนได้ · ถ้าไม่พบจะขึ้น "ไม่พบลูกค้า — ลองเลขสัญญาหรือคำอื่น"
+        </div>
+      </div>
+      <div class="toolbar">
+        <div class="field"><label>เขต</label><select><option>เขต 1</option><option>ทุกเขต</option></select></div>
+        <div class="field"><label>สาขา</label><select><option>พุทธมณฑล</option><option>นครปฐม</option><option>หัวหิน</option></select></div>
+        <div class="field"><label>ทีม</label><select><option>ทีมของฉัน (A)</option><option>ทุกทีม</option></select></div>
+        <div class="field"><label>เดือน</label><select><option>ตุลาคม 2026</option><option>กันยายน 2026</option></select></div>
+      </div>
+      <div style="font-size:12.5px;color:var(--fg-muted);margin:0 0 10px;font-weight:600">สรุปสถานี IG/IC ในพื้นที่ · สาขาพุทธมณฑล</div>
+      <div class="stats">
+        <div class="stat accent"><div class="lab">สถานีทั้งหมด (IG+IC)</div><div class="val num">1,240</div><div class="sub">120 ลูกค้า</div></div>
+        <div class="stat"><div class="lab"><span class="sttype">IG</span> ในดิน</div><div class="val num">870</div><div class="sub">70% ของทั้งหมด</div></div>
+        <div class="stat"><div class="lab"><span class="sttype">IC</span> ในคอนกรีต</div><div class="val num">370</div><div class="sub">30% ของทั้งหมด</div></div>
+        <div class="stat ok"><div class="lab">ใช้งานอยู่</div><div class="val num">1,198</div><div class="sub">active</div></div>
+        <div class="stat warn"><div class="lab">ชำรุด / ถอน</div><div class="val num">42</div><div class="sub">ต้องซ่อม/เปลี่ยน</div></div>
+      </div>
+      <div class="split">
+        <div class="panel">
+          <h3>ลูกค้าในเดือนนี้ <span class="chip na num">24 ราย</span></h3>
+          <div class="tablewrap" style="border:0;box-shadow:none;border-radius:0">
+            <table>
+              <thead><tr><th>ลูกค้า</th><th class="c">สถานี IG/IC</th><th class="c">รอบเดือน</th><th></th></tr></thead>
+              <tbody>
+                <tr style="background:var(--accent-soft)"><td><b>บมจ. สยามพัฒนาเฮ้าส์</b></td><td class="c num">120</td><td class="c"><span class="chip miss">ยังไม่กรอก</span></td><td class="r"><button class="btn sm primary">กรอก</button></td></tr>
+                <tr><td>โรงแรมบ้านสวนรีสอร์ท</td><td class="c num">45</td><td class="c"><span class="chip miss">ยังไม่กรอก</span></td><td class="r"><button class="btn sm">กรอก</button></td></tr>
+                <tr><td>หจก. ทรัพย์เจริญ</td><td class="c num">18</td><td class="c"><span class="chip ok">เข้าแล้ว 6 ต.ค.</span></td><td class="r"><button class="btn sm">แก้ไข</button></td></tr>
+                <tr><td>ร้านอาหารครัวริมคลอง</td><td class="c num">12</td><td class="c"><span class="chip ok">เข้าแล้ว 8 ต.ค.</span></td><td class="r"><button class="btn sm">แก้ไข</button></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div class="panel">
+          <h3>รอบประจำเดือน — บมจ. สยามพัฒนาเฮ้าส์ <span class="chip na num">120 จุด</span></h3>
+          <div class="body">
+            <div class="fastclose">
+              <div><b>ตรวจครบแล้ว ทุกจุดปกติ?</b><br><span style="font-size:12px;color:var(--fg-muted)">ไม่พบปลวก ไม่เปลี่ยนไม้ ไม่มีงานซ่อม — ปิดงานรวดเดียว</span></div>
+              <button class="btn primary" style="white-space:nowrap">✓ ปกติทั้งหมด · ปิดงาน</button>
+            </div>
+            <div class="orsep">— หรือ บันทึกเฉพาะรายการที่ผิดปกติด้านล่าง —</div>
+            <div class="sech">1 · จุดที่พบปลวก</div>
+            <div class="hint"><b>ค่าเริ่มต้น: ทุกจุดปกติ ไม่พบปลวก</b> — เพิ่มเฉพาะจุดที่พบ: พิมพ์เลขสถานี แล้วเลือกชนิดปลวก (<b>ใต้ดิน</b> = ใส่เหยื่อ / <b>สวน</b> = ใช้เคมีผง ไม่ใส่เหยื่อ)</div>
+            <div class="sumchips">
+              <span class="chip ok">ปกติ 117 จุด</span>
+              <span class="chip miss">ปลวกใต้ดิน 2 จุด</span>
+              <span class="chip pend">ปลวกสวน 1 จุด</span>
+              <span class="chip na num">เหยื่อรวม 150 ก.</span>
+            </div>
+            <div class="st-tbl">
+              <div class="tablewrap">
+                <table>
+                  <thead><tr><th>หมายเลขสถานี</th><th>ชนิดปลวก</th><th>เหยื่อ / เคมีผง</th><th class="c"></th></tr></thead>
+                  <tbody>
+                    <tr>
+                      <td><input value="12" style="max-width:90px"></td>
+                      <td><select onchange="termiteRow(this)"><option selected>ปลวกใต้ดิน</option><option>ปลวกสวน</option></select></td>
+                      <td class="baitcell"><select class="baitsel"><option>0 ก.</option><option selected>50 ก.</option><option>100 ก.</option><option>150 ก.</option><option>200 ก.</option></select><span class="powder" hidden style="font-size:11.5px;color:var(--warn)">เคมีผง (ไม่ใส่เหยื่อ)</span></td>
+                      <td class="c"><button class="btn danger sm">ลบ</button></td>
+                    </tr>
+                    <tr>
+                      <td><input value="47" style="max-width:90px"></td>
+                      <td><select onchange="termiteRow(this)"><option selected>ปลวกใต้ดิน</option><option>ปลวกสวน</option></select></td>
+                      <td class="baitcell"><select class="baitsel"><option>0 ก.</option><option>50 ก.</option><option selected>100 ก.</option><option>150 ก.</option><option>200 ก.</option></select><span class="powder" hidden style="font-size:11.5px;color:var(--warn)">เคมีผง (ไม่ใส่เหยื่อ)</span></td>
+                      <td class="c"><button class="btn danger sm">ลบ</button></td>
+                    </tr>
+                    <tr>
+                      <td><input value="89" style="max-width:90px"></td>
+                      <td><select onchange="termiteRow(this)"><option>ปลวกใต้ดิน</option><option selected>ปลวกสวน</option></select></td>
+                      <td class="baitcell"><select class="baitsel" hidden><option>0 ก.</option><option>50 ก.</option><option>100 ก.</option><option>150 ก.</option><option>200 ก.</option></select><span class="powder" style="font-size:11.5px;color:var(--warn)">เคมีผง (ไม่ใส่เหยื่อ)</span></td>
+                      <td class="c"><button class="btn danger sm">ลบ</button></td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <div style="padding:9px 12px;border-top:1px solid var(--border);background:var(--surface-2)"><button class="btn sm">+ เพิ่มจุดที่พบปลวก</button></div>
+            </div>
+            <div class="sech">2 · เปลี่ยนไม้ล่อ (ไม้ที่โดนปลวกกิน/เสื่อม)</div>
+            <div class="hint">เพิ่มเฉพาะสถานีที่เปลี่ยนไม้ · <b>จำนวนไม้เติมอัตโนมัติตามชนิด</b> (IG = 2 ชิ้น · IC = 1 ชิ้น) ผู้ใช้แค่ใส่เลขสถานี + เลือกชนิด</div>
+            <div class="sumchips">
+              <span class="chip info num">เปลี่ยนไม้รวม 5 ชิ้น</span>
+              <span class="chip na">IG 2 จุด (×2) · IC 1 จุด (×1)</span>
+            </div>
+            <div class="st-tbl">
+              <div class="tablewrap">
+                <table>
+                  <thead><tr><th>หมายเลขสถานี</th><th>ชนิด</th><th>จำนวนไม้</th><th class="c"></th></tr></thead>
+                  <tbody>
+                    <tr><td><input value="15" style="max-width:90px"></td><td><select onchange="woodRow(this)"><option selected>IG</option><option>IC</option></select></td><td class="woodcnt" style="color:var(--fg-muted)">2 ชิ้น <span class="auto-tag">อัตโนมัติ</span></td><td class="c"><button class="btn danger sm">ลบ</button></td></tr>
+                    <tr><td><input value="22" style="max-width:90px"></td><td><select onchange="woodRow(this)"><option selected>IG</option><option>IC</option></select></td><td class="woodcnt" style="color:var(--fg-muted)">2 ชิ้น <span class="auto-tag">อัตโนมัติ</span></td><td class="c"><button class="btn danger sm">ลบ</button></td></tr>
+                    <tr><td><input value="63" style="max-width:90px"></td><td><select onchange="woodRow(this)"><option>IG</option><option selected>IC</option></select></td><td class="woodcnt" style="color:var(--fg-muted)">1 ชิ้น <span class="auto-tag">อัตโนมัติ</span></td><td class="c"><button class="btn danger sm">ลบ</button></td></tr>
+                  </tbody>
+                </table>
+              </div>
+              <div style="padding:9px 12px;border-top:1px solid var(--border);background:var(--surface-2)"><button class="btn sm">+ เพิ่มสถานีที่เปลี่ยนไม้</button></div>
+            </div>
+            <div class="sech">3 · งานซ่อม / ปรับสถานี</div>
+            <div class="hint">เพิ่มเฉพาะที่มีงาน — ฝังสถานีใหม่ (IG/IC), เปลี่ยนฝาสถานี ฯลฯ</div>
+            <div class="st-tbl">
+              <div class="tablewrap">
+                <table>
+                  <thead><tr><th>ประเภทงาน</th><th>หมายเลขสถานี</th><th>จำนวน</th><th class="c"></th></tr></thead>
+                  <tbody>
+                    <tr><td><select><option selected>ฝังสถานีใหม่ (IG)</option><option>ฝังสถานีใหม่ (IC)</option><option>เปลี่ยนฝาสถานี</option><option>อื่นๆ</option></select></td><td><input value="S-121" style="max-width:100px"></td><td><input value="1" class="num" style="max-width:70px"></td><td class="c"><button class="btn danger sm">ลบ</button></td></tr>
+                    <tr><td><select><option>ฝังสถานีใหม่ (IG)</option><option>ฝังสถานีใหม่ (IC)</option><option selected>เปลี่ยนฝาสถานี</option><option>อื่นๆ</option></select></td><td><input value="33" style="max-width:100px"></td><td><input value="1" class="num" style="max-width:70px"></td><td class="c"><button class="btn danger sm">ลบ</button></td></tr>
+                  </tbody>
+                </table>
+              </div>
+              <div style="padding:9px 12px;border-top:1px solid var(--border);background:var(--surface-2)"><button class="btn sm">+ เพิ่มงานซ่อม / ปรับสถานี</button></div>
+            </div>
+            <div style="display:flex;gap:9px;margin-top:18px">
+              <button class="btn primary">บันทึกรอบประจำเดือน</button>
+              <button class="btn">ยกเลิก</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="legend">
+        <span><span class="sttype">IG</span> สถานีในดิน · ตรวจทุกเดือน</span>
+        <span><span class="sttype">IC</span> สถานีในคอนกรีต · ตรวจทุกเดือน</span>
+      </div>
+      <div class="note"><span class="ic">ℹ</span><span>กรณีลูกค้ามีสถานีหลักร้อยจุด ไม่ต้องไล่กรอกทีละจุด — ระบบตั้งต้นว่าทุกจุดปกติ แล้วบันทึกเฉพาะ "จุดที่พบปลวก" เท่านั้น (เลขสถานี + เหยื่อ) ทำให้กรอกเร็วและข้อมูลสะอาด</span></div>
+    </section>
+
+    <!-- ========== 3. BAIT BOX AG ========== -->
+    <section id="s-bait" hidden>
+      <div class="page-head"><h1>จัดการกล่องเหยื่อ (AG)</h1>
+        <p>กล่องเหยื่อติดตั้งเมื่อแก้ปัญหาปลวก — ติดตั้งครั้งแรก (S) → ติดตามผล F1, F2… แยกแต่ละจุด → รอถอด → ถอดกล่อง (จบปัญหา)</p></div>
+      <div class="toolbar">
+        <div class="field"><label>เขต</label><select><option>เขต 1</option><option>ทุกเขต</option></select></div>
+        <div class="field"><label>สาขา</label><select><option>พุทธมณฑล</option><option>ทุกสาขา</option></select></div>
+        <div class="field"><label>ทีม</label><select><option>ทุกทีม</option><option>A</option><option>B</option></select></div>
+        <div class="field"><label>เดือน</label><select><option>ตุลาคม 2026</option><option>กันยายน 2026</option></select></div>
+        <div class="field" style="flex:1;min-width:180px"><label>ค้นหาลูกค้า (ชื่อ / เลขที่สัญญา)</label><input placeholder="เช่น เมืองทอง หรือ C-2566-0017" style="width:100%"></div>
+      </div>
+      <div class="stats">
+        <div class="stat accent"><div class="lab">กล่องในพื้นที่ทั้งหมด</div><div class="val num">86</div><div class="sub">ที่ยังไม่ถอด</div></div>
+        <div class="stat"><div class="lab">ติดตั้งใหม่ (S) เดือนนี้</div><div class="val num">10</div><div class="sub">4 ลูกค้า</div></div>
+        <div class="stat"><div class="lab">กำลังติดตาม (F)</div><div class="val num">58</div><div class="sub">สถานะส่วนใหญ่</div></div>
+        <div class="stat warn"><div class="lab">รอถอด</div><div class="val num">12</div><div class="sub">พบปลวกตาย</div></div>
+        <div class="stat ok"><div class="lab">ถอดแล้วเดือนนี้</div><div class="val num">6</div><div class="sub">จบปัญหา → Dashboard</div></div>
+      </div>
+      <div class="split">
+        <div class="panel">
+          <h3>ลูกค้าที่มีกล่องเหยื่อ <span class="chip na num">14 ราย</span></h3>
+          <div class="rowlist">
+            <div class="r sel"><div class="main"><b>บมจ. สยามพัฒนาเฮ้าส์</b><small>5 จุด · S 1 · F 3 · รอถอด 1</small></div><div class="meta"><b>กำลังติดตาม</b></div></div>
+            <div class="r"><div class="main"><b>บจก. เมืองทองคลังสินค้า</b><small>12 จุด · F 10 · รอถอด 2</small></div><div class="meta"><b>กำลังติดตาม</b></div></div>
+            <div class="r"><div class="main"><b>โรงแรมบ้านสวนรีสอร์ท</b><small>6 จุด · F 5 · รอถอด 1</small></div><div class="meta"><b>กำลังติดตาม</b></div></div>
+            <div class="r"><div class="main"><b>อพาร์ตเมนต์ศรีสุข</b><small>3 จุด · ถอดครบแล้ว</small></div><div class="meta"><b>จบปัญหา</b></div></div>
+          </div>
+        </div>
+        <div class="panel">
+          <h3>กล่องเหยื่อ — บมจ. สยามพัฒนาเฮ้าส์
+            <span style="flex:1"></span>
+            <button class="btn sm primary">+ เพิ่มจุดกล่อง (ติดตั้ง S)</button></h3>
+          <div class="body">
+            <div class="hint">แต่ละจุดติดตามผลแยกกัน (คนละรอบ F ได้) · เหยื่อเลือกทีละ 50 ก. · เลือกสัดส่วนปลวกและสถานะของจุดนั้น</div>
+
+            <div class="pt">
+              <div class="top"><span class="sttype">AG</span><b>จุดที่ 1</b><span class="chip info">กำลังติดตาม</span><span class="fno">รอบ F3 <span class="auto-tag">อัตโนมัติ</span></span></div>
+              <div class="grid">
+                <div class="mini"><label>ปริมาณเหยื่อที่ใช้</label><select><option>0 ก.</option><option>50 ก.</option><option selected>100 ก.</option><option>150 ก.</option><option>200 ก.</option></select></div>
+                <div class="mini"><label>สัดส่วนปลวกที่พบ</label><select><option selected>งาน &gt; ทหาร</option><option>ทหาร &gt; งาน</option><option>ทหาร</option><option>ทหาร + สืบพันธุ์สำรอง</option><option>สืบพันธุ์สำรอง</option><option>ปลวกตาย</option></select></div>
+                <div class="mini"><label>สถานะจุดนี้</label><select><option selected>กำลังติดตาม</option><option>รอถอด (พบปลวกตาย)</option><option>ถอดกล่อง (จบปัญหา)</option></select></div>
+              </div>
+            </div>
+
+            <div class="pt">
+              <div class="top"><span class="sttype">AG</span><b>จุดที่ 2</b><span class="chip pend">รอถอด</span><span class="fno">รอบ F6 <span class="auto-tag">อัตโนมัติ</span></span></div>
+              <div class="grid">
+                <div class="mini"><label>ปริมาณเหยื่อที่ใช้</label><select><option selected>0 ก.</option><option>50 ก.</option><option>100 ก.</option><option>150 ก.</option><option>200 ก.</option></select></div>
+                <div class="mini"><label>สัดส่วนปลวกที่พบ</label><select><option>งาน &gt; ทหาร</option><option>ทหาร &gt; งาน</option><option>ทหาร</option><option>ทหาร + สืบพันธุ์สำรอง</option><option>สืบพันธุ์สำรอง</option><option selected>ปลวกตาย</option></select></div>
+                <div class="mini"><label>สถานะจุดนี้</label><select><option>กำลังติดตาม</option><option selected>รอถอด (พบปลวกตาย)</option><option>ถอดกล่อง (จบปัญหา)</option></select></div>
+              </div>
+            </div>
+
+            <div class="pt">
+              <div class="top"><span class="sttype">AG</span><b>จุดที่ 3</b><span class="chip info">ติดตั้งใหม่</span><span class="fno">ติดตั้ง S <span class="auto-tag">อัตโนมัติ</span></span></div>
+              <div class="grid">
+                <div class="mini"><label>ปริมาณเหยื่อที่ใช้</label><select><option>0 ก.</option><option>50 ก.</option><option selected>100 ก.</option><option>150 ก.</option><option>200 ก.</option></select></div>
+                <div class="mini"><label>สัดส่วนปลวกที่พบ</label><select><option>งาน &gt; ทหาร</option><option>ทหาร &gt; งาน</option><option>ทหาร</option><option selected>ทหาร + สืบพันธุ์สำรอง</option><option>สืบพันธุ์สำรอง</option><option>ปลวกตาย</option></select></div>
+                <div class="mini"><label>สถานะจุดนี้</label><select><option selected>กำลังติดตาม</option><option>รอถอด (พบปลวกตาย)</option><option>ถอดกล่อง (จบปัญหา)</option></select></div>
+              </div>
+            </div>
+
+            <div class="pt done">
+              <div class="top"><span class="sttype">AG</span><b>จุดที่ 4</b><span class="chip done">ถอดแล้ว</span><span class="fno">จบปัญหา 2 ต.ค.</span></div>
+              <div style="font-size:12px;color:var(--fg-muted)">ถอดกล่องเรียบร้อย → ส่งสถานะ "เสร็จ" เข้า Dashboard แล้ว</div>
+            </div>
+
+            <div style="display:flex;gap:9px;margin-top:4px">
+              <button class="btn primary">บันทึกผลติดตาม</button>
+              <button class="btn">ยกเลิก</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel" style="margin-top:16px">
+        <h3>สรุปการใช้เหยื่อ
+          <span style="flex:1"></span>
+          <select style="font-size:12px;padding:5px 8px;border:1px solid var(--border-strong);border-radius:7px;background:var(--surface);color:var(--fg)"><option>รายเดือน</option><option>รายวัน</option><option>รายปี</option><option>กำหนดช่วงเอง (custom)</option></select></h3>
+        <div class="body">
+          <div class="toolbar" style="margin:0 0 14px">
+            <div class="field"><label>เขต</label><select><option>เขต 1</option><option>ทุกเขต</option></select></div>
+            <div class="field"><label>สาขา</label><select><option>ทุกสาขา</option><option>พุทธมณฑล</option></select></div>
+            <div class="field"><label>ช่วงเวลา</label><select><option>ตุลาคม 2026</option><option>Q4 2026</option></select></div>
+            <div style="flex:1"></div>
+            <button class="btn sm">↓ Export</button>
+          </div>
+          <div class="sumchips" style="margin-bottom:16px">
+            <span class="chip info num">เหยื่อที่ใช้รวม 8,750 ก.</span>
+            <span class="chip na num">175 กล่อง-ครั้ง</span>
+            <span class="chip ok num">เฉลี่ย 50 ก./ครั้ง</span>
+          </div>
+          <div class="usebars">
+            <div class="userow"><span>พุทธมณฑล</span><div class="usetrack"><div class="usefill" style="width:82%"></div></div><span class="num" style="text-align:right">4,300 ก.</span></div>
+            <div class="userow"><span>หัวหิน</span><div class="usetrack"><div class="usefill" style="width:54%"></div></div><span class="num" style="text-align:right">2,850 ก.</span></div>
+            <div class="userow"><span>นครปฐม</span><div class="usetrack"><div class="usefill" style="width:30%"></div></div><span class="num" style="text-align:right">1,600 ก.</span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========== COLLECT STATIONS (expired contracts) ========== -->
+    <section id="s-collect" hidden>
+      <div class="page-head"><h1>รอเก็บสถานี (ลูกค้าหมดสัญญา)</h1>
+        <p>สัญญาหมดแล้วแต่ยัง <b>ไม่ถือว่าจบ</b> จนกว่าจะเก็บสถานี IG/IC คืนบริษัทครบ — ติดตามสถานะการเก็บที่นี่ แล้วจึงปิดสัญญาจริง</p></div>
+      <div class="toolbar">
+        <div class="field"><label>เขต</label><select><option>เขต 1</option><option>ทุกเขต</option></select></div>
+        <div class="field"><label>สาขา</label><select><option>พุทธมณฑล</option><option>ทุกสาขา</option></select></div>
+        <div class="field"><label>ทีม</label><select><option>ทุกทีม</option><option>A</option><option>B</option></select></div>
+        <div class="field"><label>สถานะ</label><select><option>ยังเก็บไม่ครบ</option><option>ทั้งหมด</option></select></div>
+        <div class="field" style="flex:1;min-width:180px"><label>ค้นหาลูกค้า</label><input placeholder="ชื่อลูกค้า / เลขที่สัญญา" style="width:100%"></div>
+      </div>
+      <div class="stats">
+        <div class="stat accent"><div class="lab">ลูกค้ารอเก็บสถานี</div><div class="val num">6</div><div class="sub">หมดสัญญาแล้ว ยังไม่ปิด</div></div>
+        <div class="stat"><div class="lab">สถานีที่ต้องเก็บ (รวม)</div><div class="val num">214</div><div class="sub">IG/IC ค้างในพื้นที่</div></div>
+        <div class="stat ok"><div class="lab">เก็บคืนแล้ว</div><div class="val num">150</div><div class="sub">70%</div></div>
+        <div class="stat danger"><div class="lab">คงเหลือต้องเก็บ</div><div class="val num">64</div><div class="sub">ยังอยู่หน้างาน</div></div>
+      </div>
+      <div class="tablewrap">
+        <table>
+          <thead><tr>
+            <th>ลูกค้า</th><th>เลขที่สัญญา</th><th>สิ้นสุดสัญญา</th>
+            <th class="c">สถานีทั้งหมด</th><th class="c">เก็บแล้ว</th><th class="c">คงเหลือ</th><th class="c">สถานะ</th><th></th>
+          </tr></thead>
+          <tbody>
+            <tr><td><b>บจก. เมืองทองคลังสินค้า</b></td><td class="num">C-2566-0017</td><td class="num">13/11/69</td><td class="c num">52</td><td class="c num">40</td><td class="c num" style="color:var(--danger)">12</td><td class="c"><span class="chip pend">กำลังเก็บ</span></td><td class="r"><button class="btn sm primary">บันทึกการเก็บ</button></td></tr>
+            <tr><td><b>อาคารชุดลุมพินีวิว</b></td><td class="num">C-2566-0041</td><td class="num">25/09/69</td><td class="c num">30</td><td class="c num">30</td><td class="c num">0</td><td class="c"><span class="chip ok">เก็บครบ</span></td><td class="r"><button class="btn sm">ปิดสัญญา</button></td></tr>
+            <tr><td><b>คุณสมหญิง รุ่งเรือง</b></td><td class="num">C-2569-0009</td><td class="num">06/09/69</td><td class="c num">6</td><td class="c num">0</td><td class="c num" style="color:var(--danger)">6</td><td class="c"><span class="chip miss">รอเก็บ</span></td><td class="r"><button class="btn sm primary">บันทึกการเก็บ</button></td></tr>
+            <tr><td><b>ร้านกาแฟบ้านไร่</b></td><td class="num">C-2568-0120</td><td class="num">31/08/69</td><td class="c num">10</td><td class="c num">4</td><td class="c num" style="color:var(--danger)">6</td><td class="c"><span class="chip pend">กำลังเก็บ</span></td><td class="r"><button class="btn sm primary">บันทึกการเก็บ</button></td></tr>
+            <tr><td><b>หจก. รุ่งเรืองพาณิชย์</b></td><td class="num">C-2568-0077</td><td class="num">20/08/69</td><td class="c num">14</td><td class="c num">0</td><td class="c num" style="color:var(--danger)">14</td><td class="c"><span class="chip miss">รอเก็บ</span></td><td class="r"><button class="btn sm primary">บันทึกการเก็บ</button></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="panel" style="margin-top:16px">
+        <h3>บันทึกการเก็บสถานี — บจก. เมืองทองคลังสินค้า
+          <span style="flex:1"></span>
+          <span class="chip pend">กำลังเก็บ</span></h3>
+        <div class="body">
+          <div class="sumchips">
+            <span class="chip na num">ต้องเก็บ · IG 34 / IC 18</span>
+            <span class="chip ok num">เก็บแล้ว · IG 28 / IC 12</span>
+            <span class="chip miss num">คงเหลือ · IG 6 / IC 6</span>
+          </div>
+          <div class="pt" style="background:var(--surface)">
+            <div class="grid" style="grid-template-columns:repeat(4,1fr)">
+              <div class="mini"><label>จำนวน IG ที่เก็บได้ (รอบนี้)</label><input class="num" value="6"></div>
+              <div class="mini"><label>จำนวน IC ที่เก็บได้ (รอบนี้)</label><input class="num" value="6"></div>
+              <div class="mini"><label>วันที่เก็บ</label><input value="15/10/2026"></div>
+              <div class="mini"><label>ผู้เก็บ / หมายเหตุ</label><input placeholder="เช่น ทีม A"></div>
+            </div>
+          </div>
+          <div class="hint">บันทึกจำนวนที่เก็บคืน <b>แยก IG / IC</b> · เมื่อคงเหลือ IG+IC = 0 ปุ่ม "ปิดสัญญา" จะเปิดให้กด = หมดสัญญาจริง</div>
+          <div style="display:flex;gap:9px">
+            <button class="btn primary">บันทึกการเก็บ</button>
+            <button class="btn" disabled style="opacity:.5;cursor:not-allowed">ปิดสัญญา (เก็บครบ)</button>
+          </div>
+        </div>
+      </div>
+      <div class="note"><span class="ic">ℹ</span><span>หมดสัญญาแล้ว ระบบ <b>ไม่ลบลูกค้าออกอัตโนมัติ</b> — ต้องเก็บสถานี IG/IC คืนครบก่อน จึงกดปิดสัญญา (หมดสัญญาจริง) · สถานะนี้เห็น <b>เฉพาะภายใน</b> (Admin / Recorder / Host) ไม่ส่งเข้า Dashboard สาธารณะ (viewer)</span></div>
+    </section>
+
+    <!-- ========== 4. REGISTRY ========== -->
+    <section id="s-registry" hidden>
+      <div class="page-head"><h1>ทะเบียนลูกค้า / สัญญา</h1>
+        <p>ตารางแบบ Excel — พิมพ์ในช่องได้ เลื่อนด้วย Tab/Enter กรอง/เรียง/คัดลอกได้ · Tier คำนวณจากมูลค่าต่อปีอัตโนมัติ</p></div>
+      <div class="toolbar">
+        <div class="field"><label>เขต</label><select><option>เขต 1</option><option>ทุกเขต</option></select></div>
+        <div class="field"><label>สาขา</label><select><option>พุทธมณฑล</option><option>ทุกสาขา</option></select></div>
+        <div class="field"><label>ทีม</label><select><option>ทุกทีม</option><option>A</option><option>B</option></select></div>
+        <div class="field"><label>สถานะ</label><select><option>Active</option><option>ทั้งหมด</option></select></div>
+        <div class="field"><label>ค้นหา</label><input placeholder="ชื่อลูกค้า / เลขสัญญา"></div>
+        <div style="flex:1"></div>
+        <button class="btn">↑ นำเข้า Excel</button>
+        <button class="btn primary">+ เพิ่มลูกค้า</button>
+      </div>
+      <div class="tablewrap">
+        <table>
+          <thead><tr>
+            <th class="c">#</th><th>ชื่อลูกค้า</th><th>เลขที่สัญญา</th><th>ทีม</th><th>ประเภท</th>
+            <th>เริ่ม</th><th>สิ้นสุด</th><th class="r">มูลค่าสัญญา</th><th class="r">ต่อปี</th>
+            <th class="c">Tier <span class="auto-tag">อัตโนมัติ</span></th><th class="c">สถานี</th><th class="c">สถานะ</th>
+          </tr></thead>
+          <tbody>
+            <tr><td class="c num">1</td><td><b>บจก. เมืองทองคลังสินค้า</b></td><td class="num">C-2566-0017</td><td>A</td><td>โรงงาน</td><td class="num">14/11/66</td><td class="num">13/11/69</td><td class="r num">450,000</td><td class="r num">150,000</td><td class="c"><span class="tier xl">XL3</span></td><td class="c num">52</td><td class="c"><span class="chip ok">Active</span></td></tr>
+            <tr><td class="c num">2</td><td><b>อาคารชุดลุมพินีวิว</b></td><td class="num">C-2566-0041</td><td>B</td><td>อาคาร</td><td class="num">26/11/66</td><td class="num">25/11/69</td><td class="r num">180,000</td><td class="r num">60,000</td><td class="c"><span class="tier l">L3</span></td><td class="c num">30</td><td class="c"><span class="chip ok">Active</span></td></tr>
+            <tr><td class="c num">3</td><td><b>บมจ. สยามพัฒนาเฮ้าส์</b></td><td class="num">C-2569-0142</td><td>A</td><td>ออฟฟิศ</td><td class="num">01/09/69</td><td class="num">31/08/70</td><td class="r num">96,000</td><td class="r num">96,000</td><td class="c"><span class="tier l">L1</span></td><td class="c num">125</td><td class="c"><span class="chip ok">Active</span></td></tr>
+            <tr><td class="c num">4</td><td><b>โรงแรมบ้านสวนรีสอร์ท</b></td><td class="num">C-2568-0311</td><td>B</td><td>โรงแรม</td><td class="num">01/07/68</td><td class="num">30/06/71</td><td class="r num">135,000</td><td class="r num">45,000</td><td class="c"><span class="tier m">M3</span></td><td class="c num">51</td><td class="c"><span class="chip ok">Active</span></td></tr>
+            <tr><td class="c num">5</td><td><b>หจก. ทรัพย์เจริญ</b></td><td class="num">C-2569-0203</td><td>A</td><td>ทาวน์โฮม</td><td class="num">15/01/69</td><td class="num">14/01/70</td><td class="r num">36,000</td><td class="r num">36,000</td><td class="c"><span class="tier m">M1</span></td><td class="c num">18</td><td class="c"><span class="chip ok">Active</span></td></tr>
+            <tr><td class="c num">6</td><td><b>คุณวิรัช ตั้งมั่น</b></td><td class="num">C-2569-0088</td><td>A</td><td>บ้าน</td><td class="num">03/04/69</td><td class="num">02/04/70</td><td class="r num">28,000</td><td class="r num">28,000</td><td class="c"><span class="tier s">S1</span></td><td class="c num">8</td><td class="c"><span class="chip ok">Active</span></td></tr>
+            <tr><td class="c num">7</td><td><b>คุณสมหญิง รุ่งเรือง</b></td><td class="num">C-2569-0009</td><td>A</td><td>บ้าน</td><td class="num">07/12/68</td><td class="num">06/12/69</td><td class="r num">24,000</td><td class="r num">24,000</td><td class="c"><span class="tier s">S1</span></td><td class="c num">6</td><td class="c"><span class="chip pend">ใกล้หมด</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="legend">
+        <span><span class="tier s">S</span> &lt; 30,000/ปี</span>
+        <span><span class="tier m">M</span> 30,000–49,999</span>
+        <span><span class="tier l">L</span> 50,000–99,999</span>
+        <span><span class="tier xl">XL</span> ≥ 100,000</span>
+        <span style="color:var(--fg-faint)">· เลขท้าย = จำนวนปีสัญญา (1 หรือ 3)</span>
+      </div>
+      <div class="note"><span class="ic">ℹ</span><span>Tier มาจากเกณฑ์ในตาราง <b>tier_rules</b> (Host แก้ได้) ไม่ hardcode ในโค้ด · วันสิ้นสุด = วันเริ่ม + N ปี − 1 วัน ระบบเติมให้อัตโนมัติ</span></div>
+    </section>
+
+    <!-- ========== 5. SUMMARY (viewer) ========== -->
+    <section id="s-summary" hidden>
+      <div class="page-head"><h1>สรุปมูลค่าระบบเหยื่อ</h1>
+        <p>ทั่วไทย 43 สาขา · 13 เขต · Status snapshot (SEP.26) — ข้อมูลที่ส่งเข้า AGA Bait Dashboard · <b>หน้า public ไม่มีข้อมูลลูกค้า</b></p></div>
+      <div class="seg">
+        <button class="segbtn on">ทั้งประเทศ (43)</button>
+        <button class="segbtn">ส่วนกลาง (24)</button>
+        <button class="segbtn">ต่างจังหวัด (19)</button>
+      </div>
+      <div class="toolbar" style="margin-top:0">
+        <div class="field"><label>เดือน</label><select><option>SEP.26</option><option>AUG.26</option></select></div>
+        <div class="field"><label>เขต</label><select><option>ทุกเขต</option><option>เขต 1</option></select></div>
+        <div class="field"><label>สาขา</label><select><option>ทุกสาขา</option></select></div>
+        <div class="field"><label>เรียงอันดับตาม</label><select><option>มูลค่ารวม</option><option>จำนวนลูกค้า</option></select></div>
+        <div style="flex:1"></div>
+        <button class="btn">↓ Export JSON</button>
+      </div>
+      <div class="tierrow">กรองตาม Tier:
+        <span class="tierchip s">S &lt;30K</span><span class="tierchip m">M 30-49.9K</span>
+        <span class="tierchip l">L 50-99.9K</span><span class="tierchip xl">XL 100K+</span>
+      </div>
+      <div class="kpigrid">
+        <div class="kpi"><div class="lab">มูลค่ารวม</div><div class="big num">฿166.77M</div><div class="dl">▲ +0.4% MoM</div><div class="sub">667.1% ของเป้า ฿25.00M</div></div>
+        <div class="kpi"><div class="lab">จำนวนลูกค้า</div><div class="big num">3,126</div><div class="dl">▲ +12.6% YoY</div><div class="sub">104.2% ของเป้า 3,000</div></div>
+        <div class="kpi"><div class="lab">สาขาที่ดีที่สุด</div><div class="big" style="font-size:22px">พัฒนาการ</div><div class="dl num">฿17.20M</div><div class="sub">เขต 4</div></div>
+        <div class="kpi"><div class="lab">จำนวนสาขา</div><div class="big num">43</div><div class="sub" style="margin-top:10px">เฉลี่ย ฿3.88M/สาขา</div></div>
+      </div>
+      <div class="divwrap">
+        <div class="divcard c"><h4>ส่วนกลาง <span class="num">83.3%</span></h4>
+          <div class="ln"><span>มูลค่ารวม</span><b class="num">฿138.84M</b></div>
+          <div class="ln"><span>จำนวนลูกค้า</span><b class="num">2,480</b></div>
+          <div class="ln"><span>จำนวนสาขา</span><b class="num">24</b></div>
+          <div class="ln"><span>เฉลี่ย/สาขา</span><b class="num">฿5.78M</b></div>
+        </div>
+        <div class="divcard p"><h4>ต่างจังหวัด <span class="num">16.7%</span></h4>
+          <div class="ln"><span>มูลค่ารวม</span><b class="num">฿27.93M</b></div>
+          <div class="ln"><span>จำนวนลูกค้า</span><b class="num">646</b></div>
+          <div class="ln"><span>จำนวนสาขา</span><b class="num">19</b></div>
+          <div class="ln"><span>เฉลี่ย/สาขา</span><b class="num">฿1.47M</b></div>
+        </div>
+      </div>
+      <div class="chartcard"><h3>มูลค่ารายเดือน · ส่วนกลาง vs ต่างจังหวัด</h3>
+        <div style="height:300px"><canvas id="divChart"></canvas></div>
+      </div>
+      <div class="chartcard"><h3>Ranking สาขา · SEP.26</h3>
+        <div class="ranklist">
+          <div class="r"><span class="rankno g1">1</span><div style="flex:1">พัฒนาการ <small style="color:var(--fg-muted)">· เขต 4 · 259 ราย</small></div><span style="color:var(--ok)">▲+4.5%</span><b class="num">฿17.20M</b></div>
+          <div class="r"><span class="rankno g2">2</span><div style="flex:1">สุขุมวิท <small style="color:var(--fg-muted)">· เขต 6 · 220 ราย</small></div><span style="color:var(--ok)">▲+4.2%</span><b class="num">฿14.55M</b></div>
+          <div class="r"><span class="rankno g3">3</span><div style="flex:1">พุทธมณฑล <small style="color:var(--fg-muted)">· เขต 1 · 241 ราย</small></div><span style="color:var(--fg-muted)">+0.7%</span><b class="num">฿13.08M</b></div>
+          <div class="r"><span class="rankno">4</span><div style="flex:1">ลาดพร้าว <small style="color:var(--fg-muted)">· เขต 4 · 246 ราย</small></div><span style="color:var(--ok)">▲+6.6%</span><b class="num">฿12.02M</b></div>
+          <div class="r"><span class="rankno">5</span><div style="flex:1">ปากช่อง <small style="color:var(--fg-muted)">· เขต 9 · 148 ราย</small></div><span style="color:var(--ok)">▲+4.8%</span><b class="num">฿11.33M</b></div>
+          <div class="r"><span class="rankno">6</span><div style="flex:1">นนทบุรี <small style="color:var(--fg-muted)">· เขต 2 · 189 ราย</small></div><span style="color:var(--ok)">▲+1.8%</span><b class="num">฿8.55M</b></div>
+        </div>
+      </div>
+      <div style="font-size:12.5px;color:var(--fg-muted);font-weight:600;margin-bottom:8px">รายละเอียด 16 ฟิลด์ต่อสาขา (ส่งเข้า Dashboard)</div>
+      <div class="tablewrap">
+        <table>
+          <thead><tr>
+            <th>สาขา</th>
+            <th class="c">s1</th><th class="c">s3</th><th class="c">m1</th><th class="c">m3</th><th class="c">l1</th><th class="c">l3</th><th class="c">xl1</th><th class="c">xl3</th>
+            <th class="r">cust</th><th class="r">vS</th><th class="r">vM</th><th class="r">vL</th><th class="r">vXL</th><th class="r">value</th>
+          </tr></thead>
+          <tbody>
+            <tr><td><b>พุทธมณฑล</b></td><td class="c num">48</td><td class="c num">131</td><td class="c num">14</td><td class="c num">15</td><td class="c num">8</td><td class="c num">6</td><td class="c num">2</td><td class="c num">1</td><td class="r num">241</td><td class="r num">7,712,300</td><td class="r num">2,043,900</td><td class="r num">1,890,000</td><td class="r num">1,438,142</td><td class="r num">13,084,342</td></tr>
+            <tr><td><b>หัวหิน</b></td><td class="c num">21</td><td class="c num">34</td><td class="c num">6</td><td class="c num">7</td><td class="c num">3</td><td class="c num">3</td><td class="c num">1</td><td class="c num">1</td><td class="r num">76</td><td class="r num">2,560,900</td><td class="r num">1,120,500</td><td class="r num">980,000</td><td class="r num">1,109,084</td><td class="r num">5,770,484</td></tr>
+            <tr><td><b>นครปฐม</b></td><td class="c num">9</td><td class="c num">13</td><td class="c num">2</td><td class="c num">3</td><td class="c num">1</td><td class="c num">1</td><td class="c num">1</td><td class="c num">0</td><td class="r num">30</td><td class="r num">612,860</td><td class="r num">425,000</td><td class="r num">350,000</td><td class="r num">350,000</td><td class="r num">1,737,860</td></tr>
+          </tbody>
+          <tfoot><tr style="font-weight:600;background:var(--surface-2)"><td>รวมเขต 1</td><td class="c num">78</td><td class="c num">178</td><td class="c num">22</td><td class="c num">25</td><td class="c num">12</td><td class="c num">10</td><td class="c num">4</td><td class="c num">2</td><td class="r num">347</td><td class="r num">10,886,060</td><td class="r num">3,589,400</td><td class="r num">3,220,000</td><td class="r num">2,897,226</td><td class="r num">20,592,686</td></tr></tfoot>
+        </table>
+      </div>
+      <div class="note"><span class="ic">ℹ</span><span>16 ฟิลด์ต่อแถวตรงกับรูปแบบ <b>dashboard_data.json</b> เดิม (ห้ามเปลี่ยน) · ทุกเดือนต้องครบ 43 สาขา · viewer เรียกตารางลูกค้า/สัญญาผ่าน API ได้ 0 แถว ตาม RLS</span></div>
+    </section>
+  </main>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script>
+var SCREENS=['todo','service','bait','collect','registry','summary'];
+var divChart=null;
+function initDivChart(){
+  if(divChart || typeof Chart==='undefined') return;
+  var el=document.getElementById('divChart'); if(!el) return;
+  Chart.defaults.color='#8a98a8'; Chart.defaults.font.family='Noto Sans Thai';
+  var mo=['JAN.25','FEB.25','MAR.25','APR.25','MAY.25','JUN.25','JUL.25','AUG.25','SEP.25','OCT.25','NOV.25','DEC.25','JAN.26','FEB.26','MAR.26','APR.26','MAY.26','JUN.26','JUL.26','AUG.26','SEP.26'];
+  var central=[110,112,115,118,120,123,126,128,130,131,133,134,135,136,137,137,138,138,139,139,138.8];
+  var prov=[18,19,19,20,21,21,22,22,23,23,24,24,25,25,26,26,26,27,27,28,27.9];
+  divChart=new Chart(el,{type:'bar',data:{labels:mo,datasets:[
+    {label:'ส่วนกลาง',data:central,backgroundColor:'#378add'},
+    {label:'ต่างจังหวัด',data:prov,backgroundColor:'#eab308'}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top'}},
+      scales:{x:{grid:{display:false}},y:{ticks:{callback:function(v){return '฿'+v+'M'}},grid:{color:'rgba(140,152,168,.18)'}}}}});
+}
+function go(s){
+  document.querySelectorAll('#nav a[data-s]').forEach(a=>a.classList.toggle('active',a.dataset.s===s));
+  SCREENS.forEach(id=>{ document.getElementById('s-'+id).hidden = (id!==s); });
+  if(s==='summary') setTimeout(initDivChart,40);
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+function termiteRow(sel){
+  var tr=sel.closest('tr'), cell=tr.querySelector('.baitcell');
+  var bs=cell.querySelector('.baitsel'), pw=cell.querySelector('.powder');
+  var garden=(sel.value==='ปลวกสวน'); bs.hidden=garden; pw.hidden=!garden;
+}
+function woodRow(sel){
+  var cell=sel.closest('tr').querySelector('.woodcnt');
+  cell.innerHTML=(sel.value==='IG'?'2':'1')+' ชิ้น <span class="auto-tag">อัตโนมัติ</span>';
+}
+function setRole(r){
+  var viewerOnly=(r==='viewer');
+  document.querySelectorAll('#nav a[data-s]').forEach(a=>{
+    var allow=!viewerOnly || a.dataset.s==='summary';
+    a.style.display=allow?'':'none';
+  });
+  if(viewerOnly) go('summary');
+}
+function toggleTheme(){
+  var el=document.documentElement, cur=el.getAttribute('data-theme');
+  var next=cur==='dark'?'light':(cur==='light'?'dark':(matchMedia('(prefers-color-scheme: dark)').matches?'light':'dark'));
+  el.setAttribute('data-theme',next);
+  try{localStorage.setItem('aga-theme',next)}catch(e){}
+}
+try{var t=localStorage.getItem('aga-theme'); if(t)document.documentElement.setAttribute('data-theme',t)}catch(e){}
+</script>
