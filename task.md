@@ -23,6 +23,28 @@
 
 ---
 
+## 🔜 ทำต่อได้เลย (resume จุดที่ค้าง ณ 15 ต.ค. 2026)
+
+**เริ่มงานถัดไป:**
+1. **เขียนโค้ด `lib/rules`** ตามแผน TDD → [docs/plans/2026-10-15-lib-rules.md](docs/plans/2026-10-15-lib-rules.md) (Task 0 ตั้งโครง TS+Vitest → ไล่ทีละ task)
+2. **ชุดงาน mockup/SPEC ที่ค้าง:** สรุปการใช้วัสดุแยกสาขา/ช่วงเวลา (เหยื่อ NEMESIS + เคมีผง + ไม้ล่อ มี filter) · เคมีผง summary
+
+**ตัดสินใจก่อนลงข้อมูลจริง:**
+- "ไม่พบปลวก" ใน dropdown สัดส่วนปลวก → ใช้ null หรือเพิ่มเป็นตัวเลือก
+- ตารางหน้ารอเก็บสถานี → แยกคอลัมน์ IG/IC ไหม
+- `cust` นับต่อสัญญา/ต่อลูกค้า (SPEC §14 ข้อ 4)
+- ต้องได้ไฟล์ `fixtures/zone1_registry.*` เพื่อเทสเกณฑ์ยอมรับ §15
+
+**a11y/security (เก็บไว้ตอน build Next.js):** nav/row ต้องคีย์บอร์ดได้ · aria-label ช่องตาราง · contrast `--fg-faint` · viewer public ล็อก RLS anon (PDPA)
+
+**ลิงก์อ้างอิง:**
+- mockup prototype (Artifact): https://claude.ai/artifact/KKDbURTPNifT9d3kHfPKZG
+- dashboard ปลายทางจริง: https://aga-bait-dashboard.netlify.app/?m=SEP.26
+
+> **วิธีทำต่อพรุ่งนี้:** เปิด session เดิมนี้จาก sidebar ของแอป (context ครบ ทำต่อได้ทันที) · หรือถ้าเปิด session ใหม่ ให้อ่าน `CLAUDE.md` → `SPEC.md` → `task.md` (ไฟล์นี้) → แผน lib/rules แล้วเริ่มได้เลย
+
+---
+
 ## สิ่งที่ยังติด / รอการยืนยัน
 
 - [ ] **ไฟล์ fixtures** — SPEC §15 ใช้ตรวจเกณฑ์ยอมรับ (นครปฐม 30 ราย/1,737,860 · หัวหิน 76 ราย/5,770,484 · พุทธมณฑล 241 ราย/13,084,342) ยังไม่มีในโปรเจกต์ ต้องได้ก่อนจึงเขียน test เทียบตัวเลขจริงได้
