@@ -38,7 +38,8 @@
 **a11y/security (เก็บไว้ตอน build Next.js):** nav/row ต้องคีย์บอร์ดได้ · aria-label ช่องตาราง · contrast `--fg-faint` · viewer public ล็อก RLS anon (PDPA)
 
 **ลิงก์อ้างอิง:**
-- mockup prototype (Artifact): https://claude.ai/artifact/KKDbURTPNifT9d3kHfPKZG
+- mockup prototype (ไฟล์ใน repo): [docs/mockup/aga-bait-registry-prototype.html](docs/mockup/aga-bait-registry-prototype.html) — เปิดแก้ต่อได้
+- mockup prototype (Artifact live): https://claude.ai/artifact/KKDbURTPNifT9d3kHfPKZG
 - dashboard ปลายทางจริง: https://aga-bait-dashboard.netlify.app/?m=SEP.26
 
 > **วิธีทำต่อพรุ่งนี้:** เปิด session เดิมนี้จาก sidebar ของแอป (context ครบ ทำต่อได้ทันที) · หรือถ้าเปิด session ใหม่ ให้อ่าน `CLAUDE.md` → `SPEC.md` → `task.md` (ไฟล์นี้) → แผน lib/rules แล้วเริ่มได้เลย
