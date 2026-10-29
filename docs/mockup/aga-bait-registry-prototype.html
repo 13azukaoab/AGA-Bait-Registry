@@ -137,6 +137,12 @@ td.r,th.r{text-align:right} td.c,th.c{text-align:center}
 .chip.info{background:var(--accent-soft);color:var(--accent-strong)} .chip.done{background:var(--surface-3);color:var(--fg-faint)}
 .auto-tag{font-size:10px;color:var(--fg-faint);border:1px dashed var(--border-strong);border-radius:5px;padding:1px 5px;margin-left:6px}
 .sttype{font-size:10.5px;font-weight:600;padding:1px 7px;border-radius:5px;background:var(--accent-soft);color:var(--accent-strong)}
+.stcell{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.vchk{font-size:11px;display:inline-flex;align-items:center;gap:3px}
+.vchk.ok{color:var(--ok)} .vchk.bad{color:var(--danger)}
+.powwrap{display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap}
+.powcalc{font-size:11px;color:var(--warn);font-weight:600}
+.powin{max-width:58px}
 
 /* Split + panel + entry */
 .split{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start}
@@ -168,6 +174,23 @@ td.r,th.r{text-align:right} td.c,th.c{text-align:center}
 .userow{display:grid;grid-template-columns:90px 1fr 70px;gap:10px;align-items:center;font-size:12.5px}
 .usetrack{height:10px;border-radius:999px;background:var(--surface-3);overflow:hidden}
 .usefill{height:100%;background:var(--accent);border-radius:999px}
+/* ===== สรุปวัสดุ (material summary) colors + marks ===== */
+:root{--nem:#1f5fa8;--nem-out:#4a90d9;--pow:#b4740a;--wood:#6d47b8}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--nem:#4a90d9;--nem-out:#7fb3e8;--pow:#d99b3e;--wood:#a588e0}}
+:root[data-theme="dark"]{--nem:#4a90d9;--nem-out:#7fb3e8;--pow:#d99b3e;--wood:#a588e0}
+.usefill.pow{background:var(--pow)} .usefill.wood{background:var(--wood)}
+.matbars .userow{grid-template-columns:90px 1fr 120px}
+.matbars .usetrack{border-radius:4px}
+.matbars .usefill{border-radius:0 4px 4px 0}
+.matbars .usetrack.stk{display:flex;gap:2px;background:transparent}
+.seg{height:100%} .seg.in{background:var(--nem);border-radius:0 4px 4px 0} .seg.out{background:var(--nem-out);border-radius:4px 0 0 4px}
+.matbars .v{text-align:right;font-weight:600} .matbars .v small{font-weight:400;color:var(--fg-faint)}
+.leg{display:flex;flex-wrap:wrap;gap:14px;margin:0 0 12px;font-size:11.5px;color:var(--fg-muted)}
+.leg span{display:inline-flex;align-items:center;gap:6px}
+.sw{width:9px;height:9px;border-radius:2px;flex:none;display:inline-block}
+.mh{display:inline-flex;align-items:center;gap:6px}
+.stat.matn{border-left:4px solid var(--nem)} .stat.matp{border-left:4px solid var(--pow)} .stat.matw{border-left:4px solid var(--wood)}
+tfoot td{padding:10px 12px;font-weight:700;background:var(--surface-2);border-top:2px solid var(--border-strong)}
 
 @media (max-width:860px){
   .shell{display:block}
@@ -240,6 +263,7 @@ td.r,th.r{text-align:right} td.c,th.c{text-align:center}
     <a data-s="collect" onclick="go('collect')"><span class="ic">⇲</span> รอเก็บสถานี (หมดสัญญา)</a>
     <a data-s="registry" onclick="go('registry')"><span class="ic">▤</span> ทะเบียนลูกค้า/สัญญา</a>
     <a data-s="summary" onclick="go('summary')"><span class="ic">▦</span> สรุปตัวเลข</a>
+    <a data-s="material" onclick="go('material')"><span class="ic">▥</span> สรุปวัสดุ</a>
     <div class="group">เฟสถัดไป</div>
     <a class="soon"><span class="ic">◷</span> รายละเอียดลูกค้า <span class="soon-tag">เร็วๆนี้</span></a>
     <a class="soon"><span class="ic">⇪</span> นำเข้าสัญญา Excel <span class="soon-tag">เร็วๆนี้</span></a>
@@ -362,12 +386,13 @@ td.r,th.r{text-align:right} td.c,th.c{text-align:center}
             </div>
             <div class="orsep">— หรือ บันทึกเฉพาะรายการที่ผิดปกติด้านล่าง —</div>
             <div class="sech">1 · จุดที่พบปลวก</div>
-            <div class="hint"><b>ค่าเริ่มต้น: ทุกจุดปกติ ไม่พบปลวก</b> — เพิ่มเฉพาะจุดที่พบ: พิมพ์เลขสถานี แล้วเลือกชนิดปลวก (<b>ใต้ดิน</b> = ใส่เหยื่อ / <b>สวน</b> = ใช้เคมีผง ไม่ใส่เหยื่อ)</div>
+            <div class="hint"><b>ค่าเริ่มต้น: ทุกจุดปกติ ไม่พบปลวก</b> — เพิ่มเฉพาะจุดที่พบ: พิมพ์เลขสถานี (ระบบตรวจว่ามีจริง) แล้วเลือกชนิดปลวก (<b>ใต้ดิน</b> = ใส่เหยื่อ / <b>สวน</b> = เคมีผง กรอกจำนวนจุด → แปลงกรัมอัตโนมัติ 0.3 ก./จุด)</div>
             <div class="sumchips">
               <span class="chip ok">ปกติ 117 จุด</span>
               <span class="chip miss">ปลวกใต้ดิน 2 จุด</span>
               <span class="chip pend">ปลวกสวน 1 จุด</span>
               <span class="chip na num">เหยื่อรวม 150 ก.</span>
+              <span class="chip na num">เคมีผง 4 จุด (1.2 ก.)</span>
             </div>
             <div class="st-tbl">
               <div class="tablewrap">
@@ -375,21 +400,21 @@ td.r,th.r{text-align:right} td.c,th.c{text-align:center}
                   <thead><tr><th>หมายเลขสถานี</th><th>ชนิดปลวก</th><th>เหยื่อ / เคมีผง</th><th class="c"></th></tr></thead>
                   <tbody>
                     <tr>
-                      <td><input value="12" style="max-width:90px"></td>
+                      <td><div class="stcell"><input value="12" style="max-width:80px" oninput="validSt(this)"><span class="vchk ok">✓</span></div></td>
                       <td><select onchange="termiteRow(this)"><option selected>ปลวกใต้ดิน</option><option>ปลวกสวน</option></select></td>
-                      <td class="baitcell"><select class="baitsel"><option>0 ก.</option><option selected>50 ก.</option><option>100 ก.</option><option>150 ก.</option><option>200 ก.</option></select><span class="powder" hidden style="font-size:11.5px;color:var(--warn)">เคมีผง (ไม่ใส่เหยื่อ)</span></td>
+                      <td class="baitcell"><select class="baitsel"><option>0 ก.</option><option selected>50 ก.</option><option>100 ก.</option><option>150 ก.</option><option>200 ก.</option></select><span class="powder powwrap" hidden><input class="powin num" value="0" oninput="powCalc(this)"> <span style="font-size:11px;color:var(--fg-muted)">จุด</span> <span class="powcalc">× 0.3 = 0 ก.</span></span></td>
                       <td class="c"><button class="btn danger sm">ลบ</button></td>
                     </tr>
                     <tr>
-                      <td><input value="47" style="max-width:90px"></td>
+                      <td><div class="stcell"><input value="47" style="max-width:80px" oninput="validSt(this)"><span class="vchk ok">✓</span></div></td>
                       <td><select onchange="termiteRow(this)"><option selected>ปลวกใต้ดิน</option><option>ปลวกสวน</option></select></td>
-                      <td class="baitcell"><select class="baitsel"><option>0 ก.</option><option>50 ก.</option><option selected>100 ก.</option><option>150 ก.</option><option>200 ก.</option></select><span class="powder" hidden style="font-size:11.5px;color:var(--warn)">เคมีผง (ไม่ใส่เหยื่อ)</span></td>
+                      <td class="baitcell"><select class="baitsel"><option>0 ก.</option><option>50 ก.</option><option selected>100 ก.</option><option>150 ก.</option><option>200 ก.</option></select><span class="powder powwrap" hidden><input class="powin num" value="0" oninput="powCalc(this)"> <span style="font-size:11px;color:var(--fg-muted)">จุด</span> <span class="powcalc">× 0.3 = 0 ก.</span></span></td>
                       <td class="c"><button class="btn danger sm">ลบ</button></td>
                     </tr>
                     <tr>
-                      <td><input value="89" style="max-width:90px"></td>
+                      <td><div class="stcell"><input value="89" style="max-width:80px" oninput="validSt(this)"><span class="vchk ok">✓</span></div></td>
                       <td><select onchange="termiteRow(this)"><option>ปลวกใต้ดิน</option><option selected>ปลวกสวน</option></select></td>
-                      <td class="baitcell"><select class="baitsel" hidden><option>0 ก.</option><option>50 ก.</option><option>100 ก.</option><option>150 ก.</option><option>200 ก.</option></select><span class="powder" style="font-size:11.5px;color:var(--warn)">เคมีผง (ไม่ใส่เหยื่อ)</span></td>
+                      <td class="baitcell"><select class="baitsel" hidden><option>0 ก.</option><option>50 ก.</option><option>100 ก.</option><option>150 ก.</option><option>200 ก.</option></select><span class="powder powwrap"><input class="powin num" value="4" oninput="powCalc(this)"> <span style="font-size:11px;color:var(--fg-muted)">จุด</span> <span class="powcalc">× 0.3 = 1.2 ก.</span></span></td>
                       <td class="c"><button class="btn danger sm">ลบ</button></td>
                     </tr>
                   </tbody>
@@ -442,6 +467,88 @@ td.r,th.r{text-align:right} td.c,th.c{text-align:center}
         <span><span class="sttype">IC</span> สถานีในคอนกรีต · ตรวจทุกเดือน</span>
       </div>
       <div class="note"><span class="ic">ℹ</span><span>กรณีลูกค้ามีสถานีหลักร้อยจุด ไม่ต้องไล่กรอกทีละจุด — ระบบตั้งต้นว่าทุกจุดปกติ แล้วบันทึกเฉพาะ "จุดที่พบปลวก" เท่านั้น (เลขสถานี + เหยื่อ) ทำให้กรอกเร็วและข้อมูลสะอาด</span></div>
+    </section>
+
+    <!-- ========== สรุปวัสดุ (internal: host/admin/recorder) ========== -->
+    <section id="s-material" hidden>
+      <div class="page-head"><h1>สรุปวัสดุ</h1>
+        <p>สรุปการใช้วัสดุ 3 ชนิดในพื้นที่ แยกสาขา/ช่วงเวลา — สำหรับวางแผนสต็อก/ต้นทุน <span class="chip pend">🔒 internal เท่านั้น</span></p></div>
+      <div class="toolbar">
+        <div class="field"><label>เขต</label><select><option>เขต 1</option><option>ทุกเขต</option></select></div>
+        <div class="field"><label>สาขา</label><select><option>ทุกสาขา</option><option>พุทธมณฑล</option><option>หัวหิน</option><option>นครปฐม</option></select></div>
+        <div class="field"><label>ทีม</label><select><option>ทุกทีม</option><option>A</option><option>B</option></select></div>
+        <div class="field"><label>ชนิดวัสดุ</label><select><option>ทุกชนิด</option><option>NEMESIS</option><option>เคมีผง</option><option>ไม้ล่อ</option></select></div>
+        <div class="field"><label>ช่วงเวลา</label><select><option>ตุลาคม 2026</option><option>Q4 2026</option><option>ปี 2026</option><option>กำหนดช่วงเอง</option></select></div>
+        <div style="flex:1"></div>
+        <button class="btn sm">↓ Export</button>
+      </div>
+      <div class="stats">
+        <div class="stat matn"><div class="lab"><span class="dot" style="background:var(--nem)"></span> NEMESIS (เหยื่อ)</div><div class="val num">10,000 <span style="font-size:14px;color:var(--fg-muted)">ก.</span></div><div class="sub">ภายนอก IG 1,250 · ภายใน IC+AG 8,750 ก.</div></div>
+        <div class="stat matp"><div class="lab"><span class="dot" style="background:var(--pow)"></span> เคมีผง (ปลวกสวน)</div><div class="val num">420 <span style="font-size:14px;color:var(--fg-muted)">จุด</span></div><div class="sub">≈ 126 ก. (0.3 ก./จุด)</div></div>
+        <div class="stat matw"><div class="lab"><span class="dot" style="background:var(--wood)"></span> ไม้ล่อที่เปลี่ยน</div><div class="val num">1,240 <span style="font-size:14px;color:var(--fg-muted)">ชิ้น</span></div><div class="sub">IG 520 จุด×2 + IC 200 จุด×1</div></div>
+      </div>
+      <div class="cards matbars">
+        <div class="panel">
+          <h3><span class="dot" style="background:var(--nem)"></span> NEMESIS แยกสาขา <span class="num" style="margin-left:auto;font-weight:700;color:var(--nem)">10,000 ก.</span></h3>
+          <div class="body">
+            <div class="leg"><span><span class="sw" style="background:var(--nem-out)"></span> ภายนอก (IG)</span><span><span class="sw" style="background:var(--nem)"></span> ภายใน (IC+AG)</span></div>
+            <div class="usebars">
+              <div class="userow"><span>พุทธมณฑล</span><div class="usetrack stk"><div class="seg out" style="width:12.2%"></div><div class="seg in" style="width:87.8%"></div></div><span class="v num">4,900 ก.</span></div>
+              <div class="userow"><span>หัวหิน</span><div class="usetrack stk"><div class="seg out" style="width:8.2%"></div><div class="seg in" style="width:58.2%"></div></div><span class="v num">3,250 ก.</span></div>
+              <div class="userow"><span>นครปฐม</span><div class="usetrack stk"><div class="seg out" style="width:5.1%"></div><div class="seg in" style="width:32.7%"></div></div><span class="v num">1,850 ก.</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="panel">
+          <h3><span class="dot" style="background:var(--pow)"></span> เคมีผง แยกสาขา <span class="num" style="margin-left:auto;font-weight:700;color:var(--pow)">420 จุด</span></h3>
+          <div class="body"><div class="usebars">
+            <div class="userow"><span>พุทธมณฑล</span><div class="usetrack"><div class="usefill pow" style="width:100%"></div></div><span class="v num">230 จุด</span></div>
+            <div class="userow"><span>หัวหิน</span><div class="usetrack"><div class="usefill pow" style="width:47.8%"></div></div><span class="v num">110 จุด</span></div>
+            <div class="userow"><span>นครปฐม</span><div class="usetrack"><div class="usefill pow" style="width:34.8%"></div></div><span class="v num">80 จุด</span></div>
+          </div></div>
+        </div>
+        <div class="panel">
+          <h3><span class="dot" style="background:var(--wood)"></span> ไม้ล่อ แยกสาขา <span class="num" style="margin-left:auto;font-weight:700;color:var(--wood)">1,240 ชิ้น</span></h3>
+          <div class="body"><div class="usebars">
+            <div class="userow"><span>พุทธมณฑล</span><div class="usetrack"><div class="usefill wood" style="width:100%"></div></div><span class="v num">620 ชิ้น</span></div>
+            <div class="userow"><span>หัวหิน</span><div class="usetrack"><div class="usefill wood" style="width:58%"></div></div><span class="v num">360 ชิ้น</span></div>
+            <div class="userow"><span>นครปฐม</span><div class="usetrack"><div class="usefill wood" style="width:41.9%"></div></div><span class="v num">260 ชิ้น</span></div>
+          </div></div>
+        </div>
+      </div>
+
+      <div style="font-size:12.5px;color:var(--fg-muted);font-weight:600;margin:20px 0 10px">ตารางรวมทุกวัสดุ แยกสาขา</div>
+      <div class="tablewrap">
+        <table>
+          <thead><tr>
+            <th>สาขา</th>
+            <th class="r"><span class="mh"><span class="sw" style="background:var(--nem-out)"></span> NEMESIS นอก (ก.)</span></th>
+            <th class="r"><span class="mh"><span class="sw" style="background:var(--nem)"></span> NEMESIS ใน (ก.)</span></th>
+            <th class="r"><span class="mh"><span class="sw" style="background:var(--pow)"></span> เคมีผง (จุด)</span></th>
+            <th class="r">เคมีผง (ก.)</th>
+            <th class="r"><span class="mh"><span class="sw" style="background:var(--wood)"></span> ไม้ล่อ (ชิ้น)</span></th>
+          </tr></thead>
+          <tbody>
+            <tr><td><b>พุทธมณฑล</b></td><td class="r num">600</td><td class="r num">4,300</td><td class="r num">230</td><td class="r num" style="color:var(--fg-muted)">69</td><td class="r num">620</td></tr>
+            <tr><td><b>หัวหิน</b></td><td class="r num">400</td><td class="r num">2,850</td><td class="r num">110</td><td class="r num" style="color:var(--fg-muted)">33</td><td class="r num">360</td></tr>
+            <tr><td><b>นครปฐม</b></td><td class="r num">250</td><td class="r num">1,600</td><td class="r num">80</td><td class="r num" style="color:var(--fg-muted)">24</td><td class="r num">260</td></tr>
+          </tbody>
+          <tfoot><tr><td>รวมเขต 1</td><td class="r num">1,250</td><td class="r num">8,750</td><td class="r num">420</td><td class="r num">126</td><td class="r num">1,240</td></tr></tfoot>
+        </table>
+      </div>
+
+      <div class="panel" style="margin-top:18px">
+        <h3><span class="dot" style="background:var(--pow)"></span> สรุปเคมีผง (เฉพาะจุดปลวกสวน) <span class="num" style="margin-left:auto;font-weight:700;color:var(--pow)">420 จุด · ≈126 ก.</span></h3>
+        <div class="body matbars">
+          <div class="hint">เคมีผงใช้กับ <b>จุดที่พบปลวกสวน</b> (ไม่ใส่เหยื่อ) · มาตรฐานล็อก <b>0.3 ก./จุด</b> → กรัมคำนวณอัตโนมัติ ผู้ใช้กรอกแค่ "จำนวนจุด"</div>
+          <div class="usebars">
+            <div class="userow"><span>พุทธมณฑล</span><div class="usetrack"><div class="usefill pow" style="width:100%"></div></div><span class="v num">230 จุด · 69 ก.</span></div>
+            <div class="userow"><span>หัวหิน</span><div class="usetrack"><div class="usefill pow" style="width:47.8%"></div></div><span class="v num">110 จุด · 33 ก.</span></div>
+            <div class="userow"><span>นครปฐม</span><div class="usetrack"><div class="usefill pow" style="width:34.8%"></div></div><span class="v num">80 จุด · 24 ก.</span></div>
+          </div>
+          <div class="note"><span class="ic">ℹ</span><span>ข้อมูลเคมีผงมาจากช่อง "จำนวนจุด" ในหน้ากรอกผลบริการ (จุดที่ระบุชนิด = ปลวกสวน)</span></div>
+        </div>
+      </div>
     </section>
 
     <!-- ========== 3. BAIT BOX AG ========== -->
@@ -724,7 +831,7 @@ td.r,th.r{text-align:right} td.c,th.c{text-align:center}
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script>
-var SCREENS=['todo','service','bait','collect','registry','summary'];
+var SCREENS=['todo','service','bait','collect','registry','summary','material'];
 var divChart=null;
 function initDivChart(){
   if(divChart || typeof Chart==='undefined') return;
@@ -749,6 +856,19 @@ function termiteRow(sel){
   var tr=sel.closest('tr'), cell=tr.querySelector('.baitcell');
   var bs=cell.querySelector('.baitsel'), pw=cell.querySelector('.powder');
   var garden=(sel.value==='ปลวกสวน'); bs.hidden=garden; pw.hidden=!garden;
+  if(garden){ var pin=pw.querySelector('.powin'); if(pin) powCalc(pin); }
+}
+/* ตรวจเลขสถานีว่ามีจริงของลูกค้ารายนี้ (demo: 1–120) → ✓/✗ กันพิมพ์ผิด */
+function validSt(inp){
+  var chk=inp.closest('.stcell').querySelector('.vchk');
+  var n=parseInt(inp.value,10), ok=(n>=1 && n<=120);
+  chk.className='vchk '+(ok?'ok':'bad');
+  chk.textContent=ok?'✓':'✗ ไม่พบ';
+}
+/* เคมีผง: จำนวนจุด → กรัม อัตโนมัติ (มาตรฐาน 0.3 ก./จุด) */
+function powCalc(inp){
+  var pts=parseFloat(inp.value)||0, g=Math.round(pts*0.3*100)/100;
+  inp.closest('.powwrap').querySelector('.powcalc').textContent='× 0.3 = '+g+' ก.';
 }
 function woodRow(sel){
   var cell=sel.closest('tr').querySelector('.woodcnt');
