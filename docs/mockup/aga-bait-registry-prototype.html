@@ -10,8 +10,8 @@
   --border:#d8e0ea; --border-strong:#c3cedb;
   --accent:#1f5fa8; --accent-strong:#164a85; --accent-fg:#ffffff; --accent-soft:#e6f0fb;
   --ok:#1a8a5c; --ok-soft:#e3f4ec; --warn:#b4740a; --warn-soft:#fbf0db; --danger:#c23b2e; --danger-soft:#fbe8e5;
-  --tier-s:#64748b; --tier-s-soft:#eef1f5; --tier-m:#1f5fa8; --tier-m-soft:#e6f0fb;
-  --tier-l:#b4740a; --tier-l-soft:#fbf0db; --tier-xl:#6d47b8; --tier-xl-soft:#efeafa;
+  --tier-s:#1f5fa8; --tier-s-soft:#e6f0fb; --tier-m:#157a50; --tier-m-soft:#e3f4ec;
+  --tier-l:#a86c07; --tier-l-soft:#fbf0db; --tier-xl:#c2561f; --tier-xl-soft:#fce6da; --on-tier:#ffffff;
   --radius:10px; --shadow:0 1px 2px rgba(20,40,70,.06),0 1px 3px rgba(20,40,70,.05);
   color-scheme:light;
 }
@@ -21,8 +21,8 @@
   --border:#2a3744; --border-strong:#36485a;
   --accent:#4a90d9; --accent-strong:#5fa0e3; --accent-fg:#0b1420; --accent-soft:#16304a;
   --ok:#3bb183; --ok-soft:#133227; --warn:#d99b3e; --warn-soft:#332713; --danger:#e26657; --danger-soft:#331a16;
-  --tier-s:#94a3b4; --tier-s-soft:#222d39; --tier-m:#5fa0e3; --tier-m-soft:#16304a;
-  --tier-l:#d99b3e; --tier-l-soft:#332713; --tier-xl:#a588e0; --tier-xl-soft:#241c38;
+  --tier-s:#4a90d9; --tier-s-soft:#16304a; --tier-m:#3bb183; --tier-m-soft:#133227;
+  --tier-l:#d99b3e; --tier-l-soft:#332713; --tier-xl:#e07a4e; --tier-xl-soft:#3a2016; --on-tier:#0b1420;
   --shadow:0 1px 2px rgba(0,0,0,.3);
   color-scheme:dark;
 }}
@@ -32,8 +32,8 @@
   --border:#2a3744; --border-strong:#36485a;
   --accent:#4a90d9; --accent-strong:#5fa0e3; --accent-fg:#0b1420; --accent-soft:#16304a;
   --ok:#3bb183; --ok-soft:#133227; --warn:#d99b3e; --warn-soft:#332713; --danger:#e26657; --danger-soft:#331a16;
-  --tier-s:#94a3b4; --tier-s-soft:#222d39; --tier-m:#5fa0e3; --tier-m-soft:#16304a;
-  --tier-l:#d99b3e; --tier-l-soft:#332713; --tier-xl:#a588e0; --tier-xl-soft:#241c38;
+  --tier-s:#4a90d9; --tier-s-soft:#16304a; --tier-m:#3bb183; --tier-m-soft:#133227;
+  --tier-l:#d99b3e; --tier-l-soft:#332713; --tier-xl:#e07a4e; --tier-xl-soft:#3a2016; --on-tier:#0b1420;
   --shadow:0 1px 2px rgba(0,0,0,.3);
   color-scheme:dark;
 }
@@ -131,6 +131,17 @@ td.r,th.r{text-align:right} td.c,th.c{text-align:center}
 .tier{display:inline-block;font-size:11.5px;font-weight:700;padding:2px 8px;border-radius:6px;letter-spacing:.3px}
 .tier.s{background:var(--tier-s-soft);color:var(--tier-s)} .tier.m{background:var(--tier-m-soft);color:var(--tier-m)}
 .tier.l{background:var(--tier-l-soft);color:var(--tier-l)} .tier.xl{background:var(--tier-xl-soft);color:var(--tier-xl)}
+/* สี Tier ตามกฎโปรเจกต์: S=ฟ้า/น้ำเงิน · M=เขียว · L=เหลือง · XL=ส้ม
+   เลข 1 (สัญญา 1 ปี) = เฉดอ่อน · เลข 3 (สัญญา 3 ปี) = เฉดเข้มทึบ */
+.tier.s1{background:var(--tier-s-soft);color:var(--tier-s)}
+.tier.s3{background:var(--tier-s);color:var(--on-tier)}
+.tier.m1{background:var(--tier-m-soft);color:var(--tier-m)}
+.tier.m3{background:var(--tier-m);color:var(--on-tier)}
+.tier.l1{background:var(--tier-l-soft);color:var(--tier-l)}
+.tier.l3{background:var(--tier-l);color:var(--on-tier)}
+.tier.xl1{background:var(--tier-xl-soft);color:var(--tier-xl)}
+.tier.xl3{background:var(--tier-xl);color:var(--on-tier)}
+
 .chip{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;padding:2px 9px;border-radius:999px;white-space:nowrap}
 .chip.ok{background:var(--ok-soft);color:var(--ok)} .chip.miss{background:var(--danger-soft);color:var(--danger)}
 .chip.pend{background:var(--warn-soft);color:var(--warn)} .chip.na{background:var(--surface-3);color:var(--fg-muted)}
@@ -744,13 +755,13 @@ tfoot td{padding:10px 12px;font-weight:700;background:var(--surface-2);border-to
             <th class="c">Tier <span class="auto-tag">อัตโนมัติ</span></th><th class="c">สถานี</th><th class="c">สถานะ</th>
           </tr></thead>
           <tbody>
-            <tr><td class="c num">1</td><td><b>บจก. เมืองทองคลังสินค้า</b></td><td class="num">CT23-0000017</td><td>A</td><td>โรงงาน</td><td class="num">14/11/66</td><td class="num">13/11/69</td><td class="r num">450,000</td><td class="r num">150,000</td><td class="c"><span class="tier xl">XL3</span></td><td class="c num">52</td><td class="c"><span class="chip ok">Active</span></td></tr>
-            <tr><td class="c num">2</td><td><b>อาคารชุดลุมพินีวิว</b></td><td class="num">CT23-0000041</td><td>B</td><td>อาคาร</td><td class="num">26/11/66</td><td class="num">25/11/69</td><td class="r num">180,000</td><td class="r num">60,000</td><td class="c"><span class="tier l">L3</span></td><td class="c num">30</td><td class="c"><span class="chip ok">Active</span></td></tr>
-            <tr><td class="c num">3</td><td><b>บมจ. สยามพัฒนาเฮ้าส์</b></td><td class="num">CT26-0000142</td><td>A</td><td>ออฟฟิศ</td><td class="num">01/09/69</td><td class="num">31/08/70</td><td class="r num">96,000</td><td class="r num">96,000</td><td class="c"><span class="tier l">L1</span></td><td class="c num">125</td><td class="c"><span class="chip ok">Active</span></td></tr>
-            <tr><td class="c num">4</td><td><b>โรงแรมบ้านสวนรีสอร์ท</b></td><td class="num">CT25-0000311</td><td>B</td><td>โรงแรม</td><td class="num">01/07/68</td><td class="num">30/06/71</td><td class="r num">135,000</td><td class="r num">45,000</td><td class="c"><span class="tier m">M3</span></td><td class="c num">51</td><td class="c"><span class="chip ok">Active</span></td></tr>
-            <tr><td class="c num">5</td><td><b>หจก. ทรัพย์เจริญ</b></td><td class="num">CT26-0000203</td><td>A</td><td>ทาวน์โฮม</td><td class="num">15/01/69</td><td class="num">14/01/70</td><td class="r num">36,000</td><td class="r num">36,000</td><td class="c"><span class="tier m">M1</span></td><td class="c num">18</td><td class="c"><span class="chip ok">Active</span></td></tr>
-            <tr><td class="c num">6</td><td><b>คุณวิรัช ตั้งมั่น</b></td><td class="num">CT26-0000088</td><td>A</td><td>บ้าน</td><td class="num">03/04/69</td><td class="num">02/04/70</td><td class="r num">28,000</td><td class="r num">28,000</td><td class="c"><span class="tier s">S1</span></td><td class="c num">8</td><td class="c"><span class="chip ok">Active</span></td></tr>
-            <tr><td class="c num">7</td><td><b>คุณสมหญิง รุ่งเรือง</b></td><td class="num">CT26-0000009</td><td>A</td><td>บ้าน</td><td class="num">07/12/68</td><td class="num">06/12/69</td><td class="r num">24,000</td><td class="r num">24,000</td><td class="c"><span class="tier s">S1</span></td><td class="c num">6</td><td class="c"><span class="chip pend">ใกล้หมด</span></td></tr>
+            <tr><td class="c num">1</td><td><b>บจก. เมืองทองคลังสินค้า</b></td><td class="num">CT23-0000017</td><td>A</td><td>โรงงาน</td><td class="num">14/11/66</td><td class="num">13/11/69</td><td class="r num">450,000</td><td class="r num">150,000</td><td class="c"><span class="tier xl3">XL3</span></td><td class="c num">52</td><td class="c"><span class="chip ok">Active</span></td></tr>
+            <tr><td class="c num">2</td><td><b>อาคารชุดลุมพินีวิว</b></td><td class="num">CT23-0000041</td><td>B</td><td>อาคาร</td><td class="num">26/11/66</td><td class="num">25/11/69</td><td class="r num">180,000</td><td class="r num">60,000</td><td class="c"><span class="tier l3">L3</span></td><td class="c num">30</td><td class="c"><span class="chip ok">Active</span></td></tr>
+            <tr><td class="c num">3</td><td><b>บมจ. สยามพัฒนาเฮ้าส์</b></td><td class="num">CT26-0000142</td><td>A</td><td>ออฟฟิศ</td><td class="num">01/09/69</td><td class="num">31/08/70</td><td class="r num">96,000</td><td class="r num">96,000</td><td class="c"><span class="tier l1">L1</span></td><td class="c num">125</td><td class="c"><span class="chip ok">Active</span></td></tr>
+            <tr><td class="c num">4</td><td><b>โรงแรมบ้านสวนรีสอร์ท</b></td><td class="num">CT25-0000311</td><td>B</td><td>โรงแรม</td><td class="num">01/07/68</td><td class="num">30/06/71</td><td class="r num">135,000</td><td class="r num">45,000</td><td class="c"><span class="tier m3">M3</span></td><td class="c num">51</td><td class="c"><span class="chip ok">Active</span></td></tr>
+            <tr><td class="c num">5</td><td><b>หจก. ทรัพย์เจริญ</b></td><td class="num">CT26-0000203</td><td>A</td><td>ทาวน์โฮม</td><td class="num">15/01/69</td><td class="num">14/01/70</td><td class="r num">36,000</td><td class="r num">36,000</td><td class="c"><span class="tier m1">M1</span></td><td class="c num">18</td><td class="c"><span class="chip ok">Active</span></td></tr>
+            <tr><td class="c num">6</td><td><b>คุณวิรัช ตั้งมั่น</b></td><td class="num">CT26-0000088</td><td>A</td><td>บ้าน</td><td class="num">03/04/69</td><td class="num">02/04/70</td><td class="r num">28,000</td><td class="r num">28,000</td><td class="c"><span class="tier s1">S1</span></td><td class="c num">8</td><td class="c"><span class="chip ok">Active</span></td></tr>
+            <tr><td class="c num">7</td><td><b>คุณสมหญิง รุ่งเรือง</b></td><td class="num">CT26-0000009</td><td>A</td><td>บ้าน</td><td class="num">07/12/68</td><td class="num">06/12/69</td><td class="r num">24,000</td><td class="r num">24,000</td><td class="c"><span class="tier s1">S1</span></td><td class="c num">6</td><td class="c"><span class="chip pend">ใกล้หมด</span></td></tr>
           </tbody>
         </table>
       </div>
