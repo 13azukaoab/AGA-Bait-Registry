@@ -179,8 +179,17 @@ td.r,th.r{text-align:right} td.c,th.c{text-align:center}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--nem:#4a90d9;--nem-out:#7fb3e8;--pow:#d99b3e;--wood:#a588e0}}
 :root[data-theme="dark"]{--nem:#4a90d9;--nem-out:#7fb3e8;--pow:#d99b3e;--wood:#a588e0}
 .usefill.pow{background:var(--pow)} .usefill.wood{background:var(--wood)}
-.matbars .userow{grid-template-columns:90px 1fr 150px}
-.matbars .usetrack{border-radius:4px}
+#s-material .cards{grid-template-columns:repeat(auto-fit,minmax(370px,1fr))}
+.matbars .userow{grid-template-columns:78px minmax(60px,1fr) 118px}
+.matbars .usetrack{border-radius:4px;overflow:visible}
+/* hover บนแท่ง → โชว์ตัวเลขของส่วนนั้น (ไม่ต้องพึ่งสีอย่างเดียว) */
+.matbars [data-tip]{position:relative;cursor:default}
+.matbars [data-tip]:hover{filter:brightness(1.08)}
+.matbars [data-tip]:hover::after{content:attr(data-tip);position:absolute;left:50%;bottom:17px;
+  transform:translateX(-50%);background:var(--fg);color:var(--surface);font-size:11px;font-weight:500;
+  white-space:nowrap;padding:5px 9px;border-radius:6px;z-index:6;pointer-events:none;box-shadow:var(--shadow)}
+.matbars [data-tip]:hover::before{content:"";position:absolute;left:50%;bottom:12px;transform:translateX(-50%);
+  border:5px solid transparent;border-top-color:var(--fg);z-index:6;pointer-events:none}
 .matbars .usefill{border-radius:0 4px 4px 0}
 .matbars .usetrack.stk{display:flex;gap:2px}
 .mseg{height:100%;min-width:3px;display:block;border:0;padding:0;margin:0}
@@ -494,26 +503,26 @@ tfoot td{padding:10px 12px;font-weight:700;background:var(--surface-2);border-to
           <div class="body">
             <div class="leg"><span><span class="sw" style="background:var(--nem-out)"></span> ภายนอก (IG)</span><span><span class="sw" style="background:var(--nem)"></span> ภายใน (IC+AG)</span></div>
             <div class="usebars">
-              <div class="userow"><span>พุทธมณฑล</span><div class="usetrack stk"><div class="mseg out" style="width:12.2%"></div><div class="mseg in" style="width:87.8%"></div></div><span class="v num">4,900 ก.<small>นอก 600 · ใน 4,300</small></span></div>
-              <div class="userow"><span>หัวหิน</span><div class="usetrack stk"><div class="mseg out" style="width:8.2%"></div><div class="mseg in" style="width:58.2%"></div></div><span class="v num">3,250 ก.<small>นอก 400 · ใน 2,850</small></span></div>
-              <div class="userow"><span>นครปฐม</span><div class="usetrack stk"><div class="mseg out" style="width:5.1%"></div><div class="mseg in" style="width:32.7%"></div></div><span class="v num">1,850 ก.<small>นอก 250 · ใน 1,600</small></span></div>
+              <div class="userow"><span>พุทธมณฑล</span><div class="usetrack stk"><div class="mseg out" style="width:12.2%" data-tip="ภายนอก (IG) · 600 ก. · 12%"></div><div class="mseg in" style="width:87.8%" data-tip="ภายใน (IC+AG) · 4,300 ก. · 88%"></div></div><span class="v num">4,900 ก.<small>นอก 600 · ใน 4,300</small></span></div>
+              <div class="userow"><span>หัวหิน</span><div class="usetrack stk"><div class="mseg out" style="width:8.2%" data-tip="ภายนอก (IG) · 400 ก. · 12%"></div><div class="mseg in" style="width:58.2%" data-tip="ภายใน (IC+AG) · 2,850 ก. · 88%"></div></div><span class="v num">3,250 ก.<small>นอก 400 · ใน 2,850</small></span></div>
+              <div class="userow"><span>นครปฐม</span><div class="usetrack stk"><div class="mseg out" style="width:5.1%" data-tip="ภายนอก (IG) · 250 ก. · 14%"></div><div class="mseg in" style="width:32.7%" data-tip="ภายใน (IC+AG) · 1,600 ก. · 86%"></div></div><span class="v num">1,850 ก.<small>นอก 250 · ใน 1,600</small></span></div>
             </div>
           </div>
         </div>
         <div class="panel">
           <h3><span class="dot" style="background:var(--pow)"></span> เคมีผง แยกสาขา <span class="num" style="margin-left:auto;font-weight:700;color:var(--pow)">420 จุด</span></h3>
           <div class="body"><div class="usebars">
-            <div class="userow"><span>พุทธมณฑล</span><div class="usetrack"><div class="usefill pow" style="width:100%"></div></div><span class="v num">230 จุด</span></div>
-            <div class="userow"><span>หัวหิน</span><div class="usetrack"><div class="usefill pow" style="width:47.8%"></div></div><span class="v num">110 จุด</span></div>
-            <div class="userow"><span>นครปฐม</span><div class="usetrack"><div class="usefill pow" style="width:34.8%"></div></div><span class="v num">80 จุด</span></div>
+            <div class="userow"><span>พุทธมณฑล</span><div class="usetrack"><div class="usefill pow" style="width:100%" data-tip="เคมีผง · 230 จุด · 69 ก. · 55% ของเขต"></div></div><span class="v num">230 จุด</span></div>
+            <div class="userow"><span>หัวหิน</span><div class="usetrack"><div class="usefill pow" style="width:47.8%" data-tip="เคมีผง · 110 จุด · 33 ก. · 26% ของเขต"></div></div><span class="v num">110 จุด</span></div>
+            <div class="userow"><span>นครปฐม</span><div class="usetrack"><div class="usefill pow" style="width:34.8%" data-tip="เคมีผง · 80 จุด · 24 ก. · 19% ของเขต"></div></div><span class="v num">80 จุด</span></div>
           </div></div>
         </div>
         <div class="panel">
           <h3><span class="dot" style="background:var(--wood)"></span> ไม้ล่อ แยกสาขา <span class="num" style="margin-left:auto;font-weight:700;color:var(--wood)">1,240 ชิ้น</span></h3>
           <div class="body"><div class="usebars">
-            <div class="userow"><span>พุทธมณฑล</span><div class="usetrack"><div class="usefill wood" style="width:100%"></div></div><span class="v num">620 ชิ้น</span></div>
-            <div class="userow"><span>หัวหิน</span><div class="usetrack"><div class="usefill wood" style="width:58%"></div></div><span class="v num">360 ชิ้น</span></div>
-            <div class="userow"><span>นครปฐม</span><div class="usetrack"><div class="usefill wood" style="width:41.9%"></div></div><span class="v num">260 ชิ้น</span></div>
+            <div class="userow"><span>พุทธมณฑล</span><div class="usetrack"><div class="usefill wood" style="width:100%" data-tip="ไม้ล่อ · 620 ชิ้น · 50% ของเขต"></div></div><span class="v num">620 ชิ้น</span></div>
+            <div class="userow"><span>หัวหิน</span><div class="usetrack"><div class="usefill wood" style="width:58%" data-tip="ไม้ล่อ · 360 ชิ้น · 29% ของเขต"></div></div><span class="v num">360 ชิ้น</span></div>
+            <div class="userow"><span>นครปฐม</span><div class="usetrack"><div class="usefill wood" style="width:41.9%" data-tip="ไม้ล่อ · 260 ชิ้น · 21% ของเขต"></div></div><span class="v num">260 ชิ้น</span></div>
           </div></div>
         </div>
       </div>
@@ -543,9 +552,9 @@ tfoot td{padding:10px 12px;font-weight:700;background:var(--surface-2);border-to
         <div class="body matbars">
           <div class="hint">เคมีผงใช้กับ <b>จุดที่พบปลวกสวน</b> (ไม่ใส่เหยื่อ) · มาตรฐานล็อก <b>0.3 ก./จุด</b> → กรัมคำนวณอัตโนมัติ ผู้ใช้กรอกแค่ "จำนวนจุด"</div>
           <div class="usebars">
-            <div class="userow"><span>พุทธมณฑล</span><div class="usetrack"><div class="usefill pow" style="width:100%"></div></div><span class="v num">230 จุด · 69 ก.</span></div>
-            <div class="userow"><span>หัวหิน</span><div class="usetrack"><div class="usefill pow" style="width:47.8%"></div></div><span class="v num">110 จุด · 33 ก.</span></div>
-            <div class="userow"><span>นครปฐม</span><div class="usetrack"><div class="usefill pow" style="width:34.8%"></div></div><span class="v num">80 จุด · 24 ก.</span></div>
+            <div class="userow"><span>พุทธมณฑล</span><div class="usetrack"><div class="usefill pow" style="width:100%" data-tip="230 จุด × 0.3 = 69 ก."></div></div><span class="v num">230 จุด · 69 ก.</span></div>
+            <div class="userow"><span>หัวหิน</span><div class="usetrack"><div class="usefill pow" style="width:47.8%" data-tip="110 จุด × 0.3 = 33 ก."></div></div><span class="v num">110 จุด · 33 ก.</span></div>
+            <div class="userow"><span>นครปฐม</span><div class="usetrack"><div class="usefill pow" style="width:34.8%" data-tip="80 จุด × 0.3 = 24 ก."></div></div><span class="v num">80 จุด · 24 ก.</span></div>
           </div>
           <div class="note"><span class="ic">ℹ</span><span>ข้อมูลเคมีผงมาจากช่อง "จำนวนจุด" ในหน้ากรอกผลบริการ (จุดที่ระบุชนิด = ปลวกสวน)</span></div>
         </div>
