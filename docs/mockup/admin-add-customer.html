@@ -98,7 +98,7 @@ table select,table input{font-family:inherit;font-size:12px;color:var(--fg);back
 .tag-new{font-size:10px;font-weight:700;color:var(--new);background:var(--new-soft);border:1px solid #d8cdf0;border-radius:5px;padding:1px 7px}
 
 /* ===== โหมดตารางเหมือน Excel ===== */
-table.xl{font-size:12px;width:2680px;table-layout:fixed}
+table.xl{font-size:12px;width:2270px;table-layout:fixed}
 table.xl thead th{padding:5px 7px;font-size:10.5px;line-height:1.3;vertical-align:bottom;border-right:1px solid var(--border);white-space:normal}
 table.xl thead th.grp{background:var(--surface-3);color:var(--fg);border-bottom:1px solid var(--border-strong)}
 table.xl thead th.sub{background:var(--surface-3);font-weight:600}
@@ -209,6 +209,33 @@ tr.badrow td{background:var(--danger-soft) !important}
 .daytab .sl{font-size:10.5px;font-weight:700;padding:1px 8px;border-radius:5px;white-space:nowrap}
 .daytab .sl.n{background:var(--new-soft);color:var(--new)}
 .daytab .sl.r{background:var(--surface-3);color:var(--fg-muted)}
+
+/* ===== modal กลาง (ใช้ร่วม: ผูกลูกค้าเดิม / รอนัดบริการ / ตรวจก่อนบันทึก) ===== */
+table.xl .chip.lk{cursor:pointer}
+table.xl .chip.lk:hover{outline:1px solid var(--accent);outline-offset:1px}
+.mdsearch{padding:12px 16px;border-bottom:1px solid var(--border);background:var(--surface-2)}
+.mdsearch input{font-family:inherit;font-size:13px;width:100%;padding:8px 11px;border-radius:8px;
+  border:1px solid var(--border-strong);background:var(--surface);color:var(--fg)}
+.mdlist{width:100%;font-size:12.5px;border-collapse:collapse}
+.mdlist td{padding:8px 12px;border-bottom:1px solid var(--border);vertical-align:middle}
+.mdlist tr:last-child td{border-bottom:0}
+.mdlist tr:hover td{background:var(--surface-2)}
+.mdlist .t1{font-weight:600}
+.mdlist .t2{font-size:11px;color:var(--fg-muted)}
+.mdlist .no{padding:22px 16px;text-align:center;color:var(--fg-muted)}
+.mdwarn{font-size:10.5px;color:var(--warn);background:var(--warn-soft);border-radius:5px;padding:1px 7px;margin-left:6px}
+.mdgrp{padding:7px 16px;background:var(--surface-3);font-size:11px;font-weight:700;color:var(--fg-muted);
+  position:sticky;top:0}
+.mdgrp.bad{background:var(--danger-soft);color:var(--danger)}
+.mdgrp.warn{background:var(--warn-soft);color:var(--warn)}
+.mdgrp.ok{background:var(--ok-soft);color:var(--ok)}
+.mdrow{display:flex;gap:10px;align-items:center;padding:8px 16px;border-bottom:1px solid var(--border);font-size:12.5px}
+.mdrow:last-child{border-bottom:0}
+.mdrow .gr{flex:1;min-width:0}
+.mdrow .miss{color:var(--danger);font-weight:600}
+.mdrow input,.mdrow select{font-family:inherit;font-size:12px;padding:4px 7px;border-radius:6px;
+  border:1px solid var(--border-strong);background:var(--surface);color:var(--fg)}
+.mddone td,.mddone{opacity:.5}
 .dayft{padding:10px 16px;border-top:1px solid var(--border);background:var(--surface-2);
   font-size:11.5px;color:var(--fg-muted);display:flex;align-items:center;gap:9px}
 
@@ -282,7 +309,9 @@ table.xl .tmbtn.wait{background:var(--warn-soft);color:var(--warn)}
 
 <div class="tablewrap">
   <table class="xl">
-    <colgroup><col style="width:46px"><col style="width:124px"><col style="width:208px"><col style="width:52px"><col style="width:118px"><col style="width:156px"><col style="width:118px"><col style="width:84px"><col style="width:132px"><col style="width:92px"><col style="width:146px"><col style="width:146px"><col style="width:124px"><col style="width:70px"><col style="width:156px"><col style="width:146px"><col style="width:146px"><col style="width:104px"><col style="width:104px"><col style="width:72px"><col style="width:168px"><col style="width:168px"></colgroup>
+    <!-- ความกว้างตั้งตามเนื้อหาจริงของแต่ละช่อง (วันที่ 120px พอดีกับ date picker ของเบราว์เซอร์)
+         รวม 2,270px — แคบลงจากเดิม 410px เลื่อนแนวนอนน้อยลง -->
+    <colgroup><col style="width:40px"><col style="width:104px"><col style="width:200px"><col style="width:44px"><col style="width:104px"><col style="width:140px"><col style="width:118px"><col style="width:72px"><col style="width:112px"><col style="width:54px"><col style="width:120px"><col style="width:120px"><col style="width:88px"><col style="width:62px"><col style="width:108px"><col style="width:120px"><col style="width:120px"><col style="width:96px"><col style="width:96px"><col style="width:56px"><col style="width:150px"><col style="width:150px"></colgroup>
     <thead>
       <tr>
         <th rowspan="2" class="c">ลำดับ</th>
@@ -318,7 +347,7 @@ table.xl .tmbtn.wait{background:var(--warn-soft);color:var(--warn)}
         <td><input value="บจก. ลูกค้าตัวอย่าง 1" class="wide"></td>
         <td class="c"><input type="checkbox"></td>
         <td><span class="jobsw" onclick="jobTog(this,event)" role="group" aria-label="ประเภทงาน"><span class="jo">New</span><span class="jo on">Renew</span></span></td>
-        <td><span class="chip ok lk">🔗 CT26-9000002</span></td>
+        <td><span class="chip ok lk" tabindex="0" role="button" onclick="linkOpen(this)">🔗 CT26-9000002</span></td>
         <td><input list="sllist" value="พนักงานขาย 18"></td>
         <td><select><option>Sale</option><option selected>AM</option></select></td>
         <td><input list="brlist" oninput="rowZone(this)" value="สมุทรปราการ"></td>
@@ -342,7 +371,7 @@ table.xl .tmbtn.wait{background:var(--warn-soft);color:var(--warn)}
         <td><input value="บจก. ลูกค้าตัวอย่าง 2" class="wide"></td>
         <td class="c"><input type="checkbox"></td>
         <td><span class="jobsw" onclick="jobTog(this,event)" role="group" aria-label="ประเภทงาน"><span class="jo">New</span><span class="jo on">Renew</span></span></td>
-        <td><span class="chip ok lk">🔗 CT26-9000004</span></td>
+        <td><span class="chip ok lk" tabindex="0" role="button" onclick="linkOpen(this)">🔗 CT26-9000004</span></td>
         <td><input list="sllist" value="พนักงานขาย 02"></td>
         <td><select><option>Sale</option><option selected>AM</option></select></td>
         <td><input list="brlist" oninput="rowZone(this)" value="นนทบุรี"></td>
@@ -422,7 +451,7 @@ table.xl .tmbtn.wait{background:var(--warn-soft);color:var(--warn)}
         <td><input type="date" value="2026-09-28"></td>
         <td><input type="date" value="" class="wait"></td>
         <td><button type="button" class="tmbtn wait" data-h="" data-m="" onclick="tmOpen(this)">— เลือก —</button></td>
-        <td><select class="wait"><option selected>— ยังไม่นัด —</option><option>A</option><option>Z</option></select></td>
+        <td><select class="wait" title="ยังไม่นัดทีม"><option selected>—</option><option>A</option><option>Z</option></select></td>
         <td><select><option selected>โรงงาน</option></select></td>
         <td><input type="date" value="2026-10-01"></td>
         <td><input type="date" value="2027-09-30"></td>
@@ -438,7 +467,7 @@ table.xl .tmbtn.wait{background:var(--warn-soft);color:var(--warn)}
         <td><input value="คุณลูกค้า หนึ่ง" class="wide"></td>
         <td class="c"><input type="checkbox"></td>
         <td><span class="jobsw" onclick="jobTog(this,event)" role="group" aria-label="ประเภทงาน"><span class="jo">New</span><span class="jo on">Renew</span></span></td>
-        <td><span class="chip miss lk">⚠ ยังไม่ผูก · ค้นหา</span></td>
+        <td><span class="chip miss lk" tabindex="0" role="button" onclick="linkOpen(this)">⚠ ยังไม่ผูก · ค้นหา</span></td>
         <td><input list="sllist" value="พนักงานขาย 20"></td>
         <td><select><option>Sale</option><option selected>AM</option></select></td>
         <td><input list="brlist" oninput="rowZone(this)" value="ลาดพร้าว"></td>
@@ -454,7 +483,7 @@ table.xl .tmbtn.wait{background:var(--warn-soft);color:var(--warn)}
         <td class="r"><input class="num money off" disabled></td>
         <td class="c"><span class="chip na">—</span></td>
         <td><input class="wide"></td>
-        <td class="c"><span class="chip pend">ระยะ 395 วัน</span></td>
+        <td class="c"><span class="chip pend">ระยะ 396 วัน</span></td>
       </tr>
       <tr class="badrow">
         <td class="c num">7</td>
@@ -470,7 +499,7 @@ table.xl .tmbtn.wait{background:var(--warn-soft);color:var(--warn)}
         <td><input type="date" value="2026-09-30"></td>
         <td><input type="date" value=""></td>
         <td><button type="button" class="tmbtn wait" data-h="" data-m="" onclick="tmOpen(this)">— เลือก —</button></td>
-        <td><select><option selected>— ยังไม่นัด —</option></select></td>
+        <td><select class="wait" title="ยังไม่นัดทีม"><option selected>—</option><option>A</option><option>Z</option></select></td>
         <td><select><option selected>บ้าน</option></select></td>
         <td><input type="date" value="2026-10-05"></td>
         <td><input type="date" value="2027-10-04"></td>
@@ -485,8 +514,8 @@ table.xl .tmbtn.wait{background:var(--warn-soft);color:var(--warn)}
   <div class="foot">
     <button class="btn sm">+ เพิ่มแถว</button>
     <span style="flex:1"></span>
-    <span style="font-size:11.5px;color:var(--fg-muted)">บันทึกได้ <b>6 จาก 7 แถว</b> — <span class="chip pend">รอนัดบริการ</span> และ <span class="chip pend">ระยะ 395 วัน</span> เก็บไว้เติม/แก้ทีหลังได้ · แถวแดงขาดข้อมูลจำเป็น</span>
-    <button class="btn sm primary">บันทึกเข้าทะเบียน</button>
+    <span style="font-size:11.5px;color:var(--fg-muted)">บันทึกได้ <b id="footcnt">— จาก — แถว</b> — <span class="chip pend">รอนัดบริการ</span> และ <span class="chip pend">ระยะ 396 วัน</span> เก็บไว้เติม/แก้ทีหลังได้ · แถวแดงขาดข้อมูลจำเป็น</span>
+    <button class="btn sm primary" type="button" onclick="saveOpen()">บันทึกเข้าทะเบียน</button>
   </div>
 </div>
 
@@ -550,7 +579,7 @@ table.xl .tmbtn.wait{background:var(--warn-soft);color:var(--warn)}
       <span style="font-size:15px">⏳</span>
       <span><b>รอนัดบริการ 14 งาน</b> — ยังไม่ลงวันที่บริการ จึงยังไม่ขึ้นในปฏิทินด้านล่าง</span>
       <span style="flex:1"></span>
-      <button class="btn sm">ดูรายการ</button>
+      <button class="btn sm" type="button" onclick="pendOpen()">ดูรายการ</button>
     </div>
     <div class="hlegend">
       <span>งานต่อวัน</span>
@@ -755,6 +784,19 @@ table.xl .tmbtn.wait{background:var(--warn-soft);color:var(--warn)}
   </div>
 </div>
 
+<div id="mdov" class="dayov" hidden>
+  <div class="daybox" role="dialog" aria-modal="true" aria-labelledby="mdttl">
+    <div class="dayhd">
+      <b id="mdttl">—</b><span class="chip na num" id="mdsub"></span>
+      <span style="flex:1"></span>
+      <button class="btn sm" type="button" onclick="mdClose()">ปิด</button>
+    </div>
+    <div id="mdtop"></div>
+    <div class="daybody" id="mdbody"></div>
+    <div class="dayft" id="mdft"></div>
+  </div>
+</div>
+
 <div id="tmpop" class="tmpop" hidden>
   <div class="tmttl">เลือกเวลา (24 ชม.) <span class="pv" id="tmpv">—:—</span></div>
   <div class="tmcols">
@@ -879,7 +921,246 @@ hcal.addEventListener('keydown',function(e){
   e.preventDefault(); dayOpen(c); });
 dayOv.addEventListener('mousedown',function(e){ if(e.target===dayOv) dayClose(); });
 document.addEventListener('keydown',function(e){
-  if(e.key==='Escape'&&!dayOv.hidden) dayClose(); });
+  if(e.key!=='Escape') return;
+  if(!dayOv.hidden) dayClose();
+  var md=document.getElementById('mdov');
+  if(md&&!md.hidden) mdClose(); });
+
+/* ===== modal กลาง — ใช้ร่วมกัน 3 งาน: ผูกลูกค้าเดิม / รอนัดบริการ / ตรวจก่อนบันทึก ===== */
+var mdOv=document.getElementById('mdov');
+function mdOpen(ttl,sub,top,body,ft){
+  document.getElementById('mdttl').textContent=ttl;
+  document.getElementById('mdsub').textContent=sub||'';
+  document.getElementById('mdsub').style.display=sub?'':'none';
+  document.getElementById('mdtop').innerHTML=top||'';
+  document.getElementById('mdbody').innerHTML=body||'';
+  document.getElementById('mdft').innerHTML=ft||'';
+  mdOv.hidden=false; document.body.style.overflow='hidden';
+}
+function mdClose(){ mdOv.hidden=true; document.body.style.overflow=''; }
+mdOv.addEventListener('mousedown',function(e){ if(e.target===mdOv) mdClose(); });
+
+/* ===== 1) ผูกลูกค้าเดิม (Renew) =====
+   Renew ต้องชี้ไปที่ลูกค้าที่มีอยู่แล้วในฐาน ไม่งั้นระบบจะสร้างลูกค้าซ้ำ
+   ทำให้ยอด "จำนวนลูกค้า" บน Dashboard เพี้ยน (SPEC §14 ข้อ 4)
+   ข้อมูลด้านล่างเป็นข้อมูลสมมติ — ของจริงมาจากตาราง customers + contracts */
+var CUST=[
+  {n:'คุณลูกค้า หนึ่ง',       b:'ลาดพร้าว',     c:'CT23-0012845', e:'30/09/2026', t:'s1', tl:'S1'},
+  {n:'คุณลูกค้า หนึ่ง',       b:'พุทธมณฑล',     c:'CT23-0019902', e:'31/10/2026', t:'m1', tl:'M1'},
+  {n:'คุณลูกค้า สอง',        b:'หัวหิน',        c:'CT24-0030118', e:'28/02/2027', t:'s1', tl:'S1'},
+  {n:'บจก. ลูกค้าตัวอย่าง 1', b:'สมุทรปราการ',  c:'CT26-9000002', e:'15/10/2026', t:'s1', tl:'S1'},
+  {n:'บจก. ลูกค้าตัวอย่าง 2', b:'นนทบุรี',      c:'CT26-9000004', e:'30/09/2026', t:'l3', tl:'L3'},
+  {n:'บจก. ลูกค้าตัวอย่าง 7', b:'ปทุมธานี',     c:'CT24-0028890', e:'31/12/2026', t:'m3', tl:'M3'}
+];
+var lkCell=null, lkBranch='';
+
+function linkOpen(chip){
+  var tr=chip.closest('tr');
+  lkCell=chip;
+  lkBranch=(tr.cells[8].querySelector('input')||{}).value||'';
+  var nm=(tr.cells[2].querySelector('input')||{}).value||'';
+  mdOpen('ผูกลูกค้าเดิม (Renew)','',
+    '<div class="mdsearch"><input id="lkq" placeholder="ค้นหาชื่อลูกค้า / เลขที่สัญญาเดิม / สาขา" '+
+      'oninput="linkRender(this.value)" value="'+nm+'"></div>','',
+    '<span>ไม่พบในฐาน = ยังไม่เคยเป็นลูกค้า</span><span style="flex:1"></span>'+
+    '<button class="btn sm" type="button" onclick="linkAsNew()">เปลี่ยนเป็นงานใหม่ (New)</button>');
+  linkRender(nm);
+  document.getElementById('lkq').focus();
+}
+
+function linkRender(q){
+  q=(q||'').trim();
+  var hit=CUST.filter(function(c){
+    return !q || (c.n+' '+c.c+' '+c.b).indexOf(q)>=0;
+  });
+  if(!hit.length){
+    document.getElementById('mdbody').innerHTML=
+      '<div class="mdlist"><div class="no">ไม่พบลูกค้าเดิมที่ตรงกับ "'+q+'"<br>'+
+      '<span style="font-size:11.5px">ถ้าเป็นลูกค้าใหม่จริง ให้กด "เปลี่ยนเป็นงานใหม่" ด้านล่าง</span></div></div>';
+    return;
+  }
+  var h='';
+  hit.forEach(function(c){
+    var diff = lkBranch && c.b!==lkBranch ? '<span class="mdwarn">คนละสาขากับแถวนี้</span>' : '';
+    h+='<div class="mdrow"><div class="gr">'+
+       '<div class="t1">'+c.n+diff+'</div>'+
+       '<div class="t2">'+c.b+' · สัญญาเดิม '+c.c+' · หมดอายุ '+c.e+
+       ' · <span class="tier '+c.t+'">'+c.tl+'</span></div></div>'+
+       '<button class="btn sm primary" type="button" onclick="linkDo(\''+c.c+'\')">ผูก</button></div>';
+  });
+  document.getElementById('mdbody').innerHTML=h;
+}
+
+function linkDo(ct){
+  if(!lkCell) return;
+  lkCell.className='chip ok lk';
+  lkCell.textContent='🔗 '+ct;
+  var tr=lkCell.closest('tr');
+  // ล้างสีแถวเฉพาะกรณีที่ "ยังไม่ผูก" เป็นปัญหาเดียวที่ค้าง
+  // ปัญหาอื่น (เช่น ระยะสัญญา 396 วัน) ยังต้องคาสีไว้
+  var st=tr.cells[21].querySelector('.chip');
+  if(st && st.textContent.indexOf('ขาด')===0){
+    st.className='chip ok'; st.textContent='ครบ';
+    tr.classList.remove('badrow','warnrow','pendrow');
+  }
+  mdClose();
+}
+
+function linkAsNew(){
+  if(!lkCell) return;
+  var tr=lkCell.closest('tr'), sw=tr.querySelector('.jobsw');
+  [].forEach.call(sw.querySelectorAll('.jo'),function(o){ o.classList.toggle('on',o.textContent==='New'); });
+  lkCell.className='chip na';
+  lkCell.textContent='— งานใหม่ —';
+  lkCell.removeAttribute('onclick');
+  mdClose();
+}
+
+/* ===== 2) แผงรอนัดบริการ =====
+   งานที่เปิดแล้วแต่ยังไม่ลงวันที่บริการ จะไม่โผล่ในปฏิทิน ถ้าไม่มีที่รวมแบบนี้จะหล่นหาย
+   เรียงจากค้างนานสุดขึ้นก่อน — ของจริง = contracts ที่ยังไม่มี visit แรก */
+var PEND=[
+  {c:'CT26-9000031', n:'บจก. ลูกค้าตัวอย่าง 3', b:'พุทธมณฑล',   s:'พนักงานขาย 07', m:'02/09/2026', d:48},
+  {c:'CT26-9000018', n:'คุณลูกค้า สาม',         b:'ระยอง',       s:'พนักงานขาย 12', m:'09/09/2026', d:41},
+  {c:'CT26-9000022', n:'บจก. ลูกค้าตัวอย่าง 8', b:'สระบุรี',     s:'พนักงานขาย 24', m:'15/09/2026', d:35},
+  {c:'CT26-9000007', n:'บจก. ลูกค้าตัวอย่าง 5', b:'ปากช่อง',     s:'พนักงานขาย 24', m:'28/09/2026', d:22},
+  {c:'CT26-9000044', n:'คุณลูกค้า เก้า',         b:'สุขุมวิท',    s:'พนักงานขาย 02', m:'05/10/2026', d:15},
+  {c:'CT26-9000051', n:'บจก. ลูกค้าตัวอย่าง 11',b:'นครปฐม',     s:'พนักงานขาย 18', m:'12/10/2026', d:8}
+];
+var pendLeft=14;
+
+function pendOpen(){
+  mdOpen('รอนัดบริการ','ค้าง '+pendLeft+' งาน','',pendRows(),
+    '<span>ค้างเกิน 30 วัน = <b style="color:var(--danger)">เสี่ยงผิดสัญญา</b> ควรนัดก่อน</span>'+
+    '<span style="flex:1"></span><button class="btn sm" type="button" onclick="mdClose()">เสร็จสิ้น</button>');
+}
+
+function pendRows(){
+  var h='<div class="mdgrp">เรียงจากค้างนานสุด · '+PEND.length+' จาก '+pendLeft+' งานแรก</div>';
+  PEND.forEach(function(p,i){
+    var age = p.d>=30 ? '<span class="mdwarn" style="color:var(--danger);background:var(--danger-soft)">ค้าง '+p.d+' วัน</span>'
+                      : '<span class="mdwarn">ค้าง '+p.d+' วัน</span>';
+    h+='<div class="mdrow" id="pd'+i+'"><div class="gr">'+
+       '<div class="t1">'+p.n+age+'</div>'+
+       '<div class="t2">'+p.c+' · '+p.b+' · '+p.s+' · รับ Mail '+p.m+'</div></div>'+
+       '<input type="date" id="pdd'+i+'" aria-label="วันที่บริการ">'+
+       '<select id="pdt'+i+'" aria-label="ทีม"><option>ทีม</option><option>A</option><option>E</option>'+
+       '<option>I</option><option>Z</option></select>'+
+       '<button class="btn sm primary" type="button" onclick="pendSet('+i+')">นัด</button></div>';
+  });
+  return h;
+}
+
+function pendSet(i){
+  var row=document.getElementById('pd'+i), d=document.getElementById('pdd'+i), t=document.getElementById('pdt'+i);
+  if(!d.value){ d.style.borderColor='var(--danger)'; d.focus(); return; }   // ต้องมีวันที่ก่อน
+  if(t.selectedIndex===0){ t.style.borderColor='var(--danger)'; t.focus(); return; }
+  row.classList.add('mddone');
+  row.innerHTML='<div class="gr"><div class="t1">'+PEND[i].n+'</div>'+
+    '<div class="t2">นัดแล้ว '+d.value.split('-').reverse().join('/')+' · ทีม '+t.value+'</div></div>'+
+    '<span class="chip ok">✓ เข้าปฏิทินแล้ว</span>';
+  pendLeft--;
+  document.getElementById('mdsub').textContent='ค้าง '+pendLeft+' งาน';
+  var bar=document.querySelector('.pendbar b');
+  if(bar) bar.textContent='รอนัดบริการ '+pendLeft+' งาน';
+  var chip=document.querySelector('.sumchips .chip.pend');
+  if(chip) chip.textContent='รอนัดบริการ '+pendLeft;
+}
+
+/* ===== 3) ตรวจก่อนบันทึกเข้าทะเบียน =====
+   อ่านค่าจากแถวจริงในตาราง (ไม่ fix ตัวเลขไว้) แยกเป็น 3 กลุ่ม:
+   ขาดข้อมูลจำเป็น = บันทึกไม่ได้ · เตือน/รอนัด = บันทึกได้ ค่อยเติมทีหลัง
+   คลิกรายการ -> เลื่อนไปแถวนั้นในตาราง */
+function val(td){ var e=td.querySelector('input,select'); return e? e.value.trim() : td.textContent.trim(); }
+
+function saveScan(){
+  var out=[];
+  [].forEach.call(document.querySelectorAll('table.xl tbody tr'),function(tr,i){
+    var bad=[], warn=[];
+    var name=val(tr.cells[2]), seller=val(tr.cells[6]);
+    var m1=tr.cells[17].querySelector('input'), m3=tr.cells[18].querySelector('input');
+    var money=(m1&&!m1.disabled?m1.value:'')||(m3&&!m3.disabled?m3.value:'');
+    var zone=tr.cells[9].textContent.trim();
+    if(!name)   bad.push('ชื่อลูกค้า');
+    if(!seller) bad.push('ผู้ขาย');
+    if(zone==='—') bad.push('สาขา/เขต');
+    // ช่องมูลค่าถูกล็อกทั้ง 2 ช่อง = ระบบยังไม่รู้ว่าสัญญากี่ปี -> บอกต้นเหตุจริง
+    // ไม่ใช่บอกว่า "ขาดมูลค่า" ทั้งที่ผู้ใช้กรอกไม่ได้
+    if(m1 && m3 && m1.disabled && m3.disabled) bad.push('ระยะสัญญายังไม่ใช่ 1 หรือ 3 ปี จึงยังกรอกมูลค่าไม่ได้');
+    else if(!money.trim()) bad.push('มูลค่า');
+
+    var isRenew=(tr.querySelector('.jobsw .jo.on')||{}).textContent==='Renew';
+    if(isRenew && tr.cells[5].textContent.indexOf('ยังไม่ผูก')>=0) warn.push('Renew ยังไม่ผูกลูกค้าเดิม');
+    if(!val(tr.cells[11])) warn.push('ยังไม่ลงวันที่บริการ');
+    if(val(tr.cells[13])==='—') warn.push('ยังไม่นัดทีม');
+
+    // ระยะสัญญาต้องเป็น 1 ปี หรือ 3 ปี พอดี (SPEC §7.2) — คลาดได้ ±1 วัน
+    var s=val(tr.cells[15]), e=val(tr.cells[16]);
+    if(s&&e){
+      var days=Math.round((new Date(e)-new Date(s))/86400000)+1;
+      if(Math.abs(days-365)>1 && Math.abs(days-366)>1 && Math.abs(days-1095)>1 && Math.abs(days-1096)>1)
+        warn.push('ระยะสัญญา '+days+' วัน (ไม่ใช่ 1 หรือ 3 ปี)');
+    }
+    out.push({i:i, no:i+1, name:name||'(ยังไม่ใส่ชื่อ)', ct:val(tr.cells[1]), bad:bad, warn:warn});
+  });
+  return out;
+}
+
+function saveOpen(){
+  var rows=saveScan();
+  var bad=rows.filter(function(r){return r.bad.length;});
+  var warn=rows.filter(function(r){return !r.bad.length && r.warn.length;});
+  var ok=rows.length-bad.length;
+  var h='';
+  if(bad.length){
+    h+='<div class="mdgrp bad">บันทึกไม่ได้ '+bad.length+' แถว — ขาดข้อมูลจำเป็น</div>';
+    bad.forEach(function(r){
+      h+='<div class="mdrow" onclick="saveGo('+r.i+')" style="cursor:pointer"><div class="gr">'+
+         '<div class="t1">แถว '+r.no+' · '+r.name+'</div>'+
+         '<div class="t2">'+r.ct+' · <span class="miss">'+r.bad.join(' · ')+'</span>'+
+         (r.warn.length?' · '+r.warn.join(' · '):'')+'</div></div>'+
+         '<span class="chip na">ไปที่แถว →</span></div>';
+    });
+  }
+  if(warn.length){
+    h+='<div class="mdgrp warn">บันทึกได้ แต่ยังไม่ครบ '+warn.length+' แถว</div>';
+    warn.forEach(function(r){
+      h+='<div class="mdrow" onclick="saveGo('+r.i+')" style="cursor:pointer"><div class="gr">'+
+         '<div class="t1">แถว '+r.no+' · '+r.name+'</div>'+
+         '<div class="t2">'+r.ct+' · '+r.warn.join(' · ')+'</div></div>'+
+         '<span class="chip na">ไปที่แถว →</span></div>';
+    });
+  }
+  if(!bad.length && !warn.length) h='<div class="mdgrp ok">ครบทุกแถว พร้อมบันทึก</div>';
+  mdOpen('ตรวจก่อนบันทึกเข้าทะเบียน', ok+' จาก '+rows.length+' แถวบันทึกได้','',h,
+    '<span>แถวที่ขาดข้อมูลจำเป็นจะถูกเก็บเป็นฉบับร่างไว้ในเดือนนี้</span><span style="flex:1"></span>'+
+    '<button class="btn sm" type="button" onclick="mdClose()">ยกเลิก</button>'+
+    '<button class="btn sm primary" type="button" onclick="saveDo('+ok+')">บันทึก '+ok+' แถว</button>');
+}
+
+/* ตัวเลขท้ายตารางนับจากของจริง ไม่ fix ไว้ — จะได้ไม่ขัดกับผลตรวจ */
+function footSync(){
+  var rows=saveScan(), ok=rows.filter(function(r){return !r.bad.length;}).length;
+  var el=document.getElementById('footcnt');
+  if(el) el.textContent=ok+' จาก '+rows.length+' แถว';
+}
+footSync();
+
+function saveGo(i){
+  mdClose();
+  var tr=document.querySelectorAll('table.xl tbody tr')[i];
+  tr.scrollIntoView({block:'center'});
+  tr.style.transition='box-shadow .2s';
+  tr.style.boxShadow='inset 0 0 0 2px var(--accent)';
+  setTimeout(function(){ tr.style.boxShadow=''; },1600);
+}
+
+function saveDo(n){
+  mdClose();
+  var f=document.querySelector('.tablewrap .foot span');
+  if(f) f.innerHTML='<span class="chip ok">✓ บันทึกเข้าทะเบียนแล้ว '+n+' แถว</span> '+
+    '<span style="font-size:11.5px;color:var(--fg-muted)">แถวที่เหลือเก็บเป็นฉบับร่าง แก้ต่อได้</span>';
+}
 
 /* สาขา -> เขต (ทะเบียนจริง 24 สาขา ส่วนกลาง) */
 var BRZONE={'พัฒนาการ':'C4','ลาดพร้าว':'C4','ประชาชื่น':'C4','สุวินทวงศ์':'C4',
