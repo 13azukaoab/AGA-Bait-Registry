@@ -155,6 +155,8 @@ tr.badrow td{background:var(--danger-soft) !important}
 .hday.we{opacity:.72}
 .hday .d{font-size:11px;color:var(--fg);font-weight:600;opacity:.75}
 .hday .n{font-size:17px;font-weight:700;line-height:1.1;margin-top:1px}
+/* วันที่ไม่มีงาน span นี้ว่าง -> :not(:empty) กันไม่ให้ขึ้นคำว่า "ราย" ลอยๆ */
+.hday .n:not(:empty)::after{content:" ราย";font-size:11px;font-weight:500;color:var(--fg-muted)}
 /* บรรทัดงาน: พื้นอ่อน + แถบซ้ายสี Tier (สีกลุ่ม S/M/L/XL — ปีระบุใน tooltip) */
 .hday .ev{font-size:10px;line-height:1.55;border-radius:4px;padding:0 4px;border-left:3px solid;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
