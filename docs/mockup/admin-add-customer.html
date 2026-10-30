@@ -98,7 +98,7 @@ table select,table input{font-family:inherit;font-size:12px;color:var(--fg);back
 .tag-new{font-size:10px;font-weight:700;color:var(--new);background:var(--new-soft);border:1px solid #d8cdf0;border-radius:5px;padding:1px 7px}
 
 /* ===== โหมดตารางเหมือน Excel ===== */
-table.xl{font-size:12px;width:2270px;table-layout:fixed}
+table.xl{font-size:12px;width:2350px;table-layout:fixed}
 table.xl thead th{padding:5px 7px;font-size:10.5px;line-height:1.3;vertical-align:bottom;border-right:1px solid var(--border);white-space:normal}
 table.xl thead th.grp{background:var(--surface-3);color:var(--fg);border-bottom:1px solid var(--border-strong)}
 table.xl thead th.sub{background:var(--surface-3);font-weight:600}
@@ -280,7 +280,9 @@ table.xl .tmbtn.wait{background:var(--warn-soft);color:var(--warn)}
     <li><b>วันสิ้นสุด auto</b> = วันเริ่ม + N ปี − 1 วัน → กันพิมพ์ผิด (เคยมี <span class="num">15/10/8202</span> และสัญญา 0 วัน)</li>
     <li><b>เขต auto จากสาขา</b> → เลิกมี "นนทบรี" โผล่ในช่องเขต</li>
     <li><b>สาขา/ทีม/ประเภท/ผู้ขาย = dropdown จาก master</b> → เลิก "พระราม2" ≠ "พระราม 2", "Sup"/"sup", ประเภท 28 แบบ</li>
-    <li><b>เวลาเป็น time picker</b> → เลิก 27 รูปแบบ (<span class="num">09.00 น.</span> / <span class="num">09:00:00</span>)</li>
+    <li><b>เวลาเป็น time picker</b> (08:00–17:00 · นาที 00/30) → เลิกหลายรูปแบบ (<span class="num">09.00 น.</span> / <span class="num">09:00:00</span>) · ไฟล์ ต.ค.2026 จริงใช้แค่ช่วงนี้และนาที 00/30 เท่านั้น</li>
+    <li><b>เลขที่สัญญา ตัดช่องว่าง + พิมพ์ใหญ่อัตโนมัติ</b> แล้วตรวจรูปแบบ/ซ้ำ → ไฟล์จริงมีเว้นวรรคท้าย 4 รายการ และ <span class="num">ct26-</span> ตัวเล็ก 1 รายการ ถ้าไม่ล้างก่อนเทียบจะกลายเป็นสัญญาคนละใบ</li>
+    <li><b>ทีม/ประเภทลูกค้าเป็น dropdown จาก master</b> → ไฟล์จริงมี <span class="num">sup</span>/<span class="num">Sup</span>/<span class="num">หนง.</span>/<span class="num">o</span> และเวลา <span class="num">11:30:00</span> หลุดมาอยู่ในช่องทีม · ประเภทมี "ทาวโฮม" ขาด น์</li>
     <li><b>New/Renew รวมเป็น dropdown "ประเภทงาน"</b> ช่องเดียว → ประหยัดคอลัมน์ และไม่มีเคสติ๊กทั้งคู่/ไม่ติ๊กเลย</li>
     <li><b>Tier โชว์สด</b> ทันทีที่ใส่มูลค่า → admin เห็นเลยว่าลูกค้านี้ S/M/L/XL กี่ปี</li>
   </ul>
@@ -312,8 +314,8 @@ table.xl .tmbtn.wait{background:var(--warn-soft);color:var(--warn)}
 <div class="tablewrap">
   <table class="xl">
     <!-- ความกว้างตั้งตามเนื้อหาจริงของแต่ละช่อง (วันที่ 120px พอดีกับ date picker ของเบราว์เซอร์)
-         รวม 2,270px — แคบลงจากเดิม 410px เลื่อนแนวนอนน้อยลง -->
-    <colgroup><col style="width:40px"><col style="width:104px"><col style="width:200px"><col style="width:44px"><col style="width:104px"><col style="width:140px"><col style="width:118px"><col style="width:72px"><col style="width:112px"><col style="width:54px"><col style="width:120px"><col style="width:120px"><col style="width:88px"><col style="width:62px"><col style="width:108px"><col style="width:120px"><col style="width:120px"><col style="width:96px"><col style="width:96px"><col style="width:56px"><col style="width:150px"><col style="width:150px"></colgroup>
+         รวม 2,350px (ชื่อลูกค้ากว้าง 280px ตามข้อมูลจริง p90 = 47 ตัวอักษร) เลื่อนแนวนอนน้อยลง -->
+    <colgroup><col style="width:40px"><col style="width:104px"><col style="width:280px"><col style="width:44px"><col style="width:104px"><col style="width:140px"><col style="width:118px"><col style="width:72px"><col style="width:112px"><col style="width:54px"><col style="width:120px"><col style="width:120px"><col style="width:88px"><col style="width:62px"><col style="width:108px"><col style="width:120px"><col style="width:120px"><col style="width:96px"><col style="width:96px"><col style="width:56px"><col style="width:150px"><col style="width:150px"></colgroup>
     <thead>
       <tr>
         <th rowspan="2" class="c">ลำดับ</th>
@@ -345,7 +347,7 @@ table.xl .tmbtn.wait{background:var(--warn-soft);color:var(--warn)}
     <tbody>
       <tr>
         <td class="c num">1</td>
-        <td><input value="CT26-9000001"></td>
+        <td><input value="CT26-9000001" oninput="ctFix(this)"></td>
         <td><input value="บจก. ลูกค้าตัวอย่าง 1" class="wide" oninput="dupCheck(this)"></td>
         <td class="c"><input type="checkbox"></td>
         <td><span class="jobsw" onclick="jobTog(this,event)" role="group" aria-label="ประเภทงาน"><span class="jo">New</span><span class="jo on">Renew</span></span></td>
@@ -357,8 +359,8 @@ table.xl .tmbtn.wait{background:var(--warn-soft);color:var(--warn)}
         <td><input type="date" value="2026-09-11"></td>
         <td><input type="date" value="2026-10-14"></td>
         <td><button type="button" class="tmbtn" data-h="12" data-m="00" onclick="tmOpen(this)">12:00</button></td>
-        <td><select><option selected>E</option><option>Z</option></select></td>
-        <td><select><option selected>บ้าน</option><option>อาคาร</option></select></td>
+        <td><select class="tmsel"><option selected>E</option></select></td>
+        <td><select class="ctsel"><option selected>บ้าน</option></select></td>
         <td><input type="date" value="2026-10-16"></td>
         <td><input type="date" value="2027-10-15"></td>
         <td class="r"><input class="num money" value="33,426.80"></td>
@@ -369,7 +371,7 @@ table.xl .tmbtn.wait{background:var(--warn-soft);color:var(--warn)}
       </tr>
       <tr>
         <td class="c num">2</td>
-        <td><input value="CT26-9000003"></td>
+        <td><input value="CT26-9000003" oninput="ctFix(this)"></td>
         <td><input value="บจก. ลูกค้าตัวอย่าง 2" class="wide" oninput="dupCheck(this)"></td>
         <td class="c"><input type="checkbox"></td>
         <td><span class="jobsw" onclick="jobTog(this,event)" role="group" aria-label="ประเภทงาน"><span class="jo">New</span><span class="jo on">Renew</span></span></td>
@@ -381,8 +383,8 @@ table.xl .tmbtn.wait{background:var(--warn-soft);color:var(--warn)}
         <td><input type="date" value="2026-09-11"></td>
         <td><input type="date" value="2026-10-11"></td>
         <td><button type="button" class="tmbtn" data-h="10" data-m="00" onclick="tmOpen(this)">10:00</button></td>
-        <td><select><option>E</option><option selected>Z</option></select></td>
-        <td><select><option>บ้าน</option><option selected>อาคาร</option></select></td>
+        <td><select class="tmsel"><option selected>Z</option></select></td>
+        <td><select class="ctsel"><option selected>อาคาร</option></select></td>
         <td><input type="date" value="2026-10-01"></td>
         <td><input type="date" value="2029-09-30"></td>
         <td class="r"><input class="num money off" disabled></td>
@@ -393,7 +395,7 @@ table.xl .tmbtn.wait{background:var(--warn-soft);color:var(--warn)}
       </tr>
       <tr>
         <td class="c num">3</td>
-        <td><input value="CT26-9000005"></td>
+        <td><input value="CT26-9000005" oninput="ctFix(this)"></td>
         <td><input value="บจก. ลูกค้าตัวอย่าง 3" class="wide" oninput="dupCheck(this)"></td>
         <td class="c"><input type="checkbox" checked></td>
         <td><span class="jobsw" onclick="jobTog(this,event)" role="group" aria-label="ประเภทงาน"><span class="jo on">New</span><span class="jo">Renew</span></span></td>
@@ -405,8 +407,8 @@ table.xl .tmbtn.wait{background:var(--warn-soft);color:var(--warn)}
         <td><input type="date" value="2026-09-14"></td>
         <td><input type="date" value="2026-10-07"></td>
         <td><button type="button" class="tmbtn" data-h="09" data-m="30" onclick="tmOpen(this)">09:30</button></td>
-        <td><select><option selected>A</option></select></td>
-        <td><select><option selected>โรงงาน</option></select></td>
+        <td><select class="tmsel"><option selected>A</option></select></td>
+        <td><select class="ctsel"><option selected>โรงงาน</option></select></td>
         <td><input type="date" value="2026-10-05"></td>
         <td><input type="date" value="2027-10-04"></td>
         <td class="r"><input class="num money" value="99,510.00"></td>
@@ -417,7 +419,7 @@ table.xl .tmbtn.wait{background:var(--warn-soft);color:var(--warn)}
       </tr>
       <tr>
         <td class="c num">4</td>
-        <td><input value="CT26-9000006"></td>
+        <td><input value="CT26-9000006" oninput="ctFix(this)"></td>
         <td><input value="บจก. ลูกค้าตัวอย่าง 4" class="wide" oninput="dupCheck(this)"></td>
         <td class="c"><input type="checkbox" checked></td>
         <td><span class="jobsw" onclick="jobTog(this,event)" role="group" aria-label="ประเภทงาน"><span class="jo on">New</span><span class="jo">Renew</span></span></td>
@@ -429,8 +431,8 @@ table.xl .tmbtn.wait{background:var(--warn-soft);color:var(--warn)}
         <td><input type="date" value="2026-09-20"></td>
         <td><input type="date" value="2026-10-22"></td>
         <td><button type="button" class="tmbtn" data-h="10" data-m="30" onclick="tmOpen(this)">10:30</button></td>
-        <td><select><option selected>I</option></select></td>
-        <td><select><option selected>อาคาร</option></select></td>
+        <td><select class="tmsel"><option selected>I</option></select></td>
+        <td><select class="ctsel"><option selected>อาคาร</option></select></td>
         <td><input type="date" value="2026-10-01"></td>
         <td><input type="date" value="2029-09-30"></td>
         <td class="r"><input class="num money off" disabled></td>
@@ -441,7 +443,7 @@ table.xl .tmbtn.wait{background:var(--warn-soft);color:var(--warn)}
       </tr>
       <tr class="pendrow">
         <td class="c num">5</td>
-        <td><input value="CT26-9000007"></td>
+        <td><input value="CT26-9000007" oninput="ctFix(this)"></td>
         <td><input value="บจก. ลูกค้าตัวอย่าง 5" class="wide" oninput="dupCheck(this)"></td>
         <td class="c"><input type="checkbox"></td>
         <td><span class="jobsw" onclick="jobTog(this,event)" role="group" aria-label="ประเภทงาน"><span class="jo on">New</span><span class="jo">Renew</span></span></td>
@@ -453,8 +455,8 @@ table.xl .tmbtn.wait{background:var(--warn-soft);color:var(--warn)}
         <td><input type="date" value="2026-09-28"></td>
         <td><input type="date" value="" class="wait"></td>
         <td><button type="button" class="tmbtn wait" data-h="" data-m="" onclick="tmOpen(this)">— เลือก —</button></td>
-        <td><select class="wait" title="ยังไม่นัดทีม"><option selected>—</option><option>A</option><option>Z</option></select></td>
-        <td><select><option selected>โรงงาน</option></select></td>
+        <td><select class="tmsel wait" title="ยังไม่นัดทีม"><option selected>—</option></select></td>
+        <td><select class="ctsel"><option selected>โรงงาน</option></select></td>
         <td><input type="date" value="2026-10-01"></td>
         <td><input type="date" value="2027-09-30"></td>
         <td class="r"><input class="num money" value="58,000.00"></td>
@@ -465,7 +467,7 @@ table.xl .tmbtn.wait{background:var(--warn-soft);color:var(--warn)}
       </tr>
       <tr class="warnrow">
         <td class="c num">6</td>
-        <td><input value="CT26-9000008"></td>
+        <td><input value="CT26-9000008" oninput="ctFix(this)"></td>
         <td><input value="คุณลูกค้า หนึ่ง" class="wide" oninput="dupCheck(this)"></td>
         <td class="c"><input type="checkbox"></td>
         <td><span class="jobsw" onclick="jobTog(this,event)" role="group" aria-label="ประเภทงาน"><span class="jo">New</span><span class="jo on">Renew</span></span></td>
@@ -477,8 +479,8 @@ table.xl .tmbtn.wait{background:var(--warn-soft);color:var(--warn)}
         <td><input type="date" value="2026-09-25"></td>
         <td><input type="date" value="2026-10-28"></td>
         <td><button type="button" class="tmbtn" data-h="09" data-m="30" onclick="tmOpen(this)">09:30</button></td>
-        <td><select><option>A</option><option selected>Z</option></select></td>
-        <td><select><option selected>ทาวน์โฮม</option></select></td>
+        <td><select class="tmsel"><option selected>Z</option></select></td>
+        <td><select class="ctsel"><option selected>ทาวน์โฮม</option></select></td>
         <td><input type="date" value="2026-10-01"></td>
         <td><input type="date" value="2027-10-31" style="border-color:var(--warn)"></td>
         <td class="r"><input class="num money off" disabled></td>
@@ -489,7 +491,7 @@ table.xl .tmbtn.wait{background:var(--warn-soft);color:var(--warn)}
       </tr>
       <tr class="badrow">
         <td class="c num">7</td>
-        <td><input value="CT26-9000009"></td>
+        <td><input value="CT26-9000009" oninput="ctFix(this)"></td>
         <td><input value="คุณลูกค้า สอง" class="wide" oninput="dupCheck(this)"></td>
         <td class="c"><input type="checkbox"></td>
         <td><span class="jobsw" onclick="jobTog(this,event)" role="group" aria-label="ประเภทงาน"><span class="jo on">New</span><span class="jo">Renew</span></span></td>
@@ -501,8 +503,8 @@ table.xl .tmbtn.wait{background:var(--warn-soft);color:var(--warn)}
         <td><input type="date" value="2026-09-30"></td>
         <td><input type="date" value=""></td>
         <td><button type="button" class="tmbtn wait" data-h="" data-m="" onclick="tmOpen(this)">— เลือก —</button></td>
-        <td><select class="wait" title="ยังไม่นัดทีม"><option selected>—</option><option>A</option><option>Z</option></select></td>
-        <td><select><option selected>บ้าน</option></select></td>
+        <td><select class="tmsel wait" title="ยังไม่นัดทีม"><option selected>—</option></select></td>
+        <td><select class="ctsel"><option selected>บ้าน</option></select></td>
         <td><input type="date" value="2026-10-05"></td>
         <td><input type="date" value="2027-10-04"></td>
         <td class="r"><input class="num money" value="" placeholder="ยังไม่ใส่" style="border-color:var(--danger)"></td>
@@ -877,7 +879,7 @@ table.xl .tmbtn.wait{background:var(--warn-soft);color:var(--warn)}
 <div id="tmpop" class="tmpop" hidden>
   <div class="tmttl">เลือกเวลา (24 ชม.) <span class="pv" id="tmpv">—:—</span></div>
   <div class="tmcols">
-    <div class="tmcol"><div class="tmclbl">ชั่วโมง</div><div class="tmlist" id="tmHl"><div class="tmopt" data-h="07">07</div><div class="tmopt" data-h="08">08</div><div class="tmopt" data-h="09">09</div><div class="tmopt" data-h="10">10</div><div class="tmopt" data-h="11">11</div><div class="tmopt" data-h="12">12</div><div class="tmopt" data-h="13">13</div><div class="tmopt" data-h="14">14</div><div class="tmopt" data-h="15">15</div><div class="tmopt" data-h="16">16</div><div class="tmopt" data-h="17">17</div><div class="tmopt" data-h="18">18</div></div></div>
+    <div class="tmcol"><div class="tmclbl">ชั่วโมง</div><div class="tmlist" id="tmHl"><div class="tmopt" data-h="08">08</div><div class="tmopt" data-h="09">09</div><div class="tmopt" data-h="10">10</div><div class="tmopt" data-h="11">11</div><div class="tmopt" data-h="12">12</div><div class="tmopt" data-h="13">13</div><div class="tmopt" data-h="14">14</div><div class="tmopt" data-h="15">15</div><div class="tmopt" data-h="16">16</div><div class="tmopt" data-h="17">17</div></div></div>
     <div class="tmcol"><div class="tmclbl">นาที</div><div class="tmlist" id="tmMl"><div class="tmopt" data-m="00">00</div><div class="tmopt" data-m="30">30</div></div></div>
   </div>
   <div class="tmfoot"><button type="button" onclick="tmClear()">ยังไม่นัด</button>
@@ -1288,6 +1290,41 @@ var BRZONE={'พัฒนาการ':'C4','ลาดพร้าว':'C4','ป
 /* ช่องสาขาเป็น dropdown จาก master 24 สาขา — พิมพ์เองไม่ได้
    กัน "พระราม2" ≠ "พระราม 2" และกันสาขาที่ไม่มีอยู่จริงหลุดเข้าระบบ */
 var BRLIST=Object.keys(BRZONE).concat(['งานกรุ๊ป (ลูกค้านอกสาขา)']);
+
+/* master ทีม + ประเภทลูกค้า — ตั้งจากค่าที่พบจริงในไฟล์ ต.ค. 2026
+   ของเดิมในไฟล์มี sup/Sup/หนง./o/11:30:00 ปนกัน และ "ทาวโฮม" สะกดขาด น์
+   "หลายทีม" เป็นเคสจริง (3 แถว) ต้องมีในรายการ ไม่ใช่ให้พิมพ์เอง */
+var TEAMS=['—','A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','Z','Sup','หลายทีม'];
+var CTYPES=['บ้าน','ทาวน์โฮม','อาคาร','ออฟฟิศ','สำนักงาน','สำนักงานนายก','โรงงาน','โรงเรียน',
+            'โรงพยาบาล','มหาลัย','วัง','ศาล','รีสอร์ท','สวนลอยฟ้า'];
+
+function fillSel(sel,list,blank){
+  var cur=sel.value;
+  sel.innerHTML=(blank?'<option value="">'+blank+'</option>':'')+
+    list.map(function(v){ return '<option'+(v===cur?' selected':'')+'>'+v+'</option>'; }).join('');
+}
+function fillMasters(){
+  [].forEach.call(document.querySelectorAll('select.tmsel'),function(s){ fillSel(s,TEAMS,''); });
+  [].forEach.call(document.querySelectorAll('select.ctsel'),function(s){ fillSel(s,CTYPES,'— เลือกประเภท —'); });
+}
+
+/* เลขที่สัญญา: ตัดช่องว่าง + พิมพ์ใหญ่อัตโนมัติ แล้วตรวจรูปแบบ/ซ้ำ
+   ของจริงเจอเว้นวรรคท้าย 4 รายการ และ "ct26-..." ตัวเล็ก 1 รายการ
+   ถ้าไม่ล้างก่อนเทียบ ระบบจะมองเป็นคนละสัญญา -> สร้างซ้ำเงียบๆ */
+function ctFix(inp){
+  var v=inp.value.replace(/\s+/g,'').toUpperCase();
+  if(v!==inp.value){ var p=inp.selectionStart; inp.value=v; try{inp.setSelectionRange(p,p);}catch(e){} }
+  var ok=/^CT\d{2}-\d{7}$/.test(v), dup=false;
+  [].forEach.call(document.querySelectorAll('table.xl tbody tr'),function(tr){
+    var o=tr.cells[1].querySelector('input');
+    if(o&&o!==inp&&v&&o.value.replace(/\s+/g,'').toUpperCase()===v) dup=true;
+  });
+  var bad=v&&(!ok||dup);
+  inp.style.borderColor=bad?'var(--danger)':'';
+  inp.title=dup?'เลขที่สัญญาซ้ำกับแถวอื่น'
+          :(v&&!ok?'รูปแบบต้องเป็น CT + ปี 2 หลัก + - + 7 หลัก เช่น CT26-0021813':'');
+}
+
 function fillBranches(){
   [].forEach.call(document.querySelectorAll('select.brsel'),function(s){
     var cur=s.value;
@@ -1313,5 +1350,6 @@ function rowZone(inp){
 }
 
 fillBranches();
+fillMasters();
 
 </script>
