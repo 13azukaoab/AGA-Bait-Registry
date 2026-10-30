@@ -181,6 +181,29 @@ tr.badrow td{background:var(--danger-soft) !important}
 .hday[data-tip]:hover::after{white-space:pre;text-align:left;line-height:1.6;max-width:none}
 @media (max-width:620px){.hday{min-height:78px} .hday .n{font-size:14px}}
 
+/* ===== popup รายวัน (คลิก/Enter ที่ช่องวันในปฏิทิน) =====
+   เซลล์โชว์ได้แค่ 3 รายแรก — popup นี้คือที่ดูงานทั้งวันแบบครบ */
+.hday[tabindex]{cursor:pointer}
+.hday[tabindex]:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.dayov{position:fixed;inset:0;background:rgba(14,26,40,.42);z-index:60;display:flex;
+  align-items:center;justify-content:center;padding:20px}
+.dayov[hidden]{display:none}
+.daybox{background:var(--surface);border:1px solid var(--border-strong);border-radius:12px;
+  box-shadow:0 10px 32px rgba(14,26,40,.22);width:min(560px,100%);max-height:84vh;
+  display:flex;flex-direction:column;overflow:hidden}
+.dayhd{display:flex;align-items:center;gap:10px;padding:13px 16px;border-bottom:1px solid var(--border)}
+.dayhd b{font-size:15px}
+.daybody{overflow-y:auto}
+.daytab{width:100%;font-size:12.5px;white-space:nowrap;border-collapse:collapse}
+.daytab td{padding:7px 12px;border-bottom:1px solid var(--border)}
+.daytab tr:last-child td{border-bottom:0}
+.daytab tr:hover td{background:var(--surface-2)}
+.daytab .tm{width:58px;font-weight:700;font-variant-numeric:tabular-nums;color:var(--accent-strong)}
+.daytab .nm{white-space:normal}
+.daytab .br{color:var(--fg-muted)}
+.dayft{padding:10px 16px;border-top:1px solid var(--border);background:var(--surface-2);
+  font-size:11.5px;color:var(--fg-muted);display:flex;align-items:center;gap:9px}
+
 /* ===== time picker (popup เลื่อนเลือก ชม./นาที) ===== */
 table.xl .tmbtn{font-family:inherit;font-size:11.5px;color:var(--fg);background:var(--surface);
   border:1px solid var(--border-strong);border-radius:5px;padding:3px 8px;cursor:pointer;width:100%;
@@ -520,169 +543,190 @@ table.xl .tmbtn.wait{background:var(--warn-soft);color:var(--warn)}
       <div class="hday pad"></div>
       <div class="hday pad"></div>
       <div class="hday pad"></div>
-      <div class="hday h2" data-tip="1 ต.ค. · 5 งาน
-09:00 คุณลูกค้า หนึ่ง · สุวินทวงศ์ · S
-11:00 คุณลูกค้า หนึ่ง · พุทธมณฑล · S
-13:00 คุณลูกค้า สี่ · ระยอง · L
-14:30 คุณลูกค้า หนึ่ง · ลาดพร้าว · S
-16:30 บจก. ลูกค้าตัวอย่าง 7 · รามอินทรา · S"><span class="d">1</span><span class="n">5</span><div class="hnames"><span class="ev s"><b>09:00</b>คุณลูกค้า หนึ่ง</span><span class="ev s"><b>11:00</b>คุณลูกค้า หนึ่ง</span><span class="ev l"><b>13:00</b>คุณลูกค้า สี่</span><span class="more">+2 ราย</span></div></div>
-      <div class="hday h1" data-tip="2 ต.ค. · 2 งาน
-09:00 บจก. ลูกค้าตัวอย่าง 7 · ปทุมธานี · S
-16:30 บจก. ลูกค้าตัวอย่าง 6 · พุทธมณฑล · XL"><span class="d">2</span><span class="n">2</span><div class="hnames"><span class="ev s"><b>09:00</b>บจก. ลูกค้าตัวอย่าง 7</span><span class="ev xl"><b>16:30</b>บจก. ลูกค้าตัวอย่าง 6</span></div></div>
-      <div class="hday h1 we" data-tip="3 ต.ค. · 2 งาน
-09:00 บจก. ลูกค้าตัวอย่าง 11 · นครปฐม · S
-16:30 บจก. ลูกค้าตัวอย่าง 2 · พุทธมณฑล · L"><span class="d">3</span><span class="n">2</span><div class="hnames"><span class="ev s"><b>09:00</b>บจก. ลูกค้าตัวอย่าง 11</span><span class="ev l"><b>16:30</b>บจก. ลูกค้าตัวอย่าง 2</span></div></div>
+      <div class="hday h2" tabindex="0" role="button" data-tip="1 ต.ค. · 5 งาน
+09:00 คุณลูกค้า หนึ่ง · สุวินทวงศ์ · S1
+11:00 คุณลูกค้า หนึ่ง · พุทธมณฑล · S1
+13:00 คุณลูกค้า สี่ · ระยอง · L3
+14:30 คุณลูกค้า หนึ่ง · ลาดพร้าว · S1
+16:30 บจก. ลูกค้าตัวอย่าง 7 · รามอินทรา · S1"><span class="d">1</span><span class="n">5</span><div class="hnames"><span class="ev s"><b>09:00</b>คุณลูกค้า หนึ่ง</span><span class="ev s"><b>11:00</b>คุณลูกค้า หนึ่ง</span><span class="ev l"><b>13:00</b>คุณลูกค้า สี่</span><span class="more">+2 ราย</span></div></div>
+      <div class="hday h1" tabindex="0" role="button" data-tip="2 ต.ค. · 2 งาน
+09:00 บจก. ลูกค้าตัวอย่าง 7 · ปทุมธานี · S1
+16:30 บจก. ลูกค้าตัวอย่าง 6 · พุทธมณฑล · XL3"><span class="d">2</span><span class="n">2</span><div class="hnames"><span class="ev s"><b>09:00</b>บจก. ลูกค้าตัวอย่าง 7</span><span class="ev xl"><b>16:30</b>บจก. ลูกค้าตัวอย่าง 6</span></div></div>
+      <div class="hday h1 we" tabindex="0" role="button" data-tip="3 ต.ค. · 2 งาน
+09:00 บจก. ลูกค้าตัวอย่าง 11 · นครปฐม · S3
+16:30 บจก. ลูกค้าตัวอย่าง 2 · พุทธมณฑล · L1"><span class="d">3</span><span class="n">2</span><div class="hnames"><span class="ev s"><b>09:00</b>บจก. ลูกค้าตัวอย่าง 11</span><span class="ev l"><b>16:30</b>บจก. ลูกค้าตัวอย่าง 2</span></div></div>
       <div class="hday h0 we" data-tip="4 ต.ค. · ไม่มีงาน"><span class="d">4</span><span class="n"></span><div class="hnames"></div></div>
-      <div class="hday h1" data-tip="5 ต.ค. · 1 งาน
-09:00 บจก. ลูกค้าตัวอย่าง 1 · อยุธยา · S"><span class="d">5</span><span class="n">1</span><div class="hnames"><span class="ev s"><b>09:00</b>บจก. ลูกค้าตัวอย่าง 1</span></div></div>
-      <div class="hday h3" data-tip="6 ต.ค. · 8 งาน
-09:00 บจก. ลูกค้าตัวอย่าง 5 · พระราม4 · S
-10:00 บจก. ลูกค้าตัวอย่าง 4 · หัวหิน · M
-11:00 คุณลูกค้า แปด · พัฒนาการ · XL
-12:00 บจก. ลูกค้าตัวอย่าง 3 · ประชาชื่น · S
-13:30 คุณลูกค้า แปด · สุวินทวงศ์ · M
-14:30 บจก. ลูกค้าตัวอย่าง 5 · ระยอง · L
-15:30 บจก. ลูกค้าตัวอย่าง 9 · หัวหิน · M
-16:30 คุณลูกค้า แปด · หัวหิน · S"><span class="d">6</span><span class="n">8</span><div class="hnames"><span class="ev s"><b>09:00</b>บจก. ลูกค้าตัวอย่าง 5</span><span class="ev m"><b>10:00</b>บจก. ลูกค้าตัวอย่าง 4</span><span class="ev xl"><b>11:00</b>คุณลูกค้า แปด</span><span class="more">+5 ราย</span></div></div>
-      <div class="hday h2" data-tip="7 ต.ค. · 6 งาน
-09:00 คุณลูกค้า สี่ · พุทธมณฑล · S
-10:30 บจก. ลูกค้าตัวอย่าง 4 · สาทร · S
-12:00 คุณลูกค้า สาม · สาทร · L
-13:30 คุณลูกค้า สี่ · พระราม2 · S
-15:00 บจก. ลูกค้าตัวอย่าง 3 · สุขุมวิท · M
-16:30 บจก. ลูกค้าตัวอย่าง 4 · ปทุมวัน · M"><span class="d">7</span><span class="n">6</span><div class="hnames"><span class="ev s"><b>09:00</b>คุณลูกค้า สี่</span><span class="ev s"><b>10:30</b>บจก. ลูกค้าตัวอย่าง 4</span><span class="ev l"><b>12:00</b>คุณลูกค้า สาม</span><span class="more">+3 ราย</span></div></div>
-      <div class="hday h1" data-tip="8 ต.ค. · 1 งาน
-09:00 บจก. ลูกค้าตัวอย่าง 11 · ปทุมวัน · M"><span class="d">8</span><span class="n">1</span><div class="hnames"><span class="ev m"><b>09:00</b>บจก. ลูกค้าตัวอย่าง 11</span></div></div>
-      <div class="hday h3" data-tip="9 ต.ค. · 8 งาน
-09:00 บจก. ลูกค้าตัวอย่าง 9 · สาทร · XL
-10:00 คุณลูกค้า สิบเอ็ด · ปากช่อง · S
-11:00 คุณลูกค้า ห้า · พัฒนาการ · S
-12:00 บจก. ลูกค้าตัวอย่าง 7 · สระบุรี · S
-13:30 บจก. ลูกค้าตัวอย่าง 12 · สุขุมวิท · L
-14:30 คุณลูกค้า สิบเอ็ด · พระราม4 · S
-15:30 บจก. ลูกค้าตัวอย่าง 1 · สระบุรี · S
-16:30 บจก. ลูกค้าตัวอย่าง 10 · ระยอง · M"><span class="d">9</span><span class="n">8</span><div class="hnames"><span class="ev xl"><b>09:00</b>บจก. ลูกค้าตัวอย่าง 9</span><span class="ev s"><b>10:00</b>คุณลูกค้า สิบเอ็ด</span><span class="ev s"><b>11:00</b>คุณลูกค้า ห้า</span><span class="more">+5 ราย</span></div></div>
+      <div class="hday h1" tabindex="0" role="button" data-tip="5 ต.ค. · 1 งาน
+09:00 บจก. ลูกค้าตัวอย่าง 1 · อยุธยา · S1"><span class="d">5</span><span class="n">1</span><div class="hnames"><span class="ev s"><b>09:00</b>บจก. ลูกค้าตัวอย่าง 1</span></div></div>
+      <div class="hday h3" tabindex="0" role="button" data-tip="6 ต.ค. · 8 งาน
+09:00 บจก. ลูกค้าตัวอย่าง 5 · พระราม4 · S3
+10:00 บจก. ลูกค้าตัวอย่าง 4 · หัวหิน · M1
+11:00 คุณลูกค้า แปด · พัฒนาการ · XL1
+12:00 บจก. ลูกค้าตัวอย่าง 3 · ประชาชื่น · S3
+13:30 คุณลูกค้า แปด · สุวินทวงศ์ · M1
+14:30 บจก. ลูกค้าตัวอย่าง 5 · ระยอง · L1
+15:30 บจก. ลูกค้าตัวอย่าง 9 · หัวหิน · M3
+16:30 คุณลูกค้า แปด · หัวหิน · S1"><span class="d">6</span><span class="n">8</span><div class="hnames"><span class="ev s"><b>09:00</b>บจก. ลูกค้าตัวอย่าง 5</span><span class="ev m"><b>10:00</b>บจก. ลูกค้าตัวอย่าง 4</span><span class="ev xl"><b>11:00</b>คุณลูกค้า แปด</span><span class="more">+5 ราย</span></div></div>
+      <div class="hday h2" tabindex="0" role="button" data-tip="7 ต.ค. · 6 งาน
+09:00 คุณลูกค้า สี่ · พุทธมณฑล · S1
+10:30 บจก. ลูกค้าตัวอย่าง 4 · สาทร · S1
+12:00 คุณลูกค้า สาม · สาทร · L3
+13:30 คุณลูกค้า สี่ · พระราม2 · S1
+15:00 บจก. ลูกค้าตัวอย่าง 3 · สุขุมวิท · M1
+16:30 บจก. ลูกค้าตัวอย่าง 4 · ปทุมวัน · M3"><span class="d">7</span><span class="n">6</span><div class="hnames"><span class="ev s"><b>09:00</b>คุณลูกค้า สี่</span><span class="ev s"><b>10:30</b>บจก. ลูกค้าตัวอย่าง 4</span><span class="ev l"><b>12:00</b>คุณลูกค้า สาม</span><span class="more">+3 ราย</span></div></div>
+      <div class="hday h1" tabindex="0" role="button" data-tip="8 ต.ค. · 1 งาน
+09:00 บจก. ลูกค้าตัวอย่าง 11 · ปทุมวัน · M1"><span class="d">8</span><span class="n">1</span><div class="hnames"><span class="ev m"><b>09:00</b>บจก. ลูกค้าตัวอย่าง 11</span></div></div>
+      <div class="hday h3" tabindex="0" role="button" data-tip="9 ต.ค. · 8 งาน
+09:00 บจก. ลูกค้าตัวอย่าง 9 · สาทร · XL3
+10:00 คุณลูกค้า สิบเอ็ด · ปากช่อง · S1
+11:00 คุณลูกค้า ห้า · พัฒนาการ · S1
+12:00 บจก. ลูกค้าตัวอย่าง 7 · สระบุรี · S3
+13:30 บจก. ลูกค้าตัวอย่าง 12 · สุขุมวิท · L1
+14:30 คุณลูกค้า สิบเอ็ด · พระราม4 · S1
+15:30 บจก. ลูกค้าตัวอย่าง 1 · สระบุรี · S3
+16:30 บจก. ลูกค้าตัวอย่าง 10 · ระยอง · M1"><span class="d">9</span><span class="n">8</span><div class="hnames"><span class="ev xl"><b>09:00</b>บจก. ลูกค้าตัวอย่าง 9</span><span class="ev s"><b>10:00</b>คุณลูกค้า สิบเอ็ด</span><span class="ev s"><b>11:00</b>คุณลูกค้า ห้า</span><span class="more">+5 ราย</span></div></div>
       <div class="hday h0 we" data-tip="10 ต.ค. · ไม่มีงาน"><span class="d">10</span><span class="n"></span><div class="hnames"></div></div>
       <div class="hday h0 we" data-tip="11 ต.ค. · ไม่มีงาน"><span class="d">11</span><span class="n"></span><div class="hnames"></div></div>
-      <div class="hday h3" data-tip="12 ต.ค. · 7 งาน
-09:00 บจก. ลูกค้าตัวอย่าง 3 · พัทยา · L
-10:00 บจก. ลูกค้าตัวอย่าง 9 · สระบุรี · S
-11:30 บจก. ลูกค้าตัวอย่าง 12 · ปากช่อง · S
-13:00 บจก. ลูกค้าตัวอย่าง 12 · ปากน้ำ · XL
-14:00 คุณลูกค้า หก · พระราม4 · S
-15:00 คุณลูกค้า ห้า · สมุทรปราการ · S
-16:30 คุณลูกค้า เก้า · ปากน้ำ · M"><span class="d">12</span><span class="n">7</span><div class="hnames"><span class="ev l"><b>09:00</b>บจก. ลูกค้าตัวอย่าง 3</span><span class="ev s"><b>10:00</b>บจก. ลูกค้าตัวอย่าง 9</span><span class="ev s"><b>11:30</b>บจก. ลูกค้าตัวอย่าง 12</span><span class="more">+4 ราย</span></div></div>
-      <div class="hday h1" data-tip="13 ต.ค. · 1 งาน
-09:00 คุณลูกค้า แปด · ประชาชื่น · S"><span class="d">13</span><span class="n">1</span><div class="hnames"><span class="ev s"><b>09:00</b>คุณลูกค้า แปด</span></div></div>
-      <div class="hday h1" data-tip="14 ต.ค. · 2 งาน
-09:00 บจก. ลูกค้าตัวอย่าง 8 · สุวินทวงศ์ · M
-16:30 คุณลูกค้า สิบสอง · ปากน้ำ · M"><span class="d">14</span><span class="n">2</span><div class="hnames"><span class="ev m"><b>09:00</b>บจก. ลูกค้าตัวอย่าง 8</span><span class="ev m"><b>16:30</b>คุณลูกค้า สิบสอง</span></div></div>
-      <div class="hday h3" data-tip="15 ต.ค. · 7 งาน
-09:00 บจก. ลูกค้าตัวอย่าง 7 · สระบุรี · M
-10:00 คุณลูกค้า สี่ · หัวหิน · S
-11:30 คุณลูกค้า สิบสอง · พัฒนาการ · S
-13:00 บจก. ลูกค้าตัวอย่าง 1 · นนทบุรี · L
-14:00 คุณลูกค้า สี่ · นนทบุรี · XL
-15:00 บจก. ลูกค้าตัวอย่าง 7 · พัทยา · L
-16:30 คุณลูกค้า แปด · หัวหิน · S"><span class="d">15</span><span class="n">7</span><div class="hnames"><span class="ev m"><b>09:00</b>บจก. ลูกค้าตัวอย่าง 7</span><span class="ev s"><b>10:00</b>คุณลูกค้า สี่</span><span class="ev s"><b>11:30</b>คุณลูกค้า สิบสอง</span><span class="more">+4 ราย</span></div></div>
-      <div class="hday h4" data-tip="16 ต.ค. · 12 งาน
-09:00 คุณลูกค้า สาม · ปทุมวัน · L
-10:00 บจก. ลูกค้าตัวอย่าง 12 · หัวหิน · S
-10:30 บจก. ลูกค้าตัวอย่าง 3 · ปากน้ำ · S
-11:30 บจก. ลูกค้าตัวอย่าง 4 · ปากน้ำ · L
-12:30 คุณลูกค้า สี่ · ประชาชื่น · M
-13:00 บจก. ลูกค้าตัวอย่าง 11 · ประชาชื่น · S
-14:00 คุณลูกค้า สี่ · นครปฐม · M
-15:00 คุณลูกค้า แปด · พัฒนาการ · S
-15:30 คุณลูกค้า สี่ · ระยอง · S
-16:30 บจก. ลูกค้าตัวอย่าง 12 · ระยอง · S
-…และอีก 2 ราย"><span class="d">16</span><span class="n">12</span><div class="hnames"><span class="ev l"><b>09:00</b>คุณลูกค้า สาม</span><span class="ev s"><b>10:00</b>บจก. ลูกค้าตัวอย่าง 12</span><span class="ev s"><b>10:30</b>บจก. ลูกค้าตัวอย่าง 3</span><span class="more">+9 ราย</span></div></div>
+      <div class="hday h3" tabindex="0" role="button" data-tip="12 ต.ค. · 7 งาน
+09:00 บจก. ลูกค้าตัวอย่าง 3 · พัทยา · L3
+10:00 บจก. ลูกค้าตัวอย่าง 9 · สระบุรี · S1
+11:30 บจก. ลูกค้าตัวอย่าง 12 · ปากช่อง · S1
+13:00 บจก. ลูกค้าตัวอย่าง 12 · ปากน้ำ · XL3
+14:00 คุณลูกค้า หก · พระราม4 · S1
+15:00 คุณลูกค้า ห้า · สมุทรปราการ · S1
+16:30 คุณลูกค้า เก้า · ปากน้ำ · M3"><span class="d">12</span><span class="n">7</span><div class="hnames"><span class="ev l"><b>09:00</b>บจก. ลูกค้าตัวอย่าง 3</span><span class="ev s"><b>10:00</b>บจก. ลูกค้าตัวอย่าง 9</span><span class="ev s"><b>11:30</b>บจก. ลูกค้าตัวอย่าง 12</span><span class="more">+4 ราย</span></div></div>
+      <div class="hday h1" tabindex="0" role="button" data-tip="13 ต.ค. · 1 งาน
+09:00 คุณลูกค้า แปด · ประชาชื่น · S1"><span class="d">13</span><span class="n">1</span><div class="hnames"><span class="ev s"><b>09:00</b>คุณลูกค้า แปด</span></div></div>
+      <div class="hday h1" tabindex="0" role="button" data-tip="14 ต.ค. · 2 งาน
+09:00 บจก. ลูกค้าตัวอย่าง 8 · สุวินทวงศ์ · M1
+16:30 คุณลูกค้า สิบสอง · ปากน้ำ · M3"><span class="d">14</span><span class="n">2</span><div class="hnames"><span class="ev m"><b>09:00</b>บจก. ลูกค้าตัวอย่าง 8</span><span class="ev m"><b>16:30</b>คุณลูกค้า สิบสอง</span></div></div>
+      <div class="hday h3" tabindex="0" role="button" data-tip="15 ต.ค. · 7 งาน
+09:00 บจก. ลูกค้าตัวอย่าง 7 · สระบุรี · M3
+10:00 คุณลูกค้า สี่ · หัวหิน · S1
+11:30 คุณลูกค้า สิบสอง · พัฒนาการ · S1
+13:00 บจก. ลูกค้าตัวอย่าง 1 · นนทบุรี · L3
+14:00 คุณลูกค้า สี่ · นนทบุรี · XL1
+15:00 บจก. ลูกค้าตัวอย่าง 7 · พัทยา · L1
+16:30 คุณลูกค้า แปด · หัวหิน · S3"><span class="d">15</span><span class="n">7</span><div class="hnames"><span class="ev m"><b>09:00</b>บจก. ลูกค้าตัวอย่าง 7</span><span class="ev s"><b>10:00</b>คุณลูกค้า สี่</span><span class="ev s"><b>11:30</b>คุณลูกค้า สิบสอง</span><span class="more">+4 ราย</span></div></div>
+      <div class="hday h4" tabindex="0" role="button" data-tip="16 ต.ค. · 12 งาน
+09:00 คุณลูกค้า สาม · ปทุมวัน · L1
+09:30 บจก. ลูกค้าตัวอย่าง 12 · หัวหิน · S1
+10:30 บจก. ลูกค้าตัวอย่าง 3 · ปากน้ำ · S3
+11:00 บจก. ลูกค้าตัวอย่าง 4 · ปากน้ำ · L1
+11:30 คุณลูกค้า สี่ · ประชาชื่น · M1
+12:30 บจก. ลูกค้าตัวอย่าง 11 · ประชาชื่น · S3
+13:00 คุณลูกค้า สี่ · นครปฐม · M1
+14:00 คุณลูกค้า แปด · พัฒนาการ · S1
+14:30 คุณลูกค้า สี่ · ระยอง · S3
+15:00 บจก. ลูกค้าตัวอย่าง 12 · ระยอง · S1
+16:00 คุณลูกค้า ห้า · ชลบุรี · S1
+16:30 บจก. ลูกค้าตัวอย่าง 6 · พระราม4 · L3"><span class="d">16</span><span class="n">12</span><div class="hnames"><span class="ev l"><b>09:00</b>คุณลูกค้า สาม</span><span class="ev s"><b>09:30</b>บจก. ลูกค้าตัวอย่าง 12</span><span class="ev s"><b>10:30</b>บจก. ลูกค้าตัวอย่าง 3</span><span class="more">+9 ราย</span></div></div>
       <div class="hday h0 we" data-tip="17 ต.ค. · ไม่มีงาน"><span class="d">17</span><span class="n"></span><div class="hnames"></div></div>
       <div class="hday h0 we" data-tip="18 ต.ค. · ไม่มีงาน"><span class="d">18</span><span class="n"></span><div class="hnames"></div></div>
-      <div class="hday h2" data-tip="19 ต.ค. · 4 งาน
-09:00 คุณลูกค้า สิบเอ็ด · ประชาชื่น · S
-11:30 คุณลูกค้า สี่ · ปากช่อง · S
-14:00 คุณลูกค้า สอง · ระยอง · M
-16:30 บจก. ลูกค้าตัวอย่าง 11 · รามอินทรา · M"><span class="d">19</span><span class="n">4</span><div class="hnames"><span class="ev s"><b>09:00</b>คุณลูกค้า สิบเอ็ด</span><span class="ev s"><b>11:30</b>คุณลูกค้า สี่</span><span class="ev m"><b>14:00</b>คุณลูกค้า สอง</span><span class="more">+1 ราย</span></div></div>
-      <div class="hday h3" data-tip="20 ต.ค. · 9 งาน
-09:00 คุณลูกค้า สิบสอง · สุวินทวงศ์ · S
-10:00 คุณลูกค้า สาม · สุวินทวงศ์ · L
-11:00 คุณลูกค้า สิบสอง · รามอินทรา · XL
-12:00 คุณลูกค้า สิบสอง · ปากช่อง · S
-13:00 บจก. ลูกค้าตัวอย่าง 6 · สุขุมวิท · S
-13:30 บจก. ลูกค้าตัวอย่าง 1 · สุขุมวิท · S
-14:30 คุณลูกค้า เจ็ด · ปทุมธานี · XL
-15:30 คุณลูกค้า เก้า · สุขุมวิท · L
-16:30 คุณลูกค้า แปด · นครปฐม · M"><span class="d">20</span><span class="n">9</span><div class="hnames"><span class="ev s"><b>09:00</b>คุณลูกค้า สิบสอง</span><span class="ev l"><b>10:00</b>คุณลูกค้า สาม</span><span class="ev xl"><b>11:00</b>คุณลูกค้า สิบสอง</span><span class="more">+6 ราย</span></div></div>
-      <div class="hday h4" data-tip="21 ต.ค. · 13 งาน
-09:00 คุณลูกค้า สี่ · ปราจีนบุรี · S
-10:00 บจก. ลูกค้าตัวอย่าง 12 · สุขุมวิท · M
-10:30 คุณลูกค้า หก · พระราม4 · L
-11:30 บจก. ลูกค้าตัวอย่าง 5 · พัฒนาการ · L
-12:30 บจก. ลูกค้าตัวอย่าง 1 · ปทุมวัน · M
-13:00 คุณลูกค้า เก้า · พุทธมณฑล · M
-14:00 คุณลูกค้า ห้า · ปทุมวัน · S
-15:00 บจก. ลูกค้าตัวอย่าง 5 · ชลบุรี · L
-15:30 บจก. ลูกค้าตัวอย่าง 7 · ประชาชื่น · S
-16:30 บจก. ลูกค้าตัวอย่าง 1 · นนทบุรี · S
-…และอีก 3 ราย"><span class="d">21</span><span class="n">13</span><div class="hnames"><span class="ev s"><b>09:00</b>คุณลูกค้า สี่</span><span class="ev m"><b>10:00</b>บจก. ลูกค้าตัวอย่าง 12</span><span class="ev l"><b>10:30</b>คุณลูกค้า หก</span><span class="more">+10 ราย</span></div></div>
-      <div class="hday h3" data-tip="22 ต.ค. · 9 งาน
-09:00 บจก. ลูกค้าตัวอย่าง 9 · พระราม4 · S
-10:00 คุณลูกค้า สอง · สุขุมวิท · S
-11:00 บจก. ลูกค้าตัวอย่าง 2 · ปทุมวัน · S
-12:00 บจก. ลูกค้าตัวอย่าง 12 · ปทุมธานี · M
-13:00 คุณลูกค้า สิบ · อยุธยา · S
-13:30 คุณลูกค้า ห้า · ชลบุรี · S
-14:30 คุณลูกค้า ห้า · สุขุมวิท · M
-15:30 คุณลูกค้า หก · สุขุมวิท · S
-16:30 คุณลูกค้า ห้า · สระบุรี · L"><span class="d">22</span><span class="n">9</span><div class="hnames"><span class="ev s"><b>09:00</b>บจก. ลูกค้าตัวอย่าง 9</span><span class="ev s"><b>10:00</b>คุณลูกค้า สอง</span><span class="ev s"><b>11:00</b>บจก. ลูกค้าตัวอย่าง 2</span><span class="more">+6 ราย</span></div></div>
-      <div class="hday h2" data-tip="23 ต.ค. · 6 งาน
-09:00 บจก. ลูกค้าตัวอย่าง 1 · ปทุมธานี · S
-10:30 บจก. ลูกค้าตัวอย่าง 6 · นครปฐม · L
-12:00 บจก. ลูกค้าตัวอย่าง 1 · สุขุมวิท · M
-13:30 บจก. ลูกค้าตัวอย่าง 6 · สุขุมวิท · S
-15:00 คุณลูกค้า สี่ · นครปฐม · L
-16:30 คุณลูกค้า สิบสอง · พุทธมณฑล · L"><span class="d">23</span><span class="n">6</span><div class="hnames"><span class="ev s"><b>09:00</b>บจก. ลูกค้าตัวอย่าง 1</span><span class="ev l"><b>10:30</b>บจก. ลูกค้าตัวอย่าง 6</span><span class="ev m"><b>12:00</b>บจก. ลูกค้าตัวอย่าง 1</span><span class="more">+3 ราย</span></div></div>
-      <div class="hday h2 we" data-tip="24 ต.ค. · 4 งาน
-09:00 คุณลูกค้า หก · ลาดพร้าว · M
-11:30 บจก. ลูกค้าตัวอย่าง 11 · ปราจีนบุรี · S
-14:00 คุณลูกค้า ห้า · สระบุรี · M
-16:30 คุณลูกค้า หก · สาทร · S"><span class="d">24</span><span class="n">4</span><div class="hnames"><span class="ev m"><b>09:00</b>คุณลูกค้า หก</span><span class="ev s"><b>11:30</b>บจก. ลูกค้าตัวอย่าง 11</span><span class="ev m"><b>14:00</b>คุณลูกค้า ห้า</span><span class="more">+1 ราย</span></div></div>
+      <div class="hday h2" tabindex="0" role="button" data-tip="19 ต.ค. · 4 งาน
+09:00 คุณลูกค้า สิบเอ็ด · ประชาชื่น · S1
+11:30 คุณลูกค้า สี่ · ปากช่อง · S1
+14:00 คุณลูกค้า สอง · ระยอง · M3
+16:30 บจก. ลูกค้าตัวอย่าง 11 · รามอินทรา · M1"><span class="d">19</span><span class="n">4</span><div class="hnames"><span class="ev s"><b>09:00</b>คุณลูกค้า สิบเอ็ด</span><span class="ev s"><b>11:30</b>คุณลูกค้า สี่</span><span class="ev m"><b>14:00</b>คุณลูกค้า สอง</span><span class="more">+1 ราย</span></div></div>
+      <div class="hday h3" tabindex="0" role="button" data-tip="20 ต.ค. · 9 งาน
+09:00 คุณลูกค้า สิบสอง · สุวินทวงศ์ · S1
+10:00 คุณลูกค้า สาม · สุวินทวงศ์ · L3
+11:00 คุณลูกค้า สิบสอง · รามอินทรา · XL1
+12:00 คุณลูกค้า สิบสอง · ปากช่อง · S1
+13:00 บจก. ลูกค้าตัวอย่าง 6 · สุขุมวิท · S3
+13:30 บจก. ลูกค้าตัวอย่าง 1 · สุขุมวิท · S1
+14:30 คุณลูกค้า เจ็ด · ปทุมธานี · XL1
+15:30 คุณลูกค้า เก้า · สุขุมวิท · L3
+16:30 คุณลูกค้า แปด · นครปฐม · M1"><span class="d">20</span><span class="n">9</span><div class="hnames"><span class="ev s"><b>09:00</b>คุณลูกค้า สิบสอง</span><span class="ev l"><b>10:00</b>คุณลูกค้า สาม</span><span class="ev xl"><b>11:00</b>คุณลูกค้า สิบสอง</span><span class="more">+6 ราย</span></div></div>
+      <div class="hday h4" tabindex="0" role="button" data-tip="21 ต.ค. · 13 งาน
+09:00 คุณลูกค้า สี่ · ปราจีนบุรี · S3
+09:30 บจก. ลูกค้าตัวอย่าง 12 · สุขุมวิท · M1
+10:00 คุณลูกค้า หก · พระราม4 · L1
+11:00 บจก. ลูกค้าตัวอย่าง 5 · พัฒนาการ · L3
+11:30 บจก. ลูกค้าตัวอย่าง 1 · ปทุมวัน · M1
+12:00 คุณลูกค้า เก้า · พุทธมณฑล · M1
+13:00 คุณลูกค้า ห้า · ปทุมวัน · S3
+13:30 บจก. ลูกค้าตัวอย่าง 5 · ชลบุรี · L1
+14:00 บจก. ลูกค้าตัวอย่าง 7 · ประชาชื่น · S1
+14:30 บจก. ลูกค้าตัวอย่าง 1 · นนทบุรี · S3
+15:00 บจก. ลูกค้าตัวอย่าง 4 · ลาดพร้าว · L1
+16:00 คุณลูกค้า ห้า · ปากช่อง · S1
+16:30 บจก. ลูกค้าตัวอย่าง 6 · พระราม2 · M3"><span class="d">21</span><span class="n">13</span><div class="hnames"><span class="ev s"><b>09:00</b>คุณลูกค้า สี่</span><span class="ev m"><b>09:30</b>บจก. ลูกค้าตัวอย่าง 12</span><span class="ev l"><b>10:00</b>คุณลูกค้า หก</span><span class="more">+10 ราย</span></div></div>
+      <div class="hday h3" tabindex="0" role="button" data-tip="22 ต.ค. · 9 งาน
+09:00 บจก. ลูกค้าตัวอย่าง 9 · พระราม4 · S1
+10:00 คุณลูกค้า สอง · สุขุมวิท · S1
+11:00 บจก. ลูกค้าตัวอย่าง 2 · ปทุมวัน · S3
+12:00 บจก. ลูกค้าตัวอย่าง 12 · ปทุมธานี · M1
+13:00 คุณลูกค้า สิบ · อยุธยา · S1
+13:30 คุณลูกค้า ห้า · ชลบุรี · S3
+14:30 คุณลูกค้า ห้า · สุขุมวิท · M1
+15:30 คุณลูกค้า หก · สุขุมวิท · S1
+16:30 คุณลูกค้า ห้า · สระบุรี · L3"><span class="d">22</span><span class="n">9</span><div class="hnames"><span class="ev s"><b>09:00</b>บจก. ลูกค้าตัวอย่าง 9</span><span class="ev s"><b>10:00</b>คุณลูกค้า สอง</span><span class="ev s"><b>11:00</b>บจก. ลูกค้าตัวอย่าง 2</span><span class="more">+6 ราย</span></div></div>
+      <div class="hday h2" tabindex="0" role="button" data-tip="23 ต.ค. · 6 งาน
+09:00 บจก. ลูกค้าตัวอย่าง 1 · ปทุมธานี · S1
+10:30 บจก. ลูกค้าตัวอย่าง 6 · นครปฐม · L3
+12:00 บจก. ลูกค้าตัวอย่าง 1 · สุขุมวิท · M1
+13:30 บจก. ลูกค้าตัวอย่าง 6 · สุขุมวิท · S1
+15:00 คุณลูกค้า สี่ · นครปฐม · L3
+16:30 คุณลูกค้า สิบสอง · พุทธมณฑล · L1"><span class="d">23</span><span class="n">6</span><div class="hnames"><span class="ev s"><b>09:00</b>บจก. ลูกค้าตัวอย่าง 1</span><span class="ev l"><b>10:30</b>บจก. ลูกค้าตัวอย่าง 6</span><span class="ev m"><b>12:00</b>บจก. ลูกค้าตัวอย่าง 1</span><span class="more">+3 ราย</span></div></div>
+      <div class="hday h2 we" tabindex="0" role="button" data-tip="24 ต.ค. · 4 งาน
+09:00 คุณลูกค้า หก · ลาดพร้าว · M3
+11:30 บจก. ลูกค้าตัวอย่าง 11 · ปราจีนบุรี · S1
+14:00 คุณลูกค้า ห้า · สระบุรี · M1
+16:30 คุณลูกค้า หก · สาทร · S3"><span class="d">24</span><span class="n">4</span><div class="hnames"><span class="ev m"><b>09:00</b>คุณลูกค้า หก</span><span class="ev s"><b>11:30</b>บจก. ลูกค้าตัวอย่าง 11</span><span class="ev m"><b>14:00</b>คุณลูกค้า ห้า</span><span class="more">+1 ราย</span></div></div>
       <div class="hday h0 we" data-tip="25 ต.ค. · ไม่มีงาน"><span class="d">25</span><span class="n"></span><div class="hnames"></div></div>
-      <div class="hday h1" data-tip="26 ต.ค. · 1 งาน
-09:00 บจก. ลูกค้าตัวอย่าง 4 · พระราม4 · S"><span class="d">26</span><span class="n">1</span><div class="hnames"><span class="ev s"><b>09:00</b>บจก. ลูกค้าตัวอย่าง 4</span></div></div>
-      <div class="hday h4" data-tip="27 ต.ค. · 12 งาน
-09:00 บจก. ลูกค้าตัวอย่าง 2 · ปากน้ำ · XL
-10:00 บจก. ลูกค้าตัวอย่าง 7 · นนทบุรี · S
-10:30 บจก. ลูกค้าตัวอย่าง 2 · พุทธมณฑล · M
-11:30 คุณลูกค้า ห้า · ปทุมธานี · S
-12:30 คุณลูกค้า หก · พัฒนาการ · S
-13:00 บจก. ลูกค้าตัวอย่าง 3 · ปทุมธานี · M
-14:00 บจก. ลูกค้าตัวอย่าง 11 · นครปฐม · S
-15:00 คุณลูกค้า ห้า · นครปฐม · S
-15:30 คุณลูกค้า ห้า · ประชาชื่น · M
-16:30 คุณลูกค้า สิบเอ็ด · นนทบุรี · S
-…และอีก 2 ราย"><span class="d">27</span><span class="n">12</span><div class="hnames"><span class="ev xl"><b>09:00</b>บจก. ลูกค้าตัวอย่าง 2</span><span class="ev s"><b>10:00</b>บจก. ลูกค้าตัวอย่าง 7</span><span class="ev m"><b>10:30</b>บจก. ลูกค้าตัวอย่าง 2</span><span class="more">+9 ราย</span></div></div>
-      <div class="hday h2" data-tip="28 ต.ค. · 5 งาน
-09:00 คุณลูกค้า ห้า · ปากน้ำ · S
-11:00 คุณลูกค้า สิบเอ็ด · สระบุรี · M
-13:00 บจก. ลูกค้าตัวอย่าง 9 · พระราม4 · S
-14:30 บจก. ลูกค้าตัวอย่าง 7 · ปทุมธานี · M
-16:30 บจก. ลูกค้าตัวอย่าง 5 · ชลบุรี · M"><span class="d">28</span><span class="n">5</span><div class="hnames"><span class="ev s"><b>09:00</b>คุณลูกค้า ห้า</span><span class="ev m"><b>11:00</b>คุณลูกค้า สิบเอ็ด</span><span class="ev s"><b>13:00</b>บจก. ลูกค้าตัวอย่าง 9</span><span class="more">+2 ราย</span></div></div>
-      <div class="hday h1" data-tip="29 ต.ค. · 2 งาน
-09:00 บจก. ลูกค้าตัวอย่าง 4 · สุวินทวงศ์ · S
-16:30 คุณลูกค้า สาม · สมุทรปราการ · S"><span class="d">29</span><span class="n">2</span><div class="hnames"><span class="ev s"><b>09:00</b>บจก. ลูกค้าตัวอย่าง 4</span><span class="ev s"><b>16:30</b>คุณลูกค้า สาม</span></div></div>
-      <div class="hday h1" data-tip="30 ต.ค. · 2 งาน
-09:00 บจก. ลูกค้าตัวอย่าง 3 · ปราจีนบุรี · S
-16:30 บจก. ลูกค้าตัวอย่าง 8 · ชลบุรี · S"><span class="d">30</span><span class="n">2</span><div class="hnames"><span class="ev s"><b>09:00</b>บจก. ลูกค้าตัวอย่าง 3</span><span class="ev s"><b>16:30</b>บจก. ลูกค้าตัวอย่าง 8</span></div></div>
-      <div class="hday h1 we" data-tip="31 ต.ค. · 1 งาน
-09:00 บจก. ลูกค้าตัวอย่าง 3 · ประชาชื่น · S"><span class="d">31</span><span class="n">1</span><div class="hnames"><span class="ev s"><b>09:00</b>บจก. ลูกค้าตัวอย่าง 3</span></div></div>
+      <div class="hday h1" tabindex="0" role="button" data-tip="26 ต.ค. · 1 งาน
+09:00 บจก. ลูกค้าตัวอย่าง 4 · พระราม4 · S1"><span class="d">26</span><span class="n">1</span><div class="hnames"><span class="ev s"><b>09:00</b>บจก. ลูกค้าตัวอย่าง 4</span></div></div>
+      <div class="hday h4" tabindex="0" role="button" data-tip="27 ต.ค. · 12 งาน
+09:00 บจก. ลูกค้าตัวอย่าง 2 · ปากน้ำ · XL3
+09:30 บจก. ลูกค้าตัวอย่าง 7 · นนทบุรี · S1
+10:30 บจก. ลูกค้าตัวอย่าง 2 · พุทธมณฑล · M1
+11:00 คุณลูกค้า ห้า · ปทุมธานี · S3
+11:30 คุณลูกค้า หก · พัฒนาการ · S1
+12:30 บจก. ลูกค้าตัวอย่าง 3 · ปทุมธานี · M1
+13:00 บจก. ลูกค้าตัวอย่าง 11 · นครปฐม · S3
+14:00 คุณลูกค้า ห้า · นครปฐม · S1
+14:30 คุณลูกค้า ห้า · ประชาชื่น · M1
+15:00 คุณลูกค้า สิบเอ็ด · นนทบุรี · S3
+16:00 คุณลูกค้า สิบ · สาทร · XL1
+16:30 บจก. ลูกค้าตัวอย่าง 11 · นครปฐม · S1"><span class="d">27</span><span class="n">12</span><div class="hnames"><span class="ev xl"><b>09:00</b>บจก. ลูกค้าตัวอย่าง 2</span><span class="ev s"><b>09:30</b>บจก. ลูกค้าตัวอย่าง 7</span><span class="ev m"><b>10:30</b>บจก. ลูกค้าตัวอย่าง 2</span><span class="more">+9 ราย</span></div></div>
+      <div class="hday h2" tabindex="0" role="button" data-tip="28 ต.ค. · 5 งาน
+09:00 คุณลูกค้า ห้า · ปากน้ำ · S1
+11:00 คุณลูกค้า สิบเอ็ด · สระบุรี · M1
+13:00 บจก. ลูกค้าตัวอย่าง 9 · พระราม4 · S3
+14:30 บจก. ลูกค้าตัวอย่าง 7 · ปทุมธานี · M1
+16:30 บจก. ลูกค้าตัวอย่าง 5 · ชลบุรี · M1"><span class="d">28</span><span class="n">5</span><div class="hnames"><span class="ev s"><b>09:00</b>คุณลูกค้า ห้า</span><span class="ev m"><b>11:00</b>คุณลูกค้า สิบเอ็ด</span><span class="ev s"><b>13:00</b>บจก. ลูกค้าตัวอย่าง 9</span><span class="more">+2 ราย</span></div></div>
+      <div class="hday h1" tabindex="0" role="button" data-tip="29 ต.ค. · 2 งาน
+09:00 บจก. ลูกค้าตัวอย่าง 4 · สุวินทวงศ์ · S1
+16:30 คุณลูกค้า สาม · สมุทรปราการ · S3"><span class="d">29</span><span class="n">2</span><div class="hnames"><span class="ev s"><b>09:00</b>บจก. ลูกค้าตัวอย่าง 4</span><span class="ev s"><b>16:30</b>คุณลูกค้า สาม</span></div></div>
+      <div class="hday h1" tabindex="0" role="button" data-tip="30 ต.ค. · 2 งาน
+09:00 บจก. ลูกค้าตัวอย่าง 3 · ปราจีนบุรี · S3
+16:30 บจก. ลูกค้าตัวอย่าง 8 · ชลบุรี · S1"><span class="d">30</span><span class="n">2</span><div class="hnames"><span class="ev s"><b>09:00</b>บจก. ลูกค้าตัวอย่าง 3</span><span class="ev s"><b>16:30</b>บจก. ลูกค้าตัวอย่าง 8</span></div></div>
+      <div class="hday h1 we" tabindex="0" role="button" data-tip="31 ต.ค. · 1 งาน
+09:00 บจก. ลูกค้าตัวอย่าง 3 · ประชาชื่น · S1"><span class="d">31</span><span class="n">1</span><div class="hnames"><span class="ev s"><b>09:00</b>บจก. ลูกค้าตัวอย่าง 3</span></div></div>
+    </div></div>
     </div><div class="tb"><i style="width:100.0%;background:var(--tier-s)"></i></div></div>
     </div>
     <div class="hint">พื้นเซลล์เข้ม = วันนั้นงานเยอะ · แต่ละบรรทัด = 1 งาน <b>เวลานัด + ชื่อลูกค้า</b> เรียงตามเวลา พื้น/แถบซ้ายบอก Tier · ในเซลล์โชว์ 3 รายแรก · <b>ชี้ที่วันเพื่อดูรายการเต็ม</b> (เวลา · ชื่อลูกค้า · สาขา · Tier)</div>
   </div>
 </div>
 
+
+<div id="dayov" class="dayov" hidden>
+  <div class="daybox" role="dialog" aria-modal="true" aria-labelledby="dayttl">
+    <div class="dayhd">
+      <b id="dayttl">—</b><span class="chip info num" id="daycnt"></span>
+      <span style="flex:1"></span>
+      <button class="btn sm" type="button" onclick="dayClose()">ปิด</button>
+    </div>
+    <div class="daybody"><table class="daytab"><tbody id="dayrows"></tbody></table></div>
+    <div class="dayft">
+      <span>เรียงตามเวลานัด · คลิกแถวเพื่อเปิดสัญญาในตารางเปิดงาน</span>
+      <span style="flex:1"></span>
+      <button class="btn sm" type="button">+ เพิ่มงานวันนี้</button>
+    </div>
+  </div>
+</div>
 
 <div id="tmpop" class="tmpop" hidden>
   <div class="tmttl">เลือกเวลา (24 ชม.) <span class="pv" id="tmpv">—:—</span></div>
@@ -771,6 +815,40 @@ window.addEventListener('scroll',function(e){
   tmPlace();                              // เลื่อนหน้า/ตารางจริง → ขยับ popup ตามปุ่ม
 },true);
 window.addEventListener('resize', tmPlace);
+
+/* ===== popup รายวัน =====
+   อ่านงานทั้งวันจาก data-tip ของช่องวัน (บรรทัดละ "HH:MM ชื่อ · สาขา · Tier")
+   เซลล์โชว์แค่ 3 รายแรก popup นี้จึงเป็นที่ดูครบทั้งวัน */
+var dayOv=document.getElementById('dayov');
+function dayOpen(cell){
+  var ln=(cell.getAttribute('data-tip')||'').split('\n');
+  var jobs=ln.slice(1).filter(function(s){return s.trim();});
+  if(!jobs.length) return;                        // วันไม่มีงาน ไม่ต้องเปิด
+  document.getElementById('dayttl').textContent=ln[0].split('·')[0].trim()+' 2026';
+  document.getElementById('daycnt').textContent=jobs.length+' งาน';
+  var html='';
+  jobs.forEach(function(j){
+    var parts=j.slice(6).split('·');
+    var tier=(parts[2]||'').trim();
+    html+='<tr><td class="tm">'+j.slice(0,5)+'</td>'+
+          '<td class="nm">'+parts[0].trim()+'</td>'+
+          '<td class="br">'+(parts[1]||'').trim()+'</td>'+
+          '<td class="c"><span class="tier '+tier.toLowerCase()+'">'+tier+'</span></td></tr>';
+  });
+  document.getElementById('dayrows').innerHTML=html;
+  dayOv.hidden=false; document.body.style.overflow='hidden';
+}
+function dayClose(){ dayOv.hidden=true; document.body.style.overflow=''; }
+var hcal=document.querySelector('.hcal');
+hcal.addEventListener('click',function(e){
+  var c=e.target.closest('.hday[data-tip]'); if(c) dayOpen(c); });
+hcal.addEventListener('keydown',function(e){
+  if(e.key!=='Enter'&&e.key!==' ') return;
+  var c=e.target.closest('.hday[tabindex]'); if(!c) return;
+  e.preventDefault(); dayOpen(c); });
+dayOv.addEventListener('mousedown',function(e){ if(e.target===dayOv) dayClose(); });
+document.addEventListener('keydown',function(e){
+  if(e.key==='Escape'&&!dayOv.hidden) dayClose(); });
 
 /* สาขา -> เขต (ทะเบียนจริง 24 สาขา ส่วนกลาง) */
 var BRZONE={'พัฒนาการ':'C4','ลาดพร้าว':'C4','ประชาชื่น':'C4','สุวินทวงศ์':'C4',
