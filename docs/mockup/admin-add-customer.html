@@ -132,6 +132,10 @@ tr.badrow td{background:var(--danger-soft) !important}
 .mini-t th{background:var(--surface-2);padding:6px 12px;font-size:11px}
 .mini-t td{padding:5px 12px}
 .mini-t tfoot td{background:var(--surface-2);font-weight:700;border-top:1px solid var(--border-strong)}
+/* หัว 2 ชั้นของตารางเมทริกซ์ New/Renew × Tier */
+.mini-t th.grp{background:var(--surface-3);color:var(--fg);border-bottom:1px solid var(--border)}
+.mini-t th.sub{background:var(--surface-3);color:var(--fg-muted);font-weight:600}
+.mini-t .gl{border-left:1px solid var(--border-strong)}
 
 /* ===== ปฏิทิน heat map รายวัน =====
    พื้นเซลล์ = จำนวนงาน (เทาไล่เฉด สีกลาง ไม่ชนกับ Tier)
@@ -498,17 +502,35 @@ table.xl .tmbtn.wait{background:var(--warn-soft);color:var(--warn)}
         <tfoot><tr><td>รวม</td><td class="r num">130</td></tr></tfoot>
       </table>
       <table class="mini-t">
-        <thead><tr><th>Size</th><th class="r">1 ปี</th><th class="r">3 ปี</th><th class="r">รวม</th></tr></thead>
+        <thead>
+          <tr>
+            <th rowspan="2">Size</th>
+            <th colspan="2" class="c grp gl">New</th>
+            <th colspan="2" class="c grp gl">Renew</th>
+            <th rowspan="2" class="r gl">รวม</th>
+          </tr>
+          <tr>
+            <th class="r sub gl">1 ปี</th><th class="r sub">3 ปี</th>
+            <th class="r sub gl">1 ปี</th><th class="r sub">3 ปี</th>
+          </tr>
+        </thead>
         <tbody>
-          <tr><td><span class="tier s">S</span></td><td class="r num">45</td><td class="r num">25</td><td class="r num">70</td></tr>
-          <tr><td><span class="tier m">M</span></td><td class="r num">20</td><td class="r num">12</td><td class="r num">32</td></tr>
-          <tr><td><span class="tier l">L</span></td><td class="r num">12</td><td class="r num">7</td><td class="r num">19</td></tr>
-          <tr><td><span class="tier xl">XL</span></td><td class="r num">6</td><td class="r num">3</td><td class="r num">9</td></tr>
+          <tr><td><span class="tier s">S</span></td><td class="r num gl">20</td><td class="r num">11</td><td class="r num gl">25</td><td class="r num">14</td><td class="r num gl">70</td></tr>
+          <tr><td><span class="tier m">M</span></td><td class="r num gl">9</td><td class="r num">5</td><td class="r num gl">11</td><td class="r num">7</td><td class="r num gl">32</td></tr>
+          <tr><td><span class="tier l">L</span></td><td class="r num gl">5</td><td class="r num">3</td><td class="r num gl">7</td><td class="r num">4</td><td class="r num gl">19</td></tr>
+          <tr><td><span class="tier xl">XL</span></td><td class="r num gl">3</td><td class="r num">1</td><td class="r num gl">3</td><td class="r num">2</td><td class="r num gl">9</td></tr>
         </tbody>
-        <tfoot><tr><td>รวม</td><td class="r num">83</td><td class="r num">47</td><td class="r num">130</td></tr></tfoot>
+        <tfoot>
+          <tr><td>รวม</td><td class="r num gl">37</td><td class="r num">20</td><td class="r num gl">46</td><td class="r num">27</td><td class="r num gl">130</td></tr>
+          <tr><td style="font-weight:400;color:var(--fg-muted)">รวมประเภท</td>
+            <td colspan="2" class="c num gl">New 57</td>
+            <td colspan="2" class="c num gl">Renew 73</td>
+            <td class="gl"></td></tr>
+        </tfoot>
       </table>
       <div style="font-size:11.5px;color:var(--fg-muted);max-width:250px">
-        บล็อกนี้ตรงกับที่อยู่ด้านขวาของชีทเดิม — ต่างกันตรงที่<b>ระบบนับให้เอง</b>จากแถวในตาราง ไม่ต้องมาพิมพ์สรุปซ้ำ
+        บล็อกนี้ตรงกับที่อยู่ด้านขวาของชีทเดิม — ต่างกันตรงที่<b>ระบบนับให้เอง</b>จากแถวในตาราง ไม่ต้องมาพิมพ์สรุปซ้ำ<br><br>
+        ตาราง Size ซอยละเอียดกว่าชีทเดิม: แยก <b>New / Renew</b> คร่อม 1 ปี/3 ปี ในตารางเดียว เห็นได้เลยว่าลูกค้าใหม่กับต่อสัญญาอยู่ Tier ไหน
       </div>
     </div>
   </div>
