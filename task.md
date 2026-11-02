@@ -8,16 +8,26 @@
 
 ## สถานะภาพรวม
 
+### เฟสออกแบบ (ก่อนเขียนโค้ด)
 | ด้าน | สถานะ | หมายเหตุ |
 |---|---|---|
-| เอกสาร (SPEC/CLAUDE) | ✅ มีแล้ว | SPEC v1.0 |
-| Git + GitHub | ✅ เชื่อมแล้ว | `13azukaoab/AGA-Bait-Registry` branch `main` |
-| โครงNext.js + TS | ⬜ ยังไม่เริ่ม | |
-| lib/rules + unit test | ⬜ ยังไม่เริ่ม | core logic ตาม CLAUDE.md |
-| DB schema + RLS (Supabase) | ⬜ ยังไม่เริ่ม | |
-| นำเข้าสัญญา (หน้าจอ 7) | ⬜ ยังไม่เริ่ม | |
-| Snapshot + Dashboard Sync | ⬜ ยังไม่เริ่ม | |
-| fixtures (ข้อมูลทดสอบจริง) | ⚠️ ยังไม่มีไฟล์ | รอเจ้าของส่ง `zone1_registry.*`, `dashboard_data.json` |
+| เอกสาร (SPEC/CLAUDE) | ✅ เสร็จ | SPEC v1.1 |
+| Git + GitHub | ✅ เสร็จ | `13azukaoab/AGA-Bait-Registry` branch `main` |
+| mockup ภาพรวมระบบ 7 หน้า | ✅ เสร็จ | `docs/mockup/aga-bait-registry-prototype.html` |
+| mockup หน้า admin "เปิดงาน" | ✅ เสร็จ | `docs/mockup/admin-add-customer.html` — ตาราง 22 คอลัมน์ + ปฏิทิน + 4 modal |
+| วิเคราะห์ไฟล์จริง ต.ค.2026 | ✅ เสร็จ | 133 สัญญา · พบปัญหาข้อมูล 10 แบบ · ตัวเลขใน mockup ใช้ของจริงแล้ว |
+| master data | ✅ ตัดสินครบ | 24 สาขา→เขต · ทีม A–O/Z/Sup (เลือกได้หลายทีม) · ประเภทลูกค้า 14 ค่า 4 หมวด · Sale/AM |
+| flow + บทบาท 5 role | ✅ เสร็จ | `aga_bait_central_workflow_roles.svg` (ยังไม่ commit) |
+
+### เฟสสร้างจริง (ยังไม่เริ่มสักตัว)
+| ด้าน | สถานะ | หมายเหตุ |
+|---|---|---|
+| โครง Next.js + TS + PWA | ⬜ ยังไม่เริ่ม | |
+| `lib/rules` + unit test | ⬜ ยังไม่เริ่ม | มีแผน TDD แล้วที่ `docs/plans/2026-10-15-lib-rules.md` |
+| DB schema + RLS (Supabase) | ⬜ ยังไม่เริ่ม | SPEC §5, §6 |
+| นำเข้าสัญญา (หน้าจอ 7) | ⬜ ยังไม่เริ่ม | ตารางแปลงค่าเก่า→ใหม่ เตรียมไว้แล้ว |
+| Snapshot + Dashboard Sync | ⬜ ยังไม่เริ่ม | SPEC §9 |
+| fixtures เขต 1 (`zone1_registry.*`) | ⚠️ รอไฟล์ | ใช้ตรวจเกณฑ์ยอมรับ §15 |
 
 **ความหมายสัญลักษณ์:** ✅ เสร็จ · 🔄 กำลังทำ · ⬜ ยังไม่เริ่ม · ⚠️ ติด/รอข้อมูล
 
