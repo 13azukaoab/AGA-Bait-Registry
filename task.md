@@ -13,7 +13,7 @@
 |---|---|---|
 | เอกสาร (SPEC/CLAUDE) | ✅ เสร็จ | SPEC v1.1 |
 | Git + GitHub | ✅ เสร็จ | `13azukaoab/AGA-Bait-Registry` branch `main` |
-| mockup ภาพรวมระบบ 7 หน้า | ✅ เสร็จ | `docs/mockup/aga-bait-registry-prototype.html` |
+| mockup ภาพรวมระบบ 7 หน้า (หัวหน้างาน) | ✅ เสร็จ | `docs/mockup/aga-bait-registry-prototype.html` · 2 พ.ย. เพิ่ม responsive PC + เมนู ☰ จอเล็ก (รวม main แล้ว PR #1) |
 | mockup หน้า admin "เปิดงาน" | ✅ เสร็จ | `docs/mockup/admin-add-customer.html` — ตาราง 22 คอลัมน์ + ปฏิทิน + 4 modal |
 | วิเคราะห์ไฟล์จริง ต.ค.2026 | ✅ เสร็จ | 133 สัญญา · พบปัญหาข้อมูล 10 แบบ · ตัวเลขใน mockup ใช้ของจริงแล้ว |
 | master data | ✅ ตัดสินครบ | 24 สาขา→เขต · ทีม A–O/Z/Sup (เลือกได้หลายทีม) · ประเภทลูกค้า 14 ค่า 4 หมวด · Sale/AM |
@@ -44,6 +44,8 @@
 > **✅ งานวันที่ 30 ต.ค. push ขึ้น GitHub ครบแล้ว** (9 commit ถึง `f87ab06`) — repo ตรงกับเครื่อง
 >
 > **ตอบครบแล้วทั้ง 2 คำถาม** — master ประเภทลูกค้า 12 ค่า (เจ้าของกำหนด) · ทีมเลือกได้หลายทีมพร้อมกัน เลิกใช้คำว่า "หลายทีม" เป็นชื่อทีม
+>
+> **🆕 2 พ.ย. (หน้าหัวหน้างาน `aga-bait-registry-prototype.html`):** ปรับ responsive ให้ใช้จอ PC เต็ม (หน้า entry = list แคบ + form กว้าง ไม่ scroll แนวนอน) + เมนูจอเล็กเปลี่ยนเป็นปุ่ม ☰ (hamburger drawer) + แก้บั๊กช่องเคมีผงโผล่ผิดแถว — **รวมเข้า main แล้ว (PR #1)** · spec: [docs/superpowers/specs/2026-11-02-recorder-responsive-pc-design.md](docs/superpowers/specs/2026-11-02-recorder-responsive-pc-design.md)
 
 **เริ่มงานถัดไป (เลือกได้):**
 1. **เตือนวันที่ผิดปกติ** — ของจริงมี 16 แถวที่วันบริการมาก่อนวันเริ่มสัญญา · 3 แถวนอกเดือน · 1 แถวเป็นปี 1900 (เสนอไปแล้ว เจ้าของยังไม่เลือก)
