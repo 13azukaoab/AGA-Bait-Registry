@@ -67,7 +67,7 @@ select.role{font-family:inherit;font-size:12.5px;color:var(--fg);background:var(
 @media(max-width:760px){.hdr-search{display:none}}
 
 /* Shell */
-.shell{display:flex;align-items:flex-start;min-height:calc(100% - 59px)}
+.shell{display:flex;align-items:flex-start;min-height:calc(100% - 59px);max-width:1760px;margin-inline:auto}
 .nav{width:238px;flex:none;padding:14px 10px;border-right:1px solid var(--border);background:var(--surface)}
 .nav .group{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--fg-faint);padding:12px 10px 5px}
 .nav a{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;color:var(--fg-muted);
@@ -152,11 +152,15 @@ td.r,th.r{text-align:right} td.c,th.c{text-align:center}
 .vchk{font-size:11px;display:inline-flex;align-items:center;gap:3px}
 .vchk.ok{color:var(--ok)} .vchk.bad{color:var(--danger)}
 .powwrap{display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap}
+.powwrap[hidden]{display:none}
 .powcalc{font-size:11px;color:var(--warn);font-weight:600}
 .powin{max-width:58px}
 
 /* Split + panel + entry */
 .split{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start}
+/* หน้า entry (กรอกผล IG/IC + กล่องเหยื่อ AG): list แคบ + form กินที่เหลือ → ตารางด้านในไม่ scroll แนวนอน */
+.split.entry{grid-template-columns:minmax(300px,340px) minmax(0,1fr)}
+.split.entry>.panel:first-child td,.split.entry>.panel:first-child th{white-space:normal}
 .panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow)}
 .panel>h3{margin:0;padding:13px 16px;font-size:14px;font-weight:600;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:9px;flex-wrap:wrap}
 .panel .body{padding:14px 16px}
@@ -219,7 +223,7 @@ tfoot td{padding:10px 12px;font-weight:700;background:var(--surface-2);border-to
   .nav .group{display:none}
   .nav a{white-space:nowrap;margin-bottom:0}
   .nav a.soon{display:none}
-  .split{grid-template-columns:1fr}
+  .split,.split.entry{grid-template-columns:1fr}
   .pt .grid{grid-template-columns:1fr}
   main{padding:16px}
 }
@@ -383,7 +387,7 @@ tfoot td{padding:10px 12px;font-weight:700;background:var(--surface-2);border-to
         <div class="stat ok"><div class="lab">ใช้งานอยู่</div><div class="val num">1,198</div><div class="sub">active</div></div>
         <div class="stat warn"><div class="lab">ชำรุด / ถอน</div><div class="val num">42</div><div class="sub">ต้องซ่อม/เปลี่ยน</div></div>
       </div>
-      <div class="split">
+      <div class="split entry">
         <div class="panel">
           <h3>ลูกค้าในเดือนนี้ <span class="chip na num">24 ราย</span></h3>
           <div class="tablewrap" style="border:0;box-shadow:none;border-radius:0">
@@ -590,7 +594,7 @@ tfoot td{padding:10px 12px;font-weight:700;background:var(--surface-2);border-to
         <div class="stat warn"><div class="lab">รอถอด</div><div class="val num">12</div><div class="sub">พบปลวกตาย</div></div>
         <div class="stat ok"><div class="lab">ถอดแล้วเดือนนี้</div><div class="val num">6</div><div class="sub">จบปัญหา → Dashboard</div></div>
       </div>
-      <div class="split">
+      <div class="split entry">
         <div class="panel">
           <h3>ลูกค้าที่มีกล่องเหยื่อ <span class="chip na num">14 ราย</span></h3>
           <div class="rowlist">
