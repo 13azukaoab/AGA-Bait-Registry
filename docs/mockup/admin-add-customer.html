@@ -405,7 +405,7 @@ table.xl .tmbtn.wait{background:var(--warn-soft);color:var(--warn)}
         <td><select class="brsel" onchange="rowZone(this)"><option selected>นครปฐม</option></select></td>
         <td><span class="auto rzone">C1</span></td>
         <td><input type="date" value="2026-09-14"></td>
-        <td><input type="date" value="2026-10-07"></td>
+        <td><input type="date" value="2026-09-17"></td>
         <td><button type="button" class="tmbtn" data-h="09" data-m="30" onclick="tmOpen(this)">09:30</button></td>
         <td><select class="tmsel"><option selected>A</option></select></td>
         <td><select class="ctsel"><option selected>โรงงาน</option></select></td>
@@ -1215,6 +1215,7 @@ function saveScan(){
       if(Math.abs(days-365)>1 && Math.abs(days-366)>1 && Math.abs(days-1095)>1 && Math.abs(days-1096)>1)
         warn.push('ระยะสัญญา '+days+' วัน (ไม่ใช่ 1 หรือ 3 ปี)');
     }
+    dateIssues(tr,false).forEach(function(o){ (o.lv==='bad'?bad:warn).push(o.msg); });
     out.push({i:i, no:i+1, name:name||'(ยังไม่ใส่ชื่อ)', ct:val(tr.cells[1]), bad:bad, warn:warn});
   });
   return out;
@@ -1258,7 +1259,8 @@ function footSync(){
   var el=document.getElementById('footcnt');
   if(el) el.textContent=ok+' จาก '+rows.length+' แถว';
 }
-footSync();
+/* เรียก footSync() ตอนท้ายไฟล์พร้อม init ตัวอื่น (dateChkAll เรียกให้อยู่แล้ว)
+   ถ้าเรียกตรงนี้จะทำงานก่อน THMON ถูกกำหนดค่า แล้ว script พังทั้งไฟล์ */
 
 function saveGo(i){
   mdClose();
@@ -1349,7 +1351,60 @@ function rowZone(inp){
   inp.style.borderColor = (z||!raw) ? '' : 'var(--danger)';
 }
 
+
+/* ===== เตือนวันที่ผิดปกติ =====
+   อิงปัญหาที่เจอจริงในไฟล์ ต.ค.2026:
+   - วันที่บริการมาก่อนวันเริ่มสัญญา 16 แถว
+   - วันที่บริการหลุดออกนอกเดือนที่กำลังกรอก 3 แถว
+   - ปีพัง (1900-01-26) 1 แถว
+   ระดับ: ปีพัง = บันทึกไม่ได้ · อีก 2 อย่าง = เตือน (พบบ่อยเกินกว่าจะบล็อก) */
+var THMON=['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน',
+           'กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
+function selMonth(){
+  var el=document.querySelector('.toolbar select');
+  if(!el) return null;
+  var p=el.value.trim().split(/\s+/), i=THMON.indexOf(p[0]), y=parseInt(p[1],10);
+  return (i<0||!y)?null:{y:y,m:i+1};
+}
+function yrBad(v){ if(!v) return false; var y=+v.slice(0,4); return y<2000||y>2100; }
+
+function dateIssues(tr,paint){
+  var svcI=tr.cells[11].querySelector('input'),
+      stI =tr.cells[15].querySelector('input'),
+      enI =tr.cells[16].querySelector('input');
+  var svc=svcI?svcI.value:'', st=stI?stI.value:'', en=enI?enI.value:'';
+  var out=[], mark=[];
+  if(yrBad(svc)){ out.push({lv:'bad',msg:'วันที่บริการปีผิดปกติ'}); mark.push([svcI,'danger']); }
+  if(yrBad(st)) { out.push({lv:'bad',msg:'วันเริ่มสัญญาปีผิดปกติ'}); mark.push([stI,'danger']); }
+  if(yrBad(en)) { out.push({lv:'bad',msg:'วันสิ้นสุดปีผิดปกติ'});   mark.push([enI,'danger']); }
+  if(svc&&st&&!yrBad(svc)&&!yrBad(st)&&svc<st){
+    out.push({lv:'warn',msg:'วันที่บริการมาก่อนวันเริ่มสัญญา'}); mark.push([svcI,'warn']); }
+  var m=selMonth();
+  if(svc&&m&&!yrBad(svc)&&(+svc.slice(0,4)!==m.y||+svc.slice(5,7)!==m.m)){
+    out.push({lv:'warn',msg:'วันที่บริการอยู่นอกเดือนที่กำลังกรอก'}); mark.push([svcI,'warn']); }
+  if(paint!==false){
+    [svcI,stI,enI].forEach(function(i){ if(i){ i.style.borderColor=''; i.title=''; } });
+    mark.forEach(function(p){
+      if(!p[0]) return;
+      p[0].style.borderColor='var(--'+p[1]+')';
+      p[0].title=out.map(function(o){return o.msg;}).join(' · ');
+    });
+  }
+  return out;
+}
+function dateChkAll(){
+  [].forEach.call(document.querySelectorAll('table.xl tbody tr'),function(tr){ dateIssues(tr,true); });
+  if(typeof footSync==='function') footSync();
+}
+document.querySelector('table.xl').addEventListener('change',function(e){
+  var tr=e.target.closest('tr');
+  if(tr&&tr.parentNode.tagName==='TBODY') dateIssues(tr,true);
+});
+var monSel=document.querySelector('.toolbar select');
+if(monSel) monSel.addEventListener('change',dateChkAll);
+
 fillBranches();
 fillMasters();
+dateChkAll();
 
 </script>
