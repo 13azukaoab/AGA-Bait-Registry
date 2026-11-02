@@ -369,7 +369,7 @@ table.xl .teambtn.multi{font-weight:700;color:var(--accent-strong)}
         <td><input type="date" value="2026-10-14"></td>
         <td><button type="button" class="tmbtn" data-h="12" data-m="00" onclick="tmOpen(this)">12:00</button></td>
         <td><button type="button" class="tmbtn teambtn" data-teams="E" onclick="teamOpen(this)" title="E">E</button></td>
-        <td><select class="ctsel"><option selected>บ้าน</option></select></td>
+        <td><select class="ctsel"><option selected>บ้านเดี่ยว</option></select></td>
         <td><input type="date" value="2026-10-16"></td>
         <td><input type="date" value="2027-10-15"></td>
         <td class="r"><input class="num money" value="33,426.80"></td>
@@ -393,7 +393,7 @@ table.xl .teambtn.multi{font-weight:700;color:var(--accent-strong)}
         <td><input type="date" value="2026-10-11"></td>
         <td><button type="button" class="tmbtn" data-h="10" data-m="00" onclick="tmOpen(this)">10:00</button></td>
         <td><button type="button" class="tmbtn teambtn" data-teams="Z" onclick="teamOpen(this)" title="Z">Z</button></td>
-        <td><select class="ctsel"><option selected>อาคาร</option></select></td>
+        <td><select class="ctsel"><option selected>ออฟฟิต</option></select></td>
         <td><input type="date" value="2026-10-01"></td>
         <td><input type="date" value="2029-09-30"></td>
         <td class="r"><input class="num money off" disabled></td>
@@ -441,7 +441,7 @@ table.xl .teambtn.multi{font-weight:700;color:var(--accent-strong)}
         <td><input type="date" value="2026-10-22"></td>
         <td><button type="button" class="tmbtn" data-h="10" data-m="30" onclick="tmOpen(this)">10:30</button></td>
         <td><button type="button" class="tmbtn teambtn" data-teams="I" onclick="teamOpen(this)" title="I">I</button></td>
-        <td><select class="ctsel"><option selected>อาคาร</option></select></td>
+        <td><select class="ctsel"><option selected>ออฟฟิต</option></select></td>
         <td><input type="date" value="2026-10-01"></td>
         <td><input type="date" value="2029-09-30"></td>
         <td class="r"><input class="num money off" disabled></td>
@@ -489,7 +489,7 @@ table.xl .teambtn.multi{font-weight:700;color:var(--accent-strong)}
         <td><input type="date" value="2026-10-28"></td>
         <td><button type="button" class="tmbtn" data-h="09" data-m="30" onclick="tmOpen(this)">09:30</button></td>
         <td><button type="button" class="tmbtn teambtn" data-teams="Z" onclick="teamOpen(this)" title="Z">Z</button></td>
-        <td><select class="ctsel"><option selected>ทาวน์โฮม</option></select></td>
+        <td><select class="ctsel"><option selected>ทาวน์โฮม / ตึกแถว</option></select></td>
         <td><input type="date" value="2026-10-01"></td>
         <td><input type="date" value="2027-10-31" style="border-color:var(--warn)"></td>
         <td class="r"><input class="num money off" disabled></td>
@@ -513,7 +513,7 @@ table.xl .teambtn.multi{font-weight:700;color:var(--accent-strong)}
         <td><input type="date" value=""></td>
         <td><button type="button" class="tmbtn wait" data-h="" data-m="" onclick="tmOpen(this)">— เลือก —</button></td>
         <td><button type="button" class="tmbtn teambtn wait" data-teams="" onclick="teamOpen(this)" title="ยังไม่นัดทีม">—</button></td>
-        <td><select class="ctsel"><option selected>บ้าน</option></select></td>
+        <td><select class="ctsel"><option selected>บ้านเดี่ยว</option></select></td>
         <td><input type="date" value="2026-10-05"></td>
         <td><input type="date" value="2027-10-04"></td>
         <td class="r"><input class="num money" value="" placeholder="ยังไม่ใส่" style="border-color:var(--danger)"></td>
@@ -1312,11 +1312,12 @@ var BRZONE={'พัฒนาการ':'C4','ลาดพร้าว':'C4','ป
    กัน "พระราม2" ≠ "พระราม 2" และกันสาขาที่ไม่มีอยู่จริงหลุดเข้าระบบ */
 var BRLIST=Object.keys(BRZONE).concat(['งานกรุ๊ป (ลูกค้านอกสาขา)']);
 
-/* master ทีม + ประเภทลูกค้า — ตั้งจากค่าที่พบจริงในไฟล์ ต.ค. 2026
+/* master ทีม + ประเภทลูกค้า — ประเภทลูกค้าเจ้าของกำหนดเอง 12 ค่า (2 พ.ย. 2026)
+   "อาคาร" ในไฟล์เก่า (7 แถว) ยุบเข้า "ออฟฟิต" · "โรงแรม" ที่เคยซ้ำ รวมเป็น "โรงแรม/รีสอร์ท"
    ของเดิมในไฟล์มี sup/Sup/หนง./o/11:30:00 ปนกัน และ "ทาวโฮม" สะกดขาด น์
    "หลายทีม" เป็นเคสจริง (3 แถว) ต้องมีในรายการ ไม่ใช่ให้พิมพ์เอง */
-var CTYPES=['บ้าน','ทาวน์โฮม','อาคาร','ออฟฟิศ','สำนักงาน','สำนักงานนายก','โรงงาน','โรงเรียน',
-            'โรงพยาบาล','มหาลัย','วัง','ศาล','รีสอร์ท','สวนลอยฟ้า'];
+var CTYPES=['บ้านเดี่ยว','ทาวน์โฮม / ตึกแถว','ออฟฟิต','ห้าง','โรงงาน','โกดังสินค้า',
+            'โรงแรม/รีสอร์ท','โรงพยาบาล','สถานศึกษา','สถานที่ราชการ','สถานที่สำคัญ','สถานที่ทางศาสนา'];
 
 function fillSel(sel,list,blank){
   var cur=sel.value;
