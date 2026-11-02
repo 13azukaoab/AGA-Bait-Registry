@@ -62,12 +62,16 @@ select.role{font-family:inherit;font-size:12.5px;color:var(--fg);background:var(
   width:34px;height:32px;cursor:pointer;font-size:15px;line-height:1}
 .avatar{width:32px;height:32px;border-radius:50%;background:var(--surface-3);color:var(--fg-muted);
   display:grid;place-items:center;font-weight:600;font-size:12px;flex:none}
+/* ปุ่มเปิดเมนู (☰) โชว์เฉพาะจอเล็ก · ฉากหลังมืดตอนเมนูเปิด */
+.navtoggle{display:none;align-items:center;justify-content:center;border:1px solid var(--border);
+  background:var(--surface-2);color:var(--fg);border-radius:8px;width:36px;height:34px;font-size:18px;line-height:1;cursor:pointer;flex:none}
+.nav-backdrop{display:none}
 .hdr-search{flex:0 1 320px;min-width:0;font-family:inherit;font-size:13px;color:var(--fg);
   background:var(--surface-2);border:1px solid var(--border-strong);border-radius:999px;padding:7px 14px}
 @media(max-width:760px){.hdr-search{display:none}}
 
 /* Shell */
-.shell{display:flex;align-items:flex-start;min-height:calc(100% - 59px)}
+.shell{display:flex;align-items:flex-start;min-height:calc(100% - 59px);max-width:1760px;margin-inline:auto}
 .nav{width:238px;flex:none;padding:14px 10px;border-right:1px solid var(--border);background:var(--surface)}
 .nav .group{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--fg-faint);padding:12px 10px 5px}
 .nav a{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;color:var(--fg-muted);
@@ -152,11 +156,15 @@ td.r,th.r{text-align:right} td.c,th.c{text-align:center}
 .vchk{font-size:11px;display:inline-flex;align-items:center;gap:3px}
 .vchk.ok{color:var(--ok)} .vchk.bad{color:var(--danger)}
 .powwrap{display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap}
+.powwrap[hidden]{display:none}
 .powcalc{font-size:11px;color:var(--warn);font-weight:600}
 .powin{max-width:58px}
 
 /* Split + panel + entry */
 .split{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start}
+/* หน้า entry (กรอกผล IG/IC + กล่องเหยื่อ AG): list แคบ + form กินที่เหลือ → ตารางด้านในไม่ scroll แนวนอน */
+.split.entry{grid-template-columns:minmax(300px,340px) minmax(0,1fr)}
+.split.entry>.panel:first-child td,.split.entry>.panel:first-child th{white-space:normal}
 .panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow)}
 .panel>h3{margin:0;padding:13px 16px;font-size:14px;font-weight:600;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:9px;flex-wrap:wrap}
 .panel .body{padding:14px 16px}
@@ -215,14 +223,18 @@ tfoot td{padding:10px 12px;font-weight:700;background:var(--surface-2);border-to
 
 @media (max-width:860px){
   .shell{display:block}
-  .nav{width:auto;border-right:0;border-bottom:1px solid var(--border);display:flex;gap:4px;overflow-x:auto;padding:8px 10px}
-  .nav .group{display:none}
-  .nav a{white-space:nowrap;margin-bottom:0}
-  .nav a.soon{display:none}
-  .split{grid-template-columns:1fr}
+  .navtoggle{display:inline-flex}
+  /* เมนูกลายเป็นลิ้นชักเลื่อนออกจากซ้าย (hamburger drawer) ไม่ใช่แถบบนเลื่อนซ้าย-ขวาอีกต่อไป */
+  .nav{position:fixed;top:0;left:0;bottom:0;width:260px;z-index:40;border-right:1px solid var(--border);
+    overflow-y:auto;transform:translateX(-100%);transition:transform .22s ease;box-shadow:2px 0 14px rgba(20,40,70,.18)}
+  body.nav-open .nav{transform:translateX(0)}
+  .nav-backdrop{position:fixed;inset:0;background:rgba(10,20,35,.42)}
+  body.nav-open .nav-backdrop{display:block}
+  .split,.split.entry{grid-template-columns:1fr}
   .pt .grid{grid-template-columns:1fr}
   main{padding:16px}
 }
+@media (prefers-reduced-motion:reduce){.nav{transition:none}}
 /* summary = dashboard look */
 .seg{display:inline-flex;background:var(--surface-2);border:1px solid var(--border);border-radius:10px;padding:3px;gap:3px;margin:16px 0 14px}
 .segbtn{font-family:inherit;font-size:12.5px;border:0;background:transparent;color:var(--fg-muted);padding:6px 14px;border-radius:7px;cursor:pointer}
@@ -258,6 +270,7 @@ tfoot td{padding:10px 12px;font-weight:700;background:var(--surface-2);border-to
 </style>
 
 <div class="topbar">
+  <button class="navtoggle" id="navToggle" aria-label="เปิด/ปิดเมนู" aria-expanded="false" onclick="toggleNav()">☰</button>
   <div class="logo">
     <div class="mark">AGA</div>
     <div class="txt"><b>ข้อมูลหลังบ้านระบบเหยื่อ</b><span>Advance Group Asia · ส่วนกลาง</span></div>
@@ -291,6 +304,7 @@ tfoot td{padding:10px 12px;font-weight:700;background:var(--surface-2);border-to
     <a class="soon"><span class="ic">🔒</span> ปิดเดือน <span class="soon-tag">เร็วๆนี้</span></a>
     <a class="soon"><span class="ic">⇅</span> Dashboard Sync <span class="soon-tag">เร็วๆนี้</span></a>
   </nav>
+  <div class="nav-backdrop" id="navBackdrop" onclick="toggleNav(false)" aria-hidden="true"></div>
 
   <main>
     <!-- ========== 1. TODO ========== -->
@@ -383,7 +397,7 @@ tfoot td{padding:10px 12px;font-weight:700;background:var(--surface-2);border-to
         <div class="stat ok"><div class="lab">ใช้งานอยู่</div><div class="val num">1,198</div><div class="sub">active</div></div>
         <div class="stat warn"><div class="lab">ชำรุด / ถอน</div><div class="val num">42</div><div class="sub">ต้องซ่อม/เปลี่ยน</div></div>
       </div>
-      <div class="split">
+      <div class="split entry">
         <div class="panel">
           <h3>ลูกค้าในเดือนนี้ <span class="chip na num">24 ราย</span></h3>
           <div class="tablewrap" style="border:0;box-shadow:none;border-radius:0">
@@ -590,7 +604,7 @@ tfoot td{padding:10px 12px;font-weight:700;background:var(--surface-2);border-to
         <div class="stat warn"><div class="lab">รอถอด</div><div class="val num">12</div><div class="sub">พบปลวกตาย</div></div>
         <div class="stat ok"><div class="lab">ถอดแล้วเดือนนี้</div><div class="val num">6</div><div class="sub">จบปัญหา → Dashboard</div></div>
       </div>
-      <div class="split">
+      <div class="split entry">
         <div class="panel">
           <h3>ลูกค้าที่มีกล่องเหยื่อ <span class="chip na num">14 ราย</span></h3>
           <div class="rowlist">
@@ -871,8 +885,17 @@ function go(s){
   document.querySelectorAll('#nav a[data-s]').forEach(a=>a.classList.toggle('active',a.dataset.s===s));
   SCREENS.forEach(id=>{ document.getElementById('s-'+id).hidden = (id!==s); });
   if(s==='summary') setTimeout(initDivChart,40);
+  toggleNav(false);
   window.scrollTo({top:0,behavior:'smooth'});
 }
+/* เปิด/ปิดลิ้นชักเมนูบนจอเล็ก · toggleNav(false) = ปิด, ไม่ส่งค่า = สลับ */
+function toggleNav(open){
+  var b=document.body;
+  var want=(typeof open==='boolean')?open:!b.classList.contains('nav-open');
+  b.classList.toggle('nav-open',want);
+  var t=document.getElementById('navToggle'); if(t) t.setAttribute('aria-expanded',want?'true':'false');
+}
+document.addEventListener('keydown',function(e){ if(e.key==='Escape') toggleNav(false); });
 function termiteRow(sel){
   var tr=sel.closest('tr'), cell=tr.querySelector('.baitcell');
   var bs=cell.querySelector('.baitsel'), pw=cell.querySelector('.powder');
