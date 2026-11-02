@@ -267,6 +267,15 @@ table.xl .tmbtn.wait{background:var(--warn-soft);color:var(--warn)}
 .tmfoot button{flex:1;font-family:inherit;font-size:12px;border-radius:7px;padding:6px 8px;cursor:pointer;
   border:1px solid var(--border-strong);background:var(--surface);color:var(--fg)}
 .tmfoot button.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-fg);font-weight:600}
+/* รายการติ๊กเลือกทีม (เลือกได้หลายทีมในงานเดียว เช่น งานวังที่ต้องส่ง 2-3 ทีมพร้อมกัน) */
+.tmpop .tmchk{display:flex;align-items:center;gap:9px;padding:6px 12px;cursor:pointer;
+  border-top:1px solid var(--border);font-size:12.5px}
+.tmpop .tmchk:hover{background:var(--surface-2)}
+.tmpop .tmchk input{width:auto;margin:0}
+.tmpop .tmchk.on{background:var(--accent-soft);color:var(--accent-strong);font-weight:600}
+.tmpop .tmhint{padding:6px 12px;font-size:11px;color:var(--fg-muted);background:var(--surface-2)}
+table.xl .teambtn{text-align:center}
+table.xl .teambtn.multi{font-weight:700;color:var(--accent-strong)}
 </style>
 
 <main>
@@ -359,7 +368,7 @@ table.xl .tmbtn.wait{background:var(--warn-soft);color:var(--warn)}
         <td><input type="date" value="2026-09-11"></td>
         <td><input type="date" value="2026-10-14"></td>
         <td><button type="button" class="tmbtn" data-h="12" data-m="00" onclick="tmOpen(this)">12:00</button></td>
-        <td><select class="tmsel"><option selected>E</option></select></td>
+        <td><button type="button" class="tmbtn teambtn" data-teams="E" onclick="teamOpen(this)" title="E">E</button></td>
         <td><select class="ctsel"><option selected>บ้าน</option></select></td>
         <td><input type="date" value="2026-10-16"></td>
         <td><input type="date" value="2027-10-15"></td>
@@ -383,7 +392,7 @@ table.xl .tmbtn.wait{background:var(--warn-soft);color:var(--warn)}
         <td><input type="date" value="2026-09-11"></td>
         <td><input type="date" value="2026-10-11"></td>
         <td><button type="button" class="tmbtn" data-h="10" data-m="00" onclick="tmOpen(this)">10:00</button></td>
-        <td><select class="tmsel"><option selected>Z</option></select></td>
+        <td><button type="button" class="tmbtn teambtn" data-teams="Z" onclick="teamOpen(this)" title="Z">Z</button></td>
         <td><select class="ctsel"><option selected>อาคาร</option></select></td>
         <td><input type="date" value="2026-10-01"></td>
         <td><input type="date" value="2029-09-30"></td>
@@ -407,7 +416,7 @@ table.xl .tmbtn.wait{background:var(--warn-soft);color:var(--warn)}
         <td><input type="date" value="2026-09-14"></td>
         <td><input type="date" value="2026-09-17"></td>
         <td><button type="button" class="tmbtn" data-h="09" data-m="30" onclick="tmOpen(this)">09:30</button></td>
-        <td><select class="tmsel"><option selected>A</option></select></td>
+        <td><button type="button" class="tmbtn teambtn" data-teams="A" onclick="teamOpen(this)" title="A">A</button></td>
         <td><select class="ctsel"><option selected>โรงงาน</option></select></td>
         <td><input type="date" value="2026-10-05"></td>
         <td><input type="date" value="2027-10-04"></td>
@@ -431,7 +440,7 @@ table.xl .tmbtn.wait{background:var(--warn-soft);color:var(--warn)}
         <td><input type="date" value="2026-09-20"></td>
         <td><input type="date" value="2026-10-22"></td>
         <td><button type="button" class="tmbtn" data-h="10" data-m="30" onclick="tmOpen(this)">10:30</button></td>
-        <td><select class="tmsel"><option selected>I</option></select></td>
+        <td><button type="button" class="tmbtn teambtn" data-teams="I" onclick="teamOpen(this)" title="I">I</button></td>
         <td><select class="ctsel"><option selected>อาคาร</option></select></td>
         <td><input type="date" value="2026-10-01"></td>
         <td><input type="date" value="2029-09-30"></td>
@@ -455,7 +464,7 @@ table.xl .tmbtn.wait{background:var(--warn-soft);color:var(--warn)}
         <td><input type="date" value="2026-09-28"></td>
         <td><input type="date" value="" class="wait"></td>
         <td><button type="button" class="tmbtn wait" data-h="" data-m="" onclick="tmOpen(this)">— เลือก —</button></td>
-        <td><select class="tmsel wait" title="ยังไม่นัดทีม"><option selected>—</option></select></td>
+        <td><button type="button" class="tmbtn teambtn wait" data-teams="" onclick="teamOpen(this)" title="ยังไม่นัดทีม">—</button></td>
         <td><select class="ctsel"><option selected>โรงงาน</option></select></td>
         <td><input type="date" value="2026-10-01"></td>
         <td><input type="date" value="2027-09-30"></td>
@@ -479,7 +488,7 @@ table.xl .tmbtn.wait{background:var(--warn-soft);color:var(--warn)}
         <td><input type="date" value="2026-09-25"></td>
         <td><input type="date" value="2026-10-28"></td>
         <td><button type="button" class="tmbtn" data-h="09" data-m="30" onclick="tmOpen(this)">09:30</button></td>
-        <td><select class="tmsel"><option selected>Z</option></select></td>
+        <td><button type="button" class="tmbtn teambtn" data-teams="Z" onclick="teamOpen(this)" title="Z">Z</button></td>
         <td><select class="ctsel"><option selected>ทาวน์โฮม</option></select></td>
         <td><input type="date" value="2026-10-01"></td>
         <td><input type="date" value="2027-10-31" style="border-color:var(--warn)"></td>
@@ -503,7 +512,7 @@ table.xl .tmbtn.wait{background:var(--warn-soft);color:var(--warn)}
         <td><input type="date" value="2026-09-30"></td>
         <td><input type="date" value=""></td>
         <td><button type="button" class="tmbtn wait" data-h="" data-m="" onclick="tmOpen(this)">— เลือก —</button></td>
-        <td><select class="tmsel wait" title="ยังไม่นัดทีม"><option selected>—</option></select></td>
+        <td><button type="button" class="tmbtn teambtn wait" data-teams="" onclick="teamOpen(this)" title="ยังไม่นัดทีม">—</button></td>
         <td><select class="ctsel"><option selected>บ้าน</option></select></td>
         <td><input type="date" value="2026-10-05"></td>
         <td><input type="date" value="2027-10-04"></td>
@@ -876,6 +885,14 @@ table.xl .tmbtn.wait{background:var(--warn-soft);color:var(--warn)}
   </div>
 </div>
 
+<div id="teampop" class="tmpop" hidden style="width:210px">
+  <div class="tmttl">เลือกทีม <span class="pv" id="teampv">—</span></div>
+  <div class="tmhint">ติ๊กได้มากกว่า 1 ทีม ถ้างานต้องส่งหลายทีมพร้อมกัน</div>
+  <div class="tmlist" id="teamlist" style="max-height:236px"></div>
+  <div class="tmfoot"><button type="button" onclick="teamClear()">ยังไม่นัด</button>
+    <button type="button" class="primary" onclick="teamDone()">ตกลง</button></div>
+</div>
+
 <div id="tmpop" class="tmpop" hidden>
   <div class="tmttl">เลือกเวลา (24 ชม.) <span class="pv" id="tmpv">—:—</span></div>
   <div class="tmcols">
@@ -1206,7 +1223,8 @@ function saveScan(){
     var isRenew=(tr.querySelector('.jobsw .jo.on')||{}).textContent==='Renew';
     if(isRenew && tr.cells[5].textContent.indexOf('ยังไม่ผูก')>=0) warn.push('Renew ยังไม่ผูกลูกค้าเดิม');
     if(!val(tr.cells[11])) warn.push('ยังไม่ลงวันที่บริการ');
-    if(val(tr.cells[13])==='—') warn.push('ยังไม่นัดทีม');
+    var tbn=tr.cells[13].querySelector('.teambtn');
+    if(tbn && !(tbn.dataset.teams||'')) warn.push('ยังไม่นัดทีม');
 
     // ระยะสัญญาต้องเป็น 1 ปี หรือ 3 ปี พอดี (SPEC §7.2) — คลาดได้ ±1 วัน
     var s=val(tr.cells[15]), e=val(tr.cells[16]);
@@ -1296,7 +1314,6 @@ var BRLIST=Object.keys(BRZONE).concat(['งานกรุ๊ป (ลูกค�
 /* master ทีม + ประเภทลูกค้า — ตั้งจากค่าที่พบจริงในไฟล์ ต.ค. 2026
    ของเดิมในไฟล์มี sup/Sup/หนง./o/11:30:00 ปนกัน และ "ทาวโฮม" สะกดขาด น์
    "หลายทีม" เป็นเคสจริง (3 แถว) ต้องมีในรายการ ไม่ใช่ให้พิมพ์เอง */
-var TEAMS=['—','A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','Z','Sup','หลายทีม'];
 var CTYPES=['บ้าน','ทาวน์โฮม','อาคาร','ออฟฟิศ','สำนักงาน','สำนักงานนายก','โรงงาน','โรงเรียน',
             'โรงพยาบาล','มหาลัย','วัง','ศาล','รีสอร์ท','สวนลอยฟ้า'];
 
@@ -1306,7 +1323,6 @@ function fillSel(sel,list,blank){
     list.map(function(v){ return '<option'+(v===cur?' selected':'')+'>'+v+'</option>'; }).join('');
 }
 function fillMasters(){
-  [].forEach.call(document.querySelectorAll('select.tmsel'),function(s){ fillSel(s,TEAMS,''); });
   [].forEach.call(document.querySelectorAll('select.ctsel'),function(s){ fillSel(s,CTYPES,'— เลือกประเภท —'); });
 }
 
@@ -1351,6 +1367,67 @@ function rowZone(inp){
   inp.style.borderColor = (z||!raw) ? '' : 'var(--danger)';
 }
 
+
+/* ===== เลือกทีม (ติ๊กได้หลายทีม) =====
+   ไฟล์จริงใช้คำว่า "หลายทีม" เป็นชื่อทีม ทำให้ไม่รู้ว่าส่งทีมไหนไปบ้าง
+   (ทั้ง 3 แถวเป็นงานวัง ประชาชื่น มูลค่า 148k-357k = งานใหญ่ส่งหลายทีมพร้อมกัน)
+   ที่นี่เก็บเป็นรายชื่อทีมจริงคั่นด้วย , ใน data-teams -> สรุปภาระงานรายทีมได้ถูกต้อง */
+var TEAMLIST=['A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','Z','Sup'];
+var teamPop=document.getElementById('teampop'), teamTarget=null;
+
+function teamLabel(a){ return !a.length ? '—' : (a.length===1 ? a[0] : a[0]+'+'+(a.length-1)); }
+function teamPaint(){
+  var sel=[].filter.call(teamPop.querySelectorAll('input'),function(c){return c.checked;})
+            .map(function(c){return c.value;});
+  document.getElementById('teampv').textContent = sel.length? sel.join(', ') : '—';
+  [].forEach.call(teamPop.querySelectorAll('.tmchk'),function(l){
+    l.classList.toggle('on', l.querySelector('input').checked); });
+}
+function teamPlace(){
+  if(teamPop.hidden||!teamTarget) return;
+  var r=teamTarget.getBoundingClientRect();
+  if(r.bottom<0||r.top>innerHeight||r.right<0||r.left>innerWidth){ teamClose(); return; }
+  var pw=teamPop.offsetWidth, ph=teamPop.offsetHeight;
+  teamPop.style.left=Math.min(Math.max(8,r.left),innerWidth-pw-8)+'px';
+  var top=r.bottom+4; if(top+ph>innerHeight-8) top=Math.max(8,r.top-ph-4);
+  teamPop.style.top=top+'px';
+}
+function teamOpen(btn){
+  teamTarget=btn;
+  var cur=(btn.dataset.teams||'').split(',').filter(Boolean);
+  document.getElementById('teamlist').innerHTML=TEAMLIST.map(function(t){
+    return '<label class="tmchk"><input type="checkbox" value="'+t+'"'+
+           (cur.indexOf(t)>=0?' checked':'')+'> '+t+'</label>';
+  }).join('');
+  teamPaint();
+  teamPop.hidden=false; teamPlace();
+}
+function teamClose(){ teamPop.hidden=true; teamTarget=null; }
+function teamClear(){
+  if(!teamTarget) return;
+  teamTarget.dataset.teams=''; teamTarget.textContent='—';
+  teamTarget.className='tmbtn teambtn wait'; teamTarget.title='ยังไม่นัดทีม';
+  teamClose(); if(typeof footSync==='function') footSync();
+}
+function teamDone(){
+  if(!teamTarget) return;
+  var sel=[].filter.call(teamPop.querySelectorAll('input'),function(c){return c.checked;})
+            .map(function(c){return c.value;});
+  teamTarget.dataset.teams=sel.join(',');
+  teamTarget.textContent=teamLabel(sel);
+  teamTarget.className='tmbtn teambtn'+(sel.length?(sel.length>1?' multi':''):' wait');
+  teamTarget.title=sel.length? 'ทีม '+sel.join(', ') : 'ยังไม่นัดทีม';
+  teamClose(); if(typeof footSync==='function') footSync();
+}
+document.getElementById('teamlist').addEventListener('change',teamPaint);
+document.addEventListener('mousedown',function(e){
+  if(!teamPop.hidden && !teamPop.contains(e.target) && !(e.target.closest&&e.target.closest('.teambtn')))
+    teamClose(); });
+window.addEventListener('scroll',function(e){
+  if(teamPop.hidden) return;
+  if(teamPop.contains(e.target)) return;
+  teamPlace(); },true);
+window.addEventListener('resize',teamPlace);
 
 /* ===== เตือนวันที่ผิดปกติ =====
    อิงปัญหาที่เจอจริงในไฟล์ ต.ค.2026:
