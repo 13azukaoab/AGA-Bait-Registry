@@ -1,0 +1,131 @@
+@import "tailwindcss";
+
+/* ============================================================
+   AGA Bait Registry — base theme + token สี Tier
+   กฎ CLAUDE.md: ห้าม hardcode hex ในโค้ด ให้อ้าง CSS variable เสมอ
+   สีแยกตาม tier + จำนวนปีสัญญา รวม 8 แบบ (1 ปี = อ่อน · 3 ปี = เข้ม)
+   ============================================================ */
+
+:root {
+  /* พื้น/ตัวหนังสือหลัก */
+  --bg: #ffffff;
+  --fg: #0b1420;
+  --fg-faint: #5b6675;
+
+  /* กลุ่มสี Tier (ป้ายที่ไม่ระบุปี เช่น legend/filter ใช้สีกลุ่มนี้) */
+  --tier-s: #1f5fa8;
+  --tier-m: #157a50;
+  --tier-l: #a86c07;
+  --tier-xl: #c2561f;
+
+  /* พื้นอ่อน (สัญญา 1 ปี) */
+  --tier-s-soft: #e6f0fb;
+  --tier-m-soft: #e3f4ec;
+  --tier-l-soft: #fbf0db;
+  --tier-xl-soft: #fce6da;
+
+  /* ตัวหนังสือบนพื้นเข้ม (สัญญา 3 ปี) */
+  --on-tier: #ffffff;
+
+  --font-sans: var(--font-noto-sans-thai), system-ui, sans-serif;
+}
+
+/* โหมดมืด — redefine token (ค่าจาก CLAUDE.md ตารางสี Tier คอลัมน์ dark) */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0b1420;
+    --fg: #e6ecf3;
+    --fg-faint: #9aa7b6;
+
+    --tier-s: #4a90d9;
+    --tier-m: #3bb183;
+    --tier-l: #d99b3e;
+    --tier-xl: #e07a4e;
+
+    --tier-s-soft: #16304a;
+    --tier-m-soft: #133227;
+    --tier-l-soft: #332713;
+    --tier-xl-soft: #3a2016;
+
+    --on-tier: #0b1420;
+  }
+}
+
+:root[data-theme="dark"] {
+  --bg: #0b1420;
+  --fg: #e6ecf3;
+  --fg-faint: #9aa7b6;
+
+  --tier-s: #4a90d9;
+  --tier-m: #3bb183;
+  --tier-l: #d99b3e;
+  --tier-xl: #e07a4e;
+
+  --tier-s-soft: #16304a;
+  --tier-m-soft: #133227;
+  --tier-l-soft: #332713;
+  --tier-xl-soft: #3a2016;
+
+  --on-tier: #0b1420;
+}
+
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ป้าย Tier — class ใช้ `tier s1`/`tier s3`/`tier m1`… (ไม่ใช่ `tier s` เฉยๆ) */
+.tier {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  line-height: 1.4;
+}
+.tier.s1 { background: var(--tier-s-soft); color: var(--tier-s); }
+.tier.s3 { background: var(--tier-s); color: var(--on-tier); }
+.tier.m1 { background: var(--tier-m-soft); color: var(--tier-m); }
+.tier.m3 { background: var(--tier-m); color: var(--on-tier); }
+.tier.l1 { background: var(--tier-l-soft); color: var(--tier-l); }
+.tier.l3 { background: var(--tier-l); color: var(--on-tier); }
+.tier.xl1 { background: var(--tier-xl-soft); color: var(--tier-xl); }
+.tier.xl3 { background: var(--tier-xl); color: var(--on-tier); }
+
+/* โครงหน้าจอชั่วคราว (scaffold) — จะถูกแทนด้วยหน้าจริงภายหลัง */
+.stub {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 48px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.stub h1 { font-size: 1.6rem; font-weight: 700; }
+.stub p { color: var(--fg-faint); line-height: 1.6; }
+.stub-badge {
+  align-self: flex-start;
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: var(--tier-s-soft);
+  color: var(--tier-s);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+.stub-tag {
+  margin-top: 8px;
+  font-size: 0.85rem;
+  font-style: italic;
+}
+.stub-nav { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 8px; }
+.stub-nav a {
+  padding: 8px 14px;
+  border-radius: 8px;
+  background: var(--tier-s-soft);
+  color: var(--tier-s);
+  text-decoration: none;
+  font-weight: 600;
+}
+.stub-nav a:hover { text-decoration: underline; }
