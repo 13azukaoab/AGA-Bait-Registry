@@ -23,8 +23,8 @@
 | ด้าน | สถานะ | หมายเหตุ |
 |---|---|---|
 | โครง Next.js + TS + PWA | ✅ เสร็จ | 3 พ.ย. — App Router + TS strict + PWA(Serwist) + Noto Sans Thai · 12 route stub ตาม §8 · typecheck/lint/test/build ผ่าน |
-| `lib/rules` + unit test | ⬜ ยังไม่เริ่ม | โฟลเดอร์ + Vitest พร้อมแล้ว · ทำตามแผน TDD `docs/plans/2026-10-15-lib-rules.md` |
-| DB schema + RLS (Supabase) | ⬜ ยังไม่เริ่ม | SPEC §5, §6 |
+| `lib/rules` + unit test | ✅ เสร็จ | 3 พ.ย. — 7 pure function ครบ · 16 เทสผ่าน (Vitest) · เหลือเทียบเกณฑ์ §15 รอ fixtures เขต 1 |
+| DB schema + RLS (Supabase) | ⏸️ พัก (ติด Docker) | มีแผนแล้ว `docs/plans/2026-11-03-schema-rls.md` · เริ่มไม่ได้เพราะเครื่องไม่มี WSL/Docker |
 | นำเข้าสัญญา (หน้าจอ 7) | ⬜ ยังไม่เริ่ม | ตารางแปลงค่าเก่า→ใหม่ เตรียมไว้แล้ว |
 | Snapshot + Dashboard Sync | ⬜ ยังไม่เริ่ม | SPEC §9 |
 | fixtures เขต 1 (`zone1_registry.*`) | ⚠️ รอไฟล์ | ใช้ตรวจเกณฑ์ยอมรับ §15 |
@@ -108,6 +108,19 @@
 ---
 
 ## บันทึกประจำวัน (Changelog)
+
+### 2026-11-03 (lib/rules เสร็จ + วางแผน schema + ติด Docker)
+ต่อจาก scaffold — ทำ 2 อย่าง: เขียนแผน schema และลงมือ lib/rules
+
+**✅ lib/rules เสร็จ (16 เทสผ่าน):** เขียน 7 pure function ตามแผน TDD → `annualValue`/`tierOf` (อ่าน tier_rules ไม่ hardcode), `serviceMonths`/`defaultEndDate`, `isMissedService`, `buildBranchSnapshot` (16 ฟิลด์), `monthKey`, date util + types + seed fixture · ครบกรณีบังคับ SPEC (S3/XL1/L3/S1, เดือนบริการ, F แยกสถานีผ่าน snapshot) · typecheck/lint clean · commit `05eeed5`
+- ปรับโค้ดจากแผนให้ผ่าน `noUncheckedIndexedAccess` (เลี่ยง array-destructure, แคบ key ของ snapshot)
+- **ค้าง:** เทียบเกณฑ์ §15 รอไฟล์ `fixtures/zone1_registry.*`
+
+**📋 แผน Schema + RLS:** `docs/plans/2026-11-03-schema-rls.md` (10 task TDD/pgTAP) commit `3007191` · เจ้าของเคาะ 3 จุด: contract_teams (หลายทีม), Docker เฉพาะเทส, check term_years 1/3
+
+**⏸️ Schema พัก — ติด Docker:** เลือก execute แบบ subagent-driven แล้วแต่เครื่อง **ไม่มี WSL/Docker** (Docker Desktop ต้องมี WSL 2 ก่อน) รัน `supabase start`/pgTAP ไม่ได้
+- **ต้องให้เจ้าของทำก่อน schema ไปต่อ:** admin PowerShell `wsl --install` → reboot → ติดตั้ง Docker Desktop → เปิดจนขึ้น "Engine running"
+- ledger ค้างสถานะไว้ที่ `.superpowers/sdd/2026-11-03-schema-rls/progress.md` (resume Task 1 ได้เลยเมื่อ Docker พร้อม) · เจอ 1 จุดต้องแก้ตอนทำ: helper `current_role` ชน built-in Postgres → ใช้ `current_app_role`
 
 ### 2026-11-03 (เริ่มเฟสสร้างจริง — scaffold โปรเจกต์ Next.js)
 เริ่มงานเขียนโค้ดเฟสแรก วางโครงโปรเจกต์ (ยังไม่ทำฟีเจอร์) บน branch `claude/focused-pike-c58fe0`
