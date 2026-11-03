@@ -22,8 +22,8 @@
 ### เฟสสร้างจริง (ยังไม่เริ่มสักตัว)
 | ด้าน | สถานะ | หมายเหตุ |
 |---|---|---|
-| โครง Next.js + TS + PWA | ⬜ ยังไม่เริ่ม | |
-| `lib/rules` + unit test | ⬜ ยังไม่เริ่ม | มีแผน TDD แล้วที่ `docs/plans/2026-10-15-lib-rules.md` |
+| โครง Next.js + TS + PWA | ✅ เสร็จ | 3 พ.ย. — App Router + TS strict + PWA(Serwist) + Noto Sans Thai · 12 route stub ตาม §8 · typecheck/lint/test/build ผ่าน |
+| `lib/rules` + unit test | ⬜ ยังไม่เริ่ม | โฟลเดอร์ + Vitest พร้อมแล้ว · ทำตามแผน TDD `docs/plans/2026-10-15-lib-rules.md` |
 | DB schema + RLS (Supabase) | ⬜ ยังไม่เริ่ม | SPEC §5, §6 |
 | นำเข้าสัญญา (หน้าจอ 7) | ⬜ ยังไม่เริ่ม | ตารางแปลงค่าเก่า→ใหม่ เตรียมไว้แล้ว |
 | Snapshot + Dashboard Sync | ⬜ ยังไม่เริ่ม | SPEC §9 |
@@ -108,6 +108,30 @@
 ---
 
 ## บันทึกประจำวัน (Changelog)
+
+### 2026-11-03 (เริ่มเฟสสร้างจริง — scaffold โปรเจกต์ Next.js)
+เริ่มงานเขียนโค้ดเฟสแรก วางโครงโปรเจกต์ (ยังไม่ทำฟีเจอร์) บน branch `claude/focused-pike-c58fe0`
+
+**ตัวเลือกที่เจ้าของเคาะ (เสนอก่อนทำ):** package manager = **npm** · ตัวรันเทส = **Vitest** · PWA = **Serwist** · Supabase dev = **Cloud free** (migration เก็บใน repo สลับ local ทีหลังได้)
+
+**✅ ทำไปแล้ว:**
+- โครง Next.js 15 (App Router) + TypeScript strict (`noUncheckedIndexedAccess`) + ฟอนต์ Noto Sans Thai + UI ไทย
+- PWA ผ่าน **Serwist** (`app/sw.ts` · ปิดใน dev กัน cache) + `manifest.webmanifest` + icon
+- token สี Tier 8 แบบใน `globals.css` เป็น CSS variable (light/dark) ตามกฎ CLAUDE.md — ไม่ hardcode hex
+- route stub ครบตาม SPEC §8: `login` · `(app)/{todo,customers,service,bait,import,collection,admin}` · `(public)/summary` (แยกกลุ่ม public/หลัง-login)
+- `lib/supabase/` client+server อ่านค่าจาก env เท่านั้น (`@supabase/ssr`) — ไม่มี secret ใน repo
+- Vercel Cron stub `/api/cron/sync` + `vercel.json` (`0 23 * * *` UTC = 06:00 ไทย, SPEC §9.2)
+- `lib/rules/` (README ชี้ไปแผน TDD) · `supabase/migrations/` พร้อมสำหรับ schema เฟสถัดไป
+- tooling: npm · Vitest · ESLint (next) · Tailwind v4 — **typecheck / lint / test / build ผ่านครบ** · dev HTTP 200
+- `.env.example` แม่แบบ + เพิ่ม `.gitignore` กัน `public/sw.js` (artifact)
+
+**ไฟล์ที่เพิ่ม (32):** `package.json`, `tsconfig.json`, `next.config.ts`, `eslint.config.mjs`, `postcss.config.mjs`, `vitest.config.ts`, `vercel.json`, `.env.example`, `app/**`, `components/ScreenStub.tsx`, `lib/supabase/**`, `lib/rules/README.md`, `supabase/**`, `public/**` · commit `804ac0c`
+
+**ค้าง/ถัดไป:**
+- เขียน `lib/rules` ตามแผน TDD (เขียนเทสก่อน) — โครง Vitest พร้อมแล้ว
+- schema + RLS migration แรก (เขต/สาขา/ทีม/ประเภทลูกค้า) — SPEC §6/§5
+- ตั้ง Supabase cloud project จริง + ใส่ env (ยังไม่ได้สร้าง — ตอน scaffold ไม่ต้องใช้)
+- ย้าย `next lint` → ESLint CLI ก่อนขึ้น Next 16 (ตอนนี้ยัง warn เฉยๆ)
 
 ### 2026-11-02 (หน้านำเข้าจาก Excel)
 - ✅ **ปุ่ม "↑ นำเข้าจาก Excel"** → วางข้อมูลจาก Excel (คั่นด้วย tab) แล้วกดตรวจ · มีปุ่ม "ใส่ข้อมูลตัวอย่าง" สำหรับเดโม
