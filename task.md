@@ -25,8 +25,8 @@
 | โครง Next.js + TS + PWA | ✅ เสร็จ | 3 พ.ย. — App Router + TS strict + PWA(Serwist) + Noto Sans Thai · 12 route stub ตาม §8 · typecheck/lint/test/build ผ่าน |
 | `lib/rules` + unit test | ✅ เสร็จ | 3 พ.ย. — 7 pure function ครบ · 16 เทสผ่าน (Vitest) · เหลือเทียบเกณฑ์ §15 รอ fixtures เขต 1 |
 | DB schema + RLS (Supabase) | ⏸️ พัก (ติด Docker) | มีแผนแล้ว `docs/plans/2026-11-03-schema-rls.md` · เริ่มไม่ได้เพราะเครื่องไม่มี WSL/Docker |
-| นำเข้าสัญญา (หน้าจอ 7) | ⬜ ยังไม่เริ่ม | ตารางแปลงค่าเก่า→ใหม่ เตรียมไว้แล้ว |
-| Snapshot + Dashboard Sync | ⬜ ยังไม่เริ่ม | SPEC §9 |
+| นำเข้าสัญญา (หน้าจอ 7) | 🔄 logic เสร็จ | 3 พ.ย. — `lib/import` (parse+ล้าง+ตรวจ 3 กลุ่ม) 68 เทส · เหลือหน้าจอ UI |
+| Snapshot + Dashboard Sync | 🔄 logic เสร็จ | 3 พ.ย. — `lib/dashboard` (ประกอบ JSON §9.1) 23 เทส · เหลือ GitHub API sync + Cron |
 | fixtures เขต 1 (`zone1_registry.*`) | ⚠️ รอไฟล์ | ใช้ตรวจเกณฑ์ยอมรับ §15 |
 
 **ความหมายสัญลักษณ์:** ✅ เสร็จ · 🔄 กำลังทำ · ⬜ ยังไม่เริ่ม · ⚠️ ติด/รอข้อมูล
@@ -108,6 +108,20 @@
 ---
 
 ## บันทึกประจำวัน (Changelog)
+
+### 2026-11-03 (แยก 2 session ขนาน — lib/import + lib/dashboard)
+เจ้าของขอแบ่งงานเป็น session ขนานให้ไว → แยก 2 งาน pure logic ที่อิสระต่อกันและไม่ต้องใช้ Docker (รัน Sonnet, worktree แยก, TDD)
+
+**✅ `lib/import` (68 เทส)** — branch `claude/lib-import-b0db44` commit `a5484a7` → merge `cdac144`
+- parse แถว Excel → ล้าง+ตรวจ แบ่งผล 3 กลุ่ม: auto-fixed (บอกทุกการแก้) / must-fix (ไม่นำเข้า) / skipped
+- กฎครบตาม SPEC §10/§11 + mockup: เลขสัญญา `CTyy-nnnnnnn` + กันซ้ำ · สาขาแก้สะกด+คำนวณเขต · ประเภทลูกค้าแมปเก่า→ใหม่ · ทีมหลายทีม · วันที่/เวลา · term_years 1/3 · คอลัมน์เลื่อน
+- เดโม 8 แถว → ready 3 / must-fix 4 / skip 1 ตรงสเปค · ไฟล์: `branches` `customerTypes` `fields` `importContracts` `types` `index`
+
+**✅ `lib/dashboard` (23 เทส)** — branch `claude/lib-dashboard-f4824a` commit `3b5c7f2` → merge `26ed049`
+- `buildDashboardData` ประกอบ `dashboard_data.json` รูปแบบ §9.1 (key `MMM.YY`, 16 ฟิลด์ ตัด value_annual) · รวม computed/legacy/manual · guard 43 สาขา · ไฟล์: `row` `buildDashboardData` `branches` `validate` `types` `index`
+
+**รวมเข้า branch หลัก `claude/focused-pike-c58fe0` แล้ว** (--no-ff 2 ก้อน) · เทสรวม **107 ผ่าน** (rules 16 + import 68 + dashboard 23) · typecheck/lint เขียว
+- 2 session แก้คนละโฟลเดอร์ ไม่ชนกัน · ตรวจเทสในแต่ละ worktree ก่อน merge แล้วรันรวมยืนยันอีกครั้ง
 
 ### 2026-11-03 (lib/rules เสร็จ + วางแผน schema + ติด Docker)
 ต่อจาก scaffold — ทำ 2 อย่าง: เขียนแผน schema และลงมือ lib/rules
