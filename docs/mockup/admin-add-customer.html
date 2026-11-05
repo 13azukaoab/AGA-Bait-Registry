@@ -318,8 +318,8 @@ table.xl .teambtn.multi{font-weight:700;color:var(--accent-strong)}
   <div class="field"><label>สถานะ</label><select><option>ทั้งหมด</option><option>ครบแล้ว</option><option>รอนัดบริการ</option><option>ขาดข้อมูลจำเป็น</option></select></div>
   <div class="field" style="flex:1;min-width:150px"><label>ค้นหา</label><input placeholder="ชื่อลูกค้า / เลขที่สัญญา" style="width:100%"></div>
   <button class="btn sm" type="button" onclick="impOpen()">↑ นำเข้าจาก Excel</button>
-  <button class="btn sm">↓ ส่งออก Excel</button>
-  <button class="btn sm primary">+ เพิ่มแถว</button>
+  <button class="btn sm" type="button" onclick="exportXL()">↓ ส่งออก Excel</button>
+  <button class="btn sm primary" type="button" onclick="addRow()">+ เพิ่มแถว</button>
 </div>
 
 <div class="sumchips">
@@ -537,7 +537,7 @@ table.xl .teambtn.multi{font-weight:700;color:var(--accent-strong)}
     </tbody>
   </table>
   <div class="foot">
-    <button class="btn sm">+ เพิ่มแถว</button>
+    <button class="btn sm" type="button" onclick="addRow()">+ เพิ่มแถว</button>
     <span style="flex:1"></span>
     <span style="font-size:11.5px;color:var(--fg-muted)">บันทึกได้ <b id="footcnt">— จาก — แถว</b> — <span class="chip pend">รอนัดบริการ</span> และ <span class="chip pend">ระยะ 396 วัน</span> เก็บไว้เติม/แก้ทีหลังได้ · แถวแดงขาดข้อมูลจำเป็น</span>
     <button class="btn sm primary" type="button" onclick="saveOpen()">บันทึกเข้าทะเบียน</button>
@@ -879,7 +879,7 @@ table.xl .teambtn.multi{font-weight:700;color:var(--accent-strong)}
     <div class="dayft">
       <span>เรียงตามเวลานัด · คลิกแถวเพื่อเปิดสัญญาในตารางเปิดงาน</span>
       <span style="flex:1"></span>
-      <button class="btn sm" type="button">+ เพิ่มงานวันนี้</button>
+      <button class="btn sm" type="button" onclick="addTodayJob()">+ เพิ่มงานวันนี้</button>
     </div>
   </div>
 </div>
@@ -987,13 +987,16 @@ window.addEventListener('resize', tmPlace);
 /* ===== popup รายวัน =====
    อ่านงานทั้งวันจาก data-tip ของช่องวัน (บรรทัดละ "HH:MM ชื่อ · สาขา · Tier")
    เซลล์โชว์แค่ 3 รายแรก popup นี้จึงเป็นที่ดูครบทั้งวัน */
-var dayOv=document.getElementById('dayov');
+var dayOv=document.getElementById('dayov'), dayISO='';
 function dayOpen(cell){
   // data-tip เหลือแค่ย่อ 3 บรรทัดไว้ hover · รายการเต็มอยู่ใน data-jobs
   var ln=(cell.getAttribute('data-jobs')||cell.getAttribute('data-tip')||'').split('\n');
   var jobs=ln.slice(1).filter(function(s){return s.trim();});
   if(!jobs.length) return;                        // วันไม่มีงาน ไม่ต้องเปิด
   document.getElementById('dayttl').textContent=ln[0].split('·')[0].trim()+' 2026';
+  // วัน ISO ของ popup นี้ (เลขวันจากหัว + เดือน/ปีจากตัวกรอง) → ใช้ตอน "+ เพิ่มงานวันนี้"
+  var mm=(typeof selMonth==='function')?selMonth():null, dnum=parseInt(ln[0],10);
+  dayISO=(mm&&dnum)?mm.y+'-'+('0'+mm.m).slice(-2)+'-'+('0'+dnum).slice(-2):'';
   document.getElementById('daycnt').textContent=jobs.length+' งาน';
   var html='', nNew=0;
   jobs.forEach(function(j){
@@ -1658,6 +1661,99 @@ document.querySelector('table.xl').addEventListener('change',function(e){
 });
 var monSel=document.querySelector('.toolbar select');
 if(monSel) monSel.addEventListener('change',dateChkAll);
+
+/* ===== เพิ่มแถว (กรอกรายคน) =====
+   ต่อท้ายตารางด้วยแถวว่างโครงเดียวกับแถวอื่น แล้ว init select/ตรวจซ้ำ/ปฏิทินให้แถวใหม่
+   ช่องมูลค่า: เปิด "1 ปี" ปิด "3 ปี" ไว้ก่อน (ยังไม่รู้ระยะสัญญาจนกว่าจะกรอกวันเริ่ม/สิ้นสุด) */
+function blankRow(){
+  return '<tr>'+
+    '<td class="c num"></td>'+
+    '<td><input value="" placeholder="CT26-…" oninput="ctFix(this)"></td>'+
+    '<td><input value="" class="wide" placeholder="ชื่อลูกค้า" oninput="dupCheck(this)"></td>'+
+    '<td class="c"><input type="checkbox"></td>'+
+    '<td><span class="jobsw" onclick="jobTog(this,event)" role="group" aria-label="ประเภทงาน"><span class="jo on">New</span><span class="jo">Renew</span></span></td>'+
+    '<td><span class="chip na">— งานใหม่ —</span></td>'+
+    '<td><input list="sllist" value="" placeholder="ผู้ขาย"></td>'+
+    '<td><select><option selected>Sale</option><option>AM</option></select></td>'+
+    '<td><select class="brsel" onchange="rowZone(this)"></select></td>'+
+    '<td><span class="auto rzone">—</span></td>'+
+    '<td><input type="date" value=""></td>'+
+    '<td><input type="date" value="" class="wait"></td>'+
+    '<td><button type="button" class="tmbtn wait" data-h="" data-m="" onclick="tmOpen(this)">— เลือก —</button></td>'+
+    '<td><button type="button" class="tmbtn teambtn wait" data-teams="" onclick="teamOpen(this)" title="ยังไม่นัดทีม">—</button></td>'+
+    '<td><select class="ctsel"></select></td>'+
+    '<td><input type="date" value=""></td>'+
+    '<td><input type="date" value=""></td>'+
+    '<td class="r"><input class="num money" value=""></td>'+
+    '<td class="r"><input class="num money off" disabled></td>'+
+    '<td class="c"><span class="chip na">—</span></td>'+
+    '<td><input class="wide"></td>'+
+    '<td class="c"><span class="chip miss">กรอกไม่ครบ</span></td>'+
+  '</tr>';
+}
+function renumber(){
+  [].forEach.call(document.querySelectorAll('table.xl tbody tr'),function(tr,i){ tr.cells[0].textContent=i+1; });
+}
+function flashRow(tr){
+  tr.scrollIntoView({block:'center'});
+  tr.style.transition='box-shadow .2s';
+  tr.style.boxShadow='inset 0 0 0 2px var(--accent)';
+  setTimeout(function(){ tr.style.boxShadow=''; },1600);
+}
+function addRow(){
+  var tb=document.querySelector('table.xl tbody');
+  tb.insertAdjacentHTML('beforeend', blankRow());
+  var tr=tb.lastElementChild;
+  renumber();
+  fillBranches(); fillMasters();            // เติม options ให้ select ที่เพิ่งสร้าง
+  if(typeof footSync==='function') footSync();
+  var ci=tr.cells[1].querySelector('input'); if(ci) ci.focus();
+  flashRow(tr);
+  return tr;
+}
+
+/* ===== เพิ่มงานวันนี้ (จาก popup ปฏิทิน) =====
+   เพิ่มแถวใหม่แล้วใส่วันที่บริการ = วันของ popup ให้เลย ปิด popup และเลื่อนไปที่แถว */
+function addTodayJob(){
+  var iso=dayISO;
+  dayClose();
+  var tr=addRow();
+  if(iso){
+    var svc=tr.cells[11].querySelector('input');
+    if(svc){ svc.value=iso; svc.classList.remove('wait'); }
+    dateIssues(tr,true);
+  }
+  if(typeof footSync==='function') footSync();
+  var ci=tr.cells[1].querySelector('input'); if(ci) ci.focus();
+}
+
+/* ===== ส่งออก Excel (CSV + BOM UTF-8 เปิดใน Excel ภาษาไทยได้เลย) =====
+   อ่านค่าจากทุกแถวในตาราง คอลัมน์ตรงกับที่โชว์ · เวลา/ทีม อ่านจาก data-* ของปุ่ม */
+var EXPHDR=['ลำดับ','เลขที่สัญญา','รายชื่อ','เบิกด่วน','ประเภทงาน','ลูกค้าเดิม','ผู้ขาย','ตำแหน่ง',
+  'สาขา','เขต','วันที่รับ Mail','วันที่บริการ','เวลาบริการ','ทีม','ประเภท','เริ่ม','สิ้นสุด',
+  'มูลค่า 1 ปี','มูลค่า 3 ปี','Tier','หมายเหตุ','สถานะ'];
+function rowOut(tr){
+  function v(i){ var e=tr.cells[i].querySelector('input,select'); return e?e.value.trim():tr.cells[i].textContent.trim(); }
+  var job=((tr.querySelector('.jobsw .jo.on')||{}).textContent||'').trim();
+  var chk=tr.cells[3].querySelector('input'), urgent=(chk&&chk.checked)?'TRUE':'';
+  var tmb=tr.cells[12].querySelector('button'), tm=(tmb&&tmb.dataset.h)?(tmb.dataset.h+':'+tmb.dataset.m):'';
+  var teb=tr.cells[13].querySelector('.teambtn'), teams=teb?(teb.dataset.teams||''):'';
+  return [tr.cells[0].textContent.trim(), v(1), v(2), urgent, job, tr.cells[5].textContent.trim(),
+    v(6), v(7), v(8), tr.cells[9].textContent.trim(), v(10), v(11), tm, teams, v(14), v(15), v(16),
+    v(17), v(18), tr.cells[19].textContent.trim(), v(20), tr.cells[21].textContent.trim()];
+}
+function csvCell(s){ s=String(s==null?'':s); return /[",\n\r]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s; }
+function exportXL(){
+  var rows=[EXPHDR];
+  [].forEach.call(document.querySelectorAll('table.xl tbody tr'),function(tr){ rows.push(rowOut(tr)); });
+  var csv='﻿'+rows.map(function(r){ return r.map(csvCell).join(','); }).join('\r\n');
+  var mon=((document.querySelector('.toolbar select')||{}).value||'เดือนนี้').replace(/\s+/g,'');
+  var blob=new Blob([csv],{type:'text/csv;charset=utf-8;'}), url=URL.createObjectURL(blob),
+      a=document.createElement('a');
+  a.href=url; a.download='AGA-เปิดงาน-'+mon+'.csv';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(function(){ URL.revokeObjectURL(url); },1000);
+}
 
 fillBranches();
 fillMasters();
