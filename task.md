@@ -24,7 +24,7 @@
 |---|---|---|
 | โครง Next.js + TS + PWA | ✅ เสร็จ | 3 พ.ย. — App Router + TS strict + PWA(Serwist) + Noto Sans Thai · 12 route stub ตาม §8 · typecheck/lint/test/build ผ่าน |
 | `lib/rules` + unit test | ✅ เสร็จ | 3 พ.ย. — 7 pure function ครบ · 16 เทสผ่าน (Vitest) · เหลือเทียบเกณฑ์ §15 รอ fixtures เขต 1 |
-| DB schema + RLS (Supabase) | ⏸️ พัก (ติด Docker) | มีแผนแล้ว `docs/plans/2026-11-03-schema-rls.md` · เริ่มไม่ได้เพราะเครื่องไม่มี WSL/Docker |
+| DB schema + RLS (Supabase) | ✅ เสร็จ | 4–5 พ.ย. — 10 migration (15 ตาราง + enum + RLS ทุกตาราง + audit + ล็อกเดือนปิด) · 210 เทส pgTAP ผ่าน · final review (opus) ผ่าน พร้อม merge |
 | นำเข้าสัญญา (หน้าจอ 7) | 🔄 logic เสร็จ | 3 พ.ย. — `lib/import` (parse+ล้าง+ตรวจ 3 กลุ่ม) 68 เทส · เหลือหน้าจอ UI |
 | Snapshot + Dashboard Sync | 🔄 logic เสร็จ | 3 พ.ย. — `lib/dashboard` (ประกอบ JSON §9.1) 23 เทส · เหลือ GitHub API sync + Cron |
 | fixtures เขต 1 (`zone1_registry.*`) | ⚠️ รอไฟล์ | ใช้ตรวจเกณฑ์ยอมรับ §15 |
@@ -108,6 +108,22 @@
 ---
 
 ## บันทึกประจำวัน (Changelog)
+
+### 2026-11-04/05 (DB schema + RLS เสร็จ — subagent-driven 10 task)
+สร้าง schema ฐานข้อมูลครบตามแผน `docs/plans/2026-11-03-schema-rls.md` แบบ subagent-driven (แต่ละ task มี implementer + reviewer แยก) บน Supabase local (Docker)
+
+**✅ 10 migration ใน `supabase/migrations/` · 210 เทส pgTAP ผ่าน · typecheck/lint เขียว · final review (opus) = พร้อม merge**
+- enums 10 ตัว + 5 ตารางอ้างอิง + seed (13 เขต / 43 สาขา / 14 ประเภทลูกค้า / เกณฑ์ Tier)
+- profiles + helper สิทธิ์ (`current_app_role`/`current_division_scope`/`is_host`, SECURITY DEFINER)
+- customers · contracts (+contract_teams หลายทีม) · stations · visits · station_checks
+- trigger F1–F10 (`set_follow_up_no` นับแยกต่อสถานี §7.5) · audit_log + trigger ทุกการแก้ไข · ล็อกเดือนปิด (§7.7)
+- **RLS ทุกตาราง** — viewer(anon) เห็น 0 แถวจากตาราง PII (§15.2) · admin/recorder เขียนได้ตาม division scope · host ทำได้ทุกอย่าง
+- `v_branch_summary` (ไม่มี PII) ให้ anon อ่าน
+
+**ยังค้าง/ต้องตัดสิน (ไม่บล็อก merge):**
+- 🔸 **ยืนยันสิทธิ์ลบ:** recorder ลบ visit/station_check ได้ (SPEC §5 บอกแค่ "แก้") · admin ลบไม่ได้ (host เท่านั้น) — ให้เจ้าของยืนยัน
+- 🔸 branch ยังไม่ merge เข้า main · ยังไม่สร้าง Supabase cloud project จริง · เทส RLS บางเคส + ไฟล์ pin supabase CLI รอรอบ hardening
+- รายละเอียด ledger: `.superpowers/sdd/2026-11-03-schema-rls/progress.md`
 
 ### 2026-11-03 (แยก 2 session ขนาน — lib/import + lib/dashboard)
 เจ้าของขอแบ่งงานเป็น session ขนานให้ไว → แยก 2 งาน pure logic ที่อิสระต่อกันและไม่ต้องใช้ Docker (รัน Sonnet, worktree แยก, TDD)
