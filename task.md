@@ -128,6 +128,27 @@
 - **ไฟล์ที่แตะ:** `docs/mockup/admin-add-customer.html`, `task.md`
 - **ค้าง:** `+ เพิ่มแถว` / ฟอร์มรายคน · `↓ ส่งออก Excel` · `+ เพิ่มงานวันนี้` ใน popup ปฏิทิน
 
+### 2026-11-02 (เมนูจอเล็ก = ลิ้นชัก hamburger)
+เจ้าของไม่ชอบเมนูจอเล็กเดิม (กลายเป็นแถบบนเลื่อนซ้าย-ขวาหาเมนู ใช้ยาก) อยากให้ยังรู้สึกเหมือน sidebar
+- เสนอ 3 แบบ (ปุ่ม ☰ / แถบไอคอนแคบ / เมนู 2 แถว) เจ้าของเลือก **ปุ่ม ☰ (hamburger drawer)**
+- ✅ จอ ≤860px: เมนูซ่อนเป็นลิ้นชัก เลื่อนออกจากซ้ายเมื่อกดปุ่ม ☰ มีฉากหลังมืด · เลือกเมนู/กดฉากหลัง/Esc = ปิด
+- ✅ จอกว้าง: ปุ่ม ☰ ซ่อน เมนูยังเป็น sidebar ซ้ายเหมือนเดิม (ไม่กระทบ)
+- ✅ รองรับ `prefers-reduced-motion` (ปิด transition ให้คนที่ตั้งค่าลดการเคลื่อนไหว)
+- ตรวจด้วย JS: ปุ่มซ่อนบนจอกว้าง · เปิด/ปิด toggle + aria-expanded ถูก · go() ปิดลิ้นชักอัตโนมัติ · media rule + reduced-motion มีจริง (แผงพรีวิวบีบต่ำกว่า 980 ไม่ได้ ดูจอเล็กจริงต้องเปิดไฟล์ย่อหน้าต่างเอง)
+- **ไฟล์ที่แตะ:** `docs/mockup/aga-bait-registry-prototype.html` (CSS + ปุ่ม topbar + backdrop + JS `toggleNav`), `task.md`
+
+### 2026-11-02 (responsive PC — หน้าหัวหน้างาน แบบ B)
+ปรับ layout mockup หัวหน้างาน (`aga-bait-registry-prototype.html`) ให้ใช้พื้นที่จอ PC เต็ม (หัวหน้างานกรอกบนจอปนกัน โน้ตบุ๊ก/PC)
+- ผ่าน brainstorming เต็มรูปแบบ: เสนอ 3 แบบ (A cap / B ยืดเต็ม+list แคบ / C 3 คอลัมน์) เจ้าของเลือก **B** → เขียน design doc `docs/superpowers/specs/2026-11-02-recorder-responsive-pc-design.md`
+- ✅ **cap จอ** `.shell` max-width 1760px จัดกลาง — จอ ultrawide ไม่ยืดเว่อร์ (ยืนยัน 1920 → shell 1760)
+- ✅ **หน้า entry** (service IG/IC + bait AG) split 50/50 → `.split.entry` = list แคบ 300–340px + form กินที่เหลือ → ฟอร์ม/ตารางสถานีได้ที่เต็ม
+- ✅ **จอแคบ ≤860px** ยุบ 1 คอลัมน์ (reset ทั้ง `.split` และ `.split.entry` ใน media query — specificity)
+- ✅ ตารางรายชื่อซ้าย (service) ตัดบรรทัดได้ กัน scroll ในคอลัมน์แคบ
+- 🐞 **บั๊กที่เจอและแก้** — `.powwrap{display:inline-flex}` ทับ `[hidden]` ทำให้ช่องเคมีผงโผล่ในแถว "ปลวกใต้ดิน" (ควรซ่อน) ดันคอลัมน์เป็น 303px → ตารางสถานี scroll 54px ที่ 1366px · แก้ 1 บรรทัด `.powwrap[hidden]{display:none}` → 1366px ตารางไม่ scroll + เคมีผงซ่อนถูกต้อง (correctness)
+- ทดสอบด้วย JS วัด layout (pane มี floor ~980 ใช้ screenshot จอกว้างไม่ได้): 1920 cap+ไม่ scroll · 1366 ทั้ง 7 หน้าไม่ scroll แนวนอน · ≤860 media rule ยืนยันครอบ `.split.entry`
+- **ไฟล์ที่แตะ:** `docs/mockup/aga-bait-registry-prototype.html` (CSS 5 จุด + class `entry` 2 จุด), `docs/superpowers/specs/2026-11-02-recorder-responsive-pc-design.md`, `task.md`
+- ไม่แตะ: สี Tier, ตัวเลข, JS logic, เนื้อหา
+
 ### 2026-11-02 (master ประเภทลูกค้า รอบสุดท้าย — 14 ค่า 4 หมวด)
 ทบทวนรายการ 12 ค่าแล้วพบจุดอ่อน 3 ข้อ เจ้าของรับทั้งชุด → **14 ค่า แบ่ง 4 หมวด (`<optgroup>`)**
 
