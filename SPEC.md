@@ -106,7 +106,7 @@
 | `month_closures` | month_key, closed_by, closed_at, reopened_by, reopened_at | |
 | `monthly_branch_snapshots` | month_key, branch_id, source (`computed`/`legacy`/`manual`), s1…xl3, cust, vS, vM, vL, vXL, value, value_annual | ข้อมูลที่ส่งไป Dashboard |
 | `audit_log` | table_name, row_id, action, old_data, new_data, changed_by, changed_at | เขียนด้วย trigger |
-| `profiles` | user_id, display_name, role, division_scope, team_id | |
+| `profiles` | user_id, display_name, username, role, division_scope, team_id, is_active, must_change_password, last_login | `username` unique (a-z 0-9 . _ -, 3–20 ตัว) · `is_active=false` = ปิดบัญชี (soft disable ไม่ลบ เพราะ audit_log อ้างอิงผู้แก้ไข) · `must_change_password=true` ตอนสร้าง/รีเซ็ต → login แล้วบังคับไปหน้าเปลี่ยนรหัสก่อน เปลี่ยนแล้วเป็น false · เฉพาะ host แก้ได้ · trigger กัน host คนสุดท้ายถูกปิด/ลดสิทธิ์ (หน้าจอ 11) |
 
 ## 7. กฎธุรกิจ (Business rules)
 
@@ -322,5 +322,10 @@
 8. **ทีมบริการ (service team) = บทบาทนอกระบบ** ไม่มี login เฟส 1 (§5)
 9. **สัญญาใกล้หมด** ปรับเกณฑ์ 60 → **90 วัน** (หน้าจอ 2)
 10. **แดชบอร์ดสถานะงาน** ในหน้า "ต้องทำ" + **ช่องค้นหากลาง** (ชื่อ/เลขสัญญา, fuzzy) + **filter มาตรฐาน** เขต/สาขา/ทีม ทุกหน้า
+
+### 6 พ.ย. 2026 (จากรอบทำ mockup หน้าจัดการผู้ใช้)
+1. **`profiles` เพิ่ม `username`, `is_active`, `must_change_password`, `last_login`** (§6) — "ปิดบัญชี" = soft disable ไม่ลบ · host คนสุดท้ายปิด/ลดสิทธิ์ไม่ได้ · host ปิดบัญชีตัวเองไม่ได้
+2. **รหัสผ่าน (หน้าจอ 11):** host สร้างบัญชี → ระบบสุ่มรหัสชั่วคราว แสดงครั้งเดียว ผู้ใช้ต้องเปลี่ยนตอนเข้าครั้งแรก (สุ่มฝั่งเซิร์ฟเวอร์ด้วย Supabase Admin API)
+- mockup อ้างอิง: `docs/mockup/admin-user-management.html`
 
 > mockup อ้างอิง: Artifact "AGA Bait Registry" (prototype 6 หน้าจอ)

@@ -109,6 +109,22 @@
 
 ## บันทึกประจำวัน (Changelog)
 
+### 2026-11-06 (mockup หน้าจัดการผู้ใช้ — SPEC §8 หน้า 11)
+ออกแบบหน้า "จัดการผู้ใช้" (เฉพาะ host) → เสนอ 3 แบบ (A ตาราง+แผงข้าง / B แก้ในตาราง / C การ์ดสรุป+modal) เจ้าของเลือก **แบบ C**
+- ✅ **การ์ดสรุป** host/admin/recorder/ปิดบัญชี (คลิกการ์ดเพื่อกรองตาราง) + ค้นหา + ตัวกรอง role/หน่วยงาน/สถานะ
+- ✅ **สร้างบัญชี** (modal): ชื่อที่แสดง · username · role (host/admin/recorder — **ไม่มี viewer**) · division_scope · ทีม → ระบบ**สุ่มรหัสชั่วคราว แสดงครั้งเดียว** (ผู้ใช้ต้องเปลี่ยนตอนเข้าครั้งแรก)
+- ✅ **กฎฟอร์มตาม role:** host = ล็อกทุกหน่วยงาน/ไม่มีทีม · admin = เลือกหน่วยงาน/ไม่มีทีม · recorder = ต้องเลือกหน่วยงาน + ทีม
+- ✅ **แก้ไข / รีเซ็ตรหัส / ปิด-เปิดบัญชี** (soft disable ไม่ลบ เพราะ audit log อ้างอิงผู้แก้ไข)
+- ✅ **กันพลาด:** ปิดบัญชีตัวเองไม่ได้ · ปิด/ลดสิทธิ์ host คนสุดท้ายไม่ได้ · username ห้ามซ้ำ + ตรวจรูปแบบ
+- เทสด้วย JS ในเบราว์เซอร์: กฎ role ครบ · validation ครบ · กัน host คนสุดท้าย · ปิด/เปิดคืน · กรอง · กัน XSS (ชื่อที่เป็น HTML ไม่ถูก render) · ไม่มี console error
+- 🐞 **บั๊กที่เจอและแก้:** ผูกกฎ role ผ่าน `setTimeout` ทำให้ error `null.value` ถ้าฟอร์มปิดก่อน timer → เปลี่ยนเป็นผูกทันทีหลัง modal เปิด (`wireRoleRules`)
+- ✅ **แก้ SPEC §6 + §17 แล้ว:** `profiles` เพิ่ม `username` (unique) · `is_active` (bool) · `must_change_password` (bool) · `last_login` (timestamptz)
+- ✅ **code review รอบสุดท้าย (แก้แล้ว):** ปุ่ม "ปิดบัญชี" สีขาว hardcode → token `--on-danger` (dark mode contrast) · modal ต่อกัน (สร้าง→แสดงรหัส) โฟกัสกลับปุ่มเดิมถูกต้อง · avatar ตรงกับผู้ล็อกอิน
+- FYI ตอน build: modal ยังไม่มี focus trap (Tab หลุดออกได้) — ใช้ `<dialog>` หรือ lib ของ framework
+- ⚠️ **ต้องทำตอน build จริง:** RLS ให้เฉพาะ host แก้ `profiles` ได้ + trigger กัน host คนสุดท้ายถูกปิด/ลดสิทธิ์ (บังคับที่ DB ไม่ใช่แค่หน้าจอ) · สุ่มรหัสชั่วคราวฝั่งเซิร์ฟเวอร์ (Supabase Admin API ด้วย service key เก็บใน env ของ Vercel เท่านั้น)
+- **ไฟล์ที่แตะ:** `docs/mockup/admin-user-management.html` (ใหม่ — ข้อมูลเป็นชื่อสมมติ ไม่มี PII จริง), `SPEC.md` (§6, §17), `task.md`
+- **ค้าง:** division_scope ตอนนี้เลือกได้ทีละค่า (central/province) — ถ้าต้องมีผู้ใช้ที่ดูแล 2 หน่วยงานพร้อมกัน ต้องเปลี่ยนเป็นหลายค่า (array) · master ทีม A–O/Z/Sup ใน dropdown ใช้ตาม task.md เดิม (SPEC §14 ข้อ 6 ว่าทีมผูกสาขายังเปิดอยู่)
+
 ### 2026-11-06 (mockup หน้าเข้าสู่ระบบ — SPEC §8 หน้า 1)
 ออกแบบหน้า login (host/admin/recorder) → [docs/mockup/login.html](docs/mockup/login.html)
 - เสนอ layout 2 แบบ (A การ์ดกลางจอ / B แยกสองฝั่งมีแผงแบรนด์) → เจ้าของเลือก **A**

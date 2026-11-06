@@ -1,0 +1,532 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>จัดการผู้ใช้ (host) — mockup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@300;400;500;600;700&display=swap">
+<!--
+  หน้าจอ 11 "จัดการผู้ใช้" (SPEC §8) — เฉพาะ role host
+  ----------------------------------------------------------------------------
+  สรุป logic (ไว้ให้ทีม นัท/Jane/Toon อ่านก่อนต่อยอด)
+  1. host เป็นคนสร้างบัญชีให้ (host / admin / recorder) — ไม่มีหน้าสมัครเอง (SPEC §5)
+     viewer = หน้า public ไม่ login → ไม่มีบัญชี จึงไม่อยู่ใน dropdown role
+  2. ฟิลด์ตรงกับตาราง `profiles`: display_name, role, division_scope, team_id
+     + ที่เสนอเพิ่ม (รอเพิ่มใน SPEC §6): username, is_active, last_login
+  3. กฎของฟอร์มตาม role
+       host      → division_scope = ทุกหน่วยงาน (ล็อก) · ไม่มีทีม
+       admin     → ต้องเลือก division_scope · ไม่มีทีม
+       recorder  → ต้องเลือก division_scope + ทีม (ทีม = ตัวกรองเริ่มต้นของหน้าจอ SPEC §5)
+  4. รหัสผ่าน: ระบบสุ่มรหัสชั่วคราว แสดงครั้งเดียวหลังสร้าง/รีเซ็ต · ผู้ใช้ต้องเปลี่ยนตอนเข้าครั้งแรก
+  5. "ปิดบัญชี" = soft disable (is_active=false) ไม่ลบ เพราะ audit_log อ้างอิงผู้แก้ไข · เปิดคืนได้
+  6. กันพลาด: ปิด/ลดสิทธิ์ host คนสุดท้ายไม่ได้ · ปิดบัญชีตัวเองไม่ได้ · username ห้ามซ้ำ
+  7. ของจริงต้องบังคับที่ฐานข้อมูล (RLS: เฉพาะ host แก้ `profiles` ได้ + trigger กัน host คนสุดท้าย)
+     — mockup นี้แค่แสดงพฤติกรรมหน้าจอ ข้อมูลเป็นชื่อสมมติทั้งหมด (ไม่มี PII จริง)
+-->
+<style>
+:root{
+  --bg:#eef2f7; --surface:#ffffff; --surface-2:#f4f7fb; --surface-3:#e9eff6;
+  --fg:#17212e; --fg-muted:#5a6b7e; --fg-faint:#6b7a8c;
+  --border:#d8e0ea; --border-strong:#c3cedb;
+  --accent:#1f5fa8; --accent-strong:#164a85; --accent-fg:#ffffff; --accent-soft:#e6f0fb;
+  --ok:#1a8a5c; --ok-soft:#e3f4ec; --warn:#b4740a; --warn-soft:#fbf0db; --danger:#c23b2e; --danger-soft:#fbe8e5;
+  --new:#6d47b8; --new-soft:#efeafa;
+  --radius:10px; --shadow:0 1px 2px rgba(20,40,70,.06),0 1px 3px rgba(20,40,70,.05);
+  --overlay:rgba(14,26,40,.45); --on-danger:#ffffff;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0e1621; --surface:#16202c; --surface-2:#1b2733; --surface-3:#222f3d;
+  --fg:#e7eef5; --fg-muted:#9fb0c1; --fg-faint:#8394a6;
+  --border:#2a3744; --border-strong:#36485a;
+  --accent:#4a90d9; --accent-strong:#5fa0e3; --accent-fg:#0b1420; --accent-soft:#16304a;
+  --ok:#3bb183; --ok-soft:#133227; --warn:#d99b3e; --warn-soft:#332713; --danger:#e26657; --danger-soft:#331a16;
+  --new:#a98be0; --new-soft:#2a2040;
+  --shadow:0 1px 2px rgba(0,0,0,.3); --overlay:rgba(0,0,0,.6); --on-danger:#0b1420;
+  color-scheme:dark;
+}}
+:root[data-theme="dark"]{
+  --bg:#0e1621; --surface:#16202c; --surface-2:#1b2733; --surface-3:#222f3d;
+  --fg:#e7eef5; --fg-muted:#9fb0c1; --fg-faint:#8394a6;
+  --border:#2a3744; --border-strong:#36485a;
+  --accent:#4a90d9; --accent-strong:#5fa0e3; --accent-fg:#0b1420; --accent-soft:#16304a;
+  --ok:#3bb183; --ok-soft:#133227; --warn:#d99b3e; --warn-soft:#332713; --danger:#e26657; --danger-soft:#331a16;
+  --new:#a98be0; --new-soft:#2a2040;
+  --shadow:0 1px 2px rgba(0,0,0,.3); --overlay:rgba(0,0,0,.6); --on-danger:#0b1420;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:"Noto Sans Thai","Segoe UI",system-ui,sans-serif;
+  font-size:14px;line-height:1.55;-webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums}
+button{font-family:inherit}
+
+/* ===== Header + Shell (เหมือน prototype หลัก) ===== */
+.topbar{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:14px;padding:10px 18px;
+  background:var(--surface);border-bottom:1px solid var(--border)}
+.logo{display:flex;align-items:center;gap:11px;min-width:0}
+.logo .mark{width:38px;height:38px;border-radius:9px;background:var(--accent);color:var(--accent-fg);display:grid;place-items:center;
+  font-weight:700;font-size:15px;letter-spacing:.5px;flex:none}
+.logo .txt b{display:block;font-size:15px;font-weight:600;line-height:1.2}
+.logo .txt span{display:block;font-size:11.5px;color:var(--fg-muted)}
+.spacer{flex:1}
+.pill{display:inline-flex;align-items:center;gap:6px;padding:5px 11px;border:1px solid var(--border);
+  border-radius:999px;background:var(--surface-2);font-size:12.5px;color:var(--fg-muted);white-space:nowrap}
+.pill b{color:var(--fg);font-weight:600}
+.theme-btn{border:1px solid var(--border);background:var(--surface-2);color:var(--fg-muted);border-radius:8px;
+  width:34px;height:32px;cursor:pointer;font-size:15px;line-height:1}
+.avatar{width:32px;height:32px;border-radius:50%;background:var(--surface-3);color:var(--fg-muted);
+  display:grid;place-items:center;font-weight:600;font-size:12px;flex:none}
+.navtoggle{display:none;align-items:center;justify-content:center;border:1px solid var(--border);
+  background:var(--surface-2);color:var(--fg);border-radius:8px;width:36px;height:34px;font-size:18px;line-height:1;cursor:pointer;flex:none}
+.nav-backdrop{display:none}
+.shell{display:flex;align-items:flex-start;min-height:calc(100% - 59px);max-width:1760px;margin-inline:auto}
+.nav{width:238px;flex:none;padding:14px 10px;border-right:1px solid var(--border);background:var(--surface);align-self:stretch}
+.nav .group{font-size:11px;letter-spacing:.06em;color:var(--fg-faint);padding:12px 10px 5px}
+.nav a{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;color:var(--fg-muted);
+  text-decoration:none;font-size:13.5px;cursor:pointer;margin-bottom:1px}
+.nav a .ic{width:17px;text-align:center;flex:none;opacity:.85}
+.nav a:hover{background:var(--surface-2);color:var(--fg)}
+.nav a.active{background:var(--accent-soft);color:var(--accent-strong);font-weight:600}
+main{flex:1;min-width:0;padding:20px 24px 48px}
+@media (max-width:860px){
+  .shell{display:block}
+  .navtoggle{display:inline-flex}
+  .nav{position:fixed;top:0;left:0;bottom:0;width:260px;z-index:40;transform:translateX(-100%);transition:transform .2s ease;overflow-y:auto}
+  body.nav-open .nav{transform:translateX(0)}
+  .nav-backdrop{position:fixed;inset:0;background:var(--overlay);z-index:30}
+  body.nav-open .nav-backdrop{display:block}
+  main{padding:16px 14px 40px}
+  .hide-sm{display:none}
+}
+@media (prefers-reduced-motion:reduce){.nav{transition:none}}
+
+/* ===== ส่วนประกอบทั่วไป ===== */
+.page-head h1{margin:0;font-size:20px;font-weight:600}
+.page-head p{margin:3px 0 0;color:var(--fg-muted);font-size:13px}
+.btn{font-family:inherit;font-size:13px;font-weight:500;border-radius:8px;padding:8px 14px;cursor:pointer;
+  border:1px solid var(--border-strong);background:var(--surface);color:var(--fg)}
+.btn:hover{filter:brightness(.97)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-fg)}
+.btn.danger{background:var(--danger);border-color:var(--danger);color:var(--on-danger)}
+.btn.sm{padding:4px 10px;font-size:12px}
+.btn.link{border-color:transparent;background:transparent;color:var(--accent-strong)}
+.btn.link.bad{color:var(--danger)}
+.btn:focus-visible,input:focus-visible,select:focus-visible,.stat:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.chip{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;padding:2px 9px;border-radius:999px;white-space:nowrap}
+.chip.ok{background:var(--ok-soft);color:var(--ok)}
+.chip.off{background:var(--surface-3);color:var(--fg-muted)}
+.chip.warn{background:var(--warn-soft);color:var(--warn)}
+.chip.host{background:var(--new-soft);color:var(--new)}
+.chip.admin{background:var(--accent-soft);color:var(--accent-strong)}
+.chip.recorder{background:var(--surface-3);color:var(--fg);border:1px solid var(--border-strong)}
+.dot{width:7px;height:7px;border-radius:50%;background:currentColor;display:inline-block}
+
+/* การ์ดสรุป role (คลิกเพื่อกรอง) */
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:16px 0 14px}
+.stat{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:12px 16px;
+  box-shadow:var(--shadow);cursor:pointer;text-align:left;color:var(--fg);font:inherit}
+.stat:hover{border-color:var(--border-strong)}
+.stat.on{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.stat .lab{font-size:12px;color:var(--fg-muted)}
+.stat .val{font-size:26px;font-weight:700;line-height:1.15;margin-top:3px}
+.stat .sub{font-size:11.5px;color:var(--fg-muted);margin-top:2px}
+
+/* ฟิลเตอร์ */
+.toolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin:0 0 12px}
+.field{display:flex;flex-direction:column;gap:3px}
+.field label{font-size:11.5px;color:var(--fg-muted)}
+.field select,.field input,.fld select,.fld input{font-family:inherit;font-size:13px;color:var(--fg);background:var(--surface);
+  border:1px solid var(--border-strong);border-radius:8px;padding:7px 10px;min-width:140px;width:100%}
+.field.grow{flex:1;min-width:180px}
+
+/* ตาราง */
+.tablewrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:13px}
+thead th{background:var(--surface-2);color:var(--fg-muted);font-weight:600;font-size:11.5px;text-align:left;
+  padding:9px 12px;border-bottom:1px solid var(--border);white-space:nowrap}
+tbody td{padding:9px 12px;border-bottom:1px solid var(--border);vertical-align:middle}
+tbody tr:last-child td{border-bottom:0}
+tbody tr:hover td{background:var(--surface-2)}
+tbody tr.is-off td{color:var(--fg-muted)}
+tbody tr.is-off .nm{text-decoration:none;opacity:.85}
+tbody tr.flash td{animation:flash 1.6s ease}
+@keyframes flash{0%,40%{background:var(--accent-soft)}100%{background:transparent}}
+@media (prefers-reduced-motion:reduce){tbody tr.flash td{animation:none;background:var(--accent-soft)}}
+td.act{white-space:nowrap;text-align:right}
+tbody td:first-child{min-width:170px}
+.nm{font-weight:600}
+.un{font-size:11.5px;color:var(--fg-muted);font-family:ui-monospace,Consolas,monospace}
+.empty{padding:34px 16px;text-align:center;color:var(--fg-muted)}
+.foot{padding:9px 14px;border-top:1px solid var(--border);background:var(--surface-2);font-size:12px;color:var(--fg-muted);display:flex;gap:10px;flex-wrap:wrap}
+
+/* แผงอธิบายสิทธิ์ */
+.panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);margin-top:16px}
+.panel>h3{margin:0;padding:12px 16px;font-size:14px;font-weight:600;border-bottom:1px solid var(--border)}
+.panel .body{padding:14px 16px;display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px;font-size:12.5px}
+.panel .body b{display:block;margin-bottom:3px}
+.panel .body span.d{color:var(--fg-muted)}
+.note{font-size:12px;color:var(--fg-muted);background:var(--surface-2);border:1px solid var(--border);
+  border-left:3px solid var(--accent);border-radius:0 8px 8px 0;padding:9px 12px;margin:12px 0 0}
+
+/* ===== Modal ===== */
+.ov{position:fixed;inset:0;background:var(--overlay);z-index:60;display:flex;align-items:center;justify-content:center;padding:18px}
+.ov[hidden]{display:none}
+.box{background:var(--surface);border:1px solid var(--border-strong);border-radius:12px;width:min(520px,100%);
+  max-height:92vh;display:flex;flex-direction:column;box-shadow:0 10px 32px rgba(14,26,40,.28)}
+.box .hd{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px}
+.box .hd b{font-size:15px;font-weight:600}
+.box .hd .x{margin-left:auto;border:0;background:transparent;color:var(--fg-muted);font-size:20px;line-height:1;cursor:pointer;padding:2px 6px;border-radius:6px}
+.box .bd{padding:16px 18px;overflow-y:auto}
+.box .ft{padding:12px 18px;border-top:1px solid var(--border);background:var(--surface-2);display:flex;gap:9px;justify-content:flex-end;
+  border-radius:0 0 12px 12px;flex-wrap:wrap}
+.fld{display:flex;flex-direction:column;gap:3px;margin:0 0 12px}
+.fld label{font-size:12px;color:var(--fg-muted)}
+.fld input[readonly],.fld select:disabled{background:var(--surface-3);color:var(--fg-muted);border-style:dashed;cursor:not-allowed}
+.fld .hint{font-size:11.5px;color:var(--fg-muted)}
+.fld .err{font-size:11.5px;color:var(--danger);min-height:0}
+.fld.bad input,.fld.bad select{border-color:var(--danger)}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media (max-width:520px){.two{grid-template-columns:1fr}}
+.banner{font-size:12.5px;border-radius:8px;padding:9px 12px;margin:0 0 12px;border:1px solid var(--border)}
+.banner.warn{background:var(--warn-soft);color:var(--warn);border-color:transparent}
+.banner.bad{background:var(--danger-soft);color:var(--danger);border-color:transparent}
+.banner.ok{background:var(--ok-soft);color:var(--ok);border-color:transparent}
+.pwbox{display:flex;align-items:center;gap:10px;background:var(--surface-2);border:1px dashed var(--border-strong);
+  border-radius:10px;padding:12px 14px;margin:6px 0 12px}
+.pwbox code{font-family:ui-monospace,Consolas,monospace;font-size:20px;font-weight:600;letter-spacing:.06em;flex:1;word-break:break-all}
+.kv{display:grid;grid-template-columns:110px 1fr;gap:5px 10px;font-size:13px;margin:0 0 12px}
+.kv dt{color:var(--fg-muted)} .kv dd{margin:0}
+ul.plain{margin:6px 0 0;padding-left:18px;font-size:12.5px;color:var(--fg-muted)}
+.toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:var(--fg);color:var(--bg);font-size:13px;
+  padding:9px 16px;border-radius:9px;z-index:80;box-shadow:var(--shadow);max-width:90vw}
+.toast[hidden]{display:none}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <button class="navtoggle" id="navToggle" aria-label="เปิด/ปิดเมนู" aria-expanded="false" onclick="toggleNav()">☰</button>
+  <div class="logo">
+    <div class="mark">AGA</div>
+    <div class="txt"><b>ข้อมูลหลังบ้านระบบเหยื่อ</b><span>Advance Group Asia · ส่วนกลาง</span></div>
+  </div>
+  <div class="spacer"></div>
+  <span class="pill hide-sm">เดือน <b>พ.ย. 2026</b></span>
+  <span class="pill"><span class="chip host">host</span> <b>ส่วนกลาง Bait</b></span>
+  <button class="theme-btn" id="themeBtn" aria-label="สลับธีมสว่าง/มืด" onclick="toggleTheme()">◐</button>
+  <div class="avatar" aria-hidden="true">สญ</div>
+</div>
+
+<div class="shell">
+  <nav class="nav" id="nav" aria-label="เมนูหลัก">
+    <div class="group">งานประจำวัน</div>
+    <a><span class="ic">◉</span> หน้า "ต้องทำ"</a>
+    <a><span class="ic">✎</span> กรอกผลบริการ (IG/IC)</a>
+    <a><span class="ic">▣</span> กล่องเหยื่อ (AG)</a>
+    <a><span class="ic">⇲</span> รอเก็บสถานี (หมดสัญญา)</a>
+    <a><span class="ic">▤</span> ทะเบียนลูกค้า/สัญญา</a>
+    <a><span class="ic">▦</span> สรุปตัวเลข</a>
+    <div class="group">ผู้ดูแลระบบ (host)</div>
+    <a><span class="ic">🔒</span> ปิดเดือน</a>
+    <a><span class="ic">⇅</span> Dashboard Sync</a>
+    <a class="active" aria-current="page"><span class="ic">☺</span> จัดการผู้ใช้</a>
+    <a><span class="ic">⚙</span> ตั้งค่า</a>
+  </nav>
+  <div class="nav-backdrop" id="navBackdrop" onclick="toggleNav(false)" aria-hidden="true"></div>
+
+  <main>
+    <div class="page-head" style="display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap">
+      <div style="flex:1;min-width:240px">
+        <h1>จัดการผู้ใช้</h1>
+        <p>host สร้างบัญชีให้ทีมงาน กำหนดสิทธิ์ (role) ขอบเขตหน่วยงาน และทีม — ไม่มีหน้าสมัครเอง · <span class="chip warn">🔒 สิทธิ์ host</span></p>
+      </div>
+      <button class="btn primary" type="button" onclick="openCreate()">+ สร้างบัญชี</button>
+    </div>
+
+    <!-- การ์ดสรุป (คลิกเพื่อกรองตาราง) -->
+    <div class="stats" id="stats" role="group" aria-label="สรุปจำนวนบัญชีตาม role"></div>
+
+    <div class="toolbar">
+      <div class="field grow"><label for="q">ค้นหา</label><input id="q" type="search" placeholder="ชื่อที่แสดง / username" oninput="render()"></div>
+      <div class="field"><label for="fRole">role</label>
+        <select id="fRole" onchange="render()"><option value="">ทุก role</option><option>host</option><option>admin</option><option>recorder</option></select></div>
+      <div class="field"><label for="fScope">หน่วยงาน</label>
+        <select id="fScope" onchange="render()"><option value="">ทุกหน่วยงาน</option><option value="central">central (ส่วนกลาง)</option><option value="province">province (ต่างจังหวัด)</option><option value="all">ทุกหน่วยงาน (host)</option></select></div>
+      <div class="field"><label for="fStatus">สถานะ</label>
+        <select id="fStatus" onchange="render()"><option value="">ทั้งหมด</option><option value="on">ใช้งาน</option><option value="off">ปิดบัญชี</option></select></div>
+    </div>
+
+    <div class="tablewrap">
+      <table>
+        <thead><tr>
+          <th scope="col">ชื่อที่แสดง</th><th scope="col">role</th><th scope="col">หน่วยงาน (division_scope)</th>
+          <th scope="col">ทีม</th><th scope="col">สถานะ</th><th scope="col">เข้าใช้ล่าสุด</th><th scope="col"><span class="sr">จัดการ</span></th>
+        </tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
+      <div class="empty" id="empty" hidden>ไม่พบบัญชีที่ตรงกับตัวกรอง ลองล้างคำค้นหาหรือเปลี่ยนตัวกรอง</div>
+      <div class="foot"><span id="footCount"></span><span style="flex:1"></span><span>ทุกการสร้าง/แก้ไข/ปิดบัญชี บันทึกใน audit log อัตโนมัติ</span></div>
+    </div>
+
+    <div class="note"><b>viewer ไม่มีบัญชี</b> — ผู้บริหาร/ฝ่ายขาย/คนนอกดูหน้าสรุปตัวเลข (public) ได้โดยไม่ต้อง login ·
+      ทีมบริการหน้างานไม่มีบัญชีในเฟส 1 (ส่งสรุปงานให้หัวหน้างาน = recorder กรอกแทน)</div>
+
+    <div class="panel">
+      <h3>แต่ละ role ทำอะไรได้ (SPEC §5)</h3>
+      <div class="body">
+        <div><b><span class="chip host">host</span></b><span class="d">ดู/แก้ทุกอย่าง + จัดการผู้ใช้ เกณฑ์ Tier ตั้งค่า ปิด/เปิดเดือน ตัวเลขต่างจังหวัด</span></div>
+        <div><b><span class="chip admin">admin</span></b><span class="d">ดูทุกเขต · เพิ่ม/แก้ลูกค้า สัญญา สถานี เฉพาะหน่วยงานที่ได้รับสิทธิ์</span></div>
+        <div><b><span class="chip recorder">recorder</span></b><span class="d">ดูทุกเขต · กรอกผลบริการ เฉพาะหน่วยงานที่ได้รับสิทธิ์ · หน้าจอเริ่มต้นกรองตามทีมของตัวเอง</span></div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- ===== Modal กลาง (ใช้ร่วม: สร้าง/แก้ไข/ผลรหัสผ่าน/ยืนยันปิด-เปิด/รีเซ็ตรหัส) ===== -->
+<div class="ov" id="ov" hidden>
+  <div class="box" role="dialog" aria-modal="true" aria-labelledby="mdTitle">
+    <div class="hd"><b id="mdTitle"></b><button class="x" type="button" aria-label="ปิดหน้าต่าง" onclick="closeModal()">×</button></div>
+    <div class="bd" id="mdBody"></div>
+    <div class="ft" id="mdFoot"></div>
+  </div>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
+<script>
+/* ===== ข้อมูลสมมติ (ไม่ใช่คนจริง) ===== */
+var ME = 'somying';                       // บัญชีที่กำลังล็อกอิน (host) — ใช้กันปิดบัญชีตัวเอง
+var TEAMS = ['A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','Z','Sup'];
+var DIVS  = {central:'central (ส่วนกลาง)', province:'province (ต่างจังหวัด)', all:'ทุกหน่วยงาน'};
+var USERS = [
+  {id:1, name:'สมหญิง ใจดี',   un:'somying',  role:'host',     scope:'all',     team:'',    on:true,  last:'วันนี้ 08:41'},
+  {id:2, name:'ประเสริฐ รักงาน', un:'prasert',  role:'host',     scope:'all',     team:'',    on:true,  last:'เมื่อวาน 17:20'},
+  {id:3, name:'วิภา สุขสันต์',   un:'wipa',     role:'admin',    scope:'central', team:'',    on:true,  last:'วันนี้ 09:05'},
+  {id:4, name:'กิตติ มั่นคง',    un:'kitti',    role:'admin',    scope:'central', team:'',    on:true,  last:'04/11/2026'},
+  {id:5, name:'นภา แสงทอง',     un:'napa',     role:'admin',    scope:'province',team:'',    on:true,  last:'30/10/2026'},
+  {id:6, name:'สมชาย ก้าวหน้า',  un:'somchai',  role:'recorder', scope:'central', team:'A',   on:true,  last:'วันนี้ 07:58'},
+  {id:7, name:'ธีรวัฒน์ เก่งกล้า', un:'theera',   role:'recorder', scope:'central', team:'E',   on:true,  last:'เมื่อวาน 16:02'},
+  {id:8, name:'มาลี ตั้งใจ',     un:'malee',    role:'recorder', scope:'central', team:'Z',   on:true,  last:'03/11/2026'},
+  {id:9, name:'อนุชา ใจเย็น',    un:'anucha',   role:'recorder', scope:'central', team:'I',   on:false, last:'12/09/2026'}
+];
+var nextId = 10, roleFilterCard = '';
+
+/* ===== helpers ===== */
+function $(id){return document.getElementById(id);}
+function el(tag, cls, text){var e=document.createElement(tag); if(cls) e.className=cls; if(text!=null) e.textContent=text; return e;}
+function activeHosts(exceptId){return USERS.filter(function(u){return u.role==='host' && u.on && u.id!==exceptId;}).length;}
+function toast(msg){var t=$('toast'); t.textContent=msg; t.hidden=false; clearTimeout(toast._t); toast._t=setTimeout(function(){t.hidden=true;},3200);}
+function pwGen(){ /* ตัดตัวที่สับสน 0/O/1/l/I ออก — ของจริงต้องสุ่มที่ฝั่งเซิร์ฟเวอร์ */
+  var abc='ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789', a=new Uint32Array(10), s='';
+  (window.crypto||{getRandomValues:function(x){for(var i=0;i<x.length;i++)x[i]=Math.random()*4294967296;}}).getRandomValues(a);
+  for(var i=0;i<a.length;i++){ s+=abc[a[i]%abc.length]; if(i===3) s+='-'; }
+  return s;
+}
+function scopeLabel(u){return DIVS[u.scope]||u.scope;}
+
+/* ===== การ์ดสรุป + ตาราง ===== */
+function counts(){
+  var c={host:0,admin:0,recorder:0,off:0};
+  USERS.forEach(function(u){ if(!u.on) c.off++; else c[u.role]++; });
+  return c;
+}
+function renderStats(){
+  var c=counts(), box=$('stats'); box.textContent='';
+  [['','ทั้งหมด',USERS.length,'ทุกบัญชี'],['host','host',c.host,'ใช้งานอยู่'],['admin','admin',c.admin,'ใช้งานอยู่'],
+   ['recorder','recorder',c.recorder,'ใช้งานอยู่'],['off','ปิดบัญชี',c.off,'ล็อกอินไม่ได้']].forEach(function(s){
+    var b=el('button','stat'+(roleFilterCard===s[0]?' on':'')); b.type='button';
+    b.setAttribute('aria-pressed', roleFilterCard===s[0]?'true':'false');
+    b.appendChild(el('div','lab',s[1])); b.appendChild(el('div','val',String(s[2]))); b.appendChild(el('div','sub',s[3]));
+    b.onclick=function(){ roleFilterCard=(roleFilterCard===s[0]&&s[0]!=='')?'':s[0]; render(); };
+    box.appendChild(b);
+  });
+}
+function match(u){
+  var q=$('q').value.trim().toLowerCase(), r=$('fRole').value, sc=$('fScope').value, st=$('fStatus').value;
+  if(q && (u.name.toLowerCase().indexOf(q)<0 && u.un.toLowerCase().indexOf(q)<0)) return false;
+  if(r && u.role!==r) return false;
+  if(sc && u.scope!==sc) return false;
+  if(st==='on' && !u.on) return false;
+  if(st==='off' && u.on) return false;
+  if(roleFilterCard==='off' && u.on) return false;
+  if((roleFilterCard==='host'||roleFilterCard==='admin'||roleFilterCard==='recorder') && (u.role!==roleFilterCard||!u.on)) return false;
+  return true;
+}
+function render(flashId){
+  renderStats();
+  var tb=$('rows'); tb.textContent='';
+  var list=USERS.filter(match);
+  list.forEach(function(u){
+    var tr=el('tr', (u.on?'':'is-off')+(u.id===flashId?' flash':''));
+    var td=el('td'); td.appendChild(el('div','nm',u.name+(u.un===ME?' (คุณ)':''))); td.appendChild(el('div','un',u.un)); tr.appendChild(td);
+    td=el('td'); td.appendChild(el('span','chip '+u.role,u.role)); tr.appendChild(td);
+    tr.appendChild(el('td',null,scopeLabel(u)));
+    tr.appendChild(el('td',null,u.team||'—'));
+    td=el('td'); var st=el('span','chip '+(u.on?'ok':'off')); st.appendChild(el('span','dot')); st.appendChild(document.createTextNode(u.on?'ใช้งาน':'ปิดบัญชี')); td.appendChild(st);
+    if(u.must){ td.appendChild(document.createTextNode(' ')); td.appendChild(el('span','chip warn','รอเปลี่ยนรหัส')); }
+    tr.appendChild(td);
+    tr.appendChild(el('td',null,u.last));
+    td=el('td','act');
+    var b=el('button','btn link sm','แก้ไข'); b.type='button'; b.onclick=function(){openEdit(u.id);}; td.appendChild(b);
+    b=el('button','btn link sm','รีเซ็ตรหัส'); b.type='button'; b.onclick=function(){openReset(u.id);}; td.appendChild(b);
+    b=el('button','btn link sm'+(u.on?' bad':''),u.on?'ปิดบัญชี':'เปิดบัญชี'); b.type='button'; b.onclick=function(){openToggle(u.id);}; td.appendChild(b);
+    tr.appendChild(td); tb.appendChild(tr);
+  });
+  $('empty').hidden = list.length>0;
+  $('footCount').textContent='แสดง '+list.length+' จาก '+USERS.length+' บัญชี';
+}
+
+/* ===== Modal ===== */
+var lastFocus=null;
+function openModal(title, bodyNode, footNodes){
+  /* modal ต่อกัน (สร้าง → แสดงรหัส) ให้จำปุ่มเดิมบนหน้า ไม่ใช่ปุ่มใน modal ที่กำลังถูกแทนที่ */
+  if($('ov').hidden) lastFocus=document.activeElement;
+  $('mdTitle').textContent=title;
+  var b=$('mdBody'); b.textContent=''; b.appendChild(bodyNode);
+  var f=$('mdFoot'); f.textContent=''; footNodes.forEach(function(n){f.appendChild(n);});
+  $('ov').hidden=false;
+  var first=b.querySelector('input:not([readonly]),select:not(:disabled)'); (first||f.querySelector('button')).focus();
+}
+function closeModal(){ $('ov').hidden=true; if(lastFocus&&lastFocus.focus) try{lastFocus.focus();}catch(e){} }
+function btn(label, cls, fn){var b=el('button','btn '+(cls||''),label); b.type='button'; b.onclick=fn; return b;}
+document.addEventListener('keydown',function(e){ if(e.key==='Escape'){ if(!$('ov').hidden) closeModal(); else toggleNav(false);} });
+$('ov').addEventListener('mousedown',function(e){ if(e.target===$('ov')) closeModal(); });
+
+/* ฟิลด์ฟอร์ม */
+function fld(id,label,node,hint){
+  var w=el('div','fld'); w.id='f_'+id;
+  var l=el('label',null,label); l.setAttribute('for',id); w.appendChild(l); node.id=id; w.appendChild(node);
+  if(hint) w.appendChild(el('div','hint',hint));
+  var er=el('div','err'); er.id='e_'+id; er.setAttribute('role','alert'); w.appendChild(er); return w;
+}
+function sel(opts, val){var s=document.createElement('select'); opts.forEach(function(o){var op=el('option',null,o[1]); op.value=o[0]; if(o[0]===val) op.selected=true; s.appendChild(op);}); return s;}
+function setErr(id,msg){ var w=$('f_'+id); if(!w) return; w.classList.toggle('bad',!!msg); $('e_'+id).textContent=msg||''; }
+
+/* กฎตาม role: host=ล็อกทุกหน่วยงาน/ไม่มีทีม · admin=เลือกหน่วยงาน/ไม่มีทีม · recorder=เลือกหน่วยงาน+ทีม */
+function applyRoleRules(){
+  var r=$('fr').value, sc=$('fs'), tm=$('ft');
+  if(r==='host'){ sc.value='all'; sc.disabled=true; tm.value=''; tm.disabled=true; }
+  else {
+    sc.disabled=false; if(sc.value==='all') sc.value='central';
+    if(r==='admin'){ tm.value=''; tm.disabled=true; } else { tm.disabled=false; }
+  }
+  [...sc.options].forEach(function(o){ o.hidden=(o.value==='all' && r!=='host'); o.disabled=(o.value==='all' && r!=='host'); });
+}
+
+/* ===== สร้าง / แก้ไข ===== */
+function formBody(u){
+  var wrap=el('div'); var isEdit=!!u;
+  var name=document.createElement('input'); name.type='text'; name.value=u?u.name:''; name.maxLength=60; name.placeholder='เช่น นภา แสงทอง'; name.autocomplete='off';
+  wrap.appendChild(fld('fn','ชื่อที่แสดง (display_name)',name));
+  var un=document.createElement('input'); un.type='text'; un.value=u?u.un:''; un.maxLength=20; un.placeholder='เช่น napa'; un.autocomplete='off'; un.autocapitalize='none';
+  if(isEdit) un.readOnly=true;
+  wrap.appendChild(fld('fu','username',un, isEdit?'แก้ username ไม่ได้ (ใช้ล็อกอิน + อ้างอิงใน audit log)':'a-z 0-9 . _ - ยาว 3–20 ตัว · ห้ามซ้ำ · สร้างแล้วเปลี่ยนไม่ได้'));
+  var r=sel([['recorder','recorder · หัวหน้างาน'],['admin','admin · แอดมิน'],['host','host · ส่วนกลาง']], u?u.role:'recorder');
+  wrap.appendChild(fld('fr','role (สิทธิ์)',r,'ไม่มี viewer — ผู้ชมทั่วไปดูหน้าสรุป public ได้โดยไม่ต้องมีบัญชี'));
+  var row=el('div','two');
+  var sc=sel([['central','central (ส่วนกลาง)'],['province','province (ต่างจังหวัด)'],['all','ทุกหน่วยงาน (host)']], u?u.scope:'central');
+  row.appendChild(fld('fs','หน่วยงาน (division_scope)',sc));
+  var tm=sel([['','— เลือกทีม —']].concat(TEAMS.map(function(t){return [t,'ทีม '+t];})), u?u.team:'');
+  row.appendChild(fld('ft','ทีม (team_id)',tm));
+  wrap.appendChild(row);
+  wrap.appendChild(el('div','hint','recorder: ทีมคือตัวกรองเริ่มต้นของหน้าจอ แก้ข้อมูลทีมอื่นได้แต่ระบบถามยืนยัน (SPEC §5) · เฟส 1 ใช้ central เป็นหลัก'));
+  return wrap;
+}
+/* เรียกหลัง openModal() เพราะต้องรอให้ฟิลด์อยู่ใน DOM จริงก่อน (ไม่ใช้ setTimeout เดาจังหวะ) */
+function wireRoleRules(){
+  $('fr').onchange=function(){ applyRoleRules(); setErr('fs'); setErr('ft'); };
+  applyRoleRules();
+}
+function readForm(){ return {name:$('fn').value.trim(), un:$('fu').value.trim().toLowerCase(), role:$('fr').value, scope:$('fs').value, team:$('ft').value}; }
+function validate(v, existing){
+  var ok=true; ['fn','fu','fr','fs','ft'].forEach(function(i){setErr(i);});
+  if(!v.name){ setErr('fn','กรอกชื่อที่แสดง'); ok=false; }
+  if(!existing){
+    if(!/^[a-z0-9._-]{3,20}$/.test(v.un)){ setErr('fu','username ต้องเป็น a-z 0-9 . _ - ยาว 3–20 ตัว'); ok=false; }
+    else if(USERS.some(function(u){return u.un===v.un;})){ setErr('fu','username นี้มีคนใช้แล้ว ลองชื่ออื่น'); ok=false; }
+  }
+  if(v.role==='recorder' && !v.team){ setErr('ft','recorder ต้องเลือกทีม'); ok=false; }
+  if(existing && existing.role==='host' && existing.on && v.role!=='host' && activeHosts(existing.id)===0){
+    setErr('fr','ลดสิทธิ์ไม่ได้ — ต้องมี host ที่ใช้งานอยู่อย่างน้อย 1 คน'); ok=false; }
+  return ok;
+}
+function openCreate(){
+  var body=formBody(null);
+  var info=el('div','banner ok','ระบบจะสุ่มรหัสผ่านชั่วคราวให้หลังกดสร้าง · ผู้ใช้ต้องเปลี่ยนรหัสตอนเข้าครั้งแรก');
+  body.appendChild(info);
+  openModal('สร้างบัญชีใหม่', body, [btn('ยกเลิก','',closeModal), btn('สร้างบัญชี','primary',function(){
+    var v=readForm(); if(!validate(v,null)) return;
+    var u={id:nextId++, name:v.name, un:v.un, role:v.role, scope:v.role==='host'?'all':v.scope, team:v.role==='recorder'?v.team:'', on:true, last:'ยังไม่เคยเข้า', must:true};
+    USERS.push(u); render(u.id);
+    showPassword('สร้างบัญชีแล้ว', u, 'ส่งรหัสนี้ให้ '+u.name+' ด้วยตัวเอง (โทร/แชตส่วนตัว)');
+  })]);
+  wireRoleRules();
+}
+function openEdit(id){
+  var u=USERS.filter(function(x){return x.id===id;})[0];
+  var body=formBody(u);
+  if(u.un===ME) body.insertBefore(el('div','banner warn','นี่คือบัญชีของคุณ — ถ้าลดสิทธิ์ตัวเอง คุณจะเข้าหน้านี้ไม่ได้อีก'), body.firstChild);
+  openModal('แก้ไขบัญชี · '+u.un, body, [btn('ยกเลิก','',closeModal), btn('บันทึก','primary',function(){
+    var v=readForm(); if(!validate(v,u)) return;
+    u.name=v.name; u.role=v.role; u.scope=v.role==='host'?'all':v.scope; u.team=v.role==='recorder'?v.team:'';
+    closeModal(); render(u.id); toast('บันทึกการแก้ไขแล้ว · เขียน audit log');
+  })]);
+  wireRoleRules();
+}
+
+/* ===== แสดงรหัสชั่วคราว (สร้าง/รีเซ็ต) ===== */
+function showPassword(title, u, lead){
+  var pw=pwGen(), w=el('div');
+  var kv=el('dl','kv'); [['ชื่อที่แสดง',u.name],['username',u.un],['role',u.role]].forEach(function(p){kv.appendChild(el('dt',null,p[0])); kv.appendChild(el('dd',null,p[1]));}); w.appendChild(kv);
+  w.appendChild(el('div',null,'รหัสผ่านชั่วคราว'));
+  var box=el('div','pwbox'); var code=el('code',null,pw); box.appendChild(code);
+  box.appendChild(btn('คัดลอก','sm',function(){
+    var done=function(){toast('คัดลอกรหัสแล้ว');};
+    if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(pw).then(done,function(){toast('คัดลอกไม่ได้ — เลือกข้อความแล้วคัดลอกเอง');});}
+    else toast('คัดลอกไม่ได้ — เลือกข้อความแล้วคัดลอกเอง');
+  })); w.appendChild(box);
+  w.appendChild(el('div','banner warn','รหัสนี้แสดงครั้งเดียว ปิดหน้าต่างแล้วดูไม่ได้อีก (ถ้าหายให้กด "รีเซ็ตรหัส") — '+lead));
+  u.must=true; render(u.id);
+  openModal(title, w, [btn('เสร็จสิ้น','primary',closeModal)]);
+}
+function openReset(id){
+  var u=USERS.filter(function(x){return x.id===id;})[0];
+  var w=el('div'); w.appendChild(el('p',null,'รีเซ็ตรหัสผ่านของ '+u.name+' ('+u.un+')?'));
+  var ul=el('ul','plain'); ['ระบบสุ่มรหัสชั่วคราวใหม่ — รหัสเดิมใช้ไม่ได้ทันที','ผู้ใช้ต้องเปลี่ยนรหัสตอนเข้าครั้งต่อไป'].forEach(function(t){ul.appendChild(el('li',null,t));}); w.appendChild(ul);
+  if(!u.on) w.appendChild(el('div','banner warn','บัญชีนี้ปิดอยู่ — รีเซ็ตแล้วยังล็อกอินไม่ได้จนกว่าจะเปิดบัญชี'));
+  openModal('รีเซ็ตรหัสผ่าน', w, [btn('ยกเลิก','',closeModal), btn('รีเซ็ตรหัส','primary',function(){ showPassword('รีเซ็ตรหัสแล้ว', u, 'ส่งให้ผู้ใช้ด้วยตัวเอง');})]);
+}
+
+/* ===== ปิด/เปิดบัญชี (soft disable) ===== */
+function openToggle(id){
+  var u=USERS.filter(function(x){return x.id===id;})[0], w=el('div');
+  if(u.on){
+    if(u.un===ME){ w.appendChild(el('div','banner bad','ปิดบัญชีตัวเองไม่ได้ — ให้ host คนอื่นเป็นคนปิดให้')); openModal('ปิดบัญชีไม่ได้', w, [btn('เข้าใจแล้ว','primary',closeModal)]); return; }
+    if(u.role==='host' && activeHosts(u.id)===0){ w.appendChild(el('div','banner bad','ปิดบัญชีไม่ได้ — ต้องมี host ที่ใช้งานอยู่อย่างน้อย 1 คน (สร้าง host คนใหม่ก่อน)')); openModal('ปิดบัญชีไม่ได้', w, [btn('เข้าใจแล้ว','primary',closeModal)]); return; }
+    w.appendChild(el('p',null,'ปิดบัญชีของ '+u.name+' ('+u.un+')?'));
+    var ul=el('ul','plain'); ['ล็อกอินไม่ได้ทันที (session ที่เปิดอยู่ถูกตัดออก)','ข้อมูลที่เคยกรอกและ audit log ยังอยู่ครบ — ไม่ลบ','เปิดบัญชีคืนได้ทุกเมื่อ'].forEach(function(t){ul.appendChild(el('li',null,t));}); w.appendChild(ul);
+    openModal('ปิดบัญชี', w, [btn('ยกเลิก','',closeModal), btn('ปิดบัญชี','danger',function(){u.on=false; closeModal(); render(u.id); toast('ปิดบัญชี '+u.un+' แล้ว · เขียน audit log');})]);
+  } else {
+    w.appendChild(el('p',null,'เปิดบัญชีของ '+u.name+' ('+u.un+') กลับมาใช้งาน?'));
+    w.appendChild(el('div','banner warn','ถ้าไม่ได้เข้าใช้นานหรือจำรหัสไม่ได้ แนะนำให้กด "รีเซ็ตรหัส" หลังเปิดบัญชี'));
+    openModal('เปิดบัญชี', w, [btn('ยกเลิก','',closeModal), btn('เปิดบัญชี','primary',function(){u.on=true; closeModal(); render(u.id); toast('เปิดบัญชี '+u.un+' แล้ว · เขียน audit log');})]);
+  }
+}
+
+/* ===== เมนู/ธีม ===== */
+function toggleNav(open){
+  var b=document.body, want=(typeof open==='boolean')?open:!b.classList.contains('nav-open');
+  b.classList.toggle('nav-open',want); $('navToggle').setAttribute('aria-expanded',want?'true':'false');
+}
+function toggleTheme(){
+  var r=document.documentElement, cur=r.getAttribute('data-theme');
+  var dark=cur?cur==='dark':window.matchMedia('(prefers-color-scheme:dark)').matches;
+  r.setAttribute('data-theme',dark?'light':'dark');
+}
+render();
+</script>
+</body>
+</html>
