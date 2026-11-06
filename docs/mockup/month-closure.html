@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ปิดเดือน · AGA Bait Registry</title>
+<!--
+  หน้าจอ 8 "ปิดเดือน" (SPEC §8, §7.7) — ผู้ใช้: host + หัวหน้างาน (recorder) [เจ้าของตัดสิน 6 พ.ย. 2026 — ต่างจาก SPEC §5 เดิมที่ host เท่านั้น]
+  สิทธิ์: host และ recorder = เห็นข้อมูลส่วนกลาง 24 สาขา (division_scope) + ปิดเดือน + แก้ข้อมูลเดือนที่ปิดแล้วได้เท่ากัน · admin = ไม่เห็นหน้านี้
+  ⚠ เจ้าของตัดสิน 6 พ.ย. 2026: เดือนที่ปิดแล้ว "แก้ตรงได้" (ไม่มีขั้นปลดล็อก) → ขัด CLAUDE.md กฎข้อ 7 / SPEC §7.7 / §15 ข้อ 3 ที่ต้องปรับตาม
+  mockup ข้อมูลตัวอย่าง (ไม่ใช่ตัวเลขจริง) — กดเล่นได้จริงเมื่อเปิดไฟล์ในเบราว์เซอร์
+
+  Logic สรุป:
+  1) ซ้าย = รายการเดือน (month_closures) · สถานะ: ยังไม่จบเดือน / เปิดอยู่ (รอปิด) / ปิดแล้ว · legacy = นำเข้าจาก Dashboard เดิม ไม่ผ่านหน้านี้
+  2) เดือนที่ยังไม่จบ ปิดไม่ได้ (SPEC §7.4 ประเมินตกบริการเฉพาะเดือนที่จบแล้ว)
+  3) เดือนที่เปิดอยู่ → ขวา = ขั้นตอน 3 ขั้น: ตรวจความครบ → ทบทวนตกบริการ → ยืนยันปิด
+  4) ปิดได้แม้มีตกบริการ แต่ต้องติ๊ก "รับทราบ" + พิมพ์ key เดือน (เช่น OCT.26) ให้ตรงก่อนจึงปิดได้
+  5) ปิดเดือน = บันทึกการปิด + เก็บ snapshot + trigger ส่ง Dashboard ทันที (SPEC §9.2) — ไม่ล็อกข้อมูลแล้ว
+     ถ้าส่งไม่สำเร็จ เดือนยังปิดอยู่ แต่ขึ้นสถานะ "ส่ง Dashboard ไม่สำเร็จ" ให้กดส่งใหม่ / รอ Auto Sync 06:00
+  6) เดือนที่ปิดแล้วแก้ผลบริการได้ตรงๆ → ทุกการแก้ลง audit log + ขึ้น "แก้หลังปิด N" → Dashboard ยังเป็นค่าเดิม จนกว่ากด "คำนวณ snapshot ใหม่ + ส่ง Dashboard"
+     (สมมติฐาน: Auto Sync 06:00 ไม่คำนวณเดือนที่ปิดแล้วใหม่เอง — ต้องยืนยัน)
+  สี Tier ไม่ได้ใช้ในหน้านี้ · สีทั้งหมดอ้าง CSS variable เพื่อสลับ light/dark ได้
+-->
+<script>try{var t=localStorage.getItem('aga-theme');if(t)document.documentElement.setAttribute('data-theme',t)}catch(e){}</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@300;400;500;600;700&display=swap">
+<style>
+:root{
+  --bg:#eef2f7; --surface:#ffffff; --surface-2:#f4f7fb; --surface-3:#e9eff6;
+  --fg:#17212e; --fg-muted:#5a6b7e; --fg-faint:#8a98a8;
+  --border:#d8e0ea; --border-strong:#c3cedb;
+  --accent:#1f5fa8; --accent-strong:#164a85; --accent-fg:#ffffff; --accent-soft:#e6f0fb;
+  --ok:#1a8a5c; --ok-soft:#e3f4ec; --warn:#b4740a; --warn-soft:#fbf0db; --danger:#c23b2e; --danger-soft:#fbe8e5;
+  --radius:10px; --shadow:0 1px 2px rgba(20,40,70,.06),0 1px 3px rgba(20,40,70,.05);
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0e1621; --surface:#16202c; --surface-2:#1b2733; --surface-3:#222f3d;
+  --fg:#e7eef5; --fg-muted:#9fb0c1; --fg-faint:#718394;
+  --border:#2a3744; --border-strong:#36485a;
+  --accent:#4a90d9; --accent-strong:#5fa0e3; --accent-fg:#0b1420; --accent-soft:#16304a;
+  --ok:#3bb183; --ok-soft:#133227; --warn:#d99b3e; --warn-soft:#332713; --danger:#e26657; --danger-soft:#331a16;
+  --shadow:0 1px 2px rgba(0,0,0,.3);
+  color-scheme:dark;
+}}
+:root[data-theme="dark"]{
+  --bg:#0e1621; --surface:#16202c; --surface-2:#1b2733; --surface-3:#222f3d;
+  --fg:#e7eef5; --fg-muted:#9fb0c1; --fg-faint:#718394;
+  --border:#2a3744; --border-strong:#36485a;
+  --accent:#4a90d9; --accent-strong:#5fa0e3; --accent-fg:#0b1420; --accent-soft:#16304a;
+  --ok:#3bb183; --ok-soft:#133227; --warn:#d99b3e; --warn-soft:#332713; --danger:#e26657; --danger-soft:#331a16;
+  --shadow:0 1px 2px rgba(0,0,0,.3);
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:"Noto Sans Thai","Segoe UI",system-ui,sans-serif;
+  font-size:14px;line-height:1.55;-webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums}
+.num{font-variant-numeric:tabular-nums}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* Header + nav (เหมือน prototype หลัก) */
+.topbar{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:14px;padding:10px 18px;background:var(--surface);border-bottom:1px solid var(--border)}
+.logo{display:flex;align-items:center;gap:11px;min-width:0}
+.logo .mark{width:38px;height:38px;border-radius:9px;background:var(--accent);color:var(--accent-fg);display:grid;place-items:center;font-weight:700;font-size:15px;flex:none}
+.logo .txt b{display:block;font-size:15px;font-weight:600;line-height:1.2}
+.logo .txt span{display:block;font-size:11.5px;color:var(--fg-muted)}
+.spacer{flex:1}
+.pill{display:inline-flex;align-items:center;gap:6px;padding:5px 11px;border:1px solid var(--border);border-radius:999px;background:var(--surface-2);font-size:12.5px;color:var(--fg-muted);white-space:nowrap}
+.pill b{color:var(--fg);font-weight:600}
+select.role{font-family:inherit;font-size:12.5px;color:var(--fg);background:var(--surface-2);border:1px solid var(--border);border-radius:999px;padding:5px 10px;cursor:pointer}
+.theme-btn{border:1px solid var(--border);background:var(--surface-2);color:var(--fg-muted);border-radius:8px;width:34px;height:32px;cursor:pointer;font-size:15px}
+.avatar{width:32px;height:32px;border-radius:50%;background:var(--surface-3);color:var(--fg-muted);display:grid;place-items:center;font-weight:600;font-size:12px;flex:none}
+.navtoggle{display:none;align-items:center;justify-content:center;border:1px solid var(--border);background:var(--surface-2);color:var(--fg);border-radius:8px;width:36px;height:34px;font-size:18px;cursor:pointer;flex:none}
+.nav-backdrop{display:none}
+.shell{display:flex;align-items:flex-start;min-height:calc(100% - 59px);max-width:1760px;margin-inline:auto}
+.nav{width:238px;flex:none;padding:14px 10px;border-right:1px solid var(--border);background:var(--surface);align-self:stretch}
+.nav .group{font-size:11px;letter-spacing:.06em;color:var(--fg-faint);padding:12px 10px 5px}
+.nav a{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;color:var(--fg-muted);text-decoration:none;font-size:13.5px;margin-bottom:1px}
+.nav a .ic{width:17px;text-align:center;flex:none;opacity:.85}
+.nav a:hover{background:var(--surface-2);color:var(--fg)}
+.nav a.active{background:var(--accent-soft);color:var(--accent-strong);font-weight:600}
+.nav a.soon{opacity:.5;cursor:default}
+.nav a .soon-tag{margin-left:auto;font-size:10px;color:var(--fg-faint);border:1px solid var(--border);border-radius:5px;padding:1px 5px}
+main{flex:1;min-width:0;padding:20px 24px 48px}
+.page-head h1{margin:0;font-size:20px;font-weight:600}
+.page-head p{margin:3px 0 0;color:var(--fg-muted);font-size:13px}
+
+/* ปุ่ม / chip / hint */
+.btn{font-family:inherit;font-size:13px;font-weight:500;border-radius:8px;padding:8px 14px;cursor:pointer;border:1px solid var(--border-strong);background:var(--surface);color:var(--fg)}
+.btn:hover{filter:brightness(.97)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-fg)}
+.btn.danger-solid{background:var(--danger);border-color:var(--danger);color:#fff}
+.btn.ghost{background:transparent;border-color:transparent;color:var(--accent-strong)}
+.btn.sm{padding:5px 10px;font-size:12px}
+.btn[aria-disabled="true"]{opacity:.5;cursor:not-allowed}
+.chip{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;padding:2px 9px;border-radius:999px;white-space:nowrap}
+.chip.ok{background:var(--ok-soft);color:var(--ok)} .chip.miss{background:var(--danger-soft);color:var(--danger)}
+.chip.pend{background:var(--warn-soft);color:var(--warn)} .chip.na{background:var(--surface-3);color:var(--fg-muted)}
+.chip.info{background:var(--accent-soft);color:var(--accent-strong)}
+.hint{font-size:12px;color:var(--fg-muted);background:var(--surface-2);border:1px solid var(--border);border-left:3px solid var(--accent);border-radius:0 8px 8px 0;padding:9px 12px;margin:0 0 13px}
+.alert{display:flex;gap:10px;align-items:flex-start;border-radius:9px;padding:11px 13px;margin:0 0 10px;font-size:12.5px;border:1px solid}
+.alert .ic{flex:none;font-size:15px;line-height:1.3}
+.alert.warn{background:var(--warn-soft);border-color:var(--warn);color:var(--fg)} .alert.warn .ic{color:var(--warn)}
+.alert.danger{background:var(--danger-soft);border-color:var(--danger);color:var(--fg)} .alert.danger .ic{color:var(--danger)}
+.alert.ok{background:var(--ok-soft);border-color:var(--ok);color:var(--fg)} .alert.ok .ic{color:var(--ok)}
+.alert.info{background:var(--accent-soft);border-color:var(--accent);color:var(--fg)} .alert.info .ic{color:var(--accent)}
+.alert b{font-weight:600}
+.alert small{display:block;color:var(--fg-muted);font-size:11.5px;margin-top:2px}
+
+/* Stats + layout */
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin:16px 0 18px}
+.stat{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:13px 16px;box-shadow:var(--shadow)}
+.stat .lab{font-size:12px;color:var(--fg-muted)}
+.stat .val{font-size:24px;font-weight:700;margin-top:5px;line-height:1.1}
+.stat .sub{font-size:11.5px;color:var(--fg-faint);margin-top:4px}
+.stat.danger .val{color:var(--danger)} .stat.warn .val{color:var(--warn)} .stat.ok .val{color:var(--ok)} .stat.accent .val{color:var(--accent)}
+.split{display:grid;grid-template-columns:minmax(280px,340px) minmax(0,1fr);gap:16px;align-items:start}
+.panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow)}
+.panel>h3{margin:0;padding:13px 16px;font-size:14px;font-weight:600;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.panel .body{padding:16px}
+
+/* รายการเดือน */
+.mlist{display:flex;flex-direction:column}
+.mrow{display:flex;align-items:center;gap:10px;width:100%;text-align:left;font-family:inherit;font-size:13.5px;color:var(--fg);background:transparent;border:0;border-top:1px solid var(--border);padding:12px 16px;cursor:pointer}
+.mrow:first-child{border-top:0}
+.mrow:hover{background:var(--surface-2)}
+.mrow[aria-current="true"]{background:var(--accent-soft)}
+.mrow .nm{flex:1;min-width:0}
+.mrow .nm b{display:block;font-weight:600}
+.mrow .nm small{display:block;color:var(--fg-muted);font-size:11.5px}
+.mrow.legacy{cursor:default;color:var(--fg-muted)}
+.mrow.legacy:hover{background:transparent}
+
+/* ขั้นตอน */
+.steps{display:flex;gap:8px;list-style:none;margin:0 0 16px;padding:0}
+.steps li{flex:1}
+.steps button{width:100%;font-family:inherit;font-size:12.5px;text-align:center;padding:8px 6px;border-radius:9px;border:1px solid var(--border);background:var(--surface-2);color:var(--fg-muted);cursor:pointer}
+.steps button .n{display:inline-grid;place-items:center;width:20px;height:20px;border-radius:50%;background:var(--surface-3);font-size:11px;font-weight:700;margin-right:6px}
+.steps button[aria-current="step"]{background:var(--accent-soft);border-color:var(--accent);color:var(--accent-strong);font-weight:600}
+.steps button[aria-current="step"] .n{background:var(--accent);color:var(--accent-fg)}
+.steps button.done{background:var(--ok-soft);border-color:transparent;color:var(--ok)}
+.steps button.done .n{background:var(--ok);color:#fff}
+.bar{height:8px;border-radius:999px;background:var(--surface-3);overflow:hidden;margin-top:8px}
+.bar>i{display:block;height:100%;background:var(--ok);border-radius:999px}
+.bar.warnbar>i{background:var(--warn)}
+.tablewrap{border:1px solid var(--border);border-radius:var(--radius);overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:13px;white-space:nowrap}
+thead th{background:var(--surface-2);color:var(--fg-muted);font-weight:600;font-size:11.5px;text-align:left;padding:9px 12px;border-bottom:1px solid var(--border)}
+tbody td{padding:8px 12px;border-bottom:1px solid var(--border)}
+tbody tr:last-child td{border-bottom:0}
+tfoot td{padding:9px 12px;font-weight:700;background:var(--surface-2);border-top:2px solid var(--border-strong)}
+td.r,th.r{text-align:right} td.c,th.c{text-align:center}
+.tools{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin:0 0 10px}
+.field{display:flex;flex-direction:column;gap:3px}
+.field label{font-size:11px;color:var(--fg-muted)}
+.field select,.field input{font-family:inherit;font-size:13px;color:var(--fg);background:var(--surface);border:1px solid var(--border-strong);border-radius:8px;padding:7px 10px}
+.err{color:var(--danger);font-size:12px;margin-top:4px;min-height:1em}
+.confirmbox{border:1px solid var(--border-strong);border-radius:10px;padding:14px;background:var(--surface-2)}
+.chk{display:flex;gap:9px;align-items:flex-start;font-size:13px;margin:0 0 12px;cursor:pointer}
+.chk input{margin-top:3px;width:16px;height:16px;flex:none}
+.typein{font-family:ui-monospace,Consolas,monospace;font-size:15px;letter-spacing:.06em;width:200px;max-width:100%}
+.navbtns{display:flex;justify-content:space-between;gap:10px;margin-top:16px;flex-wrap:wrap}
+.kvs{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:0 0 14px}
+.kv{background:var(--surface-2);border:1px solid var(--border);border-radius:9px;padding:10px 12px}
+.kv span{display:block;font-size:11.5px;color:var(--fg-muted)} .kv b{display:block;font-size:15px;margin-top:2px}
+.hist{list-style:none;margin:0;padding:0}
+.hist li{display:flex;gap:10px;padding:9px 0;border-top:1px solid var(--border);font-size:12.5px}
+.hist li:first-child{border-top:0}
+.hist .t{color:var(--fg-muted);min-width:128px;flex:none}
+.prog{list-style:none;margin:0;padding:0}
+.prog li{display:flex;align-items:center;gap:10px;padding:9px 0;font-size:13.5px;color:var(--fg-faint)}
+.prog li.on{color:var(--fg)} .prog li.ok{color:var(--ok)}
+.prog .d{width:20px;height:20px;border-radius:50%;border:2px solid var(--border-strong);display:grid;place-items:center;font-size:11px;flex:none}
+.prog li.ok .d{background:var(--ok);border-color:var(--ok);color:#fff}
+.prog li.on .d{border-color:var(--accent);border-top-color:transparent;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.note{font-size:12px;color:var(--fg-muted);margin-top:14px;display:flex;gap:8px;align-items:flex-start}
+.note .ic{color:var(--accent);flex:none}
+.demo{margin-top:18px;font-size:12px;color:var(--fg-muted);display:flex;gap:8px;align-items:center;flex-wrap:wrap;border:1px dashed var(--border-strong);border-radius:9px;padding:9px 12px}
+.lock{max-width:520px;margin:40px auto;text-align:center;padding:30px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+@media (max-width:860px){
+  .shell{display:block}
+  .navtoggle{display:inline-flex}
+  .nav{position:fixed;top:0;left:0;bottom:0;width:260px;z-index:40;overflow-y:auto;transform:translateX(-100%);transition:transform .22s ease;box-shadow:2px 0 14px rgba(20,40,70,.18)}
+  body.nav-open .nav{transform:translateX(0)}
+  .nav-backdrop{position:fixed;inset:0;background:rgba(10,20,35,.42)}
+  body.nav-open .nav-backdrop{display:block}
+  .split{grid-template-columns:1fr}
+  .topbar{gap:8px;padding:10px 12px}
+  .logo .txt,.topbar .pill{display:none}
+  select.role{max-width:150px}
+  main{padding:16px}
+  .steps{flex-direction:column}
+}
+@media (prefers-reduced-motion:reduce){.nav{transition:none}.prog li.on .d{animation:none}}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <button class="navtoggle" id="navToggle" aria-label="เปิด/ปิดเมนู" aria-expanded="false" onclick="toggleNav()">☰</button>
+  <div class="logo">
+    <div class="mark">AGA</div>
+    <div class="txt"><b>ข้อมูลหลังบ้านระบบเหยื่อ</b><span>Advance Group Asia · ส่วนกลาง</span></div>
+  </div>
+  <div class="spacer"></div>
+  <span class="pill">วันนี้ <b>06/11/2026</b></span>
+  <select class="role" id="roleSel" aria-label="เลือกบทบาท" onchange="setRole(this.value)">
+    <option value="host" selected>host · ส่วนกลาง</option>
+    <option value="admin">admin · แอดมิน</option>
+    <option value="recorder">recorder · หัวหน้างาน</option>
+  </select>
+  <button class="theme-btn" aria-label="สลับธีม" onclick="toggleTheme()">◐</button>
+  <div class="avatar">นท</div>
+</div>
+
+<div class="shell">
+  <nav class="nav" id="nav" aria-label="เมนูหลัก">
+    <div class="group">งานประจำวัน</div>
+    <a href="aga-bait-registry-prototype.html"><span class="ic">◉</span> หน้า "ต้องทำ"</a>
+    <a href="aga-bait-registry-prototype.html"><span class="ic">✎</span> กรอกผลบริการ (IG/IC)</a>
+    <a href="aga-bait-registry-prototype.html"><span class="ic">▣</span> กล่องเหยื่อ (AG)</a>
+    <a href="aga-bait-registry-prototype.html"><span class="ic">▦</span> สรุปตัวเลข</a>
+    <div class="group">ดูแลระบบ (host)</div>
+    <a href="month-closure.html" class="active" aria-current="page"><span class="ic">🔒</span> ปิดเดือน</a>
+    <a class="soon"><span class="ic">⇅</span> Dashboard Sync <span class="soon-tag">เร็วๆนี้</span></a>
+  </nav>
+  <div class="nav-backdrop" onclick="toggleNav(false)" aria-hidden="true"></div>
+
+  <main id="main">
+    <div class="page-head"><h1>ปิดเดือน</h1>
+      <p>ยืนยันตัวเลขบริการรายเดือนและส่งเข้า Dashboard · host และหัวหน้างานใช้ได้ · ข้อมูลในหน้านี้เป็นตัวอย่าง</p>
+      <p id="scopeNote" style="margin-top:6px" hidden><span class="chip info">ขอบเขตข้อมูลของคุณ: ส่วนกลาง 24 สาขา</span></p></div>
+
+    <div id="lockMsg" class="panel lock" hidden>
+      <div style="font-size:30px">🔒</div>
+      <h2 style="margin:8px 0 4px;font-size:16px">หน้านี้สำหรับ host และหัวหน้างานเท่านั้น</h2>
+      <p style="color:var(--fg-muted);margin:0">บทบาท admin ไม่มีสิทธิ์ปิด/เปิดเดือน สิทธิ์นี้บังคับที่ฐานข้อมูล (RLS) ไม่ใช่แค่ซ่อนปุ่ม</p>
+    </div>
+
+    <div id="content">
+      <div class="stats" id="stats"></div>
+      <div class="split">
+        <section class="panel" aria-label="รายการเดือน">
+          <h3>รายการเดือน <span class="chip na" id="listCount"></span></h3>
+          <div class="mlist" id="mlist"></div>
+        </section>
+        <section class="panel" id="detail" aria-live="polite"></section>
+      </div>
+      <div class="demo">
+        <b>โหมดเดโม</b>
+        <label style="display:flex;gap:6px;align-items:center;cursor:pointer"><input type="checkbox" id="demoFail" autocomplete="off"> จำลองว่าส่ง Dashboard ล้มเหลว (ตอนกดปิดเดือน)</label>
+        <button class="btn sm" onclick="simEdit()">จำลอง: แก้ผลบริการในเดือนที่ปิดแล้ว</button>
+      </div>
+      <div class="note"><span class="ic">ℹ</span><span>เดือนที่ปิดแล้วแก้ย้อนหลังได้ (เจ้าของตัดสิน) — สิทธิ์แก้บังคับที่ RLS ตาม role · ทุกการแก้ลง <code>audit_log</code> ด้วย trigger · snapshot บน Dashboard ไม่เปลี่ยนจนกว่าจะคำนวณใหม่</span></div>
+    </div>
+  </main>
+</div>
+
+
+<script>
+/* ===== ข้อมูลตัวอย่าง: 24 สาขาส่วนกลาง (ชื่อตรง SPEC §4) · [สาขา, เขต, สัญญาในเดือนบริการ, ตกบริการ ต.ค.] ===== */
+var BR=[
+["พุทธมณฑล","เขต 1",241,31],["นครปฐม","เขต 1",30,0],["หัวหิน","เขต 1",76,0],
+["สาทร","เขต 2",95,0],["ปทุมวัน","เขต 2",88,0],["พระราม 4","เขต 2",72,0],["นนทบุรี","เขต 2",189,0],
+["ปทุมธานี","เขต 3",81,0],["รามอินทรา","เขต 3",77,0],["อยุธยา","เขต 3",49,0],
+["ลาดพร้าว","เขต 4",246,12],["พัฒนาการ","เขต 4",259,0],["สุวินทวงศ์","เขต 4",69,0],["ประชาชื่น","เขต 4",74,0],
+["สมุทรปราการ","เขต 5",85,0],["พัทยา","เขต 5",63,0],["ระยอง","เขต 5",58,0],
+["สุขุมวิท","เขต 6",220,6],["ปากน้ำ","เขต 6",66,0],["ชลบุรี","เขต 6",79,0],
+["ปากช่อง","เขต 9",148,0],["สระบุรี","เขต 9",52,0],["พระราม 2","เขต 13",38,0],["ปราจีนบุรี","เขต 13",25,0]
+];
+var TOT=BR.reduce(function(a,b){return a+b[2]},0);          /* 2,480 */
+var MISS=BR.reduce(function(a,b){return a+b[3]},0);         /* 49 */
+var BR_FULL=BR.filter(function(b){return b[3]===0}).length; /* 21 */
+
+/* รายชื่อสัญญาตกบริการ (สุ่มแบบคงที่ จากสาขาที่ตกจริง) */
+var PRE=["บจก.","หจก.","คุณ","โรงแรม","อาคารชุด","ร้านอาหาร","บมจ."], NM=["สยามพัฒนา","บ้านสวนรีสอร์ท","วิรัช ตั้งมั่น","เมืองทองคลังสินค้า","ลุมพินีวิว","สมหญิง รุ่งเรือง","ทรัพย์เจริญ","ครัวริมคลอง","ศรีสุขเฮ้าส์","มั่นคงการค้า","รุ่งเรืองโฮมแคร์","ธารทิพย์วิลล่า","พิพัฒน์ทาวน์"];
+var MISSED=[]; (function(){var i=0;BR.forEach(function(b){for(var k=0;k<b[3];k++,i++){
+  MISSED.push({cust:PRE[(i*3)%7]+" "+NM[(i*5+k)%13], no:"CT"+(23+(i%4))+"-"+String(10000+i*137).padStart(7,"0"), br:b[0], team:"ABCDEFGHIJKLMNO".charAt((i*7)%15), mth:(i*5)%12+1, term:(i%3===0)?36:12});
+}})})();
+
+/* ===== สถานะเดือน (สะท้อนตาราง month_closures) ===== */
+var MONTHS=[
+ {key:"NOV.26",label:"พ.ย. 2026",status:"progress",endsOn:"30/11/2026",filled:703,contracts:2498},
+ {key:"OCT.26",label:"ต.ค. 2026",status:"open",history:[]},
+ {key:"SEP.26",label:"ก.ย. 2026",status:"closed",snap:{full:22,contracts:2466,missed:7},closedAt:"05/10/2026 09:12",closedBy:"host · QCS ส่วนกลาง",sync:"ok",syncAt:"05/10/2026 09:13",
+   history:[{t:"05/10/2026 09:12",ev:"ปิดเดือน",by:"host · QCS ส่วนกลาง",note:"ตกบริการ 7 ราย · ส่ง Dashboard สำเร็จ"}]}
+];
+var LEGACY="JAN.25 – AUG.26 · 20 เดือน";
+var LAST_SYNC="05/10/2026 09:13"; /* เวลาส่ง Dashboard สำเร็จครั้งล่าสุด (ทุกเดือน) — อัปเดตทุกครั้งที่ส่งสำเร็จ */
+var sel="OCT.26", step=1, showAllBr=false, missBr="all", showAllMiss=false, ack=false, typed="", closing=null, errMsg="";
+
+function $(id){return document.getElementById(id)}
+function fmt(n){return n.toLocaleString("en-US")}
+function nowTh(){return new Date().toLocaleString("en-GB",{timeZone:"Asia/Bangkok",day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit",hour12:false}).replace(",","")}
+function cur(){return MONTHS.filter(function(m){return m.key===sel})[0]}
+function statusChip(m){
+  if(m.status==="closed") return '<span class="chip ok">ปิดแล้ว</span>'+(m.stale?' <span class="chip pend">แก้หลังปิด '+m.edits+'</span>':'');
+  if(m.status==="open") return '<span class="chip pend">เปิดอยู่ · รอปิด</span>';
+  return '<span class="chip na">ยังไม่จบเดือน</span>';
+}
+function missOf(m){ if(m.key==="OCT.26") return MISS; if(m.snap) return m.snap.missed; return null; }
+
+/* ===== render ===== */
+function render(){ renderStats(); renderList(); renderDetail(); }
+
+function renderStats(){
+  var open=MONTHS.filter(function(m){return m.status==="open"}).length;
+  var closed=MONTHS.filter(function(m){return m.status==="closed"}).length;
+  var lastSync=LAST_SYNC;
+  var failed=MONTHS.some(function(m){return m.sync==="fail"});
+  $("stats").innerHTML=
+   '<div class="stat warn"><div class="lab">เดือนที่รอปิด</div><div class="val num">'+open+'</div><div class="sub">จบเดือนแล้วแต่ยังไม่ปิด</div></div>'+
+   '<div class="stat ok"><div class="lab">ปิดแล้ว (ผ่านระบบนี้)</div><div class="val num">'+closed+'</div><div class="sub">บันทึกปิดและส่ง Dashboard แล้ว</div></div>'+
+   '<div class="stat '+(failed?'danger':'accent')+'"><div class="lab">ส่ง Dashboard ล่าสุด</div><div class="val num" style="font-size:17px;margin-top:9px">'+lastSync+'</div><div class="sub">'+(failed?'มีเดือนที่ส่งไม่สำเร็จ':'สำเร็จ')+'</div></div>';
+}
+function renderList(){
+  $("listCount").textContent=MONTHS.length+" เดือน";
+  var h=MONTHS.map(function(m){
+    var ms=missOf(m);
+    var sub=m.status==="progress"?"จบ "+m.endsOn:(ms===null?"":"ตกบริการ "+ms+" ราย");
+    return '<button class="mrow" aria-current="'+(m.key===sel)+'" onclick="pick(\''+m.key+'\')"><span class="nm"><b>'+m.label+'</b><small>'+m.key+(sub?' · '+sub:'')+'</small></span>'+statusChip(m)+'</button>';
+  }).join("");
+  h+='<div class="mrow legacy"><span class="nm"><b>'+LEGACY+'</b><small>legacy · นำเข้าจาก Dashboard เดิม</small></span><span class="chip na">ปิดถาวร</span></div>';
+  $("mlist").innerHTML=h;
+}
+function pick(k){ if(closing!==null) return; sel=k; step=1; showAllBr=false; missBr="all"; showAllMiss=false; ack=false; typed=""; errMsg=""; render(); }
+
+function head(m,extra){
+  return '<h3>'+m.label+' <span class="num" style="color:var(--fg-muted);font-weight:400">'+m.key+'</span> '+statusChip(m)+(extra||"")+'</h3>';
+}
+
+function renderDetail(){
+  var m=cur(), el=$("detail");
+  if(closing!==null){ el.innerHTML=head(m)+'<div class="body">'+closingView()+'</div>'; return; }
+  if(m.status==="progress") el.innerHTML=head(m)+'<div class="body">'+progressView(m)+'</div>';
+  else if(m.status==="closed") el.innerHTML=head(m)+'<div class="body">'+closedView(m)+'</div>';
+  else el.innerHTML=head(m)+'<div class="body">'+openView(m)+'</div>';
+}
+
+/* --- เดือนที่ยังไม่จบ --- */
+function progressView(m){
+  var pct=Math.round(m.filled/m.contracts*100);
+  return '<div class="alert info"><span class="ic">ⓘ</span><div><b>เดือนนี้ยังไม่จบ จึงยังปิดไม่ได้</b><small>ปิดได้ตั้งแต่ 01/12/2026 — ระบบประเมินตกบริการเฉพาะเดือนที่ผ่านไปแล้ว (SPEC §7.4)</small></div></div>'+
+   '<div class="kvs"><div class="kv"><span>สัญญาในเดือนบริการ</span><b class="num">'+fmt(m.contracts)+'</b></div><div class="kv"><span>มีรอบประจำเดือนแล้ว (ถึงวันนี้)</span><b class="num">'+fmt(m.filled)+' ('+pct+'%)</b></div></div>'+
+   '<div class="bar" aria-hidden="true"><i style="width:'+pct+'%"></i></div>'+
+   '<div style="margin-top:16px"><button class="btn" aria-disabled="true" onclick="return false">ปิดเดือนไม่ได้ — เดือนยังไม่จบ</button></div>';
+}
+
+/* --- เดือนที่เปิดอยู่ (3 ขั้นตอน) --- */
+function openView(m){
+  var names=["ตรวจความครบ","ทบทวนตกบริการ","ยืนยันปิด"];
+  var s='<ol class="steps">'+names.map(function(n,i){
+    var no=i+1, st=no===step?' aria-current="step"':'', cls=no<step?' class="done"':'';
+    return '<li><button'+cls+st+' onclick="goStep('+no+')"><span class="n">'+(no<step?'✓':no)+'</span>'+n+'</button></li>';
+  }).join("")+'</ol>';
+  var re='';
+  return re+s+(step===1?step1():step===2?step2():step3(m));
+}
+function goStep(n){ step=n; errMsg=""; renderDetail(); }
+
+function step1(){
+  var pb=Math.round(BR_FULL/BR.length*100), pc=Math.round((TOT-MISS)/TOT*100);
+  var rows=BR.filter(function(b){return showAllBr||b[3]>0}).map(function(b){
+    var ok=b[3]===0;
+    return '<tr><td><b>'+b[0]+'</b> <span style="color:var(--fg-faint);font-size:11.5px">'+b[1]+'</span></td><td class="r num">'+fmt(b[2])+'</td><td class="r num">'+fmt(b[2]-b[3])+'</td><td class="r num" style="color:'+(ok?'inherit':'var(--danger)')+'">'+b[3]+'</td><td class="c">'+(ok?'<span class="chip ok">ครบ</span>':'<span class="chip miss">ไม่ครบ</span>')+'</td></tr>';
+  }).join("");
+  return '<div class="kvs">'+
+   '<div class="kv"><span>สาขากรอกครบ</span><b class="num">'+BR_FULL+' / '+BR.length+'</b><div class="bar" aria-hidden="true"><i style="width:'+pb+'%"></i></div></div>'+
+   '<div class="kv"><span>สัญญากรอกครบ</span><b class="num">'+fmt(TOT-MISS)+' / '+fmt(TOT)+'</b><div class="bar" aria-hidden="true"><i style="width:'+pc+'%"></i></div></div>'+
+   '<div class="kv"><span>ตกบริการ</span><b class="num" style="color:var(--danger)">'+MISS+' ราย</b><small style="color:var(--fg-muted);font-size:11px">ใน '+(BR.length-BR_FULL)+' สาขา</small></div></div>'+
+   '<div class="hint"><b>ตกบริการ</b> = สัญญาที่เดือนนี้อยู่ในเดือนบริการ (ไม่ยกเลิก) แต่ <b>ไม่มีรอบประจำเดือน (routine)</b> · "กรอกครบ" = สัญญาที่มี routine ในเดือนนั้นแล้ว (SPEC §7.4)</div>'+
+   '<div class="tools"><div class="field"><label for="brView">แสดง</label><select id="brView" onchange="showAllBr=this.value===\'all\';renderDetail()"><option value="bad"'+(showAllBr?'':' selected')+'>เฉพาะสาขาที่ยังไม่ครบ ('+(BR.length-BR_FULL)+')</option><option value="all"'+(showAllBr?' selected':'')+'>ทั้ง 24 สาขา (ส่วนกลาง)</option></select></div></div>'+
+   '<div class="tablewrap"><table><thead><tr><th>สาขา</th><th class="r">สัญญาในเดือนบริการ</th><th class="r">มีรอบประจำเดือน</th><th class="r">ตกบริการ</th><th class="c">สถานะ</th></tr></thead><tbody>'+rows+'</tbody>'+
+   (showAllBr?'<tfoot><tr><td>รวมส่วนกลาง</td><td class="r num">'+fmt(TOT)+'</td><td class="r num">'+fmt(TOT-MISS)+'</td><td class="r num">'+MISS+'</td><td></td></tr></tfoot>':'')+'</table></div>'+
+   '<div class="note"><span class="ic">ℹ</span><span>ต่างจังหวัด 19 สาขาไม่ได้คำนวณจากทะเบียนในเฟส 1 (ตัวเลข <code>manual</code> จากหน้า "ตัวเลขต่างจังหวัด") จึงไม่นับตกบริการในหน้านี้</span></div>'+
+   '<div class="navbtns"><span></span><button class="btn primary" onclick="goStep(2)">ถัดไป: ทบทวนตกบริการ →</button></div>';
+}
+
+function step2(){
+  var list=MISSED.filter(function(x){return missBr==="all"||x.br===missBr});
+  var shown=showAllMiss?list:list.slice(0,8);
+  var brs=BR.filter(function(b){return b[3]>0});
+  var rows=shown.map(function(x){
+    return '<tr><td><b>'+x.cust+'</b></td><td class="num">'+x.no+'</td><td>'+x.br+'</td><td class="c">'+x.team+'</td><td class="c num">'+x.mth+' / '+x.term+'</td></tr>';
+  }).join("");
+  return '<div style="font-weight:600;margin:0 0 8px">ตกบริการ '+cur().label+' · '+MISS+' ราย ใน '+brs.length+' สาขา</div>'+
+   '<div class="alert warn"><span class="ic">⚠</span><div><b>ปิดเดือนได้ แม้ยังมีตกบริการ</b><small>รายการนี้จะถูกบันทึกเป็น "ตกบริการ" ของเดือนนี้ · กลับมากรอกรอบประจำเดือนย้อนหลังได้ภายหลัง (แล้วกดคำนวณ snapshot ใหม่เพื่ออัปเดต Dashboard)</small></div></div>'+
+   '<div class="tools"><div class="field"><label for="mbr">สาขา</label><select id="mbr" onchange="missBr=this.value;showAllMiss=false;renderDetail()"><option value="all">ทุกสาขา ('+MISS+')</option>'+brs.map(function(b){return '<option value="'+b[0]+'"'+(missBr===b[0]?' selected':'')+'>'+b[0]+' ('+b[3]+')</option>'}).join("")+'</select></div>'+
+   '<div style="flex:1"></div><button class="btn sm" onclick="exportMissed()">↓ ส่งออก CSV</button></div>'+
+   '<div class="tablewrap"><table><thead><tr><th>ลูกค้า</th><th>เลขที่สัญญา</th><th>สาขา</th><th class="c">ทีม</th><th class="c">เดือนบริการที่</th></tr></thead><tbody>'+rows+'</tbody></table></div>'+
+   (list.length>shown.length?'<div style="padding:10px 0"><button class="btn ghost sm" onclick="showAllMiss=true;renderDetail()">แสดงทั้งหมด '+list.length+' ราย</button></div>':'<div style="font-size:12px;color:var(--fg-muted);padding:8px 0">แสดงครบ '+list.length+' ราย</div>')+
+   '<div class="navbtns"><button class="btn" onclick="goStep(1)">← ย้อนกลับ</button><button class="btn primary" onclick="goStep(3)">ถัดไป: ยืนยันปิด →</button></div>';
+}
+
+function step3(m){
+  return '<div class="alert danger"><span class="ic">⚡</span><div><b>การปิดเดือนจะส่ง Dashboard ทันที</b><small>สร้าง <code>dashboard_data.json</code> ครบ 43 สาขา (ส่วนกลาง 24 = computed · ต่างจังหวัด 19 = manual) แล้ว commit เข้า repo AGA-Bait-Dashboard · Netlify deploy ใช้เวลา ~30 วินาที · ผู้ที่เปิด Dashboard จะเห็นตัวเลขใหม่ทันที</small></div></div>'+
+   '<div class="alert warn"><span class="ic">✎</span><div><b>ปิดแล้ว ตัวเลขบน Dashboard ของเดือน '+m.label+' จะถูกเก็บเป็น snapshot</b><small>host และหัวหน้างานยังแก้ผลบริการเดือนนี้ย้อนหลังได้ · ทุกการแก้บันทึกใน audit log · Dashboard ไม่เปลี่ยนจนกว่าจะกด "คำนวณ snapshot ใหม่"</small></div></div>'+
+   '<div class="alert warn"><span class="ic">👥</span><div><b>ปิดเดือนนี้มีผลกับทุกสาขาในส่วนกลาง (24 สาขา) ไม่ใช่เฉพาะทีมของคุณ</b><small>ส่งตัวเลขทุกสาขาพร้อมกัน · ชื่อผู้ปิดถูกบันทึกใน audit log</small></div></div>'+
+   '<div class="confirmbox">'+
+   '<div style="font-weight:600;margin:0 0 10px">สรุปที่จะปิด: '+m.label+' · สาขากรอกครบ '+BR_FULL+'/'+BR.length+' · สัญญากรอกครบ '+fmt(TOT-MISS)+'/'+fmt(TOT)+' · <span style="color:var(--danger)">ตกบริการ '+MISS+' ราย</span></div>'+
+   (MISS>0?'<label class="chk"><input type="checkbox" id="ackBox" '+(ack?'checked':'')+' onchange="ack=this.checked;clearErr()"><span>รับทราบว่ามีสัญญาตกบริการ <b>'+MISS+' ราย</b> และจะถูกบันทึกเป็นตกบริการของเดือนนี้</span></label>':'')+
+   '<div class="field"><label for="typedKey">พิมพ์ <b class="num">'+m.key+'</b> เพื่อยืนยันการปิดเดือน</label><input class="typein" id="typedKey" autocomplete="off" spellcheck="false" placeholder="'+m.key+'" value="'+typed.replace(/"/g,"")+'" oninput="typed=this.value;clearErr()"></div>'+
+   '<div class="err" id="closeErr" role="alert">'+errMsg+'</div>'+
+   '<button class="btn danger-solid" onclick="doClose()">ปิดเดือน '+m.label+' และส่ง Dashboard</button></div>'+
+   '<div class="navbtns"><button class="btn" onclick="goStep(2)">← ย้อนกลับ</button><span></span></div>';
+}
+function clearErr(){ errMsg=""; var e=$("closeErr"); if(e) e.textContent=""; }
+
+/* --- ปิดเดือน: ตรวจ → จำลองขั้นตอน → เสร็จ --- */
+function doClose(){
+  var m=cur(), e=$("closeErr");
+  if(MISS>0 && !ack){ errMsg="ติ๊กรับทราบเรื่องตกบริการก่อน"; e.textContent=errMsg; return; }
+  if(typed.trim().toUpperCase()!==m.key){ errMsg="พิมพ์ "+m.key+" ให้ตรงก่อน จึงจะปิดเดือนได้"; e.textContent=errMsg; $("typedKey").focus(); return; }
+  closing=0; renderDetail();
+  var fail=$("demoFail").checked;
+  var t=setInterval(function(){
+    closing++;
+    if(closing<3){ renderDetail(); return; }
+    clearInterval(t);
+    var at=nowTh();
+    m.status="closed"; m.closedAt=at; m.closedBy=actor(); m.snap={full:BR_FULL,contracts:TOT,missed:MISS};
+    m.sync=fail?"fail":"ok"; m.syncAt=fail?null:at; m.justClosed=true; if(!fail) LAST_SYNC=at;
+    m.history.unshift({t:at,ev:"ปิดเดือน",by:actor(),note:"ตกบริการ "+MISS+" ราย · "+(fail?"ส่ง Dashboard ไม่สำเร็จ":"ส่ง Dashboard สำเร็จ")});
+    closing=null; typed=""; ack=false; errMsg=""; render();
+  },950);
+}
+function closingView(){
+  var labs=["บันทึกการปิดเดือน + เก็บ snapshot ตัวเลข","สร้างไฟล์ dashboard_data.json ครบ 43 สาขา","ส่งเข้า GitHub → Netlify deploy"];
+  return '<p style="margin:0 0 8px;color:var(--fg-muted)">กำลังปิดเดือน — อย่าปิดหน้านี้</p><ul class="prog" aria-live="polite">'+labs.map(function(l,i){
+    var c=i<closing?'ok':(i===closing?'on':'');
+    return '<li class="'+c+'"><span class="d">'+(i<closing?'✓':'')+'</span>'+l+'</li>';
+  }).join("")+'</ul>';
+}
+
+/* --- เดือนที่ปิดแล้ว --- */
+function closedView(m){
+  var s=m.snap||{full:0,contracts:0,missed:0};
+  var out="";
+  if(m.justClosed&&m.sync==="ok"&&!m.stale) out+='<div class="alert ok"><span class="ic">✓</span><div><b>ปิดเดือนเรียบร้อย และส่ง Dashboard สำเร็จ</b><small>บันทึกการปิดเดือน '+m.label+' แล้ว · Netlify จะอัปเดตภายใน ~30 วินาที</small></div></div>';
+  if(m.sync==="fail") out+='<div class="alert danger"><span class="ic">✗</span><div><b>ส่ง Dashboard ไม่สำเร็จ</b><small>เดือนนี้ปิดแล้ว แต่ Dashboard ยังแสดงค่าเดิม · Auto Sync 06:00 น. จะลองส่งอีกครั้ง หรือกดส่งใหม่ตอนนี้ · ดูรายละเอียดที่หน้า Dashboard Sync</small><div style="margin-top:8px"><button class="btn sm primary" onclick="retrySync()">ส่ง Dashboard ใหม่</button></div></div></div>';
+  if(m.stale&&m.sync!=="fail") out+='<div class="alert warn"><span class="ic">⚠</span><div><b>มีการแก้ข้อมูลหลังปิดเดือน '+m.edits+' รายการ — Dashboard ยังแสดงตัวเลขเดิม</b><small>กดคำนวณใหม่เพื่อให้ตัวเลขเดือนนี้บน Dashboard ตรงกับข้อมูลล่าสุด (ส่งทันที)</small><div style="margin-top:8px"><button class="btn sm primary" onclick="resync()">คำนวณ snapshot ใหม่ + ส่ง Dashboard</button></div></div></div>';
+  out+='<div class="kvs"><div class="kv"><span>ปิดเมื่อ</span><b class="num">'+m.closedAt+'</b></div><div class="kv"><span>ปิดโดย</span><b>'+m.closedBy+'</b></div>'+
+   '<div class="kv"><span>ส่ง Dashboard</span><b>'+(m.sync==="ok"?'<span style="color:var(--ok)">สำเร็จ '+m.syncAt+'</span>':'<span style="color:var(--danger)">ไม่สำเร็จ</span>')+'</b></div></div>'+
+   '<div class="kvs"><div class="kv"><span>สาขากรอกครบ (ส่วนกลาง)</span><b class="num">'+s.full+' / '+BR.length+'</b></div><div class="kv"><span>สัญญาในเดือนบริการ</span><b class="num">'+fmt(s.contracts)+'</b></div><div class="kv"><span>ตกบริการที่บันทึกไว้</span><b class="num" style="color:'+(s.missed?'var(--danger)':'var(--ok)')+'">'+s.missed+' ราย</b></div></div>'+
+   '<div class="alert info"><span class="ic">✎</span><div><b>เดือนนี้แก้ข้อมูลย้อนหลังได้ตามปกติ</b><small>host และหัวหน้างานกรอก/แก้ผลบริการเดือนนี้ได้เลย ไม่ต้องปลดล็อก · ทุกการแก้บันทึกใน audit log · ตัวเลขบน Dashboard จะเปลี่ยนเมื่อกด "คำนวณ snapshot ใหม่" เท่านั้น</small><div style="margin-top:8px"><a class="btn sm" href="aga-bait-registry-prototype.html" style="text-decoration:none;display:inline-block">ไปหน้ากรอกผลบริการ →</a></div></div></div>'+
+   '<div class="sech" style="font-weight:600;margin:20px 0 6px">ประวัติการปิดเดือนและการแก้ไข (audit log)</div><ul class="hist">'+
+   (m.history.length?m.history.map(function(h){return '<li><span class="t num">'+h.t+'</span><span><b>'+h.ev+'</b> · '+h.by+'<br><span style="color:var(--fg-muted)">'+h.note+'</span></span></li>'}).join(""):'<li style="color:var(--fg-muted)">ยังไม่มีประวัติ</li>')+'</ul>';
+  return out;
+}
+function retrySync(){ var m=cur(); m.sync="ok"; m.syncAt=nowTh(); LAST_SYNC=m.syncAt; m.history.unshift({t:m.syncAt,ev:"ส่ง Dashboard ใหม่",by:actor(),note:"สำเร็จ"}); render(); }
+
+/* --- แก้ข้อมูลหลังปิดเดือน: เดือนที่ปิดแล้วยังแก้ได้ → snapshot บน Dashboard ค้างค่าเดิมจนกว่าจะกดคำนวณใหม่ --- */
+function simEdit(){
+  var m=cur();
+  if(m.status!=="closed"){ alert("เลือกเดือนที่ปิดแล้วก่อน (เช่น ต.ค. 2026 หรือ ก.ย. 2026)"); return; }
+  m.edits=(m.edits||0)+1; m.stale=true; m.justClosed=false;
+  m.history.unshift({t:nowTh(),ev:"แก้ผลบริการหลังปิดเดือน",by:actor(),note:"แก้รอบประจำเดือนลูกค้า 1 ราย (ตัวอย่างจำลอง) · Dashboard ยังเป็นค่าเดิม"});
+  render();
+}
+function resync(){
+  var m=cur(), at=nowTh();
+  if(m.key==="OCT.26") m.snap={full:BR_FULL,contracts:TOT,missed:MISS};
+  m.sync="ok"; m.syncAt=at; m.stale=false; LAST_SYNC=at;
+  m.history.unshift({t:at,ev:"คำนวณ snapshot ใหม่ + ส่ง Dashboard",by:actor(),note:"รวมการแก้หลังปิด "+m.edits+" รายการ · สำเร็จ"});
+  m.edits=0; render();
+}
+
+/* --- ส่งออก CSV (UTF-8 + BOM เปิดใน Excel ไทยได้) --- */
+function exportMissed(){
+  var list=MISSED.filter(function(x){return missBr==="all"||x.br===missBr});
+  var csv="﻿ลูกค้า,เลขที่สัญญา,สาขา,ทีม,เดือนบริการที่\n"+list.map(function(x){return [x.cust,x.no,x.br,x.team,x.mth+"/"+x.term].join(",")}).join("\n");
+  var a=document.createElement("a"); a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8"}));
+  a.download="ตกบริการ-"+sel+".csv"; a.click(); setTimeout(function(){URL.revokeObjectURL(a.href)},500);
+}
+
+/* --- role / theme / nav --- */
+var ROLE="host";
+function actor(){ return ROLE==="recorder"?"recorder · หัวหน้างาน (นท)":"host · QCS ส่วนกลาง"; }
+function setRole(r){
+  ROLE=r; var ok=(r==="host"||r==="recorder");
+  $("content").hidden=!ok; $("lockMsg").hidden=ok; $("scopeNote").hidden=(r!=="recorder");
+  if(ok) render();
+}
+function toggleNav(open){
+  var b=document.body, want=(typeof open==="boolean")?open:!b.classList.contains("nav-open");
+  b.classList.toggle("nav-open",want); $("navToggle").setAttribute("aria-expanded",want?"true":"false");
+}
+document.addEventListener("keydown",function(e){ if(e.key==="Escape") toggleNav(false); });
+function toggleTheme(){
+  var el=document.documentElement, c=el.getAttribute("data-theme");
+  var next=c==="dark"?"light":(c==="light"?"dark":(matchMedia("(prefers-color-scheme: dark)").matches?"light":"dark"));
+  el.setAttribute("data-theme",next);
+  try{localStorage.setItem("aga-theme",next)}catch(e){}
+}
+render();
+</script>
+</body>
+</html>
