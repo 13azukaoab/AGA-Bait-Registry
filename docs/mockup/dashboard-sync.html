@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Dashboard Sync · AGA Bait Registry</title>
+<!--
+  หน้าจอ 10 "Dashboard Sync" (SPEC §8, §9, §7.7) — ผู้ใช้: host เท่านั้น (admin/recorder เห็นหน้าล็อก)
+  mockup ข้อมูลตัวอย่าง (ไม่ใช่ตัวเลขจริง) — กดเล่นได้จริงเมื่อเปิดไฟล์ในเบราว์เซอร์
+
+  Logic สรุป:
+  1) บน = สถานะการส่งล่าสุด (เวลา, ผล, ช่องทาง, commit) + ตัวเลข 4 ช่อง (ส่งสำเร็จล่าสุด / Auto Sync ติดต่อกัน / ล้มเหลว 30 วัน / รอบถัดไป)
+  2) ช่องทางส่ง 3 ทาง (SPEC §9.2): Auto Sync 06:00 ไทย (Vercel Cron `0 23 * * *` UTC) · ปิดเดือน · คำนวณ snapshot ใหม่ → ส่งทันที
+  3) ประวัติการส่ง = ตาราง sync_logs (ทุกครั้งต้องบันทึก ทั้งสำเร็จ/ล้มเหลว — SPEC §9.2) แถวที่ล้มเหลวกางดู error + ข้อแนะนำแก้ได้ + ปุ่ม "ส่งใหม่"
+  4) Export สำรอง = ดาวน์โหลด dashboard_data.json (รูปแบบ §9.1 ห้ามเปลี่ยน) พร้อมตรวจก่อนโหลด: ครบ 43 สาขาทุกเดือน · key MMM.YY · 16 ฟิลด์/แถว
+  5) การตั้งค่าปลายทางเป็นแบบอ่านอย่างเดียว — GitHub token อยู่ใน env ของ Vercel เท่านั้น ไม่แสดง ไม่กรอกในหน้านี้ (CLAUDE.md กฎข้อ 8)
+
+  สมมติฐานที่ต้องให้เจ้าของยืนยัน (ไม่มีใน SPEC):
+  ก) Auto Sync วันที่ข้อมูลไม่เปลี่ยน = "ข้าม ไม่มีการเปลี่ยนแปลง" ไม่ commit (กัน Netlify build ทุกวันโดยไม่จำเป็น) นับเป็นสำเร็จ
+  ข) ปุ่ม "ส่งใหม่" มีเฉพาะแถวที่ล้มเหลว (ตรงกับหน้าปิดเดือน) ไม่มีปุ่ม "ส่งทันที" ทั่วไป
+  สี Tier ไม่ได้ใช้ในหน้านี้ · สีทั้งหมดอ้าง CSS variable เพื่อสลับ light/dark ได้
+-->
+<script>try{var t=localStorage.getItem('aga-theme');if(t)document.documentElement.setAttribute('data-theme',t)}catch(e){}</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@300;400;500;600;700&display=swap">
+<style>
+:root{
+  --bg:#eef2f7; --surface:#ffffff; --surface-2:#f4f7fb; --surface-3:#e9eff6;
+  --fg:#17212e; --fg-muted:#5a6b7e; --fg-faint:#6b7a8b;
+  --border:#d8e0ea; --border-strong:#c3cedb;
+  --accent:#1f5fa8; --accent-strong:#164a85; --accent-fg:#ffffff; --accent-soft:#e6f0fb;
+  --ok:#1a8a5c; --ok-soft:#e3f4ec; --warn:#b4740a; --warn-soft:#fbf0db; --danger:#c23b2e; --danger-soft:#fbe8e5;
+  --radius:10px; --shadow:0 1px 2px rgba(20,40,70,.06),0 1px 3px rgba(20,40,70,.05);
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0e1621; --surface:#16202c; --surface-2:#1b2733; --surface-3:#222f3d;
+  --fg:#e7eef5; --fg-muted:#9fb0c1; --fg-faint:#8696a8;
+  --border:#2a3744; --border-strong:#36485a;
+  --accent:#4a90d9; --accent-strong:#5fa0e3; --accent-fg:#0b1420; --accent-soft:#16304a;
+  --ok:#3bb183; --ok-soft:#133227; --warn:#d99b3e; --warn-soft:#332713; --danger:#e26657; --danger-soft:#331a16;
+  --shadow:0 1px 2px rgba(0,0,0,.3);
+  color-scheme:dark;
+}}
+:root[data-theme="dark"]{
+  --bg:#0e1621; --surface:#16202c; --surface-2:#1b2733; --surface-3:#222f3d;
+  --fg:#e7eef5; --fg-muted:#9fb0c1; --fg-faint:#8696a8;
+  --border:#2a3744; --border-strong:#36485a;
+  --accent:#4a90d9; --accent-strong:#5fa0e3; --accent-fg:#0b1420; --accent-soft:#16304a;
+  --ok:#3bb183; --ok-soft:#133227; --warn:#d99b3e; --warn-soft:#332713; --danger:#e26657; --danger-soft:#331a16;
+  --shadow:0 1px 2px rgba(0,0,0,.3);
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:"Noto Sans Thai","Segoe UI",system-ui,sans-serif;
+  font-size:14px;line-height:1.55;-webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums}
+.num{font-variant-numeric:tabular-nums}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+code,.mono{font-family:ui-monospace,Consolas,"Courier New",monospace;font-size:12px}
+
+/* Header + nav (เหมือน prototype หลัก / month-closure) */
+.topbar{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:14px;padding:10px 18px;background:var(--surface);border-bottom:1px solid var(--border)}
+.logo{display:flex;align-items:center;gap:11px;min-width:0}
+.logo .mark{width:38px;height:38px;border-radius:9px;background:var(--accent);color:var(--accent-fg);display:grid;place-items:center;font-weight:700;font-size:15px;flex:none}
+.logo .txt b{display:block;font-size:15px;font-weight:600;line-height:1.2}
+.logo .txt span{display:block;font-size:11.5px;color:var(--fg-muted)}
+.spacer{flex:1}
+.pill{display:inline-flex;align-items:center;gap:6px;padding:5px 11px;border:1px solid var(--border);border-radius:999px;background:var(--surface-2);font-size:12.5px;color:var(--fg-muted);white-space:nowrap}
+.pill b{color:var(--fg);font-weight:600}
+select.role{font-family:inherit;font-size:12.5px;color:var(--fg);background:var(--surface-2);border:1px solid var(--border);border-radius:999px;padding:5px 10px;cursor:pointer}
+.theme-btn{border:1px solid var(--border);background:var(--surface-2);color:var(--fg-muted);border-radius:8px;width:34px;height:32px;cursor:pointer;font-size:15px}
+.avatar{width:32px;height:32px;border-radius:50%;background:var(--surface-3);color:var(--fg-muted);display:grid;place-items:center;font-weight:600;font-size:12px;flex:none}
+.navtoggle{display:none;align-items:center;justify-content:center;border:1px solid var(--border);background:var(--surface-2);color:var(--fg);border-radius:8px;width:36px;height:34px;font-size:18px;cursor:pointer;flex:none}
+.nav-backdrop{display:none}
+.shell{display:flex;align-items:flex-start;min-height:calc(100% - 59px);max-width:1760px;margin-inline:auto}
+.nav{width:238px;flex:none;padding:14px 10px;border-right:1px solid var(--border);background:var(--surface);align-self:stretch}
+.nav .group{font-size:11px;letter-spacing:.06em;color:var(--fg-faint);padding:12px 10px 5px}
+.nav a{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;color:var(--fg-muted);text-decoration:none;font-size:13.5px;margin-bottom:1px}
+.nav a .ic{width:17px;text-align:center;flex:none;opacity:.85}
+.nav a:hover{background:var(--surface-2);color:var(--fg)}
+.nav a.active{background:var(--accent-soft);color:var(--accent-strong);font-weight:600}
+main{flex:1;min-width:0;padding:20px 24px 48px}
+.page-head h1{margin:0;font-size:20px;font-weight:600}
+.page-head p{margin:3px 0 0;color:var(--fg-muted);font-size:13px}
+
+/* ปุ่ม / chip / alert */
+.btn{font-family:inherit;font-size:13px;font-weight:500;border-radius:8px;padding:8px 14px;cursor:pointer;border:1px solid var(--border-strong);background:var(--surface);color:var(--fg);text-decoration:none;display:inline-block}
+.btn:hover{filter:brightness(.97)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-fg)}
+.btn.ghost{background:transparent;border-color:transparent;color:var(--accent-strong)}
+.btn.sm{padding:5px 10px;font-size:12px}
+.btn[disabled]{opacity:.55;cursor:wait}
+.chip{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;padding:2px 9px;border-radius:999px;white-space:nowrap}
+.chip.ok{background:var(--ok-soft);color:var(--ok)} .chip.miss{background:var(--danger-soft);color:var(--danger)}
+.chip.pend{background:var(--warn-soft);color:var(--warn)} .chip.na{background:var(--surface-3);color:var(--fg-muted)}
+.chip.info{background:var(--accent-soft);color:var(--accent-strong)}
+.alert{display:flex;gap:10px;align-items:flex-start;border-radius:9px;padding:11px 13px;margin:0 0 10px;font-size:12.5px;border:1px solid}
+.alert .ic{flex:none;font-size:15px;line-height:1.3}
+.alert.warn{background:var(--warn-soft);border-color:var(--warn)} .alert.warn .ic{color:var(--warn)}
+.alert.danger{background:var(--danger-soft);border-color:var(--danger)} .alert.danger .ic{color:var(--danger)}
+.alert.ok{background:var(--ok-soft);border-color:var(--ok)} .alert.ok .ic{color:var(--ok)}
+.alert.info{background:var(--accent-soft);border-color:var(--accent)} .alert.info .ic{color:var(--accent)}
+.alert b{font-weight:600}
+.alert small{display:block;color:var(--fg-muted);font-size:11.5px;margin-top:2px}
+
+/* Stats + panels */
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin:16px 0 18px}
+.stat{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:13px 16px;box-shadow:var(--shadow)}
+.stat .lab{font-size:12px;color:var(--fg-muted)}
+.stat .val{font-size:22px;font-weight:700;margin-top:5px;line-height:1.2}
+.stat .sub{font-size:11.5px;color:var(--fg-muted);margin-top:4px}
+.stat.danger .val{color:var(--danger)} .stat.warn .val{color:var(--warn)} .stat.ok .val{color:var(--ok)} .stat.accent .val{color:var(--accent)}
+.panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);margin-bottom:16px}
+.panel>h3{margin:0;padding:13px 16px;font-size:14px;font-weight:600;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.panel .body{padding:16px}
+.twocol{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:16px;align-items:start}
+.twocol>.panel{margin-bottom:0}
+
+/* สถานะล่าสุด (hero) */
+.hero{display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap}
+.hero .badge{width:46px;height:46px;border-radius:12px;display:grid;place-items:center;font-size:22px;flex:none}
+.hero .badge.ok{background:var(--ok-soft);color:var(--ok)} .hero .badge.fail{background:var(--danger-soft);color:var(--danger)} .hero .badge.skip{background:var(--surface-3);color:var(--fg-muted)}
+.hero h2{margin:0;font-size:17px;font-weight:600}
+.hero p{margin:2px 0 0;color:var(--fg-muted);font-size:12.5px}
+.kvs{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin:14px 0 0}
+.kv{background:var(--surface-2);border:1px solid var(--border);border-radius:9px;padding:9px 12px}
+.kv span{display:block;font-size:11.5px;color:var(--fg-muted)} .kv b{display:block;font-size:13.5px;margin-top:2px;overflow-wrap:anywhere}
+
+/* ช่องทางส่ง */
+.ch{display:flex;gap:12px;padding:12px 0;border-top:1px solid var(--border)}
+.ch:first-child{border-top:0;padding-top:0}
+.ch .i{width:34px;height:34px;border-radius:9px;background:var(--accent-soft);color:var(--accent-strong);display:grid;place-items:center;flex:none;font-size:16px}
+.ch b{display:block;font-size:13.5px}
+.ch small{display:block;color:var(--fg-muted);font-size:12px;margin-top:1px}
+
+/* ประวัติ */
+.tools{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;padding:12px 16px;border-bottom:1px solid var(--border)}
+.field{display:flex;flex-direction:column;gap:3px}
+.field label{font-size:11px;color:var(--fg-muted)}
+.field select{font-family:inherit;font-size:13px;color:var(--fg);background:var(--surface);border:1px solid var(--border-strong);border-radius:8px;padding:7px 10px}
+.tablewrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:13px;white-space:nowrap}
+thead th{background:var(--surface-2);color:var(--fg-muted);font-weight:600;font-size:11.5px;text-align:left;padding:9px 12px;border-bottom:1px solid var(--border)}
+tbody td{padding:8px 12px;border-bottom:1px solid var(--border)}
+td.r,th.r{text-align:right}
+tr.sel>td{background:var(--surface-2)}
+tr.detail>td{padding:0;background:var(--surface-2);white-space:normal}
+.dbox{padding:14px 16px}
+.errbox{background:var(--surface);border:1px solid var(--danger);border-radius:8px;padding:10px 12px;margin:0 0 10px;overflow-wrap:anywhere}
+.errbox .mono{display:block;color:var(--danger);margin-top:2px}
+.fix{font-size:12.5px;color:var(--fg);margin:0 0 10px}
+.fix b{font-weight:600}
+.more{padding:12px 16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--fg-muted)}
+.empty{padding:26px 16px;text-align:center;color:var(--fg-muted)}
+
+/* Export */
+.checks{list-style:none;margin:0 0 14px;padding:0}
+.checks li{display:flex;gap:9px;align-items:flex-start;padding:5px 0;font-size:13px}
+.checks .d{width:18px;height:18px;border-radius:50%;background:var(--ok);color:var(--surface);display:grid;place-items:center;font-size:11px;flex:none;margin-top:2px}
+.note{font-size:12px;color:var(--fg-muted);margin-top:14px;display:flex;gap:8px;align-items:flex-start}
+.note .ic{color:var(--accent);flex:none}
+.lock{max-width:520px;margin:40px auto;text-align:center;padding:30px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+@media (max-width:1100px){.twocol{grid-template-columns:1fr}.twocol>.panel{margin-bottom:16px}}
+@media (max-width:860px){
+  .shell{display:block}
+  .navtoggle{display:inline-flex}
+  .nav{position:fixed;top:0;left:0;bottom:0;width:260px;z-index:40;overflow-y:auto;transform:translateX(-100%);transition:transform .22s ease;box-shadow:2px 0 14px rgba(20,40,70,.18)}
+  body.nav-open .nav{transform:translateX(0)}
+  .nav-backdrop{position:fixed;inset:0;background:rgba(10,20,35,.42)}
+  body.nav-open .nav-backdrop{display:block}
+  .topbar{gap:8px;padding:10px 12px}
+  .logo .txt,.topbar .pill{display:none}
+  select.role{max-width:150px}
+  main{padding:16px}
+}
+@media (prefers-reduced-motion:reduce){.nav{transition:none}}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <button class="navtoggle" id="navToggle" aria-label="เปิด/ปิดเมนู" aria-expanded="false" onclick="toggleNav()">☰</button>
+  <div class="logo">
+    <div class="mark">AGA</div>
+    <div class="txt"><b>ข้อมูลหลังบ้านระบบเหยื่อ</b><span>Advance Group Asia · ส่วนกลาง</span></div>
+  </div>
+  <div class="spacer"></div>
+  <span class="pill">วันนี้ <b>06/11/2026</b></span>
+  <select class="role" id="roleSel" aria-label="เลือกบทบาท" onchange="setRole(this.value)">
+    <option value="host" selected>host · ส่วนกลาง</option>
+    <option value="admin">admin · แอดมิน</option>
+    <option value="recorder">recorder · หัวหน้างาน</option>
+  </select>
+  <button class="theme-btn" aria-label="สลับธีม" onclick="toggleTheme()">◐</button>
+  <div class="avatar">นท</div>
+</div>
+
+<div class="shell">
+  <nav class="nav" id="nav" aria-label="เมนูหลัก">
+    <div class="group">งานประจำวัน</div>
+    <a href="aga-bait-registry-prototype.html"><span class="ic">◉</span> หน้า "ต้องทำ"</a>
+    <a href="aga-bait-registry-prototype.html"><span class="ic">✎</span> กรอกผลบริการ (IG/IC)</a>
+    <a href="aga-bait-registry-prototype.html"><span class="ic">▣</span> กล่องเหยื่อ (AG)</a>
+    <a href="aga-bait-registry-prototype.html"><span class="ic">▦</span> สรุปตัวเลข</a>
+    <div class="group">ดูแลระบบ</div>
+    <a href="month-closure.html"><span class="ic">🔒</span> ปิดเดือน</a>
+    <a href="dashboard-sync.html" class="active" aria-current="page"><span class="ic">⇅</span> Dashboard Sync</a>
+  </nav>
+  <div class="nav-backdrop" onclick="toggleNav(false)" aria-hidden="true"></div>
+
+  <main id="main">
+    <div class="page-head"><h1>Dashboard Sync</h1>
+      <p>ติดตามการส่งตัวเลขไป AGA Bait Dashboard · ดูประวัติ · ดาวน์โหลดไฟล์สำรอง · เฉพาะ host · ข้อมูลในหน้านี้เป็นตัวอย่าง</p></div>
+
+    <div id="lockMsg" class="panel lock" hidden>
+      <div style="font-size:30px" aria-hidden="true">🔒</div>
+      <h2 style="margin:8px 0 4px;font-size:16px">หน้านี้สำหรับ host เท่านั้น</h2>
+      <p style="color:var(--fg-muted);margin:0">บทบาทนี้ไม่มีสิทธิ์ดูการตั้งค่า/ประวัติการส่งข้อมูล สิทธิ์บังคับที่ฐานข้อมูล (RLS) ไม่ใช่แค่ซ่อนปุ่ม</p>
+    </div>
+
+    <div id="content">
+      <div id="alerts" aria-live="polite"></div>
+
+      <!-- 1) สถานะล่าสุด -->
+      <section class="panel" aria-labelledby="h-last" style="margin-top:16px">
+        <h3 id="h-last">สถานะการส่งล่าสุด</h3>
+        <div class="body" id="lastBox"></div>
+      </section>
+
+      <div class="stats" id="stats"></div>
+
+      <!-- 2) ช่องทางส่ง + 3) Export -->
+      <div class="twocol">
+        <section class="panel" aria-labelledby="h-ch">
+          <h3 id="h-ch">ระบบส่งข้อมูลเข้า Dashboard อย่างไร</h3>
+          <div class="body">
+            <div class="ch"><div class="i" aria-hidden="true">⏰</div><div><b>Auto Sync ทุกวัน 06:00 น. (เวลาไทย)</b>
+              <small>รันบน Vercel Cron เอง ไม่ต้องเปิดคอมพิวเตอร์ · ตั้งเวลา <code>0 23 * * *</code> (UTC) · ระบบอาจเริ่มรันช่วง 06:00–06:59 ถือว่าปกติ</small>
+              <small>ไม่คำนวณ "เดือนที่ปิดแล้ว" ใหม่เอง — ใช้ snapshot ที่เก็บไว้ (รอเจ้าของยืนยัน SPEC §14 ข้อ 9)</small></div></div>
+            <div class="ch"><div class="i" aria-hidden="true">🔒</div><div><b>ปิดเดือน → ส่งทันที</b>
+              <small>เมื่อ host หรือหัวหน้างานกดปิดเดือน ระบบเก็บ snapshot แล้วส่ง Dashboard ทันที ไม่ต้องรอรอบ 06:00 · ถ้าส่งไม่สำเร็จ เดือนยังถือว่าปิดแล้ว</small></div></div>
+            <div class="ch"><div class="i" aria-hidden="true">↻</div><div><b>คำนวณ snapshot ใหม่ → ส่งทันที</b>
+              <small>ใช้เมื่อมีการแก้ผลบริการหลังปิดเดือน (กดที่หน้า <a href="month-closure.html" style="color:var(--accent-strong)">ปิดเดือน</a>)</small></div></div>
+            <div class="ch"><div class="i" aria-hidden="true">⇩</div><div><b>Export สำรอง (ทำเอง)</b>
+              <small>ดาวน์โหลดไฟล์ <code>dashboard_data.json</code> ไว้เป็นหลักฐาน/ใช้ยามฉุกเฉินเมื่อส่งอัตโนมัติไม่ได้ — ดูกล่องด้านขวา</small></div></div>
+          </div>
+        </section>
+
+        <section class="panel" aria-labelledby="h-exp">
+          <h3 id="h-exp">Export สำรอง <span class="chip info mono">dashboard_data.json</span></h3>
+          <div class="body">
+            <p style="margin:0 0 10px;font-size:13px">สร้างไฟล์จากข้อมูล ณ ตอนนี้ ในรูปแบบเดียวกับที่ Dashboard อ่าน (ไม่เปลี่ยนรูปแบบ)</p>
+            <ul class="checks" id="expChecks" aria-label="ผลตรวจไฟล์ก่อนดาวน์โหลด"></ul>
+            <button class="btn primary" id="expBtn" onclick="doExport()">⇩ ดาวน์โหลด dashboard_data.json</button>
+            <span id="expMsg" class="chip ok" style="margin-left:8px" hidden></span>
+            <div class="note"><span class="ic">ℹ</span><span>ไฟล์มีเฉพาะตัวเลขสรุปรายสาขา ไม่มีชื่อลูกค้า/เบอร์โทร (PDPA) · การดาวน์โหลดถูกบันทึกลงประวัติด้านล่างด้วย · <b>ตัวอย่างนี้สร้างข้อมูลสมมติ 2 เดือน</b> ของจริงมีทุกเดือน JAN.25 – เดือนล่าสุด</span></div>
+          </div>
+        </section>
+      </div>
+
+      <!-- 4) ประวัติ -->
+      <section class="panel" aria-labelledby="h-hist" style="margin-top:16px">
+        <h3 id="h-hist">ประวัติการส่ง <span class="chip na" id="histCount"></span></h3>
+        <div class="tools">
+          <div class="field"><label for="fRes">ผลลัพธ์</label>
+            <select id="fRes" onchange="resetPage()"><option value="all">ทั้งหมด</option><option value="ok">สำเร็จ</option><option value="skip">ข้าม (ไม่มีการเปลี่ยนแปลง)</option><option value="fail">ล้มเหลว</option></select></div>
+          <div class="field"><label for="fTrg">ช่องทาง</label>
+            <select id="fTrg" onchange="resetPage()"><option value="all">ทุกช่องทาง</option><option value="auto">Auto Sync 06:00</option><option value="close">ปิดเดือน</option><option value="resync">คำนวณ snapshot ใหม่</option><option value="retry">ส่งใหม่ (กดเอง)</option><option value="export">Export สำรอง</option></select></div>
+        </div>
+        <div class="tablewrap">
+          <table>
+            <caption class="sr">ประวัติการส่งข้อมูลไป Dashboard เรียงจากใหม่ไปเก่า</caption>
+            <thead><tr><th scope="col">เวลา</th><th scope="col">ช่องทาง</th><th scope="col">ผลลัพธ์</th><th scope="col">ผู้สั่ง</th><th scope="col" class="r">ใช้เวลา</th><th scope="col"><span class="sr">รายละเอียด</span></th></tr></thead>
+            <tbody id="histBody"></tbody>
+          </table>
+        </div>
+        <div class="more" id="histMore"></div>
+      </section>
+
+      <!-- 5) ปลายทาง (อ่านอย่างเดียว) -->
+      <section class="panel" aria-labelledby="h-cfg">
+        <h3 id="h-cfg">ปลายทางที่ส่งไป <span class="chip na">อ่านอย่างเดียว</span></h3>
+        <div class="body">
+          <div class="kvs" style="margin-top:0">
+            <div class="kv"><span>Repo</span><b class="mono">13azukaoab/AGA-Bait-Dashboard</b></div>
+            <div class="kv"><span>Branch</span><b class="mono">main</b></div>
+            <div class="kv"><span>ไฟล์ที่ระบบ commit</span><b class="mono">dashboard_data.json · index.html (const DATA)</b></div>
+            <div class="kv"><span>Dashboard (Netlify)</span><b><a href="https://aga-bait-dashboard.netlify.app/" target="_blank" rel="noopener" style="color:var(--accent-strong)">aga-bait-dashboard.netlify.app</a></b></div>
+            <div class="kv"><span>GitHub token</span><b><span class="chip ok">ตั้งค่าแล้ว</span> <span style="font-weight:400;color:var(--fg-muted);font-size:12px">อยู่ใน env ของ Vercel</span></b></div>
+          </div>
+          <div class="note"><span class="ic">ℹ</span><span>ค่าเหล่านี้ตั้งที่ Vercel (Environment Variable) ไม่ใช่ในหน้านี้ — ระบบไม่แสดงและไม่รับ token ทางหน้าจอ เพื่อไม่ให้ความลับรั่วไหล · เมื่อ commit สำเร็จ Netlify จะอัปเดต Dashboard ภายใน ~30 วินาที</span></div>
+        </div>
+      </section>
+    </div>
+  </main>
+</div>
+
+<script>
+/* ===== ข้อมูลตัวอย่าง: ประวัติการส่ง (สะท้อนตาราง sync_logs) · "วันนี้" = 06/11/2026 ===== */
+var TODAY=Date.UTC(2026,10,6), DAY=86400000;
+var TRG={auto:"Auto Sync 06:00",close:"ปิดเดือน",resync:"คำนวณ snapshot ใหม่",retry:"ส่งใหม่ (กดเอง)",export:"Export สำรอง"};
+var RES={ok:["สำเร็จ","ok","✓"],skip:["ข้าม · ไม่มีการเปลี่ยนแปลง","na","–"],fail:["ล้มเหลว","miss","✗"]};
+var ERRS={
+ "502":{msg:"GitHub API 502 Bad Gateway",req:"PUT /repos/13azukaoab/AGA-Bait-Dashboard/contents/dashboard_data.json",fix:"ปัญหาชั่วคราวฝั่ง GitHub — ไม่ต้องแก้อะไร Auto Sync รอบ 06:00 วันถัดไปจะลองใหม่เอง หรือกด \"ส่งใหม่\" ได้เลย"},
+ "401":{msg:"GitHub API 401 Bad credentials",req:"PUT /repos/13azukaoab/AGA-Bait-Dashboard/contents/dashboard_data.json",fix:"token ใช้ไม่ได้ (อาจหมดอายุ) — ให้ผู้ดูแลระบบสร้าง token ใหม่ แล้วอัปเดตที่ Vercel → Environment Variables (ห้ามส่ง token ทางแชท/อีเมล) จากนั้นกด \"ส่งใหม่\""}
+};
+function pad(n){return String(n).padStart(2,"0")}
+function fmt(ts){var d=new Date(ts);return pad(d.getUTCDate())+"/"+pad(d.getUTCMonth()+1)+"/"+d.getUTCFullYear()+" "+pad(d.getUTCHours())+":"+pad(d.getUTCMinutes())}
+function at(off,h,m){return TODAY-off*DAY+(h*60+m)*60000}
+var HOST="host · QCS ส่วนกลาง", REC="recorder · หัวหน้างาน A";
+var LOGS=[], uid=0;
+function add(ts,trg,res,by,sec,o){o=o||{};o.id=++uid;o.ts=ts;o.trg=trg;o.res=res;o.by=by;o.sec=sec;LOGS.push(o)}
+/* Auto Sync รายวัน 35 วัน: ผลตามตาราง · เวลาเริ่มไม่ตรงนาที (Vercel Cron 06:00–06:59) */
+(function(){
+  var okDays={0:1,2:1,6:1,9:1,15:1,21:1,26:1,31:1}, fails={3:"502",23:"401"};
+  for(var o=0;o<=34;o++){
+    var mm=(o*7+5)%55+3, ts=at(o,6,mm);
+    if(fails[o]) add(ts,"auto","fail","ระบบ (Cron)",fails[o]==="401"?1.1:30.2,{err:fails[o],months:"OCT.26 (+ตัวเลขใหม่)"});
+    else if(okDays[o]) add(ts,"auto","ok","ระบบ (Cron)",3+(o%4)*.7,{commit:(0xa3f9c21-o*40961).toString(16).slice(-7),files:"dashboard_data.json, index.html",months:o>5?"SEP.26 และ OCT.26":"OCT.26",rows:"22 เดือน × 43 สาขา"});
+    else add(ts,"auto","skip","ระบบ (Cron)",1.6+(o%3)*.3,{note:"ข้อมูลเหมือนรอบก่อน ไม่ commit (ไม่ทำให้ Netlify build ใหม่)"});
+  }
+  add(at(3,9,41),"retry","ok",HOST,3.9,{commit:"7be05d3",files:"dashboard_data.json, index.html",months:"OCT.26",rows:"22 เดือน × 43 สาขา",note:"ส่งใหม่หลัง Auto Sync 06:22 ล้มเหลว"});
+  add(at(23,10,2),"retry","ok",HOST,4.4,{commit:"1c8e9a4",files:"dashboard_data.json, index.html",months:"SEP.26",rows:"21 เดือน × 43 สาขา",note:"ส่งใหม่หลังเปลี่ยน token ใหม่ที่ Vercel"});
+  add(at(17,14,5),"resync",  "ok",REC,5.1,{commit:"d40b7f2",files:"dashboard_data.json, index.html",months:"SEP.26 (คำนวณ snapshot ใหม่ · แก้หลังปิด 3 รายการ)",rows:"21 เดือน × 43 สาขา"});
+  add(at(32,9,13),"close","ok",HOST,4.7,{commit:"e19a6c0",files:"dashboard_data.json, index.html",months:"SEP.26 (ปิดเดือน)",rows:"21 เดือน × 43 สาขา"});
+  add(at(9,16,30),"export","ok",HOST,0.4,{note:"ดาวน์โหลด dashboard_data.json (ไม่ได้ส่ง Dashboard)",files:"dashboard_data.json",rows:"22 เดือน × 43 สาขา"});
+})();
+LOGS.sort(function(a,b){return b.ts-a.ts});
+
+/* ===== state ===== */
+var PAGE=8, shown=PAGE, openId=null, now0=at(0,9,30);
+function sentLogs(){return LOGS.filter(function(l){return l.trg!=="export"})}
+function lastAttempt(){return sentLogs()[0]}
+function lastOk(){return sentLogs().filter(function(l){return l.res==="ok"})[0]}
+function autoStreak(){var n=0;LOGS.filter(function(l){return l.trg==="auto"}).some(function(l){if(l.res==="fail")return true;n++;return false});return n}
+function fail30(){return sentLogs().filter(function(l){return l.res==="fail"&&l.ts>=now0-30*DAY})}
+function resolvedAfter(l){ /* ล้มเหลวแล้วมีการส่งสำเร็จ (commit) หลังจากนั้นหรือยัง */
+  return sentLogs().some(function(x){return x.res==="ok"&&x.ts>l.ts});
+}
+
+/* ===== render ===== */
+function renderAll(){
+  /* ยังไม่เคยส่งเลย (วันแรกหลัง deploy) → แสดงสถานะว่าง แทนการ์ดที่ต้องใช้ข้อมูล log */
+  var none=!lastAttempt()||!lastOk();
+  document.getElementById("stats").hidden=none;
+  if(none){
+    document.getElementById("alerts").innerHTML="";
+    document.getElementById("lastBox").innerHTML='<div class="empty">ยังไม่เคยส่งข้อมูลเข้า Dashboard สำเร็จ · Auto Sync รอบแรกจะเริ่ม 06:00 น. หรือกด Export สำรองเพื่อตรวจไฟล์ก่อน</div>';
+    renderHist(); return;
+  }
+  renderAlerts();renderLast();renderStats();renderHist();
+}
+function renderAlerts(){
+  var la=lastAttempt(), out="";
+  if(la.res==="fail"){
+    out='<div class="alert danger" role="alert"><span class="ic" aria-hidden="true">✗</span><div><b>การส่งล่าสุดไม่สำเร็จ — Dashboard ยังแสดงตัวเลขเดิม</b><small>'+fmt(la.ts)+' · '+ERRS[la.err].msg+' · Auto Sync รอบ 06:00 พรุ่งนี้จะลองใหม่เอง หรือกดส่งใหม่ที่ตารางด้านล่าง</small><div style="margin-top:8px"><button class="btn sm primary" onclick="retry('+la.id+')">ส่งใหม่ตอนนี้</button></div></div></div>';
+  }
+  document.getElementById("alerts").innerHTML=out;
+}
+function renderLast(){
+  var la=lastAttempt(), lo=lastOk(), r=RES[la.res], cls=la.res==="fail"?"fail":(la.res==="skip"?"skip":"ok");
+  var title=la.res==="ok"?"ส่งสำเร็จ":la.res==="skip"?"ตรวจแล้ว ไม่มีการเปลี่ยนแปลง":"ส่งไม่สำเร็จ";
+  var h='<div class="hero"><div class="badge '+cls+'" aria-hidden="true">'+r[2]+'</div><div><h2>'+title+' · <span class="num">'+fmt(la.ts)+'</span></h2>'+
+   '<p>ช่องทาง: '+TRG[la.trg]+' · ผู้สั่ง: '+la.by+' · ใช้เวลา '+la.sec.toFixed(1)+' วินาที</p></div></div>';
+  h+='<div class="kvs">'+
+   '<div class="kv"><span>ส่งสำเร็จ (commit) ล่าสุด</span><b class="num">'+fmt(lo.ts)+'</b></div>'+
+   '<div class="kv"><span>commit</span><b class="mono">'+(lo.commit||"-")+'</b></div>'+
+   '<div class="kv"><span>เดือนที่อยู่ในไฟล์</span><b>JAN.25 – OCT.26 <span style="font-weight:400;color:var(--fg-muted)">(22 เดือน)</span></b></div>'+
+   '<div class="kv"><span>จำนวนสาขาต่อเดือน</span><b>43 / 43 สาขา</b></div></div>';
+  document.getElementById("lastBox").innerHTML=h;
+}
+function renderStats(){
+  var lo=lastOk(), st=autoStreak(), f=fail30(), unres=f.filter(function(l){return !resolvedAfter(l)}).length;
+  var s='<div class="stat ok"><div class="lab">Dashboard อัปเดตล่าสุด</div><div class="val num" style="font-size:18px;margin-top:8px">'+fmt(lo.ts)+'</div><div class="sub">ครั้งล่าสุดที่มีการ commit จริง</div></div>'+
+   '<div class="stat '+(st>=7?'ok':'accent')+'"><div class="lab">Auto Sync ไม่พลาดติดต่อกัน</div><div class="val num">'+st+' วัน</div><div class="sub">เป้าหมายยอมรับระบบ: 7 วัน (SPEC §15 ข้อ 5)</div></div>'+
+   '<div class="stat '+(f.length?'warn':'ok')+'"><div class="lab">ล้มเหลวใน 30 วันล่าสุด</div><div class="val num">'+f.length+' ครั้ง</div><div class="sub">'+(unres?unres+' ครั้งยังไม่ได้ส่งซ้ำสำเร็จ':'ทุกครั้งส่งซ้ำสำเร็จแล้ว')+'</div></div>'+
+   '<div class="stat accent"><div class="lab">รอบ Auto Sync ถัดไป</div><div class="val num" style="font-size:18px;margin-top:8px">07/11/2026 ~06:00</div><div class="sub">เริ่มได้ถึง 06:59 · เวลาไทย</div></div>';
+  document.getElementById("stats").innerHTML=s;
+}
+function filtered(){
+  var r=document.getElementById("fRes").value, t=document.getElementById("fTrg").value;
+  return LOGS.filter(function(l){return (r==="all"||l.res===r)&&(t==="all"||l.trg===t)});
+}
+function resetPage(){shown=PAGE;openId=null;renderHist()}
+function renderHist(){
+  var rows=filtered(), body=document.getElementById("histBody"), h="";
+  rows.slice(0,shown).forEach(function(l){
+    var r=RES[l.res], isOpen=(openId===l.id);
+    h+='<tr class="'+(isOpen?'sel':'')+'"><td class="num">'+fmt(l.ts)+'</td><td>'+TRG[l.trg]+'</td>'+
+      '<td><span class="chip '+r[1]+'"><span aria-hidden="true">'+r[2]+'</span> '+r[0]+'</span></td><td>'+l.by+'</td><td class="r num">'+l.sec.toFixed(1)+' วิ</td>'+
+      '<td class="r"><button class="btn sm ghost" aria-expanded="'+isOpen+'" aria-controls="d'+l.id+'" onclick="toggleRow('+l.id+')">'+(isOpen?'ซ่อน':'รายละเอียด')+'</button></td></tr>';
+    if(isOpen) h+='<tr class="detail" id="d'+l.id+'"><td colspan="6"><div class="dbox">'+detailHtml(l)+'</div></td></tr>';
+  });
+  if(!rows.length) h='<tr><td colspan="6"><div class="empty">ไม่พบรายการตามตัวกรอง</div></td></tr>';
+  body.innerHTML=h;
+  document.getElementById("histCount").textContent=rows.length+" รายการ";
+  var more=document.getElementById("histMore");
+  more.innerHTML='<span>แสดง '+Math.min(shown,rows.length)+' จาก '+rows.length+' รายการ · ระบบเก็บประวัติถาวร ไม่ลบอัตโนมัติ</span>'+
+    (rows.length>shown?'<button class="btn sm" onclick="shown+=PAGE;renderHist()">แสดงเพิ่ม '+Math.min(PAGE,rows.length-shown)+' รายการ</button>':'');
+}
+function detailHtml(l){
+  var h="";
+  if(l.res==="fail"){
+    var e=ERRS[l.err];
+    h+='<div class="errbox"><b>สาเหตุ</b>: '+e.msg+'<span class="mono">'+e.req+'</span></div><p class="fix"><b>วิธีแก้:</b> '+e.fix+'</p>';
+    if(resolvedAfter(l)) h+='<p class="fix"><span class="chip ok">✓ ส่งซ้ำสำเร็จแล้ว</span></p>';
+    else h+='<button class="btn sm primary" onclick="retry('+l.id+')">ส่งใหม่ตอนนี้</button>';
+  }else{
+    h+='<div class="kvs" style="margin:0">'+
+      (l.months?'<div class="kv"><span>เดือนที่คำนวณ/ส่ง</span><b>'+l.months+'</b></div>':'')+
+      (l.rows?'<div class="kv"><span>ขนาดข้อมูล</span><b>'+l.rows+'</b></div>':'')+
+      (l.files?'<div class="kv"><span>ไฟล์ที่เปลี่ยน</span><b class="mono">'+l.files+'</b></div>':'')+
+      (l.commit?'<div class="kv"><span>commit</span><b class="mono">'+l.commit+'</b></div>':'')+'</div>';
+    if(l.note) h+='<p class="fix" style="margin:10px 0 0">'+l.note+'</p>';
+  }
+  return h;
+}
+function toggleRow(id){openId=(openId===id)?null:id;renderHist();var b=document.querySelector('[aria-controls="d'+id+'"]');if(b)b.focus()}
+
+/* ส่งใหม่ (จำลอง: สำเร็จเสมอ) — บันทึกเป็นแถวใหม่ ไม่แก้แถวเก่า (log ห้ามถูกเขียนทับ) */
+function retry(id){
+  var btns=document.querySelectorAll("#alerts .btn,#histBody .btn.primary");btns.forEach(function(b){b.disabled=true;b.textContent="กำลังส่ง…"});
+  setTimeout(function(){
+    now0+=60000*3;
+    add(now0,"retry","ok",HOST,4.1,{commit:"f2a7c19",files:"dashboard_data.json, index.html",months:"OCT.26",rows:"22 เดือน × 43 สาขา",note:"ส่งใหม่ตามที่ host กด"});
+    LOGS.sort(function(a,b){return b.ts-a.ts});
+    openId=null;renderAll();
+    var a=document.getElementById("alerts");a.innerHTML='<div class="alert ok" role="status"><span class="ic" aria-hidden="true">✓</span><div><b>ส่ง Dashboard สำเร็จ</b><small>บันทึกลงประวัติแล้ว · Netlify จะอัปเดตภายใน ~30 วินาที</small></div></div>';
+  },900);
+}
+
+/* ===== Export สำรอง: สร้างไฟล์จริงตามรูปแบบ SPEC §9.1 (ข้อมูลสมมติ 2 เดือน) ===== */
+var BRANCHES=[ /* [เขต, สาขา] ชื่อตรง SPEC §4 — 24 ส่วนกลาง + 19 ต่างจังหวัด = 43 */
+["เขต 1","พุทธมณฑล"],["เขต 1","นครปฐม"],["เขต 1","หัวหิน"],["เขต 2","สาทร"],["เขต 2","ปทุมวัน"],["เขต 2","พระราม 4"],["เขต 2","นนทบุรี"],
+["เขต 3","ปทุมธานี"],["เขต 3","รามอินทรา"],["เขต 3","อยุธยา"],["เขต 4","ลาดพร้าว"],["เขต 4","พัฒนาการ"],["เขต 4","สุวินทวงศ์"],["เขต 4","ประชาชื่น"],
+["เขต 5","สมุทรปราการ"],["เขต 5","พัทยา"],["เขต 5","ระยอง"],["เขต 6","สุขุมวิท"],["เขต 6","ปากน้ำ"],["เขต 6","ชลบุรี"],
+["เขต 7","เชียงราย"],["เขต 7","เชียงใหม่"],["เขต 7","ตาก"],["เขต 7","พิษณุโลก"],["เขต 8","โคราช"],["เขต 8","ขอนแก่น"],["เขต 8","อุดรธานี"],["เขต 8","อุบลราชธานี"],
+["เขต 9","ปากช่อง"],["เขต 9","สระบุรี"],["เขต 9","ลพบุรี"],["เขต 10","สุราษฎร์ธานี"],["เขต 10","เกาะสมุย"],["เขต 10","พังงา"],
+["เขต 11","กระบี่"],["เขต 11","ภูเก็ต"],["เขต 11","หาดใหญ่"],["เขต 12","ระนอง"],["เขต 12","นครศรีธรรมราช"],["เขต 12","ตรัง"],["เขต 12","ชุมพร"],
+["เขต 13","พระราม 2"],["เขต 13","ปราจีนบุรี"]];
+var FIELDS=["area","branch","s1","s3","m1","m3","l1","l3","xl1","xl3","cust","vS","vM","vL","vXL","value"];
+function buildExport(){
+  var data={};
+  ["SEP.26","OCT.26"].forEach(function(mk,mi){
+    data[mk]=BRANCHES.map(function(b,i){
+      var s1=10+(i*7+mi)%30,s3=20+(i*11)%90,m1=3+(i*5)%12,m3=2+(i*3)%11,l1=1+(i*2)%5,l3=(i%4),xl1=i%3,xl3=(i%7===0)?1:0;
+      var vS=Math.round((s1*14500+s3*52000)*100)/100, vM=Math.round((m1*36000+m3*118000)*100)/100,
+          vL=Math.round((l1*68000+l3*230000)*100)/100, vXL=Math.round((xl1*160000+xl3*420000)*100)/100;
+      return {area:b[0],branch:b[1],s1:s1,s3:s3,m1:m1,m3:m3,l1:l1,l3:l3,xl1:xl1,xl3:xl3,
+        cust:s1+s3+m1+m3+l1+l3+xl1+xl3,vS:vS,vM:vM,vL:vL,vXL:vXL,value:Math.round((vS+vM+vL+vXL)*100)/100};
+    });
+  });
+  return data;
+}
+function renderChecks(){
+  var d=buildExport(), keys=Object.keys(d);
+  var keyOk=keys.every(function(k){return /^[A-Z]{3}\.\d{2}$/.test(k)});
+  var all43=keys.every(function(k){return d[k].length===43});
+  var f16=keys.every(function(k){return d[k].every(function(r){return Object.keys(r).length===16&&FIELDS.every(function(f){return f in r})})});
+  var names=new Set(BRANCHES.map(function(b){return b[1]})).size===43;
+  function li(ok,t){return '<li><span class="d" aria-hidden="true" style="'+(ok?'':'background:var(--danger)')+'">'+(ok?'✓':'✗')+'</span><span>'+t+'</span></li>'}
+  document.getElementById("expChecks").innerHTML=
+    li(all43,"ครบ 43 สาขาทุกเดือน (ส่วนกลาง 24 + ต่างจังหวัด 19)")+
+    li(keyOk,"key เดือนรูปแบบ <code>MMM.YY</code> ตัวพิมพ์ใหญ่ เช่น <code>OCT.26</code>")+
+    li(f16,"16 ฟิลด์ต่อแถว ตรงรูปแบบ Dashboard เดิม")+
+    li(names,"ชื่อสาขาไม่ซ้ำ และสะกดตรงกับ Dashboard");
+  return d;
+}
+function doExport(){
+  var d=renderChecks(), blob=new Blob([JSON.stringify(d,null,2)],{type:"application/json"});
+  var a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download="dashboard_data.json";
+  document.body.appendChild(a); a.click(); a.remove(); setTimeout(function(){URL.revokeObjectURL(a.href)},1000);
+  now0+=60000; add(now0,"export","ok",HOST,0.4,{note:"ดาวน์โหลด dashboard_data.json (ไม่ได้ส่ง Dashboard)",files:"dashboard_data.json",rows:"22 เดือน × 43 สาขา"});
+  LOGS.sort(function(a,b){return b.ts-a.ts}); renderHist();
+  var m=document.getElementById("expMsg"); m.textContent="✓ ดาวน์โหลดแล้ว · บันทึกลงประวัติ"; m.hidden=false;
+}
+
+/* ===== shell ===== */
+function toggleNav(open){
+  var b=document.body, want=(typeof open==="boolean")?open:!b.classList.contains("nav-open");
+  b.classList.toggle("nav-open",want);
+  var t=document.getElementById("navToggle"); if(t) t.setAttribute("aria-expanded",want?"true":"false");
+}
+document.addEventListener("keydown",function(e){if(e.key==="Escape")toggleNav(false)});
+function setRole(r){
+  var ok=(r==="host");
+  document.getElementById("lockMsg").hidden=ok;
+  document.getElementById("content").hidden=!ok;
+}
+function toggleTheme(){
+  var el=document.documentElement, cur=el.getAttribute("data-theme");
+  var next=cur==="dark"?"light":(cur==="light"?"dark":(matchMedia("(prefers-color-scheme: dark)").matches?"light":"dark"));
+  el.setAttribute("data-theme",next);
+  try{localStorage.setItem("aga-theme",next)}catch(e){}
+}
+renderChecks(); renderAll();
+</script>
+</body>
+</html>
