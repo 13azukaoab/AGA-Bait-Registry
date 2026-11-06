@@ -98,7 +98,7 @@ table select,table input{font-family:inherit;font-size:12px;color:var(--fg);back
 .tag-new{font-size:10px;font-weight:700;color:var(--new);background:var(--new-soft);border:1px solid #d8cdf0;border-radius:5px;padding:1px 7px}
 
 /* ===== โหมดตารางเหมือน Excel ===== */
-table.xl{font-size:12px;width:2350px;table-layout:fixed}
+table.xl{font-size:12px;width:2454px;table-layout:fixed}
 table.xl thead th{padding:5px 7px;font-size:10.5px;line-height:1.3;vertical-align:bottom;border-right:1px solid var(--border);white-space:normal}
 table.xl thead th.grp{background:var(--surface-3);color:var(--fg);border-bottom:1px solid var(--border-strong)}
 table.xl thead th.sub{background:var(--surface-3);font-weight:600}
@@ -214,6 +214,19 @@ tr.badrow td{background:var(--danger-soft) !important}
 
 /* ===== modal กลาง (ใช้ร่วม: ผูกลูกค้าเดิม / รอนัดบริการ / ตรวจก่อนบันทึก) ===== */
 table.xl .chip.lk{cursor:pointer}
+table.xl .chip.fbtn{border:0;font-family:inherit;white-space:nowrap}
+.fl-row{display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid var(--border)}
+.fl-row .ic{flex:none;width:38px;height:38px;border-radius:8px;background:var(--surface-3);color:var(--fg-muted);
+  font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center}
+.fl-row .mn{flex:1;min-width:0}
+.fl-row .mn b{display:block;font-size:12.5px}
+.fl-row .mn small{display:block;color:var(--fg-muted);font-size:11.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fl-row .mn small.has{color:var(--ok)}
+.fl-row label.pick{cursor:pointer}
+.fl-row.off .pick{opacity:.4;pointer-events:none}
+.fl-note{padding:10px 16px;font-size:11.5px;color:var(--fg-muted);line-height:1.6}
+.fl-err{margin:8px 16px 0;padding:7px 10px;border-radius:6px;background:var(--danger-soft);color:var(--danger);font-size:11.5px}
+.fl-none{display:flex;align-items:center;gap:6px;padding:0 16px 12px 66px;font-size:11.5px;color:var(--fg-muted)}
 table.xl .chip.lk:hover{outline:1px solid var(--accent);outline-offset:1px}
 .mdsearch{padding:12px 16px;border-bottom:1px solid var(--border);background:var(--surface-2)}
 .mdsearch input{font-family:inherit;font-size:13px;width:100%;padding:8px 11px;border-radius:8px;
@@ -304,6 +317,7 @@ table.xl .teambtn.multi{font-weight:700;color:var(--accent-strong)}
     <li><b>เลขที่สัญญา ตัดช่องว่าง + พิมพ์ใหญ่อัตโนมัติ</b> แล้วตรวจรูปแบบ/ซ้ำ → ไฟล์จริงมีเว้นวรรคท้าย 4 รายการ และ <span class="num">ct26-</span> ตัวเล็ก 1 รายการ ถ้าไม่ล้างก่อนเทียบจะกลายเป็นสัญญาคนละใบ</li>
     <li><b>ทีม/ประเภทลูกค้าเป็น dropdown จาก master</b> → ไฟล์จริงมี <span class="num">sup</span>/<span class="num">Sup</span>/<span class="num">หนง.</span>/<span class="num">o</span> และเวลา <span class="num">11:30:00</span> หลุดมาอยู่ในช่องทีม · ประเภทมี "ทาวโฮม" ขาด น์</li>
     <li><b>New/Renew รวมเป็น dropdown "ประเภทงาน"</b> ช่องเดียว → ประหยัดคอลัมน์ และไม่มีเคสติ๊กทั้งคู่/ไม่ติ๊กเลย</li>
+    <li><b>แนบสัญญา PDF + Site plan ตอนเปิดงาน</b> (คอลัมน์ "ไฟล์แนบ" 📎 0–2/2) → ไฟล์มากับสัญญาตั้งแต่วันแรก ไม่ต้องไล่หาทีหลัง · ไม่มี Site plan ให้เลือก "ไม่ใช้" · ยังไม่แนบ = เตือน บันทึกต่อได้</li>
     <li><b>Tier โชว์สด</b> ทันทีที่ใส่มูลค่า → admin เห็นเลยว่าลูกค้านี้ S/M/L/XL กี่ปี</li>
   </ul>
 </div>
@@ -335,8 +349,8 @@ table.xl .teambtn.multi{font-weight:700;color:var(--accent-strong)}
 <div class="tablewrap">
   <table class="xl">
     <!-- ความกว้างตั้งตามเนื้อหาจริงของแต่ละช่อง (วันที่ 120px พอดีกับ date picker ของเบราว์เซอร์)
-         รวม 2,350px (ชื่อลูกค้ากว้าง 280px ตามข้อมูลจริง p90 = 47 ตัวอักษร) เลื่อนแนวนอนน้อยลง -->
-    <colgroup><col style="width:40px"><col style="width:104px"><col style="width:280px"><col style="width:44px"><col style="width:104px"><col style="width:140px"><col style="width:118px"><col style="width:72px"><col style="width:112px"><col style="width:54px"><col style="width:120px"><col style="width:120px"><col style="width:88px"><col style="width:62px"><col style="width:108px"><col style="width:120px"><col style="width:120px"><col style="width:96px"><col style="width:96px"><col style="width:56px"><col style="width:150px"><col style="width:150px"></colgroup>
+         รวม 2,454px (ชื่อลูกค้ากว้าง 280px ตามข้อมูลจริง p90 = 47 ตัวอักษร) เลื่อนแนวนอนน้อยลง -->
+    <colgroup><col style="width:40px"><col style="width:104px"><col style="width:280px"><col style="width:44px"><col style="width:104px"><col style="width:140px"><col style="width:118px"><col style="width:72px"><col style="width:112px"><col style="width:54px"><col style="width:120px"><col style="width:120px"><col style="width:88px"><col style="width:62px"><col style="width:108px"><col style="width:120px"><col style="width:120px"><col style="width:96px"><col style="width:96px"><col style="width:56px"><col style="width:150px"><col style="width:104px"><col style="width:150px"></colgroup>
     <thead>
       <tr>
         <th rowspan="2" class="c">ลำดับ</th>
@@ -358,6 +372,7 @@ table.xl .teambtn.multi{font-weight:700;color:var(--accent-strong)}
         <th colspan="2" class="c grp">มูลค่า</th>
         <th rowspan="2" class="c">Tier</th>
         <th rowspan="2">หมายเหตุ</th>
+        <th rowspan="2" class="c">ไฟล์แนบ <span class="tag-new">PDF</span></th>
         <th rowspan="2" class="c">สถานะ</th>
       </tr>
       <tr>
@@ -388,6 +403,7 @@ table.xl .teambtn.multi{font-weight:700;color:var(--accent-strong)}
         <td class="r"><input class="num money off" disabled></td>
         <td class="c"><span class="tier s1">S1</span></td>
         <td><input class="wide"></td>
+        <td class="c"><button type="button" class="chip fbtn" data-pdf="CT26-9000001.pdf" data-sp="siteplan-9000001.pdf" onclick="fileOpen(this)"></button></td>
         <td class="c"><span class="chip ok">ครบ</span></td>
       </tr>
       <tr>
@@ -412,6 +428,7 @@ table.xl .teambtn.multi{font-weight:700;color:var(--accent-strong)}
         <td class="r"><input class="num money" value="137,163.17"></td>
         <td class="c"><span class="tier l3">L3</span></td>
         <td><input class="wide"></td>
+        <td class="c"><button type="button" class="chip fbtn" data-pdf="CT26-9000003.pdf" data-sp="siteplan-9000003.pdf" onclick="fileOpen(this)"></button></td>
         <td class="c"><span class="chip ok">ครบ</span></td>
       </tr>
       <tr>
@@ -436,6 +453,7 @@ table.xl .teambtn.multi{font-weight:700;color:var(--accent-strong)}
         <td class="r"><input class="num money off" disabled></td>
         <td class="c"><span class="tier xl1">XL1</span></td>
         <td><input class="wide"></td>
+        <td class="c"><button type="button" class="chip fbtn" data-pdf="CT26-9000005.pdf" data-sp="__none__" onclick="fileOpen(this)"></button></td>
         <td class="c"><span class="chip ok">ครบ</span></td>
       </tr>
       <tr>
@@ -460,6 +478,7 @@ table.xl .teambtn.multi{font-weight:700;color:var(--accent-strong)}
         <td class="r"><input class="num money" value="137,163.17"></td>
         <td class="c"><span class="tier l3">L3</span></td>
         <td><input class="wide"></td>
+        <td class="c"><button type="button" class="chip fbtn" data-pdf="CT26-9000006.pdf" data-sp="siteplan-9000006.pdf" onclick="fileOpen(this)"></button></td>
         <td class="c"><span class="chip ok">ครบ</span></td>
       </tr>
       <tr class="pendrow">
@@ -484,6 +503,7 @@ table.xl .teambtn.multi{font-weight:700;color:var(--accent-strong)}
         <td class="r"><input class="num money off" disabled></td>
         <td class="c"><span class="tier l1">L1</span></td>
         <td><input class="wide"></td>
+        <td class="c"><button type="button" class="chip fbtn" data-pdf="CT26-9000007.pdf" data-sp="" onclick="fileOpen(this)"></button></td>
         <td class="c"><span class="chip pend">รอนัดบริการ</span></td>
       </tr>
       <tr class="warnrow">
@@ -508,6 +528,7 @@ table.xl .teambtn.multi{font-weight:700;color:var(--accent-strong)}
         <td class="r"><input class="num money off" disabled></td>
         <td class="c"><span class="chip na">—</span></td>
         <td><input class="wide"></td>
+        <td class="c"><button type="button" class="chip fbtn" data-pdf="" data-sp="" onclick="fileOpen(this)"></button></td>
         <td class="c"><span class="chip pend">ระยะ 396 วัน</span></td>
       </tr>
       <tr class="badrow">
@@ -532,6 +553,7 @@ table.xl .teambtn.multi{font-weight:700;color:var(--accent-strong)}
         <td class="r"><input class="num money off" disabled></td>
         <td class="c"><span class="chip na">—</span></td>
         <td><input class="wide"></td>
+        <td class="c"><button type="button" class="chip fbtn" data-pdf="" data-sp="" onclick="fileOpen(this)"></button></td>
         <td class="c"><span class="chip miss">ขาด มูลค่า · ผู้ขาย</span></td>
       </tr>
     </tbody>
@@ -1144,7 +1166,7 @@ function linkDo(ct){
   var tr=lkCell.closest('tr');
   // ล้างสีแถวเฉพาะกรณีที่ "ยังไม่ผูก" เป็นปัญหาเดียวที่ค้าง
   // ปัญหาอื่น (เช่น ระยะสัญญา 396 วัน) ยังต้องคาสีไว้
-  var st=tr.cells[21].querySelector('.chip');
+  var st=tr.cells[22].querySelector('.chip');
   if(st && st.textContent.indexOf('ขาด')===0){
     st.className='chip ok'; st.textContent='ครบ';
     tr.classList.remove('badrow','warnrow','pendrow');
@@ -1241,6 +1263,12 @@ function saveScan(){
     if(!val(tr.cells[11])) warn.push('ยังไม่ลงวันที่บริการ');
     var tbn=tr.cells[13].querySelector('.teambtn');
     if(tbn && !(tbn.dataset.teams||'')) warn.push('ยังไม่นัดทีม');
+    // ไฟล์แนบ: เตือนอย่างเดียว ไม่บล็อก (แนบทีหลังในหน้ารายละเอียดลูกค้าได้ — host/admin)
+    var fb=tr.querySelector('.fbtn');
+    if(fb){
+      if(!fb.dataset.pdf) warn.push('ยังไม่แนบสัญญา PDF');
+      if(!fb.dataset.sp)  warn.push('ยังไม่แนบ Site plan (หรือเลือก "ไม่ใช้")');
+    }
 
     // ระยะสัญญาต้องเป็น 1 ปี หรือ 3 ปี พอดี (SPEC §7.2) — คลาดได้ ±1 วัน
     var s=val(tr.cells[15]), e=val(tr.cells[16]);
@@ -1688,6 +1716,7 @@ function blankRow(){
     '<td class="r"><input class="num money off" disabled></td>'+
     '<td class="c"><span class="chip na">—</span></td>'+
     '<td><input class="wide"></td>'+
+    '<td class="c"><button type="button" class="chip fbtn" data-pdf="" data-sp="" onclick="fileOpen(this)"></button></td>'+
     '<td class="c"><span class="chip miss">กรอกไม่ครบ</span></td>'+
   '</tr>';
 }
@@ -1705,6 +1734,7 @@ function addRow(){
   tb.insertAdjacentHTML('beforeend', blankRow());
   var tr=tb.lastElementChild;
   renumber();
+  [].forEach.call(tr.querySelectorAll('.fbtn'),fileRepaint);
   fillBranches(); fillMasters();            // เติม options ให้ select ที่เพิ่งสร้าง
   if(typeof footSync==='function') footSync();
   var ci=tr.cells[1].querySelector('input'); if(ci) ci.focus();
@@ -1731,7 +1761,7 @@ function addTodayJob(){
    อ่านค่าจากทุกแถวในตาราง คอลัมน์ตรงกับที่โชว์ · เวลา/ทีม อ่านจาก data-* ของปุ่ม */
 var EXPHDR=['ลำดับ','เลขที่สัญญา','รายชื่อ','เบิกด่วน','ประเภทงาน','ลูกค้าเดิม','ผู้ขาย','ตำแหน่ง',
   'สาขา','เขต','วันที่รับ Mail','วันที่บริการ','เวลาบริการ','ทีม','ประเภท','เริ่ม','สิ้นสุด',
-  'มูลค่า 1 ปี','มูลค่า 3 ปี','Tier','หมายเหตุ','สถานะ'];
+  'มูลค่า 1 ปี','มูลค่า 3 ปี','Tier','หมายเหตุ','ไฟล์สัญญา (PDF)','Site plan','สถานะ'];
 function rowOut(tr){
   function v(i){ var e=tr.cells[i].querySelector('input,select'); return e?e.value.trim():tr.cells[i].textContent.trim(); }
   var job=((tr.querySelector('.jobsw .jo.on')||{}).textContent||'').trim();
@@ -1740,7 +1770,7 @@ function rowOut(tr){
   var teb=tr.cells[13].querySelector('.teambtn'), teams=teb?(teb.dataset.teams||''):'';
   return [tr.cells[0].textContent.trim(), v(1), v(2), urgent, job, tr.cells[5].textContent.trim(),
     v(6), v(7), v(8), tr.cells[9].textContent.trim(), v(10), v(11), tm, teams, v(14), v(15), v(16),
-    v(17), v(18), tr.cells[19].textContent.trim(), v(20), tr.cells[21].textContent.trim()];
+    v(17), v(18), tr.cells[19].textContent.trim(), v(20), fileOut(tr,'pdf'), fileOut(tr,'sp'), tr.cells[22].textContent.trim()];
 }
 function csvCell(s){ s=String(s==null?'':s); return /[",\n\r]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s; }
 function exportXL(){
@@ -1754,6 +1784,77 @@ function exportXL(){
   document.body.appendChild(a); a.click(); document.body.removeChild(a);
   setTimeout(function(){ URL.revokeObjectURL(url); },1000);
 }
+
+/* ===== ไฟล์แนบตอนเปิดงาน (สัญญา PDF + Site plan) =====
+   ตรงกับแท็บ "ไฟล์แนบ" ใน customer-detail.html: สัญญา 1 ไฟล์ + Site plan (IG/IC รวมไฟล์เดียว)
+   admin แนบคู่กันตอนเปิดงาน · Site plan ไม่มี = ติ๊ก "ไม่ใช้" · ไฟล์เก็บใน private bucket (PDPA)
+   รับ PDF/PNG/JPG ≤ 10 MB (สัญญารับเฉพาะ PDF) · แก้ Site plan ตอนติดตั้งทำในหน้ารายละเอียดลูกค้า
+   ยังไม่แนบ = เตือนอย่างเดียว บันทึกได้ (เหมือนรอนัดบริการ) · mockup เก็บแค่ชื่อไฟล์ ไม่ได้อัปโหลดจริง
+   สถานะเก็บใน data-pdf / data-sp ของปุ่ม: data-sp = ชื่อไฟล์ | "__none__" (ไม่ใช้) | "" (ยังไม่แนบ) */
+var FILE_MAX_MB=10, NOSP='__none__', fileBtn=null, fileTmp=null;
+
+function fileRepaint(b){
+  var pdf=b.dataset.pdf||'', sp=b.dataset.sp||'', n=(pdf?1:0)+(sp?1:0);
+  b.textContent='📎 '+n+'/2';
+  b.className='chip fbtn lk '+(n===2?'ok':(n===0?'na':'pend'));
+  b.title='สัญญา: '+(pdf||'ยังไม่แนบ')+' · Site plan: '+(sp===NOSP?'ไม่ใช้':(sp||'ยังไม่แนบ'));
+}
+function fileOut(tr,k){
+  var b=tr.querySelector('.fbtn'); if(!b) return '';
+  if(k==='pdf') return b.dataset.pdf||'';
+  var sp=b.dataset.sp||''; return sp===NOSP?'ไม่ใช้':sp;
+}
+function escHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+function fileOpen(btn){
+  fileBtn=btn;
+  var sp=btn.dataset.sp||'';
+  fileTmp={pdf:btn.dataset.pdf||'', sp:(sp===NOSP?'':sp), none:(sp===NOSP), err:''};
+  fileDraw();
+}
+function fileDraw(){
+  var tr=fileBtn.closest('tr'), t=fileTmp;
+  var ct=val(tr.cells[1])||'(ยังไม่ใส่เลขที่สัญญา)', nm=val(tr.cells[2])||'(ยังไม่ใส่ชื่อ)';
+  function line(has,none){
+    return has?'<small class="has">✓ '+escHtml(has)+'</small>':(none?'<small>ไม่ใช้ — สัญญานี้ไม่มี Site plan</small>':'<small>ยังไม่แนบ</small>');
+  }
+  var body=
+    '<div class="fl-row"><div class="ic" aria-hidden="true">PDF</div><div class="mn"><b>สัญญา (PDF)</b>'+line(t.pdf,false)+'</div>'+
+      (t.pdf?'<button class="btn sm" type="button" onclick="fileClear(\'pdf\')">ลบ</button>':'')+
+      '<label class="btn sm primary pick">'+(t.pdf?'เปลี่ยนไฟล์':'เลือกไฟล์')+
+      '<input type="file" accept=".pdf,application/pdf" hidden onchange="filePick(\'pdf\',this)"></label></div>'+
+    '<div class="fl-row'+(t.none?' off':'')+'"><div class="ic" aria-hidden="true">MAP</div><div class="mn"><b>Site plan (IG/IC รวมไฟล์เดียว)</b>'+line(t.sp,t.none)+'</div>'+
+      (t.sp?'<button class="btn sm" type="button" onclick="fileClear(\'sp\')">ลบ</button>':'')+
+      '<label class="btn sm primary pick">'+(t.sp?'เปลี่ยนไฟล์':'เลือกไฟล์')+
+      '<input type="file" accept=".pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg" hidden onchange="filePick(\'sp\',this)"></label></div>'+
+    '<label class="fl-none"><input type="checkbox" '+(t.none?'checked ':'')+'onchange="fileNone(this.checked)"> สัญญานี้ไม่มี Site plan (ไม่ใช้)</label>'+
+    (t.err?'<div class="fl-err" role="alert">'+escHtml(t.err)+'</div>':'')+
+    '<div class="fl-note">รับ PDF / PNG / JPG ไม่เกิน '+FILE_MAX_MB+' MB (สัญญารับเฉพาะ PDF) · ไฟล์เก็บใน private bucket เปิดผ่านลิงก์ชั่วคราวเท่านั้น (PDPA)<br>'+
+    'ยังไม่แนบตอนนี้ได้ — บันทึกต่อได้ แล้วมาแนบเพิ่มในหน้ารายละเอียดลูกค้า · แก้ Site plan ตอนติดตั้งให้เพิ่มเวอร์ชันใหม่ที่หน้านั้น</div>';
+  mdOpen('ไฟล์แนบ · '+ct, nm, '', body,
+    '<span>ยังไม่ได้อัปโหลดจริง — เดโมเก็บเฉพาะชื่อไฟล์</span><span style="flex:1"></span>'+
+    '<button class="btn sm" type="button" onclick="mdClose()">ยกเลิก</button>'+
+    '<button class="btn sm primary" type="button" onclick="fileDone()">ตกลง</button>');
+}
+function filePick(key,inp){
+  var f=inp.files&&inp.files[0]; if(!f) return;
+  var ok=(key==='pdf')?/\.pdf$/i.test(f.name):/\.(pdf|png|jpe?g)$/i.test(f.name);
+  if(!ok){ fileTmp.err=(key==='pdf'?'สัญญารับเฉพาะไฟล์ PDF':'รับเฉพาะ PDF / PNG / JPG')+' — ไฟล์ "'+f.name+'" ใช้ไม่ได้'; fileDraw(); return; }
+  if(f.size>FILE_MAX_MB*1048576){ fileTmp.err='ไฟล์ "'+f.name+'" ใหญ่เกิน '+FILE_MAX_MB+' MB'; fileDraw(); return; }
+  fileTmp[key]=f.name; fileTmp.err='';
+  if(key==='sp') fileTmp.none=false;
+  fileDraw();
+}
+function fileClear(key){ fileTmp[key]=''; fileTmp.err=''; fileDraw(); }
+function fileNone(on){ fileTmp.none=on; if(on) fileTmp.sp=''; fileTmp.err=''; fileDraw(); }
+function fileDone(){
+  fileBtn.dataset.pdf=fileTmp.pdf;
+  fileBtn.dataset.sp=fileTmp.none?NOSP:fileTmp.sp;
+  fileRepaint(fileBtn);
+  mdClose();
+  if(typeof footSync==='function') footSync();
+}
+[].forEach.call(document.querySelectorAll('table.xl .fbtn'),fileRepaint);
 
 fillBranches();
 fillMasters();
