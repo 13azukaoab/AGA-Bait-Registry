@@ -1,0 +1,906 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AGA Bait Registry · ตั้งค่า</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@300;400;500;600;700&display=swap">
+<style>
+/* ============================================================================
+   หน้า "ตั้งค่า" (SPEC §8 หน้า 12) — host เท่านั้น
+   3 แท็บ: (1) เกณฑ์ Tier  (2) ประเภทลูกค้า  (3) ทีม
+
+   Logic สรุป (สำหรับทีมที่รับช่วงต่อ):
+   - เกณฑ์ Tier  : แก้ "จุดแบ่ง" 3 ค่า (M / L / XL) ปลายช่วงของ Tier ก่อนหน้าคำนวณให้เอง
+                   (= จุดเริ่มของถัดไป − 0.01) จึงเกิดช่องว่าง/ช่วงซ้อนทับไม่ได้
+                   ต้องกด "บันทึก" + ใส่เหตุผลก่อน เพราะกระทบการคำนวณ snapshot ส่ง Dashboard
+                   ตาราง DB: tier_rules (tier, min_annual, max_annual) — อ่านจากตารางนี้เสมอ ห้าม hardcode
+   - ประเภทลูกค้า: master 14 ค่า 4 หมวด · เพิ่ม/แก้ชื่อ/ย้ายหมวด/เรียง/ปิดใช้ — มีลูกค้าใช้อยู่ = ลบไม่ได้ ปิดใช้ได้อย่างเดียว
+   - ทีม         : code ซ้ำไม่ได้ (ไม่สนตัวพิมพ์) แก้ code หลังสร้างไม่ได้ (ถูกอ้างอิงในสัญญา)
+                   Z (ติดตั้งงานใหม่) และ Sup เป็นทีมระบบ ลบ/ปิดใช้ไม่ได้
+   - ประเภทลูกค้า + ทีม บันทึกทันทีที่กด (แจ้งผลด้วย toast) · เกณฑ์ Tier บันทึกแบบมีขั้นตอนยืนยัน
+   - ตัวเลขใช้งาน (ลูกค้าต่อประเภท, งานต่อทีม, ตัวอย่างผลกระทบ Tier) เป็นข้อมูลสมมติเพื่อดู UI
+   ============================================================================ */
+:root{
+  --bg:#eef2f7; --surface:#ffffff; --surface-2:#f4f7fb; --surface-3:#e9eff6;
+  --fg:#17212e; --fg-muted:#5a6b7e; --fg-faint:#8a98a8;
+  --border:#d8e0ea; --border-strong:#c3cedb;
+  --accent:#1f5fa8; --accent-strong:#164a85; --accent-fg:#ffffff; --accent-soft:#e6f0fb;
+  --ok:#1a8a5c; --ok-soft:#e3f4ec; --warn:#b4740a; --warn-soft:#fbf0db; --danger:#c23b2e; --danger-soft:#fbe8e5;
+  --tier-s:#1f5fa8; --tier-s-soft:#e6f0fb; --tier-m:#157a50; --tier-m-soft:#e3f4ec;
+  --tier-l:#a86c07; --tier-l-soft:#fbf0db; --tier-xl:#c2561f; --tier-xl-soft:#fce6da; --on-tier:#ffffff;
+  --radius:10px; --shadow:0 1px 2px rgba(20,40,70,.06),0 1px 3px rgba(20,40,70,.05);
+  --scrim:rgba(14,22,33,.45);
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0e1621; --surface:#16202c; --surface-2:#1b2733; --surface-3:#222f3d;
+  --fg:#e7eef5; --fg-muted:#9fb0c1; --fg-faint:#718394;
+  --border:#2a3744; --border-strong:#36485a;
+  --accent:#4a90d9; --accent-strong:#5fa0e3; --accent-fg:#0b1420; --accent-soft:#16304a;
+  --ok:#3bb183; --ok-soft:#133227; --warn:#d99b3e; --warn-soft:#332713; --danger:#e26657; --danger-soft:#331a16;
+  --tier-s:#4a90d9; --tier-s-soft:#16304a; --tier-m:#3bb183; --tier-m-soft:#133227;
+  --tier-l:#d99b3e; --tier-l-soft:#332713; --tier-xl:#e07a4e; --tier-xl-soft:#3a2016; --on-tier:#0b1420;
+  --shadow:0 1px 2px rgba(0,0,0,.3); --scrim:rgba(0,0,0,.6);
+  color-scheme:dark;
+}}
+:root[data-theme="dark"]{
+  --bg:#0e1621; --surface:#16202c; --surface-2:#1b2733; --surface-3:#222f3d;
+  --fg:#e7eef5; --fg-muted:#9fb0c1; --fg-faint:#718394;
+  --border:#2a3744; --border-strong:#36485a;
+  --accent:#4a90d9; --accent-strong:#5fa0e3; --accent-fg:#0b1420; --accent-soft:#16304a;
+  --ok:#3bb183; --ok-soft:#133227; --warn:#d99b3e; --warn-soft:#332713; --danger:#e26657; --danger-soft:#331a16;
+  --tier-s:#4a90d9; --tier-s-soft:#16304a; --tier-m:#3bb183; --tier-m-soft:#133227;
+  --tier-l:#d99b3e; --tier-l-soft:#332713; --tier-xl:#e07a4e; --tier-xl-soft:#3a2016; --on-tier:#0b1420;
+  --shadow:0 1px 2px rgba(0,0,0,.3); --scrim:rgba(0,0,0,.6);
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--fg);
+  font-family:"Noto Sans Thai","Segoe UI",system-ui,sans-serif;font-size:14px;line-height:1.55;
+  -webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums}
+[hidden]{display:none!important}
+button{font-family:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* ---------- Header / Nav (เหมือน prototype หลัก) ---------- */
+.topbar{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:14px;
+  padding:10px 18px;background:var(--surface);border-bottom:1px solid var(--border)}
+.logo{display:flex;align-items:center;gap:11px;min-width:0}
+.logo .mark{width:38px;height:38px;border-radius:9px;background:var(--accent);color:var(--accent-fg);display:grid;place-items:center;
+  font-weight:700;font-size:15px;letter-spacing:.5px;flex:none}
+.logo .txt b{display:block;font-size:15px;font-weight:600;line-height:1.2}
+.logo .txt span{display:block;font-size:11.5px;color:var(--fg-muted)}
+.topbar .spacer{flex:1}
+.pill{display:inline-flex;align-items:center;gap:6px;padding:5px 11px;border:1px solid var(--border);
+  border-radius:999px;background:var(--surface-2);font-size:12.5px;color:var(--fg-muted);white-space:nowrap}
+.pill b{color:var(--fg);font-weight:600}
+select.role{font-family:inherit;font-size:12.5px;color:var(--fg);background:var(--surface-2);
+  border:1px solid var(--border);border-radius:999px;padding:5px 10px;cursor:pointer}
+.theme-btn{border:1px solid var(--border);background:var(--surface-2);color:var(--fg-muted);border-radius:8px;
+  width:34px;height:32px;cursor:pointer;font-size:15px;line-height:1}
+.avatar{width:32px;height:32px;border-radius:50%;background:var(--surface-3);color:var(--fg-muted);
+  display:grid;place-items:center;font-weight:600;font-size:12px;flex:none}
+.navtoggle{display:none;align-items:center;justify-content:center;border:1px solid var(--border);
+  background:var(--surface-2);color:var(--fg);border-radius:8px;width:36px;height:34px;font-size:18px;line-height:1;cursor:pointer;flex:none}
+.nav-backdrop{display:none}
+.hdr-search{flex:0 1 320px;min-width:0;font-family:inherit;font-size:13px;color:var(--fg);
+  background:var(--surface-2);border:1px solid var(--border-strong);border-radius:999px;padding:7px 14px}
+@media(max-width:760px){.hdr-search{display:none}}
+
+.shell{display:flex;align-items:flex-start;min-height:calc(100% - 59px);max-width:1760px;margin-inline:auto}
+.nav{width:238px;flex:none;padding:14px 10px;border-right:1px solid var(--border);background:var(--surface);align-self:stretch}
+.nav .group{font-size:11px;letter-spacing:.06em;color:var(--fg-faint);padding:12px 10px 5px}
+.nav a{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;color:var(--fg-muted);
+  text-decoration:none;font-size:13.5px;cursor:pointer;margin-bottom:1px}
+.nav a .ic{width:17px;text-align:center;flex:none;opacity:.85}
+.nav a:hover{background:var(--surface-2);color:var(--fg)}
+.nav a.active{background:var(--accent-soft);color:var(--accent-strong);font-weight:600}
+.nav a.soon{opacity:.5;cursor:default}
+.nav a.soon:hover{background:transparent;color:var(--fg-muted)}
+.nav a .soon-tag{margin-left:auto;font-size:10px;color:var(--fg-faint);border:1px solid var(--border);border-radius:5px;padding:1px 5px}
+main{flex:1;min-width:0;padding:20px 24px 64px}
+@media(max-width:860px){
+  .navtoggle{display:inline-flex}
+  .nav{position:fixed;z-index:40;top:0;left:0;bottom:0;width:260px;transform:translateX(-100%);
+    transition:transform .2s ease;overflow-y:auto;box-shadow:var(--shadow)}
+  .nav.open{transform:none}
+  .nav-backdrop.show{display:block;position:fixed;inset:0;z-index:30;background:var(--scrim)}
+  main{padding:16px 14px 64px}
+}
+@media(prefers-reduced-motion:reduce){.nav{transition:none}}
+
+/* ---------- Page ---------- */
+.page-head h1{margin:0;font-size:20px;font-weight:600}
+.page-head p{margin:3px 0 0;color:var(--fg-muted);font-size:13px}
+.robanner{margin:14px 0 0;padding:10px 14px;border-radius:var(--radius);background:var(--warn-soft);color:var(--warn);font-size:13px}
+
+.tabs{display:flex;gap:4px;margin:18px 0 16px;border-bottom:1px solid var(--border);overflow-x:auto}
+.tab{appearance:none;border:0;background:transparent;color:var(--fg-muted);font-size:14px;font-weight:500;
+  padding:10px 16px;border-bottom:2px solid transparent;margin-bottom:-1px;cursor:pointer;white-space:nowrap;
+  display:inline-flex;align-items:center;gap:8px}
+.tab:hover{color:var(--fg)}
+.tab[aria-selected="true"]{color:var(--accent-strong);border-bottom-color:var(--accent);font-weight:600}
+.tab .cnt{font-size:11.5px;font-weight:600;padding:1px 8px;border-radius:999px;background:var(--surface-3);color:var(--fg-muted)}
+.tab .unsaved{width:8px;height:8px;border-radius:50%;background:var(--warn)}
+
+.cols{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:16px;align-items:start}
+@media(max-width:1100px){.cols{grid-template-columns:minmax(0,1fr)}}
+.stack{display:flex;flex-direction:column;gap:16px}
+
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}
+.card>h3{margin:0;padding:13px 16px;font-size:14px;font-weight:600;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.card>h3 .sub{font-weight:400;font-size:12px;color:var(--fg-muted)}
+.card>h3 .push{margin-left:auto}
+.pad{padding:14px 16px}
+.hint{font-size:12px;color:var(--fg-muted);margin:0}
+.callout{padding:10px 14px;border-radius:8px;background:var(--accent-soft);color:var(--accent-strong);font-size:12.5px}
+
+.btn{font-family:inherit;font-size:13px;font-weight:500;border-radius:8px;padding:8px 14px;cursor:pointer;
+  border:1px solid var(--border-strong);background:var(--surface);color:var(--fg);white-space:nowrap}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-fg)}
+.btn.ghost{background:transparent;border-color:transparent;color:var(--accent-strong)}
+.btn.dangerfill{background:var(--danger);border-color:var(--danger);color:var(--on-tier)}
+.btn.sm{padding:4px 10px;font-size:12px}
+.btn.icon{padding:3px 8px;font-size:12px;line-height:1.4}
+.btn:hover{filter:brightness(.97)}
+
+.chip{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;padding:2px 9px;border-radius:999px;white-space:nowrap}
+.chip.ok{background:var(--ok-soft);color:var(--ok)} .chip.warn{background:var(--warn-soft);color:var(--warn)}
+.chip.miss{background:var(--danger-soft);color:var(--danger)} .chip.neutral{background:var(--surface-3);color:var(--fg-muted)}
+.chip.accent{background:var(--accent-soft);color:var(--accent-strong)}
+
+/* ป้าย Tier: สีตาม tier + จำนวนปีสัญญา (บังคับตาม CLAUDE.md) */
+.tier{display:inline-block;font-size:11.5px;font-weight:700;padding:2px 8px;border-radius:6px;letter-spacing:.3px}
+.tier.s{background:var(--tier-s-soft);color:var(--tier-s)} .tier.m{background:var(--tier-m-soft);color:var(--tier-m)}
+.tier.l{background:var(--tier-l-soft);color:var(--tier-l)} .tier.xl{background:var(--tier-xl-soft);color:var(--tier-xl)}
+.tier.s1{background:var(--tier-s-soft);color:var(--tier-s)} .tier.s3{background:var(--tier-s);color:var(--on-tier)}
+.tier.m1{background:var(--tier-m-soft);color:var(--tier-m)} .tier.m3{background:var(--tier-m);color:var(--on-tier)}
+.tier.l1{background:var(--tier-l-soft);color:var(--tier-l)} .tier.l3{background:var(--tier-l);color:var(--on-tier)}
+.tier.xl1{background:var(--tier-xl-soft);color:var(--tier-xl)} .tier.xl3{background:var(--tier-xl);color:var(--on-tier)}
+.tier.big{font-size:15px;padding:4px 14px;border-radius:8px}
+
+/* ฟอร์ม */
+.fld{display:flex;flex-direction:column;gap:4px;margin-bottom:12px}
+.fld label{font-size:12px;color:var(--fg-muted);font-weight:500}
+.fld input[type=text],.fld input[type=number],.fld select,.fld textarea,.inp{
+  font-family:inherit;font-size:13px;color:var(--fg);background:var(--surface);
+  border:1px solid var(--border-strong);border-radius:8px;padding:7px 10px;width:100%}
+.fld textarea{resize:vertical;min-height:64px}
+.fld .note{font-size:11.5px;color:var(--fg-faint)}
+input[aria-invalid="true"]{border-color:var(--danger)!important;background:var(--danger-soft)}
+.err{font-size:11.5px;color:var(--danger);min-height:0}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.check{display:flex;align-items:center;gap:8px;font-size:13px;margin-bottom:12px}
+
+/* สวิตช์ ใช้งาน/ปิด */
+.sw{appearance:none;border:0;cursor:pointer;width:38px;height:22px;border-radius:999px;background:var(--border-strong);position:relative;flex:none;padding:0}
+.sw::after{content:"";position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:var(--surface);transition:transform .15s}
+.sw[aria-checked="true"]{background:var(--ok)}
+.sw[aria-checked="true"]::after{transform:translateX(16px)}
+@media(prefers-reduced-motion:reduce){.sw::after{transition:none}}
+
+/* ---------- แท็บเกณฑ์ Tier ---------- */
+table{border-collapse:collapse;width:100%;font-size:13px}
+thead th{background:var(--surface-2);color:var(--fg-muted);font-weight:600;font-size:11.5px;text-align:left;
+  padding:10px 12px;border-bottom:1px solid var(--border);white-space:nowrap}
+tbody td{padding:11px 12px;border-bottom:1px solid var(--border);vertical-align:middle}
+tbody tr:last-child td{border-bottom:0}
+.tablewrap{overflow-x:auto}
+td.r,th.r{text-align:right}
+.inp-money{display:flex;align-items:center;gap:6px}
+.inp-money input{width:128px;text-align:right}
+.inp-money .unit{font-size:12px;color:var(--fg-muted)}
+.was{font-size:11.5px;color:var(--warn);margin-top:3px}
+.fixed{color:var(--fg-muted)}
+.scale{display:flex;height:34px;border-radius:8px;overflow:hidden;border:1px solid var(--border)}
+.scale>div{display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;min-width:0;overflow:hidden}
+.scale .sS{background:var(--tier-s-soft);color:var(--tier-s)} .scale .sM{background:var(--tier-m-soft);color:var(--tier-m)}
+.scale .sL{background:var(--tier-l-soft);color:var(--tier-l)} .scale .sXL{background:var(--tier-xl-soft);color:var(--tier-xl)}
+.scale-axis{position:relative;height:20px;margin-top:5px;font-size:11px;color:var(--fg-muted)}
+.scale-axis span{position:absolute;transform:translateX(-50%);white-space:nowrap}
+.savebar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:12px 16px;border-top:1px solid var(--border);background:var(--surface-2)}
+.savebar .push{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap}
+.sample{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px}
+.sample:last-child{border-bottom:0}
+.sample .v{flex:1;min-width:0}
+.sample .v small{display:block;color:var(--fg-muted);font-size:11.5px}
+.imp td,.imp th{padding:8px 12px}
+.diffpos{color:var(--ok);font-weight:600} .diffneg{color:var(--danger);font-weight:600}
+.hist{list-style:none;margin:0;padding:0}
+.hist li{padding:10px 16px;border-top:1px solid var(--border);font-size:12.5px}
+.hist li:first-child{border-top:0}
+.hist small{display:block;color:var(--fg-muted)}
+details.dev{margin-top:16px;border:1px dashed var(--border-strong);border-radius:var(--radius);padding:10px 14px;font-size:12.5px;color:var(--fg-muted)}
+details.dev summary{cursor:pointer;font-weight:600;color:var(--fg)}
+details.dev code{background:var(--surface-3);padding:1px 6px;border-radius:5px;font-size:12px}
+details.dev ul{margin:8px 0 0;padding-left:20px}
+
+/* ---------- แท็บประเภทลูกค้า ---------- */
+.tgroup{margin-bottom:14px}
+.tgroup-h{display:flex;align-items:center;gap:8px;padding:11px 14px;background:var(--surface-2);border-bottom:1px solid var(--border)}
+.tgroup-h b{font-size:13.5px}
+.tgroup-h .push{margin-left:auto;display:flex;gap:6px;align-items:center}
+.titem{display:flex;align-items:center;gap:10px;padding:9px 14px;border-top:1px solid var(--border)}
+.titem:first-of-type{border-top:0}
+.titem .nm{flex:1;min-width:0}
+.titem .nm b{font-weight:500;font-size:13.5px}
+.titem .nm small{display:block;color:var(--fg-muted);font-size:11.5px;line-height:1.35}
+.titem.off .nm b{color:var(--fg-faint);text-decoration:line-through}
+.titem .use{font-size:12px;color:var(--fg-muted);white-space:nowrap;min-width:78px;text-align:right}
+.titem .acts{display:flex;gap:4px;align-items:center}
+.empty{padding:14px;font-size:12.5px;color:var(--fg-faint);text-align:center}
+select.preview{width:100%;font-family:inherit;font-size:13px;color:var(--fg);background:var(--surface);
+  border:1px solid var(--border-strong);border-radius:8px;padding:6px}
+@media(max-width:560px){.titem{flex-wrap:wrap}.titem .use{text-align:left}}
+
+/* ---------- แท็บทีม ---------- */
+.code{display:inline-grid;place-items:center;min-width:34px;height:28px;padding:0 8px;border-radius:7px;
+  background:var(--accent-soft);color:var(--accent-strong);font-weight:700;font-size:13px}
+tr.off td{color:var(--fg-faint)}
+tr.off .code{background:var(--surface-3);color:var(--fg-faint)}
+.add-row{display:flex;gap:8px;align-items:center;padding:12px 16px;border-top:1px solid var(--border);background:var(--surface-2)}
+
+/* ---------- Dialog + Toast ---------- */
+dialog{border:1px solid var(--border-strong);border-radius:12px;background:var(--surface);color:var(--fg);
+  padding:0;width:min(540px,92vw);box-shadow:0 12px 40px rgba(0,0,0,.25)}
+dialog::backdrop{background:var(--scrim)}
+dialog form{display:flex;flex-direction:column;max-height:88vh}
+.dlg-h{padding:14px 18px;border-bottom:1px solid var(--border);font-weight:600;font-size:15px}
+.dlg-b{padding:16px 18px;overflow-y:auto}
+.dlg-f{padding:12px 18px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end;align-items:center;background:var(--surface-2)}
+.dlg-f .err{margin-right:auto;font-size:12.5px}
+.chg{list-style:none;margin:0 0 12px;padding:0;font-size:13px}
+.chg li{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)}
+.chg li:last-child{border-bottom:0}
+.chg .arrow{color:var(--fg-faint)}
+#toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:100;display:flex;flex-direction:column;gap:8px;align-items:center;pointer-events:none}
+.toast{pointer-events:auto;padding:9px 16px;border-radius:999px;background:var(--fg);color:var(--bg);font-size:13px;box-shadow:var(--shadow)}
+.toast.bad{background:var(--danger);color:var(--on-tier)}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <button class="navtoggle" id="navToggle" aria-label="เปิด/ปิดเมนู" aria-expanded="false" onclick="toggleNav()">☰</button>
+  <div class="logo">
+    <div class="mark">AGA</div>
+    <div class="txt"><b>ข้อมูลหลังบ้านระบบเหยื่อ</b><span>Advance Group Asia · ส่วนกลาง</span></div>
+  </div>
+  <input class="hdr-search" aria-label="ค้นหาลูกค้า" placeholder="ค้นหาลูกค้า / เลขที่สัญญา (ทุกหน้า)">
+  <div class="spacer"></div>
+  <span class="pill">เดือน <b>พ.ย. 2026</b></span>
+  <select class="role" id="roleSel" aria-label="เลือกบทบาท (เดโม)" onchange="setRole(this.value)">
+    <option value="host" selected>host · ส่วนกลาง</option>
+    <option value="admin">admin · แอดมิน</option>
+    <option value="recorder">recorder · หัวหน้างาน</option>
+    <option value="viewer">viewer · ผู้บริหาร</option>
+  </select>
+  <button class="theme-btn" id="themeBtn" aria-label="สลับธีม" onclick="toggleTheme()">◐</button>
+  <div class="avatar">นท</div>
+</div>
+
+<div class="shell">
+  <nav class="nav" id="nav" aria-label="เมนูหลัก">
+    <div class="group">งานประจำวัน</div>
+    <a href="aga-bait-registry-prototype.html"><span class="ic">◉</span> หน้า "ต้องทำ"</a>
+    <a href="aga-bait-registry-prototype.html"><span class="ic">✎</span> กรอกผลบริการ (IG/IC)</a>
+    <a href="aga-bait-registry-prototype.html"><span class="ic">▣</span> กล่องเหยื่อ (AG)</a>
+    <a href="aga-bait-registry-prototype.html"><span class="ic">▤</span> ทะเบียนลูกค้า/สัญญา</a>
+    <a href="admin-add-customer.html"><span class="ic">＋</span> เปิดงาน (admin)</a>
+    <div class="group">ผู้ดูแลระบบ (host)</div>
+    <a class="soon"><span class="ic">🔒</span> ปิดเดือน <span class="soon-tag">เร็วๆนี้</span></a>
+    <a class="soon"><span class="ic">⇅</span> Dashboard Sync <span class="soon-tag">เร็วๆนี้</span></a>
+    <a class="soon"><span class="ic">☺</span> จัดการผู้ใช้ <span class="soon-tag">เร็วๆนี้</span></a>
+    <a class="active" aria-current="page"><span class="ic">⚙</span> ตั้งค่า</a>
+  </nav>
+  <div class="nav-backdrop" id="navBackdrop" onclick="toggleNav(false)" aria-hidden="true"></div>
+
+  <main>
+    <div class="page-head">
+      <h1>ตั้งค่า</h1>
+      <p>ข้อมูลหลัก (master data) ที่ทั้งระบบใช้ร่วมกัน · แก้ได้เฉพาะ host · ทุกการแก้ไขบันทึกลงประวัติ (audit log)</p>
+    </div>
+    <div class="robanner" id="roBanner" hidden role="status">คุณกำลังดูในบทบาทที่ไม่ใช่ host — ดูได้อย่างเดียว แก้ไขไม่ได้ (บังคับที่ฐานข้อมูลด้วย RLS ไม่ใช่แค่ซ่อนปุ่ม)</div>
+
+    <div class="tabs" role="tablist" aria-label="หมวดการตั้งค่า" id="tabs">
+      <button class="tab" role="tab" id="tab-tier" aria-controls="p-tier" aria-selected="true" data-t="tier">เกณฑ์ Tier <i class="unsaved" id="unsavedDot" hidden title="มีการแก้ที่ยังไม่บันทึก"></i></button>
+      <button class="tab" role="tab" id="tab-types" aria-controls="p-types" aria-selected="false" tabindex="-1" data-t="types">ประเภทลูกค้า <span class="cnt" id="cntTypes">14</span></button>
+      <button class="tab" role="tab" id="tab-teams" aria-controls="p-teams" aria-selected="false" tabindex="-1" data-t="teams">ทีม <span class="cnt" id="cntTeams">17</span></button>
+    </div>
+
+    <!-- ================= 1. เกณฑ์ Tier ================= -->
+    <section id="p-tier" role="tabpanel" aria-labelledby="tab-tier">
+      <div class="cols">
+        <div class="stack">
+          <div class="card">
+            <h3>เกณฑ์แบ่ง Tier <span class="sub">มูลค่าต่อปี = มูลค่าสัญญา ÷ จำนวนปี</span></h3>
+            <div class="pad" style="padding-bottom:6px">
+              <p class="hint">แก้เฉพาะ <b>จุดเริ่มของ M, L, XL</b> — ปลายช่วงของ Tier ก่อนหน้าระบบคำนวณให้ (จุดเริ่มถัดไป − 0.01) จึงไม่มีช่องว่างหรือช่วงทับกัน</p>
+            </div>
+            <div class="tablewrap">
+              <table>
+                <thead><tr><th>Tier</th><th>ตั้งแต่ (บาท/ปี)</th><th>ถึง (บาท/ปี)</th><th>ป้ายในระบบ</th></tr></thead>
+                <tbody>
+                  <tr>
+                    <td><span class="tier s big">S</span></td>
+                    <td class="fixed">0 <span class="chip neutral" style="margin-left:6px">ค่าคงที่</span></td>
+                    <td><span id="to-s" class="num">—</span></td>
+                    <td><span class="tier s1">S1</span> <span class="tier s3">S3</span></td>
+                  </tr>
+                  <tr>
+                    <td><span class="tier m big">M</span></td>
+                    <td>
+                      <div class="inp-money"><input class="inp" type="number" id="in-m" min="1" step="1" inputmode="decimal" aria-label="จุดเริ่ม Tier M (บาทต่อปี)" aria-describedby="er-m"><span class="unit">บาท</span></div>
+                      <div class="err" id="er-m" role="alert"></div><div class="was" id="was-m"></div>
+                    </td>
+                    <td><span id="to-m" class="num">—</span></td>
+                    <td><span class="tier m1">M1</span> <span class="tier m3">M3</span></td>
+                  </tr>
+                  <tr>
+                    <td><span class="tier l big">L</span></td>
+                    <td>
+                      <div class="inp-money"><input class="inp" type="number" id="in-l" min="1" step="1" inputmode="decimal" aria-label="จุดเริ่ม Tier L (บาทต่อปี)" aria-describedby="er-l"><span class="unit">บาท</span></div>
+                      <div class="err" id="er-l" role="alert"></div><div class="was" id="was-l"></div>
+                    </td>
+                    <td><span id="to-l" class="num">—</span></td>
+                    <td><span class="tier l1">L1</span> <span class="tier l3">L3</span></td>
+                  </tr>
+                  <tr>
+                    <td><span class="tier xl big">XL</span></td>
+                    <td>
+                      <div class="inp-money"><input class="inp" type="number" id="in-xl" min="1" step="1" inputmode="decimal" aria-label="จุดเริ่ม Tier XL (บาทต่อปี)" aria-describedby="er-xl"><span class="unit">บาท</span></div>
+                      <div class="err" id="er-xl" role="alert"></div><div class="was" id="was-xl"></div>
+                    </td>
+                    <td class="fixed">ไม่จำกัด</td>
+                    <td><span class="tier xl1">XL1</span> <span class="tier xl3">XL3</span></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="pad">
+              <div class="scale" id="scale" role="img" aria-label="แถบแสดงสัดส่วนช่วงมูลค่าของแต่ละ Tier"></div>
+              <div class="scale-axis" id="scaleAxis" aria-hidden="true"></div>
+            </div>
+            <div class="savebar hostonly">
+              <span id="saveState" class="chip ok">✓ ตรงกับที่บันทึกไว้</span>
+              <span class="push">
+                <button class="btn ghost sm" onclick="tierReset()" title="คืนเป็น 30,000 / 50,000 / 100,000 (ยังไม่บันทึกจนกว่าจะกดบันทึก)">คืนค่าตาม SPEC</button>
+                <button class="btn sm" onclick="tierRevert()">ยกเลิกการแก้</button>
+                <button class="btn primary" onclick="tierSave()">บันทึกเกณฑ์…</button>
+              </span>
+            </div>
+          </div>
+
+          <div class="card">
+            <h3>ตัวอย่างตรวจสอบ <span class="sub">คำนวณสดจากเกณฑ์ที่กำลังแก้</span></h3>
+            <div class="pad" id="samples"></div>
+            <div class="pad" style="border-top:1px solid var(--border)">
+              <p class="hint" style="margin-bottom:8px">ลองใส่มูลค่าเอง</p>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+                <input class="inp" style="width:150px" type="number" id="cv" min="0" step="any" value="75000" aria-label="มูลค่าสัญญา (บาท)" oninput="calc()">
+                <span class="hint">บาท ·</span>
+                <select class="inp" style="width:100px" id="cy" aria-label="ระยะสัญญา (ปี)" onchange="calc()"><option value="1">1 ปี</option><option value="3">3 ปี</option></select>
+                <span id="cres" aria-live="polite" style="display:flex;gap:8px;align-items:center"></span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="stack">
+          <div class="card">
+            <h3>ผลกระทบต่อสัญญาที่ใช้งานอยู่ <span class="sub">ข้อมูลสมมติ 132 สัญญา สัดส่วนตามไฟล์ ต.ค.2026</span></h3>
+            <div id="impact"></div>
+          </div>
+          <div class="card">
+            <h3>ประวัติการแก้เกณฑ์ <span class="sub">จาก audit_log</span></h3>
+            <ul class="hist" id="hist"></ul>
+          </div>
+          <div class="callout">การเปลี่ยนเกณฑ์มีผลกับการคำนวณ Tier และตัวเลข snapshot ที่ส่งไป Dashboard — <b>เดือนที่ปิดแล้วแก้ไม่ได้ตามกฎ</b> จึงไม่ถูกคำนวณใหม่ มีผลเฉพาะเดือนที่ยังเปิดอยู่</div>
+        </div>
+      </div>
+      <details class="dev">
+        <summary>ข้อมูลสำหรับทีมพัฒนา</summary>
+        <ul>
+          <li>เก็บในตาราง <code>tier_rules</code> (tier, min_annual, max_annual) — ฟังก์ชัน <code>tierOf(annualValue, rules)</code> อ่านจากตารางนี้ทุกครั้ง ห้าม hardcode</li>
+          <li>หน้านี้เขียน 4 แถวพร้อมกันใน transaction เดียว (กันสถานะครึ่งๆ กลางๆ) · RLS: เขียนได้เฉพาะ role <code>host</code></li>
+          <li>กติกา: min(S)=0 · min ต้องเรียงจากน้อยไปมาก · ทศนิยมไม่เกิน 2 ตำแหน่ง · max_annual ของแถวหนึ่ง = min_annual ของแถวถัดไป − 0.01 · XL ไม่มี max</li>
+          <li>ต้องใส่เหตุผลทุกครั้งที่บันทึก → เก็บใน <code>audit_log</code> (ผ่าน trigger)</li>
+        </ul>
+      </details>
+    </section>
+
+    <!-- ================= 2. ประเภทลูกค้า ================= -->
+    <section id="p-types" role="tabpanel" aria-labelledby="tab-types" hidden>
+      <div class="cols" style="grid-template-columns:minmax(0,1.5fr) minmax(0,1fr)">
+        <div>
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap">
+            <span class="chip accent" id="typeStat"></span>
+            <span class="push" style="margin-left:auto;display:flex;gap:8px">
+              <button class="btn hostonly" onclick="editGroup(-1)">+ เพิ่มหมวด</button>
+              <button class="btn primary hostonly" onclick="editItem(-1,-1)">+ เพิ่มประเภท</button>
+            </span>
+          </div>
+          <div id="typeGroups"></div>
+        </div>
+        <div class="stack" style="position:sticky;top:76px">
+          <div class="card">
+            <h3>ตัวอย่างใน dropdown <span class="sub">หน้าเปิดงาน / ทะเบียน</span></h3>
+            <div class="pad">
+              <select class="preview" id="typePreview" size="16" aria-label="ตัวอย่างรายการประเภทลูกค้าใน dropdown"></select>
+              <p class="hint" style="margin-top:10px">ค่าที่ปิดใช้งานไม่โผล่ใน dropdown แต่ลูกค้าเดิมที่ใช้ค่านั้นยังแสดงตามเดิม ไม่ถูกลบ</p>
+            </div>
+          </div>
+          <div class="callout">กติกากันตีกัน: <b>"สถานที่ทางศาสนา" มาก่อนเสมอ</b> (วัด/โบสถ์/มัสยิด) · "สถานที่สำคัญ" = โบราณสถาน / พระราชวัง / แลนด์มาร์ก · ไม่เข้าหมวดใดเลยให้ใช้ "อื่นๆ" แล้วระบุในหมายเหตุ</div>
+        </div>
+      </div>
+      <details class="dev">
+        <summary>ข้อมูลสำหรับทีมพัฒนา</summary>
+        <ul>
+          <li>SPEC §6 ตาราง <code>customer_types</code> เดิมมีแค่ (code, label) → <b>ต้องเพิ่มคอลัมน์</b> <code>category</code> (หมวด), <code>sort_order</code>, <code>is_active</code>, <code>hint</code> (migration ใหม่ ห้ามแก้ไฟล์เก่า)</li>
+          <li><code>customers.customer_type</code> อ้างด้วย <code>code</code> (ไม่เปลี่ยน) — เปลี่ยนชื่อ label ลูกค้าเดิมแสดงชื่อใหม่ตาม · ลบได้เฉพาะค่าที่ไม่มีลูกค้าใช้ (FK restrict) ไม่งั้นให้ปิดใช้ (<code>is_active=false</code>)</li>
+          <li>หมวดแสดงเป็น <code>&lt;optgroup&gt;</code> · ชื่อต้องไม่ซ้ำในทุกหมวด (เทียบแบบไม่สนเว้นวรรค/ตัวพิมพ์)</li>
+        </ul>
+      </details>
+    </section>
+
+    <!-- ================= 3. ทีม ================= -->
+    <section id="p-teams" role="tabpanel" aria-labelledby="tab-teams" hidden>
+      <div class="card">
+        <h3>รายชื่อทีม <span class="sub" id="teamStat"></span>
+          <span class="push hostonly"><button class="btn primary sm" onclick="editTeam(-1)">+ เพิ่มทีม</button></span>
+        </h3>
+        <div class="tablewrap">
+          <table>
+            <thead><tr><th>ทีม</th><th>ชื่อ / คำอธิบาย</th><th>ประเภททีม</th><th>ขอบเขต</th><th class="r">งานเปิดอยู่เดือนนี้</th><th>ใช้งาน</th><th></th></tr></thead>
+            <tbody id="teamBody"></tbody>
+          </table>
+        </div>
+        <div class="pad" style="border-top:1px solid var(--border)">
+          <p class="hint">ในตารางเปิดงาน 1 สัญญาเลือกได้หลายทีมพร้อมกัน (เช่น A+E+Z) · ทีมที่ปิดใช้งานจะไม่อยู่ในตัวเลือกให้เลือกใหม่ แต่สัญญาเดิมที่ผูกไว้ยังคงอยู่</p>
+        </div>
+      </div>
+      <details class="dev">
+        <summary>ข้อมูลสำหรับทีมพัฒนา</summary>
+        <ul>
+          <li>SPEC §6 ตาราง <code>teams</code> (id, branch_id, code, name) — <code>branch_id</code> ต้องเป็น <b>nullable</b> (null = ทีมส่วนกลางใช้ได้ทุกสาขา) ตามที่เจ้าของตัดสิน · เพิ่มคอลัมน์ <code>kind</code> (service/install/lead), <code>is_active</code>, <code>is_system</code></li>
+          <li>ยังเปิดอยู่ใน SPEC §14 ข้อ 6: ทีมผูก 1 สาขาหรือหลายสาขา → หน้านี้เตรียมช่อง "ขอบเขต" ไว้ทั้ง 2 แบบ (ส่วนกลางทุกสาขา / เฉพาะสาขา)</li>
+          <li><code>code</code> ไม่ซ้ำแบบไม่สนตัวพิมพ์ (กัน <code>sup</code>/<code>Sup</code> ที่เจอในไฟล์จริง) และแก้ไม่ได้หลังสร้าง เพราะถูกอ้างในสัญญาและข้อมูลภาระงานรายทีม</li>
+          <li>ทีมระบบ <code>Z</code> (ติดตั้งงานใหม่) และ <code>Sup</code> ลบ/ปิดใช้ไม่ได้</li>
+        </ul>
+      </details>
+    </section>
+  </main>
+</div>
+
+<!-- Dialog กลาง ใช้ร่วมทุกแท็บ -->
+<dialog id="dlg" aria-labelledby="dlgTitle">
+  <form id="dlgForm" onsubmit="return dlgSubmit(event)">
+    <div class="dlg-h" id="dlgTitle"></div>
+    <div class="dlg-b" id="dlgBody"></div>
+    <div class="dlg-f">
+      <span class="err" id="dlgErr" role="alert"></span>
+      <button type="button" class="btn" id="dlgCancel" onclick="dlg.close()">ยกเลิก</button>
+      <button type="submit" class="btn primary" id="dlgOk">บันทึก</button>
+    </div>
+  </form>
+</dialog>
+<div id="toast" aria-live="polite" role="status"></div>
+
+<script>
+'use strict';
+/* ============================ ตัวช่วยทั่วไป ============================ */
+function $(id){ return document.getElementById(id); }
+function esc(s){ return String(s).replace(/[&<>"']/g,function(c){
+  return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+var nf=new Intl.NumberFormat('en-US',{maximumFractionDigits:2});
+function money(n){ return nf.format(n); }
+function clone(o){ return JSON.parse(JSON.stringify(o)); }
+function norm(s){ return String(s).replace(/\s+/g,'').toLowerCase(); }   /* เทียบชื่อซ้ำ: ไม่สนเว้นวรรค/ตัวพิมพ์ */
+
+var isHost=true;
+function toast(msg,bad){
+  var t=document.createElement('div'); t.className='toast'+(bad?' bad':''); t.textContent=msg;
+  $('toast').appendChild(t); setTimeout(function(){ t.remove(); },3200);
+}
+
+/* dialog กลาง: o={title, body(html), ok, danger, onOk()->ข้อความ error หรือ null} */
+var dlg=$('dlg'), dlgOnOk=null;
+function openDlg(o){
+  $('dlgTitle').textContent=o.title; $('dlgBody').innerHTML=o.body; $('dlgErr').textContent='';
+  var ok=$('dlgOk'); ok.textContent=o.ok||'บันทึก'; ok.className='btn '+(o.danger?'dangerfill':'primary');
+  $('dlgCancel').textContent=o.cancel||'ยกเลิก';
+  dlgOnOk=o.onOk; dlg.showModal();
+  var f=$('dlgBody').querySelector('input[type=text],input[type=number],select,textarea'); if(f) f.focus();
+}
+function dlgSubmit(e){
+  e.preventDefault();
+  var err=dlgOnOk?dlgOnOk():null;
+  if(err){ $('dlgErr').textContent=err; return false; }
+  dlg.close(); return false;
+}
+dlg.addEventListener('click',function(e){ if(e.target===dlg) dlg.close(); });
+
+/* ============================ แท็บ ============================ */
+var TABS=['tier','types','teams'];
+function showTab(t){
+  TABS.forEach(function(k){
+    var sel=(k===t);
+    $('p-'+k).hidden=!sel;
+    var b=$('tab-'+k); b.setAttribute('aria-selected',sel); b.tabIndex=sel?0:-1;
+  });
+  try{ history.replaceState(null,'','#'+t); }catch(e){}
+}
+$('tabs').addEventListener('click',function(e){ var b=e.target.closest('.tab'); if(b) showTab(b.dataset.t); });
+$('tabs').addEventListener('keydown',function(e){
+  var i=TABS.indexOf(document.activeElement.dataset&&document.activeElement.dataset.t);
+  if(i<0) return;
+  if(e.key==='ArrowRight'||e.key==='ArrowLeft'){
+    var n=(i+(e.key==='ArrowRight'?1:-1)+TABS.length)%TABS.length;
+    showTab(TABS[n]); $('tab-'+TABS[n]).focus(); e.preventDefault();
+  }
+});
+
+/* ============================ 1. เกณฑ์ Tier ============================ */
+/* ใน mockup ใช้ tierOf แบบนี้เพื่อให้พรีวิวสด — ของจริงอยู่ lib/rules/tierOf และอ่านจาก tier_rules */
+var T_DEFAULT={m:30000,l:50000,xl:100000};
+var tSaved=clone(T_DEFAULT), tDraft=clone(T_DEFAULT);
+var T_HIST=[{when:'1 ต.ค. 2026 · 09:00',who:'ระบบ',what:'ตั้งค่าเริ่มต้นตาม SPEC §7.1 (30,000 / 50,000 / 100,000)'}];
+
+function tierOf(a,t){ return a<t.m?'S':a<t.l?'M':a<t.xl?'L':'XL'; }
+function tierErrors(t){
+  var e={};
+  function dec(v){ return Math.abs(v*100-Math.round(v*100))<1e-6; }
+  if(!(t.m>0)) e.m='ใส่ตัวเลขมากกว่า 0'; else if(!dec(t.m)) e.m='ทศนิยมไม่เกิน 2 ตำแหน่ง';
+  if(!(t.l>0)) e.l='ใส่ตัวเลขมากกว่า 0'; else if(!dec(t.l)) e.l='ทศนิยมไม่เกิน 2 ตำแหน่ง';
+  else if(!e.m && t.l<=t.m) e.l='ต้องมากกว่าจุดเริ่ม M ('+money(t.m)+')';
+  if(!(t.xl>0)) e.xl='ใส่ตัวเลขมากกว่า 0'; else if(!dec(t.xl)) e.xl='ทศนิยมไม่เกิน 2 ตำแหน่ง';
+  else if(!e.l && t.xl<=t.l) e.xl='ต้องมากกว่าจุดเริ่ม L ('+money(t.l)+')';
+  return e;
+}
+function tierDirty(){ return tDraft.m!==tSaved.m||tDraft.l!==tSaved.l||tDraft.xl!==tSaved.xl; }
+function endOf(v){ return money(Math.round((v-0.01)*100)/100); }
+
+/* ข้อมูลสมมติ: มูลค่าต่อปีของ 132 สัญญา กระจายตามสัดส่วนจริง (S93 M17 L7 XL15) */
+var BUCKETS=[[0,10000,8],[10000,20000,35],[20000,30000,50],[30000,40000,10],[40000,50000,7],
+             [50000,75000,4],[75000,100000,3],[100000,150000,9],[150000,250000,6]];
+var SYN=(function(){ var a=[]; BUCKETS.forEach(function(b){ for(var k=0;k<b[2];k++) a.push(b[0]+(b[1]-b[0])*(k+0.5)/b[2]); }); return a; })();
+function countTiers(t){ var c={S:0,M:0,L:0,XL:0}; SYN.forEach(function(v){ c[tierOf(v,t)]++; }); return c; }
+
+function readDraft(){
+  tDraft={m:parseFloat($('in-m').value), l:parseFloat($('in-l').value), xl:parseFloat($('in-xl').value)};
+  updateTier();
+}
+['m','l','xl'].forEach(function(k){ $('in-'+k).addEventListener('input',readDraft); });
+function setInputs(){ ['m','l','xl'].forEach(function(k){ $('in-'+k).value=tDraft[k]; }); }
+
+function tBadge(tier,y){ return '<span class="tier '+tier.toLowerCase()+y+'">'+tier+y+'</span>'; }
+
+function updateTier(){
+  var err=tierErrors(tDraft), ok=!err.m&&!err.l&&!err.xl;
+  ['m','l','xl'].forEach(function(k){
+    var inp=$('in-'+k); inp.readOnly=!isHost;
+    inp.setAttribute('aria-invalid',err[k]?'true':'false');
+    $('er-'+k).textContent=err[k]||'';
+    $('was-'+k).textContent=(tDraft[k]!==tSaved[k] && !err[k])?'เดิม '+money(tSaved[k]):'';
+  });
+  /* คอลัมน์ "ถึง" */
+  $('to-s').textContent=(!err.m)?endOf(tDraft.m):'—';
+  $('to-m').textContent=(!err.m&&!err.l)?endOf(tDraft.l):'—';
+  $('to-l').textContent=(!err.l&&!err.xl)?endOf(tDraft.xl):'—';
+
+  /* แถบสเกล */
+  var sc=$('scale'), ax=$('scaleAxis');
+  if(ok){
+    var cap=Math.max(150000,tDraft.xl*1.5), p=function(v){ return (v/cap*100); };
+    sc.innerHTML='<div class="sS" style="width:'+p(tDraft.m)+'%">S</div>'+
+      '<div class="sM" style="width:'+p(tDraft.l-tDraft.m)+'%">M</div>'+
+      '<div class="sL" style="width:'+p(tDraft.xl-tDraft.l)+'%">L</div>'+
+      '<div class="sXL" style="width:'+(100-p(tDraft.xl))+'%">XL</div>';
+    ax.innerHTML='<span style="left:0;transform:none">0</span>'+
+      [tDraft.m,tDraft.l,tDraft.xl].map(function(v){ return '<span style="left:'+p(v)+'%">'+money(v)+'</span>'; }).join('');
+  }else{ sc.innerHTML='<div style="flex:1;background:var(--surface-2);color:var(--fg-muted);font-weight:400">แก้ตัวเลขให้ถูกต้องเพื่อดูแถบสเกล</div>'; ax.innerHTML=''; }
+
+  /* สถานะ + จุดเตือนที่แท็บ */
+  var dirty=tierDirty();
+  $('unsavedDot').hidden=!dirty;
+  var st=$('saveState');
+  if(!ok){ st.className='chip miss'; st.textContent='✗ ตัวเลขยังไม่ถูกต้อง'; }
+  else if(dirty){ st.className='chip warn'; st.textContent='● มีการแก้ที่ยังไม่บันทึก'; }
+  else{ st.className='chip ok'; st.textContent='✓ ตรงกับที่บันทึกไว้'; }
+
+  renderSamples(ok); renderImpact(ok); calc();
+}
+
+/* ตัวอย่างบังคับจาก CLAUDE.md (ค่าคาดหวังใช้ได้เมื่อเกณฑ์เป็นค่าตาม SPEC) */
+var SAMPLES=[[50000,3,'S3'],[150000,1,'XL1'],[150000,3,'L3'],[29999.5,1,'S1']];
+function renderSamples(ok){
+  $('samples').innerHTML=SAMPLES.map(function(s){
+    var annual=s[0]/s[1], line='<div class="v">'+money(s[0])+' บาท · '+s[1]+' ปี<small>= '+money(annual)+' บาท/ปี</small></div>';
+    if(!ok) return '<div class="sample">'+line+'<span class="chip neutral">—</span></div>';
+    var got=tierOf(annual,tDraft), label=got+s[1], same=(label===s[2]);
+    return '<div class="sample">'+line+tBadge(got,s[1])+
+      (same?'<span class="chip ok">ตรง SPEC</span>':'<span class="chip warn">SPEC ว่า '+s[2]+'</span>')+'</div>';
+  }).join('');
+}
+function calc(){
+  var v=parseFloat($('cv').value), y=parseInt($('cy').value,10), out=$('cres');
+  if(!(v>=0)||tierErrors(tDraft).m||tierErrors(tDraft).l||tierErrors(tDraft).xl){ out.innerHTML='<span class="hint">—</span>'; return; }
+  var a=v/y; out.innerHTML='<span class="hint">= '+money(a)+' บาท/ปี →</span>'+tBadge(tierOf(a,tDraft),y);
+}
+function renderImpact(ok){
+  var box=$('impact');
+  if(!ok){ box.innerHTML='<div class="empty">แก้ตัวเลขให้ถูกต้องก่อน ระบบจึงคำนวณผลกระทบให้ได้</div>'; return; }
+  var now=countTiers(tSaved), nxt=countTiers(tDraft), moved=0;
+  SYN.forEach(function(v){ if(tierOf(v,tSaved)!==tierOf(v,tDraft)) moved++; });
+  var rows=['S','M','L','XL'].map(function(k){
+    var d=nxt[k]-now[k], ds=d===0?'<span class="fixed">—</span>':'<span class="'+(d>0?'diffpos':'diffneg')+'">'+(d>0?'+':'')+d+'</span>';
+    return '<tr><td><span class="tier '+k.toLowerCase()+'">'+k+'</span></td><td class="r">'+now[k]+'</td><td class="r"><b>'+nxt[k]+'</b></td><td class="r">'+ds+'</td></tr>';
+  }).join('');
+  box.innerHTML='<div class="tablewrap"><table class="imp"><thead><tr><th>Tier</th><th class="r">ตอนนี้</th><th class="r">หลังแก้</th><th class="r">ต่าง</th></tr></thead><tbody>'+rows+'</tbody></table></div>'+
+    '<div class="pad" style="border-top:1px solid var(--border)">'+(moved?
+      '<span class="chip warn">⚠ '+moved+' สัญญาจะเปลี่ยน Tier</span>':
+      '<span class="chip ok">✓ ไม่มีสัญญาเปลี่ยน Tier</span>')+'</div>';
+}
+function renderHist(){
+  $('hist').innerHTML=T_HIST.map(function(h){
+    return '<li><b>'+esc(h.what)+'</b><small>'+esc(h.when)+' · โดย '+esc(h.who)+'</small></li>';
+  }).join('');
+}
+function tierReset(){ tDraft=clone(T_DEFAULT); setInputs(); updateTier(); toast('คืนเป็นค่าตาม SPEC แล้ว (ยังไม่บันทึก)'); }
+function tierRevert(){ tDraft=clone(tSaved); setInputs(); updateTier(); }
+function tierSave(){
+  var err=tierErrors(tDraft);
+  if(err.m||err.l||err.xl){ toast('ตัวเลขยังไม่ถูกต้อง แก้ช่องสีแดงก่อน',true); return; }
+  if(!tierDirty()){ toast('ยังไม่มีการเปลี่ยนแปลง'); return; }
+  var moved=0; SYN.forEach(function(v){ if(tierOf(v,tSaved)!==tierOf(v,tDraft)) moved++; });
+  var lines=[['M','m'],['L','l'],['XL','xl']].filter(function(p){ return tDraft[p[1]]!==tSaved[p[1]]; }).map(function(p){
+    return '<li><span class="tier '+p[0].toLowerCase()+'">'+p[0]+'</span> เริ่มที่ <b>'+money(tSaved[p[1]])+'</b><span class="arrow">→</span><b>'+money(tDraft[p[1]])+'</b> บาท/ปี</li>';
+  }).join('');
+  var now=countTiers(tSaved), nxt=countTiers(tDraft);
+  var tierRows=['S','M','L','XL'].map(function(k){
+    var d=nxt[k]-now[k];
+    return '<li><span class="tier '+k.toLowerCase()+'">'+k+'</span> '+now[k]+' <span class="arrow">→</span> <b>'+nxt[k]+'</b> สัญญา'+
+      (d?' <span class="'+(d>0?'diffpos':'diffneg')+'">('+(d>0?'+':'')+d+')</span>':'')+'</li>';
+  }).join('');
+  openDlg({
+    title:'ต้องการบันทึกเกณฑ์ Tier ใหม่ใช่หรือไม่?',
+    ok:'ใช่ บันทึกเกณฑ์ใหม่',
+    cancel:'ยังไม่บันทึก',
+    body:'<p class="hint" style="margin-bottom:6px">สิ่งที่จะเปลี่ยน</p><ul class="chg">'+lines+'</ul>'+
+      '<p class="hint" style="margin-bottom:6px">จำนวนสัญญาในแต่ละ Tier (ข้อมูลสมมติ)</p><ul class="chg">'+tierRows+'</ul>'+
+      '<div class="callout" style="background:var(--warn-soft);color:var(--warn);margin-bottom:14px">'+
+        (moved?'⚠ <b>'+moved+' สัญญา</b> จะเปลี่ยน Tier · ':'⚠ ')+
+        'เกณฑ์ใหม่มีผลกับเดือนที่ยังไม่ปิดเท่านั้น และส่งผลต่อตัวเลขที่ส่งไป Dashboard รอบถัดไป · เดือนที่ปิดแล้วไม่เปลี่ยน</div>'+
+      '<div class="fld"><label for="f_reason">เหตุผลในการแก้ (บังคับ — เก็บใน audit log)</label>'+
+      '<textarea id="f_reason" placeholder="เช่น ผู้บริหารอนุมัติปรับเกณฑ์ L เริ่มที่ 60,000 ตั้งแต่ ม.ค. 2027"></textarea></div>'+
+      '<label class="check"><input type="checkbox" id="f_ack"> ฉันตรวจสอบตัวเลขข้างบนแล้ว และยืนยันให้บันทึกเกณฑ์ใหม่</label>',
+    onOk:function(){
+      var r=$('f_reason').value.trim();
+      if(r.length<5) return 'ใส่เหตุผลอย่างน้อย 5 ตัวอักษร';
+      if(!$('f_ack').checked) return 'ติ๊กยืนยันว่าตรวจสอบตัวเลขแล้วก่อน';
+      tSaved=clone(tDraft);
+      T_HIST.unshift({when:'6 พ.ย. 2026 · '+new Date().toTimeString().slice(0,5),who:'host (นท)',what:'แก้เกณฑ์: M '+money(tSaved.m)+' · L '+money(tSaved.l)+' · XL '+money(tSaved.xl)+' — '+r});
+      renderHist(); updateTier(); toast('บันทึกเกณฑ์ Tier แล้ว'); return null;
+    }
+  });
+}
+
+/* ============================ 2. ประเภทลูกค้า ============================ */
+var TYPES=[
+  {g:'ที่พักอาศัย',items:[
+    {n:'บ้านเดี่ยว',use:62,on:true,hint:''},
+    {n:'ทาวน์โฮม / ตึกแถว',use:18,on:true,hint:''},
+    {n:'คอนโด / อพาร์ตเมนต์ / หอพัก',use:3,on:true,hint:'ที่พักอาศัยแนวสูง สถานีเยอะ ต้องผ่านนิติบุคคล'}]},
+  {g:'ธุรกิจ / อุตสาหกรรม',items:[
+    {n:'ออฟฟิต',use:19,on:true,hint:'รวมอาคารสำนักงาน (เดิมเขียนว่า "อาคาร")'},
+    {n:'ห้างสรรพสินค้า / ร้านค้า',use:4,on:true,hint:''},
+    {n:'โรงแรม/รีสอร์ท',use:6,on:true,hint:''},
+    {n:'โรงงาน',use:5,on:true,hint:''},
+    {n:'โกดังสินค้า',use:0,on:true,hint:''}]},
+  {g:'บริการ / สาธารณะ',items:[
+    {n:'โรงพยาบาล',use:2,on:true,hint:'มีข้อจำกัดเรื่องสารเคมี'},
+    {n:'สถานศึกษา',use:6,on:true,hint:''},
+    {n:'สถานที่ราชการ',use:3,on:true,hint:''},
+    {n:'สถานที่ทางศาสนา',use:0,on:true,hint:'วัด / โบสถ์ / มัสยิด — มาก่อน "สถานที่สำคัญ" เสมอ'},
+    {n:'สถานที่สำคัญ',use:4,on:true,hint:'โบราณสถาน / พระราชวัง / แลนด์มาร์ก (ถ้าเป็นวัดให้เลือกสถานที่ทางศาสนา)'}]},
+  {g:'อื่นๆ',items:[
+    {n:'อื่นๆ (ระบุในหมายเหตุ)',use:1,on:true,hint:'ใช้เมื่อไม่เข้าหมวดใดเลย แล้วพิมพ์อธิบายในช่องหมายเหตุ'}]}
+];
+function allTypeNames(exceptG,exceptI){
+  var out=[]; TYPES.forEach(function(g,gi){ g.items.forEach(function(it,ii){ if(!(gi===exceptG&&ii===exceptI)) out.push(norm(it.n)); }); });
+  return out;
+}
+function renderTypes(){
+  var total=0, active=0; TYPES.forEach(function(g){ total+=g.items.length; g.items.forEach(function(i){ if(i.on) active++; }); });
+  $('cntTypes').textContent=total;
+  $('typeStat').textContent=total+' ค่า · '+TYPES.length+' หมวด · ใช้งาน '+active;
+  $('typeGroups').innerHTML=TYPES.map(function(g,gi){
+    var head='<div class="tgroup-h"><b>'+esc(g.g)+'</b><span class="chip neutral">'+g.items.length+' ค่า</span><span class="push">'+
+      (isHost?'<button class="btn icon" aria-label="เลื่อนหมวดขึ้น" onclick="moveGroup('+gi+',-1)">▲</button>'+
+              '<button class="btn icon" aria-label="เลื่อนหมวดลง" onclick="moveGroup('+gi+',1)">▼</button>'+
+              '<button class="btn sm" onclick="editGroup('+gi+')">แก้ชื่อหมวด</button>'+
+              (g.items.length===0?'<button class="btn sm" style="color:var(--danger)" onclick="delGroup('+gi+')">ลบหมวด</button>':''):'')+
+      '</span></div>';
+    var rows=g.items.length?g.items.map(function(it,ii){
+      return '<div class="titem'+(it.on?'':' off')+'"><div class="nm"><b>'+esc(it.n)+'</b>'+(it.hint?'<small>'+esc(it.hint)+'</small>':'')+'</div>'+
+        '<span class="use">'+(it.use?it.use+' สัญญา':'ยังไม่มีใช้')+'</span>'+
+        (isHost?'<div class="acts">'+
+          '<button class="btn icon" aria-label="เลื่อน '+esc(it.n)+' ขึ้น" onclick="moveItem('+gi+','+ii+',-1)">▲</button>'+
+          '<button class="btn icon" aria-label="เลื่อน '+esc(it.n)+' ลง" onclick="moveItem('+gi+','+ii+',1)">▼</button>'+
+          '<button class="sw" role="switch" aria-checked="'+it.on+'" aria-label="เปิด/ปิดใช้ '+esc(it.n)+'" onclick="toggleItem('+gi+','+ii+')"></button>'+
+          '<button class="btn sm" onclick="editItem('+gi+','+ii+')">แก้ไข</button>'+
+          (it.use===0?'<button class="btn sm" style="color:var(--danger)" aria-label="ลบ '+esc(it.n)+'" onclick="delItem('+gi+','+ii+')">ลบ</button>':'')+
+        '</div>':'<span class="chip '+(it.on?'ok':'neutral')+'">'+(it.on?'ใช้งาน':'ปิดใช้')+'</span>')+'</div>';
+    }).join(''):'<div class="empty">ยังไม่มีประเภทในหมวดนี้</div>';
+    return '<div class="card tgroup">'+head+rows+'</div>';
+  }).join('');
+  /* dropdown ตัวอย่าง: เฉพาะค่าที่ใช้งาน */
+  $('typePreview').innerHTML='<option value="">— เลือกประเภท —</option>'+TYPES.map(function(g){
+    var its=g.items.filter(function(i){ return i.on; }); if(!its.length) return '';
+    return '<optgroup label="'+esc(g.g)+'">'+its.map(function(i){ return '<option'+(i.hint?' title="'+esc(i.hint)+'"':'')+'>'+esc(i.n)+'</option>'; }).join('')+'</optgroup>';
+  }).join('');
+}
+function moveItem(gi,ii,d){ var a=TYPES[gi].items, j=ii+d; if(j<0||j>=a.length) return; var t=a[ii]; a[ii]=a[j]; a[j]=t; renderTypes(); }
+function moveGroup(gi,d){ var j=gi+d; if(j<0||j>=TYPES.length) return; var t=TYPES[gi]; TYPES[gi]=TYPES[j]; TYPES[j]=t; renderTypes(); }
+function toggleItem(gi,ii){
+  var it=TYPES[gi].items[ii];
+  if(it.on && it.use>0){
+    openDlg({title:'ปิดใช้ "'+it.n+'"?',ok:'ปิดใช้งาน',body:'<p>ลูกค้า <b>'+it.use+' สัญญา</b> ที่ใช้ประเภทนี้อยู่จะยังแสดงตามเดิม แต่ผู้ใช้เลือกประเภทนี้ให้ลูกค้าใหม่ไม่ได้อีก</p>',
+      onOk:function(){ it.on=false; renderTypes(); toast('ปิดใช้ "'+it.n+'" แล้ว'); return null; }});
+    return;
+  }
+  it.on=!it.on; renderTypes(); toast((it.on?'เปิดใช้ "':'ปิดใช้ "')+it.n+'" แล้ว');
+}
+function groupOptions(sel){ return TYPES.map(function(g,i){ return '<option value="'+i+'"'+(i===sel?' selected':'')+'>'+esc(g.g)+'</option>'; }).join(''); }
+function editItem(gi,ii){
+  var add=(gi<0), it=add?{n:'',use:0,on:true,hint:''}:TYPES[gi].items[ii];
+  if(add) gi=0;
+  openDlg({
+    title:add?'เพิ่มประเภทลูกค้า':'แก้ไขประเภทลูกค้า',
+    body:'<div class="fld"><label for="f_name">ชื่อประเภท</label><input type="text" id="f_name" maxlength="40" value="'+esc(it.n)+'" placeholder="เช่น คลังสินค้าห้องเย็น">'+
+      (it.use>0?'<span class="note">ลูกค้า '+it.use+' สัญญาที่ใช้ประเภทนี้จะแสดงชื่อใหม่ตามไปด้วย</span>':'')+'</div>'+
+      '<div class="fld"><label for="f_grp">หมวด</label><select id="f_grp">'+groupOptions(gi)+'</select></div>'+
+      '<div class="fld"><label for="f_hint">คำอธิบาย (โชว์เป็น tooltip ตอนเลือก — ไม่บังคับ)</label><textarea id="f_hint" maxlength="120">'+esc(it.hint)+'</textarea></div>'+
+      '<label class="check"><input type="checkbox" id="f_on"'+(it.on?' checked':'')+'> เปิดใช้งาน</label>',
+    onOk:function(){
+      var n=$('f_name').value.trim().replace(/\s+/g,' ');
+      if(!n) return 'ใส่ชื่อประเภทก่อน';
+      if(allTypeNames(add?-1:gi,add?-1:ii).indexOf(norm(n))>=0) return 'มีประเภทชื่อนี้อยู่แล้ว (ชื่อห้ามซ้ำ แม้ต่างหมวด)';
+      var ng=parseInt($('f_grp').value,10), rec={n:n,use:it.use,on:$('f_on').checked,hint:$('f_hint').value.trim()};
+      if(add){ TYPES[ng].items.push(rec); }
+      else if(ng===gi){ TYPES[gi].items[ii]=rec; }
+      else{ TYPES[gi].items.splice(ii,1); TYPES[ng].items.push(rec); }
+      renderTypes(); toast(add?'เพิ่ม "'+n+'" แล้ว':'บันทึก "'+n+'" แล้ว'); return null;
+    }
+  });
+}
+function delItem(gi,ii){
+  var it=TYPES[gi].items[ii];
+  openDlg({title:'ลบ "'+it.n+'"?',ok:'ลบ',danger:true,body:'<p>ประเภทนี้ยังไม่มีลูกค้าใช้ ลบได้ปลอดภัย (ถ้ามีลูกค้าใช้แล้ว ระบบจะให้ปิดใช้แทน)</p>',
+    onOk:function(){ TYPES[gi].items.splice(ii,1); renderTypes(); toast('ลบ "'+it.n+'" แล้ว'); return null; }});
+}
+function editGroup(gi){
+  var add=(gi<0), nm=add?'':TYPES[gi].g;
+  openDlg({
+    title:add?'เพิ่มหมวด':'แก้ชื่อหมวด',
+    body:'<div class="fld"><label for="f_gname">ชื่อหมวด</label><input type="text" id="f_gname" maxlength="40" value="'+esc(nm)+'"><span class="note">หมวดคือหัวข้อกลุ่มใน dropdown (optgroup) เลือกเป็นค่าให้ลูกค้าไม่ได้</span></div>',
+    onOk:function(){
+      var n=$('f_gname').value.trim().replace(/\s+/g,' ');
+      if(!n) return 'ใส่ชื่อหมวดก่อน';
+      var dup=TYPES.some(function(g,i){ return i!==gi && norm(g.g)===norm(n); });
+      if(dup) return 'มีหมวดชื่อนี้อยู่แล้ว';
+      if(add) TYPES.push({g:n,items:[]}); else TYPES[gi].g=n;
+      renderTypes(); toast(add?'เพิ่มหมวด "'+n+'" แล้ว':'แก้ชื่อหมวดแล้ว'); return null;
+    }
+  });
+}
+function delGroup(gi){
+  var g=TYPES[gi];
+  openDlg({title:'ลบหมวด "'+g.g+'"?',ok:'ลบหมวด',danger:true,body:'<p>หมวดนี้ว่างเปล่า ลบได้</p>',
+    onOk:function(){ TYPES.splice(gi,1); renderTypes(); toast('ลบหมวดแล้ว'); return null; }});
+}
+
+/* ============================ 3. ทีม ============================ */
+var BRANCHES=['พัฒนาการ','ลาดพร้าว','ประชาชื่น','สุวินทวงศ์','รามอินทรา','ปทุมธานี','อยุธยา','พุทธมณฑล','พระราม2','หัวหิน','นครปฐม',
+  'สุขุมวิท','ปากน้ำ','ชลบุรี','นนทบุรี','สาทร','พระราม4','ปทุมวัน','สมุทรปราการ','ระยอง','ปราจีนบุรี','พัทยา','ปากช่อง','สระบุรี'];
+var KIND={service:'ทีมบริการ',install:'ติดตั้งงานใหม่',lead:'หัวหน้างาน'};
+var TEAMS=(function(){
+  var uses=[9,7,11,6,10,8,5,9,7,4,6,8,3,5,2], t=[];
+  'ABCDEFGHIJKLMNO'.split('').forEach(function(c,i){ t.push({c:c,name:'ทีม '+c,kind:'service',use:uses[i],on:true,sys:false,scope:''}); });
+  t.push({c:'Z',name:'ทีมติดตั้งงานใหม่',kind:'install',use:14,on:true,sys:true,scope:''});
+  t.push({c:'Sup',name:'หัวหน้างาน (Supervisor)',kind:'lead',use:3,on:true,sys:true,scope:''});
+  return t;
+})();
+function scopeLabel(t){ return t.scope?('เฉพาะสาขา '+t.scope):'ทุกสาขาส่วนกลาง'; }
+function renderTeams(){
+  var act=TEAMS.filter(function(t){ return t.on; }).length;
+  $('cntTeams').textContent=TEAMS.length;
+  $('teamStat').textContent=TEAMS.length+' ทีม · ใช้งาน '+act;
+  $('teamBody').innerHTML=TEAMS.map(function(t,i){
+    return '<tr class="'+(t.on?'':'off')+'"><td><span class="code">'+esc(t.c)+'</span></td>'+
+      '<td>'+esc(t.name)+(t.sys?' <span class="chip neutral" title="ทีมระบบ ลบ/ปิดใช้ไม่ได้">🔒 ทีมระบบ</span>':'')+'</td>'+
+      '<td><span class="chip neutral">'+KIND[t.kind]+'</span></td>'+
+      '<td style="white-space:nowrap">'+esc(scopeLabel(t))+'</td>'+
+      '<td class="r">'+t.use+'</td>'+
+      '<td><button class="sw" role="switch" aria-checked="'+t.on+'" aria-label="เปิด/ปิดใช้ทีม '+esc(t.c)+'"'+(isHost?' onclick="toggleTeam('+i+')"':' tabindex="-1" style="pointer-events:none"')+'></button></td>'+
+      '<td style="white-space:nowrap">'+(isHost?'<button class="btn sm" onclick="editTeam('+i+')">แก้ไข</button> '+
+        ((!t.sys&&t.use===0)?'<button class="btn sm" style="color:var(--danger)" aria-label="ลบทีม '+esc(t.c)+'" onclick="delTeam('+i+')">ลบ</button>':''):'')+'</td></tr>';
+  }).join('');
+}
+function toggleTeam(i){
+  var t=TEAMS[i];
+  if(t.sys){ toast('ทีม '+t.c+' เป็นทีมระบบ ปิดใช้ไม่ได้',true); return; }
+  if(t.on){
+    openDlg({title:'ปิดใช้ทีม '+t.c+'?',ok:'ปิดใช้งาน',
+      body:'<p>ทีมนี้จะไม่อยู่ในตัวเลือกให้เลือกใหม่</p>'+(t.use?'<p class="chip warn" style="margin-top:8px">⚠ ยังมีงานเปิดอยู่ '+t.use+' งาน — งานเดิมยังผูกกับทีมนี้ตามเดิม</p>':''),
+      onOk:function(){ t.on=false; renderTeams(); toast('ปิดใช้ทีม '+t.c+' แล้ว'); return null; }});
+    return;
+  }
+  t.on=true; renderTeams(); toast('เปิดใช้ทีม '+t.c+' แล้ว');
+}
+function editTeam(i){
+  var add=(i<0), t=add?{c:'',name:'',kind:'service',use:0,on:true,sys:false,scope:''}:TEAMS[i];
+  var kindOpts=Object.keys(KIND).map(function(k){ return '<option value="'+k+'"'+(k===t.kind?' selected':'')+'>'+KIND[k]+'</option>'; }).join('');
+  var brOpts=BRANCHES.map(function(b){ return '<option'+(b===t.scope?' selected':'')+'>'+esc(b)+'</option>'; }).join('');
+  openDlg({
+    title:add?'เพิ่มทีม':'แก้ไขทีม '+t.c,
+    body:'<div class="row2"><div class="fld"><label for="f_code">รหัสทีม (code)</label>'+
+      '<input type="text" id="f_code" maxlength="4" value="'+esc(t.c)+'"'+(add?' placeholder="เช่น P"':' readonly')+'>'+
+      '<span class="note">'+(add?'ตัวอักษร/ตัวเลข 1–4 ตัว ซ้ำไม่ได้ (ไม่สนตัวพิมพ์) · สร้างแล้วแก้ไม่ได้':'แก้รหัสไม่ได้ เพราะถูกอ้างอิงในสัญญา')+'</span></div>'+
+      '<div class="fld"><label for="f_kind">ประเภททีม</label><select id="f_kind"'+(t.sys?' disabled':'')+'>'+kindOpts+'</select></div></div>'+
+      '<div class="fld"><label for="f_tname">ชื่อ / คำอธิบาย</label><input type="text" id="f_tname" maxlength="40" value="'+esc(t.name)+'" placeholder="เช่น ทีมเขต 3"></div>'+
+      '<div class="fld"><label for="f_scope">ขอบเขตการใช้งาน</label><select id="f_scope"><option value="">ทุกสาขาส่วนกลาง (ค่าเริ่มต้น)</option>'+
+        '<optgroup label="เฉพาะสาขา">'+brOpts+'</optgroup></select></div>'+
+      (t.sys?'<p class="hint">ทีมระบบ — ลบ/ปิดใช้ไม่ได้ และเปลี่ยนประเภทไม่ได้</p>':'<label class="check"><input type="checkbox" id="f_ton"'+(t.on?' checked':'')+'> เปิดใช้งาน</label>'),
+    onOk:function(){
+      var code=add?$('f_code').value.trim():t.c, name=$('f_tname').value.trim().replace(/\s+/g,' ');
+      if(add){
+        if(!/^[A-Za-z0-9]{1,4}$/.test(code)) return 'รหัสทีมใช้ได้เฉพาะตัวอักษร/ตัวเลข 1–4 ตัว';
+        if(TEAMS.some(function(x){ return norm(x.c)===norm(code); })) return 'มีรหัสทีม "'+code+'" อยู่แล้ว';
+      }
+      if(!name) return 'ใส่ชื่อทีมก่อน';
+      var scope=$('f_scope').value, kind=t.sys?t.kind:$('f_kind').value, on=t.sys?true:$('f_ton').checked;
+      if(add){ TEAMS.push({c:code,name:name,kind:kind,use:0,on:on,sys:false,scope:scope}); }
+      else{ t.name=name; t.kind=kind; t.on=on; t.scope=scope; }
+      renderTeams(); toast(add?'เพิ่มทีม '+code+' แล้ว':'บันทึกทีม '+code+' แล้ว'); return null;
+    }
+  });
+}
+function delTeam(i){
+  var t=TEAMS[i];
+  openDlg({title:'ลบทีม '+t.c+'?',ok:'ลบ',danger:true,body:'<p>ทีมนี้ยังไม่มีงานผูกอยู่ ลบได้ปลอดภัย (ถ้ามีงานผูกแล้ว ระบบจะให้ปิดใช้แทน)</p>',
+    onOk:function(){ TEAMS.splice(i,1); renderTeams(); toast('ลบทีม '+t.c+' แล้ว'); return null; }});
+}
+
+/* ============================ Role / Nav / Theme ============================ */
+function setRole(v){
+  isHost=(v==='host');
+  $('roBanner').hidden=isHost;
+  document.querySelectorAll('.hostonly').forEach(function(el){ el.hidden=!isHost; });
+  updateTier(); renderTypes(); renderTeams();
+}
+function toggleNav(open){
+  var nav=$('nav'), show=(typeof open==='boolean')?open:!nav.classList.contains('open');
+  nav.classList.toggle('open',show); $('navBackdrop').classList.toggle('show',show);
+  $('navToggle').setAttribute('aria-expanded',show);
+}
+document.addEventListener('keydown',function(e){ if(e.key==='Escape') toggleNav(false); });
+function toggleTheme(){
+  var el=document.documentElement, cur=el.getAttribute('data-theme');
+  if(!cur) cur=matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';
+  var next=cur==='dark'?'light':'dark'; el.setAttribute('data-theme',next);
+  try{ localStorage.setItem('aga-theme',next); }catch(e){}
+}
+try{ var th=localStorage.getItem('aga-theme'); if(th) document.documentElement.setAttribute('data-theme',th); }catch(e){}
+
+/* ============================ เริ่มต้น ============================ */
+setInputs(); renderHist(); renderTypes(); renderTeams(); updateTier();
+(function(){ var h=location.hash.replace('#',''); if(TABS.indexOf(h)>=0) showTab(h); })();
+</script>
+</body>
+</html>
