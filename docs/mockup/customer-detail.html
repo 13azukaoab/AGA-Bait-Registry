@@ -35,6 +35,8 @@
    - ตกบริการ = เดือนในช่วงบริการที่ไม่มี visit ประเภท routine (§7.4)
    - F1–F10 นับต่อสถานี คำนวณอัตโนมัติจากลำดับวันที่ตรวจ (§7.5)
    - เดือนที่ปิดแล้ว (month_closures) แสดง 🔒 = แก้ไม่ได้ (§7.7)
+   - ไฟล์แนบ: สัญญา PDF + Site plan (IG/IC รวมไฟล์เดียว) admin แนบคู่กันตอนเปิดงาน · แก้ Site plan ตอนติดตั้ง
+     = เพิ่ม "เวอร์ชันใหม่" พร้อมเหตุผล เก็บทุกเวอร์ชัน (ไม่ทับของเดิม) · สัญญาที่ปิดแล้วล็อกไฟล์
    - สัญญา expired_pending_collection ต้องเก็บสถานี IG/IC คืนครบก่อนปิด (§7.8)
  ข้อมูลทั้งหมดเป็นชื่อสมมติ ไม่มี PII จริง
 ================================================================================
@@ -236,6 +238,16 @@ tr.sub table{font-size:12px;background:var(--surface);border:1px solid var(--bor
 .frow .fmain{flex:1;min-width:180px}
 .frow .fmain b{display:block;font-weight:600;font-size:13px}
 .frow .facts{display:flex;gap:6px}
+.fgrp{font-size:11px;color:var(--fg-muted);padding:8px 14px 2px;background:var(--surface)}
+.reasonrow{flex-basis:100%;display:flex;flex-direction:column;gap:3px;padding-left:46px}
+.reasonrow input{font-family:inherit;font-size:12.5px;color:var(--fg);background:var(--surface);border:1px solid var(--border-strong);border-radius:8px;padding:6px 10px;width:100%;max-width:520px}
+.hist{margin:2px 14px 12px;border:1px dashed var(--border-strong);border-radius:9px;background:var(--surface-2)}
+.hist .hhead{font-size:11.5px;color:var(--fg-muted);padding:8px 12px 4px}
+.hist .hrow{display:flex;align-items:center;gap:10px;padding:7px 12px;border-top:1px solid var(--border);font-size:12.5px}
+.hist .hhead+.hrow{border-top:0}
+.hist .hmain{flex:1;min-width:0}
+.hist .hnum{width:28px;height:22px;border-radius:6px;background:var(--surface);border:1px solid var(--border);display:grid;place-items:center;font-size:11px;font-weight:600;flex:none}
+.btn.pri{border-color:var(--accent);color:var(--accent-strong)}
 .drop{border:1.5px dashed var(--border-strong);border-radius:var(--radius);padding:12px 14px;font-size:12px;color:var(--fg-muted);background:var(--surface-2);margin-top:4px}
 .blocked{max-width:520px;margin:60px auto;text-align:center}
 .blocked h2{margin:0 0 8px;font-size:18px}
@@ -354,7 +366,6 @@ var TH_M=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.�
 var ST_LABEL={active:['ใช้งาน','ok'],eliminated:['กำจัดแล้ว','info'],pending_removal:['รอถอด','pend'],removed:['ถอดแล้ว','done']};
 var CT_LABEL={active:['ใช้งาน','ok'],expired_pending_collection:['หมดสัญญา · รอเก็บสถานี','pend'],closed:['ปิดสัญญาแล้ว','done'],cancelled:['ยกเลิก','miss']};
 var VT_LABEL={routine:['รอบประจำเดือน','info'],problem:['รอบแก้ไขปัญหา','miss'],follow_up:['รอบติดตามผล','pend']};
-var FILE_SLOTS=[['contract_pdf','PDF','สัญญา (PDF)'],['site_plan_ig','IG','Site plan IG'],['site_plan_ic','IC','Site plan IC']];
 
 /* ======================================================================
    1) ฟังก์ชันช่วย (สะท้อน lib/rules — production แยกเป็น pure function + unit test)
@@ -422,11 +433,12 @@ function buildC1(){
     contact:'คุณสมชาย ใจดี',phone:'02-123-4567',address:'99/9 หมู่ 3 ถ.พุทธมณฑลสาย 2 ต.ศาลายา อ.พุทธมณฑล จ.นครปฐม 73170',
     audit:'แก้ไขล่าสุด 05/10/2026 โดย ธนพร (admin)',
     contracts:[
-      {no:'CT25-0000098',team:'A',start:'2025-01-01',end:'2025-12-31',years:1,value:36000,sale:'new',spIG:true,spIC:true,status:'closed',closedAt:'2026-01-12',cancelledAt:null},
-      {no:'CT26-0000142',team:'A',start:'2026-01-01',end:'2028-12-31',years:3,value:150000,sale:'renew',spIG:true,spIC:true,status:'active',closedAt:null,cancelledAt:null}],
+      {no:'CT25-0000098',team:'A',start:'2025-01-01',end:'2025-12-31',years:1,value:36000,sale:'new',sp:true,status:'closed',closedAt:'2026-01-12',cancelledAt:null},
+      {no:'CT26-0000142',team:'A',start:'2026-01-01',end:'2028-12-31',years:3,value:150000,sale:'renew',sp:true,status:'active',closedAt:null,cancelledAt:null}],
     stations:[],visits:[],
-    files:{'CT25-0000098':{contract_pdf:{name:'CT25-0000098.pdf',size:1.6,by:'ธนพร',at:'2025-01-03'},site_plan_ig:{name:'siteplan-IG-2025.pdf',size:2.1,by:'ธนพร',at:'2025-01-03'}},
-           'CT26-0000142':{contract_pdf:{name:'CT26-0000142.pdf',size:1.8,by:'ธนพร',at:'2026-01-02'},site_plan_ig:{name:'siteplan-IG-v2.pdf',size:2.4,by:'ธนพร',at:'2026-01-02'},site_plan_ic:{name:'siteplan-IC.pdf',size:1.1,by:'ธนพร',at:'2026-01-02'}}}};
+    files:{'CT25-0000098':{contract_pdf:{name:'CT25-0000098.pdf',size:1.6,by:'ธนพร',at:'2025-01-03'},site_plan:[{name:'siteplan-2025.pdf',size:2.1,by:'ธนพร',at:'2025-01-03',reason:'แนบตอนเปิดงาน'}]},
+           'CT26-0000142':{contract_pdf:{name:'CT26-0000142.pdf',size:1.8,by:'ธนพร',at:'2026-01-02'},
+             site_plan:[{name:'siteplan-IG-IC.pdf',size:2.2,by:'ธนพร',at:'2026-01-02',reason:'แนบตอนเปิดงาน'},{name:'siteplan-v2.pdf',size:2.4,by:'ธนพร',at:'2026-08-24',reason:'แก้ตอนติดตั้ง — เพิ่มจุด AG หน้าโถง'}]}}};
   var S=c.stations,V=c.visits;
   mkStations(S,'CT25-0000098','IG','IG',16,'2025-01-10','removed','2026-01-12','2026-01-12');
   mkStations(S,'CT25-0000098','IC','IC',4,'2025-01-10','removed','2026-01-12','2026-01-12');
@@ -460,9 +472,9 @@ function buildC2(){
   var c={id:'c2',name:'คุณวิรัช ตั้งมั่น (บ้านพัก)',branch:'พุทธมณฑล',zone:'เขต 1',team:'A',type:'บ้านเดี่ยว',
     contact:'คุณวิรัช ตั้งมั่น',phone:'081-234-5678',address:'12/34 ซ.ศาลายา 5 ต.ศาลายา อ.พุทธมณฑล จ.นครปฐม 73170',
     audit:'แก้ไขล่าสุด 03/03/2026 โดย ธนพร (admin)',
-    contracts:[{no:'CT26-0000088',team:'A',start:'2026-03-03',end:'2027-02-28',years:1,value:24000,sale:'new',spIG:true,spIC:false,status:'active',closedAt:null,cancelledAt:null}],
+    contracts:[{no:'CT26-0000088',team:'A',start:'2026-03-03',end:'2027-02-28',years:1,value:24000,sale:'new',sp:true,status:'active',closedAt:null,cancelledAt:null}],
     stations:[],visits:[],
-    files:{'CT26-0000088':{contract_pdf:{name:'CT26-0000088.pdf',size:1.2,by:'ธนพร',at:'2026-03-04'}}}};
+    files:{'CT26-0000088':{contract_pdf:{name:'CT26-0000088.pdf',size:1.2,by:'ธนพร',at:'2026-03-04'}}}};   // ตั้งใจไม่มี site_plan → เดโมสถานะ "ยังไม่แนบ"
   mkStations(c.stations,'CT26-0000088','IG','IG',8,'2026-03-10',null,null,null,2);
   routines(c.visits,'CT26-0000088','A',['2026-03-10','2026-04-14','2026-05-12','2026-06-09','2026-07-14','2026-08-11','2026-09-15','2026-10-13'],16,rnd);
   finishVisits(c);return c;
@@ -473,9 +485,9 @@ function buildC3(){
   var c={id:'c3',name:'โรงแรมบ้านสวนรีสอร์ท',branch:'นครปฐม',zone:'เขต 1',team:'B',type:'โรงแรม/รีสอร์ท',
     contact:'คุณนภา แสงทอง (ผู้จัดการ)',phone:'034-111-222',address:'55 ถ.เพชรเกษม ต.ธรรมศาลา อ.เมืองนครปฐม จ.นครปฐม 73000',
     audit:'แก้ไขล่าสุด 15/10/2026 โดย ธนพร (admin)',
-    contracts:[{no:'CT23-0000311',team:'B',start:'2023-10-14',end:'2026-10-13',years:3,value:90000,sale:'new',spIG:true,spIC:true,status:'expired_pending_collection',closedAt:null,cancelledAt:null}],
+    contracts:[{no:'CT23-0000311',team:'B',start:'2023-10-14',end:'2026-10-13',years:3,value:90000,sale:'new',sp:true,status:'expired_pending_collection',closedAt:null,cancelledAt:null}],
     stations:[],visits:[],
-    files:{'CT23-0000311':{contract_pdf:{name:'CT23-0000311.pdf',size:2.2,by:'ธนพร',at:'2023-10-16'},site_plan_ig:{name:'siteplan-IG.pdf',size:3.0,by:'ธนพร',at:'2023-10-16'}}}};
+    files:{'CT23-0000311':{contract_pdf:{name:'CT23-0000311.pdf',size:2.2,by:'ธนพร',at:'2023-10-16'},site_plan:[{name:'siteplan.pdf',size:3.0,by:'ธนพร',at:'2023-10-16',reason:'แนบตอนเปิดงาน'}]}}};
   var S=c.stations,N='CT23-0000311';
   mkStations(S,N,'IG','IG',34,'2023-10-20',null,null,null,2);
   mkStations(S,N,'IC','IC',9,'2023-10-20',null,null,null,2);
@@ -503,6 +515,7 @@ var S={cid:'c1',tab:'contracts',sel:null,
   st:{contract:'all',type:'all',status:'all',q:'',page:1,open:{}},
   vi:{contract:'all',type:'all',page:1,open:{}}};
 var upTarget=null;
+S.reason={};                      // เหตุผลที่พิมพ์ไว้ ต่อเลขสัญญา (ใช้ตอนเพิ่มเวอร์ชัน Site plan)
 var PAGE_ST=10,PAGE_VI=8;
 
 function cust(){return DB[S.cid]}
@@ -601,7 +614,7 @@ function tabsHtml(){
     return '<button class="tab" role="tab" id="tab-'+t[0]+'" aria-selected="'+on+'" aria-controls="panel" tabindex="'+(on?0:-1)+'" data-act="tab" data-tab="'+t[0]+'">'+t[1]+' <span class="chip done">'+counts[t[0]]+'</span></button>';
   }).join('');
 }
-function fileCount(){var n=0,c=cust();Object.keys(c.files).forEach(function(k){n+=Object.keys(c.files[k]).length});return n}
+function fileCount(){var n=0,c=cust();Object.keys(c.files).forEach(function(k){var f=c.files[k];if(f.contract_pdf)n++;n+=(f.site_plan||[]).length});return n}   // นับทุกเวอร์ชันของ Site plan
 
 /* ======================================================================
    6) แท็บ "สัญญา"  (contracts)
@@ -631,7 +644,7 @@ function contractDetailHtml(k){
     '<div class="it"><span class="lab">วันเริ่ม – วันสิ้นสุด</span>'+fmt(k.start)+' – '+fmt(k.end)+(bad?' <span class="chip pend" title="ควรเป็น '+fmt(de)+'">⚠ ไม่ตรงกฎ</span>':'')+'</div>'+
     '<div class="it"><span class="lab">เดือนบริการ (§7.2)</span>'+monthTh(first)+' – '+monthTh(lastM)+' · '+ms.length+' เดือน</div>'+
     '<div class="it"><span class="lab">มูลค่าสัญญา / ต่อปี</span>'+num(k.value)+' / '+num(annualValue(k.value,k.years))+' บาท</div>'+
-    '<div class="it"><span class="lab">Site plan</span>IG '+(k.spIG?chip('ok','มี'):chip('na','ไม่มี'))+' · IC '+(k.spIC?chip('ok','มี'):chip('na','ไม่มี'))+' <button class="linkbtn" data-act="goto" data-tab="files" data-contract="'+esc(k.no)+'">ดูไฟล์</button></div>'+
+    '<div class="it"><span class="lab">Site plan (IG/IC)</span>'+(k.sp?chip('ok','มี'):chip('na','ไม่มี'))+(((cu.files[k.no]||{}).site_plan||[]).length>1?' <span class="lab">แก้ '+(cu.files[k.no].site_plan.length-1)+' ครั้ง</span>':'')+' <button class="linkbtn" data-act="goto" data-tab="files" data-contract="'+esc(k.no)+'">ดูไฟล์</button></div>'+
     '<div class="it"><span class="lab">ปิดสัญญา / ยกเลิก</span>'+(k.closedAt?'ปิดเมื่อ '+fmt(k.closedAt):k.cancelledAt?'ยกเลิก '+fmt(k.cancelledAt):'—')+'</div>'+
     '<div class="it"><span class="lab">สถานี</span>'+sc.total+' จุด ('+sc.IG+' IG · '+sc.IC+' IC · '+sc.AG+' AG) <button class="linkbtn" data-act="goto" data-tab="stations" data-contract="'+esc(k.no)+'">ดูสถานี</button></div>'+
     '<div class="it"><span class="lab">บริการประจำเดือน</span>ครบ '+cnt.ok+' · <span style="color:'+(cnt.miss?'var(--danger)':'inherit')+'">ตกบริการ '+cnt.miss+'</span> / '+cnt.total+' เดือน <button class="linkbtn" data-act="goto" data-tab="visits" data-contract="'+esc(k.no)+'">ดูประวัติ</button></div></div>';
@@ -748,27 +761,43 @@ function visitsHtml(){
 /* ======================================================================
    9) แท็บ "ไฟล์แนบ"  (Supabase Storage — private bucket)
    ====================================================================== */
+function fileBtns(file,kind,contractNo,canUp,label,needReason){
+  var h='';
+  if(file)h+='<button class="btn sm" data-act="file-view" data-k="'+esc(file.name)+'">ดู</button><button class="btn sm" data-act="file-dl" data-k="'+esc(file.name)+'">ดาวน์โหลด</button>';
+  if(canUp)h+='<button class="btn sm'+(needReason?' pri':'')+'" data-act="file-up" data-contract="'+esc(contractNo)+'" data-slot="'+kind+'">'+label+'</button>';
+  return h;
+}
+/* ไฟล์ของสัญญา: สัญญา (PDF) 1 ไฟล์ + Site plan (IG/IC รวมเป็นไฟล์เดียว) เก็บทุกเวอร์ชัน
+   admin แนบทั้งคู่ตอนเปิดงาน · แก้ Site plan ตอนติดตั้ง = เพิ่มเวอร์ชันใหม่ + เหตุผล (ไม่ทับของเดิม) */
 function filesHtml(){
   var cu=cust(),up=can('upload');
-  var h='<p class="hint">ไฟล์เก็บใน Supabase Storage (private bucket) — เปิดดู/ดาวน์โหลดผ่าน signed URL ที่หมดอายุเร็ว ไม่มีลิงก์สาธารณะ (PDPA) · รับ PDF / PNG / JPG ไม่เกิน 10 MB · '+(up?'<b>host/admin</b> อัปโหลด/แทนที่ไฟล์ได้':'บทบาทนี้ดู/ดาวน์โหลดได้อย่างเดียว')+'</p>';
+  var h='<p class="hint">ไฟล์เก็บใน Supabase Storage (private bucket) — เปิดผ่าน signed URL ที่หมดอายุเร็ว ไม่มีลิงก์สาธารณะ (PDPA) · รับ PDF / PNG / JPG ไม่เกิน 10 MB · '+(up?'<b>host/admin</b> อัปโหลดได้ · แก้ Site plan ตอนติดตั้ง = <b>เพิ่มเวอร์ชันใหม่ + ใส่เหตุผล</b> ระบบเก็บทุกเวอร์ชัน (audit_log)':'บทบาทนี้ดู/ดาวน์โหลดได้อย่างเดียว')+'</p>';
   sortedContracts().forEach(function(k){
-    var f=cu.files[k.no]||{};
-    h+='<div class="fcard"><h4><span class="mono">'+esc(k.no)+'</span>'+tierBadge(k)+chip(CT_LABEL[k.status][1],CT_LABEL[k.status][0])+'</h4>';
-    FILE_SLOTS.forEach(function(sl){
-      var key=sl[0],file=f[key],needed=key==='contract_pdf'||(key==='site_plan_ig'&&k.spIG)||(key==='site_plan_ic'&&k.spIC);
-      h+='<div class="frow"><div class="ficon" aria-hidden="true">'+sl[1]+'</div><div class="fmain"><b>'+sl[2]+'</b>';
-      if(file)h+='<span class="lab">'+esc(file.name)+' · '+file.size.toFixed(1)+' MB · อัปโหลด '+fmt(file.at)+' โดย '+esc(file.by)+'</span>';
-      else h+='<span class="lab">'+(needed?'':'สัญญานี้ไม่มี '+sl[2])+'</span>';
-      h+='</div><div class="facts">';
-      if(file)h+='<button class="btn sm" data-act="file-view" data-k="'+esc(file.name)+'">ดู</button><button class="btn sm" data-act="file-dl" data-k="'+esc(file.name)+'">ดาวน์โหลด</button>';
-      else if(needed)h+=chip('pend','ยังไม่แนบไฟล์');
-      else h+=chip('na','ไม่ใช้');
-      if(up&&(file||needed))h+='<button class="btn sm" data-act="file-up" data-contract="'+esc(k.no)+'" data-slot="'+key+'">'+(file?'แทนที่':'อัปโหลด')+'</button>';
-      h+='</div></div>';
-    });
+    var f=cu.files[k.no]||{},pdf=f.contract_pdf,sp=f.site_plan||[],last=sp[sp.length-1];
+    var canUp=up&&k.status!=='closed'&&k.status!=='cancelled';        // สัญญาที่ปิดแล้วล็อกไฟล์
+    h+='<div class="fcard"><h4><span class="mono">'+esc(k.no)+'</span>'+tierBadge(k)+chip(CT_LABEL[k.status][1],CT_LABEL[k.status][0])+((up&&!canUp)?'<span class="lab">ปิดแล้ว — ไฟล์ล็อก</span>':'')+'</h4>';
+    h+='<div class="fgrp">แนบตอนเปิดงาน (admin) — สัญญา + Site plan มาคู่กัน</div>';
+    /* แถวสัญญา PDF */
+    h+='<div class="frow"><div class="ficon" aria-hidden="true">PDF</div><div class="fmain"><b>สัญญา (PDF)</b>'+
+      (pdf?'<span class="lab">'+esc(pdf.name)+' · '+pdf.size.toFixed(1)+' MB · '+fmt(pdf.at)+' โดย '+esc(pdf.by)+'</span>':'')+
+      '</div><div class="facts">'+(pdf?'':chip('pend','ยังไม่แนบไฟล์'))+fileBtns(pdf,'contract_pdf',k.no,canUp,pdf?'แทนที่':'อัปโหลด')+'</div></div>';
+    /* แถว Site plan */
+    h+='<div class="frow"><div class="ficon" aria-hidden="true">MAP</div><div class="fmain"><b>Site plan (IG/IC)</b>';
+    if(!k.sp){
+      h+='<span class="lab">สัญญานี้ไม่มี Site plan</span></div><div class="facts">'+chip('na','ไม่ใช้')+'</div></div>';
+    }else{
+      if(last)h+='<span class="lab">'+esc(last.name)+' · '+last.size.toFixed(1)+' MB · '+(sp.length>1?'แก้ล่าสุด ':'')+fmt(last.at)+' โดย '+esc(last.by)+(sp.length>1?' <span class="chip pend">แก้ตอนติดตั้ง</span>':'')+'</span>';
+      h+='</div><div class="facts">'+(last?'':chip('pend','ยังไม่แนบไฟล์'))+fileBtns(last,'site_plan',k.no,canUp,last?'+ เวอร์ชันใหม่':'อัปโหลด',!!last)+'</div>';
+      if(canUp&&last)h+='<div class="reasonrow"><label for="rsn-'+esc(k.no)+'" class="lab">เหตุผลที่แก้ Site plan <b>(จำเป็น)</b> — กรอกก่อนกด "+ เวอร์ชันใหม่"</label><input id="rsn-'+esc(k.no)+'" data-reason="'+esc(k.no)+'" value="'+esc(S.reason[k.no]||'')+'" placeholder="เช่น แก้ตอนติดตั้ง — เพิ่มจุด AG หน้าโถง" maxlength="120"></div>';
+      h+='</div>';
+      if(sp.length)h+='<div class="hist"><div class="hhead">ประวัติเวอร์ชัน Site plan ('+sp.length+')</div>'+
+        sp.map(function(v,i){return {v:v,n:i+1}}).reverse().map(function(x){
+          return '<div class="hrow"><span class="hnum">v'+x.n+'</span><div class="hmain"><b>'+esc(x.v.name)+'</b>'+(x.n===sp.length?' '+chip('info','ล่าสุด'):'')+
+            '<br><span class="lab">'+fmt(x.v.at)+' · '+esc(x.v.by)+' · '+esc(x.v.reason)+'</span></div><button class="btn sm" data-act="file-view" data-k="'+esc(x.v.name)+'">ดู</button></div>';
+        }).join('')+'</div>';
+    }
     h+='</div>';
   });
-  if(up)h+='<div class="drop">เลือก "อัปโหลด" ที่ช่องที่ต้องการ — ระบบตรวจชนิดและขนาดไฟล์ก่อนบันทึก · การอัปโหลด/แทนที่ทุกครั้งบันทึกใน <span class="tag">audit_log</span></div>';
   return h;
 }
 
@@ -809,7 +838,15 @@ var ACT={
   'vi-page':function(el){S.vi.page+=+el.dataset.d;render()},
   'file-view':function(el){toast('ตัวอย่าง: เปิด "'+el.dataset.k+'" ผ่าน signed URL (ยังไม่เชื่อม Storage จริง)')},
   'file-dl':function(el){toast('ตัวอย่าง: ดาวน์โหลด "'+el.dataset.k+'" (ยังไม่เชื่อม Storage จริง)')},
-  'file-up':function(el){upTarget={contract:el.dataset.contract,slot:el.dataset.slot};var fi=document.getElementById('fileIn');fi.value='';fi.click()}
+  'file-up':function(el){
+    var no=el.dataset.contract,slot=el.dataset.slot,f=cust().files[no]||{};
+    /* เพิ่มเวอร์ชันใหม่ของ Site plan (มีของเดิมอยู่) ต้องมีเหตุผลก่อนเสมอ — ตรวจก่อนเปิดหน้าต่างเลือกไฟล์ */
+    if(slot==='site_plan'&&(f.site_plan||[]).length&&!(S.reason[no]||'').trim()){
+      toast('กรอกเหตุผลที่แก้ Site plan ก่อน แล้วค่อยเลือกไฟล์');
+      var inp=document.getElementById('rsn-'+no);if(inp)inp.focus();return;
+    }
+    upTarget={contract:no,slot:slot};var fi=document.getElementById('fileIn');fi.value='';fi.click();
+  }
 };
 document.addEventListener('click',function(e){
   var el=e.target.closest('[data-act]');if(!el||el.disabled)return;
@@ -819,7 +856,9 @@ document.addEventListener('change',function(e){
   var el=e.target.closest('[data-bind]');if(el){setPath(el.dataset.bind,el.value);render()}
 });
 document.addEventListener('input',function(e){
-  var el=e.target;if(el.id==='f-st-q'){S.st.q=el.value;S.st.page=1;var pos=el.selectionStart;render();var n=document.getElementById('f-st-q');n.focus();try{n.setSelectionRange(pos,pos)}catch(x){}}
+  var el=e.target;
+  if(el.dataset&&el.dataset.reason!==undefined){S.reason[el.dataset.reason]=el.value;return}
+  if(el.id==='f-st-q'){S.st.q=el.value;S.st.page=1;var pos=el.selectionStart;render();var n=document.getElementById('f-st-q');n.focus();try{n.setSelectionRange(pos,pos)}catch(x){}}
 });
 /* คีย์บอร์ดแท็บ: ← → Home End */
 document.getElementById('tabs').addEventListener('keydown',function(e){
@@ -833,9 +872,17 @@ document.getElementById('fileIn').addEventListener('change',function(e){
   var okType=['application/pdf','image/png','image/jpeg'].indexOf(f.type)>=0;
   if(!okType){toast('รับเฉพาะไฟล์ PDF, PNG, JPG');return}
   if(f.size>10*1024*1024){toast('ไฟล์ใหญ่เกิน 10 MB — ลดขนาดแล้วลองอีกครั้ง');return}
-  var c=cust();c.files[upTarget.contract]=c.files[upTarget.contract]||{};
-  c.files[upTarget.contract][upTarget.slot]={name:f.name,size:f.size/1048576,by:'คุณ (เดโม)',at:TODAY};
-  toast('อัปโหลด "'+f.name+'" แล้ว (เดโม — ยังไม่บันทึกจริง)');render();
+  var c=cust(),no=upTarget.contract,rec={name:f.name,size:f.size/1048576,by:'คุณ (เดโม)',at:TODAY};
+  c.files[no]=c.files[no]||{};
+  if(upTarget.slot==='site_plan'){
+    var list=c.files[no].site_plan=c.files[no].site_plan||[];
+    rec.reason=list.length?(S.reason[no]||'').trim():'แนบตอนเปิดงาน';
+    list.push(rec);S.reason[no]='';                       // เพิ่มเป็นเวอร์ชันใหม่ ไม่ทับของเดิม
+    toast('เพิ่ม Site plan เวอร์ชัน v'+list.length+' แล้ว (เดโม — ยังไม่บันทึกจริง)');
+  }else{
+    c.files[no].contract_pdf=rec;toast('อัปโหลด "'+f.name+'" แล้ว (เดโม — ยังไม่บันทึกจริง)');
+  }
+  render();
 });
 
 /* ตัวสลับลูกค้าเดโม / role / ธีม / เมนูจอเล็ก */
