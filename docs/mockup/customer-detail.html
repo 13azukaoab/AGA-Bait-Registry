@@ -1,0 +1,868 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AGA Bait Registry — รายละเอียดลูกค้า</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@300;400;500;600;700&display=swap">
+<!--
+================================================================================
+ หน้า "รายละเอียดลูกค้า" (SPEC §8 หน้าจอ 4) — mockup layout แบบ B (แผงซ้ายติดหมุด + แท็บ)
+ ผู้ใช้: host / admin / recorder   (viewer เปิดไม่ได้ — PDPA, SPEC §5)
+================================================================================
+ โครงหน้า
+   ซ้าย (sticky)  ข้อมูลลูกค้า (customers) + สรุปตัวเลข + แจ้งเตือนที่ต้องทำ
+   ขวา (4 แท็บ)   สัญญา (contracts) · สถานี (stations + station_checks)
+                  ประวัติบริการ (visits + station_checks) · ไฟล์แนบ (Storage)
+
+ หน้านี้ "ดูอย่างเดียว" — ปุ่มแก้ไข/กรอกผลทั้งหมดเป็นลิงก์ไปหน้าเดิม (เจ้าของเลือกแล้ว)
+   host/admin  → ลิงก์ "แก้ข้อมูล" ไปหน้าทะเบียน/เปิดงาน  (admin-add-customer.html)
+   host/recorder → ลิงก์ "กรอกผลบริการ / กล่องเหยื่อ" ไปหน้าเดิมใน prototype
+   อัปโหลดไฟล์ = host/admin เท่านั้น (สัญญา PDF, Site plan)
+
+ วิธีลิงก์มาหน้านี้จากหน้าอื่น (service / bait / registry)
+   customer-detail.html?c=<customer_id>#tab=stations&contract=CT26-0000142&station=AG-04
+   พารามิเตอร์: c = ลูกค้า (c1..c3 ในเดโม)
+                tab = contracts | stations | visits | files
+                contract = เลขที่สัญญาที่จะเลือก/กรอง · station = รหัสสถานีที่จะกางประวัติ
+                status / type = ตัวกรองเริ่มต้นของแท็บสถานี (เช่น status=pending_removal)
+
+ กฎที่ mockup นี้จำลองไว้ (production ต้องย้ายไป lib/rules + DB ไม่ใช่ใน UI):
+   - Tier อ่านจากตาราง tier_rules (ตัวแปร TIER_RULES) — ห้าม hardcode เกณฑ์ (CLAUDE.md ข้อ 3)
+   - เดือนบริการ = เดือนเริ่ม + (ปี × 12) เดือน ไม่ใช้วันสิ้นสุด (§7.2)
+   - ตกบริการ = เดือนในช่วงบริการที่ไม่มี visit ประเภท routine (§7.4)
+   - F1–F10 นับต่อสถานี คำนวณอัตโนมัติจากลำดับวันที่ตรวจ (§7.5)
+   - เดือนที่ปิดแล้ว (month_closures) แสดง 🔒 = แก้ไม่ได้ (§7.7)
+   - สัญญา expired_pending_collection ต้องเก็บสถานี IG/IC คืนครบก่อนปิด (§7.8)
+ ข้อมูลทั้งหมดเป็นชื่อสมมติ ไม่มี PII จริง
+================================================================================
+-->
+<style>
+:root{
+  --bg:#eef2f7; --surface:#ffffff; --surface-2:#f4f7fb; --surface-3:#e9eff6;
+  --fg:#17212e; --fg-muted:#5a6b7e; --fg-faint:#8a98a8;
+  --border:#d8e0ea; --border-strong:#c3cedb;
+  --accent:#1f5fa8; --accent-strong:#164a85; --accent-fg:#ffffff; --accent-soft:#e6f0fb;
+  --ok:#1a8a5c; --ok-soft:#e3f4ec; --warn:#b4740a; --warn-soft:#fbf0db; --danger:#c23b2e; --danger-soft:#fbe8e5;
+  --tier-s:#1f5fa8; --tier-s-soft:#e6f0fb; --tier-m:#157a50; --tier-m-soft:#e3f4ec;
+  --tier-l:#a86c07; --tier-l-soft:#fbf0db; --tier-xl:#c2561f; --tier-xl-soft:#fce6da; --on-tier:#ffffff;
+  --radius:10px; --shadow:0 1px 2px rgba(20,40,70,.06),0 1px 3px rgba(20,40,70,.05);
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0e1621; --surface:#16202c; --surface-2:#1b2733; --surface-3:#222f3d;
+  --fg:#e7eef5; --fg-muted:#9fb0c1; --fg-faint:#8798a9;
+  --border:#2a3744; --border-strong:#36485a;
+  --accent:#4a90d9; --accent-strong:#5fa0e3; --accent-fg:#0b1420; --accent-soft:#16304a;
+  --ok:#3bb183; --ok-soft:#133227; --warn:#d99b3e; --warn-soft:#332713; --danger:#e26657; --danger-soft:#331a16;
+  --tier-s:#4a90d9; --tier-s-soft:#16304a; --tier-m:#3bb183; --tier-m-soft:#133227;
+  --tier-l:#d99b3e; --tier-l-soft:#332713; --tier-xl:#e07a4e; --tier-xl-soft:#3a2016; --on-tier:#0b1420;
+  --shadow:0 1px 2px rgba(0,0,0,.3);
+  color-scheme:dark;
+}}
+:root[data-theme="dark"]{
+  --bg:#0e1621; --surface:#16202c; --surface-2:#1b2733; --surface-3:#222f3d;
+  --fg:#e7eef5; --fg-muted:#9fb0c1; --fg-faint:#8798a9;
+  --border:#2a3744; --border-strong:#36485a;
+  --accent:#4a90d9; --accent-strong:#5fa0e3; --accent-fg:#0b1420; --accent-soft:#16304a;
+  --ok:#3bb183; --ok-soft:#133227; --warn:#d99b3e; --warn-soft:#332713; --danger:#e26657; --danger-soft:#331a16;
+  --tier-s:#4a90d9; --tier-s-soft:#16304a; --tier-m:#3bb183; --tier-m-soft:#133227;
+  --tier-l:#d99b3e; --tier-l-soft:#332713; --tier-xl:#e07a4e; --tier-xl-soft:#3a2016; --on-tier:#0b1420;
+  --shadow:0 1px 2px rgba(0,0,0,.3);
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--fg);
+  font-family:"Noto Sans Thai","Segoe UI",system-ui,sans-serif;font-size:14px;line-height:1.55;
+  -webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums}
+.num{font-variant-numeric:tabular-nums}
+a{color:var(--accent-strong)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:4px}
+[hidden]{display:none !important}
+
+/* ---------- Header / nav (เหมือน prototype เดิม) ---------- */
+.topbar{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:14px;
+  padding:10px 18px;background:var(--surface);border-bottom:1px solid var(--border)}
+.logo{display:flex;align-items:center;gap:11px;min-width:0}
+.logo .mark{width:38px;height:38px;border-radius:9px;background:var(--accent);color:var(--accent-fg);display:grid;place-items:center;
+  font-weight:700;font-size:15px;letter-spacing:.5px;flex:none}
+.logo .txt b{display:block;font-size:15px;font-weight:600;line-height:1.2}
+.logo .txt span{display:block;font-size:11.5px;color:var(--fg-muted)}
+.topbar .spacer{flex:1}
+.pill{display:inline-flex;align-items:center;gap:6px;padding:5px 11px;border:1px solid var(--border);
+  border-radius:999px;background:var(--surface-2);font-size:12.5px;color:var(--fg-muted);white-space:nowrap}
+.pill b{color:var(--fg);font-weight:600}
+select.role{font-family:inherit;font-size:12.5px;color:var(--fg);background:var(--surface-2);
+  border:1px solid var(--border);border-radius:999px;padding:5px 10px;cursor:pointer}
+.theme-btn{border:1px solid var(--border);background:var(--surface-2);color:var(--fg-muted);border-radius:8px;
+  width:34px;height:32px;cursor:pointer;font-size:15px;line-height:1}
+.avatar{width:32px;height:32px;border-radius:50%;background:var(--surface-3);color:var(--fg-muted);
+  display:grid;place-items:center;font-weight:600;font-size:12px;flex:none}
+.navtoggle{display:none;align-items:center;justify-content:center;border:1px solid var(--border);
+  background:var(--surface-2);color:var(--fg);border-radius:8px;width:36px;height:34px;font-size:18px;line-height:1;cursor:pointer;flex:none}
+.nav-backdrop{display:none}
+.hdr-search{flex:0 1 320px;min-width:0;font-family:inherit;font-size:13px;color:var(--fg);
+  background:var(--surface-2);border:1px solid var(--border-strong);border-radius:999px;padding:7px 14px}
+@media(max-width:760px){.hdr-search{display:none}}
+.shell{display:flex;align-items:flex-start;min-height:calc(100% - 59px);max-width:1760px;margin-inline:auto}
+.nav{width:238px;flex:none;padding:14px 10px;border-right:1px solid var(--border);background:var(--surface);
+  position:sticky;top:59px;align-self:flex-start;max-height:calc(100vh - 59px);overflow-y:auto}
+.nav .group{font-size:11px;letter-spacing:.06em;color:var(--fg-muted);padding:12px 10px 5px}
+.nav a{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;color:var(--fg-muted);
+  text-decoration:none;font-size:13.5px;cursor:pointer;margin-bottom:1px}
+.nav a .ic{width:17px;text-align:center;flex:none;opacity:.85}
+.nav a:hover{background:var(--surface-2);color:var(--fg)}
+.nav a.active{background:var(--accent-soft);color:var(--accent-strong);font-weight:600}
+.nav a.soon{opacity:.6;cursor:default}
+.nav a.soon:hover{background:transparent;color:var(--fg-muted)}
+.nav a .soon-tag{margin-left:auto;font-size:10px;color:var(--fg-muted);border:1px solid var(--border);border-radius:5px;padding:1px 5px}
+main{flex:1;min-width:0;padding:18px 24px 48px}
+
+/* ---------- ส่วนประกอบพื้นฐาน ---------- */
+.btn{font-family:inherit;font-size:13px;font-weight:500;border-radius:8px;padding:7px 13px;cursor:pointer;
+  border:1px solid var(--border-strong);background:var(--surface);color:var(--fg);text-decoration:none;display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-fg)}
+.btn.sm{padding:4px 10px;font-size:12px}
+.btn:hover{filter:brightness(.97)}
+.chip{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;padding:2px 9px;border-radius:999px;white-space:nowrap;border:0;font-family:inherit}
+.chip.ok{background:var(--ok-soft);color:var(--ok)} .chip.miss{background:var(--danger-soft);color:var(--danger)}
+.chip.pend{background:var(--warn-soft);color:var(--warn)} .chip.na{background:var(--surface-3);color:var(--fg-muted)}
+.chip.info{background:var(--accent-soft);color:var(--accent-strong)} .chip.done{background:var(--surface-3);color:var(--fg-muted)}
+button.chip{cursor:pointer}
+button.chip.on{outline:2px solid var(--accent);outline-offset:1px}
+.sttype{font-size:10.5px;font-weight:600;padding:1px 7px;border-radius:5px;background:var(--accent-soft);color:var(--accent-strong)}
+.tier{display:inline-block;font-size:11.5px;font-weight:700;padding:2px 8px;border-radius:6px;letter-spacing:.3px}
+/* สี Tier 8 แบบ (CLAUDE.md): กลุ่มสีตาม tier · อ่อน=1 ปี · เข้มทึบ=3 ปี — ห้าม hardcode hex */
+.tier.s1{background:var(--tier-s-soft);color:var(--tier-s)} .tier.s3{background:var(--tier-s);color:var(--on-tier)}
+.tier.m1{background:var(--tier-m-soft);color:var(--tier-m)} .tier.m3{background:var(--tier-m);color:var(--on-tier)}
+.tier.l1{background:var(--tier-l-soft);color:var(--tier-l)} .tier.l3{background:var(--tier-l);color:var(--on-tier)}
+.tier.xl1{background:var(--tier-xl-soft);color:var(--tier-xl)} .tier.xl3{background:var(--tier-xl);color:var(--on-tier)}
+.panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow)}
+.panel>h3{margin:0;padding:12px 16px;font-size:14px;font-weight:600;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.panel .body{padding:14px 16px}
+.hint{font-size:11.5px;color:var(--fg-muted);background:var(--surface-2);border:1px solid var(--border);
+  border-left:3px solid var(--accent);border-radius:0 8px 8px 0;padding:8px 12px;margin:0 0 12px}
+.hint code,.tag{font-family:ui-monospace,Consolas,monospace;font-size:11px;background:var(--surface-3);border-radius:4px;padding:0 4px}
+.lab{font-size:11.5px;color:var(--fg-muted)}
+.tablewrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:13px;white-space:nowrap}
+thead th{background:var(--surface-2);color:var(--fg-muted);font-weight:600;font-size:11.5px;text-align:left;padding:9px 12px;border-bottom:1px solid var(--border)}
+tbody td{padding:8px 12px;border-bottom:1px solid var(--border);vertical-align:middle}
+tbody tr:last-child td{border-bottom:0}
+tbody tr.row:hover{background:var(--surface-2)}
+tbody tr.sel{background:var(--accent-soft)}
+td.r,th.r{text-align:right} td.c,th.c{text-align:center}
+tr.sub td{background:var(--surface-2);padding:10px 14px 12px}
+tr.sub table{font-size:12px;background:var(--surface);border:1px solid var(--border);border-radius:8px}
+.empty{padding:26px 16px;text-align:center;color:var(--fg-muted);font-size:13px}
+.caret{border:0;background:transparent;color:var(--fg-muted);cursor:pointer;font-size:12px;width:22px;height:22px;border-radius:5px;padding:0}
+.caret:hover{background:var(--surface-3)}
+.linkbtn{border:0;background:transparent;color:var(--accent-strong);font:inherit;cursor:pointer;padding:0;text-decoration:underline}
+.mono{font-family:ui-monospace,Consolas,monospace;font-size:12.5px}
+
+/* ---------- เลย์เอาต์หน้านี้ ---------- */
+.crumb{font-size:12px;color:var(--fg-muted);display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px}
+.crumb a{text-decoration:none}
+.demo{margin-left:auto;display:inline-flex;align-items:center;gap:7px;border:1px dashed var(--border-strong);border-radius:8px;padding:3px 8px}
+.demo select{font-family:inherit;font-size:12px;color:var(--fg);background:var(--surface);border:1px solid var(--border-strong);border-radius:6px;padding:3px 6px}
+.head{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+.head h1{margin:0;font-size:20px;font-weight:600}
+.head .acts{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap}
+.detail{display:grid;grid-template-columns:300px minmax(0,1fr);gap:16px;align-items:start}
+.info{position:sticky;top:75px}
+.kv{display:grid;grid-template-columns:78px 1fr;gap:6px 10px;font-size:13px;margin:0}
+.kv dt{color:var(--fg-muted);font-size:12px}
+.kv dd{margin:0;word-break:break-word}
+.sumgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:2px}
+.sbox{background:var(--surface-2);border:1px solid var(--border);border-radius:9px;padding:8px 10px}
+.sbox .v{font-size:19px;font-weight:700;line-height:1.2}
+.sbox .l{font-size:11px;color:var(--fg-muted)}
+.sbox.bad .v{color:var(--danger)} .sbox.good .v{color:var(--ok)}
+.sep{border-top:1px solid var(--border);margin:13px 0 11px}
+.alert{border-radius:9px;padding:8px 11px;font-size:12px;margin-top:8px;border:1px solid var(--border);line-height:1.5}
+.alert.warn{background:var(--warn-soft);border-color:var(--warn);color:var(--fg)}
+.alert.bad{background:var(--danger-soft);border-color:var(--danger);color:var(--fg)}
+.alert.info{background:var(--accent-soft);border-color:var(--accent);color:var(--fg)}
+.alert b{font-weight:600}
+.alert .linkbtn{font-size:12px}
+.tabs{display:flex;gap:2px;border-bottom:1px solid var(--border);padding:0 10px;overflow-x:auto;background:var(--surface);border-radius:var(--radius) var(--radius) 0 0}
+.tab{font-family:inherit;font-size:13.5px;padding:11px 13px;color:var(--fg-muted);cursor:pointer;border:0;border-bottom:3px solid transparent;background:none;white-space:nowrap;display:flex;align-items:center;gap:7px}
+.tab:hover{color:var(--fg)}
+.tab[aria-selected="true"]{color:var(--accent-strong);border-bottom-color:var(--accent);font-weight:600}
+.tabcard{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}
+.tabcard .tabs{border-radius:0}
+.tabpanel{padding:14px 16px}
+.filters{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin-bottom:12px}
+.field{display:flex;flex-direction:column;gap:3px}
+.field label{font-size:11px;color:var(--fg-muted)}
+.field select,.field input{font-family:inherit;font-size:13px;color:var(--fg);background:var(--surface);border:1px solid var(--border-strong);border-radius:8px;padding:6px 10px;min-width:130px}
+.chips{display:flex;flex-wrap:wrap;gap:7px;align-items:center;margin-bottom:10px}
+.pager{display:flex;align-items:center;gap:8px;justify-content:space-between;flex-wrap:wrap;margin-top:10px;font-size:12px;color:var(--fg-muted)}
+.pager .btns{display:flex;gap:6px}
+.dcard{border:1px solid var(--border);border-radius:var(--radius);background:var(--surface-2);padding:14px 16px;margin-top:14px}
+.dcard h4{margin:0 0 10px;font-size:14px;font-weight:600;display:flex;gap:9px;align-items:center;flex-wrap:wrap}
+.dgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:10px 22px}
+.dgrid .it{font-size:13px}
+.dgrid .it .lab{display:block}
+.steps{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin:12px 0 4px;font-size:12px}
+.step{padding:3px 11px;border-radius:999px;border:1px solid var(--border);color:var(--fg-muted);background:var(--surface)}
+.step.cur{background:var(--accent);border-color:var(--accent);color:var(--accent-fg);font-weight:600}
+.step.past{background:var(--ok-soft);border-color:var(--ok);color:var(--ok)}
+.bar{height:9px;border-radius:999px;background:var(--surface-3);overflow:hidden}
+.bar>i{display:block;height:100%;background:var(--ok);border-radius:999px}
+.strip{margin:0 0 16px}
+.strip h5{margin:0 0 7px;font-size:12.5px;font-weight:600;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.mrow{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:4px;margin-bottom:4px}
+.mcell{border-radius:6px;padding:3px 2px;text-align:center;font-size:11px;line-height:1.3;border:1px solid var(--border);background:var(--surface)}
+.mcell b{display:block;font-weight:600;font-size:10.5px}
+.mcell.ok{background:var(--ok-soft);border-color:var(--ok);color:var(--ok)}
+.mcell.miss{background:var(--danger-soft);border-color:var(--danger);color:var(--danger)}
+.mcell.now{background:var(--warn-soft);border-color:var(--warn);color:var(--warn)}
+.mcell.fut{border-style:dashed;color:var(--fg-muted)}
+.mcell.cx{background:var(--surface-3);color:var(--fg-muted)}
+.legend{display:flex;flex-wrap:wrap;gap:12px;font-size:11.5px;color:var(--fg-muted);margin:2px 0 14px}
+.legend span{display:inline-flex;align-items:center;gap:5px}
+.sw{width:11px;height:11px;border-radius:3px;border:1px solid var(--border-strong);display:inline-block}
+.sw.ok{background:var(--ok-soft);border-color:var(--ok)} .sw.miss{background:var(--danger-soft);border-color:var(--danger)}
+.sw.now{background:var(--warn-soft);border-color:var(--warn)} .sw.fut{border-style:dashed}
+.fcard{border:1px solid var(--border);border-radius:var(--radius);margin-bottom:12px;overflow:hidden;background:var(--surface)}
+.fcard>h4{margin:0;padding:10px 14px;background:var(--surface-2);border-bottom:1px solid var(--border);font-size:13px;font-weight:600;display:flex;gap:9px;align-items:center;flex-wrap:wrap}
+.frow{display:flex;align-items:center;gap:12px;padding:10px 14px;border-top:1px solid var(--border);flex-wrap:wrap}
+.frow:first-of-type{border-top:0}
+.frow .ficon{width:34px;height:34px;border-radius:8px;background:var(--accent-soft);color:var(--accent-strong);display:grid;place-items:center;font-size:11px;font-weight:700;flex:none}
+.frow .fmain{flex:1;min-width:180px}
+.frow .fmain b{display:block;font-weight:600;font-size:13px}
+.frow .facts{display:flex;gap:6px}
+.drop{border:1.5px dashed var(--border-strong);border-radius:var(--radius);padding:12px 14px;font-size:12px;color:var(--fg-muted);background:var(--surface-2);margin-top:4px}
+.blocked{max-width:520px;margin:60px auto;text-align:center}
+.blocked h2{margin:0 0 8px;font-size:18px}
+.toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:var(--fg);color:var(--bg);padding:9px 16px;border-radius:9px;font-size:13px;z-index:80;box-shadow:var(--shadow);max-width:90vw}
+@media (max-width:1100px){.detail{grid-template-columns:260px minmax(0,1fr)}}
+@media (max-width:860px){
+  .shell{display:block}
+  .navtoggle{display:inline-flex}
+  .nav{position:fixed;top:0;left:0;bottom:0;max-height:none;width:260px;z-index:40;border-right:1px solid var(--border);
+    overflow-y:auto;transform:translateX(-100%);transition:transform .22s ease;box-shadow:2px 0 14px rgba(20,40,70,.18)}
+  body.nav-open .nav{transform:translateX(0)}
+  .nav-backdrop{position:fixed;inset:0;background:rgba(10,20,35,.42)}
+  body.nav-open .nav-backdrop{display:block}
+  main{padding:14px}
+  .detail{grid-template-columns:minmax(0,1fr)}
+  .info{position:static}
+  .demo{margin-left:0}
+  .mrow{grid-template-columns:repeat(6,minmax(0,1fr))}
+}
+@media (max-width:600px){
+  .topbar{gap:8px;padding:10px 12px}
+  .logo .txt,.pill,.avatar{display:none}
+  select.role{max-width:170px;min-width:0}
+}
+@media (prefers-reduced-motion:reduce){.nav{transition:none}}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <button class="navtoggle" id="navToggle" aria-label="เปิด/ปิดเมนู" aria-expanded="false">☰</button>
+  <div class="logo">
+    <div class="mark">AGA</div>
+    <div class="txt"><b>ข้อมูลหลังบ้านระบบเหยื่อ</b><span>Advance Group Asia · ส่วนกลาง</span></div>
+  </div>
+  <input class="hdr-search" aria-label="ค้นหาลูกค้า" placeholder="ค้นหาลูกค้า / เลขที่สัญญา (ทุกหน้า)">
+  <div class="spacer"></div>
+  <span class="pill">เดือน <b>ต.ค. 2026</b></span>
+  <select class="role" id="roleSel" aria-label="เลือกบทบาท">
+    <option value="host">host · ส่วนกลาง</option>
+    <option value="admin">admin · แอดมิน</option>
+    <option value="recorder" selected>recorder · หัวหน้างาน (ทีม A)</option>
+    <option value="viewer">viewer · ผู้บริหาร</option>
+  </select>
+  <button class="theme-btn" id="themeBtn" aria-label="สลับธีมสว่าง/มืด">◐</button>
+  <div class="avatar" aria-hidden="true">นท</div>
+</div>
+
+<div class="shell">
+  <nav class="nav" id="nav" aria-label="เมนูหลัก">
+    <div class="group">งานประจำวัน</div>
+    <a href="aga-bait-registry-prototype.html"><span class="ic">◉</span> หน้า "ต้องทำ"</a>
+    <a href="aga-bait-registry-prototype.html"><span class="ic">✎</span> กรอกผลบริการ (IG/IC)</a>
+    <a href="aga-bait-registry-prototype.html"><span class="ic">▣</span> กล่องเหยื่อ (AG)</a>
+    <a href="aga-bait-registry-prototype.html"><span class="ic">⇲</span> รอเก็บสถานี (หมดสัญญา)</a>
+    <a href="aga-bait-registry-prototype.html"><span class="ic">▤</span> ทะเบียนลูกค้า/สัญญา</a>
+    <a class="active" href="customer-detail.html" aria-current="page"><span class="ic">◷</span> รายละเอียดลูกค้า</a>
+    <a href="aga-bait-registry-prototype.html"><span class="ic">▦</span> สรุปตัวเลข</a>
+    <a href="aga-bait-registry-prototype.html"><span class="ic">▥</span> สรุปวัสดุ</a>
+    <div class="group">เฟสถัดไป</div>
+    <a class="soon"><span class="ic">⇪</span> นำเข้าสัญญา Excel <span class="soon-tag">เร็วๆนี้</span></a>
+    <a class="soon"><span class="ic">🔒</span> ปิดเดือน <span class="soon-tag">เร็วๆนี้</span></a>
+    <a class="soon"><span class="ic">⇅</span> Dashboard Sync <span class="soon-tag">เร็วๆนี้</span></a>
+  </nav>
+  <div class="nav-backdrop" id="navBackdrop" aria-hidden="true"></div>
+
+  <main>
+    <!-- viewer ห้ามเปิดหน้านี้ (PDPA) — ใน production บังคับด้วย RLS ไม่ใช่แค่ซ่อนหน้า -->
+    <section id="blocked" class="blocked panel" hidden>
+      <div class="body" style="padding:28px 24px">
+        <div style="font-size:34px" aria-hidden="true">🔒</div>
+        <h2>บทบาท viewer เปิดหน้านี้ไม่ได้</h2>
+        <p class="lab" style="font-size:13px">หน้านี้มีข้อมูลส่วนบุคคลของลูกค้า (ชื่อ ที่อยู่ เบอร์โทร) ตาม PDPA — viewer ดูได้เฉพาะหน้าสรุปตัวเลข</p>
+        <a class="btn primary" href="aga-bait-registry-prototype.html">ไปหน้าสรุปตัวเลข</a>
+      </div>
+    </section>
+
+    <section id="page">
+      <div class="crumb">
+        <a href="aga-bait-registry-prototype.html">ทะเบียนลูกค้า/สัญญา</a><span aria-hidden="true">›</span><span>รายละเอียดลูกค้า</span>
+        <label class="demo"><span class="lab">เดโม: เลือกลูกค้าตัวอย่าง</span>
+          <select id="demoSel" aria-label="เลือกลูกค้าตัวอย่าง (เฉพาะ mockup)"></select></label>
+      </div>
+      <div class="head" id="head"></div>
+      <div class="detail">
+        <aside class="panel info" id="info" aria-label="ข้อมูลลูกค้า"></aside>
+        <div class="tabcard">
+          <div class="tabs" role="tablist" aria-label="หมวดข้อมูลลูกค้า" id="tabs"></div>
+          <div class="tabpanel" role="tabpanel" id="panel" tabindex="0"></div>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<input type="file" id="fileIn" accept=".pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg" hidden>
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
+<script>
+(function(){
+'use strict';
+
+/* ======================================================================
+   0) ค่าคงที่ของเดโม
+   ====================================================================== */
+var TODAY='2026-10-16';            // "วันนี้" ในเดโม (ให้ตรงกับเดือน ต.ค. 2026 ใน prototype)
+var CLOSED_THROUGH='2026-08';      // เดือนที่ Host ปิดแล้ว (month_closures) → 🔒
+var ME_TEAM='A';                   // recorder ที่ login อยู่ในเดโม = ทีม A
+var EDIT_URL='admin-add-customer.html';          // หน้าแก้ข้อมูล (host/admin)
+var ENTRY_URL='aga-bait-registry-prototype.html';// หน้ากรอกผล/กล่องเหยื่อ/รอเก็บสถานี (host/recorder)
+
+/* mock ของตาราง tier_rules — production ต้องอ่านจาก DB เสมอ ห้าม hardcode (CLAUDE.md ข้อ 3) */
+var TIER_RULES=[{tier:'S',min:0,max:30000},{tier:'M',min:30000,max:50000},{tier:'L',min:50000,max:100000},{tier:'XL',min:100000,max:Infinity}];
+
+var TH_M=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+var ST_LABEL={active:['ใช้งาน','ok'],eliminated:['กำจัดแล้ว','info'],pending_removal:['รอถอด','pend'],removed:['ถอดแล้ว','done']};
+var CT_LABEL={active:['ใช้งาน','ok'],expired_pending_collection:['หมดสัญญา · รอเก็บสถานี','pend'],closed:['ปิดสัญญาแล้ว','done'],cancelled:['ยกเลิก','miss']};
+var VT_LABEL={routine:['รอบประจำเดือน','info'],problem:['รอบแก้ไขปัญหา','miss'],follow_up:['รอบติดตามผล','pend']};
+var FILE_SLOTS=[['contract_pdf','PDF','สัญญา (PDF)'],['site_plan_ig','IG','Site plan IG'],['site_plan_ic','IC','Site plan IC']];
+
+/* ======================================================================
+   1) ฟังก์ชันช่วย (สะท้อน lib/rules — production แยกเป็น pure function + unit test)
+   ====================================================================== */
+function pad(n,w){return String(n).padStart(w||2,'0')}
+function ymd(y,m,d){return y+'-'+pad(m)+'-'+pad(d)}
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
+function fmt(d){if(!d)return '—';var p=d.split('-');return p[2]+'/'+p[1]+'/'+p[0]}               // dd/mm/yyyy ค.ศ. (SPEC §12)
+function num(n){return Number(n).toLocaleString('en-US',{maximumFractionDigits:2})}
+function monthTh(m){var p=m.split('-');return TH_M[+p[1]-1]+' '+p[0]}
+function days(a,b){return Math.round((Date.parse(b)-Date.parse(a))/864e5)}
+function annualValue(v,y){return v/y}
+function tierOf(annual){for(var i=0;i<TIER_RULES.length;i++){var r=TIER_RULES[i];if(annual>=r.min&&annual<r.max)return r.tier}return 'S'}
+function tierCode(c){return tierOf(annualValue(c.value,c.years))+c.years}           // เช่น L3
+function defaultEnd(start,years){var p=start.split('-').map(Number);var d=new Date(Date.UTC(p[0]+years,p[1]-1,p[2]));d.setUTCDate(d.getUTCDate()-1);return d.toISOString().slice(0,10)}
+function serviceMonths(start,years){                                                // §7.2 เดือนเริ่ม + (ปี×12) เดือน
+  var p=start.split('-').map(Number),out=[],y=p[0],m=p[1];
+  for(var i=0;i<years*12;i++){out.push(y+'-'+pad(m));m++;if(m>12){m=1;y++}}
+  return out;
+}
+function chip(cls,text,title){return '<span class="chip '+cls+'"'+(title?' title="'+esc(title)+'"':'')+'>'+esc(text)+'</span>'}
+function tierBadge(c){var t=tierCode(c);return '<span class="tier '+t.toLowerCase()+'" title="มูลค่าต่อปี '+num(annualValue(c.value,c.years))+' บาท">'+t+'</span>'}
+function seed(n){var s=n;return function(){s=(s*1103515245+12345)&0x7fffffff;return s/0x7fffffff}}
+
+/* ======================================================================
+   2) ข้อมูลตัวอย่าง (ชื่อสมมติ) — โครงตรงกับ SPEC §6
+      customers · contracts · stations(+checks=station_checks) · visits · files
+   ====================================================================== */
+function mkStations(list,contract,type,prefix,n,installed,status,removedAt,collectedAt,width){
+  for(var i=1;i<=n;i++){
+    list.push({contract:contract,code:prefix+'-'+pad(i,width||3),type:type,installed:installed,status:status||'active',
+      removedAt:removedAt||null,collectedAt:collectedAt||null,checks:[]});
+  }
+}
+function st(list,contract,code){for(var i=0;i<list.length;i++){if(list[i].contract===contract&&list[i].code===code)return list[i]}throw new Error('no station '+contract+code)}
+function addCheck(s,date,type,caste,bait,note){s.checks.push({date:date,type:type,caste:caste,bait:bait,note:note||''})}
+function addVisit(list,o){
+  list.push({contract:o.contract,date:o.date,type:o.type||'routine',team:o.team,dur:o.dur,inspect:!!o.inspect,proxy:!!o.proxy,
+    timber:o.timber||0,powder:o.powder||0,first:!!o.first,extraAg:o.extraAg||0,note:o.note||'',by:o.by||'สมศรี (หัวหน้างาน A)'});
+}
+function routines(list,contract,team,dates,timber,rnd,by){
+  dates.forEach(function(d){addVisit(list,{contract:contract,date:d,type:'routine',team:team,dur:45+Math.round(rnd()*75),
+    inspect:rnd()>.6,proxy:rnd()>.85,timber:timber,by:by})});
+}
+/* คำนวณ "ผลรวมเหยื่อ" ของแต่ละ visit จาก station_checks (mock) */
+function finishVisits(c){
+  c.visits.forEach(function(v){
+    v.checks=[];c.stations.forEach(function(s){
+      if(s.contract!==v.contract)return;
+      s.checks.forEach(function(k){if(k.date===v.date&&k.type===v.type)v.checks.push({st:s,k:k})});
+    });
+    v.baitIgIc=0;v.baitAg=v.extraAg;
+    v.checks.forEach(function(x){if(x.st.type==='AG')v.baitAg+=x.k.bait;else v.baitIgIc+=x.k.bait});
+  });
+  c.visits.sort(function(a,b){return a.date<b.date?1:a.date>b.date?-1:0});
+  c.stations.forEach(function(s){s.checks.sort(function(a,b){return a.date<b.date?-1:1});s.checks.forEach(function(k,i){k.no=i+1})}); // F ต่อสถานี อัตโนมัติ
+}
+function monthDates(year,startM,endM,days,skip){
+  var out=[];for(var m=startM;m<=endM;m++){var key=year+'-'+pad(m);if(skip&&skip.indexOf(key)>=0)continue;out.push(ymd(year,m,days[(m-1)%days.length]))}return out;
+}
+
+function buildC1(){
+  var rnd=seed(11);
+  var c={id:'c1',name:'บมจ. สยามพัฒนาเฮ้าส์',branch:'พุทธมณฑล',zone:'เขต 1',team:'A',type:'ออฟฟิต',
+    contact:'คุณสมชาย ใจดี',phone:'02-123-4567',address:'99/9 หมู่ 3 ถ.พุทธมณฑลสาย 2 ต.ศาลายา อ.พุทธมณฑล จ.นครปฐม 73170',
+    audit:'แก้ไขล่าสุด 05/10/2026 โดย ธนพร (admin)',
+    contracts:[
+      {no:'CT25-0000098',team:'A',start:'2025-01-01',end:'2025-12-31',years:1,value:36000,sale:'new',spIG:true,spIC:true,status:'closed',closedAt:'2026-01-12',cancelledAt:null},
+      {no:'CT26-0000142',team:'A',start:'2026-01-01',end:'2028-12-31',years:3,value:150000,sale:'renew',spIG:true,spIC:true,status:'active',closedAt:null,cancelledAt:null}],
+    stations:[],visits:[],
+    files:{'CT25-0000098':{contract_pdf:{name:'CT25-0000098.pdf',size:1.6,by:'ธนพร',at:'2025-01-03'},site_plan_ig:{name:'siteplan-IG-2025.pdf',size:2.1,by:'ธนพร',at:'2025-01-03'}},
+           'CT26-0000142':{contract_pdf:{name:'CT26-0000142.pdf',size:1.8,by:'ธนพร',at:'2026-01-02'},site_plan_ig:{name:'siteplan-IG-v2.pdf',size:2.4,by:'ธนพร',at:'2026-01-02'},site_plan_ic:{name:'siteplan-IC.pdf',size:1.1,by:'ธนพร',at:'2026-01-02'}}}};
+  var S=c.stations,V=c.visits;
+  mkStations(S,'CT25-0000098','IG','IG',16,'2025-01-10','removed','2026-01-12','2026-01-12');
+  mkStations(S,'CT25-0000098','IC','IC',4,'2025-01-10','removed','2026-01-12','2026-01-12');
+  mkStations(S,'CT26-0000142','IG','IG',96,'2026-01-05');
+  mkStations(S,'CT26-0000142','IC','IC',24,'2026-01-05');
+  mkStations(S,'CT26-0000142','AG','AG',4,'2026-08-22','active',null,null,2);
+  st(S,'CT26-0000142','AG-03').installed='2026-09-22';              // เพิ่มจุดทีหลัง → F นับแยกจากจุดอื่น (§7.5)
+  st(S,'CT26-0000142','IG-072').status='eliminated';
+  addCheck(st(S,'CT26-0000142','IG-017'),'2026-10-14','routine','งาน>ทหาร',100,'พบบริเวณขอบกำแพงหลังอาคาร B');
+  addCheck(st(S,'CT26-0000142','IG-044'),'2026-08-12','routine','ทหาร>งาน',50);
+  addCheck(st(S,'CT26-0000142','IC-009'),'2026-07-14','routine','งาน>ทหาร',50);
+  var ag1=st(S,'CT26-0000142','AG-01'),ag2=st(S,'CT26-0000142','AG-02'),ag3=st(S,'CT26-0000142','AG-03'),ag4=st(S,'CT26-0000142','AG-04');
+  addCheck(ag1,'2026-09-05','follow_up','ทหาร>งาน',100);addCheck(ag1,'2026-09-22','follow_up','ปลวกตาย',0,'พบปลวกตาย → รอถอด');
+  ag1.status='removed';ag1.removedAt='2026-10-08';
+  addCheck(ag2,'2026-09-05','follow_up','งาน>ทหาร',150);addCheck(ag2,'2026-09-22','follow_up','ทหาร>งาน',100);addCheck(ag2,'2026-10-15','follow_up','งาน>ทหาร',100);
+  addCheck(ag3,'2026-10-15','follow_up','ทหาร>งาน',100,'ติดตั้ง 22/09 — F1 ครั้งแรก');
+  addCheck(ag4,'2026-09-05','follow_up','ทหาร',100);addCheck(ag4,'2026-09-22','follow_up','ทหาร>งาน',50);addCheck(ag4,'2026-10-15','follow_up','ปลวกตาย',0,'พบปลวกตาย → รอถอด');
+  ag4.status='pending_removal';
+  routines(V,'CT25-0000098','A',monthDates(2025,1,12,[10]),0,rnd);
+  routines(V,'CT26-0000142','A',['2026-01-14','2026-02-11','2026-03-12','2026-04-15','2026-05-13','2026-07-14','2026-08-12','2026-09-14','2026-10-14'],216,rnd);   // ไม่มี มิ.ย. → ตกบริการ
+  addVisit(V,{contract:'CT26-0000142',date:'2026-08-22',type:'problem',team:'A',dur:150,inspect:true,first:true,extraAg:600,note:'พบปลวกใต้ดินโถงหน้า — ติดตั้งกล่อง AG-01, 02, 04 (S)'});
+  addVisit(V,{contract:'CT26-0000142',date:'2026-09-05',type:'follow_up',team:'A',dur:50});
+  addVisit(V,{contract:'CT26-0000142',date:'2026-09-22',type:'follow_up',team:'A',dur:70,first:true,extraAg:200,note:'ติดตั้ง AG-03 เพิ่ม (S)'});
+  addVisit(V,{contract:'CT26-0000142',date:'2026-10-08',type:'follow_up',team:'A',dur:30,note:'ถอดกล่อง AG-01'});
+  addVisit(V,{contract:'CT26-0000142',date:'2026-10-15',type:'follow_up',team:'A',dur:60});
+  finishVisits(c);return c;
+}
+
+function buildC2(){
+  var rnd=seed(5);
+  var c={id:'c2',name:'คุณวิรัช ตั้งมั่น (บ้านพัก)',branch:'พุทธมณฑล',zone:'เขต 1',team:'A',type:'บ้านเดี่ยว',
+    contact:'คุณวิรัช ตั้งมั่น',phone:'081-234-5678',address:'12/34 ซ.ศาลายา 5 ต.ศาลายา อ.พุทธมณฑล จ.นครปฐม 73170',
+    audit:'แก้ไขล่าสุด 03/03/2026 โดย ธนพร (admin)',
+    contracts:[{no:'CT26-0000088',team:'A',start:'2026-03-03',end:'2027-02-28',years:1,value:24000,sale:'new',spIG:true,spIC:false,status:'active',closedAt:null,cancelledAt:null}],
+    stations:[],visits:[],
+    files:{'CT26-0000088':{contract_pdf:{name:'CT26-0000088.pdf',size:1.2,by:'ธนพร',at:'2026-03-04'}}}};
+  mkStations(c.stations,'CT26-0000088','IG','IG',8,'2026-03-10',null,null,null,2);
+  routines(c.visits,'CT26-0000088','A',['2026-03-10','2026-04-14','2026-05-12','2026-06-09','2026-07-14','2026-08-11','2026-09-15','2026-10-13'],16,rnd);
+  finishVisits(c);return c;
+}
+
+function buildC3(){
+  var rnd=seed(23);
+  var c={id:'c3',name:'โรงแรมบ้านสวนรีสอร์ท',branch:'นครปฐม',zone:'เขต 1',team:'B',type:'โรงแรม/รีสอร์ท',
+    contact:'คุณนภา แสงทอง (ผู้จัดการ)',phone:'034-111-222',address:'55 ถ.เพชรเกษม ต.ธรรมศาลา อ.เมืองนครปฐม จ.นครปฐม 73000',
+    audit:'แก้ไขล่าสุด 15/10/2026 โดย ธนพร (admin)',
+    contracts:[{no:'CT23-0000311',team:'B',start:'2023-10-14',end:'2026-10-13',years:3,value:90000,sale:'new',spIG:true,spIC:true,status:'expired_pending_collection',closedAt:null,cancelledAt:null}],
+    stations:[],visits:[],
+    files:{'CT23-0000311':{contract_pdf:{name:'CT23-0000311.pdf',size:2.2,by:'ธนพร',at:'2023-10-16'},site_plan_ig:{name:'siteplan-IG.pdf',size:3.0,by:'ธนพร',at:'2023-10-16'}}}};
+  var S=c.stations,N='CT23-0000311';
+  mkStations(S,N,'IG','IG',34,'2023-10-20',null,null,null,2);
+  mkStations(S,N,'IC','IC',9,'2023-10-20',null,null,null,2);
+  mkStations(S,N,'AG','AG',2,'2026-06-10',null,null,null,2);
+  S.forEach(function(s,i){if(s.type!=='AG'&&i<18)s.collectedAt='2026-10-15'});     // เก็บคืนแล้ว 18 จาก 43 (IG/IC)
+  var a1=st(S,N,'AG-01'),a2=st(S,N,'AG-02');
+  addCheck(a1,'2026-07-08','follow_up','ทหาร>งาน',100);addCheck(a1,'2026-08-05','follow_up','ปลวกตาย',0);a1.status='removed';a1.removedAt='2026-09-02';
+  addCheck(a2,'2026-07-08','follow_up','งาน>ทหาร',100);addCheck(a2,'2026-08-05','follow_up','ทหาร>งาน',50);addCheck(a2,'2026-09-02','follow_up','ปลวกตาย',0,'พบปลวกตาย → รอถอด');a2.status='pending_removal';
+  var skip=['2025-02','2025-06'],V=c.visits,m,dates=[],y=2023,mm=10;                // 36 เดือน ต.ค.23–ก.ย.26 ข้าม 2 เดือน → ตกบริการ 2
+  for(var i=0;i<36;i++){var key=y+'-'+pad(mm);if(skip.indexOf(key)<0)dates.push(ymd(y,mm,[14,11,9,13,10][i%5]));mm++;if(mm>12){mm=1;y++}}
+  routines(V,N,'B',dates,86,rnd,'วิไล (หัวหน้างาน B)');
+  addVisit(V,{contract:N,date:'2026-06-10',type:'problem',team:'B',dur:120,inspect:true,first:true,extraAg:400,note:'ติดตั้งกล่อง AG-01, 02 (S)',by:'วิไล (หัวหน้างาน B)'});
+  ['2026-07-08','2026-08-05','2026-09-02'].forEach(function(d){addVisit(V,{contract:N,date:d,type:'follow_up',team:'B',dur:50,by:'วิไล (หัวหน้างาน B)'})});
+  addVisit(V,{contract:N,date:'2026-09-02',type:'follow_up',team:'B',dur:5,note:'ถอดกล่อง AG-01',by:'วิไล (หัวหน้างาน B)'});
+  finishVisits(c);return c;
+}
+
+var DB={c1:buildC1(),c2:buildC2(),c3:buildC3()};
+
+/* ======================================================================
+   3) สถานะหน้า (state) + ตัวเลือกจาก URL
+   ====================================================================== */
+var role='recorder';
+var S={cid:'c1',tab:'contracts',sel:null,
+  st:{contract:'all',type:'all',status:'all',q:'',page:1,open:{}},
+  vi:{contract:'all',type:'all',page:1,open:{}}};
+var upTarget=null;
+var PAGE_ST=10,PAGE_VI=8;
+
+function cust(){return DB[S.cid]}
+function contractOf(no){var cs=cust().contracts;for(var i=0;i<cs.length;i++)if(cs[i].no===no)return cs[i];return null}
+function sortedContracts(){return cust().contracts.slice().sort(function(a,b){return a.start<b.start?1:-1})}
+function can(what){
+  if(what==='edit')return role==='host'||role==='admin';       // ลิงก์ไปหน้าแก้ข้อมูล
+  if(what==='entry')return role==='host'||role==='recorder';   // ลิงก์ไปหน้ากรอกผล/กล่องเหยื่อ
+  if(what==='upload')return role==='host'||role==='admin';     // อัปโหลดไฟล์
+  return false;
+}
+
+function readUrl(){
+  var q=new URLSearchParams(location.search),h=new URLSearchParams((location.hash||'').replace(/^#/,''));
+  if(q.get('c')&&DB[q.get('c')])S.cid=q.get('c');
+  var t=h.get('tab');if(['contracts','stations','visits','files'].indexOf(t)>=0)S.tab=t;
+  var cn=h.get('contract');
+  if(cn&&contractOf(cn)){S.sel=cn;S.st.contract=cn;S.vi.contract=cn}
+  if(h.get('type'))S.st.type=h.get('type');
+  if(h.get('status'))S.st.status=h.get('status');
+  if(h.get('station')){S.tab='stations';S.st.q=h.get('station');S.st.open[(cn||'')+'|'+h.get('station')]=true;S.st.open['*|'+h.get('station')]=true}
+}
+function writeUrl(){try{history.replaceState(null,'','#tab='+S.tab+(S.sel?'&contract='+S.sel:''))}catch(e){}}
+
+/* ======================================================================
+   4) สรุปตัวเลข + แจ้งเตือน (คำนวณจากข้อมูลจริงในหน้า)
+   ====================================================================== */
+function monthStates(c){                                   // §7.4 ตกบริการ
+  var cu=cust(),months=serviceMonths(c.start,c.years),cur=TODAY.slice(0,7);
+  var ok={};cu.visits.forEach(function(v){if(v.contract===c.no&&v.type==='routine')ok[v.date.slice(0,7)]=true});
+  var cx=c.cancelledAt?c.cancelledAt.slice(0,7):null;
+  return months.map(function(m){
+    var s;
+    if(cx&&m>=cx)s='cx';else if(ok[m])s='ok';else if(m<cur)s='miss';else if(m===cur)s='now';else s='fut';
+    return {m:m,s:s};
+  });
+}
+function missedAll(){var out=[];cust().contracts.forEach(function(c){monthStates(c).forEach(function(x){if(x.s==='miss')out.push({c:c.no,m:x.m})})});return out}
+function stationCounts(list){var r={IG:0,IC:0,AG:0,active:0,eliminated:0,pending_removal:0,removed:0,total:list.length};list.forEach(function(s){r[s.type]++;r[s.status]++});return r}
+function collectProgress(no){var l=cust().stations.filter(function(s){return s.contract===no&&(s.type==='IG'||s.type==='IC')});return {done:l.filter(function(s){return s.collectedAt}).length,total:l.length}}
+
+function infoHtml(){
+  var c=cust(),all=stationCounts(c.stations.filter(function(s){return s.status!=='removed'})),missed=missedAll();   // นับเฉพาะสถานีที่ยังอยู่หน้างาน
+  var activeCt=c.contracts.filter(function(x){return x.status==='active'}).length;
+  var last=c.visits.length?c.visits[0].date:null;
+  var h='<h3>ข้อมูลลูกค้า <span class="chip na" title="ข้อมูลส่วนบุคคล — viewer อ่านไม่ได้ (PDPA)">🔒 PDPA</span></h3><div class="body">';
+  h+='<dl class="kv"><dt>สาขา</dt><dd>'+esc(c.branch)+' · '+esc(c.zone)+'</dd><dt>ทีม</dt><dd>'+esc(c.team)+'</dd><dt>ประเภท</dt><dd>'+esc(c.type)+'</dd>'+
+     '<dt>ผู้ติดต่อ</dt><dd>'+esc(c.contact)+'</dd><dt>โทร</dt><dd>'+esc(c.phone)+'</dd><dt>ที่อยู่</dt><dd>'+esc(c.address)+'</dd></dl>';
+  h+='<div class="sep"></div><div class="lab" style="margin-bottom:6px">สรุป</div><div class="sumgrid">'+
+     '<div class="sbox"><div class="v num">'+activeCt+' <span class="lab">/ '+c.contracts.length+'</span></div><div class="l">สัญญาใช้งาน / ทั้งหมด</div></div>'+
+     '<div class="sbox"><div class="v num">'+all.total+'</div><div class="l">สถานีในพื้นที่ ('+all.IG+' IG · '+all.IC+' IC · '+all.AG+' AG)</div></div>'+
+     '<div class="sbox '+(missed.length?'bad':'good')+'"><div class="v num">'+missed.length+'</div><div class="l">เดือนตกบริการ</div></div>'+
+     '<div class="sbox"><div class="v num" style="font-size:15px;padding-top:3px">'+fmt(last)+'</div><div class="l">เข้าบริการล่าสุด</div></div></div>';
+  h+=alertsHtml();
+  h+='<div class="sep"></div><div class="lab">'+esc(c.audit)+' · <span class="tag">audit_log</span></div></div>';
+  return h;
+}
+function alertsHtml(){
+  var c=cust(),h='',all=stationCounts(c.stations);
+  c.contracts.forEach(function(k){
+    if(k.status==='active'){
+      var left=days(TODAY,k.end);
+      if(left<=90)h+='<div class="alert warn"><b>สัญญา '+esc(k.no)+' ใกล้หมด</b> — อีก '+left+' วัน (หมด '+fmt(k.end)+')</div>';
+      if(k.end!==defaultEnd(k.start,k.years))h+='<div class="alert warn"><b>วันสิ้นสุด '+esc(k.no)+' ไม่ตรงกฎ</b> — '+fmt(k.end)+' (ควรเป็น '+fmt(defaultEnd(k.start,k.years))+' = วันเริ่ม + '+k.years+' ปี − 1 วัน) <button class="linkbtn" data-act="goto" data-tab="contracts" data-contract="'+esc(k.no)+'">ดูสัญญา</button></div>';
+    }
+    if(k.status==='expired_pending_collection'){
+      var p=collectProgress(k.no);
+      h+='<div class="alert warn"><b>หมดสัญญา — รอเก็บสถานีคืน</b> '+p.done+' / '+p.total+' จุด (IG/IC) ยังไม่ครบจึงปิดสัญญาไม่ได้ ('+esc(k.no)+') '+(can('entry')||can('edit')?'<a href="'+ENTRY_URL+'">ไปหน้ารอเก็บสถานี ↗</a>':'')+'</div>';
+    }
+  });
+  if(all.pending_removal)h+='<div class="alert warn"><b>กล่องเหยื่อ AG รอถอด '+all.pending_removal+' จุด</b> <button class="linkbtn" data-act="goto" data-tab="stations" data-status="pending_removal">ดูรายการ</button></div>';
+  var m=missedAll();
+  if(m.length)h+='<div class="alert bad"><b>ตกบริการ '+m.length+' เดือน</b> — '+m.slice(0,4).map(function(x){return monthTh(x.m)}).join(', ')+(m.length>4?' …':'')+' <button class="linkbtn" data-act="goto" data-tab="visits">ดูแถบเดือนบริการ</button></div>';
+  if(role==='recorder'&&c.team!==ME_TEAM)h+='<div class="alert info"><b>ลูกค้าของทีม '+esc(c.team)+'</b> — คุณเป็นทีม '+ME_TEAM+' ถ้ากรอกผลบริการให้ลูกค้ารายนี้ ระบบจะถามยืนยัน 1 ครั้งและบันทึกใน audit log (SPEC §5)</div>';
+  return h;
+}
+
+/* ======================================================================
+   5) หัวหน้า + แท็บ
+   ====================================================================== */
+function headHtml(){
+  var c=cust(),act=c.contracts.some(function(x){return x.status==='active'}),pend=c.contracts.some(function(x){return x.status==='expired_pending_collection'});
+  var h='<h1>'+esc(c.name)+'</h1>';
+  h+=act?chip('ok','มีสัญญาใช้งาน'):pend?chip('pend','หมดสัญญา · รอเก็บสถานี'):chip('done','ไม่มีสัญญาใช้งาน');
+  h+='<div class="acts">';
+  if(can('entry'))h+='<a class="btn primary" href="'+ENTRY_URL+'" title="ไปหน้ากรอกผลบริการรายเดือน (IG/IC)">✎ กรอกผลบริการ ↗</a><a class="btn" href="'+ENTRY_URL+'" title="ไปหน้ากล่องเหยื่อ (AG)">▣ กล่องเหยื่อ (AG) ↗</a>';
+  if(can('edit'))h+='<a class="btn'+(can('entry')?'':' primary')+'" href="'+EDIT_URL+'" title="ไปหน้าเปิดงาน/ทะเบียนเพื่อแก้ข้อมูลลูกค้า สัญญา สถานี">✎ แก้ข้อมูลลูกค้า/สัญญา ↗</a>';
+  if(!can('entry')&&!can('edit'))h+='<span class="lab">ดูอย่างเดียว</span>';
+  h+='</div>';return h;
+}
+var TABS=[['contracts','สัญญา'],['stations','สถานี'],['visits','ประวัติบริการ'],['files','ไฟล์แนบ']];
+function tabsHtml(){
+  var c=cust(),counts={contracts:c.contracts.length,stations:c.stations.length,visits:c.visits.length,files:fileCount()};
+  return TABS.map(function(t){
+    var on=S.tab===t[0];
+    return '<button class="tab" role="tab" id="tab-'+t[0]+'" aria-selected="'+on+'" aria-controls="panel" tabindex="'+(on?0:-1)+'" data-act="tab" data-tab="'+t[0]+'">'+t[1]+' <span class="chip done">'+counts[t[0]]+'</span></button>';
+  }).join('');
+}
+function fileCount(){var n=0,c=cust();Object.keys(c.files).forEach(function(k){n+=Object.keys(c.files[k]).length});return n}
+
+/* ======================================================================
+   6) แท็บ "สัญญา"  (contracts)
+   ====================================================================== */
+function contractsHtml(){
+  var cs=sortedContracts();
+  if(!S.sel||!contractOf(S.sel))S.sel=cs[0].no;
+  var h='<p class="hint">ตาราง <code>contracts</code> — 1 ลูกค้ามีได้หลายสัญญา (ต่อสัญญา = สัญญาใหม่ต่อเนื่อง) · Tier คำนวณจากมูลค่าต่อปีด้วย <code>tier_rules</code> · คลิกแถวเพื่อดูรายละเอียด</p>';
+  h+='<div class="tablewrap"><table><thead><tr><th scope="col">เลขที่สัญญา</th><th scope="col">Tier</th><th scope="col">ประเภท</th><th scope="col">ช่วงสัญญา</th><th class="r" scope="col">มูลค่าสัญญา</th><th class="r" scope="col">ต่อปี</th><th scope="col">ทีม</th><th scope="col">สถานะ</th></tr></thead><tbody>';
+  cs.forEach(function(k){
+    var s=CT_LABEL[k.status];
+    h+='<tr class="row'+(k.no===S.sel?' sel':'')+'"><td><button class="linkbtn mono" data-act="pick-contract" data-contract="'+esc(k.no)+'" aria-pressed="'+(k.no===S.sel)+'">'+esc(k.no)+'</button></td><td>'+tierBadge(k)+'</td>'+
+      '<td>'+(k.sale==='new'?chip('info','New'):chip('na','Renew'))+' <span class="lab">'+k.years+' ปี</span></td><td>'+fmt(k.start)+' – '+fmt(k.end)+'</td>'+
+      '<td class="r num">'+num(k.value)+'</td><td class="r num">'+num(annualValue(k.value,k.years))+'</td><td>'+esc(k.team)+'</td><td>'+chip(s[1],s[0],k.status)+'</td></tr>';
+  });
+  h+='</tbody></table></div>';
+  return h+contractDetailHtml(contractOf(S.sel));
+}
+function contractDetailHtml(k){
+  var cu=cust(),ms=monthStates(k),cnt={ok:0,miss:0,total:ms.length};ms.forEach(function(x){if(x.s==='ok')cnt.ok++;if(x.s==='miss')cnt.miss++});
+  var sc=stationCounts(cu.stations.filter(function(s){return s.contract===k.no}));
+  var de=defaultEnd(k.start,k.years),bad=k.end!==de,first=ms[0].m,lastM=ms[ms.length-1].m;
+  var steps=['active','expired_pending_collection','closed'],idx=steps.indexOf(k.status);
+  var h='<div class="dcard"><h4><span class="mono">'+esc(k.no)+'</span> '+tierBadge(k)+' '+chip(CT_LABEL[k.status][1],CT_LABEL[k.status][0],k.status)+' '+(k.sale==='new'?chip('info','New'):chip('na','Renew'))+'</h4>';
+  h+='<div class="dgrid">'+
+    '<div class="it"><span class="lab">ลูกค้า / ทีม</span>'+esc(cu.name)+' · ทีม '+esc(k.team)+'</div>'+
+    '<div class="it"><span class="lab">วันเริ่ม – วันสิ้นสุด</span>'+fmt(k.start)+' – '+fmt(k.end)+(bad?' <span class="chip pend" title="ควรเป็น '+fmt(de)+'">⚠ ไม่ตรงกฎ</span>':'')+'</div>'+
+    '<div class="it"><span class="lab">เดือนบริการ (§7.2)</span>'+monthTh(first)+' – '+monthTh(lastM)+' · '+ms.length+' เดือน</div>'+
+    '<div class="it"><span class="lab">มูลค่าสัญญา / ต่อปี</span>'+num(k.value)+' / '+num(annualValue(k.value,k.years))+' บาท</div>'+
+    '<div class="it"><span class="lab">Site plan</span>IG '+(k.spIG?chip('ok','มี'):chip('na','ไม่มี'))+' · IC '+(k.spIC?chip('ok','มี'):chip('na','ไม่มี'))+' <button class="linkbtn" data-act="goto" data-tab="files" data-contract="'+esc(k.no)+'">ดูไฟล์</button></div>'+
+    '<div class="it"><span class="lab">ปิดสัญญา / ยกเลิก</span>'+(k.closedAt?'ปิดเมื่อ '+fmt(k.closedAt):k.cancelledAt?'ยกเลิก '+fmt(k.cancelledAt):'—')+'</div>'+
+    '<div class="it"><span class="lab">สถานี</span>'+sc.total+' จุด ('+sc.IG+' IG · '+sc.IC+' IC · '+sc.AG+' AG) <button class="linkbtn" data-act="goto" data-tab="stations" data-contract="'+esc(k.no)+'">ดูสถานี</button></div>'+
+    '<div class="it"><span class="lab">บริการประจำเดือน</span>ครบ '+cnt.ok+' · <span style="color:'+(cnt.miss?'var(--danger)':'inherit')+'">ตกบริการ '+cnt.miss+'</span> / '+cnt.total+' เดือน <button class="linkbtn" data-act="goto" data-tab="visits" data-contract="'+esc(k.no)+'">ดูประวัติ</button></div></div>';
+  if(k.status==='cancelled'){h+='<div class="steps"><span class="step cur">ยกเลิก</span></div>'}
+  else{h+='<div class="steps" aria-label="สถานะสัญญา">'+steps.map(function(s,i){return '<span class="step '+(i<idx?'past':i===idx?'cur':'')+'">'+CT_LABEL[s][0]+'</span>'}).join('<span aria-hidden="true">›</span>')+'</div>'}
+  if(k.status==='expired_pending_collection'){
+    var p=collectProgress(k.no),pc=p.total?Math.round(p.done/p.total*100):0;
+    h+='<div style="margin-top:10px"><div class="lab" style="display:flex;justify-content:space-between"><span>เก็บสถานี IG/IC คืนบริษัท (§7.8)</span><b>'+p.done+' / '+p.total+' จุด</b></div><div class="bar" role="progressbar" aria-valuenow="'+pc+'" aria-valuemin="0" aria-valuemax="100" aria-label="ความคืบหน้าการเก็บสถานีคืน"><i style="width:'+pc+'%"></i></div>'+
+      '<div class="lab" style="margin-top:5px">'+(p.done===p.total?'เก็บครบแล้ว — พร้อมกด "ปิดสัญญา"':'ยังเหลือ '+(p.total-p.done)+' จุด — ปิดสัญญาไม่ได้จนกว่าจะเก็บครบ')+'</div></div>';
+  }
+  return h+'</div>';
+}
+
+/* ======================================================================
+   7) แท็บ "สถานี"  (stations + station_checks)
+   ====================================================================== */
+var TYPE_ORDER={AG:0,IG:1,IC:2};
+function stationRows(){
+  var q=S.st.q.trim().toLowerCase();
+  return cust().stations.filter(function(s){
+    return (S.st.contract==='all'||s.contract===S.st.contract)&&(S.st.type==='all'||s.type===S.st.type)&&
+           (S.st.status==='all'||s.status===S.st.status)&&(!q||s.code.toLowerCase().indexOf(q)>=0);
+  }).sort(function(a,b){
+    if(a.contract!==b.contract)return a.contract<b.contract?1:-1;
+    if(a.type!==b.type)return TYPE_ORDER[a.type]-TYPE_ORDER[b.type];
+    return a.code<b.code?-1:1;
+  });
+}
+function stationsHtml(){
+  var cu=cust(),multi=cu.contracts.length>1;
+  var scope=cu.stations.filter(function(s){return S.st.contract==='all'||s.contract===S.st.contract});
+  var cnt=stationCounts(scope),rows=stationRows(),pages=Math.max(1,Math.ceil(rows.length/PAGE_ST));
+  if(S.st.page>pages)S.st.page=pages;
+  var slice=rows.slice((S.st.page-1)*PAGE_ST,S.st.page*PAGE_ST);
+  var h='<p class="hint">ตาราง <code>stations</code> + <code>station_checks</code> — ไม่จำกัดจำนวนต่อลูกค้า · AG ติดตั้งเมื่อแก้ปัญหาปลวก แล้วตามด้วย F1–F10 นับ<b>แยกต่อสถานี</b> · IG/IC ตรวจประจำเดือน บันทึกเฉพาะจุดที่พบปลวก (exception) · คลิก ▸ ดูประวัติการตรวจของจุดนั้น</p>';
+  h+='<div class="filters">'+
+    '<div class="field"><label for="f-st-contract">สัญญา</label><select id="f-st-contract" data-bind="st.contract"><option value="all">ทุกสัญญา</option>'+sortedContracts().map(function(k){return '<option value="'+esc(k.no)+'"'+(S.st.contract===k.no?' selected':'')+'>'+esc(k.no)+'</option>'}).join('')+'</select></div>'+
+    '<div class="field"><label for="f-st-q">ค้นรหัสสถานี</label><input id="f-st-q" data-bind="st.q" value="'+esc(S.st.q)+'" placeholder="เช่น AG-04"></div></div>';
+  h+='<div class="chips" role="group" aria-label="กรองตามชนิดสถานี"><span class="lab">ชนิด:</span>'+
+    '<button class="chip info'+(S.st.type==='all'?' on':'')+'" data-act="flt" data-k="type" data-v="all">ทั้งหมด '+cnt.total+'</button>'+
+    ['IG','IC','AG'].map(function(t){return '<button class="chip info'+(S.st.type===t?' on':'')+'" data-act="flt" data-k="type" data-v="'+t+'"><b>'+t+'</b> '+cnt[t]+'</button>'}).join('')+'</div>';
+  h+='<div class="chips" role="group" aria-label="กรองตามสถานะสถานี"><span class="lab">สถานะ:</span>'+
+    '<button class="chip na'+(S.st.status==='all'?' on':'')+'" data-act="flt" data-k="status" data-v="all">ทั้งหมด</button>'+
+    Object.keys(ST_LABEL).map(function(k){return '<button class="chip '+ST_LABEL[k][1]+(S.st.status===k?' on':'')+'" data-act="flt" data-k="status" data-v="'+k+'" title="'+k+'">'+ST_LABEL[k][0]+' '+cnt[k]+'</button>'}).join('')+'</div>';
+  if(!rows.length)return h+'<div class="empty">ไม่พบสถานีตามเงื่อนไข — ลองล้างตัวกรอง <button class="linkbtn" data-act="clear-st">ล้างตัวกรอง</button></div>';
+  h+='<div class="tablewrap"><table><thead><tr><th style="width:34px" aria-label="ขยายดูประวัติ"></th><th scope="col">รหัส</th><th scope="col">ชนิด</th>'+(multi?'<th scope="col">สัญญา</th>':'')+'<th scope="col">ติดตั้ง</th><th scope="col">สถานะ</th><th scope="col">ตรวจ / F</th><th scope="col">ตรวจล่าสุด</th><th scope="col">ถอด / เก็บคืน</th></tr></thead><tbody>';
+  slice.forEach(function(s){
+    var key=s.contract+'|'+s.code,open=!!(S.st.open[key]||S.st.open['*|'+s.code]&&S.st.q),last=s.checks[s.checks.length-1],lab=ST_LABEL[s.status];
+    var fcol=s.type==='AG'?(s.checks.length?'F'+s.checks.length:'S (ยังไม่ติดตาม)'):(s.checks.length?'พบ '+s.checks.length+' ครั้ง':'—');
+    h+='<tr class="row"><td><button class="caret" data-act="st-open" data-k="'+esc(key)+'" aria-expanded="'+open+'" aria-label="ประวัติการตรวจของ '+esc(s.code)+'">'+(open?'▾':'▸')+'</button></td>'+
+      '<td class="mono">'+esc(s.code)+'</td><td><span class="sttype">'+s.type+'</span></td>'+(multi?'<td class="mono lab">'+esc(s.contract)+'</td>':'')+
+      '<td>'+fmt(s.installed)+'</td><td>'+chip(lab[1],lab[0],s.status)+'</td><td>'+fcol+'</td>'+
+      '<td>'+(last?fmt(last.date)+' · '+esc(last.caste):'<span class="lab">—</span>')+'</td>'+
+      '<td>'+(s.collectedAt?'เก็บคืน '+fmt(s.collectedAt):s.removedAt?'ถอด '+fmt(s.removedAt):'<span class="lab">—</span>')+'</td></tr>';
+    if(open){
+      h+='<tr class="sub"><td></td><td colspan="'+(multi?8:7)+'">';
+      if(!s.checks.length)h+='<span class="lab">'+(s.type==='AG'?'ติดตั้งแล้ว ยังไม่มีรอบติดตาม (F1)':'ไม่พบปลวกในทุกรอบ — ไม่มีบันทึกผิดปกติ (exception entry §7.5)')+'</span>';
+      else h+='<table><thead><tr><th>'+(s.type==='AG'?'F':'ครั้งที่')+'</th><th>วันที่ตรวจ</th><th>รอบ</th><th>สัดส่วนปลวก</th><th class="r">เหยื่อเติม (ก.)</th><th>หมายเหตุ</th></tr></thead><tbody>'+
+        s.checks.map(function(k){return '<tr><td><b>'+(s.type==='AG'?'F'+k.no:k.no)+'</b></td><td>'+fmt(k.date)+'</td><td>'+chip(VT_LABEL[k.type][1],VT_LABEL[k.type][0])+'</td><td>'+(k.caste==='ปลวกตาย'?chip('ok','ปลวกตาย'):esc(k.caste))+'</td><td class="r num">'+k.bait+'</td><td>'+(k.note?esc(k.note):'<span class="lab">—</span>')+'</td></tr>'}).join('')+'</tbody></table>';
+      h+='</td></tr>';
+    }
+  });
+  h+='</tbody></table></div>'+pager(rows.length,S.st.page,PAGE_ST,'st-page');
+  return h;
+}
+function pager(total,page,size,act){
+  var pages=Math.max(1,Math.ceil(total/size)),a=(page-1)*size+1,b=Math.min(total,page*size);
+  return '<div class="pager"><span>แสดง '+a+'–'+b+' จาก '+total+' รายการ</span><span class="btns"><button class="btn sm" data-act="'+act+'" data-d="-1"'+(page<=1?' disabled':'')+'>← ก่อนหน้า</button><span style="align-self:center">หน้า '+page+' / '+pages+'</span><button class="btn sm" data-act="'+act+'" data-d="1"'+(page>=pages?' disabled':'')+'>ถัดไป →</button></span></div>';
+}
+
+/* ======================================================================
+   8) แท็บ "ประวัติบริการ"  (visits + station_checks)
+   ====================================================================== */
+function visitsHtml(){
+  var cu=cust(),multi=cu.contracts.length>1;
+  var rows=cu.visits.filter(function(v){return (S.vi.contract==='all'||v.contract===S.vi.contract)&&(S.vi.type==='all'||v.type===S.vi.type)});
+  var pages=Math.max(1,Math.ceil(rows.length/PAGE_VI));if(S.vi.page>pages)S.vi.page=pages;
+  var slice=rows.slice((S.vi.page-1)*PAGE_VI,S.vi.page*PAGE_VI);
+  var h='<p class="hint">ตาราง <code>visits</code> + <code>station_checks</code> — 1 แถว = 1 ครั้งที่เข้าบริการ (เข้าหลายวันในเดือนเดียว = หลายแถว) · 🔒 = เดือนที่ปิดแล้ว แก้ไม่ได้ · ตกบริการ = เดือนในช่วงสัญญาที่ไม่มีรอบประจำเดือน (routine)</p>';
+  var scs=sortedContracts().filter(function(k){return S.vi.contract==='all'||k.no===S.vi.contract});
+  h+='<div class="legend" aria-label="คำอธิบายแถบเดือนบริการ"><span><i class="sw ok"></i>บริการครบ</span><span><i class="sw miss"></i>ตกบริการ</span><span><i class="sw now"></i>เดือนนี้ยังไม่เข้า</span><span><i class="sw fut"></i>ยังไม่ถึง</span></div>';
+  scs.forEach(function(k){
+    var ms=monthStates(k),miss=ms.filter(function(x){return x.s==='miss'}).length;
+    h+='<div class="strip"><h5><span class="mono">'+esc(k.no)+'</span>'+tierBadge(k)+'<span class="lab">'+ms.length+' เดือนบริการ · '+(miss?'<b style="color:var(--danger)">ตกบริการ '+miss+' เดือน</b>':'ไม่มีตกบริการ')+'</span></h5>';
+    for(var i=0;i<ms.length;i+=12){
+      h+='<div class="mrow">'+ms.slice(i,i+12).map(function(x){
+        var sym={ok:'✓',miss:'ตก',now:'…',fut:'–',cx:'ยก'}[x.s];
+        return '<div class="mcell '+x.s+'" title="'+monthTh(x.m)+'"><b>'+TH_M[+x.m.split('-')[1]-1]+' '+x.m.slice(2,4)+'</b>'+sym+'</div>';
+      }).join('')+'</div>';
+    }
+    h+='</div>';
+  });
+  h+='<div class="filters"><div class="field"><label for="f-vi-contract">สัญญา</label><select id="f-vi-contract" data-bind="vi.contract"><option value="all">ทุกสัญญา</option>'+sortedContracts().map(function(k){return '<option value="'+esc(k.no)+'"'+(S.vi.contract===k.no?' selected':'')+'>'+esc(k.no)+'</option>'}).join('')+'</select></div>'+
+    '<div class="field"><label for="f-vi-type">ประเภทการเข้า</label><select id="f-vi-type" data-bind="vi.type"><option value="all">ทุกประเภท</option>'+Object.keys(VT_LABEL).map(function(t){return '<option value="'+t+'"'+(S.vi.type===t?' selected':'')+'>'+VT_LABEL[t][0]+'</option>'}).join('')+'</select></div></div>';
+  if(!rows.length)return h+'<div class="empty">ไม่พบการเข้าบริการตามเงื่อนไข</div>';
+  h+='<div class="tablewrap"><table><thead><tr><th style="width:34px"></th><th scope="col">วันที่</th><th scope="col">ประเภท</th>'+(multi?'<th scope="col">สัญญา</th>':'')+'<th scope="col">ทีม</th><th class="r" scope="col">เวลา (นาที)</th><th class="r" scope="col">เหยื่อ IG/IC (ก.)</th><th class="r" scope="col">เหยื่อ AG (ก.)</th><th class="r" scope="col">ไม้ล่อ (ชิ้น)</th><th scope="col">S</th><th scope="col">จุดที่ตรวจ</th><th scope="col">หมายเหตุ</th></tr></thead><tbody>';
+  slice.forEach(function(v){
+    var key=v.contract+'|'+v.date+'|'+v.type,open=!!S.vi.open[key],locked=v.date.slice(0,7)<=CLOSED_THROUGH,lab=VT_LABEL[v.type];
+    h+='<tr class="row"><td><button class="caret" data-act="vi-open" data-k="'+esc(key)+'" aria-expanded="'+open+'" aria-label="รายละเอียดการเข้าวันที่ '+fmt(v.date)+'">'+(open?'▾':'▸')+'</button></td>'+
+      '<td>'+fmt(v.date)+(locked?' <span title="เดือนที่ปิดแล้ว แก้ไม่ได้" aria-label="เดือนที่ปิดแล้ว">🔒</span>':'')+'</td><td>'+chip(lab[1],lab[0],v.type)+'</td>'+(multi?'<td class="mono lab">'+esc(v.contract)+'</td>':'')+
+      '<td>'+esc(v.team)+'</td><td class="r num">'+v.dur+'</td><td class="r num">'+(v.baitIgIc||'—')+'</td><td class="r num">'+(v.baitAg||'—')+'</td><td class="r num">'+(v.timber||'—')+'</td>'+
+      '<td>'+(v.first?chip('info','S ติดตั้ง'):'<span class="lab">—</span>')+'</td><td class="num">'+(v.checks.length?v.checks.length+' จุด':'<span class="lab">ไม่พบ</span>')+'</td><td style="white-space:normal;min-width:160px">'+(v.note?esc(v.note):'<span class="lab">—</span>')+'</td></tr>';
+    if(open){
+      h+='<tr class="sub"><td></td><td colspan="'+(multi?11:10)+'"><div class="lab" style="margin-bottom:6px">บันทึกโดย '+esc(v.by)+' · '+(v.inspect?'ตรวจภายใน':'ไม่ตรวจภายใน')+' · '+(v.proxy?'เซ็นแทน':'ลูกค้าเซ็นเอง')+' · เคมีผง '+(v.powder||0)+' จุด</div>';
+      if(!v.checks.length)h+='<span class="lab">'+(v.type==='routine'?'ทุกสถานีปกติ — ไม่มีจุดที่พบปลวก (exception entry §7.5)':'ไม่มีการตรวจสถานีในครั้งนี้')+'</span>';
+      else h+='<table><thead><tr><th>สถานี</th><th>ชนิด</th><th>F / ครั้งที่</th><th>สัดส่วนปลวก</th><th class="r">เหยื่อเติม (ก.)</th><th>หมายเหตุ</th></tr></thead><tbody>'+
+        v.checks.map(function(x){return '<tr><td class="mono">'+esc(x.st.code)+'</td><td><span class="sttype">'+x.st.type+'</span></td><td>'+(x.st.type==='AG'?'<b>F'+x.k.no+'</b>':'<span class="lab">ครั้งที่ '+x.k.no+'</span>')+'</td><td>'+(x.k.caste==='ปลวกตาย'?chip('ok','ปลวกตาย'):esc(x.k.caste))+'</td><td class="r num">'+x.k.bait+'</td><td>'+(x.k.note?esc(x.k.note):'<span class="lab">—</span>')+'</td></tr>'}).join('')+'</tbody></table>';
+      h+='</td></tr>';
+    }
+  });
+  return h+'</tbody></table></div>'+pager(rows.length,S.vi.page,PAGE_VI,'vi-page');
+}
+
+/* ======================================================================
+   9) แท็บ "ไฟล์แนบ"  (Supabase Storage — private bucket)
+   ====================================================================== */
+function filesHtml(){
+  var cu=cust(),up=can('upload');
+  var h='<p class="hint">ไฟล์เก็บใน Supabase Storage (private bucket) — เปิดดู/ดาวน์โหลดผ่าน signed URL ที่หมดอายุเร็ว ไม่มีลิงก์สาธารณะ (PDPA) · รับ PDF / PNG / JPG ไม่เกิน 10 MB · '+(up?'<b>host/admin</b> อัปโหลด/แทนที่ไฟล์ได้':'บทบาทนี้ดู/ดาวน์โหลดได้อย่างเดียว')+'</p>';
+  sortedContracts().forEach(function(k){
+    var f=cu.files[k.no]||{};
+    h+='<div class="fcard"><h4><span class="mono">'+esc(k.no)+'</span>'+tierBadge(k)+chip(CT_LABEL[k.status][1],CT_LABEL[k.status][0])+'</h4>';
+    FILE_SLOTS.forEach(function(sl){
+      var key=sl[0],file=f[key],needed=key==='contract_pdf'||(key==='site_plan_ig'&&k.spIG)||(key==='site_plan_ic'&&k.spIC);
+      h+='<div class="frow"><div class="ficon" aria-hidden="true">'+sl[1]+'</div><div class="fmain"><b>'+sl[2]+'</b>';
+      if(file)h+='<span class="lab">'+esc(file.name)+' · '+file.size.toFixed(1)+' MB · อัปโหลด '+fmt(file.at)+' โดย '+esc(file.by)+'</span>';
+      else h+='<span class="lab">'+(needed?'':'สัญญานี้ไม่มี '+sl[2])+'</span>';
+      h+='</div><div class="facts">';
+      if(file)h+='<button class="btn sm" data-act="file-view" data-k="'+esc(file.name)+'">ดู</button><button class="btn sm" data-act="file-dl" data-k="'+esc(file.name)+'">ดาวน์โหลด</button>';
+      else if(needed)h+=chip('pend','ยังไม่แนบไฟล์');
+      else h+=chip('na','ไม่ใช้');
+      if(up&&(file||needed))h+='<button class="btn sm" data-act="file-up" data-contract="'+esc(k.no)+'" data-slot="'+key+'">'+(file?'แทนที่':'อัปโหลด')+'</button>';
+      h+='</div></div>';
+    });
+    h+='</div>';
+  });
+  if(up)h+='<div class="drop">เลือก "อัปโหลด" ที่ช่องที่ต้องการ — ระบบตรวจชนิดและขนาดไฟล์ก่อนบันทึก · การอัปโหลด/แทนที่ทุกครั้งบันทึกใน <span class="tag">audit_log</span></div>';
+  return h;
+}
+
+/* ======================================================================
+   10) วาดหน้า + จัดการเหตุการณ์
+   ====================================================================== */
+function render(){
+  var viewer=(role==='viewer');
+  document.getElementById('blocked').hidden=!viewer;
+  document.getElementById('page').hidden=viewer;
+  if(viewer)return;
+  document.getElementById('head').innerHTML=headHtml();
+  document.getElementById('info').innerHTML=infoHtml();
+  document.getElementById('tabs').innerHTML=tabsHtml();
+  var p=document.getElementById('panel');
+  p.setAttribute('aria-labelledby','tab-'+S.tab);
+  p.innerHTML=({contracts:contractsHtml,stations:stationsHtml,visits:visitsHtml,files:filesHtml})[S.tab]();
+  writeUrl();
+}
+function setPath(path,val){var a=path.split('.');S[a[0]][a[1]]=val;S[a[0]].page=1}
+function toast(msg){var t=document.getElementById('toast');t.textContent=msg;t.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(function(){t.hidden=true},3200)}
+function gotoTab(tab,contract,status){
+  S.tab=tab;
+  if(contract){S.sel=contract;S.st.contract=contract;S.vi.contract=contract;S.st.page=1;S.vi.page=1}
+  if(status){S.st.status=status;S.st.type='all';S.st.page=1}
+  render();document.getElementById('panel').scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+
+var ACT={
+  'tab':function(el){S.tab=el.dataset.tab;render()},
+  'goto':function(el){gotoTab(el.dataset.tab,el.dataset.contract,el.dataset.status)},
+  'pick-contract':function(el){S.sel=el.dataset.contract;render()},
+  'flt':function(el){S.st[el.dataset.k]=el.dataset.v;S.st.page=1;render()},
+  'clear-st':function(){S.st.contract='all';S.st.type='all';S.st.status='all';S.st.q='';S.st.page=1;render()},
+  'st-open':function(el){var k=el.dataset.k;S.st.open[k]=!S.st.open[k];render()},
+  'vi-open':function(el){var k=el.dataset.k;S.vi.open[k]=!S.vi.open[k];render()},
+  'st-page':function(el){S.st.page+=+el.dataset.d;render()},
+  'vi-page':function(el){S.vi.page+=+el.dataset.d;render()},
+  'file-view':function(el){toast('ตัวอย่าง: เปิด "'+el.dataset.k+'" ผ่าน signed URL (ยังไม่เชื่อม Storage จริง)')},
+  'file-dl':function(el){toast('ตัวอย่าง: ดาวน์โหลด "'+el.dataset.k+'" (ยังไม่เชื่อม Storage จริง)')},
+  'file-up':function(el){upTarget={contract:el.dataset.contract,slot:el.dataset.slot};var fi=document.getElementById('fileIn');fi.value='';fi.click()}
+};
+document.addEventListener('click',function(e){
+  var el=e.target.closest('[data-act]');if(!el||el.disabled)return;
+  var fn=ACT[el.dataset.act];if(fn)fn(el,e);
+});
+document.addEventListener('change',function(e){
+  var el=e.target.closest('[data-bind]');if(el){setPath(el.dataset.bind,el.value);render()}
+});
+document.addEventListener('input',function(e){
+  var el=e.target;if(el.id==='f-st-q'){S.st.q=el.value;S.st.page=1;var pos=el.selectionStart;render();var n=document.getElementById('f-st-q');n.focus();try{n.setSelectionRange(pos,pos)}catch(x){}}
+});
+/* คีย์บอร์ดแท็บ: ← → Home End */
+document.getElementById('tabs').addEventListener('keydown',function(e){
+  var ids=TABS.map(function(t){return t[0]}),i=ids.indexOf(S.tab),n=i;
+  if(e.key==='ArrowRight')n=(i+1)%ids.length;else if(e.key==='ArrowLeft')n=(i+ids.length-1)%ids.length;else if(e.key==='Home')n=0;else if(e.key==='End')n=ids.length-1;else return;
+  e.preventDefault();S.tab=ids[n];render();document.getElementById('tab-'+S.tab).focus();
+});
+/* อัปโหลดไฟล์ (mock ในหน่วยความจำ) — ตรวจชนิด/ขนาดก่อนเสมอ */
+document.getElementById('fileIn').addEventListener('change',function(e){
+  var f=e.target.files[0];if(!f||!upTarget)return;
+  var okType=['application/pdf','image/png','image/jpeg'].indexOf(f.type)>=0;
+  if(!okType){toast('รับเฉพาะไฟล์ PDF, PNG, JPG');return}
+  if(f.size>10*1024*1024){toast('ไฟล์ใหญ่เกิน 10 MB — ลดขนาดแล้วลองอีกครั้ง');return}
+  var c=cust();c.files[upTarget.contract]=c.files[upTarget.contract]||{};
+  c.files[upTarget.contract][upTarget.slot]={name:f.name,size:f.size/1048576,by:'คุณ (เดโม)',at:TODAY};
+  toast('อัปโหลด "'+f.name+'" แล้ว (เดโม — ยังไม่บันทึกจริง)');render();
+});
+
+/* ตัวสลับลูกค้าเดโม / role / ธีม / เมนูจอเล็ก */
+var demo=document.getElementById('demoSel');
+Object.keys(DB).forEach(function(k){var o=document.createElement('option');o.value=k;o.textContent=DB[k].name;demo.appendChild(o)});
+demo.addEventListener('change',function(){
+  S.cid=demo.value;S.sel=null;S.tab='contracts';
+  S.st={contract:'all',type:'all',status:'all',q:'',page:1,open:{}};S.vi={contract:'all',type:'all',page:1,open:{}};
+  try{history.replaceState(null,'','?c='+S.cid)}catch(x){}render();
+});
+document.getElementById('roleSel').addEventListener('change',function(e){role=e.target.value;render()});
+document.getElementById('themeBtn').addEventListener('click',function(){
+  var el=document.documentElement,cur=el.getAttribute('data-theme');
+  var next=cur==='dark'?'light':(cur==='light'?'dark':(matchMedia('(prefers-color-scheme: dark)').matches?'light':'dark'));
+  el.setAttribute('data-theme',next);try{localStorage.setItem('aga-theme',next)}catch(x){}
+});
+try{var th=localStorage.getItem('aga-theme');if(th)document.documentElement.setAttribute('data-theme',th)}catch(x){}
+function toggleNav(open){
+  var b=document.body,want=(typeof open==='boolean')?open:!b.classList.contains('nav-open');
+  b.classList.toggle('nav-open',want);document.getElementById('navToggle').setAttribute('aria-expanded',want?'true':'false');
+}
+document.getElementById('navToggle').addEventListener('click',function(){toggleNav()});
+document.getElementById('navBackdrop').addEventListener('click',function(){toggleNav(false)});
+document.addEventListener('keydown',function(e){if(e.key==='Escape')toggleNav(false)});
+
+readUrl();demo.value=S.cid;render();
+})();
+</script>
+</body>
+</html>
