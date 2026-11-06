@@ -128,7 +128,13 @@ main{flex:1;min-width:0;padding:20px 24px 64px}
 .tab .unsaved{width:8px;height:8px;border-radius:50%;background:var(--warn)}
 
 .cols{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:16px;align-items:start}
-@media(max-width:1100px){.cols{grid-template-columns:minmax(0,1fr)}}
+.cols.types{grid-template-columns:minmax(0,1.5fr) minmax(0,1fr)}
+.cols.types .side{position:sticky;top:76px}
+/* จอแคบ: ทุกแท็บเหลือ 1 คอลัมน์ และแผงข้างเลิกติดจอ (อย่าใส่ inline style ที่ .cols — จะทับกฎนี้) */
+@media(max-width:1100px){
+  .cols,.cols.types{grid-template-columns:minmax(0,1fr)}
+  .cols.types .side{position:static}
+}
 .stack{display:flex;flex-direction:column;gap:16px}
 
 .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}
@@ -235,7 +241,13 @@ details.dev ul{margin:8px 0 0;padding-left:20px}
 .empty{padding:14px;font-size:12.5px;color:var(--fg-faint);text-align:center}
 select.preview{width:100%;font-family:inherit;font-size:13px;color:var(--fg);background:var(--surface);
   border:1px solid var(--border-strong);border-radius:8px;padding:6px}
-@media(max-width:560px){.titem{flex-wrap:wrap}.titem .use{text-align:left}}
+/* จอมือถือ: ชื่อประเภทอยู่บรรทัดบนเต็มแถว · จำนวนสัญญา + ปุ่มลงบรรทัดล่าง */
+@media(max-width:560px){
+  .titem{flex-wrap:wrap;row-gap:6px}
+  .titem .nm{flex:1 1 100%}
+  .titem .use{text-align:left;min-width:0;margin-right:auto}
+  .tgroup-h{flex-wrap:wrap}
+}
 
 /* ---------- แท็บทีม ---------- */
 .code{display:inline-grid;place-items:center;min-width:34px;height:28px;padding:0 8px;border-radius:7px;
@@ -416,7 +428,7 @@ dialog form{display:flex;flex-direction:column;max-height:88vh}
 
     <!-- ================= 2. ประเภทลูกค้า ================= -->
     <section id="p-types" role="tabpanel" aria-labelledby="tab-types" hidden>
-      <div class="cols" style="grid-template-columns:minmax(0,1.5fr) minmax(0,1fr)">
+      <div class="cols types">
         <div>
           <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap">
             <span class="chip accent" id="typeStat"></span>
@@ -427,7 +439,7 @@ dialog form{display:flex;flex-direction:column;max-height:88vh}
           </div>
           <div id="typeGroups"></div>
         </div>
-        <div class="stack" style="position:sticky;top:76px">
+        <div class="stack side">
           <div class="card">
             <h3>ตัวอย่างใน dropdown <span class="sub">หน้าเปิดงาน / ทะเบียน</span></h3>
             <div class="pad">
