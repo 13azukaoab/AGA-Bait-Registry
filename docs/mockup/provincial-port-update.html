@@ -1,0 +1,935 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>อัพเดท port สาขาต่างจังหวัด · AGA Bait Registry</title>
+<!--
+  หน้าจอ 9 "อัพเดท port สาขาต่างจังหวัด" (SPEC §8 หน้า 9 ฉบับ reframe v1.4, §6.5, §9.1) — ผู้ใช้: host เท่านั้น
+  mockup ข้อมูลตัวอย่าง (ตัวเลขสมมติ ไม่ใช่ข้อมูลจริง) — กดเล่นได้จริงเมื่อเปิดไฟล์ในเบราว์เซอร์
+
+  หน้านี้ "แทนงานอัปเดต Excel รายเดือน" ของ host: ทุกเดือนได้รับ "สรุปมูลค่าลูกค้า แยก Size × ปี" รายสาขาต่างจังหวัด
+  (8 tier: S1/S3/M1/M3/L1/L3/XL1/XL3 × จำนวน + มูลค่า + รวมทั้งสิ้น) แล้วเอาไปลงไฟล์ Excel master ทีละสาขา
+  → หน้านี้ทำสิ่งเดียวกันในระบบ แล้วเก็บเป็น monthly_branch_snapshots (source = manual) ส่ง Dashboard
+
+  Logic สรุป:
+  1) เลือกเดือน → ตาราง 19 สาขาต่างจังหวัด (SPEC §4 division = province) + สถานะ "อัปเดตแล้ว / ยังไม่อัปเดต"
+     (= checkbox คอลัมน์ C + ตาราง Rules กฎข้อ 4 ในไฟล์ Excel เดิม)
+  2) กดแถว → แผงแก้ไขด้านขวา (จอแคบ = ด้านล่าง): 8 tier × (จำนวน, มูลค่า) + ยอดรวมที่ระบบคำนวณ
+     เทียบกับ "ยอดจากรายงาน" (รวมทั้งสิ้น) + มูลค่าเดือนก่อน + ส่วนต่าง (= คอลัมน์ AD / AE เดิม)
+  3) วางตารางจาก Excel/เว็บ (คั่นด้วย tab) → ระบบ map เข้า S1…XL3 ให้ + แสดงตัวอย่างก่อนใส่ลงฟอร์ม
+  4) เดือนที่ยังไม่มีข้อมูล → "ยกค่าเดือนล่าสุดมาก่อน" (SPEC §6.5) สถานะ ยังไม่อัปเดต จนกว่า host ยืนยัน/บันทึก
+  5) บันทึก = monthly_branch_snapshots (source=manual) · ส่งไป Dashboard เป็นแถว 16 ฟิลด์ตาม §9.1
+     (ดูตัวอย่างแถวสดๆ ที่กล่อง "ข้อมูลสำหรับทีมพัฒนา" ท้ายหน้า)
+
+  กฎ tier: เกณฑ์ band อ่านจากตาราง tier_rules (SPEC §7.1) — คิดจาก "มูลค่าต่อปี" เท่ากันทั้งสัญญา 1 ปีและ 3 ปี
+    (สัญญา 3 ปี มูลค่าสัญญา = ปีละ × 3) · ป้ายชีท Rules ของ Excel เดิม M3 ">30-49.9K" ผิด ห้ามคัดลอก (SPEC §7.1)
+    ตรวจกับข้อมูลจริงแล้ว: ชีทเดือนเขียน M3 = ">30-49.9K" แต่ค่าเฉลี่ยต่อสัญญาของ M3 อยู่ราว 90–150K (= ปีละ 30–50K)
+
+  สมมติฐานที่รอเจ้าของยืนยัน (ไม่มีใน SPEC เดิม):
+  ก) ถ้ากรอก "ยอดจากรายงาน" แล้วไม่ตรงกับยอดที่คำนวณ → บันทึกไม่ได้ (ตรงกับ Rules ข้อ 1.4 "ต้องตรงก่อนจบ") · ไม่กรอก = บันทึกได้แต่ขึ้นเตือน "ยังไม่ได้เทียบยอด"
+  ข) ค่าที่ยกมาจากเดือนก่อน นับเป็น "ยังไม่อัปเดต" จนกด "บันทึก" หรือ "ยืนยันใช้ค่าเดิม" (กรณีสาขาไม่เปลี่ยนแปลง เช่น อุดรธานี OCT.26)
+  ค) เดือนที่ปิดแล้วแก้ได้ (SPEC v1.2) + ลง audit_log · Dashboard คงค่าเดิมจนกด "คำนวณ snapshot ใหม่" ที่หน้าปิดเดือน
+  ง) วางรูปภาพ (OCR) ยังไม่ทำ — เลื่อนไปตอน build (ต้องใช้ AI อ่านรูปฝั่งเซิร์ฟเวอร์ มีค่า API)
+  จ) cust บน Dashboard = ผลรวม "จำนวน" ทั้ง 8 tier (นับต่อสัญญา ตาม SPEC §14 ข้อ 4)
+  สี Tier อ้าง CSS variable ทั้งหมด (ห้าม hardcode hex นอก :root)
+-->
+<script>try{var t=localStorage.getItem('aga-theme');if(t)document.documentElement.setAttribute('data-theme',t)}catch(e){}</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@300;400;500;600;700&display=swap">
+<style>
+:root{
+  --bg:#eef2f7; --surface:#ffffff; --surface-2:#f4f7fb; --surface-3:#e9eff6;
+  --fg:#17212e; --fg-muted:#5a6b7e; --fg-faint:#6b7a8b;
+  --border:#d8e0ea; --border-strong:#c3cedb;
+  --accent:#1f5fa8; --accent-strong:#164a85; --accent-fg:#ffffff; --accent-soft:#e6f0fb;
+  --ok:#1a8a5c; --ok-soft:#e3f4ec; --warn:#b4740a; --warn-soft:#fbf0db; --danger:#c23b2e; --danger-soft:#fbe8e5;
+  --tier-s:#1f5fa8; --tier-s-soft:#e6f0fb; --tier-m:#157a50; --tier-m-soft:#e3f4ec;
+  --tier-l:#a86c07; --tier-l-soft:#fbf0db; --tier-xl:#c2561f; --tier-xl-soft:#fce6da; --on-tier:#ffffff;
+  --radius:10px; --shadow:0 1px 2px rgba(20,40,70,.06),0 1px 3px rgba(20,40,70,.05);
+  --scrim:rgba(14,22,33,.45);
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0e1621; --surface:#16202c; --surface-2:#1b2733; --surface-3:#222f3d;
+  --fg:#e7eef5; --fg-muted:#9fb0c1; --fg-faint:#8696a8;
+  --border:#2a3744; --border-strong:#36485a;
+  --accent:#4a90d9; --accent-strong:#5fa0e3; --accent-fg:#0b1420; --accent-soft:#16304a;
+  --ok:#3bb183; --ok-soft:#133227; --warn:#d99b3e; --warn-soft:#332713; --danger:#e26657; --danger-soft:#331a16;
+  --tier-s:#4a90d9; --tier-s-soft:#16304a; --tier-m:#3bb183; --tier-m-soft:#133227;
+  --tier-l:#d99b3e; --tier-l-soft:#332713; --tier-xl:#e07a4e; --tier-xl-soft:#3a2016; --on-tier:#0b1420;
+  --shadow:0 1px 2px rgba(0,0,0,.3); --scrim:rgba(0,0,0,.6);
+  color-scheme:dark;
+}}
+:root[data-theme="dark"]{
+  --bg:#0e1621; --surface:#16202c; --surface-2:#1b2733; --surface-3:#222f3d;
+  --fg:#e7eef5; --fg-muted:#9fb0c1; --fg-faint:#8696a8;
+  --border:#2a3744; --border-strong:#36485a;
+  --accent:#4a90d9; --accent-strong:#5fa0e3; --accent-fg:#0b1420; --accent-soft:#16304a;
+  --ok:#3bb183; --ok-soft:#133227; --warn:#d99b3e; --warn-soft:#332713; --danger:#e26657; --danger-soft:#331a16;
+  --tier-s:#4a90d9; --tier-s-soft:#16304a; --tier-m:#3bb183; --tier-m-soft:#133227;
+  --tier-l:#d99b3e; --tier-l-soft:#332713; --tier-xl:#e07a4e; --tier-xl-soft:#3a2016; --on-tier:#0b1420;
+  --shadow:0 1px 2px rgba(0,0,0,.3); --scrim:rgba(0,0,0,.6);
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:"Noto Sans Thai","Segoe UI",system-ui,sans-serif;
+  font-size:14px;line-height:1.55;-webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+code,.mono{font-family:ui-monospace,Consolas,"Courier New",monospace;font-size:12px}
+[hidden]{display:none !important}
+
+/* Header + nav (เหมือน prototype หลัก / dashboard-sync) */
+.topbar{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:14px;padding:10px 18px;background:var(--surface);border-bottom:1px solid var(--border)}
+.logo{display:flex;align-items:center;gap:11px;min-width:0}
+.logo .mark{width:38px;height:38px;border-radius:9px;background:var(--accent);color:var(--accent-fg);display:grid;place-items:center;font-weight:700;font-size:15px;flex:none}
+.logo .txt b{display:block;font-size:15px;font-weight:600;line-height:1.2}
+.logo .txt span{display:block;font-size:11.5px;color:var(--fg-muted)}
+.spacer{flex:1}
+.pill{display:inline-flex;align-items:center;gap:6px;padding:5px 11px;border:1px solid var(--border);border-radius:999px;background:var(--surface-2);font-size:12.5px;color:var(--fg-muted);white-space:nowrap}
+.pill b{color:var(--fg);font-weight:600}
+select.role{font-family:inherit;font-size:12.5px;color:var(--fg);background:var(--surface-2);border:1px solid var(--border);border-radius:999px;padding:5px 10px;cursor:pointer}
+.theme-btn{border:1px solid var(--border);background:var(--surface-2);color:var(--fg-muted);border-radius:8px;width:34px;height:32px;cursor:pointer;font-size:15px}
+.avatar{width:32px;height:32px;border-radius:50%;background:var(--surface-3);color:var(--fg-muted);display:grid;place-items:center;font-weight:600;font-size:12px;flex:none}
+.navtoggle{display:none;align-items:center;justify-content:center;border:1px solid var(--border);background:var(--surface-2);color:var(--fg);border-radius:8px;width:36px;height:34px;font-size:18px;cursor:pointer;flex:none}
+.nav-backdrop{display:none}
+.shell{display:flex;align-items:flex-start;min-height:calc(100% - 59px);max-width:1760px;margin-inline:auto}
+.nav{width:238px;flex:none;padding:14px 10px;border-right:1px solid var(--border);background:var(--surface);align-self:stretch}
+.nav .group{font-size:11px;letter-spacing:.06em;color:var(--fg-faint);padding:12px 10px 5px}
+.nav a{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;color:var(--fg-muted);text-decoration:none;font-size:13.5px;margin-bottom:1px}
+.nav a .ic{width:17px;text-align:center;flex:none;opacity:.85}
+.nav a:hover{background:var(--surface-2);color:var(--fg)}
+.nav a.active{background:var(--accent-soft);color:var(--accent-strong);font-weight:600}
+main{flex:1;min-width:0;padding:20px 24px 48px}
+.page-head h1{margin:0;font-size:20px;font-weight:600}
+.page-head p{margin:3px 0 0;color:var(--fg-muted);font-size:13px}
+
+/* ปุ่ม / chip / alert */
+.btn{font-family:inherit;font-size:13px;font-weight:500;border-radius:8px;padding:8px 14px;cursor:pointer;border:1px solid var(--border-strong);background:var(--surface);color:var(--fg);text-decoration:none;display:inline-block}
+.btn:hover{filter:brightness(.97)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-fg)}
+.btn.ghost{background:transparent;border-color:transparent;color:var(--accent-strong)}
+.btn.sm{padding:5px 10px;font-size:12px}
+.btn[disabled]{opacity:.55;cursor:not-allowed}
+.chip{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;padding:2px 9px;border-radius:999px;white-space:nowrap}
+.chip.ok{background:var(--ok-soft);color:var(--ok)} .chip.miss{background:var(--danger-soft);color:var(--danger)}
+.chip.pend{background:var(--warn-soft);color:var(--warn)} .chip.na{background:var(--surface-3);color:var(--fg-muted)}
+.chip.info{background:var(--accent-soft);color:var(--accent-strong)}
+.alert{display:flex;gap:10px;align-items:flex-start;border-radius:9px;padding:11px 13px;margin:0 0 10px;font-size:12.5px;border:1px solid}
+.alert .ic{flex:none;font-size:15px;line-height:1.3}
+.alert.warn{background:var(--warn-soft);border-color:var(--warn)} .alert.warn .ic{color:var(--warn)}
+.alert.danger{background:var(--danger-soft);border-color:var(--danger)} .alert.danger .ic{color:var(--danger)}
+.alert.ok{background:var(--ok-soft);border-color:var(--ok)} .alert.ok .ic{color:var(--ok)}
+.alert.info{background:var(--accent-soft);border-color:var(--accent)} .alert.info .ic{color:var(--accent)}
+.alert b{font-weight:600}
+.alert small{display:block;color:var(--fg-muted);font-size:11.5px;margin-top:2px}
+
+/* ป้าย Tier: สีตาม tier + จำนวนปีสัญญา (บังคับตาม CLAUDE.md) */
+.tier{display:inline-block;font-size:11.5px;font-weight:700;padding:2px 8px;border-radius:6px;letter-spacing:.3px;min-width:42px;text-align:center}
+.tier.s1{background:var(--tier-s-soft);color:var(--tier-s)} .tier.s3{background:var(--tier-s);color:var(--on-tier)}
+.tier.m1{background:var(--tier-m-soft);color:var(--tier-m)} .tier.m3{background:var(--tier-m);color:var(--on-tier)}
+.tier.l1{background:var(--tier-l-soft);color:var(--tier-l)} .tier.l3{background:var(--tier-l);color:var(--on-tier)}
+.tier.xl1{background:var(--tier-xl-soft);color:var(--tier-xl)} .tier.xl3{background:var(--tier-xl);color:var(--on-tier)}
+
+/* Stats + panels */
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin:14px 0 16px}
+.stat{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:13px 16px;box-shadow:var(--shadow)}
+.stat .lab{font-size:12px;color:var(--fg-muted)}
+.stat .val{font-size:22px;font-weight:700;margin-top:5px;line-height:1.2}
+.stat .sub{font-size:11.5px;color:var(--fg-muted);margin-top:4px}
+.stat.danger .val{color:var(--danger)} .stat.warn .val{color:var(--warn)} .stat.ok .val{color:var(--ok)} .stat.accent .val{color:var(--accent)}
+.panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);margin-bottom:16px}
+.panel>h3{margin:0;padding:13px 16px;font-size:14px;font-weight:600;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.panel .body{padding:16px}
+.lock{max-width:520px;margin:40px auto;text-align:center;padding:30px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+/* เลือกเดือน */
+.monthbar{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;margin:16px 0 12px}
+.field{display:flex;flex-direction:column;gap:3px}
+.field label{font-size:11px;color:var(--fg-muted)}
+.field select,.field input[type=search]{font-family:inherit;font-size:13px;color:var(--fg);background:var(--surface);border:1px solid var(--border-strong);border-radius:8px;padding:7px 10px;min-height:34px}
+.monthbar .meta{font-size:12.5px;color:var(--fg-muted);padding-bottom:6px}
+
+/* ตาราง + แผงแก้ไข (แบบ B+A ผสม) */
+.split{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(380px,1fr);gap:16px;align-items:start}
+.split>.panel{margin-bottom:0;min-width:0}
+.tools{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;padding:12px 16px;border-bottom:1px solid var(--border)}
+.tablewrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:13px;white-space:nowrap}
+thead th{background:var(--surface-2);color:var(--fg-muted);font-weight:600;font-size:11.5px;text-align:left;padding:9px 9px;border-bottom:1px solid var(--border)}
+tbody td{padding:7px 9px;border-bottom:1px solid var(--border)}
+td.r,th.r{text-align:right}
+#brTable tbody tr.sel>td{background:var(--accent-soft)}
+#brTable tbody tr:hover>td{background:var(--surface-2)}
+#brTable tbody tr.sel:hover>td{background:var(--accent-soft)}
+.rowbtn{font-family:inherit;font-size:13px;font-weight:600;color:var(--fg);background:none;border:0;padding:3px 0;cursor:pointer;text-align:left}
+.rowbtn:hover{color:var(--accent-strong);text-decoration:underline}
+.zone{display:block;font-size:11px;font-weight:400;color:var(--fg-muted)}
+.up{color:var(--ok)} .down{color:var(--danger)} .flat{color:var(--fg-muted)}
+.big-diff{font-weight:600}
+.empty{padding:26px 16px;text-align:center;color:var(--fg-muted)}
+tfoot td{padding:9px 9px;font-weight:600;background:var(--surface-2);border-top:1px solid var(--border-strong)}
+
+/* แผงแก้ไข */
+.editor{position:sticky;top:76px}
+.ed-head{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;justify-content:space-between;padding:13px 16px;border-bottom:1px solid var(--border)}
+.ed-head h3{margin:0;font-size:15px;font-weight:600}
+.ed-head .sub{font-size:12px;color:var(--fg-muted)}
+.ed-body{padding:14px 16px}
+.pastebox{border:1px dashed var(--border-strong);border-radius:9px;background:var(--surface-2);padding:10px 12px;margin-bottom:12px}
+.pastebox textarea{width:100%;min-height:104px;font-family:ui-monospace,Consolas,"Courier New",monospace;font-size:12px;color:var(--fg);background:var(--surface);border:1px solid var(--border-strong);border-radius:8px;padding:8px;resize:vertical;white-space:pre}
+.pastebox .acts{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;align-items:center}
+.pvlist{margin:8px 0 0;padding:0;list-style:none;font-size:12px}
+.pvlist li{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:3px 0;border-bottom:1px solid var(--border)}
+.pvlist li:last-child{border-bottom:0}
+.pvlist .lbl{min-width:52px}
+.tiertbl{width:100%;font-size:13px}
+.tiertbl th{font-size:11px;padding:6px 6px;background:none;border-bottom:1px solid var(--border-strong)}
+.tiertbl td{padding:6px 6px;border-bottom:1px solid var(--border);vertical-align:top}
+.tiertbl td.band{white-space:normal;font-size:11.5px;color:var(--fg-muted);line-height:1.35}
+.tiertbl td.band small{display:block;font-size:11px;color:var(--fg-faint)}
+.tiertbl input{font-family:inherit;font-size:13px;color:var(--fg);background:var(--surface);border:1px solid var(--border-strong);border-radius:7px;padding:5px 8px;text-align:right;width:100%;font-variant-numeric:tabular-nums;min-height:32px}
+.tiertbl input.cnt{width:70px}
+.tiertbl input.val{width:130px}
+.tiertbl input.bad{border-color:var(--danger);background:var(--danger-soft)}
+.tiertbl input.chg{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset}
+.tiertbl .note{display:block;font-size:11px;margin-top:2px;white-space:normal;text-align:right}
+.tiertbl .note.err{color:var(--danger)} .tiertbl .note.wrn{color:var(--warn)}
+.tiertbl tr.tot td{font-weight:600;background:var(--surface-2);border-bottom:0}
+.tiertbl tr.tot td.num{text-align:right}
+.tiertbl td.num{text-align:right}
+.ctrl{margin-top:14px;border:1px solid var(--border);border-radius:9px;padding:11px 12px;background:var(--surface-2)}
+.ctrl h4{margin:0 0 8px;font-size:13px;font-weight:600}
+.ctrl .line{display:flex;flex-wrap:wrap;gap:8px 10px;align-items:center;margin-bottom:6px}
+.ctrl .line label{font-size:12px;color:var(--fg-muted);min-width:96px}
+.ctrl input{font-family:inherit;font-size:13px;color:var(--fg);background:var(--surface);border:1px solid var(--border-strong);border-radius:7px;padding:5px 8px;text-align:right;min-height:32px;font-variant-numeric:tabular-nums}
+.ctrl input.cnt{width:70px} .ctrl input.val{width:130px}
+.ctrl input.bad{border-color:var(--danger);background:var(--danger-soft)}
+.kvs{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-top:12px}
+.kv{background:var(--surface-2);border:1px solid var(--border);border-radius:9px;padding:8px 11px}
+.kv span{display:block;font-size:11.5px;color:var(--fg-muted)} .kv b{display:block;font-size:14px;margin-top:1px}
+.errbox{background:var(--danger-soft);border:1px solid var(--danger);border-radius:9px;padding:9px 12px;margin:12px 0 0;font-size:12.5px}
+.errbox ul{margin:4px 0 0 18px;padding:0}
+.actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px;align-items:center}
+.dirty{font-size:12px;color:var(--warn)}
+.note-s{font-size:12px;color:var(--fg-muted);margin-top:12px;display:flex;gap:8px;align-items:flex-start}
+.note-s .ic{color:var(--accent);flex:none}
+
+/* ข้อมูลสำหรับทีมพัฒนา */
+details.dev{margin-top:16px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow)}
+details.dev>summary{cursor:pointer;padding:12px 16px;font-weight:600;font-size:13.5px}
+details.dev .devbody{padding:2px 16px 16px;font-size:12.5px;color:var(--fg-muted)}
+details.dev ul{margin:6px 0 10px 18px;padding:0}
+details.dev pre{margin:8px 0 0;padding:10px 12px;background:var(--surface-2);border:1px solid var(--border);border-radius:8px;color:var(--fg);overflow:auto;font-size:12px}
+
+/* dialog + toast */
+dialog{border:1px solid var(--border-strong);border-radius:12px;background:var(--surface);color:var(--fg);padding:20px;max-width:440px;width:calc(100% - 32px);box-shadow:0 12px 40px rgba(0,0,0,.25)}
+dialog::backdrop{background:var(--scrim)}
+dialog h2{margin:0 0 8px;font-size:16px}
+dialog p{margin:0 0 14px;color:var(--fg-muted);font-size:13px}
+dialog .row{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
+.toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:60;background:var(--fg);color:var(--bg);padding:10px 16px;border-radius:9px;font-size:13px;max-width:calc(100% - 32px);box-shadow:0 6px 24px rgba(0,0,0,.25)}
+
+@media (max-width:1180px){
+  .split{grid-template-columns:minmax(0,1fr)}
+  .split>.panel{margin-bottom:16px}
+  .editor{position:static}
+}
+@media (max-width:860px){
+  .shell{display:block}
+  .navtoggle{display:inline-flex}
+  .nav{position:fixed;top:0;left:0;bottom:0;width:260px;z-index:40;overflow-y:auto;transform:translateX(-100%);transition:transform .22s ease;box-shadow:2px 0 14px rgba(20,40,70,.18)}
+  body.nav-open .nav{transform:translateX(0)}
+  .nav-backdrop{position:fixed;inset:0;background:rgba(10,20,35,.42)}
+  body.nav-open .nav-backdrop{display:block}
+  .topbar{gap:8px;padding:10px 12px}
+  .logo .txt,.topbar .pill{display:none}
+  select.role{max-width:150px}
+  main{padding:16px}
+  .tiertbl td.band{display:none} .tiertbl th.band{display:none}
+}
+@media (prefers-reduced-motion:reduce){.nav{transition:none}}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <button class="navtoggle" id="navToggle" aria-label="เปิด/ปิดเมนู" aria-expanded="false" onclick="toggleNav()">☰</button>
+  <div class="logo">
+    <div class="mark">AGA</div>
+    <div class="txt"><b>ข้อมูลหลังบ้านระบบเหยื่อ</b><span>Advance Group Asia · ส่วนกลาง</span></div>
+  </div>
+  <div class="spacer"></div>
+  <span class="pill">วันนี้ <b>07/11/2026</b></span>
+  <select class="role" id="roleSel" aria-label="เลือกบทบาท" onchange="setRole(this.value)">
+    <option value="host" selected>host · ส่วนกลาง</option>
+    <option value="admin">admin · แอดมิน</option>
+    <option value="recorder">recorder · หัวหน้างาน</option>
+  </select>
+  <button class="theme-btn" aria-label="สลับธีม" onclick="toggleTheme()">◐</button>
+  <div class="avatar">นท</div>
+</div>
+
+<div class="shell">
+  <nav class="nav" id="nav" aria-label="เมนูหลัก">
+    <div class="group">งานประจำวัน</div>
+    <a href="aga-bait-registry-prototype.html"><span class="ic">◉</span> หน้า "ต้องทำ"</a>
+    <a href="aga-bait-registry-prototype.html"><span class="ic">✎</span> กรอกผลบริการ (IG/IC)</a>
+    <a href="aga-bait-registry-prototype.html"><span class="ic">▣</span> กล่องเหยื่อ (AG)</a>
+    <a href="aga-bait-registry-prototype.html"><span class="ic">▦</span> สรุปตัวเลข</a>
+    <div class="group">ดูแลระบบ</div>
+    <a href="month-closure.html"><span class="ic">🔒</span> ปิดเดือน</a>
+    <a href="provincial-port-update.html" class="active" aria-current="page"><span class="ic">⛰</span> port สาขาต่างจังหวัด</a>
+    <a href="dashboard-sync.html"><span class="ic">⇅</span> Dashboard Sync</a>
+    <a href="settings.html"><span class="ic">⚙</span> ตั้งค่า</a>
+  </nav>
+  <div class="nav-backdrop" onclick="toggleNav(false)" aria-hidden="true"></div>
+
+  <main id="main">
+    <div class="page-head"><h1>อัพเดท port สาขาต่างจังหวัด</h1>
+      <p>กรอก/วางสรุปมูลค่าลูกค้า แยก Size × ปี ของ 19 สาขาต่างจังหวัดรายเดือน แทนการอัปเดตไฟล์ Excel · เฉพาะ host · ตัวเลขในหน้านี้เป็นตัวอย่างสมมติ</p></div>
+
+    <div id="lockMsg" class="panel lock" hidden>
+      <div style="font-size:30px" aria-hidden="true">🔒</div>
+      <h2 style="margin:8px 0 4px;font-size:16px">หน้านี้สำหรับ host เท่านั้น</h2>
+      <p style="color:var(--fg-muted);margin:0">ตัวเลขต่างจังหวัดแก้ได้เฉพาะ host (SPEC §5) · สิทธิ์บังคับที่ฐานข้อมูล (RLS) ไม่ใช่แค่ซ่อนปุ่ม</p>
+    </div>
+
+    <div id="content">
+      <div class="monthbar">
+        <div class="field"><label for="monthSel">เดือน</label>
+          <select id="monthSel" onchange="onMonthChange(this.value)"></select></div>
+        <div class="meta" id="monthMeta" aria-live="polite"></div>
+      </div>
+      <div id="monthAlert" aria-live="polite"></div>
+      <div class="alert info"><span class="ic" aria-hidden="true">ℹ</span><div>ส่วนกลาง 24 สาขา <b>คำนวณจากทะเบียนอัตโนมัติ</b> — ไม่ได้มาจากหน้านี้ · หน้านี้ใช้เฉพาะ 19 สาขาต่างจังหวัด ซึ่งยังไม่มีทะเบียนในระบบ (เฟส 2) · ถ้าเดือนไหนยังไม่ได้อัปเดต Dashboard จะใช้ค่าล่าสุดที่ยกมา</div></div>
+
+      <div class="stats" id="stats"></div>
+
+      <div class="split">
+        <!-- ซ้าย: ตาราง 19 สาขา -->
+        <section class="panel" aria-labelledby="h-tbl">
+          <h3 id="h-tbl">19 สาขาต่างจังหวัด <span class="chip na" id="tblCount"></span></h3>
+          <div class="tools">
+            <div class="field"><label for="fQ">ค้นหาสาขา</label><input type="search" id="fQ" placeholder="เช่น ตาก" oninput="renderTable()"></div>
+            <div class="field"><label for="fZone">เขต</label>
+              <select id="fZone" onchange="renderTable()"><option value="all">ทุกเขต</option></select></div>
+            <div class="field"><label for="fSt">สถานะ</label>
+              <select id="fSt" onchange="renderTable()">
+                <option value="all">ทั้งหมด</option><option value="pend">ยังไม่อัปเดต</option><option value="ok">อัปเดตแล้ว</option><option value="big">ส่วนต่างเกิน 10%</option>
+              </select></div>
+          </div>
+          <div class="tablewrap">
+            <table id="brTable">
+              <caption class="sr">ตารางสถานะการอัปเดต port ของสาขาต่างจังหวัดในเดือนที่เลือก</caption>
+              <thead><tr>
+                <th scope="col">สาขา</th><th scope="col">สถานะ</th><th scope="col" class="r">ราย</th>
+                <th scope="col" class="r">มูลค่ารวม (บาท)</th><th scope="col" class="r">เดือนก่อน</th><th scope="col" class="r">ส่วนต่าง</th><th scope="col">เทียบยอด</th>
+              </tr></thead>
+              <tbody id="brBody"></tbody>
+              <tfoot><tr id="brFoot"></tr></tfoot>
+            </table>
+          </div>
+        </section>
+
+        <!-- ขวา: แผงแก้ไข -->
+        <section class="panel editor" id="editor" aria-labelledby="ed-title" aria-live="polite">
+          <div id="edEmpty" class="empty">
+            <div style="font-size:26px" aria-hidden="true">☜</div>
+            <b id="ed-title" style="display:block;margin-top:6px;color:var(--fg)">เลือกสาขาจากตารางด้านซ้าย</b>
+            <span>แล้วกรอก 8 tier หรือวางตารางจาก Excel ได้ที่นี่</span>
+          </div>
+          <div id="edBox" hidden></div>
+        </section>
+      </div>
+
+      <details class="dev">
+        <summary>ข้อมูลสำหรับทีมพัฒนา (นัท / Jane / Toon)</summary>
+        <div class="devbody">
+          <b style="color:var(--fg)">การเก็บข้อมูล</b>
+          <ul>
+            <li>1 สาขา × 1 เดือน = 1 แถวใน <code>monthly_branch_snapshots</code> · <code>source = 'manual'</code> · ผูกหน่วยงานที่ระดับสาขา (<code>branches.division = 'province'</code>)</li>
+            <li>เจ้าของยืนยันให้เก็บ <b>มูลค่าแยกทั้ง 8 tier</b> → ต้องทำ migration ใหม่เพิ่มคอลัมน์ <code>v_s1 … v_xl3</code> (numeric 14,2) · <code>vS/vM/vL/vXL/value/cust</code> คำนวณจากคอลัมน์เหล่านี้ ไม่ให้กรอกซ้ำ</li>
+            <li>ยอดจากรายงาน (รวมทั้งสิ้น) ใช้ตรวจตอนกรอกเท่านั้น เก็บเป็น <code>report_cust</code>, <code>report_value</code> (nullable) เพื่อใช้เป็นหลักฐานตรวจย้อนหลัง</li>
+            <li>สถานะ "อัปเดตแล้ว" = แถว <code>source='manual'</code> ที่ <code>confirmed_at</code> ไม่ว่าง · ค่ายกมา = สร้างตอนส่ง Dashboard หรือคำนวณสด (ไม่เขียนแถวซ้ำจนกว่า host ยืนยัน) — ตัดสินตอน build</li>
+            <li>เกณฑ์ band อ่านจาก <code>tier_rules</code> (annual) ห้าม hardcode · สัญญา 3 ปี: ใช้ มูลค่าสัญญา ÷ 3 เทียบ band</li>
+            <li>RLS: เฉพาะ <code>host</code> INSERT/UPDATE ได้ · ทุกการแก้ลง <code>audit_log</code> ด้วย trigger (รวมเดือนที่ปิดแล้ว — SPEC v1.2)</li>
+          </ul>
+          <b style="color:var(--fg)">แถวที่จะส่ง Dashboard (16 ฟิลด์ ตาม §9.1) — ของสาขาที่เปิดอยู่ ณ ตอนนี้</b>
+          <pre id="jsonPrev">เลือกสาขาก่อน</pre>
+        </div>
+      </details>
+    </div>
+  </main>
+</div>
+
+<dialog id="dlg" aria-labelledby="dlgT">
+  <h2 id="dlgT"></h2><p id="dlgP"></p>
+  <div class="row"><button class="btn" id="dlgNo" type="button">ยกเลิก</button><button class="btn primary" id="dlgYes" type="button">ตกลง</button></div>
+</dialog>
+<div class="toast" id="toast" role="status" hidden></div>
+
+<script>
+"use strict";
+/* ===== ค่าคงที่ (จำลอง tier_rules / master สาขา) — ตัวเลขทั้งหมดเป็นข้อมูลสมมติ ===== */
+/* tier_rules: คิดจากมูลค่าต่อปี (SPEC §7.1) · max=null = ไม่มีเพดาน · ตอน build อ่านจากตารางจริง ห้าม hardcode */
+var TIER_RULES=[{g:"S",min:0,max:29999.99},{g:"M",min:30000,max:49999.99},{g:"L",min:50000,max:99999.99},{g:"XL",min:100000,max:null}];
+var TIERS=[
+ {k:"s1",g:"S",term:1},{k:"s3",g:"S",term:3},{k:"m1",g:"M",term:1},{k:"m3",g:"M",term:3},
+ {k:"l1",g:"L",term:1},{k:"l3",g:"L",term:3},{k:"xl1",g:"XL",term:1},{k:"xl3",g:"XL",term:3}
+];
+/* 19 สาขาต่างจังหวัด ชื่อตรง SPEC §4 / Dashboard */
+var BRANCHES=[
+ ["เขต 7","เชียงราย"],["เขต 7","เชียงใหม่"],["เขต 7","ตาก"],["เขต 7","พิษณุโลก"],
+ ["เขต 8","โคราช"],["เขต 8","ขอนแก่น"],["เขต 8","อุดรธานี"],["เขต 8","อุบลราชธานี"],
+ ["เขต 9","ลพบุรี"],
+ ["เขต 10","สุราษฎร์ธานี"],["เขต 10","เกาะสมุย"],["เขต 10","พังงา"],
+ ["เขต 11","กระบี่"],["เขต 11","ภูเก็ต"],["เขต 11","หาดใหญ่"],
+ ["เขต 12","ระนอง"],["เขต 12","นครศรีธรรมราช"],["เขต 12","ตรัง"],["เขต 12","ชุมพร"]
+];
+var MONTHS=["SEP.26","OCT.26","NOV.26"];
+var MONTH_INFO={"SEP.26":{closed:true,closedAt:"03/10/2026",closedBy:"recorder · หัวหน้างาน A"},"OCT.26":{closed:false},"NOV.26":{closed:false}};
+var HOST_NAME="host · QCS ส่วนกลาง";
+var CLOSED_EDITS={}; /* จำนวนครั้งที่แก้หลังปิดเดือน (ชิป "แก้หลังปิด N" หน้าปิดเดือน) */
+
+/* ===== เครื่องมือตัวเลข ===== */
+function esc(s){return String(s).replace(/[&<>"']/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]})}
+function cents(x){return Math.round(x*100)}
+function r2(x){return Math.round(x*100)/100}
+function fmt2(x){return Number(x).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2})}
+function fmt0(x){return Number(x).toLocaleString("en-US",{maximumFractionDigits:2})}
+function fmtSigned(x){var v=r2(x);return (v>0?"+":(v<0?"−":""))+fmt2(Math.abs(v))}
+/* แปลงข้อความเป็นตัวเลข: ตัด , และช่องว่าง · "-"/ว่าง = 0 · ผิดรูปแบบ = NaN */
+function parseNum(s){
+  var t=String(s==null?"":s).replace(/[,\s฿]/g,"");
+  if(t===""||t==="-")return 0;
+  return /^-?\d+(\.\d+)?$/.test(t)?Number(t):NaN;
+}
+function mulberry(a){return function(){a|=0;a=a+0x6D2B79F5|0;var t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+
+/* ===== ข้อมูลตัวอย่าง (สมมติ) =====
+   ค่าเฉลี่ยต่อสัญญาของแต่ละ tier ตั้งให้อยู่ใน band ของ tier นั้นเสมอ (ตรงกับกฎ §7.1) */
+var AVG_TOTAL=[18000,36000,38000,114000,70000,210000,150000,480000]; /* มูลค่าสัญญาเฉลี่ย (บาท) */
+var WEIGHTS=[.30,.38,.09,.10,.04,.04,.03,.02];
+function makeBase(i,seed){
+  var rnd=mulberry(i*977+seed), size=20+Math.floor(rnd()*50), tiers=[];
+  for(var t=0;t<8;t++){
+    var n=Math.round(size*WEIGHTS[t]*(0.6+rnd()*0.9)), v=0;
+    if(n>0)v=r2(n*AVG_TOTAL[t]*(0.85+rnd()*0.3));
+    tiers.push([n,v]);
+  }
+  return tiers;
+}
+function mutate(tiers,i,seed){
+  var rnd=mulberry(i*131+seed);
+  /* เดือนถัดไปเปลี่ยนเล็กน้อย (บางสาขา ±1 ราย, ค่าเฉลี่ยต่อรายขยับ ±2%) ให้ส่วนต่างสมจริง ไม่กระโดดแรง */
+  return tiers.map(function(p){
+    var step=rnd()<0.3?(rnd()<0.5?-1:1):0, n=Math.max(0,p[0]+step), v=0;
+    if(n>0&&p[0]>0)v=r2(p[1]/p[0]*n*(0.98+rnd()*0.04));
+    else if(n>0)v=r2(n*AVG_TOTAL[tiers.indexOf(p)]);
+    return [n,v];
+  });
+}
+function totalsOf(tiers){
+  var n=0,c=0;
+  tiers.forEach(function(p){n+=p[0];c+=cents(p[1])});
+  return {n:n,v:c/100};
+}
+var STORE={}; /* STORE[month][branchIndex] = {tiers,report,updated,at,by} */
+(function seed(){
+  STORE["SEP.26"]={}; STORE["OCT.26"]={};
+  BRANCHES.forEach(function(b,i){
+    var sep=makeBase(i,7), oct=mutate(sep,i,11), ts=totalsOf(sep), to=totalsOf(oct);
+    STORE["SEP.26"][i]={tiers:sep,report:[ts.n,ts.v],updated:true,at:"02/10/2026 "+(9+i%6)+":1"+(i%10),by:HOST_NAME};
+    /* OCT.26: อุดรธานี(6) กับ ลพบุรี(8) ยังไม่อัปเดต · ภูเก็ต(13) ไม่ได้ใส่ยอดรายงาน */
+    if(i!==6&&i!==8) STORE["OCT.26"][i]={tiers:oct,report:(i===13?null:[to.n,to.v]),updated:true,at:"05/11/2026 "+(10+i%5)+":2"+(i%10),by:HOST_NAME};
+  });
+})();
+/* มูลค่าเดือนก่อน (AD) — SEP.26 ใช้ค่าสมมติของ AUG.26 */
+function prevMonthOf(m){var k=MONTHS.indexOf(m);return k>0?MONTHS[k-1]:null}
+/* ดึงข้อมูลสาขา i ของเดือน m — ไม่มีข้อมูล = ยกค่าเดือนล่าสุดก่อนหน้ามา (SPEC §6.5) */
+function getRec(m,i){
+  var r=STORE[m]&&STORE[m][i];
+  if(r)return {tiers:r.tiers,report:r.report,updated:r.updated,carried:false,at:r.at,by:r.by,from:m};
+  var k=MONTHS.indexOf(m);
+  for(var j=k-1;j>=0;j--){
+    var s=STORE[MONTHS[j]]&&STORE[MONTHS[j]][i];
+    if(s)return {tiers:s.tiers,report:null,updated:false,carried:true,at:null,by:null,from:MONTHS[j]};
+    var c=getRec(MONTHS[j],i); if(c&&c.carried)return {tiers:c.tiers,report:null,updated:false,carried:true,at:null,by:null,from:c.from};
+  }
+  return {tiers:TIERS.map(function(){return [0,0]}),report:null,updated:false,carried:true,at:null,by:null,from:null};
+}
+function prevTotal(m,i){
+  var pm=prevMonthOf(m);
+  if(pm)return totalsOf(getRec(pm,i).tiers).v;
+  var rnd=mulberry(i*53+3), cur=totalsOf(getRec(m,i).tiers).v;
+  return r2(cur*(0.95+rnd()*0.1));
+}
+
+/* ===== สถานะหน้าจอ ===== */
+var curMonth="OCT.26", sel=-1, draft=null, dirty=false, parsed=null;
+
+/* เกณฑ์ band เป็นข้อความ — คำนวณจาก TIER_RULES ไม่ hardcode ข้อความตัวเลข */
+function bandRange(g,mult){
+  var r=TIER_RULES.filter(function(x){return x.g===g})[0];
+  /* tier ล่างสุด: "ต่ำกว่า" จุดเริ่มของ tier ถัดไป (ไม่ใช้ max+0.01 เพื่อไม่ให้เกิดเลขแปลกเช่น 89,999.98) */
+  if(r.min===0)return "ต่ำกว่า "+fmt0(r2(TIER_RULES[TIER_RULES.indexOf(r)+1].min*mult));
+  if(r.max===null)return "ตั้งแต่ "+fmt0(r2(r.min*mult));
+  return fmt0(r2(r.min*mult))+" – "+fmt0(r2(r.max*mult));
+}
+function ruleOf(g){return TIER_RULES.filter(function(x){return x.g===g})[0]}
+
+/* ===== ยืนยัน (dialog) ===== */
+function askConfirm(title,msg,okLabel){
+  return new Promise(function(res){
+    var d=document.getElementById("dlg");
+    document.getElementById("dlgT").textContent=title;
+    document.getElementById("dlgP").textContent=msg;
+    var y=document.getElementById("dlgYes"), n=document.getElementById("dlgNo");
+    y.textContent=okLabel||"ตกลง";
+    function done(v){y.onclick=n.onclick=null;d.onclose=null;if(d.open)d.close();res(v)}
+    y.onclick=function(){done(true)}; n.onclick=function(){done(false)}; d.onclose=function(){done(false)};
+    d.showModal(); n.focus();
+  });
+}
+var toastTimer=null;
+function toast(msg){
+  var t=document.getElementById("toast"); t.textContent=msg; t.hidden=false;
+  clearTimeout(toastTimer); toastTimer=setTimeout(function(){t.hidden=true},3600);
+}
+
+/* ===== เดือน ===== */
+function initMonths(){
+  var s=document.getElementById("monthSel");
+  s.innerHTML=MONTHS.map(function(m){
+    var lab=m+(MONTH_INFO[m].closed?" · ปิดแล้ว":(m===curMonth?" · เดือนล่าสุด":""));
+    return '<option value="'+m+'"'+(m===curMonth?" selected":"")+'>'+esc(lab)+'</option>';
+  }).join("");
+  var z=document.getElementById("fZone"), seen={};
+  BRANCHES.forEach(function(b){if(!seen[b[0]]){seen[b[0]]=1;z.insertAdjacentHTML("beforeend",'<option value="'+esc(b[0])+'">'+esc(b[0])+'</option>')}});
+}
+async function onMonthChange(m){
+  if(dirty){
+    var ok=await askConfirm("ทิ้งการแก้ไขที่ยังไม่บันทึก?","สาขาที่เปิดอยู่มีการแก้ไขที่ยังไม่ได้บันทึก ถ้าเปลี่ยนเดือนจะหายทั้งหมด","ทิ้งและเปลี่ยนเดือน");
+    if(!ok){document.getElementById("monthSel").value=curMonth;return}
+  }
+  curMonth=m; closeEditor(true); renderAll();
+}
+function renderMonthAlert(){
+  var box=document.getElementById("monthAlert"), info=MONTH_INFO[curMonth], html="";
+  var recs=BRANCHES.map(function(_,i){return getRec(curMonth,i)});
+  var carriedAll=recs.every(function(r){return r.carried});
+  var pm=prevMonthOf(curMonth);
+  if(info.closed){
+    var n=CLOSED_EDITS[curMonth]||0;
+    html+='<div class="alert warn"><span class="ic" aria-hidden="true">⚠</span><div><b>เดือนนี้ปิดแล้ว</b> (ปิด '+esc(info.closedAt)+' โดย '+esc(info.closedBy)+') · host แก้ย้อนหลังได้ และลง audit log ทุกครั้ง'
+      +'<small>ตัวเลขบน Dashboard คงค่าเดิมจนกด "คำนวณ snapshot ใหม่ + ส่ง Dashboard" ที่หน้า <a href="month-closure.html" style="color:var(--accent-strong)">ปิดเดือน</a> · แก้หลังปิดแล้ว <b>'+n+'</b> ครั้งในเดือนนี้ (หน้านี้)</small></div></div>';
+  }
+  if(carriedAll&&pm){
+    html+='<div class="alert info"><span class="ic" aria-hidden="true">↻</span><div><b>ยังไม่มีข้อมูลเดือน '+esc(curMonth)+'</b> — ระบบยกค่าจาก '+esc(pm)+' มาให้ทั้ง 19 สาขา (สถานะ "ยังไม่อัปเดต")'
+      +'<small>ถ้าไม่ได้ยืนยัน Dashboard จะแสดงค่ายกมานี้ไปก่อน · สาขาที่ไม่มีการเปลี่ยนแปลงกด "ยืนยันใช้ค่าเดิม" ได้เลย</small></div></div>';
+  }
+  box.innerHTML=html;
+}
+
+/* ===== ตาราง 19 สาขา ===== */
+function rowStatus(r){return r.updated?"ok":"pend"}
+function checkState(r){
+  if(!r.report)return "na";
+  var t=totalsOf(r.tiers);
+  return (t.n===r.report[0]&&cents(t.v)===cents(r.report[1]))?"ok":"miss";
+}
+function renderStats(){
+  var upd=0,tv=0,pv=0,tn=0;
+  BRANCHES.forEach(function(_,i){
+    var r=getRec(curMonth,i), t=totalsOf(r.tiers);
+    if(r.updated)upd++; tv+=cents(t.v); tn+=t.n; pv+=cents(prevTotal(curMonth,i));
+  });
+  var diff=(tv-pv)/100, pend=BRANCHES.length-upd;
+  document.getElementById("stats").innerHTML=
+   '<div class="stat ok"><div class="lab">อัปเดตแล้ว</div><div class="val">'+upd+' / '+BRANCHES.length+'</div><div class="sub">สาขาต่างจังหวัดเดือน '+esc(curMonth)+'</div></div>'
+  +'<div class="stat '+(pend?"warn":"ok")+'"><div class="lab">ยังไม่อัปเดต</div><div class="val">'+pend+'</div><div class="sub">'+(pend?"ใช้ค่ายกมาไปก่อน":"ครบทุกสาขาแล้ว")+'</div></div>'
+  +'<div class="stat accent"><div class="lab">มูลค่ารวม 19 สาขา (บาท)</div><div class="val">'+fmt2(tv/100)+'</div><div class="sub">'+fmt0(tn)+' ราย</div></div>'
+  +'<div class="stat '+(diff<0?"danger":(diff>0?"ok":""))+'"><div class="lab">ส่วนต่างจากเดือนก่อน (บาท)</div><div class="val">'+fmtSigned(diff)+'</div><div class="sub">เทียบ '+esc(prevMonthOf(curMonth)||"เดือนก่อนหน้า (สมมติ)")+'</div></div>';
+}
+function renderTable(){
+  var q=document.getElementById("fQ").value.trim(), z=document.getElementById("fZone").value, st=document.getElementById("fSt").value;
+  var rows=[], sumN=0, sumV=0, sumP=0, shown=0;
+  BRANCHES.forEach(function(b,i){
+    var r=getRec(curMonth,i), t=totalsOf(r.tiers), p=prevTotal(curMonth,i), d=r2(t.v-p), pct=p?Math.abs(d)/p:0;
+    if(q&&b[1].indexOf(q)<0)return;
+    if(z!=="all"&&b[0]!==z)return;
+    if(st==="pend"&&r.updated)return;
+    if(st==="ok"&&!r.updated)return;
+    if(st==="big"&&pct<=0.10)return;
+    shown++; sumN+=t.n; sumV+=cents(t.v); sumP+=cents(p);
+    var chip=r.updated?'<span class="chip ok">✓ อัปเดตแล้ว</span>':'<span class="chip pend"'+(r.carried?' title="ค่ายกมาจาก '+esc(r.from||"เดือนก่อน")+'"':"")+'>○ ยังไม่อัปเดต</span>';
+    var cs=checkState(r), cchip=cs==="ok"?'<span class="chip ok">ตรง</span>':(cs==="miss"?'<span class="chip miss">ไม่ตรง</span>':'<span class="chip na">'+(r.carried?"–":"ไม่ได้เทียบ")+'</span>');
+    var dc=d>0?"up":(d<0?"down":"flat");
+    var dirtyMark=(i===sel&&dirty)?' <span class="chip pend">● แก้อยู่ ยังไม่บันทึก</span>':"";
+    rows.push('<tr'+(i===sel?' class="sel" aria-current="true"':"")+'>'
+      +'<td><button type="button" class="rowbtn" onclick="openBranch('+i+')" aria-label="เปิดแก้ไขสาขา'+esc(b[1])+'">'+esc(b[1])+'</button><span class="zone">'+esc(b[0])+dirtyMark+'</span></td>'
+      +'<td>'+chip+'</td><td class="r">'+fmt0(t.n)+'</td><td class="r">'+fmt2(t.v)+'</td><td class="r">'+fmt2(p)+'</td>'
+      +'<td class="r '+dc+(pct>0.10?" big-diff":"")+'">'+fmtSigned(d)+(pct>0.10?" ⚑":"")+'</td><td>'+cchip+'</td></tr>');
+  });
+  document.getElementById("brBody").innerHTML=rows.length?rows.join(""):'<tr><td colspan="7" class="empty">ไม่พบสาขาตามตัวกรอง</td></tr>';
+  document.getElementById("brFoot").innerHTML=rows.length?
+    '<td>รวม '+shown+' สาขา</td><td></td><td class="r">'+fmt0(sumN)+'</td><td class="r">'+fmt2(sumV/100)+'</td><td class="r">'+fmt2(sumP/100)+'</td><td class="r">'+fmtSigned((sumV-sumP)/100)+'</td><td></td>':"";
+  document.getElementById("tblCount").textContent=shown+" / "+BRANCHES.length+" สาขา";
+}
+function renderAll(){
+  document.getElementById("monthMeta").textContent=(MONTH_INFO[curMonth].closed?"เดือนที่ปิดแล้ว · แก้ย้อนหลังได้ (ลง audit log)":"เดือนที่ยังเปิดอยู่");
+  renderMonthAlert(); renderStats(); renderTable(); updateJson();
+}
+
+/* ===== แผงแก้ไข ===== */
+function fieldsToStrings(rec){
+  return {
+    tiers:rec.tiers.map(function(p){return [String(p[0]),p[1]?fmt2(p[1]):"0.00"]}),
+    report:rec.report?[String(rec.report[0]),fmt2(rec.report[1])]:["",""]
+  };
+}
+async function openBranch(i){
+  if(i===sel)return;
+  if(dirty){
+    var ok=await askConfirm("ทิ้งการแก้ไขที่ยังไม่บันทึก?","สาขา"+BRANCHES[sel][1]+" มีการแก้ไขที่ยังไม่ได้บันทึก ถ้าเปิดสาขาอื่นจะหายทั้งหมด","ทิ้งและเปิดสาขาอื่น");
+    if(!ok)return;
+  }
+  sel=i; dirty=false; parsed=null;
+  var rec=getRec(curMonth,i); draft=fieldsToStrings(rec);
+  renderEditor(); renderTable(); updateJson();
+  var ed=document.getElementById("editor");
+  if(window.matchMedia("(max-width:1180px)").matches)ed.scrollIntoView({behavior:"smooth",block:"start"});
+}
+function closeEditor(silent){
+  sel=-1; dirty=false; draft=null; parsed=null;
+  document.getElementById("edBox").hidden=true; document.getElementById("edBox").innerHTML="";
+  document.getElementById("edEmpty").hidden=false;
+  if(!silent){renderTable();updateJson()}
+}
+function renderEditor(){
+  var b=BRANCHES[sel], rec=getRec(curMonth,sel), pm=prevMonthOf(curMonth);
+  var closed=MONTH_INFO[curMonth].closed;
+  var rowsHtml=TIERS.map(function(t,k){
+    var rule=ruleOf(t.g), line1="ปีละ "+bandRange(t.g,1), line2=t.term===3?"สัญญา 3 ปี · มูลค่าสัญญา "+bandRange(t.g,3):"สัญญา 1 ปี";
+    return '<tr data-k="'+k+'"><td><span class="tier '+t.k+'">'+t.k.toUpperCase()+'</span></td>'
+      +'<td class="band">'+esc(line1)+'<small>'+esc(line2)+'</small></td>'
+      +'<td><input class="cnt" inputmode="numeric" autocomplete="off" aria-label="จำนวนสัญญา '+t.k.toUpperCase()+'" id="n'+k+'" value="'+esc(draft.tiers[k][0])+'" oninput="onField()" onblur="fixFmt(this,0)" onkeydown="enterNext(event)"></td>'
+      +'<td><input class="val" inputmode="decimal" autocomplete="off" aria-label="มูลค่ารวม '+t.k.toUpperCase()+' (บาท)" id="v'+k+'" value="'+esc(draft.tiers[k][1])+'" oninput="onField()" onblur="fixFmt(this,2)" onkeydown="enterNext(event)"><span class="note" id="nt'+k+'"></span></td></tr>';
+  }).join("");
+  var carriedMsg=rec.carried&&rec.from?'<div class="alert info" style="margin-top:0"><span class="ic" aria-hidden="true">↻</span><div><b>ค่านี้ยกมาจาก '+esc(rec.from)+'</b> — ยังไม่ได้ยืนยันสำหรับเดือน '+esc(curMonth)+'<small>แก้ตัวเลข/วางตารางใหม่แล้วกดบันทึก หรือกด "ยืนยันใช้ค่าเดิม" ถ้าไม่มีการเปลี่ยนแปลง</small></div></div>':"";
+  var meta=rec.updated?('<span class="chip ok">✓ อัปเดตแล้ว</span> <span class="sub">'+esc(rec.at||"")+' · '+esc(rec.by||"")+'</span>'):'<span class="chip pend">○ ยังไม่อัปเดต</span>';
+  document.getElementById("edBox").innerHTML=
+   '<div class="ed-head"><div><h3 id="ed-h">'+esc(b[1])+' <span style="font-weight:400;color:var(--fg-muted);font-size:13px">· '+esc(b[0])+' · '+esc(curMonth)+'</span></h3><div style="margin-top:3px">'+meta+'</div></div>'
+   +'<button type="button" class="btn sm" onclick="closeBranch()" aria-label="ปิดแผงแก้ไข">✕ ปิด</button></div>'
+   +'<div class="ed-body">'+carriedMsg+(closed?'<div class="alert warn" style="margin-top:0"><span class="ic" aria-hidden="true">⚠</span><div>เดือนนี้ปิดแล้ว — บันทึกได้ และจะลง audit log · Dashboard ยังไม่เปลี่ยนจนกว่าคำนวณ snapshot ใหม่</div></div>':"")
+   +'<div class="pastebox"><div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between">'
+   +'<b style="font-size:13px">วางตารางจาก Excel / เว็บ</b>'
+   +'<button type="button" class="btn ghost sm" onclick="fillSample()">ใส่ตัวอย่าง</button></div>'
+   +'<div style="font-size:12px;color:var(--fg-muted);margin:2px 0 6px">ลากคลุมตารางใน Excel แล้ว Ctrl+C → กด <b>Ctrl+V ตรงไหนของหน้านี้ก็ได้</b> (หรือวางในช่องด้านล่าง) ระบบอ่านให้ทันที จับคู่ S1…XL3 จากป้ายเช่น "S1 (&lt;30K)" · ไม่สนช่องว่างหน้าหลัง · "-" = 0 · บรรทัด "รวมทั้งสิ้น" ใช้เป็นยอดรายงาน · แล้วกด "ใส่ลงฟอร์ม"</div>'
+   +'<label class="sr" for="pasteTa">ข้อความตารางที่วาง</label>'
+   +'<textarea id="pasteTa" spellcheck="false" placeholder="S1\t8\t143,688.73&#10;S3\t29\t1,175,706.72&#10;…&#10;รวมทั้งสิ้น\t43\t1,853,040.30" oninput="onPasteInput()" onpaste="setTimeout(readPaste,0)"></textarea>'
+   +'<div class="acts"><button type="button" class="btn sm" id="pvBtn" onclick="readPaste()">อ่านข้อมูล</button>'
+   +'<button type="button" class="btn sm primary" id="applyBtn" onclick="applyPaste()" hidden>ใส่ลงฟอร์ม</button>'
+   +'<button type="button" class="btn ghost sm" onclick="clearPaste()">ล้าง</button>'
+   +'<span class="chip na" title="ยังไม่ทำใน mockup — เลื่อนไปตอน build">วางรูปภาพ · เร็วๆ นี้</span></div>'
+   +'<div id="pvOut" aria-live="polite"></div></div>'
+   +'<div class="tablewrap"><table class="tiertbl"><caption class="sr">ตารางจำนวนและมูลค่าสัญญา 8 tier ของสาขา</caption>'
+   +'<thead><tr><th scope="col">Tier</th><th scope="col" class="band">ช่วงมูลค่า (จาก tier_rules)</th><th scope="col" class="r">จำนวน (ราย)</th><th scope="col" class="r">มูลค่ารวม (บาท)</th></tr></thead>'
+   +'<tbody>'+rowsHtml+'<tr class="tot"><td colspan="2">รวมที่ระบบคำนวณ</td><td class="num" id="sumN">0</td><td class="num" id="sumV">0.00</td></tr></tbody></table></div>'
+   +'<div class="ctrl"><h4>ยอดจากรายงาน (รวมทั้งสิ้น) — ใช้ตรวจยอดก่อนบันทึก</h4>'
+   +'<div class="line"><label for="rN">จำนวน (ราย)</label><input class="cnt" id="rN" inputmode="numeric" autocomplete="off" value="'+esc(draft.report[0])+'" oninput="onField()" onblur="fixFmt(this,0)" onkeydown="enterNext(event)"></div>'
+   +'<div class="line"><label for="rV">มูลค่า (บาท)</label><input class="val" id="rV" inputmode="decimal" autocomplete="off" value="'+esc(draft.report[1])+'" oninput="onField()" onblur="fixFmt(this,2)" onkeydown="enterNext(event)"></div>'
+   +'<div id="chk" aria-live="polite"></div></div>'
+   +'<div class="kvs"><div class="kv"><span>มูลค่า '+esc(pm||"เดือนก่อน")+' (บาท)</span><b id="kvPrev">–</b></div><div class="kv"><span>ส่วนต่าง</span><b id="kvDiff">–</b></div><div class="kv"><span>สัญญาทั้งหมด (cust)</span><b id="kvCust">–</b></div></div>'
+   +'<div id="errBox"></div>'
+   +'<div class="actions"><button type="button" class="btn primary" id="saveBtn" onclick="saveBranch()">บันทึกเป็น "อัปเดตแล้ว"</button>'
+   +'<button type="button" class="btn" id="keepBtn" onclick="keepSame()" hidden>ยืนยันใช้ค่าเดิม (ไม่มีการเปลี่ยนแปลง)</button>'
+   +'<button type="button" class="btn ghost" id="revertBtn" onclick="revertDraft()" hidden>คืนค่าเดิม</button>'
+   +'<span class="dirty" id="dirtyTxt" hidden>● มีการแก้ไขที่ยังไม่บันทึก</span></div>'
+   +'<div class="note-s"><span class="ic" aria-hidden="true">ℹ</span><span>บันทึก = เก็บเป็น <code>monthly_branch_snapshots</code> (source = manual) ของสาขานี้เดือนนี้ และส่ง Dashboard ในรอบถัดไป · เกณฑ์ band ในตารางอ่านจากหน้า <a href="settings.html" style="color:var(--accent-strong)">ตั้งค่า</a></span></div>'
+   +'</div>';
+  document.getElementById("edEmpty").hidden=true; document.getElementById("edBox").hidden=false;
+  recalc();
+}
+function closeBranch(){
+  if(dirty){
+    askConfirm("ทิ้งการแก้ไขที่ยังไม่บันทึก?","ปิดแผงแก้ไขแล้วการแก้ไขที่ยังไม่บันทึกจะหายทั้งหมด","ทิ้งและปิด").then(function(ok){if(ok)closeEditor()});
+  } else closeEditor();
+}
+function $(id){return document.getElementById(id)}
+function fixFmt(el,dp){
+  var v=parseNum(el.value);
+  if(el.value.trim()===""&&el.id.charAt(0)==="r")return; /* ช่องยอดรายงานปล่อยว่างได้ */
+  if(isNaN(v))return;
+  el.value=dp===0?String(Math.round(v)):fmt2(v);
+  recalc();
+}
+function enterNext(e){
+  if(e.key!=="Enter")return;
+  e.preventDefault();
+  var els=Array.prototype.slice.call(document.querySelectorAll("#edBox input"));
+  var k=els.indexOf(e.target); if(k>=0&&k<els.length-1){els[k+1].focus();els[k+1].select()}
+}
+function readDraftFromDom(){
+  var d={tiers:[],report:[$("rN").value,$("rV").value]};
+  for(var k=0;k<8;k++)d.tiers.push([$("n"+k).value,$("v"+k).value]);
+  return d;
+}
+/* แปลง draft เป็นตัวเลข + ตรวจ error (บล็อกบันทึก) / warn (เตือน) */
+function evalDraft(d){
+  var out={tiers:[],errors:[],rowErr:[],rowWarn:[],okNums:true};
+  for(var k=0;k<8;k++){
+    var n=parseNum(d.tiers[k][0]), v=parseNum(d.tiers[k][1]), t=TIERS[k], name=t.k.toUpperCase(), e="", w="";
+    if(isNaN(n)||n<0||Math.floor(n)!==n){e="จำนวนต้องเป็นจำนวนเต็มตั้งแต่ 0"}
+    else if(n>99999){e="จำนวนเกินช่วงที่รับได้"}
+    else if(isNaN(v)||v<0){e="มูลค่าต้องเป็นตัวเลขตั้งแต่ 0"}
+    else if(Math.abs(v*100-Math.round(v*100))>1e-6){e="มูลค่าทศนิยมไม่เกิน 2 ตำแหน่ง"}
+    else if(v>999999999){e="มูลค่าเกินช่วงที่รับได้"}
+    else if(n===0&&v>0){e="ไม่มีสัญญา (0 ราย) มูลค่าต้องเป็น 0"}
+    else if(n>0&&v===0){w="มี "+n+" ราย แต่มูลค่า 0 — ตรวจสอบอีกครั้ง"}
+    else if(n>0){
+      /* ตรวจค่าเฉลี่ยต่อสัญญาอยู่ใน band ของ tier (มูลค่าต่อปี = มูลค่า ÷ จำนวน ÷ ปี) */
+      var a=v/n/t.term, rule=ruleOf(t.g);
+      if(a<rule.min-0.005||(rule.max!==null&&a>rule.max+0.005)){
+        w="เฉลี่ยต่อราย "+fmt0(r2(v/n))+" (ปีละ "+fmt0(r2(a))+") อยู่นอกช่วง "+name+" — ตรวจว่าใส่ผิดช่องหรือไม่";
+      }
+    }
+    if(e)out.errors.push(name+": "+e);
+    out.rowErr.push(e); out.rowWarn.push(w);
+    out.tiers.push([isNaN(n)?0:n,isNaN(v)?0:v]);
+  }
+  var rn=d.report[0].trim(), rv=d.report[1].trim();
+  out.report=null; out.reportState="none";
+  if(rn!==""||rv!==""){
+    var pn=parseNum(rn), pv=parseNum(rv);
+    if(rn===""||rv===""){out.errors.push("ยอดจากรายงาน: กรอกให้ครบทั้งจำนวนและมูลค่า (หรือเว้นว่างทั้งคู่)");out.reportState="partial"}
+    else if(isNaN(pn)||pn<0||Math.floor(pn)!==pn||isNaN(pv)||pv<0||Math.abs(pv*100-Math.round(pv*100))>1e-6){out.errors.push("ยอดจากรายงาน: จำนวนต้องเป็นจำนวนเต็ม มูลค่าเป็นตัวเลขทศนิยมไม่เกิน 2 ตำแหน่ง");out.reportState="bad"}
+    else {out.report=[pn,pv];out.reportState="ok"}
+  }
+  var tot=totalsOf(out.tiers); out.total=tot;
+  if(out.report){
+    var dn=tot.n-out.report[0], dv=r2(tot.v-out.report[1]);
+    out.match=(dn===0&&Math.abs(dv)<0.005); out.dn=dn; out.dv=dv;
+    /* ถ้ามีช่อง tier ผิดรูปแบบอยู่ ยังไม่ฟ้องยอดไม่ตรง (กัน error ซ้อนที่อ่านยาก) */
+    if(!out.match&&!out.rowErr.some(Boolean))out.errors.push("ยอดรวมไม่ตรงกับรายงาน (จำนวนต่าง "+dn+" ราย · มูลค่าต่าง "+fmtSigned(dv)+" บาท) — แก้ให้ตรงก่อนบันทึก");
+  }
+  return out;
+}
+function savedStrings(){return fieldsToStrings(getRec(curMonth,sel))}
+function normStr(s){var v=parseNum(s);return isNaN(v)?"?"+s:String(r2(v))}
+function isDirtyNow(d){
+  var s=savedStrings(), changed=false;
+  for(var k=0;k<8;k++){
+    if(normStr(d.tiers[k][0])!==normStr(s.tiers[k][0])||normStr(d.tiers[k][1])!==normStr(s.tiers[k][1]))changed=true;
+    $("n"+k).classList.toggle("chg",normStr(d.tiers[k][0])!==normStr(s.tiers[k][0]));
+    $("v"+k).classList.toggle("chg",normStr(d.tiers[k][1])!==normStr(s.tiers[k][1]));
+  }
+  var rs=s.report[0]===""?["",""]:[normStr(s.report[0]),normStr(s.report[1])];
+  var rd=[d.report[0].trim()===""?"":normStr(d.report[0]),d.report[1].trim()===""?"":normStr(d.report[1])];
+  if(rs[0]!==rd[0]||rs[1]!==rd[1])changed=true;
+  return changed;
+}
+function onField(){recalc()}
+function recalc(){
+  if(sel<0||!$("edBox")||$("edBox").hidden)return;
+  var d=readDraftFromDom(); draft=d; var ev=evalDraft(d), rec=getRec(curMonth,sel);
+  /* หมายเหตุรายแถว */
+  for(var k=0;k<8;k++){
+    var nt=$("nt"+k), msg=ev.rowErr[k]||ev.rowWarn[k];
+    nt.textContent=msg||""; nt.className="note"+(ev.rowErr[k]?" err":(ev.rowWarn[k]?" wrn":""));
+    var bad=!!ev.rowErr[k]; $("n"+k).classList.toggle("bad",bad); $("v"+k).classList.toggle("bad",bad);
+    $("n"+k).setAttribute("aria-invalid",bad?"true":"false"); $("v"+k).setAttribute("aria-invalid",bad?"true":"false");
+  }
+  $("sumN").textContent=fmt0(ev.total.n); $("sumV").textContent=fmt2(ev.total.v);
+  /* เทียบยอดรายงาน */
+  var chk="", rbad=(ev.reportState==="partial"||ev.reportState==="bad"||(ev.report&&!ev.match));
+  $("rN").classList.toggle("bad",rbad); $("rV").classList.toggle("bad",rbad);
+  if(ev.reportState==="ok"&&ev.match)chk='<span class="chip ok">✓ ตรงกับรายงาน ('+fmt0(ev.report[0])+' ราย · '+fmt2(ev.report[1])+' บาท)</span>';
+  else if(ev.reportState==="ok")chk='<span class="chip miss">✗ ไม่ตรง — จำนวนต่าง '+ev.dn+' ราย · มูลค่าต่าง '+fmtSigned(ev.dv)+' บาท</span>';
+  else if(ev.reportState==="none")chk='<span class="chip pend">ยังไม่ได้เทียบยอดรายงาน — บันทึกได้ แต่แนะนำให้กรอกยอดจากรายงานเพื่อตรวจ</span>';
+  else chk='<span class="chip miss">ยอดรายงานกรอกไม่ครบ/ผิดรูปแบบ</span>';
+  $("chk").innerHTML=chk;
+  /* เดือนก่อน + ส่วนต่าง + cust */
+  var p=prevTotal(curMonth,sel), diff=r2(ev.total.v-p), pct=p?Math.abs(diff)/p:0;
+  $("kvPrev").textContent=fmt2(p);
+  $("kvDiff").innerHTML='<span class="'+(diff>0?"up":(diff<0?"down":"flat"))+'">'+fmtSigned(diff)+(pct>0.10?" ⚑":"")+'</span>';
+  $("kvCust").textContent=fmt0(ev.total.n)+" ราย";
+  /* error box + ปุ่ม */
+  $("errBox").innerHTML=ev.errors.length?'<div class="errbox" role="alert"><b>บันทึกยังไม่ได้ — แก้รายการนี้ก่อน</b><ul>'+ev.errors.map(function(m){return "<li>"+esc(m)+"</li>"}).join("")+'</ul></div>':"";
+  dirty=isDirtyNow(d);
+  $("dirtyTxt").hidden=!dirty; $("revertBtn").hidden=!dirty;
+  $("keepBtn").hidden=!(dirty===false&&!rec.updated);
+  $("saveBtn").disabled=ev.errors.length>0;
+  $("saveBtn").textContent=rec.updated?"บันทึกการแก้ไข":'บันทึกเป็น "อัปเดตแล้ว"';
+  updateJson(ev); renderTableDirtyOnly();
+}
+function renderTableDirtyOnly(){
+  /* อัปเดตเฉพาะป้าย "แก้อยู่" ในตาราง โดยไม่เรนเดอร์ใหม่ทั้งตาราง (ไม่ทำให้ focus หลุด) */
+  var rows=document.querySelectorAll("#brBody tr.sel .zone");
+  rows.forEach(function(z){
+    var m=z.querySelector(".chip.pend");
+    if(dirty&&!m)z.insertAdjacentHTML("beforeend",' <span class="chip pend">● แก้อยู่ ยังไม่บันทึก</span>');
+    if(!dirty&&m)m.remove();
+  });
+}
+function revertDraft(){
+  draft=savedStrings();
+  for(var k=0;k<8;k++){$("n"+k).value=draft.tiers[k][0];$("v"+k).value=draft.tiers[k][1]}
+  $("rN").value=draft.report[0]; $("rV").value=draft.report[1];
+  recalc(); toast("คืนค่าเดิมแล้ว");
+}
+async function keepSame(){
+  var b=BRANCHES[sel];
+  var ok=await askConfirm("ยืนยันใช้ค่าเดิมของ "+b[1]+"?","ตัวเลขเดือน "+curMonth+" จะเท่ากับค่าที่ยกมาจาก "+(getRec(curMonth,sel).from||"เดือนก่อน")+" ทุกช่อง และถือว่า \"อัปเดตแล้ว\" · ส่วนต่างจากเดือนก่อน = 0","ยืนยันค่าเดิม");
+  if(!ok)return;
+  commit(sel,getRec(curMonth,sel).tiers,null,"ยืนยันใช้ค่าเดิม");
+}
+async function saveBranch(){
+  var d=readDraftFromDom(), ev=evalDraft(d);
+  if(ev.errors.length){recalc();return}
+  var b=BRANCHES[sel], needAsk=[];
+  var warns=ev.rowWarn.map(function(w,k){return w?TIERS[k].k.toUpperCase()+": "+w:""}).filter(Boolean);
+  if(warns.length)needAsk.push("มีคำเตือน "+warns.length+" รายการ (ค่าเฉลี่ยต่อรายผิดปกติ/มูลค่า 0)");
+  if(ev.reportState==="none")needAsk.push("ยังไม่ได้เทียบยอดกับรายงาน");
+  if(MONTH_INFO[curMonth].closed)needAsk.push("เดือนนี้ปิดแล้ว การแก้จะลง audit log และ Dashboard ยังคงค่าเดิมจนกว่าคำนวณ snapshot ใหม่");
+  if(needAsk.length){
+    var ok=await askConfirm("บันทึก "+b[1]+" "+curMonth+"?",needAsk.join(" · ")+" — ต้องการบันทึกต่อหรือไม่","บันทึก");
+    if(!ok)return;
+  }
+  commit(sel,ev.tiers,ev.report,"บันทึกแล้ว");
+}
+function commit(i,tiers,report,msg){
+  var wasUpdated=!!(STORE[curMonth]&&STORE[curMonth][i]&&STORE[curMonth][i].updated);
+  if(!STORE[curMonth])STORE[curMonth]={};
+  var now=new Date(), pad=function(n){return String(n).padStart(2,"0")};
+  var at=pad(7)+"/11/2026 "+pad(now.getHours())+":"+pad(now.getMinutes());
+  STORE[curMonth][i]={tiers:tiers.map(function(p){return [p[0],p[1]]}),report:report,updated:true,at:at,by:HOST_NAME};
+  if(MONTH_INFO[curMonth].closed)CLOSED_EDITS[curMonth]=(CLOSED_EDITS[curMonth]||0)+1;
+  dirty=false; draft=fieldsToStrings(getRec(curMonth,i)); parsed=null;
+  renderEditor(); renderAll();
+  toast(msg+" · "+BRANCHES[i][1]+" "+curMonth+(MONTH_INFO[curMonth].closed?" (แก้หลังปิด · ลง audit log)":"")+(wasUpdated?"":""));
+}
+
+/* ===== วางตารางจาก Excel ===== */
+var SAMPLE_BASE=["S1","S3","M1","M3","L1","L3","XL1","XL3"];
+function fillSample(){
+  /* สร้างข้อความตัวอย่างจากค่าปัจจุบันของสาขา + ปรับเล็กน้อยให้เห็นส่วนต่าง (ตัวเลขสมมติ) */
+  var rec=getRec(curMonth,sel), tiers=rec.tiers.map(function(p){return [p[0],p[1]]});
+  tiers[0][0]+=1; tiers[0][1]=r2(tiers[0][1]+AVG_TOTAL[0]);
+  if(tiers[3][0]>0){tiers[3][0]-=1;tiers[3][1]=r2(Math.max(0,tiers[3][1]-AVG_TOTAL[3]))}
+  var t=totalsOf(tiers);
+  var lines=["ขนาด\tจำนวน\tมูลค่า"];
+  tiers.forEach(function(p,k){lines.push(SAMPLE_BASE[k]+"\t"+p[0]+"\t"+fmt2(p[1]))});
+  lines.push("รวมทั้งสิ้น\t"+t.n+"\t"+fmt2(t.v));
+  $("pasteTa").value=lines.join("\n"); onPasteInput(); readPaste();
+}
+function onPasteInput(){parsed=null;$("applyBtn").hidden=true;$("pvOut").innerHTML=""}
+function clearPaste(){$("pasteTa").value="";onPasteInput()}
+/* ตัวอ่านข้อความ: แบ่งคอลัมน์ด้วย tab (ถ้าไม่มี tab ใช้ช่องว่าง 2 ตัวขึ้นไป) · จับ tier จากเซลล์แรก (เช่น "S1", "XL3(>100K)") */
+function parsePaste(text){
+  var res={tiers:{},report:null,issues:[],lines:0};
+  text.split(/\r?\n/).forEach(function(raw){
+    var line=raw.replace(/ /g," ").trim(); if(!line)return;
+    var cells=line.indexOf("\t")>=0?line.split("\t"):line.split(/\s{2,}/);
+    cells=cells.map(function(c){return c.trim()}).filter(function(c,idx){return c!==""||idx>0});
+    var head=cells[0]||"", nums=[];
+    for(var c=1;c<cells.length;c++){var x=cells[c].replace(/[,\s฿]/g,""); if(/^-?\d+(\.\d+)?$/.test(x))nums.push(Number(x)); else if(x==="-")nums.push(0);}
+    if(/^(รวมทั้งสิ้น|รวม|total|grand)/i.test(head)){
+      if(nums.length>=2){res.report=[nums[0],nums[1]];res.lines++}
+      else res.issues.push('บรรทัด "'+head+'" ต้องมีตัวเลข 2 ค่า (จำนวน, มูลค่า)');
+      return;
+    }
+    var m=/(^|[^A-Za-z])(XL|S|M|L)\s*([13])(?![0-9])/i.exec(head);
+    if(!m)return; /* หัวตาราง/บรรทัดอื่นข้ามไป */
+    var key=(m[2]+m[3]).toLowerCase();
+    if(nums.length<2){res.issues.push(key.toUpperCase()+": ต้องมีตัวเลข 2 ค่า (จำนวน, มูลค่า) พบ "+nums.length+" ค่า");return}
+    var n=nums[0], v=nums[1], swapped=false;
+    if(Math.floor(n)!==n&&Math.floor(v)===v){var tmp=n;n=v;v=tmp;swapped=true}
+    if(res.tiers[key])res.issues.push(key.toUpperCase()+": พบซ้ำหลายบรรทัด ใช้บรรทัดหลังสุด");
+    res.tiers[key]={n:n,v:v,swapped:swapped}; res.lines++;
+  });
+  return res;
+}
+function readPaste(){
+  var txt=$("pasteTa").value;
+  if(!txt.trim()){$("pvOut").innerHTML='<div class="alert warn" style="margin:8px 0 0"><span class="ic" aria-hidden="true">⚠</span><div>ยังไม่ได้วางข้อความ — คัดลอกตารางจาก Excel แล้ววางในช่องด้านบน</div></div>';$("applyBtn").hidden=true;return}
+  var p=parsePaste(txt); parsed=p;
+  var found=TIERS.filter(function(t){return p.tiers[t.k]}), missing=TIERS.filter(function(t){return !p.tiers[t.k]});
+  var cur=readDraftFromDom(), html="";
+  if(!found.length){
+    html='<div class="alert danger" style="margin:8px 0 0"><span class="ic" aria-hidden="true">✕</span><div><b>จับคู่ tier ไม่ได้เลย</b><small>แต่ละบรรทัดควรขึ้นต้นด้วย S1, S3, M1, M3, L1, L3, XL1 หรือ XL3 ตามด้วยจำนวนและมูลค่า (คั่นด้วย tab)</small></div></div>';
+    $("pvOut").innerHTML=html; $("applyBtn").hidden=true; parsed=null; return;
+  }
+  html+='<div style="font-size:12px;margin-top:8px"><b>ตรวจแล้ว:</b> จับคู่ได้ '+found.length+' / 8 tier'+(p.report?' · พบยอดรวมทั้งสิ้น':' · ไม่พบบรรทัด "รวมทั้งสิ้น"')+'</div><ul class="pvlist">';
+  found.forEach(function(t){
+    var k=TIERS.indexOf(t), x=p.tiers[t.k], oldN=parseNum(cur.tiers[k][0]), oldV=parseNum(cur.tiers[k][1]);
+    var ch=(oldN!==x.n||cents(isNaN(oldV)?0:oldV)!==cents(x.v));
+    html+='<li><span class="tier '+t.k+'">'+t.k.toUpperCase()+'</span><span class="lbl num">'+fmt0(x.n)+' ราย</span><span>'+fmt2(x.v)+'</span>'
+      +(ch?'<span class="chip info">เปลี่ยนจาก '+fmt0(isNaN(oldN)?0:oldN)+' / '+fmt2(isNaN(oldV)?0:oldV)+'</span>':'<span class="chip na">เท่าเดิม</span>')
+      +(x.swapped?'<span class="chip pend">สลับคอลัมน์ให้ (พบมูลค่ามาก่อนจำนวน)</span>':"")+'</li>';
+  });
+  html+='</ul>';
+  if(p.report)html+='<div style="font-size:12px;margin-top:6px">ยอดรายงาน: <b>'+fmt0(p.report[0])+' ราย · '+fmt2(p.report[1])+' บาท</b></div>';
+  if(missing.length)html+='<div class="alert warn" style="margin:8px 0 0"><span class="ic" aria-hidden="true">⚠</span><div>ไม่พบ '+missing.map(function(t){return t.k.toUpperCase()}).join(", ")+' ในข้อความ — จะ<b>คงค่าเดิมไว้</b> (ไม่ตั้งเป็น 0)</div></div>';
+  if(p.issues.length)html+='<div class="alert warn" style="margin:8px 0 0"><span class="ic" aria-hidden="true">⚠</span><div>'+p.issues.map(esc).join("<br>")+'</div></div>';
+  $("pvOut").innerHTML=html; $("applyBtn").hidden=false;
+}
+function applyPaste(){
+  if(!parsed)return;
+  TIERS.forEach(function(t,k){
+    var x=parsed.tiers[t.k]; if(!x)return;
+    $("n"+k).value=String(x.n); $("v"+k).value=fmt2(x.v);
+  });
+  if(parsed.report){$("rN").value=String(parsed.report[0]);$("rV").value=fmt2(parsed.report[1])}
+  var cnt=Object.keys(parsed.tiers).length; parsed=null; $("applyBtn").hidden=true;
+  $("pvOut").innerHTML='<div class="alert ok" style="margin:8px 0 0"><span class="ic" aria-hidden="true">✓</span><div>ใส่ลงฟอร์มแล้ว '+cnt+' tier — ตรวจยอดด้านล่างแล้วกดบันทึก</div></div>';
+  recalc();
+}
+
+/* ===== ตัวอย่างแถวส่ง Dashboard (16 ฟิลด์ §9.1) ===== */
+function updateJson(ev){
+  var pre=$("jsonPrev"); if(!pre)return;
+  if(sel<0){pre.textContent="เลือกสาขาก่อน";return}
+  var e=ev||evalDraft(draft||fieldsToStrings(getRec(curMonth,sel))), T=e.tiers, b=BRANCHES[sel];
+  function sv(a,b2){return r2(cents(T[a][1])/100+cents(T[b2][1])/100)}
+  var row={area:b[0],branch:b[1]};
+  TIERS.forEach(function(t,k){row[t.k]=T[k][0]});
+  row.cust=e.total.n; row.vS=sv(0,1); row.vM=sv(2,3); row.vL=sv(4,5); row.vXL=sv(6,7); row.value=e.total.v;
+  var o={}; o[curMonth]=[row];
+  pre.textContent=JSON.stringify(o,null,2);
+}
+
+/* ===== เมนู / ธีม / role ===== */
+function toggleNav(open){
+  var bd=document.body, want=(typeof open==="boolean")?open:!bd.classList.contains("nav-open");
+  bd.classList.toggle("nav-open",want);
+  var t=$("navToggle"); if(t)t.setAttribute("aria-expanded",want?"true":"false");
+}
+document.addEventListener("keydown",function(e){if(e.key==="Escape")toggleNav(false)});
+function setRole(r){
+  var ok=(r==="host");
+  $("lockMsg").hidden=ok; $("content").hidden=!ok;
+}
+function toggleTheme(){
+  var el=document.documentElement, cur=el.getAttribute("data-theme");
+  var next=cur==="dark"?"light":(cur==="light"?"dark":(matchMedia("(prefers-color-scheme: dark)").matches?"light":"dark"));
+  el.setAttribute("data-theme",next);
+  try{localStorage.setItem("aga-theme",next)}catch(e){}
+}
+/* วางข้อความที่ไหนก็ได้ในหน้า (ขณะเปิดแผงสาขาอยู่) → ใส่ช่องวาง + อ่านทันที · ไม่ยุ่งถ้าเคอร์เซอร์อยู่ในช่องกรอกอื่น */
+document.addEventListener("paste",function(e){
+  if(sel<0||!$("pasteTa"))return;
+  var t=e.target; if(t&&t.closest&&t.closest("input,textarea,select"))return;
+  var txt=(e.clipboardData||window.clipboardData).getData("text"); if(!txt||!txt.trim())return;
+  e.preventDefault(); $("pasteTa").value=txt; onPasteInput(); readPaste();
+  var ap=$("applyBtn"); if(ap&&!ap.hidden)ap.focus();
+});
+window.addEventListener("beforeunload",function(e){if(dirty){e.preventDefault();e.returnValue=""}});
+initMonths(); renderAll();
+</script>
+</body>
+</html>
