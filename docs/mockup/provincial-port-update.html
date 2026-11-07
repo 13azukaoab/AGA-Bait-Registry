@@ -336,7 +336,7 @@ dialog .row{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
         </section>
 
         <!-- ขวา: แผงแก้ไข -->
-        <section class="panel editor" id="editor" aria-labelledby="ed-title" aria-live="polite">
+        <section class="panel editor" id="editor" aria-labelledby="ed-title">
           <div id="edEmpty" class="empty">
             <div style="font-size:26px" aria-hidden="true">☜</div>
             <b id="ed-title" style="display:block;margin-top:6px;color:var(--fg)">เลือกสาขาจากตารางด้านซ้าย</b>
@@ -439,10 +439,12 @@ function totalsOf(tiers){
   return {n:n,v:c/100};
 }
 var STORE={}; /* STORE[month][branchIndex] = {tiers,report,updated,at,by} */
+var AUG26_TOTAL=[]; /* มูลค่ารวม AUG.26 (เดือนก่อนเดือนแรกในเดโม) — ค่าคงที่ ไม่เปลี่ยนตามการแก้ SEP.26 */
 (function seed(){
   STORE["SEP.26"]={}; STORE["OCT.26"]={};
   BRANCHES.forEach(function(b,i){
     var sep=makeBase(i,7), oct=mutate(sep,i,11), ts=totalsOf(sep), to=totalsOf(oct);
+    AUG26_TOTAL[i]=r2(ts.v*(0.95+mulberry(i*53+3)()*0.1));
     STORE["SEP.26"][i]={tiers:sep,report:[ts.n,ts.v],updated:true,at:"02/10/2026 "+(9+i%6)+":1"+(i%10),by:HOST_NAME};
     /* OCT.26: อุดรธานี(6) กับ ลพบุรี(8) ยังไม่อัปเดต · ภูเก็ต(13) ไม่ได้ใส่ยอดรายงาน */
     if(i!==6&&i!==8) STORE["OCT.26"][i]={tiers:oct,report:(i===13?null:[to.n,to.v]),updated:true,at:"05/11/2026 "+(10+i%5)+":2"+(i%10),by:HOST_NAME};
@@ -464,9 +466,7 @@ function getRec(m,i){
 }
 function prevTotal(m,i){
   var pm=prevMonthOf(m);
-  if(pm)return totalsOf(getRec(pm,i).tiers).v;
-  var rnd=mulberry(i*53+3), cur=totalsOf(getRec(m,i).tiers).v;
-  return r2(cur*(0.95+rnd()*0.1));
+  return pm?totalsOf(getRec(pm,i).tiers).v:AUG26_TOTAL[i];
 }
 
 /* ===== สถานะหน้าจอ ===== */
@@ -478,7 +478,8 @@ function bandRange(g,mult){
   /* tier ล่างสุด: "ต่ำกว่า" จุดเริ่มของ tier ถัดไป (ไม่ใช้ max+0.01 เพื่อไม่ให้เกิดเลขแปลกเช่น 89,999.98) */
   if(r.min===0)return "ต่ำกว่า "+fmt0(r2(TIER_RULES[TIER_RULES.indexOf(r)+1].min*mult));
   if(r.max===null)return "ตั้งแต่ "+fmt0(r2(r.min*mult));
-  return fmt0(r2(r.min*mult))+" – "+fmt0(r2(r.max*mult));
+  /* ปลายช่วง = จุดเริ่ม tier ถัดไป × ปี − 0.01 (ไม่ใช้ max × ปี ซึ่งได้ 149,999.97 ทำให้ 149,999.98 ดูเหมือนหลุดช่วง) */
+  return fmt0(r2(r.min*mult))+" – "+fmt0(r2(TIER_RULES[TIER_RULES.indexOf(r)+1].min*mult-0.01));
 }
 function ruleOf(g){return TIER_RULES.filter(function(x){return x.g===g})[0]}
 
@@ -803,15 +804,14 @@ async function saveBranch(){
   commit(sel,ev.tiers,ev.report,"บันทึกแล้ว");
 }
 function commit(i,tiers,report,msg){
-  var wasUpdated=!!(STORE[curMonth]&&STORE[curMonth][i]&&STORE[curMonth][i].updated);
   if(!STORE[curMonth])STORE[curMonth]={};
   var now=new Date(), pad=function(n){return String(n).padStart(2,"0")};
   var at=pad(7)+"/11/2026 "+pad(now.getHours())+":"+pad(now.getMinutes());
   STORE[curMonth][i]={tiers:tiers.map(function(p){return [p[0],p[1]]}),report:report,updated:true,at:at,by:HOST_NAME};
   if(MONTH_INFO[curMonth].closed)CLOSED_EDITS[curMonth]=(CLOSED_EDITS[curMonth]||0)+1;
-  dirty=false; draft=fieldsToStrings(getRec(curMonth,i)); parsed=null;
-  renderEditor(); renderAll();
-  toast(msg+" · "+BRANCHES[i][1]+" "+curMonth+(MONTH_INFO[curMonth].closed?" (แก้หลังปิด · ลง audit log)":"")+(wasUpdated?"":""));
+  if(i===sel){dirty=false; draft=fieldsToStrings(getRec(curMonth,i)); parsed=null; renderEditor()}
+  renderAll();
+  toast(msg+" · "+BRANCHES[i][1]+" "+curMonth+(MONTH_INFO[curMonth].closed?" (แก้หลังปิด · ลง audit log)":""));
 }
 
 /* ===== วางตารางจาก Excel ===== */
@@ -922,7 +922,7 @@ function toggleTheme(){
 }
 /* วางข้อความที่ไหนก็ได้ในหน้า (ขณะเปิดแผงสาขาอยู่) → ใส่ช่องวาง + อ่านทันที · ไม่ยุ่งถ้าเคอร์เซอร์อยู่ในช่องกรอกอื่น */
 document.addEventListener("paste",function(e){
-  if(sel<0||!$("pasteTa"))return;
+  if(sel<0||!$("pasteTa")||$("dlg").open)return; /* ไม่รับวางขณะกล่องยืนยันเปิดอยู่ */
   var t=e.target; if(t&&t.closest&&t.closest("input,textarea,select"))return;
   var txt=(e.clipboardData||window.clipboardData).getData("text"); if(!txt||!txt.trim())return;
   e.preventDefault(); $("pasteTa").value=txt; onPasteInput(); readPaste();
