@@ -260,17 +260,6 @@ table.xl .chip.lk:hover{outline:1px solid var(--accent);outline-offset:1px}
 .mdrow .miss{color:var(--danger);font-weight:600}
 .mdrow input,.mdrow select{font-family:inherit;font-size:12px;padding:4px 7px;border-radius:6px;
   border:1px solid var(--border-strong);background:var(--surface);color:var(--fg)}
-/* ===== นำเข้าจาก Excel ===== */
-.imparea{padding:12px 16px;border-bottom:1px solid var(--border);background:var(--surface-2)}
-.imparea textarea{width:100%;height:92px;font-family:ui-monospace,Consolas,monospace;font-size:11.5px;
-  border:1px solid var(--border-strong);border-radius:8px;padding:8px 10px;resize:vertical;
-  background:var(--surface);color:var(--fg);white-space:pre;overflow:auto}
-.imparea .row{display:flex;gap:8px;align-items:center;margin-top:8px}
-.impfix{font-size:11px;color:var(--ok);background:var(--ok-soft);border-radius:5px;padding:1px 7px;margin-right:5px;
-  display:inline-block;margin-top:2px}
-.impbad{font-size:11px;color:var(--danger);background:var(--danger-soft);border-radius:5px;padding:1px 7px;
-  margin-right:5px;display:inline-block;margin-top:2px}
-.impskip{font-size:11px;color:var(--fg-muted);background:var(--surface-3);border-radius:5px;padding:1px 7px}
 .mddone td,.mddone{opacity:.5}
 .dayft{padding:10px 16px;border-top:1px solid var(--border);background:var(--surface-2);
   font-size:11.5px;color:var(--fg-muted);display:flex;align-items:center;gap:9px}
@@ -341,7 +330,6 @@ table.xl .teambtn.multi{font-weight:700;color:var(--accent-strong)}
   <div class="field"><label>สาขา</label><select><option>ทุกสาขา</option><option>พัฒนาการ</option><option>นนทบุรี</option></select></div>
   <div class="field"><label>สถานะ</label><select><option>ทั้งหมด</option><option>ครบแล้ว</option><option>รอนัดบริการ</option><option>ขาดข้อมูลจำเป็น</option></select></div>
   <div class="field" style="flex:1;min-width:150px"><label>ค้นหา</label><input placeholder="ชื่อลูกค้า / เลขที่สัญญา" style="width:100%"></div>
-  <button class="btn sm" type="button" onclick="impOpen()">↑ นำเข้าจาก Excel</button>
   <button class="btn sm" type="button" onclick="exportXL()">↓ ส่งออก Excel</button>
   <button class="btn sm primary" type="button" onclick="addRow()">+ เพิ่มแถว</button>
 </div>
@@ -1434,156 +1422,6 @@ function rowZone(inp){
   inp.style.borderColor = (z||!raw) ? '' : 'var(--danger)';
 }
 
-
-/* ===== นำเข้าจาก Excel (วางข้อมูล) =====
-   รวมกฎล้างข้อมูลทุกข้อที่เจอจากไฟล์จริง ต.ค.2026 ไว้ที่เดียว:
-   เลขสัญญาเว้นวรรค/ตัวพิมพ์เล็ก · ประเภทสะกดเก่า · สาขาสะกดผิด · เวลา "09.00 น." ·
-   ทีม sup/หนง. · "หลายทีม" ที่ไม่บอกว่าทีมไหน · คอลัมน์เลื่อนทั้งแถว · ปีพัง · แถวสรุปที่ปนมา
-   แบ่งผลเป็น 3 กลุ่ม: พร้อมนำเข้า (แก้ให้อัตโนมัติ) / ต้องแก้เอง / ข้าม */
-var IMPCOL=['ลำดับ','เลขที่สัญญา','รายชื่อ','เบิกด่วน','New','Renew','ผู้ขาย','ตำแหน่ง','สาขา','เขต',
-            'วันที่รับ Mail','วันที่บริการ','เวลาบริการ','ทีม','ประเภท','เริ่ม','สิ้นสุด','1 ปี','3 ปี','หมายเหตุ'];
-var CTMAP={'บ้าน':'บ้านเดี่ยว','อาคาร':'ออฟฟิต','สำนักงาน':'ออฟฟิต','ออฟฟิศ':'ออฟฟิต','ออฟฟิต':'ออฟฟิต',
-  'ทาวโฮม':'ทาวน์โฮม / ตึกแถว','ทาวน์โฮม':'ทาวน์โฮม / ตึกแถว','ตึกแถว':'ทาวน์โฮม / ตึกแถว',
-  'โรงเรียน':'สถานศึกษา','มหาลัย':'สถานศึกษา','มหาวิทยาลัย':'สถานศึกษา',
-  'วัง':'สถานที่สำคัญ','สวนลอยฟ้า':'สถานที่สำคัญ','ศาล':'สถานที่ราชการ','สำนักงานนายก':'สถานที่ราชการ',
-  'รีสอร์ท':'โรงแรม/รีสอร์ท','โรงแรม':'โรงแรม/รีสอร์ท','ห้าง':'ห้าง / ร้านค้า',
-  'โรงงาน':'โรงงาน','โรงพยาบาล':'โรงพยาบาล','โกดัง':'โกดังสินค้า','โกดังสินค้า':'โกดังสินค้า'};
-var TMMAP={'sup':'Sup','SUP':'Sup','Sup':'Sup','หนง.':'Sup','หน.':'Sup'};
-
-function impOpen(){
-  mdOpen('นำเข้าจาก Excel','',
-    '<div class="imparea">'+
-      '<textarea id="impta" spellcheck="false" placeholder="คัดลอกแถวจาก Excel แล้ววางตรงนี้ได้เลย (ไม่ต้องเอาหัวตารางมา)"></textarea>'+
-      '<div class="row"><span style="font-size:11.5px;color:var(--fg-muted)">เรียงคอลัมน์ตามไฟล์ต้นฉบับ '+IMPCOL.length+' คอลัมน์</span>'+
-      '<span style="flex:1"></span>'+
-      '<button class="btn sm" type="button" onclick="impSample()">ใส่ข้อมูลตัวอย่าง</button>'+
-      '<button class="btn sm primary" type="button" onclick="impCheck()">ตรวจข้อมูล</button></div></div>',
-    '<div class="mdlist"><div class="no">วางข้อมูลแล้วกด <b>ตรวจข้อมูล</b><br>'+
-      '<span style="font-size:11.5px">ระบบจะล้างค่าที่แก้ได้เองให้ก่อน แล้วบอกเฉพาะแถวที่ต้องแก้มือ</span></div></div>','');
-}
-
-function impSample(){
-  var R=[
-   ['1','CT26-9100001','บจก. ลูกค้าตัวอย่าง 21','','','TRUE','พนักงานขาย 05','AM','สุขุมวิท','C6','11/09/2026','14/10/2026','13:00:00','H','บ้าน','16/10/2026','15/10/2027','33426.80','',''],
-   ['2','CT26-9100002 ','คุณลูกค้า สิบสาม','','TRUE','','พนักงานขาย 11','Sale','สาทร','C2','12/09/2026','16/10/2026','09.00 น.','sup','ทาวโฮม','01/10/2026','30/09/2027','15890','',''],
-   ['3','ct26-9100003','บจก. ลูกค้าตัวอย่าง 22','','','TRUE','พนักงานขาย 02','AM','นนทบรี','นนทบรี','14/09/2026','20/10/2026','10.30 น.','E','อาคาร','01/10/2026','30/09/2029','','64200',''],
-   ['4','CT26-9100004','คุณลูกค้า สิบสี่','','TRUE','','พนักงานขาย 20','AM','รามอินทรา','C3','15/09/2026','17/09/2026','2026-10-20','11:30:00','o','05/10/2026','04/10/2027','16000','',''],
-   ['5','CT26-9100005','บจก. ลูกค้าตัวอย่าง 23','','TRUE','','พนักงานขาย 07','Sale','ประชาชื่น','C4','16/09/2026','26/01/1900','14.30 น.','L','บ้าน','01/10/2026','30/09/2027','21400','',''],
-   ['6','CT26-9100006','บจก. ลูกค้าตัวอย่าง 24','','','TRUE','พนักงานขาย 03','AM','ประชาชื่น','C4','18/09/2026','28/10/2026','09:00:00','หลายทีม','วัง','01/10/2026','30/09/2029','','252828',''],
-   ['7','CT26-9100001','บจก. ลูกค้าตัวอย่าง 25','','TRUE','','พนักงานขาย 09','AM','พัฒนาการ','C4','20/09/2026','22/10/2026','10:00:00','I','โรงงาน','01/10/2026','30/09/2027','99510','',''],
-   ['','จำนวน','','','','','','','','','','','','','','','','17','34','']
-  ];
-  document.getElementById('impta').value=R.map(function(r){return r.join('\t');}).join('\n');
-  impCheck();
-}
-
-function impParse(txt){
-  return txt.split('\n').map(function(l){return l.replace(/\r$/,'');})
-            .filter(function(l){return l.trim();}).map(function(l){return l.split('\t');});
-}
-
-function impRow(c,i,seen){
-  var fix=[], bad=[], get=function(n){ return (c[n]||'').trim(); };
-  var ct=get(1).replace(/\s+/g,'').toUpperCase();
-
-  if(!/^CT\d{2}-\d+$/.test(ct))
-    return {skip:true, why:'ไม่ใช่แถวสัญญา (ช่องเลขที่สัญญาเป็น "'+(get(1)||'ว่าง')+'") — น่าจะเป็นบล็อกสรุปที่ติดมาด้วย'};
-
-  if(ct!==get(1)) fix.push('เลขที่สัญญา "'+get(1)+'" → '+ct);
-  if(!/^CT\d{2}-\d{7}$/.test(ct)) bad.push('เลขที่สัญญาไม่ครบ 7 หลัก');
-  if(seen[ct]) bad.push('เลขที่สัญญาซ้ำกับแถว '+seen[ct]); else seen[ct]=i+1;
-
-  if(/^\d{1,2}:\d{2}/.test(get(13)))
-    bad.push('คอลัมน์เลื่อนทั้งแถว (ช่องทีมเป็นเวลา "'+get(13)+'")');
-
-  var br=get(8);
-  if(br && !BRZONE[br]){
-    var near=Object.keys(BRZONE).filter(function(b){
-      return b.length>=4 && b.slice(0,3)===br.slice(0,3) && Math.abs(b.length-br.length)<=2; })[0];
-    if(near){ fix.push('สาขา "'+br+'" → '+near); br=near; }
-    else bad.push('ไม่รู้จักสาขา "'+br+'"');
-  }
-  if(!br) bad.push('ไม่มีสาขา');
-  if(br && get(9) && get(9)!==BRZONE[br]) fix.push('เขต "'+get(9)+'" → '+BRZONE[br]+' (คำนวณจากสาขา)');
-
-  var tm=get(13);
-  if(TMMAP[tm]) fix.push('ทีม "'+tm+'" → '+TMMAP[tm]);
-  else if(tm==='หลายทีม') bad.push('"หลายทีม" ต้องระบุว่าทีมไหนบ้าง');
-
-  var ty=get(14);
-  if(ty){
-    if(CTMAP[ty]){ if(CTMAP[ty]!==ty) fix.push('ประเภท "'+ty+'" → '+CTMAP[ty]); }
-    else bad.push('ไม่รู้จักประเภท "'+ty+'"');
-  } else bad.push('ไม่มีประเภทลูกค้า');
-
-  var tv=get(12), m=tv.match(/^(\d{1,2})[:.](\d{2})/);
-  if(tv && m){
-    var norm=('0'+m[1]).slice(-2)+':'+m[2];
-    if(norm!==tv) fix.push('เวลา "'+tv+'" → '+norm);
-  } else if(tv) bad.push('อ่านเวลาไม่ออก "'+tv+'"');
-
-  [[11,'วันที่บริการ'],[15,'วันเริ่มสัญญา'],[16,'วันสิ้นสุด']].forEach(function(p){
-    var v=get(p[0]), y=v.match(/(\d{4})/);
-    if(y && (+y[1]<2000 || +y[1]>2100)) bad.push(p[1]+'ปีผิดปกติ ('+v+')');
-  });
-
-  if(!get(17) && !get(18)) bad.push('ไม่มีมูลค่า');
-  if(!get(6)) bad.push('ไม่มีผู้ขาย');
-
-  return {ct:ct, name:get(2)||'(ไม่มีชื่อ)', fix:fix, bad:bad};
-}
-
-function impCheck(){
-  var rows=impParse(document.getElementById('impta').value||''), seen={};
-  if(!rows.length){
-    document.getElementById('mdbody').innerHTML='<div class="mdlist"><div class="no">ยังไม่ได้วางข้อมูล</div></div>';
-    document.getElementById('mdft').innerHTML=''; return;
-  }
-  var res=rows.map(function(c,i){ return impRow(c,i,seen); });
-  var ok=res.filter(function(r){return !r.skip && !r.bad.length;});
-  var warnR=res.filter(function(r){return !r.skip && r.bad.length;});
-  var skip=res.filter(function(r){return r.skip;});
-  var fixed=res.filter(function(r){return !r.skip && r.fix.length;}).length;
-
-  var h='';
-  if(ok.length){
-    h+='<div class="mdgrp ok">พร้อมนำเข้า '+ok.length+' แถว'+(fixed?' · ระบบแก้ค่าให้อัตโนมัติรวม '+fixed+' แถว':'')+'</div>';
-    ok.forEach(function(r){
-      h+='<div class="mdrow"><div class="gr"><div class="t1">'+r.name+'</div><div class="t2">'+r.ct+
-         (r.fix.length?'<br>'+r.fix.map(function(f){return '<span class="impfix">แก้ให้: '+f+'</span>';}).join(''):'')+
-         '</div></div><span class="chip ok">✓</span></div>';
-    });
-  }
-  if(warnR.length){
-    h+='<div class="mdgrp bad">ต้องแก้เอง '+warnR.length+' แถว</div>';
-    warnR.forEach(function(r){
-      h+='<div class="mdrow"><div class="gr"><div class="t1">'+r.name+'</div><div class="t2">'+r.ct+'<br>'+
-         r.bad.map(function(b){return '<span class="impbad">'+b+'</span>';}).join('')+
-         r.fix.map(function(f){return '<span class="impfix">แก้ให้: '+f+'</span>';}).join('')+
-         '</div></div></div>';
-    });
-  }
-  if(skip.length){
-    h+='<div class="mdgrp">ข้าม '+skip.length+' แถว</div>';
-    skip.forEach(function(r){
-      h+='<div class="mdrow"><div class="gr"><div class="t2">'+r.why+'</div></div><span class="impskip">ข้าม</span></div>';
-    });
-  }
-  document.getElementById('mdbody').innerHTML=h;
-  var sub=document.getElementById('mdsub');
-  sub.textContent=rows.length+' แถวที่วางมา'; sub.style.display='';
-  document.getElementById('mdft').innerHTML=
-    '<span>แถวที่ต้องแก้เองจะไม่ถูกนำเข้า — แก้ในไฟล์แล้ววางใหม่ได้</span><span style="flex:1"></span>'+
-    '<button class="btn sm" type="button" onclick="mdClose()">ยกเลิก</button>'+
-    (ok.length?'<button class="btn sm primary" type="button" onclick="impDo('+ok.length+')">นำเข้า '+ok.length+' แถว</button>':'');
-}
-
-function impDo(n){
-  mdClose();
-  var f=document.querySelector('.tablewrap .foot span');
-  if(f) f.innerHTML='<span class="chip ok">✓ นำเข้าจาก Excel แล้ว '+n+' แถว</span> '+
-    '<span style="font-size:11.5px;color:var(--fg-muted)">ตรวจอีกรอบก่อนกดบันทึกเข้าทะเบียน</span>';
-}
 
 /* ===== เลือกทีม (ติ๊กได้หลายทีม) =====
    ไฟล์จริงใช้คำว่า "หลายทีม" เป็นชื่อทีม ทำให้ไม่รู้ว่าส่งทีมไหนไปบ้าง
