@@ -19,6 +19,9 @@
      ถ้าส่งไม่สำเร็จ เดือนยังปิดอยู่ แต่ขึ้นสถานะ "ส่ง Dashboard ไม่สำเร็จ" ให้กดส่งใหม่ / รอ Auto Sync 06:00
   6) เดือนที่ปิดแล้วแก้ผลบริการได้ตรงๆ → ทุกการแก้ลง audit log + ขึ้น "แก้หลังปิด N" → Dashboard ยังเป็นค่าเดิม จนกว่ากด "คำนวณ snapshot ใหม่ + ส่ง Dashboard"
      (สมมติฐาน: Auto Sync 06:00 ไม่คำนวณเดือนที่ปิดแล้วใหม่เอง — ต้องยืนยัน)
+  7) v1.5 (เจ้าของตัดสิน 7 พ.ย. 2026) ปิดเดือนแยก 2 ส่วน: ส่วนกลาง 24 สาขา (host/recorder · 3 ขั้น) กับ ต่างจังหวัด 19 สาขา (host เท่านั้น · 2 ขั้น)
+     ส่วนไหนปิดเสร็จก่อนส่ง Dashboard ก่อน อีกส่วนใช้ค่ายกมา (ไฟล์ยังครบ 43 สาขา) · ปิดต่างจังหวัดทั้งที่ยังอัปเดตไม่ครบ = ได้ ต้องติ๊กรับทราบ
+     สถานะรวมของเดือน = "อัพเดทข้อมูลครบทุกสาขา" เมื่อปิดครบทั้ง 2 ส่วน · layout = การ์ดคู่ (เจ้าของเลือกแบบ B) · key ใน month_closures = (month_key, scope)
   สี Tier ไม่ได้ใช้ในหน้านี้ · สีทั้งหมดอ้าง CSS variable เพื่อสลับ light/dark ได้
 -->
 <script>try{var t=localStorage.getItem('aga-theme');if(t)document.documentElement.setAttribute('data-theme',t)}catch(e){}</script>
@@ -132,6 +135,16 @@ main{flex:1;min-width:0;padding:20px 24px 48px}
 .mrow .nm small{display:block;color:var(--fg-muted);font-size:11.5px}
 .mrow.legacy{cursor:default;color:var(--fg-muted)}
 .mrow.legacy:hover{background:transparent}
+.mrow .scs{display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex:none}
+/* การ์ดคู่ส่วนกลาง/ต่างจังหวัด (v1.5) */
+.sccards{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:12px;margin:0 0 16px}
+.sccard{border:1px solid var(--border);border-radius:var(--radius);padding:13px 14px;background:var(--surface-2)}
+.sccard[aria-current="true"]{border-color:var(--accent);background:var(--accent-soft)}
+.sccard h4{margin:0;font-size:13.5px;font-weight:600;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.sccard p{margin:8px 0 11px;font-size:12px;color:var(--fg-muted);line-height:1.55}
+.sccard .acts{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.wsbox{border:1px solid var(--border);border-radius:var(--radius);padding:14px;margin-top:2px}
+.wshead{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 12px}
 
 /* ขั้นตอน */
 .steps{display:flex;gap:8px;list-style:none;margin:0 0 16px;padding:0}
@@ -234,7 +247,7 @@ td.r,th.r{text-align:right} td.c,th.c{text-align:center}
   <main id="main">
     <div class="page-head"><h1>ปิดเดือน</h1>
       <p>ยืนยันตัวเลขบริการรายเดือนและส่งเข้า Dashboard · host และหัวหน้างานใช้ได้ · ข้อมูลในหน้านี้เป็นตัวอย่าง</p>
-      <p id="scopeNote" style="margin-top:6px" hidden><span class="chip info">ขอบเขตข้อมูลของคุณ: ส่วนกลาง 24 สาขา</span></p></div>
+      <p id="scopeNote" style="margin-top:6px" hidden><span class="chip info">ขอบเขตข้อมูลของคุณ: ส่วนกลาง 24 สาขา · ปิดต่างจังหวัดได้เฉพาะ host</span></p></div>
 
     <div id="lockMsg" class="panel lock" hidden>
       <div style="font-size:30px">🔒</div>
@@ -283,85 +296,182 @@ var MISSED=[]; (function(){var i=0;BR.forEach(function(b){for(var k=0;k<b[3];k++
   MISSED.push({cust:PRE[(i*3)%7]+" "+NM[(i*5+k)%13], no:"CT"+(23+(i%4))+"-"+String(10000+i*137).padStart(7,"0"), br:b[0], team:"ABCDEFGHIJKLMNO".charAt((i*7)%15), mth:(i*5)%12+1, term:(i%3===0)?36:12});
 }})})();
 
-/* ===== สถานะเดือน (สะท้อนตาราง month_closures) ===== */
+/* ===== สถานะเดือน (สะท้อนตาราง month_closures) =====
+   v1.5 ปิดแยก 2 ส่วน: m.c = ส่วนกลาง 24 สาขา (computed) · m.p = ต่างจังหวัด 19 สาขา (manual §6.5)
+   แต่ละส่วนมี status / closedAt / closedBy / sync / history ของตัวเอง (= 1 แถวใน month_closures ต่อ scope) */
+var PROV_N=19;
+var PROV_ALL=["เชียงราย","เชียงใหม่","ตาก","พิษณุโลก","โคราช","ขอนแก่น","อุดรธานี","อุบลราชธานี","ลพบุรี","สุราษฎร์ธานี","เกาะสมุย","พังงา","กระบี่","ภูเก็ต","หาดใหญ่","ระนอง","นครศรีธรรมราช","ตรัง","ชุมพร"];
 var MONTHS=[
- {key:"NOV.26",label:"พ.ย. 2026",status:"progress",endsOn:"30/11/2026",filled:703,contracts:2498},
- {key:"OCT.26",label:"ต.ค. 2026",status:"open",history:[]},
- {key:"SEP.26",label:"ก.ย. 2026",status:"closed",snap:{full:22,contracts:2466,missed:7},closedAt:"05/10/2026 09:12",closedBy:"host · QCS ส่วนกลาง",sync:"ok",syncAt:"05/10/2026 09:13",
-   history:[{t:"05/10/2026 09:12",ev:"ปิดเดือน",by:"host · QCS ส่วนกลาง",note:"ตกบริการ 7 ราย · ส่ง Dashboard สำเร็จ"}]}
+ {key:"NOV.26",label:"พ.ย. 2026",endsOn:"30/11/2026",filled:703,contracts:2498,
+   c:{status:"progress"},p:{status:"progress"}},
+ {key:"OCT.26",label:"ต.ค. 2026",
+   c:{status:"open",history:[]},
+   p:{status:"open",unupd:["ตาก","เชียงใหม่","ภูเก็ต","อุดรธานี","ตรัง"],history:[]}},
+ {key:"SEP.26",label:"ก.ย. 2026",
+   c:{status:"closed",snap:{full:22,contracts:2466,missed:7},closedAt:"05/10/2026 09:12",closedBy:"host · QCS ส่วนกลาง",sync:"ok",syncAt:"05/10/2026 09:13",
+      history:[{t:"05/10/2026 09:12",ev:"ปิดเดือน (ส่วนกลาง)",by:"host · QCS ส่วนกลาง",note:"ตกบริการ 7 ราย · ส่ง Dashboard สำเร็จ"}]},
+   p:{status:"closed",unupd:[],carried:[],closedAt:"05/10/2026 09:30",closedBy:"host · QCS ส่วนกลาง",sync:"ok",syncAt:"05/10/2026 09:31",
+      history:[{t:"05/10/2026 09:30",ev:"ปิดเดือน (ต่างจังหวัด)",by:"host · QCS ส่วนกลาง",note:"อัปเดตครบ 19/19 สาขา · ส่ง Dashboard สำเร็จ"}]}}
 ];
 var LEGACY="JAN.25 – AUG.26 · 20 เดือน";
-var LAST_SYNC="05/10/2026 09:13"; /* เวลาส่ง Dashboard สำเร็จครั้งล่าสุด (ทุกเดือน) — อัปเดตทุกครั้งที่ส่งสำเร็จ */
-var sel="OCT.26", step=1, showAllBr=false, missBr="all", showAllMiss=false, ack=false, typed="", closing=null, errMsg="";
+var LAST_SYNC="05/10/2026 09:31"; /* เวลาส่ง Dashboard สำเร็จครั้งล่าสุด (ทุกเดือน ทุกส่วน) — อัปเดตทุกครั้งที่ส่งสำเร็จ */
+var SC={c:{name:"ส่วนกลาง",n:24},p:{name:"ต่างจังหวัด",n:PROV_N}};
+var sel="OCT.26", scopeSel=null, step=1, showAllBr=false, showAllProv=false, missBr="all", showAllMiss=false, ack=false, typed="", closing=null, errMsg="";
 
 function $(id){return document.getElementById(id)}
 function fmt(n){return n.toLocaleString("en-US")}
 function nowTh(){return new Date().toLocaleString("en-GB",{timeZone:"Asia/Bangkok",day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit",hour12:false}).replace(",","")}
 function cur(){return MONTHS.filter(function(m){return m.key===sel})[0]}
-function statusChip(m){
-  if(m.status==="closed") return '<span class="chip ok">ปิดแล้ว</span>'+(m.stale?' <span class="chip pend">แก้หลังปิด '+m.edits+'</span>':'');
-  if(m.status==="open") return '<span class="chip pend">เปิดอยู่ · รอปิด</span>';
+function curS(){var m=cur(); return scopeSel?m[scopeSel]:null}
+function other(k){return k==="c"?"p":"c"}
+function provUpd(m){return PROV_N-(m.p.unupd||[]).length}
+function isComplete(m){return m.c.status==="closed"&&m.p.status==="closed"}
+/* สิทธิ์ปิด: ส่วนกลาง = host หรือ recorder · ต่างจังหวัด = host เท่านั้น (ข้อมูล manual ที่ host กรอก — SPEC §14 ข้อ 14) */
+function canClose(k){ return k==="c"?(ROLE==="host"||ROLE==="recorder"):ROLE==="host"; }
+
+function statusChip(s){
+  if(s.status==="closed") return '<span class="chip ok">ปิดแล้ว</span>'+(s.stale?' <span class="chip pend">แก้หลังปิด '+s.edits+'</span>':'');
+  if(s.status==="open") return '<span class="chip pend">เปิดอยู่ · รอปิด</span>';
   return '<span class="chip na">ยังไม่จบเดือน</span>';
 }
-function missOf(m){ if(m.key==="OCT.26") return MISS; if(m.snap) return m.snap.missed; return null; }
+/* สถานะระดับเดือน: "อัพเดทข้อมูลครบทุกสาขา" = ปิดครบทั้ง 2 ส่วน */
+function monthChip(m){
+  if(m.c.status==="progress") return '<span class="chip na">ยังไม่จบเดือน</span>';
+  if(isComplete(m)) return '<span class="chip ok">อัพเดทข้อมูลครบทุกสาขา</span>';
+  return '<span class="chip pend">ยังไม่ครบทุกสาขา</span>';
+}
+function miniChip(s,label){
+  var c=s.status==="closed"?"ok":(s.status==="open"?"pend":"na");
+  var t=s.status==="closed"?"ปิดแล้ว":(s.status==="open"?"รอปิด":"ยังไม่จบ");
+  return '<span class="chip '+c+'">'+label+' · '+t+'</span>';
+}
+function missOf(m){ if(m.key==="OCT.26") return MISS; if(m.c.snap) return m.c.snap.missed; return null; }
 
 /* ===== render ===== */
 function render(){ renderStats(); renderList(); renderDetail(); }
 
 function renderStats(){
-  var open=MONTHS.filter(function(m){return m.status==="open"}).length;
-  var closed=MONTHS.filter(function(m){return m.status==="closed"}).length;
-  var lastSync=LAST_SYNC;
-  var failed=MONTHS.some(function(m){return m.sync==="fail"});
+  var pend=0, full=0, failed=false;
+  MONTHS.forEach(function(m){
+    ["c","p"].forEach(function(k){ if(m[k].status==="open") pend++; if(m[k].sync==="fail") failed=true; });
+    if(isComplete(m)) full++;
+  });
   $("stats").innerHTML=
-   '<div class="stat warn"><div class="lab">เดือนที่รอปิด</div><div class="val num">'+open+'</div><div class="sub">จบเดือนแล้วแต่ยังไม่ปิด</div></div>'+
-   '<div class="stat ok"><div class="lab">ปิดแล้ว (ผ่านระบบนี้)</div><div class="val num">'+closed+'</div><div class="sub">บันทึกปิดและส่ง Dashboard แล้ว</div></div>'+
-   '<div class="stat '+(failed?'danger':'accent')+'"><div class="lab">ส่ง Dashboard ล่าสุด</div><div class="val num" style="font-size:17px;margin-top:9px">'+lastSync+'</div><div class="sub">'+(failed?'มีเดือนที่ส่งไม่สำเร็จ':'สำเร็จ')+'</div></div>';
+   '<div class="stat warn"><div class="lab">ส่วนที่รอปิด</div><div class="val num">'+pend+'</div><div class="sub">จบเดือนแล้วแต่ยังไม่ปิด (นับแยกส่วนกลาง/ต่างจังหวัด)</div></div>'+
+   '<div class="stat ok"><div class="lab">อัพเดทข้อมูลครบทุกสาขา</div><div class="val num">'+full+'</div><div class="sub">เดือนที่ปิดครบทั้ง 2 ส่วนและส่ง Dashboard แล้ว</div></div>'+
+   '<div class="stat '+(failed?'danger':'accent')+'"><div class="lab">ส่ง Dashboard ล่าสุด</div><div class="val num" style="font-size:17px;margin-top:9px">'+LAST_SYNC+'</div><div class="sub">'+(failed?'มีส่วนที่ส่งไม่สำเร็จ':'สำเร็จ')+'</div></div>';
 }
 function renderList(){
   $("listCount").textContent=MONTHS.length+" เดือน";
   var h=MONTHS.map(function(m){
     var ms=missOf(m);
-    var sub=m.status==="progress"?"จบ "+m.endsOn:(ms===null?"":"ตกบริการ "+ms+" ราย");
-    return '<button class="mrow" aria-current="'+(m.key===sel)+'" onclick="pick(\''+m.key+'\')"><span class="nm"><b>'+m.label+'</b><small>'+m.key+(sub?' · '+sub:'')+'</small></span>'+statusChip(m)+'</button>';
+    var sub=m.c.status==="progress"?"จบ "+m.endsOn:(ms===null?"":"ตกบริการ "+ms+" ราย");
+    var done=isComplete(m)?'<small style="color:var(--ok);font-weight:600">อัพเดทข้อมูลครบทุกสาขา</small>':'';
+    return '<button class="mrow" aria-current="'+(m.key===sel)+'" onclick="pick(\''+m.key+'\')"><span class="nm"><b>'+m.label+'</b><small>'+m.key+(sub?' · '+sub:'')+'</small>'+done+'</span><span class="scs">'+miniChip(m.c,"กลาง")+miniChip(m.p,"ตจว.")+'</span></button>';
   }).join("");
   h+='<div class="mrow legacy"><span class="nm"><b>'+LEGACY+'</b><small>legacy · นำเข้าจาก Dashboard เดิม</small></span><span class="chip na">ปิดถาวร</span></div>';
   $("mlist").innerHTML=h;
 }
-function pick(k){ if(closing!==null) return; sel=k; step=1; showAllBr=false; missBr="all"; showAllMiss=false; ack=false; typed=""; errMsg=""; render(); }
+function pick(k){ if(closing!==null) return; sel=k; scopeSel=null; step=1; showAllBr=false; showAllProv=false; missBr="all"; showAllMiss=false; ack=false; typed=""; errMsg=""; render(); }
 
-function head(m,extra){
-  return '<h3>'+m.label+' <span class="num" style="color:var(--fg-muted);font-weight:400">'+m.key+'</span> '+statusChip(m)+(extra||"")+'</h3>';
+function head(m){
+  return '<h3>'+m.label+' <span class="num" style="color:var(--fg-muted);font-weight:400">'+m.key+'</span> '+monthChip(m)+'</h3>';
 }
 
 function renderDetail(){
   var m=cur(), el=$("detail");
   if(closing!==null){ el.innerHTML=head(m)+'<div class="body">'+closingView()+'</div>'; return; }
-  if(m.status==="progress") el.innerHTML=head(m)+'<div class="body">'+progressView(m)+'</div>';
-  else if(m.status==="closed") el.innerHTML=head(m)+'<div class="body">'+closedView(m)+'</div>';
-  else el.innerHTML=head(m)+'<div class="body">'+openView(m)+'</div>';
+  el.innerHTML=head(m)+'<div class="body">'+monthBanner(m)+scopeCards(m)+(scopeSel?workspace(m,scopeSel):'')+'</div>';
 }
 
-/* --- เดือนที่ยังไม่จบ --- */
-function progressView(m){
-  var pct=Math.round(m.filled/m.contracts*100);
-  return '<div class="alert info"><span class="ic">ⓘ</span><div><b>เดือนนี้ยังไม่จบ จึงยังปิดไม่ได้</b><small>ปิดได้ตั้งแต่ 01/12/2026 — ระบบประเมินตกบริการเฉพาะเดือนที่ผ่านไปแล้ว (SPEC §7.4)</small></div></div>'+
-   '<div class="kvs"><div class="kv"><span>สัญญาในเดือนบริการ</span><b class="num">'+fmt(m.contracts)+'</b></div><div class="kv"><span>มีรอบประจำเดือนแล้ว (ถึงวันนี้)</span><b class="num">'+fmt(m.filled)+' ('+pct+'%)</b></div></div>'+
-   '<div class="bar" aria-hidden="true"><i style="width:'+pct+'%"></i></div>'+
-   '<div style="margin-top:16px"><button class="btn" aria-disabled="true" onclick="return false">ปิดเดือนไม่ได้ — เดือนยังไม่จบ</button></div>';
+/* ข้อความรวมระดับเดือน + บอกว่าส่วนไหนยังขาด (รูปแบบ dashboard_data.json ห้ามเพิ่มฟิลด์ จึงบอกเฉพาะในหน้านี้) */
+function monthBanner(m){
+  if(m.c.status==="progress") return "";
+  if(isComplete(m)) return '<div class="alert ok"><span class="ic">✓</span><div><b>อัพเดทข้อมูลครบทุกสาขา</b><small>ปิดครบทั้งส่วนกลาง '+BR.length+' สาขาและต่างจังหวัด '+PROV_N+' สาขา · Dashboard แสดงตัวเลข '+m.label+' ครบ 43 สาขา</small></div></div>';
+  var k=m.c.status==="closed"?"p":(m.p.status==="closed"?"c":null);
+  if(k) return '<div class="alert warn"><span class="ic">⚠</span><div><b>ยังไม่ครบทุกสาขา — รอปิด'+SC[k].name+'</b><small>Dashboard แสดงตัวเลขส่วน'+SC[other(k)].name+'ที่ปิดแล้ว ส่วน'+SC[k].name+'ใช้ค่ายกมาจากเดือนก่อน · ผู้ดู Dashboard จะไม่เห็นป้ายนี้ (รูปแบบไฟล์ห้ามเปลี่ยน) จึงบอกเฉพาะในหน้านี้</small></div></div>';
+  return '<div class="alert info"><span class="ic">ⓘ</span><div><b>เดือนนี้ปิดแยกได้ 2 ส่วน</b><small>ส่วนไหนปิดเสร็จก่อนจะขึ้น Dashboard ก่อน · อีกส่วนใช้ค่ายกมาจากเดือนก่อนจนกว่าจะปิด</small></div></div>';
 }
 
-/* --- เดือนที่เปิดอยู่ (3 ขั้นตอน) --- */
-function openView(m){
+/* การ์ดคู่: ส่วนกลาง 24 / ต่างจังหวัด 19 — แต่ละการ์ดมีสถานะ + ปุ่มของตัวเอง */
+function scopeCard(m,k){
+  var s=m[k], t=SC[k], body="", acts="";
+  if(s.status==="progress"){
+    if(k==="c"){ var pct=Math.round(m.filled/m.contracts*100); body='จบ '+m.endsOn+' · ปิดได้ตั้งแต่เดือนถัดไป<br>มีรอบประจำเดือนแล้ว '+fmt(m.filled)+' / '+fmt(m.contracts)+' ('+pct+'%)'; }
+    else body='จบ '+m.endsOn+' · ปิดได้ตั้งแต่เดือนถัดไป';
+    acts='<button class="btn sm" aria-disabled="true" onclick="return false">ปิดไม่ได้ — เดือนยังไม่จบ</button>';
+  } else if(s.status==="open"){
+    if(k==="c") body='สาขากรอกครบ '+BR_FULL+' / '+BR.length+' · <b style="color:var(--danger)">ตกบริการ '+MISS+' ราย</b><br>ผู้ปิดได้: host หรือ recorder';
+    else { var un=s.unupd||[]; body='อัปเดตแล้ว <b>'+provUpd(m)+' / '+PROV_N+'</b> สาขา'+(un.length?'<br>ยังใช้ค่ายกมา '+un.length+' สาขา ('+un.slice(0,3).join(", ")+(un.length>3?" …":"")+')':'<br>อัปเดตครบทุกสาขาแล้ว')+'<br>ผู้ปิดได้: host เท่านั้น'; }
+    acts=canClose(k)?'<button class="btn sm primary" onclick="openScope(\''+k+'\')">ปิด'+t.name+'</button>':'<button class="btn sm" aria-disabled="true" onclick="return false" title="เฉพาะ host ปิดส่วนนี้ได้">เฉพาะ host ปิดได้</button>';
+    if(k==="p") acts+=' <a class="btn sm" href="provincial-port-update.html" style="text-decoration:none;display:inline-block">ไปหน้า port →</a>';
+  } else {
+    body='ปิดโดย '+s.closedBy+'<br>'+s.closedAt+' · ส่ง Dashboard '+(s.sync==="ok"?'<span style="color:var(--ok)">สำเร็จ</span>':'<span style="color:var(--danger)">ไม่สำเร็จ</span>');
+    if(k==="c"&&s.snap) body+='<br>ตกบริการ '+s.snap.missed+' ราย';
+    if(k==="p") body+='<br>'+((s.carried&&s.carried.length)?'ปิดโดยใช้ค่ายกมา '+s.carried.length+' สาขา':'อัปเดตครบ '+PROV_N+' / '+PROV_N+' สาขา');
+    acts='<button class="btn sm" onclick="openScope(\''+k+'\')">ดูรายละเอียด / แก้หลังปิด</button>';
+  }
+  return '<div class="sccard" aria-current="'+(scopeSel===k)+'"><h4>'+t.name+' '+t.n+' สาขา '+statusChip(s)+'</h4><p>'+body+'</p><div class="acts">'+acts+'</div></div>';
+}
+function scopeCards(m){ return '<div class="sccards">'+scopeCard(m,"c")+scopeCard(m,"p")+'</div>'; }
+
+function workspace(m,k){
+  var s=m[k], inner="";
+  if(s.status==="open") inner=(k==="c")?openViewC(m):openViewP(m);
+  else if(s.status==="closed") inner=closedView(m,s,k);
+  return '<div class="wsbox"><div class="wshead"><b>'+SC[k].name+' '+SC[k].n+' สาขา</b><button class="btn ghost sm" onclick="closeScope()">← กลับภาพรวมเดือน</button></div>'+inner+'</div>';
+}
+function openScope(k){ scopeSel=k; step=1; showAllBr=false; showAllProv=false; missBr="all"; showAllMiss=false; ack=false; typed=""; errMsg=""; renderDetail(); }
+function closeScope(){ scopeSel=null; ack=false; typed=""; errMsg=""; renderDetail(); }
+
+/* --- ส่วนกลาง เดือนที่เปิดอยู่ (3 ขั้นตอน) --- */
+function openViewC(m){
   var names=["ตรวจความครบ","ทบทวนตกบริการ","ยืนยันปิด"];
   var s='<ol class="steps">'+names.map(function(n,i){
     var no=i+1, st=no===step?' aria-current="step"':'', cls=no<step?' class="done"':'';
     return '<li><button'+cls+st+' onclick="goStep('+no+')"><span class="n">'+(no<step?'✓':no)+'</span>'+n+'</button></li>';
   }).join("")+'</ol>';
-  var re='';
-  return re+s+(step===1?step1():step===2?step2():step3(m));
+  return s+(step===1?step1():step===2?step2():step3(m));
+}
+/* --- ต่างจังหวัด เดือนที่เปิดอยู่ (2 ขั้นตอน — ไม่มีขั้นตกบริการ) --- */
+function openViewP(m){
+  var names=["ตรวจความครบ","ยืนยันปิด"];
+  var s='<ol class="steps">'+names.map(function(n,i){
+    var no=i+1, st=no===step?' aria-current="step"':'', cls=no<step?' class="done"':'';
+    return '<li><button'+cls+st+' onclick="goStep('+no+')"><span class="n">'+(no<step?'✓':no)+'</span>'+n+'</button></li>';
+  }).join("")+'</ol>';
+  return s+(step===1?pStep1(m):pStep2(m));
 }
 function goStep(n){ step=n; errMsg=""; renderDetail(); }
+
+function pStep1(m){
+  var un=m.p.unupd||[], upd=provUpd(m), pct=Math.round(upd/PROV_N*100);
+  var rows=PROV_ALL.filter(function(b){return showAllProv||un.indexOf(b)>=0}).map(function(b){
+    var ok=un.indexOf(b)<0;
+    return '<tr><td><b>'+b+'</b></td><td class="c">'+(ok?'<span class="chip ok">อัปเดตแล้ว</span>':'<span class="chip pend">ใช้ค่ายกมา</span>')+'</td></tr>';
+  }).join("");
+  return '<div class="kvs"><div class="kv"><span>อัปเดตแล้ว</span><b class="num">'+upd+' / '+PROV_N+'</b><div class="bar" aria-hidden="true"><i style="width:'+pct+'%"></i></div></div>'+
+   '<div class="kv"><span>ยังใช้ค่ายกมา</span><b class="num" style="color:'+(un.length?'var(--warn)':'var(--ok)')+'">'+un.length+' สาขา</b></div></div>'+
+   '<div class="hint"><b>ใช้ค่ายกมา</b> = สาขาที่ host ยังไม่ได้บันทึกยอดเดือนนี้ในหน้า port · ระบบส่ง Dashboard ด้วยค่าของเดือนก่อน (SPEC §6.5) · ปิดได้ แต่ต้องติ๊กรับทราบในขั้นถัดไป</div>'+
+   '<div class="tools"><div class="field"><label for="pView">แสดง</label><select id="pView" onchange="showAllProv=this.value===\'all\';renderDetail()"><option value="bad"'+(showAllProv?'':' selected')+'>เฉพาะสาขาที่ยังใช้ค่ายกมา ('+un.length+')</option><option value="all"'+(showAllProv?' selected':'')+'>ทั้ง '+PROV_N+' สาขา (ต่างจังหวัด)</option></select></div><div style="flex:1"></div>'+
+   '<a class="btn sm" href="provincial-port-update.html" style="text-decoration:none;display:inline-block">ไปอัปเดตที่หน้า port →</a></div>'+
+   '<div class="tablewrap"><table><thead><tr><th>สาขา</th><th class="c">สถานะ</th></tr></thead><tbody>'+(rows||'<tr><td colspan="2" style="color:var(--fg-muted)">อัปเดตครบทุกสาขาแล้ว</td></tr>')+'</tbody></table></div>'+
+   '<div class="note"><span class="ic">ℹ</span><span>ต่างจังหวัดไม่คำนวณตกบริการ (เฟส 1 ไม่มีทะเบียน) จึงมี 2 ขั้นตอน ไม่มีขั้นทบทวนตกบริการ</span></div>'+
+   '<div class="navbtns"><span></span><button class="btn primary" onclick="goStep(2)">ถัดไป: ยืนยันปิด →</button></div>';
+}
+
+function pStep2(m){
+  var un=m.p.unupd||[];
+  var cState=m.c.status==="closed"?'ส่วนกลางปิดแล้ว ใช้ค่า snapshot ที่เก็บไว้':'ส่วนกลางยังไม่ปิด ใช้ค่าที่มี/ยกมาจากเดือนก่อน';
+  return '<div class="alert danger"><span class="ic">⚡</span><div><b>การปิดต่างจังหวัดจะส่ง Dashboard ทันที</b><small>สร้าง <code>dashboard_data.json</code> ครบ 43 สาขา · ต่างจังหวัด 19 = ค่าที่อัปเดต'+(un.length?' (ยกมา '+un.length+' สาขา)':'')+' · '+cState+' · Netlify deploy ~30 วินาที</small></div></div>'+
+   '<div class="alert warn"><span class="ic">👤</span><div><b>เฉพาะ host ปิดส่วนนี้ได้</b><small>ข้อมูลต่างจังหวัดเป็น manual ที่ host กรอกเอง · ชื่อผู้ปิดถูกบันทึกใน audit log</small></div></div>'+
+   '<div class="confirmbox"><div style="font-weight:600;margin:0 0 10px">สรุปที่จะปิด: ต่างจังหวัด '+m.label+' · อัปเดตแล้ว '+provUpd(m)+'/'+PROV_N+' สาขา'+(un.length?' · <span style="color:var(--warn)">ใช้ค่ายกมา '+un.length+' สาขา</span>':'')+'</div>'+
+   (un.length?'<label class="chk"><input type="checkbox" id="ackBox" '+(ack?'checked':'')+' onchange="ack=this.checked;clearErr()"><span>รับทราบว่า <b>'+un.length+' สาขา</b> ยังใช้ค่ายกมาจากเดือนก่อน ('+un.join(", ")+') และจะขึ้น Dashboard ด้วยค่านั้น</span></label>':'')+
+   '<div class="field"><label for="typedKey">พิมพ์ <b class="num">'+m.key+'</b> เพื่อยืนยันการปิดเดือน</label><input class="typein" id="typedKey" autocomplete="off" spellcheck="false" placeholder="'+m.key+'" value="'+typed.replace(/"/g,"")+'" oninput="typed=this.value;clearErr()"></div>'+
+   '<div class="err" id="closeErr" role="alert">'+errMsg+'</div>'+
+   '<button class="btn danger-solid" onclick="doClose()">ปิดต่างจังหวัด '+m.label+' และส่ง Dashboard</button></div>'+
+   '<div class="navbtns"><button class="btn" onclick="goStep(1)">← ย้อนกลับ</button><span></span></div>';
+}
 
 function step1(){
   var pb=Math.round(BR_FULL/BR.length*100), pc=Math.round((TOT-MISS)/TOT*100);
@@ -377,7 +487,7 @@ function step1(){
    '<div class="tools"><div class="field"><label for="brView">แสดง</label><select id="brView" onchange="showAllBr=this.value===\'all\';renderDetail()"><option value="bad"'+(showAllBr?'':' selected')+'>เฉพาะสาขาที่ยังไม่ครบ ('+(BR.length-BR_FULL)+')</option><option value="all"'+(showAllBr?' selected':'')+'>ทั้ง 24 สาขา (ส่วนกลาง)</option></select></div></div>'+
    '<div class="tablewrap"><table><thead><tr><th>สาขา</th><th class="r">สัญญาในเดือนบริการ</th><th class="r">มีรอบประจำเดือน</th><th class="r">ตกบริการ</th><th class="c">สถานะ</th></tr></thead><tbody>'+rows+'</tbody>'+
    (showAllBr?'<tfoot><tr><td>รวมส่วนกลาง</td><td class="r num">'+fmt(TOT)+'</td><td class="r num">'+fmt(TOT-MISS)+'</td><td class="r num">'+MISS+'</td><td></td></tr></tfoot>':'')+'</table></div>'+
-   '<div class="note"><span class="ic">ℹ</span><span>ต่างจังหวัด 19 สาขาไม่ได้คำนวณจากทะเบียนในเฟส 1 (ตัวเลข <code>manual</code> จากหน้า "ตัวเลขต่างจังหวัด") จึงไม่นับตกบริการในหน้านี้</span></div>'+
+   '<div class="note"><span class="ic">ℹ</span><span>ต่างจังหวัด 19 สาขาไม่ได้คำนวณจากทะเบียนในเฟส 1 (ตัวเลข <code>manual</code> จากหน้า "ตัวเลขต่างจังหวัด") จึงไม่นับตกบริการ · ปิดแยกที่การ์ด "ต่างจังหวัด"</span></div>'+
    '<div class="navbtns"><span></span><button class="btn primary" onclick="goStep(2)">ถัดไป: ทบทวนตกบริการ →</button></div>';
 }
 
@@ -398,23 +508,25 @@ function step2(){
 }
 
 function step3(m){
-  return '<div class="alert danger"><span class="ic">⚡</span><div><b>การปิดเดือนจะส่ง Dashboard ทันที</b><small>สร้าง <code>dashboard_data.json</code> ครบ 43 สาขา (ส่วนกลาง 24 = computed · ต่างจังหวัด 19 = manual) แล้ว commit เข้า repo AGA-Bait-Dashboard · Netlify deploy ใช้เวลา ~30 วินาที · ผู้ที่เปิด Dashboard จะเห็นตัวเลขใหม่ทันที</small></div></div>'+
-   '<div class="alert warn"><span class="ic">✎</span><div><b>ปิดแล้ว ตัวเลขบน Dashboard ของเดือน '+m.label+' จะถูกเก็บเป็น snapshot</b><small>host และหัวหน้างานยังแก้ผลบริการเดือนนี้ย้อนหลังได้ · ทุกการแก้บันทึกใน audit log · Dashboard ไม่เปลี่ยนจนกว่าจะกด "คำนวณ snapshot ใหม่"</small></div></div>'+
-   '<div class="alert warn"><span class="ic">👥</span><div><b>ปิดเดือนนี้มีผลกับทุกสาขาในส่วนกลาง (24 สาขา) ไม่ใช่เฉพาะทีมของคุณ</b><small>ส่งตัวเลขทุกสาขาพร้อมกัน · ชื่อผู้ปิดถูกบันทึกใน audit log</small></div></div>'+
+  return '<div class="alert danger"><span class="ic">⚡</span><div><b>การปิดส่วนกลางจะส่ง Dashboard ทันที</b><small>สร้าง <code>dashboard_data.json</code> ครบ 43 สาขา (ส่วนกลาง 24 = computed · ต่างจังหวัด 19 = '+(m.p.status==="closed"?'ปิดแล้ว ใช้ค่าที่ปิดไว้':'ยังไม่ปิด ใช้ค่าที่มี/ยกมาจากเดือนก่อน')+') แล้ว commit เข้า repo AGA-Bait-Dashboard · Netlify deploy ใช้เวลา ~30 วินาที · ผู้ที่เปิด Dashboard จะเห็นตัวเลขใหม่ทันที</small></div></div>'+
+   '<div class="alert warn"><span class="ic">✎</span><div><b>ปิดแล้ว ตัวเลขส่วนกลางบน Dashboard ของเดือน '+m.label+' จะถูกเก็บเป็น snapshot</b><small>host และหัวหน้างานยังแก้ผลบริการเดือนนี้ย้อนหลังได้ · ทุกการแก้บันทึกใน audit log · Dashboard ไม่เปลี่ยนจนกว่าจะกด "คำนวณ snapshot ใหม่"</small></div></div>'+
+   '<div class="alert warn"><span class="ic">👥</span><div><b>ปิดส่วนกลางมีผลกับทุกสาขาในส่วนกลาง (24 สาขา) ไม่ใช่เฉพาะทีมของคุณ</b><small>ส่งตัวเลขทุกสาขาส่วนกลางพร้อมกัน · ชื่อผู้ปิดถูกบันทึกใน audit log</small></div></div>'+
    '<div class="confirmbox">'+
-   '<div style="font-weight:600;margin:0 0 10px">สรุปที่จะปิด: '+m.label+' · สาขากรอกครบ '+BR_FULL+'/'+BR.length+' · สัญญากรอกครบ '+fmt(TOT-MISS)+'/'+fmt(TOT)+' · <span style="color:var(--danger)">ตกบริการ '+MISS+' ราย</span></div>'+
+   '<div style="font-weight:600;margin:0 0 10px">สรุปที่จะปิด: ส่วนกลาง '+m.label+' · สาขากรอกครบ '+BR_FULL+'/'+BR.length+' · สัญญากรอกครบ '+fmt(TOT-MISS)+'/'+fmt(TOT)+' · <span style="color:var(--danger)">ตกบริการ '+MISS+' ราย</span></div>'+
    (MISS>0?'<label class="chk"><input type="checkbox" id="ackBox" '+(ack?'checked':'')+' onchange="ack=this.checked;clearErr()"><span>รับทราบว่ามีสัญญาตกบริการ <b>'+MISS+' ราย</b> และจะถูกบันทึกเป็นตกบริการของเดือนนี้</span></label>':'')+
    '<div class="field"><label for="typedKey">พิมพ์ <b class="num">'+m.key+'</b> เพื่อยืนยันการปิดเดือน</label><input class="typein" id="typedKey" autocomplete="off" spellcheck="false" placeholder="'+m.key+'" value="'+typed.replace(/"/g,"")+'" oninput="typed=this.value;clearErr()"></div>'+
    '<div class="err" id="closeErr" role="alert">'+errMsg+'</div>'+
-   '<button class="btn danger-solid" onclick="doClose()">ปิดเดือน '+m.label+' และส่ง Dashboard</button></div>'+
+   '<button class="btn danger-solid" onclick="doClose()">ปิดส่วนกลาง '+m.label+' และส่ง Dashboard</button></div>'+
    '<div class="navbtns"><button class="btn" onclick="goStep(2)">← ย้อนกลับ</button><span></span></div>';
 }
 function clearErr(){ errMsg=""; var e=$("closeErr"); if(e) e.textContent=""; }
 
-/* --- ปิดเดือน: ตรวจ → จำลองขั้นตอน → เสร็จ --- */
+/* --- ปิดเดือน (ส่วนที่เลือก): ตรวจ → จำลองขั้นตอน → เสร็จ — ปิดส่วนไหนเสร็จ ส่ง Dashboard ทันที ส่วนที่เหลือใช้ค่าที่มี/ค่ายกมา --- */
 function doClose(){
-  var m=cur(), e=$("closeErr");
-  if(MISS>0 && !ack){ errMsg="ติ๊กรับทราบเรื่องตกบริการก่อน"; e.textContent=errMsg; return; }
+  var m=cur(), k=scopeSel, s=m[k], e=$("closeErr");
+  if(!canClose(k)){ errMsg="เฉพาะ host ปิดส่วนต่างจังหวัดได้"; e.textContent=errMsg; return; }
+  var need=(k==="c")?MISS:(s.unupd||[]).length;
+  if(need>0 && !ack){ errMsg=(k==="c")?"ติ๊กรับทราบเรื่องตกบริการก่อน":"ติ๊กรับทราบเรื่องสาขาที่ยังใช้ค่ายกมาก่อน"; e.textContent=errMsg; return; }
   if(typed.trim().toUpperCase()!==m.key){ errMsg="พิมพ์ "+m.key+" ให้ตรงก่อน จึงจะปิดเดือนได้"; e.textContent=errMsg; $("typedKey").focus(); return; }
   closing=0; renderDetail();
   var fail=$("demoFail").checked;
@@ -423,51 +535,60 @@ function doClose(){
     if(closing<3){ renderDetail(); return; }
     clearInterval(t);
     var at=nowTh();
-    m.status="closed"; m.closedAt=at; m.closedBy=actor(); m.snap={full:BR_FULL,contracts:TOT,missed:MISS};
-    m.sync=fail?"fail":"ok"; m.syncAt=fail?null:at; m.justClosed=true; if(!fail) LAST_SYNC=at;
-    m.history.unshift({t:at,ev:"ปิดเดือน",by:actor(),note:"ตกบริการ "+MISS+" ราย · "+(fail?"ส่ง Dashboard ไม่สำเร็จ":"ส่ง Dashboard สำเร็จ")});
+    s.status="closed"; s.closedAt=at; s.closedBy=actor();
+    if(k==="c") s.snap={full:BR_FULL,contracts:TOT,missed:MISS}; else s.carried=(s.unupd||[]).slice();
+    s.sync=fail?"fail":"ok"; s.syncAt=fail?null:at; s.justClosed=true; if(!fail) LAST_SYNC=at;
+    var what=(k==="c")?"ตกบริการ "+MISS+" ราย":(s.carried.length?"ใช้ค่ายกมา "+s.carried.length+" สาขา":"อัปเดตครบ "+PROV_N+"/"+PROV_N+" สาขา");
+    s.history.unshift({t:at,ev:"ปิดเดือน ("+SC[k].name+")",by:actor(),note:what+" · "+(fail?"ส่ง Dashboard ไม่สำเร็จ":"ส่ง Dashboard สำเร็จ")});
     closing=null; typed=""; ack=false; errMsg=""; render();
   },950);
 }
 function closingView(){
-  var labs=["บันทึกการปิดเดือน + เก็บ snapshot ตัวเลข","สร้างไฟล์ dashboard_data.json ครบ 43 สาขา","ส่งเข้า GitHub → Netlify deploy"];
+  var o=SC[other(scopeSel)].name;
+  var labs=["บันทึกการปิดเดือน ("+SC[scopeSel].name+") + เก็บ snapshot ตัวเลข","สร้างไฟล์ dashboard_data.json ครบ 43 สาขา (ส่วน"+o+"ใช้ค่าที่มี/ค่ายกมา)","ส่งเข้า GitHub → Netlify deploy"];
   return '<p style="margin:0 0 8px;color:var(--fg-muted)">กำลังปิดเดือน — อย่าปิดหน้านี้</p><ul class="prog" aria-live="polite">'+labs.map(function(l,i){
     var c=i<closing?'ok':(i===closing?'on':'');
     return '<li class="'+c+'"><span class="d">'+(i<closing?'✓':'')+'</span>'+l+'</li>';
   }).join("")+'</ul>';
 }
 
-/* --- เดือนที่ปิดแล้ว --- */
-function closedView(m){
-  var s=m.snap||{full:0,contracts:0,missed:0};
-  var out="";
-  if(m.justClosed&&m.sync==="ok"&&!m.stale) out+='<div class="alert ok"><span class="ic">✓</span><div><b>ปิดเดือนเรียบร้อย และส่ง Dashboard สำเร็จ</b><small>บันทึกการปิดเดือน '+m.label+' แล้ว · Netlify จะอัปเดตภายใน ~30 วินาที</small></div></div>';
-  if(m.sync==="fail") out+='<div class="alert danger"><span class="ic">✗</span><div><b>ส่ง Dashboard ไม่สำเร็จ</b><small>เดือนนี้ปิดแล้ว แต่ Dashboard ยังแสดงค่าเดิม · Auto Sync 06:00 น. จะลองส่งอีกครั้ง หรือกดส่งใหม่ตอนนี้ · ดูรายละเอียดที่หน้า Dashboard Sync</small><div style="margin-top:8px"><button class="btn sm primary" onclick="retrySync()">ส่ง Dashboard ใหม่</button></div></div></div>';
-  if(m.stale&&m.sync!=="fail") out+='<div class="alert warn"><span class="ic">⚠</span><div><b>มีการแก้ข้อมูลหลังปิดเดือน '+m.edits+' รายการ — Dashboard ยังแสดงตัวเลขเดิม</b><small>กดคำนวณใหม่เพื่อให้ตัวเลขเดือนนี้บน Dashboard ตรงกับข้อมูลล่าสุด (ส่งทันที)</small><div style="margin-top:8px"><button class="btn sm primary" onclick="resync()">คำนวณ snapshot ใหม่ + ส่ง Dashboard</button></div></div></div>';
-  out+='<div class="kvs"><div class="kv"><span>ปิดเมื่อ</span><b class="num">'+m.closedAt+'</b></div><div class="kv"><span>ปิดโดย</span><b>'+m.closedBy+'</b></div>'+
-   '<div class="kv"><span>ส่ง Dashboard</span><b>'+(m.sync==="ok"?'<span style="color:var(--ok)">สำเร็จ '+m.syncAt+'</span>':'<span style="color:var(--danger)">ไม่สำเร็จ</span>')+'</b></div></div>'+
-   '<div class="kvs"><div class="kv"><span>สาขากรอกครบ (ส่วนกลาง)</span><b class="num">'+s.full+' / '+BR.length+'</b></div><div class="kv"><span>สัญญาในเดือนบริการ</span><b class="num">'+fmt(s.contracts)+'</b></div><div class="kv"><span>ตกบริการที่บันทึกไว้</span><b class="num" style="color:'+(s.missed?'var(--danger)':'var(--ok)')+'">'+s.missed+' ราย</b></div></div>'+
-   '<div class="alert info"><span class="ic">✎</span><div><b>เดือนนี้แก้ข้อมูลย้อนหลังได้ตามปกติ</b><small>host และหัวหน้างานกรอก/แก้ผลบริการเดือนนี้ได้เลย ไม่ต้องปลดล็อก · ทุกการแก้บันทึกใน audit log · ตัวเลขบน Dashboard จะเปลี่ยนเมื่อกด "คำนวณ snapshot ใหม่" เท่านั้น</small><div style="margin-top:8px"><a class="btn sm" href="aga-bait-registry-prototype.html" style="text-decoration:none;display:inline-block">ไปหน้ากรอกผลบริการ →</a></div></div></div>'+
-   '<div class="sech" style="font-weight:600;margin:20px 0 6px">ประวัติการปิดเดือนและการแก้ไข (audit log)</div><ul class="hist">'+
-   (m.history.length?m.history.map(function(h){return '<li><span class="t num">'+h.t+'</span><span><b>'+h.ev+'</b> · '+h.by+'<br><span style="color:var(--fg-muted)">'+h.note+'</span></span></li>'}).join(""):'<li style="color:var(--fg-muted)">ยังไม่มีประวัติ</li>')+'</ul>';
+/* --- ส่วนที่ปิดแล้ว (ใช้ร่วมกันทั้ง 2 scope) --- */
+function closedView(m,s,k){
+  var out="", nm=SC[k].name;
+  if(s.justClosed&&s.sync==="ok"&&!s.stale) out+='<div class="alert ok"><span class="ic">✓</span><div><b>ปิด'+nm+'เรียบร้อย และส่ง Dashboard สำเร็จ</b><small>บันทึกการปิดเดือน '+m.label+' ('+nm+') แล้ว · Netlify จะอัปเดตภายใน ~30 วินาที</small></div></div>';
+  if(s.sync==="fail") out+='<div class="alert danger"><span class="ic">✗</span><div><b>ส่ง Dashboard ไม่สำเร็จ</b><small>ส่วน'+nm+'ปิดแล้ว แต่ Dashboard ยังแสดงค่าเดิม · Auto Sync 06:00 น. จะลองส่งอีกครั้ง หรือกดส่งใหม่ตอนนี้ · ดูรายละเอียดที่หน้า Dashboard Sync</small><div style="margin-top:8px"><button class="btn sm primary" onclick="retrySync()">ส่ง Dashboard ใหม่</button></div></div></div>';
+  if(s.stale&&s.sync!=="fail") out+='<div class="alert warn"><span class="ic">⚠</span><div><b>มีการแก้ข้อมูลหลังปิดเดือน '+s.edits+' รายการ — Dashboard ยังแสดงตัวเลขเดิม</b><small>กดคำนวณใหม่เพื่อให้ตัวเลขส่วน'+nm+'ของเดือนนี้บน Dashboard ตรงกับข้อมูลล่าสุด (ส่งทันที)</small><div style="margin-top:8px"><button class="btn sm primary" onclick="resync()">คำนวณ snapshot ใหม่ + ส่ง Dashboard</button></div></div></div>';
+  out+='<div class="kvs"><div class="kv"><span>ปิดเมื่อ</span><b class="num">'+s.closedAt+'</b></div><div class="kv"><span>ปิดโดย</span><b>'+s.closedBy+'</b></div>'+
+   '<div class="kv"><span>ส่ง Dashboard</span><b>'+(s.sync==="ok"?'<span style="color:var(--ok)">สำเร็จ '+s.syncAt+'</span>':'<span style="color:var(--danger)">ไม่สำเร็จ</span>')+'</b></div></div>';
+  if(k==="c"){
+    var n=s.snap||{full:0,contracts:0,missed:0};
+    out+='<div class="kvs"><div class="kv"><span>สาขากรอกครบ (ส่วนกลาง)</span><b class="num">'+n.full+' / '+BR.length+'</b></div><div class="kv"><span>สัญญาในเดือนบริการ</span><b class="num">'+fmt(n.contracts)+'</b></div><div class="kv"><span>ตกบริการที่บันทึกไว้</span><b class="num" style="color:'+(n.missed?'var(--danger)':'var(--ok)')+'">'+n.missed+' ราย</b></div></div>'+
+     '<div class="alert info"><span class="ic">✎</span><div><b>เดือนนี้แก้ข้อมูลย้อนหลังได้ตามปกติ</b><small>host และหัวหน้างานกรอก/แก้ผลบริการเดือนนี้ได้เลย ไม่ต้องปลดล็อก · ทุกการแก้บันทึกใน audit log · ตัวเลขบน Dashboard จะเปลี่ยนเมื่อกด "คำนวณ snapshot ใหม่" เท่านั้น</small><div style="margin-top:8px"><a class="btn sm" href="aga-bait-registry-prototype.html" style="text-decoration:none;display:inline-block">ไปหน้ากรอกผลบริการ →</a></div></div></div>';
+  } else {
+    var cr=(s.carried||[]);
+    out+='<div class="kvs"><div class="kv"><span>อัปเดตแล้วตอนปิด</span><b class="num">'+(PROV_N-cr.length)+' / '+PROV_N+'</b></div><div class="kv"><span>ปิดโดยใช้ค่ายกมา</span><b class="num" style="color:'+(cr.length?'var(--warn)':'var(--ok)')+'">'+cr.length+' สาขา</b>'+(cr.length?'<small style="color:var(--fg-muted);font-size:11px">'+cr.join(", ")+'</small>':'')+'</div></div>'+
+     '<div class="alert info"><span class="ic">✎</span><div><b>แก้ข้อมูลต่างจังหวัดย้อนหลังได้ที่หน้า port (เฉพาะ host)</b><small>ทุกการแก้บันทึกใน audit log · ตัวเลขบน Dashboard จะเปลี่ยนเมื่อกด "คำนวณ snapshot ใหม่" เท่านั้น</small><div style="margin-top:8px"><a class="btn sm" href="provincial-port-update.html" style="text-decoration:none;display:inline-block">ไปหน้า port ต่างจังหวัด →</a></div></div></div>';
+  }
+  out+='<div class="sech" style="font-weight:600;margin:20px 0 6px">ประวัติการปิดเดือนและการแก้ไข (audit log) · '+nm+'</div><ul class="hist">'+
+   (s.history.length?s.history.map(function(h){return '<li><span class="t num">'+h.t+'</span><span><b>'+h.ev+'</b> · '+h.by+'<br><span style="color:var(--fg-muted)">'+h.note+'</span></span></li>'}).join(""):'<li style="color:var(--fg-muted)">ยังไม่มีประวัติ</li>')+'</ul>';
   return out;
 }
-function retrySync(){ var m=cur(); m.sync="ok"; m.syncAt=nowTh(); LAST_SYNC=m.syncAt; m.history.unshift({t:m.syncAt,ev:"ส่ง Dashboard ใหม่",by:actor(),note:"สำเร็จ"}); render(); }
+function retrySync(){ var s=curS(); s.sync="ok"; s.syncAt=nowTh(); LAST_SYNC=s.syncAt; s.history.unshift({t:s.syncAt,ev:"ส่ง Dashboard ใหม่ ("+SC[scopeSel].name+")",by:actor(),note:"สำเร็จ"}); render(); }
 
-/* --- แก้ข้อมูลหลังปิดเดือน: เดือนที่ปิดแล้วยังแก้ได้ → snapshot บน Dashboard ค้างค่าเดิมจนกว่าจะกดคำนวณใหม่ --- */
+/* --- แก้ข้อมูลหลังปิดเดือน: เดือนที่ปิดแล้วยังแก้ได้ → snapshot บน Dashboard ค้างค่าเดิมจนกว่าจะกดคำนวณใหม่ (แยกตามส่วน) --- */
 function simEdit(){
-  var m=cur();
-  if(m.status!=="closed"){ alert("เลือกเดือนที่ปิดแล้วก่อน (เช่น ต.ค. 2026 หรือ ก.ย. 2026)"); return; }
-  m.edits=(m.edits||0)+1; m.stale=true; m.justClosed=false;
-  m.history.unshift({t:nowTh(),ev:"แก้ผลบริการหลังปิดเดือน",by:actor(),note:"แก้รอบประจำเดือนลูกค้า 1 ราย (ตัวอย่างจำลอง) · Dashboard ยังเป็นค่าเดิม"});
+  var s=curS(), k=scopeSel;
+  if(!s||s.status!=="closed"){ alert("เปิดส่วนที่ปิดแล้วก่อน: เลือกเดือนที่ปิดแล้ว (เช่น ก.ย. 2026) แล้วกด \"ดูรายละเอียด / แก้หลังปิด\" ที่การ์ดส่วนกลางหรือต่างจังหวัด"); return; }
+  s.edits=(s.edits||0)+1; s.stale=true; s.justClosed=false;
+  s.history.unshift({t:nowTh(),ev:"แก้ข้อมูลหลังปิดเดือน",by:actor(),note:(k==="c"?"แก้รอบประจำเดือนลูกค้า 1 ราย":"แก้ยอดสาขาต่างจังหวัด 1 สาขา")+" (ตัวอย่างจำลอง) · Dashboard ยังเป็นค่าเดิม"});
   render();
 }
 function resync(){
-  var m=cur(), at=nowTh();
-  if(m.key==="OCT.26") m.snap={full:BR_FULL,contracts:TOT,missed:MISS};
-  m.sync="ok"; m.syncAt=at; m.stale=false; LAST_SYNC=at;
-  m.history.unshift({t:at,ev:"คำนวณ snapshot ใหม่ + ส่ง Dashboard",by:actor(),note:"รวมการแก้หลังปิด "+m.edits+" รายการ · สำเร็จ"});
-  m.edits=0; render();
+  var m=cur(), s=curS(), k=scopeSel, at=nowTh();
+  if(k==="c"&&m.key==="OCT.26") s.snap={full:BR_FULL,contracts:TOT,missed:MISS};
+  s.sync="ok"; s.syncAt=at; s.stale=false; LAST_SYNC=at;
+  s.history.unshift({t:at,ev:"คำนวณ snapshot ใหม่ + ส่ง Dashboard ("+SC[k].name+")",by:actor(),note:"รวมการแก้หลังปิด "+s.edits+" รายการ · สำเร็จ"});
+  s.edits=0; render();
 }
 
 /* --- ส่งออก CSV (UTF-8 + BOM เปิดใน Excel ไทยได้) --- */
