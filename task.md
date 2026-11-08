@@ -109,6 +109,19 @@
 
 ## บันทึกประจำวัน (Changelog)
 
+### 2026-11-08 (รวมหน้า mockup — nav/topbar/โลโก้มาตรฐานทุกหน้า, ตาม `docs/handoff-integration.md`) — ทำที่ session หลัก (coordinator) + แยก 3 sub session
+ทำตามข้อ 1–3 ของ handoff: nav ชุดเดียวทุกหน้า, ลิงก์จริงแทน "เร็วๆนี้", โลโก้จริงทุกหน้า, แก้ topbar มือถือแน่น — เหลือข้อ 4 (Tailwind vs CSS) รอเจ้าของตอบ
+- ✅ สร้างชุดมาตรฐาน **AGA-SHELL v1** ที่ `docs/mockup/_shell/` (`shell.css`, `topbar-left.html`, `nav.html`, `shell.js`, `README.md` เป็นเช็กลิสต์อ้างอิง) — โลโก้จริงจาก `login.html` (data URI), accent คงน้ำเงินตามเจ้าของยืนยัน (8 พ.ย.), โหมดมืด = โลโก้สีขาว (CSS filter)
+- ✅ เมนูซ้ายรวมเป็น 3 กลุ่มเดียวทุกหน้า (งานประจำวัน / ทะเบียนและสรุป / ดูแลระบบ) ลิงก์จริงทั้งหมด ไม่มี `class="soon"`/"เร็วๆนี้" เหลือเลย ไม่มีเมนู "นำเข้าสัญญาจาก Excel" (ตัดแล้วตาม SPEC v1.3)
+- ✅ ใส่ลงครบ 8 หน้า (ไม่รวม `login.html`): `aga-bait-registry-prototype.html` (coordinator ทำเองเป็นตัวอย่างอ้างอิง + เพิ่ม hash route `#todo #service #bait #collect #registry #summary #material` ให้หน้าอื่นลิงก์เข้าส่วนในได้), `customer-detail.html` / `settings.html` / `admin-user-management.html` (sub session A), `month-closure.html` / `dashboard-sync.html` / `provincial-port-update.html` (sub session B), `admin-add-customer.html` (sub session C — ไฟล์นี้ไม่มี topbar/nav เดิมเลย ต้องเพิ่มใหม่ทั้งชุด)
+- ✅ แก้ topbar มือถือแน่น: เติม `<meta name="viewport">` ที่ขาด (prototype, admin-add-customer) + CSS ย่อ topbar ที่ ≤600px/≤420px + ลิ้นชัก ☰ กลไกเดียวกันทุกหน้า (`body.nav-open`)
+- 🐞 **บั๊กที่เจอระหว่างรวม + แก้แล้ว:** `customer-detail.html` ห่อทั้งไฟล์ด้วย IIFE ทำให้ `toggleNav` เป็น local scope เรียกจาก `onclick` ไม่เจอ (`ReferenceError`) → เพิ่ม `window.toggleNav=toggleNav`
+- ✅ เทสรวมทุกไฟล์ (เบราว์เซอร์จริงผ่าน local server): light/dark · desktop + 375px · ☰ เปิด/Esc ปิด · ลิงก์เมนูทุกอันถูกไฟล์ · ไม่มี `soon`/hex ใหม่หลง (ตรวจด้วย `git diff` ทั้งก้อน) · **console ไม่มี error เลยทั้ง 8 ไฟล์**
+- ⚠ **พบปัญหามือถือที่มีอยู่ก่อนงานนี้ (ไม่ได้แก้ในรอบนี้ — นอกขอบเขตที่ขอ):** ตารางไม่มี wrapper scroll แนวนอน ทำทั้งหน้า scroll แนวนอนบนจอ ≤375px — `admin-user-management.html` (ตารางผู้ใช้ ~297px เกิน), `dashboard-sync.html` (ตาราง log ~276px เกิน), `admin-add-customer.html` (ตาราง `.mini-t` เล็กในการ์ดสรุป ~76px เกิน — ตาราง 22 คอลัมน์หลักมี wrapper อยู่แล้ว ไม่กระทบ) — ยืนยันด้วย `git show` ว่ามีมาก่อน commit รอบนี้ ไม่ใช่ของใหม่จากงานนี้
+- **ไฟล์ที่แตะ:** `docs/mockup/aga-bait-registry-prototype.html`, `docs/mockup/customer-detail.html`, `docs/mockup/settings.html`, `docs/mockup/admin-user-management.html`, `docs/mockup/month-closure.html`, `docs/mockup/dashboard-sync.html`, `docs/mockup/provincial-port-update.html`, `docs/mockup/admin-add-customer.html` (ใหม่: `docs/mockup/_shell/`), `task.md`
+- **ค้าง / ต้องเจ้าของตัดสิน:** ① ปัญหาตาราง overflow มือถือ 3 จุดข้างบน จะแก้รอบนี้เลยหรือพักไว้เป็นงานแยก ② ข้อ 4 ของ handoff (Tailwind CDN vs CSS ธรรมดา ใน `CLAUDE.md`) ยังไม่ตอบ — ยังไม่ได้แก้ `CLAUDE.md`
+- **commit แล้ว 4 ก้อน (ยังไม่ push รอเจ้าของตรวจ):** `1d3893c` (ชุดมาตรฐาน + prototype), `0dff375` (customer-detail/settings/admin-user), `790adc2` (admin-add-customer), `8c3cd9c` (month-closure/dashboard-sync/port)
+
 ### 2026-11-07 (หน้าปิดเดือน — ปิดแยกส่วนกลาง/ต่างจังหวัด, SPEC v1.5) — ทำที่ session หลัก (coordinator)
 เจ้าของถาม "ปิดเดือนแยกส่วนกลางกับต่างจังหวัดได้ไหม" → ตัดสินใจ 3 ข้อ แล้วปรับหน้าปิดเดือน (`month-closure.html`)
 - ✅ **ปิดแยก 2 ส่วน** — ส่วนกลาง 24 สาขา (host/recorder · 3 ขั้นเดิม) กับ ต่างจังหวัด 19 สาขา (host · 2 ขั้น ไม่มีขั้นตกบริการ) · ใครปิดเสร็จก่อนส่ง Dashboard ก่อน ส่วนที่เหลือใช้ค่ายกมา (ไฟล์ยังครบ 43 สาขา)
