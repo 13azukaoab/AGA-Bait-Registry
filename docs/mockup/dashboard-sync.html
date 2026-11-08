@@ -61,26 +61,74 @@ body{margin:0;background:var(--bg);color:var(--fg);font-family:"Noto Sans Thai",
 code,.mono{font-family:ui-monospace,Consolas,"Courier New",monospace;font-size:12px}
 
 /* Header + nav (เหมือน prototype หลัก / month-closure) */
-.topbar{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:14px;padding:10px 18px;background:var(--surface);border-bottom:1px solid var(--border)}
-.logo{display:flex;align-items:center;gap:11px;min-width:0}
-.logo .mark{width:38px;height:38px;border-radius:9px;background:var(--accent);color:var(--accent-fg);display:grid;place-items:center;font-weight:700;font-size:15px;flex:none}
-.logo .txt b{display:block;font-size:15px;font-weight:600;line-height:1.2}
-.logo .txt span{display:block;font-size:11.5px;color:var(--fg-muted)}
-.spacer{flex:1}
+/* ===== AGA-SHELL v1 : topbar + โลโก้ + เมนูซ้าย (nav) =====
+   แหล่งจริงอยู่ที่ docs/mockup/_shell/shell.css — คัดลอกบล็อกนี้ไปทุกหน้า (ดู _shell/README.md)
+   ห้ามแก้เฉพาะหน้า · ห้ามใส่ hex (ใช้ CSS variable จาก :root ของหน้า) · ไม่มีสถานะ "เร็วๆนี้" แล้ว
+   token ที่หน้าต้องมี: --surface --surface-2 --border --fg --fg-muted --fg-faint --accent --accent-strong --accent-soft */
+:root{
+  /* โลโก้ Advance Group Asia (ครอปจาก docs/mockup/Logo Advance Group Asia.png · ฝังเป็น data URI ให้ไฟล์เดียวใช้ได้)
+     accent ระบบคงน้ำเงิน · โลโก้เขียวอยู่บนพื้นขาว/เป็นกลางเท่านั้น · โหมดมืด = ฟิลเตอร์ทำเป็นสีขาว (เจ้าของตัดสิน 8 พ.ย. 2026) */
+  --logo-img:url(data:image/png;base64,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);
+  --scrim:rgba(10,20,35,.42); --drawer-shadow:2px 0 14px rgba(20,40,70,.18);
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--scrim:rgba(0,0,0,.6);--drawer-shadow:2px 0 14px rgba(0,0,0,.5)}}
+:root[data-theme="dark"]{--scrim:rgba(0,0,0,.6);--drawer-shadow:2px 0 14px rgba(0,0,0,.5)}
+
+/* topbar */
+.topbar{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;display:flex;align-items:center;gap:12px;
+  min-height:57px;padding:9px 18px;background:var(--surface);border-bottom:1px solid var(--border)}
+.topbar .spacer{flex:1;min-width:0}
+.tb-brand{display:flex;align-items:center;gap:12px;min-width:0;color:inherit;text-decoration:none;border-radius:8px}
+.tb-brand:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+.tb-logo{width:76px;height:38px;flex:none;background:var(--logo-img) center/contain no-repeat}
+:root[data-theme="dark"] .tb-logo{filter:brightness(0) invert(.93)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .tb-logo{filter:brightness(0) invert(.93)}}
+.tb-title{min-width:0;padding-left:12px;border-left:1px solid var(--border)}
+.tb-title b{display:block;font-size:14.5px;font-weight:600;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tb-title span{display:block;font-size:11.5px;color:var(--fg-muted);white-space:nowrap}
+.navtoggle{display:none;align-items:center;justify-content:center;border:1px solid var(--border);
+  background:var(--surface-2);color:var(--fg);border-radius:8px;width:36px;height:34px;font-size:18px;line-height:1;cursor:pointer;flex:none}
+.navtoggle:focus-visible,.nav a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.nav-backdrop{display:none}
+
+/* เมนูซ้าย */
+.shell{display:flex;align-items:flex-start;min-height:calc(100vh - 57px);max-width:1760px;margin-inline:auto}
+.nav{width:238px;flex:none;padding:14px 10px;border-right:1px solid var(--border);background:var(--surface);align-self:stretch}
+.nav .group{font-size:11px;letter-spacing:.06em;color:var(--fg-faint);padding:12px 10px 5px}
+.nav a{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;color:var(--fg-muted);
+  text-decoration:none;font-size:13.5px;cursor:pointer;margin-bottom:1px}
+.nav a .ic{width:17px;text-align:center;flex:none;opacity:.85}
+.nav a:hover{background:var(--surface-2);color:var(--fg)}
+.nav a.active{background:var(--accent-soft);color:var(--accent-strong);font-weight:600}
+
+/* จอเล็ก: เมนูเป็นลิ้นชักเลื่อนจากซ้าย · topbar เหลือ ☰ + โลโก้ + ชื่อ + ปุ่มสำคัญ */
+@media (max-width:860px){
+  .shell{display:block;min-height:0}
+  .navtoggle{display:inline-flex}
+  .nav{position:fixed;top:0;left:0;bottom:0;width:260px;z-index:40;overflow-y:auto;
+    transform:translateX(-100%);transition:transform .22s ease;box-shadow:var(--drawer-shadow)}
+  body.nav-open .nav{transform:translateX(0)}
+  .nav-backdrop{position:fixed;inset:0;z-index:30;background:var(--scrim)}
+  body.nav-open .nav-backdrop{display:block}
+}
+@media (max-width:600px){
+  .topbar{gap:8px;padding:8px 12px}
+  .tb-brand{gap:9px}
+  .tb-logo{width:64px;height:32px}
+  .tb-title{padding-left:9px}
+  .tb-title b{font-size:13.5px}
+  .tb-title span,.topbar .pill,.topbar .hdr-search{display:none}
+  select.role{max-width:128px;text-overflow:ellipsis}
+}
+@media (max-width:420px){.tb-title{display:none}}
+@media (prefers-reduced-motion:reduce){.nav{transition:none}}
+/* ===== /AGA-SHELL v1 ===== */
+
 .pill{display:inline-flex;align-items:center;gap:6px;padding:5px 11px;border:1px solid var(--border);border-radius:999px;background:var(--surface-2);font-size:12.5px;color:var(--fg-muted);white-space:nowrap}
 .pill b{color:var(--fg);font-weight:600}
 select.role{font-family:inherit;font-size:12.5px;color:var(--fg);background:var(--surface-2);border:1px solid var(--border);border-radius:999px;padding:5px 10px;cursor:pointer}
 .theme-btn{border:1px solid var(--border);background:var(--surface-2);color:var(--fg-muted);border-radius:8px;width:34px;height:32px;cursor:pointer;font-size:15px}
 .avatar{width:32px;height:32px;border-radius:50%;background:var(--surface-3);color:var(--fg-muted);display:grid;place-items:center;font-weight:600;font-size:12px;flex:none}
-.navtoggle{display:none;align-items:center;justify-content:center;border:1px solid var(--border);background:var(--surface-2);color:var(--fg);border-radius:8px;width:36px;height:34px;font-size:18px;cursor:pointer;flex:none}
-.nav-backdrop{display:none}
-.shell{display:flex;align-items:flex-start;min-height:calc(100% - 59px);max-width:1760px;margin-inline:auto}
-.nav{width:238px;flex:none;padding:14px 10px;border-right:1px solid var(--border);background:var(--surface);align-self:stretch}
-.nav .group{font-size:11px;letter-spacing:.06em;color:var(--fg-faint);padding:12px 10px 5px}
-.nav a{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;color:var(--fg-muted);text-decoration:none;font-size:13.5px;margin-bottom:1px}
-.nav a .ic{width:17px;text-align:center;flex:none;opacity:.85}
-.nav a:hover{background:var(--surface-2);color:var(--fg)}
-.nav a.active{background:var(--accent-soft);color:var(--accent-strong);font-weight:600}
 main{flex:1;min-width:0;padding:20px 24px 48px}
 .page-head h1{margin:0;font-size:20px;font-weight:600}
 .page-head p{margin:3px 0 0;color:var(--fg-muted);font-size:13px}
@@ -166,28 +214,18 @@ tr.detail>td{padding:0;background:var(--surface-2);white-space:normal}
 
 @media (max-width:1100px){.twocol{grid-template-columns:1fr}.twocol>.panel{margin-bottom:16px}}
 @media (max-width:860px){
-  .shell{display:block}
-  .navtoggle{display:inline-flex}
-  .nav{position:fixed;top:0;left:0;bottom:0;width:260px;z-index:40;overflow-y:auto;transform:translateX(-100%);transition:transform .22s ease;box-shadow:2px 0 14px rgba(20,40,70,.18)}
-  body.nav-open .nav{transform:translateX(0)}
-  .nav-backdrop{position:fixed;inset:0;background:rgba(10,20,35,.42)}
-  body.nav-open .nav-backdrop{display:block}
-  .topbar{gap:8px;padding:10px 12px}
-  .logo .txt,.topbar .pill{display:none}
-  select.role{max-width:150px}
   main{padding:16px}
 }
-@media (prefers-reduced-motion:reduce){.nav{transition:none}}
 </style>
 </head>
 <body>
 
 <div class="topbar">
-  <button class="navtoggle" id="navToggle" aria-label="เปิด/ปิดเมนู" aria-expanded="false" onclick="toggleNav()">☰</button>
-  <div class="logo">
-    <div class="mark">AGA</div>
-    <div class="txt"><b>ข้อมูลหลังบ้านระบบเหยื่อ</b><span>Advance Group Asia · ส่วนกลาง</span></div>
-  </div>
+  <button class="navtoggle" id="navToggle" aria-label="เปิด/ปิดเมนู" aria-expanded="false" aria-controls="nav" onclick="toggleNav()">☰</button>
+  <a class="tb-brand" href="aga-bait-registry-prototype.html#todo">
+    <span class="tb-logo" role="img" aria-label="Advance Group Asia (AGA)"></span>
+    <span class="tb-title"><b>ข้อมูลหลังบ้านระบบเหยื่อ</b><span>ส่วนกลาง</span></span>
+  </a>
   <div class="spacer"></div>
   <span class="pill">วันนี้ <b>06/11/2026</b></span>
   <select class="role" id="roleSel" aria-label="เลือกบทบาท" onchange="setRole(this.value)">
@@ -195,22 +233,31 @@ tr.detail>td{padding:0;background:var(--surface-2);white-space:normal}
     <option value="admin">admin · แอดมิน</option>
     <option value="recorder">recorder · หัวหน้างาน</option>
   </select>
-  <button class="theme-btn" aria-label="สลับธีม" onclick="toggleTheme()">◐</button>
+  <button class="theme-btn" id="themeBtn" aria-label="สลับธีม" onclick="toggleTheme()">◐</button>
   <div class="avatar">นท</div>
 </div>
 
 <div class="shell">
   <nav class="nav" id="nav" aria-label="เมนูหลัก">
     <div class="group">งานประจำวัน</div>
-    <a href="aga-bait-registry-prototype.html"><span class="ic">◉</span> หน้า "ต้องทำ"</a>
-    <a href="aga-bait-registry-prototype.html"><span class="ic">✎</span> กรอกผลบริการ (IG/IC)</a>
-    <a href="aga-bait-registry-prototype.html"><span class="ic">▣</span> กล่องเหยื่อ (AG)</a>
-    <a href="aga-bait-registry-prototype.html"><span class="ic">▦</span> สรุปตัวเลข</a>
-    <div class="group">ดูแลระบบ</div>
-    <a href="month-closure.html"><span class="ic">🔒</span> ปิดเดือน</a>
-    <a href="dashboard-sync.html" class="active" aria-current="page"><span class="ic">⇅</span> Dashboard Sync</a>
+    <a href="aga-bait-registry-prototype.html#todo" data-nav="todo"><span class="ic">◉</span> หน้า "ต้องทำ"</a>
+    <a href="aga-bait-registry-prototype.html#service" data-nav="service"><span class="ic">✎</span> กรอกผลบริการ (IG/IC)</a>
+    <a href="aga-bait-registry-prototype.html#bait" data-nav="bait"><span class="ic">▣</span> กล่องเหยื่อ (AG)</a>
+    <a href="aga-bait-registry-prototype.html#collect" data-nav="collect"><span class="ic">⇲</span> รอเก็บสถานี (หมดสัญญา)</a>
+    <div class="group">ทะเบียนและสรุป</div>
+    <a href="aga-bait-registry-prototype.html#registry" data-nav="registry"><span class="ic">▤</span> ทะเบียนลูกค้า/สัญญา</a>
+    <a href="customer-detail.html" data-nav="customer"><span class="ic">◷</span> รายละเอียดลูกค้า</a>
+    <a href="admin-add-customer.html" data-nav="new"><span class="ic">＋</span> เปิดงาน (admin)</a>
+    <a href="aga-bait-registry-prototype.html#summary" data-nav="summary"><span class="ic">▦</span> สรุปตัวเลข</a>
+    <a href="aga-bait-registry-prototype.html#material" data-nav="material"><span class="ic">▥</span> สรุปวัสดุ</a>
+    <div class="group">ดูแลระบบ (host)</div>
+    <a href="month-closure.html" data-nav="closure"><span class="ic">🔒</span> ปิดเดือน</a>
+    <a href="provincial-port-update.html" data-nav="port"><span class="ic">⛰</span> port สาขาต่างจังหวัด</a>
+    <a href="dashboard-sync.html" data-nav="sync" class="active" aria-current="page"><span class="ic">⇅</span> Dashboard Sync</a>
+    <a href="admin-user-management.html" data-nav="users"><span class="ic">☺</span> จัดการผู้ใช้</a>
+    <a href="settings.html" data-nav="settings"><span class="ic">⚙</span> ตั้งค่า</a>
   </nav>
-  <div class="nav-backdrop" onclick="toggleNav(false)" aria-hidden="true"></div>
+  <div class="nav-backdrop" id="navBackdrop" onclick="toggleNav(false)" aria-hidden="true"></div>
 
   <main id="main">
     <div class="page-head"><h1>Dashboard Sync</h1>
@@ -479,13 +526,14 @@ function doExport(){
   var m=document.getElementById("expMsg"); m.textContent="✓ ดาวน์โหลดแล้ว · บันทึกลงประวัติ"; m.hidden=false;
 }
 
-/* ===== shell ===== */
+/* ===== AGA-SHELL v1 : เปิด/ปิดลิ้นชักเมนูบนจอเล็ก (body.nav-open) ===== */
 function toggleNav(open){
   var b=document.body, want=(typeof open==="boolean")?open:!b.classList.contains("nav-open");
   b.classList.toggle("nav-open",want);
   var t=document.getElementById("navToggle"); if(t) t.setAttribute("aria-expanded",want?"true":"false");
 }
 document.addEventListener("keydown",function(e){if(e.key==="Escape")toggleNav(false)});
+/* ===== /AGA-SHELL v1 ===== */
 function setRole(r){
   var ok=(r==="host");
   document.getElementById("lockMsg").hidden=ok;
