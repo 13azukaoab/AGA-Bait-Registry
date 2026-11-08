@@ -98,6 +98,29 @@ git revert <commit-hash>   # ย้อน commit นั้น (ปลอดภ�
 - โค้ดต้องอ่านง่าย เป็นมาตรฐาน เผื่อส่งต่อทีมงาน (นัท / Jane / Toon)
 - Feature ซับซ้อน → เขียน logic สรุปสั้นๆ ที่หัวไฟล์ หรือแยกไฟล์ `.md` อธิบาย เพื่อให้ทีมเข้าใจเร็ว
 
+## การเปิด session ใหม่ / sub session (เลือกโมเดล + skills)
+เมื่อจะ **เปิด session ใหม่ หรือ sub session** ให้ agent ที่เป็นผู้แนะนำ (session หลัก/coordinator) บอกเจ้าของ **2 อย่างเสมอ** ก่อนเริ่ม: **(1) โมเดลที่เหมาะกับงาน** เพื่อประหยัด token **(2) skills ที่ควรเปิด** — เจ้าของเป็นคนตัดสินและกดเปิดเอง (agent ไม่เปลี่ยนโมเดลหรือเปิด skill แทนโดยพลการ)
+
+**เลือกโมเดล** — ยึดหลัก "งานยิ่งเสี่ยงต่อความถูกต้อง/ข้อมูลลูกค้า ยิ่งใช้โมเดลแรง · งานซ้ำตามแพทเทิร์นใช้โมเดลประหยัด · ให้ Opus ตรวจรอบสุดท้าย":
+
+| ลักษณะงาน | โมเดล | skills ที่ควรเปิด |
+|---|---|---|
+| `lib/rules` + unit test (สูตร Tier/เดือนบริการ/ตกบริการ) | **Opus** | `superpowers:test-driven-development`, `javascript-testing-patterns` |
+| DB schema, migration, RLS, Auth/สิทธิ์ (PDPA) | **Opus** | `code-review-and-quality`, `security-review` |
+| ตัดสินสถาปัตยกรรม / แก้ SPEC / debug หา root cause ยาก | **Opus** | `superpowers:brainstorming` (งานใหม่), `superpowers:systematic-debugging` (บั๊ก) |
+| ตรวจรอบสุดท้ายก่อน merge/push | **Opus** | `code-review-and-quality`, `superpowers:verification-before-completion` |
+| ทำ UI/หน้าจอตาม mockup ที่อนุมัติแล้ว, CSS, nav, โลโก้ | **Sonnet** | `frontend-design` หรือ `anthropic-skills:impeccable`, `webapp-testing` |
+| mockup หน้าใหม่ (ต้องทำ preview เทียบก่อน) | **Sonnet** (เสนอ layout) | `frontend-design`, `webapp-testing` |
+| กราฟ / dashboard | **Sonnet** | `dataviz` |
+| เขียน doc / changelog / handoff / แก้ข้อความ | **Sonnet** | — (ไม่ต้องมี skill) |
+| ค้นหา/อ่านไฟล์เพื่อตอบคำถามสั้นๆ | Sonnet หรือ Haiku | — |
+
+- ถ้างานผสม (เช่น สร้าง UI แล้วต้องต่อ RLS) → แยกเป็น sub session ตามความเสี่ยง ไม่ใช้ Opus ทั้งก้อน
+- `superpowers:brainstorming` / `writing-plans` เปิดเฉพาะงาน **ที่ยังไม่ตัดสินใจ** — ถ้าดีไซน์/สเปคตัดสินแล้วและมี handoff ให้ข้าม (กันวนถามซ้ำ)
+- ใน brief ของ session ใหม่ให้ระบุ: ไฟล์ที่ต้องอ่านก่อน, ไฟล์ที่แตะได้, "เสร็จ = อะไร" และข้อห้าม (เช่น ห้าม push ให้ coordinator ทำ)
+
+**โหมดย่อคำตอบ (`/caveman`):** เมื่อเปิด session ใหม่/เริ่มงานครั้งแรก **เจ้าของจะเปิด skill `/caveman` เอง** (ลดการใช้ token ของข้อความตอบ) — agent ไม่ต้องเปิดแทน · ถึงอยู่ในโหมดนี้ **โค้ด, commit message, SPEC และเอกสารต้องเขียนตามปกติครบถ้วน** ย่อเฉพาะข้อความสนทนา · ถ้าเป็นคำเตือนความปลอดภัย การยืนยันก่อนทำสิ่งย้อนกลับไม่ได้ หรือเจ้าของถามซ้ำ ให้เขียนเต็มประโยคชัดเจนก่อน
+
 ## UI / Design
 - **แก้ไข/เพิ่ม design สำคัญ** (เพิ่มกราฟ/component ใหม่, เปลี่ยน layout, ปรับ UI ตาราง) → ทำ **preview/mockup ให้เจ้าของดูก่อนเสมอ** แล้วให้เลือก/ตัดสินใจก่อนลงมือเขียนโค้ดจริง (ใช้ visualize tool เทียบหลายแบบ)
 - แก้เล็กน้อย (สี/ข้อความ/bug) ไม่ต้องทำ preview
