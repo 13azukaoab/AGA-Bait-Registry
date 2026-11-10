@@ -1,6 +1,6 @@
--- month_closures, monthly_branch_snapshots (Task 7 + v1.2/v1.5 changes)
+-- month_closures, monthly_branch_snapshots (Task 7 + v1.2/v1.4/v1.5 changes)
 BEGIN;
-SELECT plan(32);
+SELECT plan(47);
 
 SELECT has_table('public', 'month_closures', 'month_closures exists');
 SELECT has_table('public', 'monthly_branch_snapshots', 'monthly_branch_snapshots exists');
@@ -31,6 +31,19 @@ FROM unnest(ARRAY['s1','s3','m1','m3','l1','l3','xl1','xl3','cust']) c;
 -- value fields numeric(14,2)
 SELECT col_type_is('public', 'monthly_branch_snapshots', c, 'numeric(14,2)', c || ' is numeric(14,2)')
 FROM unnest(ARRAY['vS','vM','vL','vXL','value','value_annual']) c;
+
+-- v1.4: value per tier (8) - NOT NULL default 0
+SELECT col_type_is('public', 'monthly_branch_snapshots', c, 'numeric(14,2)', c || ' is numeric(14,2)')
+FROM unnest(ARRAY['v_s1','v_s3','v_m1','v_m3','v_l1','v_l3','v_xl1','v_xl3']) c;
+
+-- v1.4: totals from the branch report (nullable = not compared yet) + confirmation
+SELECT col_type_is('public', 'monthly_branch_snapshots', 'report_cust', 'integer', 'report_cust is integer');
+SELECT col_type_is('public', 'monthly_branch_snapshots', 'report_value', 'numeric(14,2)', 'report_value is numeric(14,2)');
+SELECT col_is_null('public', 'monthly_branch_snapshots', 'report_cust', 'report_cust nullable');
+SELECT col_is_null('public', 'monthly_branch_snapshots', 'report_value', 'report_value nullable');
+SELECT col_type_is('public', 'monthly_branch_snapshots', 'confirmed_at', 'timestamp with time zone', 'confirmed_at timestamptz');
+SELECT col_type_is('public', 'monthly_branch_snapshots', 'confirmed_by', 'uuid', 'confirmed_by uuid');
+SELECT fk_ok('public', 'monthly_branch_snapshots', 'confirmed_by', 'auth', 'users', 'id', 'confirmed_by -> auth.users');
 
 SELECT * FROM finish();
 ROLLBACK;
