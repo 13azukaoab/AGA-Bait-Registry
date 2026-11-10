@@ -124,6 +124,8 @@ select.role{font-family:inherit;font-size:12.5px;color:var(--fg);background:var(
   border:1px solid var(--border);border-radius:999px;padding:5px 10px;cursor:pointer}
 .theme-btn{border:1px solid var(--border);background:var(--surface-2);color:var(--fg-muted);border-radius:8px;
   width:34px;height:32px;cursor:pointer;font-size:15px;line-height:1}
+a.avatar{text-decoration:none;cursor:pointer}
+a.avatar:hover,a.avatar:focus-visible{box-shadow:0 0 0 2px var(--accent);color:var(--fg)}
 .avatar{width:32px;height:32px;border-radius:50%;background:var(--surface-3);color:var(--fg-muted);
   display:grid;place-items:center;font-weight:600;font-size:12px;flex:none}
 .hdr-search{flex:0 1 320px;min-width:0;font-family:inherit;font-size:13px;color:var(--fg);
@@ -461,7 +463,7 @@ table.xl .teambtn.multi{font-weight:700;color:var(--accent-strong)}
     <option value="viewer">viewer · ผู้บริหาร</option>
   </select>
   <button class="theme-btn" id="themeBtn" aria-label="สลับธีม" onclick="toggleTheme()">◐</button>
-  <div class="avatar">นท</div>
+  <a class="avatar" href="login.html" title="ออกจากระบบ (กลับหน้าเข้าสู่ระบบ)" aria-label="ออกจากระบบ">นท</a>
 </div>
 
 <div class="shell">

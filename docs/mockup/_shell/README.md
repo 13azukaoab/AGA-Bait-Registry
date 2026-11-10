@@ -50,5 +50,11 @@
 6. หน้า `admin-add-customer.html` ไม่มี topbar/nav เลย → ต้องเพิ่ม `.topbar` + `.shell` ครอบเนื้อหาเดิม (ระวังเนื้อหาเดิมกว้างเต็มจอ ตาราง 22 คอลัมน์)
 7. เปิดเทสในเบราว์เซอร์: โหมดสว่าง/มืด · จอกว้าง + 375px · กด ☰ เปิดลิ้นชัก · กดลิงก์ทุกอันไปถูกหน้า · **ไม่มี console error** · ฟังก์ชันเดิมของหน้า (ปุ่ม/ฟอร์ม/modal) ยังใช้ได้
 
+## avatar มุมขวาบน = ลิงก์ออกจากระบบ (10 พ.ย. 2026)
+topbar ฝั่งขวายังเป็นของแต่ละหน้า แต่ทุกหน้าใช้ `<a class="avatar" href="login.html" title="ออกจากระบบ …" aria-label="ออกจากระบบ">` แทน `<div class="avatar">` · มี CSS `a.avatar{…}` วางก่อนกฎ `.avatar` เดิม · หน้าใหม่ให้ทำแบบเดียวกัน (login สำเร็จ → host/recorder ไป `aga-bait-registry-prototype.html#todo`, admin ไป `admin-add-customer.html`)
+
+## หน้า `customer-detail.html` ไม่อยู่ใน sidebar แล้ว
+เข้าได้จากการคลิกชื่อลูกค้า (ลิงก์ ↗) เท่านั้น: `customer-detail.html?c=<id>#tab=contracts` — ถ้าเพิ่มรายการลูกค้าในหน้าใหม่ ต้องใส่ลิงก์นี้ด้วย (ไม่งั้นหน้านี้เข้าไม่ถึง — เคยเป็นข้อบกพร่องมาแล้วหนึ่งครั้ง)
+
 ## ลิงก์ไปหน้า prototype
 prototype เป็นหน้าเดียวหลายส่วน ใช้ hash: `aga-bait-registry-prototype.html#todo` (`todo service bait collect registry summary material`) — ตัว prototype อ่าน hash ตอนเปิด/เปลี่ยน และเขียน hash กลับตอนกดเมนู

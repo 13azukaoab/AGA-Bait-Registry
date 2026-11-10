@@ -133,6 +133,8 @@ button{font-family:inherit}
 .pill b{color:var(--fg);font-weight:600}
 .theme-btn{border:1px solid var(--border);background:var(--surface-2);color:var(--fg-muted);border-radius:8px;
   width:34px;height:32px;cursor:pointer;font-size:15px;line-height:1}
+a.avatar{text-decoration:none;cursor:pointer}
+a.avatar:hover,a.avatar:focus-visible{box-shadow:0 0 0 2px var(--accent);color:var(--fg)}
 .avatar{width:32px;height:32px;border-radius:50%;background:var(--surface-3);color:var(--fg-muted);
   display:grid;place-items:center;font-weight:600;font-size:12px;flex:none}
 main{flex:1;min-width:0;padding:20px 24px 48px}
@@ -257,7 +259,7 @@ ul.plain{margin:6px 0 0;padding-left:18px;font-size:12.5px;color:var(--fg-muted)
   <span class="pill hide-sm">เดือน <b>พ.ย. 2026</b></span>
   <span class="pill"><span class="chip host">host</span> <b>ส่วนกลาง Bait</b></span>
   <button class="theme-btn" id="themeBtn" aria-label="สลับธีมสว่าง/มืด" onclick="toggleTheme()">◐</button>
-  <div class="avatar" aria-hidden="true">สญ</div>
+  <a class="avatar" href="login.html" title="ออกจากระบบ (กลับหน้าเข้าสู่ระบบ)" aria-label="ออกจากระบบ">สญ</a>
 </div>
 
 <div class="shell">

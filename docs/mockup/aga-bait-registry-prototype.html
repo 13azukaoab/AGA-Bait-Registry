@@ -117,6 +117,8 @@ select.role{font-family:inherit;font-size:12.5px;color:var(--fg);background:var(
   border:1px solid var(--border);border-radius:999px;padding:5px 10px;cursor:pointer}
 .theme-btn{border:1px solid var(--border);background:var(--surface-2);color:var(--fg-muted);border-radius:8px;
   width:34px;height:32px;cursor:pointer;font-size:15px;line-height:1}
+a.avatar{text-decoration:none;cursor:pointer}
+a.avatar:hover,a.avatar:focus-visible{box-shadow:0 0 0 2px var(--accent);color:var(--fg)}
 .avatar{width:32px;height:32px;border-radius:50%;background:var(--surface-3);color:var(--fg-muted);
   display:grid;place-items:center;font-weight:600;font-size:12px;flex:none}
 .hdr-search{flex:0 1 320px;min-width:0;font-family:inherit;font-size:13px;color:var(--fg);
@@ -239,7 +241,7 @@ td.r,th.r{text-align:right} td.c,th.c{text-align:center}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--nem:#4a90d9;--nem-out:#7fb3e8;--pow:#d99b3e;--wood:#a588e0}}
 :root[data-theme="dark"]{--nem:#4a90d9;--nem-out:#7fb3e8;--pow:#d99b3e;--wood:#a588e0}
 .usefill.pow{background:var(--pow)} .usefill.wood{background:var(--wood)}
-#s-material .cards{grid-template-columns:repeat(auto-fit,minmax(370px,1fr))}
+#s-material .cards{grid-template-columns:repeat(auto-fit,minmax(min(100%,370px),1fr))}
 .matbars .userow{grid-template-columns:78px minmax(60px,1fr) 118px}
 .matbars .usetrack{border-radius:4px;overflow:visible}
 /* hover บนแท่ง → โชว์ตัวเลขของส่วนนั้น (ไม่ต้องพึ่งสีอย่างเดียว) */
@@ -345,6 +347,9 @@ tfoot td{padding:10px 12px;font-weight:700;background:var(--surface-2);border-to
 .fhead .pos{font-size:12px;color:var(--fg-muted);display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .fhead .nm{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:3px 0 9px}
 .fhead .nm b{font-size:17px;font-weight:600}
+/* ลิงก์จากชื่อลูกค้า → หน้ารายละเอียดลูกค้า (customer-detail.html) */
+.rowlk{flex:none;margin-left:6px;font-size:12px;color:var(--accent-strong);text-decoration:none;white-space:nowrap;border-radius:5px;padding:1px 4px}
+.rowlk:hover,.rowlk:focus-visible{background:var(--accent-soft);text-decoration:underline}
 .fgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-bottom:14px}
 .fgrid .field label{font-size:12px}
 .fgrid .field select,.fgrid .field input{width:100%;min-width:0;padding:10px 12px;font-size:14px}
@@ -427,7 +432,7 @@ tfoot td{padding:10px 12px;font-weight:700;background:var(--surface-2);border-to
     <option value="viewer">viewer · ผู้บริหาร</option>
   </select>
   <button class="theme-btn" id="themeBtn" aria-label="สลับธีม" onclick="toggleTheme()">◐</button>
-  <div class="avatar">นท</div>
+  <a class="avatar" href="login.html" title="ออกจากระบบ (กลับหน้าเข้าสู่ระบบ)" aria-label="ออกจากระบบ">นท</a>
 </div>
 
 <div class="shell">
@@ -534,7 +539,7 @@ tfoot td{padding:10px 12px;font-weight:700;background:var(--surface-2);border-to
         <div class="field"><label>ชนิดวัสดุ</label><select><option>ทุกชนิด</option><option>NEMESIS</option><option>เคมีผง</option><option>ไม้ล่อ</option></select></div>
         <div class="field"><label>ช่วงเวลา</label><select><option>ตุลาคม 2026</option><option>Q4 2026</option><option>ปี 2026</option><option>กำหนดช่วงเอง</option></select></div>
         <div style="flex:1"></div>
-        <button class="btn sm">↓ Export</button>
+        <button class="btn sm" type="button" onclick="exportMaterialXL()" title="ส่งออกสรุปการใช้วัสดุ + ตารางแยกสาขา เป็น .xlsx">↓ ส่งออก Excel</button>
       </div>
       <div class="stats">
         <div class="stat matn"><div class="lab"><span class="dot" style="background:var(--nem)"></span> NEMESIS (เหยื่อ)</div><div class="val num">10,000 <span style="font-size:14px;color:var(--fg-muted)">ก.</span></div><div class="sub">ภายนอก IG 1,250 · ภายใน IC+AG 8,750 ก.</div></div>
@@ -688,6 +693,7 @@ tfoot td{padding:10px 12px;font-weight:700;background:var(--surface-2);border-to
         <div class="field"><label>สถานะ</label><select><option>Active</option><option>ทั้งหมด</option></select></div>
         <div class="field"><label>ค้นหา</label><input placeholder="ชื่อลูกค้า / เลขสัญญา"></div>
         <div style="flex:1"></div>
+        <button class="btn" type="button" onclick="exportRegistryXL()" title="ส่งออกตารางทะเบียนทั้งหมดเป็น .xlsx">↓ ส่งออก Excel</button>
         <button class="btn primary">+ เพิ่มลูกค้า</button>
       </div>
       <div class="tablewrap">
@@ -733,6 +739,7 @@ tfoot td{padding:10px 12px;font-weight:700;background:var(--surface-2);border-to
         <div class="field"><label>สาขา</label><select><option>ทุกสาขา</option></select></div>
         <div class="field"><label>เรียงอันดับตาม</label><select><option>มูลค่ารวม</option><option>จำนวนลูกค้า</option></select></div>
         <div style="flex:1"></div>
+        <button class="btn" type="button" onclick="exportSummaryXL()" title="ส่งออก KPI / ส่วนกลาง-ต่างจังหวัด / Ranking / รายเดือน / ตาราง 16 ฟิลด์ เป็น .xlsx หลายชีท (ตัวเลขรวม ไม่มีข้อมูลรายลูกค้า)">↓ ส่งออก Excel</button>
         <button class="btn">↓ Export JSON</button>
       </div>
       <div class="tierrow">กรองตาม Tier:
@@ -842,16 +849,20 @@ tfoot td{padding:10px 12px;font-weight:700;background:var(--surface-2);border-to
 <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<!-- SheetJS: ส่งออก .xlsx (ต้องมีอินเทอร์เน็ตตอนเปิด mockup เหมือนฟอนต์/กราฟ) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
 var SCREENS=['todo','service','bait','collect','registry','summary','material'];
 var divChart=null;
+/* ชุดข้อมูลกราฟรายเดือน (ล้านบาท) — ใช้ทั้งวาดกราฟและส่งออก Excel จึงเก็บที่เดียว ห้ามพิมพ์ซ้ำสองที่ */
+var DIV_MO=['JAN.25','FEB.25','MAR.25','APR.25','MAY.25','JUN.25','JUL.25','AUG.25','SEP.25','OCT.25','NOV.25','DEC.25','JAN.26','FEB.26','MAR.26','APR.26','MAY.26','JUN.26','JUL.26','AUG.26','SEP.26'];
+var DIV_CENTRAL=[110,112,115,118,120,123,126,128,130,131,133,134,135,136,137,137,138,138,139,139,138.8];
+var DIV_PROV=[18,19,19,20,21,21,22,22,23,23,24,24,25,25,26,26,26,27,27,28,27.9];
 function initDivChart(){
   if(divChart || typeof Chart==='undefined') return;
   var el=document.getElementById('divChart'); if(!el) return;
   Chart.defaults.color='#8a98a8'; Chart.defaults.font.family='Noto Sans Thai';
-  var mo=['JAN.25','FEB.25','MAR.25','APR.25','MAY.25','JUN.25','JUL.25','AUG.25','SEP.25','OCT.25','NOV.25','DEC.25','JAN.26','FEB.26','MAR.26','APR.26','MAY.26','JUN.26','JUL.26','AUG.26','SEP.26'];
-  var central=[110,112,115,118,120,123,126,128,130,131,133,134,135,136,137,137,138,138,139,139,138.8];
-  var prov=[18,19,19,20,21,21,22,22,23,23,24,24,25,25,26,26,26,27,27,28,27.9];
+  var mo=DIV_MO, central=DIV_CENTRAL, prov=DIV_PROV;
   divChart=new Chart(el,{type:'bar',data:{labels:mo,datasets:[
     {label:'ส่วนกลาง',data:central,backgroundColor:'#378add'},
     {label:'ต่างจังหวัด',data:prov,backgroundColor:'#eab308'}]},
@@ -1134,7 +1145,8 @@ var SV=null;
 var stationMax=120;
 function fheadHtml(c,posHtml){
   var agN=c.ag.length;
-  return '<div class="fhead"><div class="pos">'+posHtml+'</div><div class="nm"><b>'+esc(c.name)+'</b>'+tierBadge(c.tier)+'</div>'+
+  return '<div class="fhead"><div class="pos">'+posHtml+'</div><div class="nm"><b>'+esc(c.name)+'</b>'+tierBadge(c.tier)+
+    '<a class="rowlk" href="'+custHref(c.name,c.id)+'" title="ดูรายละเอียดลูกค้า (หน้าดูอย่างเดียว)" aria-label="ดูรายละเอียดลูกค้า '+esc(c.name)+'">ดูรายละเอียดลูกค้า ↗</a></div>'+
     '<div class="sumchips" style="margin:0"><span class="chip na">สัญญา '+esc(c.ct)+'</span>'+
     '<span class="chip na num"><span class="sttype">IG</span> '+c.ig+'</span><span class="chip na num"><span class="sttype">IC</span> '+c.ic+'</span>'+
     '<span class="chip '+(agN?'pend':'na')+' num"><span class="sttype">AG</span> '+agN+(agN?' ค้างติดตาม':'')+'</span></div></div>';
@@ -1439,9 +1451,95 @@ function toggleTheme(){
   el.setAttribute('data-theme',next);
   try{localStorage.setItem('aga-theme',next)}catch(e){}
 }
+/* ===== ลิงก์ชื่อลูกค้า → หน้ารายละเอียดลูกค้า (customer-detail.html) =====
+   เดโมมีข้อมูลรายละเอียดจริงแค่ 3 ราย: c1 บมจ. สยามพัฒนาเฮ้าส์ · c2 คุณวิรัช ตั้งมั่น · c3 โรงแรมบ้านสวนรีสอร์ท
+   ชื่อตรง = ไปรายนั้น · ชื่ออื่นในเดโมยังไม่มีหน้าของตัวเอง → วนใช้ c1..c3 เพื่อให้ลองคลิกได้ (ตอน build ใช้ id ลูกค้าจริง) */
+var DETAIL_BY_NAME={'บมจ. สยามพัฒนาเฮ้าส์':'c1','คุณวิรัช ตั้งมั่น (บ้านพัก)':'c2','โรงแรมบ้านสวนรีสอร์ท':'c3'};
+function custHref(text,seed){
+  var id=null; Object.keys(DETAIL_BY_NAME).forEach(function(n){ if(String(text).indexOf(n)>=0) id=DETAIL_BY_NAME[n]; });
+  if(!id) id='c'+(((+seed||0)%3)+1);
+  return 'customer-detail.html?c='+id+'#tab=contracts';
+}
+function addCustLinks(){
+  var a=function(href,label,name){ return '<a class="rowlk" href="'+href+'" onclick="event.stopPropagation()" title="ดูรายละเอียดลูกค้า" aria-label="ดูรายละเอียดลูกค้า '+name+'">'+label+'</a>'; };
+  var seed=0;
+  /* การ์ดรายการหน้าสถานะ: ลิงก์ท้ายแถว (แถวยังคลิกไปหน้ากรอกผลเหมือนเดิม — ลิงก์กันไม่ให้ทะลุด้วย stopPropagation) */
+  [].forEach.call(document.querySelectorAll('#s-todo .rowlist .r'),function(r){
+    var b=r.querySelector('.main b'); if(!b||r.querySelector('.rowlk')) return;
+    r.insertAdjacentHTML('beforeend',a(custHref(b.textContent,seed++),'ดูลูกค้า ↗',b.textContent.replace(/"/g,'')));
+  });
+  /* ตารางทะเบียน / รอเก็บสถานี: ชื่อลูกค้าเป็น <b> ในคอลัมน์แรกของชื่อ */
+  [['#s-registry tbody tr','td:nth-child(2) b'],['#s-collect tbody tr','td:first-child b']].forEach(function(p){
+    [].forEach.call(document.querySelectorAll(p[0]),function(tr){
+      var b=tr.querySelector(p[1]); if(!b||tr.querySelector('.rowlk')) return;
+      b.insertAdjacentHTML('afterend',a(custHref(b.textContent,seed++),'↗',b.textContent.replace(/"/g,'')));
+    });
+  });
+}
+
+/* ===== ส่งออก Excel (.xlsx หลายชีทในไฟล์เดียว) ของจอทะเบียน / สรุปวัสดุ / สรุปมูลค่า — SheetJS =====
+   ตารางอ่านจาก DOM ตรงๆ (ตรงกับที่เห็นเสมอ) · ตัวเลขที่มีคอมมา ("1,737,860") แปลงเป็นตัวเลขจริงใน Excel
+   ชุดข้อมูลกราฟอ่านจากตัวแปรเดียวกับที่วาดกราฟ (DIV_*) · จอสรุปมูลค่าเป็นตัวเลขรวม ไม่มีข้อมูลรายลูกค้า (viewer ส่งออกได้) */
+function xlReady(){
+  if(typeof XLSX==='undefined'){ alert('ต้องมีอินเทอร์เน็ตเพื่อโหลดไลบรารีส่งออก Excel (SheetJS) — ลองใหม่เมื่อออนไลน์'); return false; }
+  return true;
+}
+function xlTxt(el){ return el.textContent.replace(/\s+/g,' ').trim(); }
+function xlNumFix(ws){
+  Object.keys(ws).forEach(function(k){
+    if(k[0]==='!') return; var c=ws[k];
+    if(c && c.t==='s' && /^-?\d{1,3}(,\d{3})+(\.\d+)?$/.test(c.v)){ c.v=parseFloat(c.v.replace(/,/g,'')); c.t='n'; delete c.w; }
+  });
+  return ws;
+}
+function xlTable(wb,name,table){
+  var t=table.cloneNode(true);   /* ตัดลิงก์ ↗ ที่ใส่ไว้ในหน้าออกก่อน ไม่ให้ติดไปในไฟล์ Excel */
+  [].forEach.call(t.querySelectorAll('.rowlk'),function(e){ e.remove(); });
+  XLSX.utils.book_append_sheet(wb,xlNumFix(XLSX.utils.table_to_sheet(t)),name);
+}
+function xlRows(wb,name,rows){ XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rows),name); }
+
+function exportRegistryXL(){
+  if(!xlReady()) return;
+  var wb=XLSX.utils.book_new();
+  xlTable(wb,'ทะเบียนลูกค้า-สัญญา',document.querySelector('#s-registry table'));
+  XLSX.writeFile(wb,'AGA-ทะเบียนลูกค้า-สัญญา.xlsx');
+}
+function exportMaterialXL(){
+  if(!xlReady()) return;
+  var wb=XLSX.utils.book_new();
+  var cards=[['วัสดุ','ปริมาณ']].concat([].map.call(document.querySelectorAll('#s-material .stats .stat'),function(s){
+    return [xlTxt(s.querySelector('.lab')), xlTxt(s.querySelector('.val'))]; }));
+  xlRows(wb,'สรุปวัสดุ',cards);
+  xlTable(wb,'แยกสาขา',document.querySelector('#s-material table'));
+  XLSX.writeFile(wb,'AGA-สรุปยอดใช้อุปกรณ์รายเดือน.xlsx');
+}
+function exportSummaryXL(){
+  if(!xlReady()) return;
+  var wb=XLSX.utils.book_new(), S=document.getElementById('s-summary');
+  xlRows(wb,'KPI',[['ตัวชี้วัด','ค่า','เทียบ','หมายเหตุ']].concat([].map.call(S.querySelectorAll('.kpigrid .kpi'),function(k){
+    var q=function(sel){var e=k.querySelector(sel); return e?xlTxt(e):'';}; return [q('.lab'),q('.big'),q('.dl'),q('.sub')]; })));
+  var div=[['ส่วน','หัวข้อ','ค่า']];
+  [].forEach.call(S.querySelectorAll('.divcard'),function(d){
+    var name=xlTxt(d.querySelector('h4'));
+    [].forEach.call(d.querySelectorAll('.ln'),function(l){ div.push([name,xlTxt(l.querySelector('span')),xlTxt(l.querySelector('b'))]); });
+  });
+  xlRows(wb,'ส่วนกลาง-ต่างจังหวัด',div);
+  /* แถว ranking = เลขอันดับ · ชื่อสาขา + <small>เขต/จำนวนราย</small> · <span> % เปลี่ยนแปลง · <b> มูลค่า */
+  xlRows(wb,'Ranking สาขา',[['อันดับ','สาขา','เขต / จำนวนราย','เปลี่ยนแปลง','มูลค่า (ล้านบาท)']].concat([].map.call(S.querySelectorAll('.ranklist .r'),function(r){
+    var d=r.querySelector('div'), sm=d.querySelector('small'), chg=r.querySelector(':scope > span:not(.rankno)'), val=r.querySelector(':scope > b');
+    var v=val?parseFloat(xlTxt(val).replace(/[^\d.\-]/g,'')):'';
+    return [parseInt(xlTxt(r.querySelector('.rankno')),10), xlTxt(d).replace(sm?xlTxt(sm):'','').trim(), sm?xlTxt(sm).replace(/^·\s*/,''):'', chg?xlTxt(chg):'', isNaN(v)?'':v]; })));
+  xlRows(wb,'มูลค่ารายเดือน',[['เดือน','ส่วนกลาง (ล้านบาท)','ต่างจังหวัด (ล้านบาท)','รวม (ล้านบาท)']].concat(
+    DIV_MO.map(function(m,i){ return [m,DIV_CENTRAL[i],DIV_PROV[i],Math.round((DIV_CENTRAL[i]+DIV_PROV[i])*10)/10]; })));
+  var t=S.querySelector('table'); if(t) xlTable(wb,'16 ฟิลด์ต่อสาขา',t);
+  XLSX.writeFile(wb,'AGA-Dashboard-สรุปมูลค่า-SEP.26.xlsx');
+}
+
 function goHash(){ var h=location.hash.slice(1); if(SCREENS.indexOf(h)>=0) go(h); }
 initEntryPages();
 window.addEventListener('hashchange',goHash); goHash();
+addCustLinks();
 /* กรองเมนูตามสิทธิ์เริ่มต้นตามค่าใน role selector */
 try{var _rs=document.getElementById('roleSel'); if(_rs) applyNavRole(_rs.value);}catch(e){}
 try{var t=localStorage.getItem('aga-theme'); if(t)document.documentElement.setAttribute('data-theme',t)}catch(e){}

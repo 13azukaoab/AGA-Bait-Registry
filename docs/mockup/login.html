@@ -257,7 +257,7 @@ footer{padding:8px 0 20px;text-align:center;font-size:12px;color:var(--fg-faint)
     wrong:{cls:'danger',ic:'⚠',t:'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง',s:'ตรวจสอบตัวพิมพ์เล็ก/ใหญ่แล้วลองอีกครั้ง หากยังเข้าไม่ได้ให้ติดต่อ Host'},
     disabled:{cls:'warn',ic:'⛔',t:'บัญชีนี้ถูกปิดใช้งาน',s:'ติดต่อ Host (QCS ส่วนกลาง Bait) เพื่อขอเปิดใช้งานบัญชีอีกครั้ง'},
     network:{cls:'danger',ic:'⚠',t:'เชื่อมต่อเซิร์ฟเวอร์ไม่ได้',s:'ตรวจสอบอินเทอร์เน็ตแล้วลองอีกครั้ง'},
-    ok:{cls:'ok',ic:'✓',t:'เข้าสู่ระบบสำเร็จ',s:'กำลังพาไปหน้า "ต้องทำ" … (mockup ไม่ได้เปลี่ยนหน้าจริง)'}
+    ok:{cls:'ok',ic:'✓',t:'เข้าสู่ระบบสำเร็จ',s:'กำลังพาเข้าสู่ระบบ … (ปุ่ม "เข้าสำเร็จ" ในแผงเดโมด้านล่างแสดงแค่ข้อความ ไม่เปลี่ยนหน้า)'}
   };
   function showAlert(k){
     var a=ALERTS[k];
@@ -303,6 +303,10 @@ footer{padding:8px 0 20px;text-align:center;font-size:12px;color:var(--fg-faint)
       showAlert(r);
       if(r==='wrong'){markBad(u);markBad(p);p.value='';p.focus();}
       if(r==='disabled'){markBad(u);p.value='';u.focus();}
+      /* เข้าสำเร็จจริง (กรอกฟอร์ม ไม่ใช่ปุ่มเดโม) → พาเข้าแอป: host/recorder → "สถานะทะเบียนบริการ" · admin ไม่มีเมนูนั้น → "เปิดงานเข้าทะเบียนบริการ"
+         (ตอน build จริง: ไปหน้าแรกตาม role จาก profiles + บังคับเปลี่ยนรหัสก่อนถ้า must_change_password) */
+      if(r==='ok'){ setTimeout(function(){
+        location.href = (u.value.trim().toLowerCase()==='admin') ? 'admin-add-customer.html' : 'aga-bait-registry-prototype.html#todo'; },900); }
     },700);
   });
   [u,p].forEach(function(el){el.addEventListener('input',function(){
