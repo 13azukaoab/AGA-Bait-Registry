@@ -95,7 +95,8 @@ SELECT is(
 
 -- ===== anon =====
 SET LOCAL ROLE anon;
-SELECT is((SELECT count(*)::int FROM month_closures), 0, 'anon: month_closures = 0 rows');
+-- anon ถูกปฏิเสธตั้งแต่ชั้นสิทธิ์ (SQLSTATE 42501) ไม่ใช่แค่ถูก RLS กรองจนเหลือ 0 แถว
+SELECT throws_ok($$SELECT 1 FROM month_closures$$, '42501', NULL, 'anon: month_closures denied');
 SELECT throws_ok(
   $$INSERT INTO month_closures (month_key, scope) VALUES ('2026-11', 'central')$$,
   '42501', NULL, 'anon cannot close a month');

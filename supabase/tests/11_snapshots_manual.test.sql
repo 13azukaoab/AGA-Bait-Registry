@@ -1,7 +1,7 @@
 -- monthly_branch_snapshots v1.4 (SPEC §6, §6.5): provincial manual rows
 --   source='manual' rows are written by host only · still public-readable (Dashboard)
 BEGIN;
-SELECT plan(12);
+SELECT plan(13);
 
 INSERT INTO auth.users (id, instance_id, aud, role, email) VALUES
   ('00000000-0000-0000-0000-0000000000a1', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'host@test.local'),
@@ -67,7 +67,9 @@ SELECT is((SELECT count(*)::int FROM monthly_branch_snapshots WHERE month_key = 
 -- ===== still public for the Dashboard / summary page =====
 SET LOCAL ROLE anon;
 SELECT is((SELECT count(*)::int FROM monthly_branch_snapshots WHERE month_key = '2026-09'), 1, 'anon reads snapshot rows');
-UPDATE monthly_branch_snapshots SET value = 0;
+-- anon ถูกปฏิเสธตั้งแต่ชั้นสิทธิ์ (SQLSTATE 42501) ไม่ใช่แค่แก้แล้วโดน RLS กรองจนกระทบ 0 แถว
+SELECT throws_ok($$UPDATE monthly_branch_snapshots SET value = 0$$,
+  '42501', NULL, 'anon cannot update snapshots');
 RESET ROLE;
 SELECT is((SELECT value FROM monthly_branch_snapshots WHERE month_key = '2026-09' AND source = 'manual'),
   45000.00::numeric(14,2), 'anon UPDATE of snapshots affected 0 rows');

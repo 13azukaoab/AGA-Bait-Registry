@@ -112,7 +112,8 @@ SELECT throws_ok(
 SELECT is((SELECT count(*)::int FROM positions), 4, 'signed-in users read positions');
 RESET ROLE;
 SET LOCAL ROLE anon;
-SELECT is((SELECT count(*)::int FROM positions), 0, 'anon: positions = 0 rows');
+-- anon ถูกปฏิเสธตั้งแต่ชั้นสิทธิ์ (SQLSTATE 42501) ไม่ใช่แค่ถูก RLS กรองจนเหลือ 0 แถว
+SELECT throws_ok($$SELECT 1 FROM positions$$, '42501', NULL, 'anon: positions denied');
 RESET ROLE;
 
 -- ---------- changing a position's level updates its holders ----------
