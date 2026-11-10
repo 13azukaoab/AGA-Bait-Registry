@@ -36,9 +36,9 @@
 | session | หมวด | งานตอนนี้ | branch | สถานะ |
 |---|---|---|---|---|
 | ศูนย์กลางสั่งงานทั้ง project | HQ | วางแผน ตรวจ รวมงาน | `main` | ทำงานอยู่ |
-| หมวด 1 — Frontend | FE | mockup (เจ้าของคุยตรง) + **ชิ้นส่วนกลาง `components/ui/**`** + **โครงหน้า/เมนู `components/shell/**`, `app/(app)/layout.tsx`** (ศูนย์กลางส่ง 10 พ.ย. — ให้แตก sub 2 ตัวใน worktree, Sonnet) | `main` + worktree ของ sub | กำลังทำ — รอรายงาน |
+| หมวด 1 — Frontend | FE | mockup (เจ้าของคุยตรง) + **ชิ้นส่วนกลาง `components/ui/**`** + **โครงหน้า/เมนู `components/shell/**`, `app/(app)/layout.tsx`** (ศูนย์กลางส่ง 10 พ.ย. — ให้แตก sub 2 ตัวใน worktree, Sonnet) | `main` + worktree ของ sub | **รอเจ้าของกดเริ่มการ์ด sub 2 ใบในหมวด 1** (แอปไม่ให้หมวด 1 เริ่ม sub เองเมื่อคำสั่งมาจาก session อื่น) |
 | หมวด 2 — Backend & Security | BE | — | — | ยังไม่มีงาน (รอ `.env.local`) |
-| หมวด 3 — ระบบและโครงสร้างพื้นฐาน | INFRA | **ตรวจอัตโนมัติตอน push** `.github/workflows/ci.yml` (ศูนย์กลางส่ง 10 พ.ย. — sub ใน worktree, Sonnet) | worktree ของ sub | กำลังทำ — รอรายงาน |
+| หมวด 3 — ระบบและโครงสร้างพื้นฐาน | INFRA | **ตรวจอัตโนมัติตอน push** `.github/workflows/ci.yml` (ศูนย์กลางส่ง 10 พ.ย. — sub ใน worktree, Sonnet) `infra/ci-workflow` | ✅ ศูนย์กลางตรวจเอง (typecheck/lint ผ่าน, test 107 ผ่าน บน `main`) และรวมเข้า `main` แล้ว `2d7f5c9` — รอ push · ค้างให้เจ้าของตัดสิน: ย้ายจาก `next lint` (จะถูกถอดใน Next.js 16), ตั้ง branch protection, Node 24 หรือ 22 |
 | หมวด 4 — งานข้อมูลและความถูกต้อง | DATA | — | — | ยังไม่มีงาน (รอหมวด 2 + `fixtures/`) |
 | หมวด 5 — เอกสาร | DOC | **B1 ปรับ `SPEC.md`** (Opus) + **B2 `docs/DECISIONS.md`** (Sonnet) (ศูนย์กลางส่ง 10 พ.ย.) · มีงานอื่นเดินอยู่ก่อนที่ศูนย์กลางไม่ได้สั่ง | `main` | ข้อความเข้าคิว — เริ่มเมื่องานเดิมจบ |
 
