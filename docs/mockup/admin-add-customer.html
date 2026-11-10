@@ -247,8 +247,15 @@ tr.badrow td{background:var(--danger-soft) !important}
 .mini-t th.grp{background:var(--surface-3);color:var(--fg);border-bottom:1px solid var(--border)}
 .mini-t th.sub{background:var(--surface-3);color:var(--fg-muted);font-weight:600}
 .mini-t .gl{border-left:1px solid var(--border-strong)}
-.mini-t td.zc{font-weight:600;cursor:help}
+.mini-t td.zc{font-weight:600;cursor:help;vertical-align:top;background:var(--surface)}
 .mini-t td.zg{color:var(--fg-muted)}
+#zoneTbl tr.zfirst td{border-top:1px solid var(--border-strong)}
+#zoneTbl tbody tr:first-child td{border-top:0}
+#zoneTbl tr.zsub td{background:var(--surface-2);font-weight:600}
+#zoneTbl td.z0{color:var(--fg-faint)}
+#zoneTbl tfoot td{border-top:0}
+#zoneTbl tfoot tr.zfirst td{border-top:2px solid var(--border-strong)}
+#zoneTbl tfoot tr:nth-child(3) td{border-top:1px solid var(--border)}
 
 /* ===== เรียงลำดับ (sort) ทุกคอลัมน์ของตารางเปิดงาน — คลิกหัวคอลัมน์ ===== */
 .sorthint{margin-left:auto;font-size:11.5px;color:var(--fg-muted);align-self:center}
@@ -803,7 +810,7 @@ table.xl .teambtn.multi{font-weight:700;color:var(--accent-strong)}
       <div style="font-size:11.5px;color:var(--fg-muted);max-width:250px">
         บล็อกนี้ตรงกับที่อยู่ด้านขวาของชีทเดิม — ต่างกันตรงที่<b>ระบบนับให้เอง</b>จากแถวในตาราง ไม่ต้องมาพิมพ์สรุปซ้ำ<br><br>
         ตาราง Size ซอยละเอียดกว่าชีทเดิม: แยก <b>New / Renew</b> คร่อม 1 ปี/3 ปี ในตารางเดียว เห็นได้เลยว่าลูกค้าใหม่กับต่อสัญญาอยู่ Tier ไหน<br><br>
-        ตาราง<b>แยกตามเขต</b>: เขตมาจากสาขาของแต่ละสัญญาอัตโนมัติ (ชี้ที่ชื่อเขตเพื่อดูสาขาในเขตนั้น) · "กรุ๊ป" = งานกรุ๊ป (ลูกค้านอกสาขา) ไม่มีเขต
+        ตาราง<b>แยกตามเขต</b>: ทุกเขตเห็น <b>New / Renew × Size × 1 ปี / 3 ปี</b> พร้อมกัน (เขตละ 3 แถว: New · Renew · รวมเขต) · เขตมาจากสาขาของแต่ละสัญญาอัตโนมัติ (ชี้ที่ชื่อเขตเพื่อดูสาขาในเขตนั้น) · "กรุ๊ป" = งานกรุ๊ป (ลูกค้านอกสาขา) ไม่มีเขต
       </div>
     </div>
   </div>
@@ -2008,19 +2015,34 @@ function toggleTheme(){
 }
 
 /* ===== สรุปแยกเขต + Dashboard สรุปการเปิดงาน (แบบ B) + ส่งออก .xlsx =====
-   ข้อมูลเขต/Tier/ประเภทด้านล่างเป็นตัวเลขสมมติ แต่ผลรวมตรงกับตารางสรุปเดิม (New 60 / Renew 73 = 133 · S93 M17 L7 XL15 + 1 ยังไม่จัด Tier)
+   ข้อมูลด้านล่างเป็นตัวเลขสมมติ แต่ผลรวมตรงกับตารางสรุปเดิมทุกมิติ (New 60 / Renew 73 = 133 · S93 M17 L7 XL15 + 1 ยังไม่จัด Tier · 1 ปี 84 / 3 ปี 48)
    ตอน build จริง: นับจากตาราง contracts (สาขา→เขต อ่านจาก BRZONE / master สาขา) ไม่ใช่ค่าคงที่
-   • DZ  = ต่อเขต: n=New r=Renew s/m/l/x = จำนวนสัญญาต่อ Tier (S/M/L/XL) — "กรุ๊ป" = งานกรุ๊ป ไม่มีเขต
+   • DCUBE = แหล่งข้อมูลเดียวของส่วนแยกเขต: เขต → New/Renew → ช่อง Size×ปี (S1 = Size S สัญญา 1 ปี, S3 = Size S สัญญา 3 ปี ...)
+     ตัวเลขอื่นทั้งหมด (New/Renew ต่อเขต, Tier ต่อเขต, 1/3 ปีต่อเขต) คำนวณจาก DCUBE เสมอ จึงไม่มีทางขัดกัน
+   • "กรุ๊ป" = งานกรุ๊ป (ลูกค้านอกสาขา) ไม่มีเขต · ไม่มี Size L สัญญา 3 ปี (ข้อมูลจริงเดือนนี้ไม่มี)
    • งานต่อวัน อ่านจากปฏิทินในหน้านี้ (.hcal) จริง จึงตรงกับปฏิทินเสมอ */
-/*   y1/y3 = จำนวนสัญญาระยะ 1 ปี / 3 ปี (รวม New+Renew) — รวมทุกเขต 84 / 48 ตรงกับตาราง Size×New-Renew ด้านบน (38+46 / 22+26)
-     สัญญาที่ยังไม่กรอกมูลค่า 1 ใบ (Renew · C5) ยังไม่ทราบระยะ → นับใน r แต่ไม่อยู่ใน y1/y3 */
-var DZ=[
-  {z:'C1',n:10,r:12,y1:15,y3:7,s:16,m:2,l:1,x:3}, {z:'C2',n:9,r:11,y1:13,y3:7,s:14,m:3,l:1,x:2},
-  {z:'C3',n:6,r:8,y1:10,y3:4,s:10,m:2,l:0,x:2},   {z:'C4',n:13,r:15,y1:17,y3:11,s:19,m:4,l:2,x:3},
-  {z:'C5',n:8,r:10,y1:11,y3:6,s:11,m:2,l:2,x:2},  {z:'C6',n:9,r:10,y1:12,y3:7,s:14,m:3,l:1,x:1},
-  {z:'C9',n:2,r:3,y1:3,y3:2,s:4,m:0,l:0,x:1},     {z:'กรุ๊ป',n:3,r:4,y1:3,y3:4,s:5,m:1,l:0,x:1}
-];
-var DUNCLASSIFIED=1;   /* สัญญา Renew ที่ยังไม่กรอกมูลค่า → ยังไม่จัด Tier และยังไม่ทราบระยะ 1/3 ปี (อยู่ C5) */
+var DZONES=['C1','C2','C3','C4','C5','C6','C9','กรุ๊ป'];
+var DSIZES=['S','M','L','XL'];
+var DCUBE={
+  'C1':{New:{S1:4,S3:4,M1:2,M3:0,L1:0,L3:0,XL1:0,XL3:0},Renew:{S1:6,S3:2,M1:0,M3:0,L1:1,L3:0,XL1:2,XL3:1}},
+  'C2':{New:{S1:4,S3:5,M1:0,M3:0,L1:0,L3:0,XL1:0,XL3:0},Renew:{S1:4,S3:1,M1:2,M3:1,L1:1,L3:0,XL1:2,XL3:0}},
+  'C3':{New:{S1:5,S3:0,M1:0,M3:0,L1:0,L3:0,XL1:1,XL3:0},Renew:{S1:2,S3:3,M1:1,M3:1,L1:0,L3:0,XL1:1,XL3:0}},
+  'C4':{New:{S1:6,S3:4,M1:2,M3:0,L1:1,L3:0,XL1:0,XL3:0},Renew:{S1:2,S3:7,M1:2,M3:0,L1:1,L3:0,XL1:3,XL3:0}},
+  'C5':{New:{S1:3,S3:4,M1:1,M3:0,L1:0,L3:0,XL1:0,XL3:0},Renew:{S1:2,S3:2,M1:1,M3:0,L1:2,L3:0,XL1:2,XL3:0}},
+  'C6':{New:{S1:6,S3:2,M1:0,M3:1,L1:0,L3:0,XL1:0,XL3:0},Renew:{S1:3,S3:3,M1:1,M3:1,L1:1,L3:0,XL1:1,XL3:0}},
+  'C9':{New:{S1:2,S3:0,M1:0,M3:0,L1:0,L3:0,XL1:0,XL3:0},Renew:{S1:0,S3:2,M1:0,M3:0,L1:0,L3:0,XL1:1,XL3:0}},
+  'กรุ๊ป':{New:{S1:1,S3:2,M1:0,M3:0,L1:0,L3:0,XL1:0,XL3:0},Renew:{S1:1,S3:1,M1:0,M3:1,L1:0,L3:0,XL1:1,XL3:0}}
+};
+var DUNCLASSIFIED=1;       /* สัญญา Renew ที่ยังไม่กรอกมูลค่า → ยังไม่ทราบ Size/ระยะ (ไม่อยู่ใน DCUBE) */
+var DUNC_ZONE='C5';        /* ใบที่ยังไม่ระบุอยู่เขตนี้ */
+function cubeTot(o){ return Object.keys(o).reduce(function(a,k){return a+o[k];},0); }
+/* สรุปต่อเขตที่ใช้กับกราฟ/ตารางข้อมูล: n=New r=Renew (รวมใบที่ยังไม่ระบุ) y1/y3=จำนวนสัญญา 1/3 ปี s/m/l/x=จำนวนต่อ Size */
+var DZ=DZONES.map(function(z){
+  var n=DCUBE[z].New, r=DCUBE[z].Renew;
+  var sz=function(s){return n[s+'1']+n[s+'3']+r[s+'1']+r[s+'3'];};
+  var yr=function(y){return DSIZES.reduce(function(a,s){return a+n[s+y]+r[s+y];},0);};
+  return {z:z, n:cubeTot(n), r:cubeTot(r)+(z===DUNC_ZONE?DUNCLASSIFIED:0), y1:yr(1), y3:yr(3), s:sz('S'), m:sz('M'), l:sz('L'), x:sz('XL')};
+});
 var DTYPE=[['บ้านเดี่ยว',80],['ทาวน์โฮม / ตึกแถว',16],['คอนโด / อพาร์ตเมนต์ / หอพัก',8],['ออฟฟิต',9],
   ['ห้างสรรพสินค้า / ร้านค้า',4],['โรงแรม/รีสอร์ท',3],['โรงงาน',2],['โกดังสินค้า',2],['โรงพยาบาล',1],
   ['สถานศึกษา',2],['สถานที่ราชการ',2],['สถานที่ทางศาสนา',1],['สถานที่สำคัญ',1],['อื่นๆ (ระบุในหมายเหตุ)',2]];
@@ -2039,26 +2061,35 @@ function calDays(){
 }
 function pendCount(){ var b=document.querySelector('.pendbar b'); var m=b&&b.textContent.match(/\d+/); return m?parseInt(m[0],10):0; }
 
-/* ตารางแยกเขตในกล่องสรุป */
+/* ตารางแยกเขตในกล่องสรุป (แบบ A): เขตละ 3 แถว New / Renew / รวมเขต × คอลัมน์ Size (S M L XL) แต่ละ Size แยก 1 ปี / 3 ปี
+   คอลัมน์ท้าย "ยังไม่ระบุ" = สัญญาที่ยังไม่กรอกมูลค่า (ยังไม่รู้ Size/ระยะ) เพื่อให้ยอด "รวม" ของแถวตรงเสมอ */
+function zoneCells(o,unc){          /* o = {S1,S3,...} → <td> 8 ช่อง + ยังไม่ระบุ */
+  var h='';
+  DSIZES.forEach(function(s){ [1,3].forEach(function(y,i){ var v=o[s+y]||0; h+='<td class="r num'+(i===0?' gl':'')+(v?'':' z0')+'">'+v+'</td>'; }); });
+  return h+'<td class="r num gl'+(unc?'':' z0')+'">'+(unc||0)+'</td>';
+}
 function renderZoneTable(){
   var t=document.getElementById('zoneTbl'); if(!t) return;
-  var rows=DZ.map(function(d){
-    var g=(d.z==='กรุ๊ป');
-    return '<tr><td class="zc'+(g?' zg':'')+'" title="'+zoneBranches(d.z)+'">'+d.z+'</td>'+
-      '<td class="r num gl">'+d.n+'</td><td class="r num">'+d.r+'</td><td class="r num gl"><b>'+(d.n+d.r)+'</b></td>'+
-      '<td class="r num gl">'+d.y1+'</td><td class="r num">'+d.y3+'</td>'+
-      '<td class="r num gl">'+d.s+'</td><td class="r num">'+d.m+'</td><td class="r num">'+d.l+'</td><td class="r num">'+d.x+'</td></tr>';
-  }).join('');
-  t.innerHTML='<thead><tr><th rowspan="2">เขต</th><th colspan="3" class="c grp gl">ประเภทงาน</th><th colspan="2" class="c grp gl">ระยะสัญญา</th><th colspan="4" class="c grp gl">Tier</th></tr>'+
-    '<tr><th class="r sub gl">New</th><th class="r sub">Renew</th><th class="r sub gl">รวม</th>'+
-    '<th class="r sub gl">1 ปี</th><th class="r sub">3 ปี</th>'+
-    '<th class="r sub gl"><span class="tier s">S</span></th><th class="r sub"><span class="tier m">M</span></th>'+
-    '<th class="r sub"><span class="tier l">L</span></th><th class="r sub"><span class="tier xl">XL</span></th></tr></thead>'+
-    '<tbody>'+rows+'</tbody>'+
-    '<tfoot><tr><td>รวม</td><td class="r num gl">'+sumOf('n')+'</td><td class="r num">'+sumOf('r')+'</td><td class="r num gl">'+(sumOf('n')+sumOf('r'))+'</td>'+
-    '<td class="r num gl">'+sumOf('y1')+'</td><td class="r num">'+sumOf('y3')+'</td>'+
-    '<td class="r num gl">'+sumOf('s')+'</td><td class="r num">'+sumOf('m')+'</td><td class="r num">'+sumOf('l')+'</td><td class="r num">'+sumOf('x')+'</td></tr>'+
-    '<tr><td colspan="10" style="font-weight:400;color:var(--fg-muted);font-size:11px">อีก '+DUNCLASSIFIED+' สัญญา (Renew · C5) ยังไม่ได้กรอกมูลค่า จึงยังไม่จัด Tier และยังไม่ทราบระยะ 1/3 ปี · 1 ปี '+sumOf('y1')+' + 3 ปี '+sumOf('y3')+' = '+(sumOf('y1')+sumOf('y3'))+'</td></tr></tfoot>';
+  var add=function(a,b){ var r={}; Object.keys(a).forEach(function(k){r[k]=a[k]+(b?b[k]:0);}); return r; };
+  var gN={}, gR={}, body='';
+  DZONES.forEach(function(z){
+    var n=DCUBE[z].New, r=DCUBE[z].Renew, ru=(z===DUNC_ZONE?DUNCLASSIFIED:0), s=add(n,r);
+    var tip=zoneBranches(z), nt=cubeTot(n), rt=cubeTot(r)+ru;
+    body+='<tr class="zfirst"><td rowspan="3" class="zc'+(z==='กรุ๊ป'?' zg':'')+'" title="'+tip+'">'+z+'</td><td>New</td><td class="r num gl"><b>'+nt+'</b></td>'+zoneCells(n,0)+'</tr>'+
+          '<tr><td>Renew</td><td class="r num gl"><b>'+rt+'</b></td>'+zoneCells(r,ru)+'</tr>'+
+          '<tr class="zsub"><td>รวมเขต</td><td class="r num gl">'+(nt+rt)+'</td>'+zoneCells(s,ru)+'</tr>';
+    Object.keys(n).forEach(function(k){ gN[k]=(gN[k]||0)+n[k]; gR[k]=(gR[k]||0)+r[k]; });
+  });
+  var gAll=add(gN,gR);
+  t.innerHTML='<thead><tr><th rowspan="2">เขต</th><th rowspan="2">ประเภท</th><th rowspan="2" class="r gl">รวม</th>'+
+    DSIZES.map(function(s){ return '<th colspan="2" class="c grp gl"><span class="tier '+s.toLowerCase()+'">'+s+'</span></th>'; }).join('')+
+    '<th rowspan="2" class="r gl" title="สัญญาที่ยังไม่กรอกมูลค่า จึงยังไม่รู้ Size/ระยะ">ยังไม่ระบุ</th></tr><tr>'+
+    DSIZES.map(function(){ return '<th class="r sub gl">1 ปี</th><th class="r sub">3 ปี</th>'; }).join('')+'</tr></thead>'+
+    '<tbody>'+body+'</tbody>'+
+    '<tfoot><tr class="zfirst"><td rowspan="3">รวมทุกเขต</td><td>New</td><td class="r num gl">'+cubeTot(gN)+'</td>'+zoneCells(gN,0)+'</tr>'+
+    '<tr><td>Renew</td><td class="r num gl">'+(cubeTot(gR)+DUNCLASSIFIED)+'</td>'+zoneCells(gR,DUNCLASSIFIED)+'</tr>'+
+    '<tr><td>รวม</td><td class="r num gl">'+(cubeTot(gAll)+DUNCLASSIFIED)+'</td>'+zoneCells(gAll,DUNCLASSIFIED)+'</tr>'+
+    '<tr><td colspan="12" style="font-weight:400;color:var(--fg-muted);font-size:11px">อ่านแนวนอน: เขต → New/Renew → Size × 1 ปี/3 ปี · อีก '+DUNCLASSIFIED+' สัญญา (Renew · '+DUNC_ZONE+') ยังไม่ได้กรอกมูลค่า จึงอยู่ช่อง "ยังไม่ระบุ" · ผลรวมทุกเขตตรงกับตาราง Size ด้านบน</td></tr></tfoot>';
 }
 
 function miniTable(head,rows,foot){
@@ -2129,14 +2160,20 @@ function renderDash(){
 function exportSummaryXL(){
   if(typeof XLSX==='undefined'){ alert('ต้องมีอินเทอร์เน็ตเพื่อโหลดไลบรารีส่งออก Excel (SheetJS) — ลองใหม่เมื่อออนไลน์'); return; }
   var wb=XLSX.utils.book_new();
-  var names=['สรุปประเภท','Size x New-Renew','แยกตามเขต'];
-  [].forEach.call(document.querySelectorAll('.xlsum table.mini-t'),function(t,i){
-    XLSX.utils.book_append_sheet(wb,XLSX.utils.table_to_sheet(t),names[i]||('ตาราง'+(i+1)));
+  var names=['สรุปประเภท','Size x New-Renew'];
+  [].slice.call(document.querySelectorAll('.xlsum table.mini-t'),0,2).forEach(function(t,i){
+    XLSX.utils.book_append_sheet(wb,XLSX.utils.table_to_sheet(t),names[i]);
   });
   var total=sumOf('n')+sumOf('r');
-  var tierRows=[['เขต','S','M','L','XL','รวมที่จัด Tier']].concat(DZ.map(function(d){return [d.z,d.s,d.m,d.l,d.x,d.s+d.m+d.l+d.x];}));
-  tierRows.push(['ยังไม่จัด Tier',DUNCLASSIFIED]);
-  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(tierRows),'Tier ต่อเขต');
+  /* ชีทแยกเขตแบบ "แบนราบ" (ทุกแถวมีชื่อเขต ไม่มีเซลล์ merge) เพื่อกรอง/Pivot ใน Excel ได้ — 1 แถว = เขต × ประเภทงาน */
+  var zh=['เขต','ประเภทงาน','รวม'];
+  DSIZES.forEach(function(s){ zh.push(s+' 1 ปี',s+' 3 ปี'); }); zh.push('ยังไม่ระบุ');
+  var zr=[zh];
+  DZONES.forEach(function(z){ ['New','Renew'].forEach(function(t){
+    var o=DCUBE[z][t], ru=(t==='Renew'&&z===DUNC_ZONE)?DUNCLASSIFIED:0, row=[z,t,cubeTot(o)+ru];
+    DSIZES.forEach(function(s){ row.push(o[s+'1'],o[s+'3']); }); row.push(ru); zr.push(row);
+  }); });
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(zr),'แยกตามเขต');
   var dayRows=[['วันที่ (ต.ค. 2026)','จำนวนงาน']].concat(calDays().map(function(o){return [o.d,o.n];}));
   dayRows.push(['รอนัดบริการ (ยังไม่ลงวันที่)',pendCount()]);
   XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(dayRows),'งานต่อวัน');
