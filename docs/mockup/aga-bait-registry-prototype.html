@@ -1275,7 +1275,7 @@ function svRecalc(){
 function svMissing(){
   var miss=[];
   if(!$('svDate').value) miss.push('วันที่เข้า');
-  if(!SV.normal&&!SV.open.tm&&!SV.open.wd&&!SV.open.rp) miss.push('ผล IG / IC — กด “IG / IC ปกติทั้งหมด” หรือเลือกสิ่งที่พบ (พบปลวก / เปลี่ยนไม้ / งานซ่อม)');
+  /* เจ้าของตัดสิน 10 พ.ย. 2026: ไม่บังคับระบุผล IG/IC — บันทึกได้ทั้งแบบระบุและไม่ระบุ (บังคับเฉพาะกล่อง AG ที่ค้างติดตาม) */
   var names={tm:'พบปลวก',wd:'เปลี่ยนไม้',rp:'งานซ่อม'};
   ['tm','wd','rp'].forEach(function(k){
     if(!SV.open[k]) return;
