@@ -28,6 +28,11 @@ next-env.d.ts
 .env.*
 !.env.example
 # Supabase service key, GitHub token ใช้ env ของ Vercel เท่านั้น
+# กันไฟล์คีย์ที่ตั้งชื่อไม่ขึ้นต้นด้วย .env (เช่น "Secrets Key.env.local", "Test Key.local")
+*.env.local
+*.local
+*[Ss]ecret*
+*[Kk]ey*.env*
 
 # === Supabase local ===
 /supabase/.branches
