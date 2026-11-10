@@ -17,7 +17,7 @@ INSERT INTO profiles (user_id, display_name, username, role, division_scope) VAL
 
 -- provincial August closed by host earlier (seeded as postgres)
 INSERT INTO month_closures (month_key, scope, closed_by, closed_at)
-  VALUES ('2026-08', 'provincial', '00000000-0000-0000-0000-0000000000a1', now());
+  VALUES ('2026-08', 'province', '00000000-0000-0000-0000-0000000000a1', now());
 
 -- ===== recorder (central scope) =====
 SET LOCAL ROLE authenticated;
@@ -26,16 +26,16 @@ SELECT lives_ok(
   $$INSERT INTO month_closures (month_key, scope) VALUES ('2026-09', 'central')$$,
   'recorder closes central');
 SELECT throws_ok(
-  $$INSERT INTO month_closures (month_key, scope) VALUES ('2026-09', 'provincial')$$,
+  $$INSERT INTO month_closures (month_key, scope) VALUES ('2026-09', 'province')$$,
   '42501', NULL, 'recorder cannot close provincial (phase 1: host only)');
 SELECT lives_ok(
   $$UPDATE month_closures SET last_resync_at = now(), last_resync_by = auth.uid()
      WHERE month_key = '2026-09' AND scope = 'central'$$,
   'recorder records a central re-sync');
 SELECT throws_ok(
-  $$UPDATE month_closures SET scope = 'provincial' WHERE month_key = '2026-09' AND scope = 'central'$$,
+  $$UPDATE month_closures SET scope = 'province' WHERE month_key = '2026-09' AND scope = 'central'$$,
   '42501', NULL, 'recorder cannot turn a central closure into provincial');
-UPDATE month_closures SET last_resync_at = now() WHERE month_key = '2026-08' AND scope = 'provincial';
+UPDATE month_closures SET last_resync_at = now() WHERE month_key = '2026-08' AND scope = 'province';
 DELETE FROM month_closures WHERE month_key = '2026-09' AND scope = 'central';
 RESET ROLE;
 
@@ -49,7 +49,7 @@ SELECT is(
   (SELECT last_resync_by FROM month_closures WHERE month_key = '2026-09' AND scope = 'central'),
   '00000000-0000-0000-0000-0000000000a3'::uuid, 'last_resync_by stored');
 SELECT is(
-  (SELECT last_resync_at FROM month_closures WHERE month_key = '2026-08' AND scope = 'provincial'),
+  (SELECT last_resync_at FROM month_closures WHERE month_key = '2026-08' AND scope = 'province'),
   NULL, 'recorder UPDATE of a provincial closure affected 0 rows');
 SELECT is(
   (SELECT count(*)::int FROM month_closures WHERE month_key = '2026-09' AND scope = 'central'),
@@ -76,7 +76,7 @@ RESET ROLE;
 SET LOCAL ROLE authenticated;
 SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a1', true);
 SELECT lives_ok(
-  $$INSERT INTO month_closures (month_key, scope) VALUES ('2026-09', 'provincial')$$,
+  $$INSERT INTO month_closures (month_key, scope) VALUES ('2026-09', 'province')$$,
   'host closes provincial');
 SELECT lives_ok(
   $$INSERT INTO month_closures (month_key, scope) VALUES ('2026-10', 'central')$$,
@@ -91,7 +91,7 @@ RESET ROLE;
 
 SELECT is(
   (SELECT array_agg(scope::text ORDER BY scope) FROM month_closures WHERE month_key = '2026-09'),
-  ARRAY['central', 'provincial'], 'one month holds both scopes');
+  ARRAY['central', 'province'], 'one month holds both scopes');
 
 -- ===== anon =====
 SET LOCAL ROLE anon;
