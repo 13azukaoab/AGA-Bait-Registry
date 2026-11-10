@@ -6,13 +6,39 @@
    สีแยกตาม tier + จำนวนปีสัญญา รวม 8 แบบ (1 ปี = อ่อน · 3 ปี = เข้ม)
    ============================================================ */
 
+/* ชุด token ตรงกับ mockup (`docs/mockup/aga-bait-registry-prototype.html` บรรทัด 9–41)
+   แก้ที่นี่ที่เดียว — ทุกหน้าและทุกชิ้นส่วนอ้าง var() เท่านั้น ห้ามเขียน hex ในไฟล์อื่น */
 :root {
-  /* พื้น/ตัวหนังสือหลัก */
-  --bg: #ffffff;
-  --fg: #0b1420;
-  --fg-faint: #5b6675;
+  /* พื้นหลัง / การ์ด */
+  --bg: #eef2f7;
+  --surface: #ffffff;
+  --surface-2: #f4f7fb;
+  --surface-3: #e9eff6;
 
-  /* กลุ่มสี Tier (ป้ายที่ไม่ระบุปี เช่น legend/filter ใช้สีกลุ่มนี้) */
+  /* ตัวหนังสือ (เข้ม → จาง) */
+  --fg: #17212e;
+  --fg-muted: #5a6b7e;
+  --fg-faint: #8a98a8;
+
+  /* เส้นขอบ */
+  --border: #d8e0ea;
+  --border-strong: #c3cedb;
+
+  /* สีหลักของแบรนด์ AGA (น้ำเงิน) */
+  --accent: #1f5fa8;
+  --accent-strong: #164a85;
+  --accent-fg: #ffffff;
+  --accent-soft: #e6f0fb;
+
+  /* สถานะ: สำเร็จ / เตือน / ผิดพลาด */
+  --ok: #1a8a5c;
+  --ok-soft: #e3f4ec;
+  --warn: #b4740a;
+  --warn-soft: #fbf0db;
+  --danger: #c23b2e;
+  --danger-soft: #fbe8e5;
+
+  /* กลุ่มสี Tier (ป้ายที่ไม่ระบุปี เช่น legend/ตัวกรอง ใช้สีกลุ่มนี้) */
   --tier-s: #1f5fa8;
   --tier-m: #157a50;
   --tier-l: #a86c07;
@@ -27,15 +53,39 @@
   /* ตัวหนังสือบนพื้นเข้ม (สัญญา 3 ปี) */
   --on-tier: #ffffff;
 
-  --font-sans: var(--font-noto-sans-thai), system-ui, sans-serif;
+  --radius: 10px;
+  --shadow: 0 1px 2px rgba(20, 40, 70, 0.06), 0 1px 3px rgba(20, 40, 70, 0.05);
+  --font-sans: var(--font-noto-sans-thai), "Segoe UI", system-ui, sans-serif;
+  color-scheme: light;
 }
 
-/* โหมดมืด — redefine token (ค่าจาก CLAUDE.md ตารางสี Tier คอลัมน์ dark) */
+/* โหมดมืด — redefine token ชุดเดียวกัน (ค่าจาก CLAUDE.md ตารางสี Tier คอลัมน์ dark)
+   เขียน 2 ที่: ตามเครื่องของผู้ใช้ และตอนผู้ใช้สั่งเองด้วย data-theme="dark" */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg: #0b1420;
-    --fg: #e6ecf3;
-    --fg-faint: #9aa7b6;
+    --bg: #0e1621;
+    --surface: #16202c;
+    --surface-2: #1b2733;
+    --surface-3: #222f3d;
+
+    --fg: #e7eef5;
+    --fg-muted: #9fb0c1;
+    --fg-faint: #718394;
+
+    --border: #2a3744;
+    --border-strong: #36485a;
+
+    --accent: #4a90d9;
+    --accent-strong: #5fa0e3;
+    --accent-fg: #0b1420;
+    --accent-soft: #16304a;
+
+    --ok: #3bb183;
+    --ok-soft: #133227;
+    --warn: #d99b3e;
+    --warn-soft: #332713;
+    --danger: #e26657;
+    --danger-soft: #331a16;
 
     --tier-s: #4a90d9;
     --tier-m: #3bb183;
@@ -48,13 +98,36 @@
     --tier-xl-soft: #3a2016;
 
     --on-tier: #0b1420;
+
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+    color-scheme: dark;
   }
 }
 
 :root[data-theme="dark"] {
-  --bg: #0b1420;
-  --fg: #e6ecf3;
-  --fg-faint: #9aa7b6;
+  --bg: #0e1621;
+  --surface: #16202c;
+  --surface-2: #1b2733;
+  --surface-3: #222f3d;
+
+  --fg: #e7eef5;
+  --fg-muted: #9fb0c1;
+  --fg-faint: #718394;
+
+  --border: #2a3744;
+  --border-strong: #36485a;
+
+  --accent: #4a90d9;
+  --accent-strong: #5fa0e3;
+  --accent-fg: #0b1420;
+  --accent-soft: #16304a;
+
+  --ok: #3bb183;
+  --ok-soft: #133227;
+  --warn: #d99b3e;
+  --warn-soft: #332713;
+  --danger: #e26657;
+  --danger-soft: #331a16;
 
   --tier-s: #4a90d9;
   --tier-m: #3bb183;
@@ -67,13 +140,62 @@
   --tier-xl-soft: #3a2016;
 
   --on-tier: #0b1420;
+
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  color-scheme: dark;
+}
+
+/* ผูก token เข้ากับ Tailwind 4 — ใช้ class เช่น bg-surface / text-fg-muted / border-border ได้
+   (Tailwind 4 อ่านจาก @theme ไม่ต้องมีไฟล์ tailwind.config) */
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+  --color-fg: var(--fg);
+  --color-fg-muted: var(--fg-muted);
+  --color-fg-faint: var(--fg-faint);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-accent: var(--accent);
+  --color-accent-strong: var(--accent-strong);
+  --color-accent-fg: var(--accent-fg);
+  --color-accent-soft: var(--accent-soft);
+  --color-ok: var(--ok);
+  --color-ok-soft: var(--ok-soft);
+  --color-warn: var(--warn);
+  --color-warn-soft: var(--warn-soft);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --font-sans: var(--font-noto-sans-thai), "Segoe UI", system-ui, sans-serif;
+  --radius-card: var(--radius);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
 }
 
 body {
+  margin: 0;
   background: var(--bg);
   color: var(--fg);
   font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 1.55;
   -webkit-font-smoothing: antialiased;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ตัวเลขเรียงหลักตรงกัน (ตาราง/ยอดเงิน) */
+.num {
+  font-variant-numeric: tabular-nums;
 }
 
 /* ป้าย Tier — class ใช้ `tier s1`/`tier s3`/`tier m1`… (ไม่ใช่ `tier s` เฉยๆ) */
