@@ -363,12 +363,38 @@ tfoot td{padding:10px 12px;font-weight:700;background:var(--surface-2);border-to
 .fgrid .field label{font-size:12px}
 .fgrid .field select,.fgrid .field input{width:100%;min-width:0;padding:10px 12px;font-size:14px}
 .fgrid .field .sub{font-size:11px;color:var(--fg-faint)}
-.bigok{display:flex;align-items:center;justify-content:center;gap:12px;width:100%;min-height:58px;font:inherit;
-  font-size:16px;font-weight:600;line-height:1.3;border-radius:12px;cursor:pointer;color:var(--ok);
-  background:var(--ok-soft);border:2px solid var(--ok);padding:8px 14px}
-.bigok .tick{font-size:22px;line-height:1}
-.bigok small{display:block;font-size:12px;font-weight:400;opacity:.9}
-.bigok[aria-pressed="true"]{background:var(--ok);color:var(--accent-fg)}
+/* ปุ่มใหญ่ "ปกติทั้งหมด" — ยังไม่กด = เส้นประเทา + ช่องติ๊กว่าง · กดแล้ว = พื้นเขียว + ติ๊กถูก (วาดเส้นเข้ามา) */
+.bigok{display:flex;align-items:center;justify-content:flex-start;gap:14px;width:100%;min-height:62px;font:inherit;
+  font-size:16px;font-weight:600;line-height:1.3;border-radius:12px;cursor:pointer;text-align:left;
+  color:var(--fg);background:var(--surface);border:2px dashed var(--border-strong);padding:8px 14px;
+  transition:background .25s ease,border-color .25s ease,color .25s ease}
+.bigok:hover{border-color:var(--ok);background:var(--ok-soft)}
+.bigok .cbox{flex:0 0 auto;width:30px;height:30px;border-radius:8px;border:2.5px solid var(--border-strong);
+  background:var(--surface);display:grid;place-items:center;transition:background .25s ease,border-color .25s ease,transform .25s ease}
+.bigok .cbox svg{width:20px;height:20px;overflow:visible}
+.bigok .cbox path{fill:none;stroke:var(--accent-fg);stroke-width:3.2;stroke-linecap:round;stroke-linejoin:round;
+  stroke-dasharray:24;stroke-dashoffset:24}
+.bigok .txt{flex:1 1 auto;min-width:0}
+.bigok small{display:block;font-size:12px;font-weight:400;color:var(--fg-muted)}
+.bigok .state{flex:0 0 auto;font-size:12px;font-weight:600;padding:4px 10px;border-radius:999px;
+  background:var(--surface-3);color:var(--fg-muted);white-space:nowrap}
+.bigok .state .on{display:none}
+.bigok[aria-pressed="true"]{background:var(--ok);color:var(--accent-fg);border:2px solid var(--ok)}
+.bigok[aria-pressed="true"] small{color:var(--accent-fg);opacity:.92}
+.bigok[aria-pressed="true"] .cbox{background:var(--accent-fg);border-color:var(--accent-fg);animation:bigokPop .35s ease}
+.bigok[aria-pressed="true"] .cbox path{stroke:var(--ok);animation:bigokDraw .35s .08s ease forwards}
+.bigok[aria-pressed="true"] .state{background:var(--accent-fg);color:var(--ok)}
+.bigok[aria-pressed="true"] .state .off{display:none}
+.bigok[aria-pressed="true"] .state .on{display:inline}
+@keyframes bigokDraw{to{stroke-dashoffset:0}}
+@keyframes bigokPop{0%{transform:scale(.8)}60%{transform:scale(1.18)}100%{transform:scale(1)}}
+@media (prefers-reduced-motion:reduce){
+  .bigok,.bigok .cbox{transition:none}
+  .bigok[aria-pressed="true"] .cbox{animation:none}
+  .bigok[aria-pressed="true"] .cbox path{animation:none;stroke-dashoffset:0}
+}
+@media (max-width:520px){.bigok{display:grid;grid-template-columns:30px 1fr;column-gap:14px;row-gap:6px;align-items:center}
+  .bigok .state{grid-column:2;justify-self:start}}
 .fbtns{display:grid;grid-template-columns:repeat(auto-fit,minmax(135px,1fr));gap:8px;margin:12px 0 2px}
 .fbtn{display:flex;align-items:center;justify-content:center;gap:7px;min-height:50px;font:inherit;font-size:14px;
   font-weight:500;color:var(--fg);background:var(--surface);border:1px solid var(--border-strong);
@@ -461,6 +487,7 @@ tfoot td{padding:10px 12px;font-weight:700;background:var(--surface-2);border-to
     <a href="month-closure.html" data-nav="closure" data-roles="host recorder"><span class="ic">🔒</span> ส่งข้อมูล และสรุปงานประจำเดือน</a>
     <a href="provincial-port-update.html" data-nav="port" data-roles="host"><span class="ic">⛰</span> ลงข้อมูล Port ต่างจังหวัด</a>
     <a href="dashboard-sync.html" data-nav="sync" data-roles="host"><span class="ic">⇅</span> Dashboard Sync</a>
+    <a href="history-log.html" data-nav="history" data-roles="host"><span class="ic">⟲</span> ประวัติย้อนหลัง</a>
     <a href="admin-user-management.html" data-nav="users" data-roles="host"><span class="ic">☺</span> จัดการผู้ใช้</a>
     <a href="settings.html" data-nav="settings" data-roles="host"><span class="ic">⚙</span> ตั้งค่า</a>
   </nav>
@@ -551,7 +578,7 @@ tfoot td{padding:10px 12px;font-weight:700;background:var(--surface-2);border-to
         <button class="btn sm" type="button" onclick="exportMaterialXL()" title="ส่งออกสรุปการใช้วัสดุ + ตารางแยกสาขา เป็น .xlsx">↓ ส่งออก Excel</button>
       </div>
       <div class="stats">
-        <div class="stat matn"><div class="lab"><span class="dot" style="background:var(--nem)"></span> NEMESIS (เหยื่อ)</div><div class="val num">10,000 <span style="font-size:14px;color:var(--fg-muted)">ก.</span></div><div class="sub">ภายนอก IG 1,250 · ภายใน IC+AG 8,750 ก.</div></div>
+        <div class="stat matn"><div class="lab"><span class="dot" style="background:var(--nem)"></span> NEMESIS (เหยื่อ)</div><div class="val num">10,000 <span style="font-size:14px;color:var(--fg-muted)">ก.</span></div><div class="sub">ภายนอก IG+IC 1,250 · ภายใน AG 8,750 ก.</div></div>
         <div class="stat matp"><div class="lab"><span class="dot" style="background:var(--pow)"></span> เคมีผง (ปลวกสวน)</div><div class="val num">420 <span style="font-size:14px;color:var(--fg-muted)">จุด</span></div><div class="sub">≈ 126 ก. (0.3 ก./จุด)</div></div>
         <div class="stat matw"><div class="lab"><span class="dot" style="background:var(--wood)"></span> ไม้ล่อที่เปลี่ยน</div><div class="val num">1,240 <span style="font-size:14px;color:var(--fg-muted)">ชิ้น</span></div><div class="sub">IG 520 จุด×2 + IC 200 จุด×1</div></div>
       </div>
@@ -559,11 +586,11 @@ tfoot td{padding:10px 12px;font-weight:700;background:var(--surface-2);border-to
         <div class="panel">
           <h3><span class="dot" style="background:var(--nem)"></span> NEMESIS แยกสาขา <span class="num" style="margin-left:auto;font-weight:700;color:var(--nem)">10,000 ก.</span></h3>
           <div class="body">
-            <div class="leg"><span><span class="sw" style="background:var(--nem-out)"></span> ภายนอก (IG)</span><span><span class="sw" style="background:var(--nem)"></span> ภายใน (IC+AG)</span></div>
+            <div class="leg"><span><span class="sw" style="background:var(--nem-out)"></span> ภายนอก (IG+IC)</span><span><span class="sw" style="background:var(--nem)"></span> ภายใน (AG)</span></div>
             <div class="usebars">
-              <div class="userow"><span>พุทธมณฑล</span><div class="usetrack stk"><div class="mseg out" style="width:12.2%" data-tip="ภายนอก (IG) · 600 ก. · 12%"></div><div class="mseg in" style="width:87.8%" data-tip="ภายใน (IC+AG) · 4,300 ก. · 88%"></div></div><span class="v num">4,900 ก.<small>นอก 600 · ใน 4,300</small></span></div>
-              <div class="userow"><span>หัวหิน</span><div class="usetrack stk"><div class="mseg out" style="width:8.2%" data-tip="ภายนอก (IG) · 400 ก. · 12%"></div><div class="mseg in" style="width:58.2%" data-tip="ภายใน (IC+AG) · 2,850 ก. · 88%"></div></div><span class="v num">3,250 ก.<small>นอก 400 · ใน 2,850</small></span></div>
-              <div class="userow"><span>นครปฐม</span><div class="usetrack stk"><div class="mseg out" style="width:5.1%" data-tip="ภายนอก (IG) · 250 ก. · 14%"></div><div class="mseg in" style="width:32.7%" data-tip="ภายใน (IC+AG) · 1,600 ก. · 86%"></div></div><span class="v num">1,850 ก.<small>นอก 250 · ใน 1,600</small></span></div>
+              <div class="userow"><span>พุทธมณฑล</span><div class="usetrack stk"><div class="mseg out" style="width:12.2%" data-tip="ภายนอก (IG+IC) · 600 ก. · 12%"></div><div class="mseg in" style="width:87.8%" data-tip="ภายใน (AG) · 4,300 ก. · 88%"></div></div><span class="v num">4,900 ก.<small>นอก 600 · ใน 4,300</small></span></div>
+              <div class="userow"><span>หัวหิน</span><div class="usetrack stk"><div class="mseg out" style="width:8.2%" data-tip="ภายนอก (IG+IC) · 400 ก. · 12%"></div><div class="mseg in" style="width:58.2%" data-tip="ภายใน (AG) · 2,850 ก. · 88%"></div></div><span class="v num">3,250 ก.<small>นอก 400 · ใน 2,850</small></span></div>
+              <div class="userow"><span>นครปฐม</span><div class="usetrack stk"><div class="mseg out" style="width:5.1%" data-tip="ภายนอก (IG+IC) · 250 ก. · 14%"></div><div class="mseg in" style="width:32.7%" data-tip="ภายใน (AG) · 1,600 ก. · 86%"></div></div><span class="v num">1,850 ก.<small>นอก 250 · ใน 1,600</small></span></div>
             </div>
           </div>
         </div>
@@ -1208,7 +1235,7 @@ function svRenderForm(){
   var posHtml='รายที่ '+pos+' จาก '+base2.length+(c.done?' <span class="chip ok">กรอกแล้ว · บันทึกซ้ำเพื่อแก้ไข</span>':'');
   box.innerHTML=fheadHtml(c,posHtml)+'<div class="body">'+
     fieldsHtml('sv',c)+
-    '<button type="button" class="bigok" id="svNormal" data-act="svNormal" aria-pressed="false"><span class="tick" aria-hidden="true">✓</span><span>IG / IC ปกติทั้งหมด<small>ไม่พบปลวก ไม่เปลี่ยนไม้ ไม่มีงานซ่อม · ไม่รวมกล่อง AG</small></span></button>'+
+    '<button type="button" class="bigok" id="svNormal" data-act="svNormal" aria-pressed="false"><span class="cbox" aria-hidden="true"><svg viewBox="0 0 20 20"><path d="M3 10.5l4.5 4.5L17 5"/></svg></span><span class="txt">IG / IC ปกติทั้งหมด<small>ไม่พบปลวก ไม่เปลี่ยนไม้ ไม่มีงานซ่อม · ไม่รวมกล่อง AG</small></span><span class="state"><span class="off">ยังไม่ได้กด</span><span class="on">กดแล้ว ✓</span></span></button>'+
     '<div class="fbtns" role="group" aria-label="สิ่งที่พบ">'+
       [['tm','พบปลวก'],['wd','เปลี่ยนไม้'],['rp','งานซ่อม'],['ag','กล่อง AG']].map(function(s){return '<button type="button" class="fbtn" data-act="sec" data-sec="'+s[0]+'" aria-pressed="false">'+s[1]+' <span class="n" id="svN_'+s[0]+'">0</span></button>'}).join('')+'</div>'+
     tableSec('svSecTm','svTmBody','พบปลวก','<th>หมายเลขสถานี</th><th>ชนิดปลวก</th><th>เหยื่อ / เคมีผง</th>','addTm','+ เพิ่มจุดที่พบปลวก','ตั้งต้นว่าจุดอื่นปกติ — เพิ่มเฉพาะจุดที่พบ: พิมพ์เลขสถานี (ระบบตรวจว่ามีจริง) แล้วเลือกชนิดปลวก · <b>ใต้ดิน</b> = ใส่เหยื่อ · <b>สวน</b> = เคมีผง กรอกจำนวนจุด แปลงกรัมอัตโนมัติ 0.3 ก./จุด','svTmChips')+
