@@ -1,0 +1,36 @@
+/*
+ * ส่วนที่ Tailwind class ทำไม่ได้สะดวก (เงื่อนไขธีมมืดแบบ data-theme + prefers-color-scheme)
+ * ห้ามใส่รหัสสี hex — อ้าง var(--…) จาก app/globals.css เท่านั้น
+ *
+ * หมายเหตุ: mockup มี token --scrim / --drawer-shadow แต่ app/globals.css ยังไม่มี
+ * จึงสร้างสีฉากหลังทึบจาก token ที่มีอยู่ (--fg / --bg) · ถ้า HQ เพิ่ม token แล้วให้เปลี่ยนมาใช้
+ */
+
+/* โลโก้ AGA (aga-logo.png ครอปจาก docs/mockup/Logo Advance Group Asia.png)
+   ใช้เป็นภาพพื้นหลังผ่าน CSS แทน import ในโค้ด เพื่อให้ `tsc --noEmit` ใน CI ผ่านโดยไม่ต้องพึ่ง next-env.d.ts
+   สว่าง = สีเดิม · มืด = ฟิลเตอร์ทำเป็นสีขาว (เจ้าของตัดสิน 8 พ.ย. 2026) */
+.logo {
+  background: url("./aga-logo.png") center / contain no-repeat;
+  filter: none;
+}
+:global(:root[data-theme="dark"]) .logo {
+  filter: brightness(0) invert(0.93);
+}
+@media (prefers-color-scheme: dark) {
+  :global(:root:not([data-theme="light"])) .logo {
+    filter: brightness(0) invert(0.93);
+  }
+}
+
+/* ฉากหลังทึบหลังลิ้นชักเมนู */
+.scrim {
+  background: color-mix(in srgb, var(--fg) 42%, transparent);
+}
+:global(:root[data-theme="dark"]) .scrim {
+  background: color-mix(in srgb, var(--bg) 78%, transparent);
+}
+@media (prefers-color-scheme: dark) {
+  :global(:root:not([data-theme="light"])) .scrim {
+    background: color-mix(in srgb, var(--bg) 78%, transparent);
+  }
+}
