@@ -1867,15 +1867,18 @@ function exportXL(){
    • ตอนติดตั้งมีแก้ Site plan → "อัปเดต Site plan": เลือกไฟล์ใหม่ + ต้องใส่เหตุผล · เก็บทุกเวอร์ชัน ไม่ทับของเดิม
    • สัญญาที่ปิดแล้ว ไฟล์ล็อก (แก้ไม่ได้) · ไฟล์เก็บใน private bucket (PDPA) · รับ PDF/PNG/JPG
      (ไฟล์สัญญา+Site plan รับเฉพาะ PDF · ไฟล์อัปเดต Site plan รับ PDF/PNG/JPG)
-   • ขนาดไฟล์ (เจ้าของตัดสิน A3 · 10 พ.ย. 2026 — แทนที่ "10 MB ไม่บีบอัตโนมัติ" เดิม):
-       ≤ 5 MB → รับทันที
-       > 5 MB → แจ้ง "ไฟล์ขนาดใหญ่เกินไป" แล้ว "ระบบบีบอัดให้" → ถ้าบีบแล้ว ≤ 5 MB รับไฟล์ที่บีบแล้ว
-       บีบแล้วยังเกิน 5 MB หรือไฟล์ใหญ่เกิน 25 MB (เพดานก่อนบีบ) → ไม่รับ + บอกให้สแกนใหม่
-     mockup จำลองการบีบ (อัตรา ~40% ของขนาดเดิม · ตัวเลขสมมติ) — ของจริงต้องมีตัวบีบ PDF จริง (ดู task.md 10 พ.ย.)
+   • ขนาดไฟล์ (เจ้าของตัดสิน A3 · 10 พ.ย. 2026 บ่าย — แทนที่ "10 MB ไม่บีบอัตโนมัติ" เดิม):
+       รับไฟล์ได้ไม่เกิน 10 MB (FILE_HARD_MB) — เกินนี้ปฏิเสธทันที "ไฟล์ขนาดใหญ่เกินไป" ไม่บีบ
+       ≤ 5 MB (FILE_MAX_MB) → รับเลย ไม่ต้องบีบ
+       5–10 MB → ระบบบีบอัดให้เหลือไม่เกิน 5 MB แล้วเก็บไฟล์ที่บีบแล้ว
+       บีบแล้วยังเกิน 5 MB (เช่นไฟล์ที่บีบมาแล้ว) → ไม่รับ + บอกให้สแกนใหม่ (ไฟล์เดิมที่แนบไว้ไม่ถูกทับ)
+     mockup จำลองการบีบ (ขนาดหลังบีบ = FILE_RATIO × เดิม ≈ 40% · ตัวเลขสมมติ) — ของจริงต้องมีตัวบีบ PDF จริง (ดู task.md 10 พ.ย.)
    • ยังไม่แนบ = เตือนอย่างเดียว บันทึกได้ (แนบทีหลังได้) · mockup เก็บแค่ชื่อไฟล์ ไม่ได้อัปโหลดจริง
    • สถานะเก็บใน data-pdf (ชื่อไฟล์ | "") · data-pdfinfo (ขนาด/บีบจากเท่าไร) · data-spv (JSON รายการอัปเดต Site plan) ของปุ่ม
    • ลิงก์เข้ามาจากหน้ารายละเอียดลูกค้า: admin-add-customer.html?contract=<เลขที่สัญญา> → เปิดป๊อปอัปของสัญญานั้น */
-var FILE_MAX_MB=5, FILE_HARD_MB=25, FILE_RATIO=0.4, FILE_TODAY='2026-10-16', fileBtn=null, fileTmp=null, fileCtx=null, spIn=null;
+var FILE_MAX_MB=5, FILE_HARD_MB=10, FILE_RATIO=0.4, FILE_RATIO_HARD=0.8, FILE_TODAY='2026-10-16', fileBtn=null, fileTmp=null, fileCtx=null, spIn=null;
+/* FILE_MAX_MB = ขนาดสูงสุดของไฟล์ที่เก็บ (หลังบีบ) · FILE_HARD_MB = ไฟล์ที่รับเข้ามาได้สูงสุด (เกินนี้ปฏิเสธ)
+   FILE_RATIO_HARD = อัตราบีบของ "ไฟล์ที่บีบไม่ลง" ใช้กับปุ่มทดลองเท่านั้น */
 
 /* ข้อมูลเดโมของสัญญาที่ไม่อยู่ในตารางเดือนนี้ (ตรงกับลูกค้าตัวอย่างใน customer-detail.html) */
 var GHOST={
@@ -1908,26 +1911,29 @@ function fileOpen(btn,ctx){
   fileDraw();
 }
 
-/* ตรวจขนาดไฟล์ก่อนรับ (≤5 MB รับทันที · เกินแล้วบีบอัดให้ · บีบไม่พอ/ใหญ่เกินเพดานปฏิเสธ)
+/* ตรวจขนาดไฟล์ก่อนรับ: > 10 MB ปฏิเสธทันที · ≤ 5 MB รับเลย · 5–10 MB บีบอัดให้เหลือไม่เกิน 5 MB · บีบไม่ลงก็ปฏิเสธ
    cb({ok:true, info:'3.2 MB (บีบอัดจาก 8.0 MB)', compressed:true}) หรือ cb({ok:false, err:'…'})
-   การบีบเป็นการจำลอง (ขนาดหลังบีบ = FILE_RATIO × เดิม) — ของจริงเรียกตัวบีบ PDF แล้วใช้ขนาดจริงของไฟล์ที่ได้ */
+   การบีบเป็นการจำลอง (ขนาดหลังบีบ = FILE_RATIO × เดิม · f.hard = ไฟล์ที่บีบไม่ลง ใช้ FILE_RATIO_HARD) —
+   ของจริงเรียกตัวบีบ PDF แล้วใช้ขนาดจริงของไฟล์ที่ได้ (บีบ 10 MB ไม่ลงถึง 5 MB เกิดได้จริง เช่นไฟล์ที่เป็นรูปที่บีบมาแล้ว) */
 function fmtMB(n){ return (n/1048576).toFixed(1); }
+/* ปัดขึ้นตอนบอกว่า "เกิน" (10 MB + 1 ไบต์ ต้องขึ้น 10.1 ไม่ใช่ 10.0 ที่ดูขัดกับเพดาน 10 MB) */
+function fmtMBup(n){ return (Math.ceil(n/1048576*10)/10).toFixed(1); }
 function fileSizeGate(f,cb){
   var sz=f.size, T=fileTmp, max=FILE_MAX_MB*1048576;
-  if(sz<=max){ cb({ok:true, info:fmtMB(sz)+' MB'}); return; }
   if(sz>FILE_HARD_MB*1048576){
-    cb({ok:false, err:'ไฟล์ขนาดใหญ่เกินไป ('+fmtMB(sz)+' MB) และใหญ่เกินกว่าจะบีบอัดให้ได้ (สูงสุด '+FILE_HARD_MB+' MB) — กรุณาสแกนใหม่ที่ 200 dpi ขาวดำ แล้วแนบอีกครั้ง'}); return; }
-  T.err=''; T.ok=''; T.busy={name:f.name, size:sz}; fileDraw();           /* แจ้งทันที: ไฟล์ขนาดใหญ่เกินไป → กำลังบีบอัด */
+    cb({ok:false, err:'ไฟล์ขนาดใหญ่เกินไป ('+fmtMBup(sz)+' MB) — รับไฟล์ได้ไม่เกิน '+FILE_HARD_MB+' MB กรุณาสแกนใหม่ที่ 200 dpi ขาวดำ แล้วแนบอีกครั้ง'}); return; }
+  if(sz<=max){ cb({ok:true, info:fmtMB(sz)+' MB'}); return; }
+  T.err=''; T.ok=''; T.busy={name:f.name, size:sz}; fileDraw();           /* แจ้งทันทีว่ากำลังบีบอัด */
   setTimeout(function(){
     if(T!==fileTmp || mdOv.hidden) return;                                  /* ปิดหน้าต่าง/เปลี่ยนสัญญาไปแล้ว → ทิ้งผล */
     T.busy=null;
-    var out=Math.max(300*1024, sz*FILE_RATIO);
-    if(out>max) cb({ok:false, err:'ไฟล์ขนาดใหญ่เกินไป ('+fmtMB(sz)+' MB) — ระบบบีบอัดแล้วยังเหลือ '+fmtMB(out)+' MB เกิน '+FILE_MAX_MB+' MB กรุณาสแกนใหม่ให้เล็กลง (200 dpi ขาวดำ) แล้วแนบอีกครั้ง'});
+    var out=Math.max(300*1024, sz*(f.hard?FILE_RATIO_HARD:FILE_RATIO));
+    if(out>max) cb({ok:false, err:'บีบอัดไฟล์ '+fmtMB(sz)+' MB แล้วยังเหลือ '+fmtMB(out)+' MB เกิน '+FILE_MAX_MB+' MB (ไฟล์นี้บีบไม่ลง) — กรุณาสแกนใหม่ให้เล็กลง (200 dpi ขาวดำ) แล้วแนบอีกครั้ง'});
     else cb({ok:true, compressed:true, info:fmtMB(out)+' MB (บีบอัดจาก '+fmtMB(sz)+' MB)', note:'บีบอัดให้แล้ว: '+fmtMB(sz)+' MB → '+fmtMB(out)+' MB'});
   },1400);
 }
-/* ทดลองขนาดไฟล์ (เฉพาะ mockup) — ป้อนไฟล์ปลอมที่ชื่อ/ขนาดตามปุ่มเข้าท่อเดียวกับการเลือกไฟล์จริง */
-function fileDemo(mb){ filePickFile({name:'ตัวอย่าง-'+mb+'MB.pdf', size:mb*1048576}); }
+/* ทดลองขนาดไฟล์ (เฉพาะ mockup) — ป้อนไฟล์ปลอมที่ชื่อ/ขนาดตามปุ่มเข้าท่อเดียวกับการเลือกไฟล์จริง (hard = จำลองไฟล์ที่บีบไม่ลง) */
+function fileDemo(mb,hard){ filePickFile({name:'ตัวอย่าง-'+mb+'MB'+(hard?'-บีบไม่ลง':'')+'.pdf', size:mb*1048576, hard:!!hard}); }
 function fileDraw(){
   var t=fileTmp, ct, nm;
   if(fileCtx){ ct=fileCtx.ct; nm=fileCtx.nm; }
@@ -1956,13 +1962,13 @@ function fileDraw(){
           '<input id="flReason" aria-label="เหตุผลที่แก้ Site plan (จำเป็น)" placeholder="เหตุผลที่แก้ Site plan (จำเป็น) เช่น แก้ตอนติดตั้ง — เพิ่มจุด AG หน้าโถง" maxlength="120" value="'+escHtml(t.reason)+'" oninput="fileTmp.reason=this.value"'+(canUpd?'':' disabled')+'>'+
           '<button class="btn sm primary" type="button" onclick="fileUpdPick()"'+(canUpd?'':' disabled')+'>+ อัปเดต Site plan</button></div>'+
         (canUpd?'':'<div class="fl-note" style="padding-top:2px">แนบไฟล์สัญญา + Site plan ก่อน จึงอัปเดต Site plan ได้</div>'))+
-    (t.busy?'<div class="fl-busy" role="status"><span class="sp" aria-hidden="true"></span><span><b>ไฟล์ขนาดใหญ่เกินไป</b> ('+fmtMB(t.busy.size)+' MB เกิน '+FILE_MAX_MB+' MB) — ระบบกำลังบีบอัดให้ รอสักครู่…</span></div>':'')+
+    (t.busy?'<div class="fl-busy" role="status"><span class="sp" aria-hidden="true"></span><span>ไฟล์ '+fmtMBup(t.busy.size)+' MB ใหญ่กว่า '+FILE_MAX_MB+' MB — ระบบกำลังบีบอัดให้เหลือไม่เกิน '+FILE_MAX_MB+' MB รอสักครู่…</span></div>':'')+
     (t.ok?'<div class="fl-ok" role="status">✓ '+escHtml(t.ok)+'</div>':'')+
     (t.err?'<div class="fl-err" role="alert">'+escHtml(t.err)+'</div>':'')+
     (lock?'':'<div class="fl-demo"><span>ทดลองขนาดไฟล์ (เฉพาะ mockup):</span>'+
-      [3,8,15,30].map(function(m){ return '<button class="btn sm" type="button" onclick="fileDemo('+m+')"'+dis+'>'+m+' MB</button>'; }).join('')+
-      '<span style="flex-basis:100%">3 = ผ่านเลย · 8 = บีบให้ได้ · 15 = บีบแล้วยังเกิน · 30 = ใหญ่เกินจะบีบ (เพดาน '+FILE_HARD_MB+' MB)</span></div>')+
-    '<div class="fl-note">ครั้งแรกแนบไฟล์เดียวพอ (สัญญา + Site plan รวมกัน) · ตอนติดตั้งมีแก้ Site plan ค่อยกด "อัปเดต Site plan" · รับ PDF / PNG / JPG (ไฟล์สัญญารับเฉพาะ PDF) · <b>ไม่เกิน '+FILE_MAX_MB+' MB</b> — ใหญ่กว่านั้นระบบบีบอัดให้ · แนบทีหลังได้ ไม่บล็อกการบันทึกแถว · ไฟล์เก็บใน private bucket เปิดผ่านลิงก์ชั่วคราวเท่านั้น (PDPA)</div>';
+      [[3,0,'3 MB'],[8,0,'8 MB'],[10,1,'10 MB บีบไม่ลง'],[12,0,'12 MB']].map(function(m){ return '<button class="btn sm" type="button" onclick="fileDemo('+m[0]+','+m[1]+')"'+dis+'>'+m[2]+'</button>'; }).join('')+
+      '<span style="flex-basis:100%">3 = ไม่เกิน '+FILE_MAX_MB+' MB รับเลย · 8 = บีบให้เหลือไม่เกิน '+FILE_MAX_MB+' MB · 10 บีบไม่ลง = บีบแล้วยังเกิน · 12 = เกิน '+FILE_HARD_MB+' MB ปฏิเสธทันที</span></div>')+
+    '<div class="fl-note">ครั้งแรกแนบไฟล์เดียวพอ (สัญญา + Site plan รวมกัน) · ตอนติดตั้งมีแก้ Site plan ค่อยกด "อัปเดต Site plan" · รับ PDF / PNG / JPG (ไฟล์สัญญารับเฉพาะ PDF) · <b>รับไฟล์ไม่เกิน '+FILE_HARD_MB+' MB</b> — ระบบบีบอัดให้เหลือไม่เกิน '+FILE_MAX_MB+' MB (เกิน '+FILE_HARD_MB+' MB ปฏิเสธ) · แนบทีหลังได้ ไม่บล็อกการบันทึกแถว · ไฟล์เก็บใน private bucket เปิดผ่านลิงก์ชั่วคราวเท่านั้น (PDPA)</div>';
   mdOpen('ไฟล์แนบ · '+ct, nm, '', body,
     '<span>ยังไม่ได้อัปโหลดจริง — เดโมเก็บเฉพาะชื่อไฟล์</span><span style="flex:1"></span>'+
     '<button class="btn sm" type="button" onclick="mdClose()">'+(lock?'ปิด':'ยกเลิก')+'</button>'+
