@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ประวัติย้อนหลัง · AGA Bait Registry</title>
+<!--
+  หน้า "ประวัติย้อนหลัง" (งาน A4 ใน docs/แผนงานแก้ไข.md · ข้อมูลมาจากตาราง audit_log) — ผู้ใช้: host (PM/OM) เท่านั้น
+  เหตุผลที่ host เท่านั้น: RLS ของ audit_log อนุญาตให้ host อ่านเท่านั้น (supabase/migrations/…rls_policies.sql) · role อื่นเห็นหน้าล็อก
+  mockup ข้อมูลตัวอย่างสมมติ (ไม่ใช่ของจริง) — กดเล่นได้จริงเมื่อเปิดไฟล์ในเบราว์เซอร์
+
+  Logic สรุป (เจ้าของเลือก 10 พ.ย. 2026):
+  1) รับมือปริมาณมาก (หัวหน้างานกรอกวันละร้อยราย): ค่าเริ่มต้นแสดง "เฉพาะการเปลี่ยนแปลงสำคัญ" (แก้ / ลบ / ไฟล์ / ปิดเดือน / Port)
+     ส่วน "การกรอกปกติ" (กรอกผลบริการ/ติดกล่อง AG ใหม่) รวมเป็น 1 แถวต่อคนต่อวันต่อประเภท กางดูรายการย่อยได้ — เปิดด้วยปุ่ม "รวมการกรอกปกติ"
+  2) สลับมุมมอง ตาราง ↔ ไทม์ไลน์ ใช้ตัวกรองชุดเดียวกัน · แสดงทีละ 25 รายการ (ของจริง 50) กด "โหลดเพิ่ม"
+  3) ตัวกรอง: ช่วงเวลา · เดือนของข้อมูล · ใคร · สาขา · ประเภทข้อมูล · เพิ่ม/แก้/ลบ · ค้นหา · เฉพาะ "แก้หลังปิด"
+     "แก้หลังปิด" = แก้ข้อมูลของเดือนที่ปิดแล้ว (SPEC §7.7 — เดือนปิดแล้วไม่ล็อก แต่ทุกการแก้ต้องมีร่องรอย)
+  4) ส่งออก Excel = ทุกรายการที่ตรงตัวกรอง (ไม่จำกัดจำนวนที่แสดงอยู่) · กลุ่มการกรอกปกติส่งออกเป็น 1 แถวพร้อมจำนวน
+  5) ข้อมูลตัวอย่างมาจาก _shell/history-mock.js (ใช้ร่วมกับลิ้นชัก "ประวัติ" ตามจุดและไทม์ไลน์ในหน้าลูกค้า)
+  ของจริง: อ่านจาก audit_log (ใช้ดัชนี branch/contract/month ที่มีแล้ว) · กลุ่มการกรอกปกติคำนวณจาก visits (created_by/created_at)
+  สีทั้งหมดอ้าง CSS variable เพื่อสลับ light/dark ได้
+-->
+<script>try{var t=localStorage.getItem('aga-theme');if(t)document.documentElement.setAttribute('data-theme',t)}catch(e){}</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@300;400;500;600;700&display=swap">
+<style>
+:root{
+  --bg:#eef2f7; --surface:#ffffff; --surface-2:#f4f7fb; --surface-3:#e9eff6;
+  --fg:#17212e; --fg-muted:#5a6b7e; --fg-faint:#6b7a8b;
+  --border:#d8e0ea; --border-strong:#c3cedb;
+  --accent:#1f5fa8; --accent-strong:#164a85; --accent-fg:#ffffff; --accent-soft:#e6f0fb;
+  --ok:#1a8a5c; --ok-soft:#e3f4ec; --warn:#b4740a; --warn-soft:#fbf0db; --danger:#c23b2e; --danger-soft:#fbe8e5;
+  --radius:10px; --shadow:0 1px 2px rgba(20,40,70,.06),0 1px 3px rgba(20,40,70,.05);
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0e1621; --surface:#16202c; --surface-2:#1b2733; --surface-3:#222f3d;
+  --fg:#e7eef5; --fg-muted:#9fb0c1; --fg-faint:#8696a8;
+  --border:#2a3744; --border-strong:#36485a;
+  --accent:#4a90d9; --accent-strong:#5fa0e3; --accent-fg:#0b1420; --accent-soft:#16304a;
+  --ok:#3bb183; --ok-soft:#133227; --warn:#d99b3e; --warn-soft:#332713; --danger:#e26657; --danger-soft:#331a16;
+  --shadow:0 1px 2px rgba(0,0,0,.3);
+  color-scheme:dark;
+}}
+:root[data-theme="dark"]{
+  --bg:#0e1621; --surface:#16202c; --surface-2:#1b2733; --surface-3:#222f3d;
+  --fg:#e7eef5; --fg-muted:#9fb0c1; --fg-faint:#8696a8;
+  --border:#2a3744; --border-strong:#36485a;
+  --accent:#4a90d9; --accent-strong:#5fa0e3; --accent-fg:#0b1420; --accent-soft:#16304a;
+  --ok:#3bb183; --ok-soft:#133227; --warn:#d99b3e; --warn-soft:#332713; --danger:#e26657; --danger-soft:#331a16;
+  --shadow:0 1px 2px rgba(0,0,0,.3);
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:"Noto Sans Thai","Segoe UI",system-ui,sans-serif;
+  font-size:14px;line-height:1.55;-webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums}
+.num{font-variant-numeric:tabular-nums}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+code,.mono{font-family:ui-monospace,Consolas,"Courier New",monospace;font-size:12px}
+
+/* Header + nav (เหมือน prototype หลัก / month-closure) */
+/* ===== AGA-SHELL v1 : topbar + โลโก้ + เมนูซ้าย (nav) =====
+   แหล่งจริงอยู่ที่ docs/mockup/_shell/shell.css — คัดลอกบล็อกนี้ไปทุกหน้า (ดู _shell/README.md)
+   ห้ามแก้เฉพาะหน้า · ห้ามใส่ hex (ใช้ CSS variable จาก :root ของหน้า) · ไม่มีสถานะ "เร็วๆนี้" แล้ว
+   token ที่หน้าต้องมี: --surface --surface-2 --border --fg --fg-muted --fg-faint --accent --accent-strong --accent-soft */
+:root{
+  /* โลโก้ Advance Group Asia (ครอปจาก docs/mockup/Logo Advance Group Asia.png · ฝังเป็น data URI ให้ไฟล์เดียวใช้ได้)
+     accent ระบบคงน้ำเงิน · โลโก้เขียวอยู่บนพื้นขาว/เป็นกลางเท่านั้น · โหมดมืด = ฟิลเตอร์ทำเป็นสีขาว (เจ้าของตัดสิน 8 พ.ย. 2026) */
+  --logo-img:url(data:image/png;base64,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);
+  --scrim:rgba(10,20,35,.42); --drawer-shadow:2px 0 14px rgba(20,40,70,.18);
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--scrim:rgba(0,0,0,.6);--drawer-shadow:2px 0 14px rgba(0,0,0,.5)}}
+:root[data-theme="dark"]{--scrim:rgba(0,0,0,.6);--drawer-shadow:2px 0 14px rgba(0,0,0,.5)}
+
+/* topbar */
+.topbar{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;display:flex;align-items:center;gap:12px;
+  min-height:57px;padding:9px 18px;background:var(--surface);border-bottom:1px solid var(--border)}
+.topbar .spacer{flex:1;min-width:0}
+.tb-brand{display:flex;align-items:center;gap:12px;min-width:0;color:inherit;text-decoration:none;border-radius:8px}
+.tb-brand:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+.tb-logo{width:76px;height:38px;flex:none;background:var(--logo-img) center/contain no-repeat}
+:root[data-theme="dark"] .tb-logo{filter:brightness(0) invert(.93)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .tb-logo{filter:brightness(0) invert(.93)}}
+.tb-title{min-width:0;padding-left:12px;border-left:1px solid var(--border)}
+.tb-title b{display:block;font-size:14.5px;font-weight:600;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tb-title span{display:block;font-size:11.5px;color:var(--fg-muted);white-space:nowrap}
+.navtoggle{display:none;align-items:center;justify-content:center;border:1px solid var(--border);
+  background:var(--surface-2);color:var(--fg);border-radius:8px;width:36px;height:34px;font-size:18px;line-height:1;cursor:pointer;flex:none}
+.navtoggle:focus-visible,.nav a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.nav-backdrop{display:none}
+
+/* เมนูซ้าย */
+.shell{display:flex;align-items:flex-start;min-height:calc(100vh - 57px);max-width:1760px;margin-inline:auto}
+.nav{width:238px;flex:none;padding:14px 10px;border-right:1px solid var(--border);background:var(--surface);align-self:stretch}
+.nav .group{font-size:11px;letter-spacing:.06em;color:var(--fg-faint);padding:12px 10px 5px}
+.nav a{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;color:var(--fg-muted);
+  text-decoration:none;font-size:13.5px;cursor:pointer;margin-bottom:1px}
+.nav a .ic{width:17px;text-align:center;flex:none;opacity:.85}
+.nav a:hover{background:var(--surface-2);color:var(--fg)}
+.nav a.active{background:var(--accent-soft);color:var(--accent-strong);font-weight:600}
+
+/* จอเล็ก: เมนูเป็นลิ้นชักเลื่อนจากซ้าย · topbar เหลือ ☰ + โลโก้ + ชื่อ + ปุ่มสำคัญ */
+@media (max-width:860px){
+  .shell{display:block;min-height:0}
+  .navtoggle{display:inline-flex}
+  .nav{position:fixed;top:0;left:0;bottom:0;width:260px;z-index:40;overflow-y:auto;
+    transform:translateX(-100%);transition:transform .22s ease;box-shadow:var(--drawer-shadow)}
+  body.nav-open .nav{transform:translateX(0)}
+  .nav-backdrop{position:fixed;inset:0;z-index:30;background:var(--scrim)}
+  body.nav-open .nav-backdrop{display:block}
+}
+@media (max-width:600px){
+  .topbar{gap:8px;padding:8px 12px}
+  .tb-brand{gap:9px}
+  .tb-logo{width:64px;height:32px}
+  .tb-title{padding-left:9px}
+  .tb-title b{font-size:13.5px}
+  .tb-title span,.topbar .pill,.topbar .hdr-search{display:none}
+  select.role{max-width:128px;text-overflow:ellipsis}
+}
+@media (max-width:420px){.tb-title{display:none}}
+@media (prefers-reduced-motion:reduce){.nav{transition:none}}
+/* ===== /AGA-SHELL v1 ===== */
+
+.pill{display:inline-flex;align-items:center;gap:6px;padding:5px 11px;border:1px solid var(--border);border-radius:999px;background:var(--surface-2);font-size:12.5px;color:var(--fg-muted);white-space:nowrap}
+.pill b{color:var(--fg);font-weight:600}
+select.role{font-family:inherit;font-size:12.5px;color:var(--fg);background:var(--surface-2);border:1px solid var(--border);border-radius:999px;padding:5px 10px;cursor:pointer}
+.theme-btn{border:1px solid var(--border);background:var(--surface-2);color:var(--fg-muted);border-radius:8px;width:34px;height:32px;cursor:pointer;font-size:15px}
+a.avatar{text-decoration:none;cursor:pointer}
+a.avatar:hover,a.avatar:focus-visible{box-shadow:0 0 0 2px var(--accent);color:var(--fg)}
+.avatar{width:32px;height:32px;border-radius:50%;background:var(--surface-3);color:var(--fg-muted);display:grid;place-items:center;font-weight:600;font-size:12px;flex:none}
+main{flex:1;min-width:0;padding:20px 24px 48px}
+.page-head h1{margin:0;font-size:20px;font-weight:600}
+.page-head p{margin:3px 0 0;color:var(--fg-muted);font-size:13px}
+
+/* ปุ่ม / chip / alert */
+.btn{font-family:inherit;font-size:13px;font-weight:500;border-radius:8px;padding:8px 14px;cursor:pointer;border:1px solid var(--border-strong);background:var(--surface);color:var(--fg);text-decoration:none;display:inline-block}
+.btn:hover{filter:brightness(.97)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-fg)}
+.btn.ghost{background:transparent;border-color:transparent;color:var(--accent-strong)}
+.btn.sm{padding:5px 10px;font-size:12px}
+.btn[disabled]{opacity:.55;cursor:wait}
+.chip{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;padding:2px 9px;border-radius:999px;white-space:nowrap}
+.chip.ok{background:var(--ok-soft);color:var(--ok)} .chip.miss{background:var(--danger-soft);color:var(--danger)}
+.chip.pend{background:var(--warn-soft);color:var(--warn)} .chip.na{background:var(--surface-3);color:var(--fg-muted)}
+.chip.info{background:var(--accent-soft);color:var(--accent-strong)}
+.alert{display:flex;gap:10px;align-items:flex-start;border-radius:9px;padding:11px 13px;margin:0 0 10px;font-size:12.5px;border:1px solid}
+.alert .ic{flex:none;font-size:15px;line-height:1.3}
+.alert.warn{background:var(--warn-soft);border-color:var(--warn)} .alert.warn .ic{color:var(--warn)}
+.alert.danger{background:var(--danger-soft);border-color:var(--danger)} .alert.danger .ic{color:var(--danger)}
+.alert.ok{background:var(--ok-soft);border-color:var(--ok)} .alert.ok .ic{color:var(--ok)}
+.alert.info{background:var(--accent-soft);border-color:var(--accent)} .alert.info .ic{color:var(--accent)}
+.alert b{font-weight:600}
+.alert small{display:block;color:var(--fg-muted);font-size:11.5px;margin-top:2px}
+
+/* Stats + panels */
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin:16px 0 18px}
+.stat{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:13px 16px;box-shadow:var(--shadow)}
+.stat .lab{font-size:12px;color:var(--fg-muted)}
+.stat .val{font-size:22px;font-weight:700;margin-top:5px;line-height:1.2}
+.stat .sub{font-size:11.5px;color:var(--fg-muted);margin-top:4px}
+.stat.danger .val{color:var(--danger)} .stat.warn .val{color:var(--warn)} .stat.ok .val{color:var(--ok)} .stat.accent .val{color:var(--accent)}
+.panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);margin-bottom:16px}
+.panel>h3{margin:0;padding:13px 16px;font-size:14px;font-weight:600;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.panel .body{padding:16px}
+.twocol{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:16px;align-items:start}
+.twocol>.panel{margin-bottom:0}
+
+
+/* ===== หน้าประวัติย้อนหลัง ===== */
+.tools{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;padding:12px 16px;border-bottom:1px solid var(--border)}
+.field{display:flex;flex-direction:column;gap:3px}
+.field label{font-size:11px;color:var(--fg-muted)}
+.field select,.field input{font-family:inherit;font-size:13px;color:var(--fg);background:var(--surface);border:1px solid var(--border-strong);border-radius:8px;padding:7px 10px;min-width:120px}
+.field input[type=search]{min-width:200px}
+.seg{display:inline-flex;background:var(--surface-2);border:1px solid var(--border);border-radius:10px;padding:3px;gap:3px}
+.seg button{font-family:inherit;font-size:12.5px;border:0;background:transparent;color:var(--fg-muted);padding:6px 12px;border-radius:7px;cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-fg);font-weight:600}
+.chk{display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--fg);padding:7px 2px;cursor:pointer}
+.sumrow{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0 14px}
+.sumrow .chip{font-size:12.5px;padding:4px 12px}
+.tablewrap{position:relative;overflow-x:auto}
+table.hl{border-collapse:collapse;width:100%;font-size:13px;min-width:720px}
+table.hl thead th{background:var(--surface-2);color:var(--fg-muted);font-weight:600;font-size:11.5px;text-align:left;padding:9px 12px;border-bottom:1px solid var(--border)}
+table.hl tbody td{padding:8px 12px;border-bottom:1px solid var(--border);vertical-align:top}
+table.hl tbody tr.row:hover td{background:var(--surface-2)}
+table.hl td small,.sub{display:block;color:var(--fg-muted);font-size:11px}
+tr.detail>td{padding:0;background:var(--surface-2)}
+.dbox{padding:12px 16px 14px 44px;font-size:12.5px}
+.tg{font-family:inherit;border:0;background:transparent;color:var(--accent-strong);cursor:pointer;font-size:12px;padding:0 6px 0 0}
+.act{display:inline-block;font-size:11px;font-weight:600;padding:1px 8px;border-radius:6px;margin-right:4px}
+.act.insert{background:var(--ok-soft);color:var(--ok)} .act.update{background:var(--accent-soft);color:var(--accent-strong)} .act.delete{background:var(--danger-soft);color:var(--danger)}
+.grp{display:inline-block;font-size:11px;padding:1px 8px;border-radius:6px;margin-right:4px;background:var(--surface-3);color:var(--fg-muted);border:1px solid var(--border-strong)}
+.cl{display:inline-block;font-size:11px;padding:1px 7px;border-radius:6px;background:var(--warn-soft);color:var(--warn);margin-left:4px}
+.kv{font-size:12px;color:var(--fg-muted)} .kv b{color:var(--fg);font-weight:600}
+.sublist{margin:8px 0 0;border:1px solid var(--border);border-radius:8px;background:var(--surface);overflow:hidden}
+.sublist .sr1{display:flex;gap:10px;padding:6px 10px;border-top:1px solid var(--border);font-size:12.5px}
+.sublist .sr1:first-child{border-top:0}
+.sublist .sr1 .c1{width:120px;flex:none;color:var(--fg-muted)} .sublist .sr1 .c2{flex:1;min-width:0}
+.sublist .sr1.f .c3{color:var(--warn);font-weight:600}
+/* ไทม์ไลน์ */
+.tl{max-width:760px;padding:6px 16px 4px}
+.tl .dayh{font-size:12px;font-weight:600;color:var(--fg-muted);margin:14px 0 4px}
+.tl .ev{display:flex;gap:11px;padding:7px 0}
+.tl .rail{width:10px;display:flex;flex-direction:column;align-items:center;flex:none}
+.tl .dot{width:9px;height:9px;border-radius:50%;margin-top:6px;flex:none}
+.tl .dot.grpd{border-radius:2px}
+.tl .line{flex:1;width:1px;background:var(--border)}
+.tl .body2{flex:1;min-width:0;font-size:13px;line-height:1.6}
+.tl .dot.insert{background:var(--ok)} .tl .dot.update{background:var(--accent)} .tl .dot.delete{background:var(--danger)} .tl .dot.grpd{background:var(--fg-faint)}
+.more{padding:12px 16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--fg-muted);border-top:1px solid var(--border)}
+.empty{padding:34px 16px;text-align:center;color:var(--fg-muted)}
+.lock{max-width:520px;margin:40px auto;text-align:center;padding:30px}
+.hint{font-size:12px;color:var(--fg-muted);margin:0 0 10px}
+@media (max-width:860px){ main{padding:16px} .tools .field{flex:1 1 140px} }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <button class="navtoggle" id="navToggle" aria-label="เปิด/ปิดเมนู" aria-expanded="false" aria-controls="nav" onclick="toggleNav()">☰</button>
+  <a class="tb-brand" href="aga-bait-registry-prototype.html#todo">
+    <span class="tb-logo" role="img" aria-label="Advance Group Asia (AGA)"></span>
+    <span class="tb-title"><b>ข้อมูลหลังบ้านระบบเหยื่อ</b><span>ส่วนกลาง</span></span>
+  </a>
+  <div class="spacer"></div>
+  <span class="pill">วันนี้ <b>10/11/2026</b></span>
+  <select class="role" id="roleSel" aria-label="เลือกบทบาท" onchange="setRole(this.value)">
+    <option value="host" selected>host · ส่วนกลาง</option>
+    <option value="admin">admin · แอดมิน</option>
+    <option value="recorder">recorder · หัวหน้างาน</option>
+  </select>
+  <button class="theme-btn" id="themeBtn" aria-label="สลับธีม" onclick="toggleTheme()">◐</button>
+  <a class="avatar" href="login.html" title="ออกจากระบบ (กลับหน้าเข้าสู่ระบบ)" aria-label="ออกจากระบบ">นท</a>
+</div>
+
+<div class="shell">
+  <!-- AGA-SHELL v2 : เมนูซ้าย — เหมือนกันทุกหน้า · ต่างกันแค่ลิงก์ของหน้าปัจจุบันใส่ class="active" aria-current="page"
+       data-roles = สิทธิ์ที่เห็นเมนูนี้ (host admin recorder viewer) · ตัวกรองอยู่ที่ applyNavRole() ด้านล่าง -->
+  <nav class="nav" id="nav" aria-label="เมนูหลัก">
+    <div class="group">งานประจำวัน</div>
+    <a href="aga-bait-registry-prototype.html#todo" data-nav="todo" data-roles="host recorder"><span class="ic">◉</span> สถานะทะเบียนบริการ</a>
+    <a href="aga-bait-registry-prototype.html#service" data-nav="service" data-roles="host recorder"><span class="ic">✎</span> กรอกข้อมูลทำบริการประจำเดือน</a>
+    <a href="aga-bait-registry-prototype.html#bait" data-nav="bait" data-roles="host recorder"><span class="ic">▣</span> ติดตามผล AG และติดกล่อง AG (ไม่พร้อมรอบบริการ)</a>
+    <a href="aga-bait-registry-prototype.html#collect" data-nav="collect" data-roles="host recorder"><span class="ic">⇲</span> ลูกค้ารอเก็บสถานี</a>
+    <div class="group">ทะเบียนและสรุป</div>
+    <a href="aga-bait-registry-prototype.html#registry" data-nav="registry" data-roles="host admin recorder"><span class="ic">▤</span> ทะเบียนลูกค้า/สัญญา</a>
+    <a href="admin-add-customer.html" data-nav="new" data-roles="host admin"><span class="ic">＋</span> เปิดงานเข้าทะเบียนบริการ</a>
+    <a href="aga-bait-registry-prototype.html#material" data-nav="material" data-roles="host admin recorder"><span class="ic">▥</span> สรุปยอดใช้อุปกรณ์รายเดือน</a>
+    <a href="aga-bait-registry-prototype.html#summary" data-nav="summary" data-roles="host admin recorder viewer"><span class="ic">▦</span> Dashboard สรุปมูลค่าทั้งหมด</a>
+    <div class="group">ดูแลระบบ</div>
+    <a href="month-closure.html" data-nav="closure" data-roles="host recorder"><span class="ic">🔒</span> ส่งข้อมูล และสรุปงานประจำเดือน</a>
+    <a href="provincial-port-update.html" data-nav="port" data-roles="host"><span class="ic">⛰</span> ลงข้อมูล Port ต่างจังหวัด</a>
+    <a href="dashboard-sync.html" data-nav="sync" data-roles="host"><span class="ic">⇅</span> Dashboard Sync</a>
+    <a href="history-log.html" data-nav="history" data-roles="host" class="active" aria-current="page"><span class="ic">⟲</span> ประวัติย้อนหลัง</a>
+    <a href="admin-user-management.html" data-nav="users" data-roles="host"><span class="ic">☺</span> จัดการผู้ใช้</a>
+    <a href="settings.html" data-nav="settings" data-roles="host"><span class="ic">⚙</span> ตั้งค่า</a>
+  </nav>
+  <div class="nav-backdrop" id="navBackdrop" onclick="toggleNav(false)" aria-hidden="true"></div>
+
+  <main id="main">
+    <div class="page-head"><h1>ประวัติย้อนหลัง</h1>
+      <p>ดูว่า <b>ใคร แก้ / ลบ / เพิ่ม อะไร เมื่อไหร่</b> — มาจากบันทึกการแก้ไขของระบบ (audit_log) · เฉพาะ host (PM/OM) · ข้อมูลในหน้านี้เป็นตัวอย่างสมมติ</p></div>
+
+    <div id="lockMsg" class="panel lock" hidden>
+      <div style="font-size:30px" aria-hidden="true">🔒</div>
+      <h2 style="margin:8px 0 4px;font-size:16px">หน้านี้สำหรับ host เท่านั้น</h2>
+      <p style="color:var(--fg-muted);margin:0">บทบาทนี้ไม่มีสิทธิ์ดูประวัติการแก้ไขทั้งระบบ — สิทธิ์บังคับที่ฐานข้อมูล (RLS ของ audit_log อ่านได้เฉพาะ host) ไม่ใช่แค่ซ่อนปุ่ม</p>
+    </div>
+
+    <div id="content">
+      <div class="sumrow" id="sumrow" aria-live="polite"></div>
+      <section class="panel" aria-label="รายการประวัติ">
+        <div class="tools">
+          <div class="field"><label for="fPeriod">ช่วงเวลา</label><select id="fPeriod" onchange="hv.upd()">
+            <option value="1">วันนี้ (10 พ.ย.)</option><option value="3">3 วันล่าสุด</option><option value="7" selected>7 วันล่าสุด</option></select></div>
+          <div class="field"><label for="fMonth">เดือนของข้อมูล</label><select id="fMonth" onchange="hv.upd()">
+            <option value="">ทุกเดือน</option><option value="2026-11">พ.ย. 2026</option><option value="2026-10">ต.ค. 2026 (ปิดแล้ว)</option></select></div>
+          <div class="field"><label for="fWho">ใคร</label><select id="fWho" onchange="hv.upd()"></select></div>
+          <div class="field"><label for="fBr">สาขา</label><select id="fBr" onchange="hv.upd()"></select></div>
+          <div class="field"><label for="fKind">ประเภทข้อมูล</label><select id="fKind" onchange="hv.upd()"></select></div>
+          <div class="field"><label for="fAct">การกระทำ</label><select id="fAct" onchange="hv.upd()">
+            <option value="">เพิ่ม / แก้ / ลบ</option><option value="insert">เพิ่ม</option><option value="update">แก้</option><option value="delete">ลบ</option></select></div>
+          <div class="field" style="flex:1;min-width:180px"><label for="fQ">ค้นหา</label><input id="fQ" type="search" placeholder="เลขสัญญา / ชื่อลูกค้า / ข้อความ" oninput="hv.upd()" autocomplete="off" style="width:100%"></div>
+          <label class="chk"><input type="checkbox" id="fClosed" onchange="hv.upd()"> เฉพาะ "แก้หลังปิด"</label>
+        </div>
+        <div class="tools" style="padding-top:10px;padding-bottom:10px;align-items:center">
+          <div class="seg" role="group" aria-label="เลือกว่าจะแสดงอะไร">
+            <button type="button" id="mChg" aria-pressed="true" onclick="hv.mode('chg')" title="แก้ / ลบ / ไฟล์ / ปิดเดือน / Port — ไม่รวมการกรอกผลบริการปกติ">เฉพาะการเปลี่ยนแปลง (ค่าเริ่มต้น)</button>
+            <button type="button" id="mAll" aria-pressed="false" onclick="hv.mode('all')" title="เพิ่มแถวรวม &quot;กรอกผลบริการ n ราย&quot; ของแต่ละคนแต่ละวัน — กางดูทีละรายได้">รวมการกรอกปกติ (จัดเป็นกลุ่ม)</button>
+          </div>
+          <div class="seg" role="group" aria-label="เลือกมุมมอง">
+            <button type="button" id="vTable" aria-pressed="true" onclick="hv.view('table')">ตาราง</button>
+            <button type="button" id="vLine" aria-pressed="false" onclick="hv.view('line')">ไทม์ไลน์</button>
+          </div>
+          <span style="flex:1"></span>
+          <button class="btn sm" type="button" onclick="hv.reset()" id="bReset" hidden>✕ ล้างตัวกรอง</button>
+          <button class="btn sm" type="button" onclick="hv.export()" title="ส่งออกทุกรายการที่ตรงตัวกรอง (ไม่จำกัดจำนวนที่แสดง) เป็น .xlsx">↓ ส่งออก Excel</button>
+        </div>
+        <div id="list"></div>
+        <div class="more" id="more"></div>
+      </section>
+      <p class="hint">รายการแสดงทีละ 25 (ของจริง 50) · ค่าเริ่มต้นไม่รวมการกรอกผลบริการปกติ เพราะหัวหน้างานกรอกวันละหลายสิบถึงร้อยราย — ดูได้ที่ปุ่ม "รวมการกรอกปกติ" (รวมเป็น 1 แถวต่อคนต่อวัน)</p>
+    </div>
+  </main>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+/* ===== AGA-HISTORY-MOCK v1 : ข้อมูลตัวอย่างประวัติย้อนหลัง (โครงตามตาราง audit_log) =====
+   แหล่งจริงอยู่ที่ docs/mockup/_shell/history-mock.js — คัดลอกบล็อกนี้ไปทุกหน้าที่โชว์ประวัติ (ดู _shell/README.md)
+   ใช้ร่วมกันทั้งหน้ารวม history-log.html, ลิ้นชัก "ประวัติ" ตามจุด และไทม์ไลน์ในหน้าลูกค้า → ตัวเลข/เนื้อหาตรงกันเสมอ
+   • สร้างแบบกำหนดผลได้ (seed คงที่) 4–10 พ.ย. 2026 — ทุกครั้งที่เปิดได้ชุดเดิม · ข้อมูลทั้งหมดสมมติ ไม่ใช่ของจริง
+   • 2 ชนิดแถว:
+       เปลี่ยนแปลง (b=0): แก้/ลบ/ไฟล์/ปิดเดือน/Port — แถวละ 1 เหตุการณ์ (a = insert|update|delete เหมือน audit_log.action)
+       กลุ่มการกรอกปกติ (b=1): "กรอกผลบริการ/ติดกล่อง AG ใหม่" ของคนเดียวกัน วันเดียวกัน → รวมเป็น 1 แถว มี n รายการ
+         (ของจริงคำนวณกลุ่มนี้จากตาราง visits ด้วย created_by/created_at — ไม่ต้องเก็บ audit insert ซ้ำ ประหยัดที่เก็บ)
+   • closed=1 = "แก้หลังปิด" (แก้ข้อมูลของเดือนที่ปิดแล้ว) · mk = เดือนของข้อมูล (month_key) */
+var HM_PEOPLE=[
+  {n:'สมชาย ใจดี',role:'หัวหน้างาน',br:'ลาดพร้าว'},{n:'วิภา ศรีสุข',role:'หัวหน้างาน',br:'พุทธมณฑล'},
+  {n:'ประเสริฐ รักงาน',role:'หัวหน้างาน',br:'พัทยา'},{n:'สุดา แสงทอง',role:'Admin',br:'พุทธมณฑล'},
+  {n:'อรุณ เจริญสุข',role:'Admin',br:'ลาดพร้าว'},{n:'นที พัฒนา',role:'PM',br:'ส่วนกลาง'},{n:'สมหญิง ใจดี',role:'OM',br:'ส่วนกลาง'}];
+/* ลูกค้าเดโม: 3 รายแรกตรงกับ customer-detail.html (c1 / c2 / c3) */
+var HM_CUST=[
+  {ct:'CT26-0000142',cn:'บมจ. สยามพัฒนาเฮ้าส์',br:'ลาดพร้าว',cid:'c1'},{ct:'CT25-0000098',cn:'บมจ. สยามพัฒนาเฮ้าส์',br:'ลาดพร้าว',cid:'c1'},
+  {ct:'CT26-0000088',cn:'คุณวิรัช ตั้งมั่น (บ้านพัก)',br:'พุทธมณฑล',cid:'c2'},{ct:'CT23-0000311',cn:'โรงแรมบ้านสวนรีสอร์ท',br:'นครปฐม',cid:'c3'},
+  {ct:'CT23-0000017',cn:'บจก. เมืองทองคลังสินค้า',br:'พัฒนาการ'},{ct:'CT23-0000041',cn:'อาคารชุดลุมพินีวิว',br:'สุขุมวิท'},
+  {ct:'CT26-0000203',cn:'หจก. ทรัพย์เจริญ',br:'นนทบุรี'},{ct:'CT26-0000009',cn:'คุณสมหญิง รุ่งเรือง',br:'ระยอง'}];
+var HM_PROV=['เชียงใหม่','ขอนแก่น','ภูเก็ต','หาดใหญ่','สุราษฎร์ธานี','โคราช'];
+var HM_TPL=[ /* w=น้ำหนักการสุ่ม · who=ตำแหน่งที่ทำได้ · cl=โอกาสเป็น "แก้หลังปิด" · scope=ctr(ผูกสัญญา)|prov(ต่างจังหวัด)|sys(ระบบ) */
+  {k:'ผลบริการ',a:'update',w:6,who:['หัวหน้างาน'],cl:.3,tbl:'station_checks',f:function(r){var n=1+Math.floor(r()*40),p=r()<.7;return 'แก้ผลตรวจสถานี IG-'+n+' จาก "'+(p?'ไม่พบปลวก':'พบปลวก')+'" เป็น "'+(p?'พบปลวก':'ไม่พบปลวก')+'"';}},
+  {k:'ผลบริการ',a:'update',w:3,who:['หัวหน้างาน'],cl:.2,tbl:'visits',f:function(r){var d=2+Math.floor(r()*20);return 'แก้วันที่เข้าบริการจาก '+d+'/10 เป็น '+(d+1)+'/10';}},
+  {k:'กล่อง AG',a:'update',w:3,who:['หัวหน้างาน'],cl:0,tbl:'station_checks',f:function(r){var n=1+Math.floor(r()*8),a=[50,100,150,200];return 'แก้ปริมาณเหยื่อกล่อง AG จุดที่ '+n+' จาก '+a[Math.floor(r()*2)]+' ก. เป็น '+a[2+Math.floor(r()*2)]+' ก.';}},
+  {k:'สัญญา',a:'update',w:5,who:['Admin','PM','OM'],cl:0,tbl:'contracts',f:function(r){var v=[24000,36000,48000,96000,150000],i=Math.floor(r()*4);return 'มูลค่า '+v[i].toLocaleString('en-US')+' → '+(v[i]+Math.round((2+r()*8))*1000).toLocaleString('en-US');}},
+  {k:'สัญญา',a:'update',w:2,who:['Admin','PM','OM'],cl:0,tbl:'contracts',f:function(r){var t=['A','B','C','Z'],i=Math.floor(r()*3);return 'เปลี่ยนทีมที่ดูแลจาก '+t[i]+' เป็น '+t[i+1];}},
+  {k:'ลูกค้า',a:'update',w:2,who:['Admin'],cl:0,tbl:'customers',f:function(){return 'แก้ชื่อลูกค้า (พิมพ์ตกหล่น) — เพิ่มคำนำหน้า "บจก."';}},
+  {k:'ไฟล์แนบ',a:'insert',w:4,who:['Admin'],cl:0,tbl:'contract_files',f:function(r){var s=[8.0,9.0,7.2,6.5][Math.floor(r()*4)];return r()<.5?'แนบสัญญา + Site plan (บีบอัดจาก '+s.toFixed(1)+' MB เหลือ '+(s*.4).toFixed(1)+' MB)':'อัปเดต Site plan v'+(2+Math.floor(r()*2))+' · เหตุผล: แก้ตอนติดตั้ง';}},
+  {k:'สถานี',a:'delete',w:2,who:['Admin','หัวหน้างาน'],cl:0,tbl:'stations',f:function(r){return 'ลบสถานี '+(r()<.5?'IC':'IG')+'-'+(1+Math.floor(r()*30))+' (บันทึกผิดสัญญา)';}},
+  {k:'สถานี',a:'insert',w:2,who:['Admin'],cl:0,tbl:'stations',f:function(r){return 'เพิ่มสถานี IG-'+(31+Math.floor(r()*9))+' (ติดตั้งเพิ่มตามที่ลูกค้าขอ)';}},
+  {k:'Port ต่างจังหวัด',a:'update',w:3,who:['PM','OM'],cl:.2,tbl:'monthly_branch_snapshots',scope:'prov',f:function(r){var a=40+Math.floor(r()*30);return ['S 1 ปี','M 1 ปี','L 1 ปี'][Math.floor(r()*3)]+': '+a+' → '+(a+1+Math.floor(r()*4))+' ราย · ยอดรวมตรงรายงาน';}},
+  {k:'ปิดเดือน',a:'update',w:1,who:['PM','OM'],cl:0,tbl:'month_closures',scope:'sys',f:function(r){return r()<.5?'ปิดเดือน ต.ค. 2026 ส่วนกลาง 24 สาขา':'คำนวณ snapshot ใหม่ + ส่ง Dashboard (แก้หลังปิด '+(1+Math.floor(r()*4))+' รายการ)';}}
+];
+function hmRng(seed){return function(){seed|=0;seed=seed+0x6D2B79F5|0;var t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+function hmPad(n){return (n<10?'0':'')+n;}
+var HM_DAYS=[10,9,8,7,6,5,4]; /* พ.ย. 2026 (วันที่ 10 = "วันนี้" ของเดโม) */
+function hmBuild(){
+  var r=hmRng(20261110), out=[], id=0, rr=0, wsum=HM_TPL.reduce(function(a,t){return a+t.w;},0);
+  HM_DAYS.forEach(function(d){
+    var cnt=5+Math.floor(r()*5);
+    for(var i=0;i<cnt;i++){
+      var x=r()*wsum, tp=HM_TPL[0]; for(var j=0,acc=0;j<HM_TPL.length;j++){acc+=HM_TPL[j].w; if(x<acc){tp=HM_TPL[j];break;}}
+      var pool=HM_PEOPLE.filter(function(p){return tp.who.indexOf(p.role)>=0;}), who=pool[Math.floor(r()*pool.length)];
+      var cu=HM_CUST[(rr++)%HM_CUST.length], prov=(tp.scope==='prov'), sys=(tp.scope==='sys');
+      var h=8+Math.floor(r()*10), m=Math.floor(r()*60), closed=(tp.cl&&r()<tp.cl)?1:0;
+      out.push({id:++id,d:d,ds:d+' พ.ย.',t:hmPad(h)+':'+hmPad(m),who:who.n,role:who.role,
+        br:prov?HM_PROV[Math.floor(r()*HM_PROV.length)]:(sys?'ส่วนกลาง':cu.br),ct:(prov||sys)?'-':cu.ct,cn:(prov||sys)?'':cu.cn,cid:cu.cid||'',
+        k:tp.k,a:tp.a,x:tp.f(r),tbl:tp.tbl,mk:closed?'2026-10':'2026-11',closed:closed,b:0,n:0});
+    }
+    HM_PEOPLE.filter(function(p){return p.role==='หัวหน้างาน';}).forEach(function(p){
+      if(r()<.85){var n=25+Math.floor(r()*86),f=Math.floor(n*.1);
+        out.push({id:++id,d:d,ds:d+' พ.ย.',t:'09:'+hmPad(Math.floor(r()*30)),t2:'16:'+hmPad(10+Math.floor(r()*40)),who:p.n,role:p.role,br:p.br,ct:'หลายสัญญา',cn:'',cid:'',
+          k:'ผลบริการ',a:'insert',x:'กรอกผลบริการประจำเดือน '+n+' ราย (ปกติ '+(n-f)+' · พบปลวก '+f+')',tbl:'visits',mk:'2026-11',closed:0,b:1,n:n});}
+      if(r()<.25){var g=2+Math.floor(r()*8);
+        out.push({id:++id,d:d,ds:d+' พ.ย.',t:'11:'+hmPad(Math.floor(r()*50)),t2:'15:'+hmPad(Math.floor(r()*50)),who:p.n,role:p.role,br:p.br,ct:'หลายสัญญา',cn:'',cid:'',
+          k:'กล่อง AG',a:'insert',x:'ติดกล่อง AG ใหม่ '+g+' กล่อง (นอกรอบบริการ)',tbl:'station_checks',mk:'2026-11',closed:0,b:1,n:g});}
+    });
+  });
+  out.sort(function(a,b){return b.d-a.d || (b.t>a.t?1:b.t<a.t?-1:0);});
+  return out;
+}
+var HM_ALL=hmBuild();
+/* รายการย่อยของกลุ่มการกรอกปกติ (สร้างเมื่อกาง) — กำหนดผลได้จาก id ของกลุ่ม */
+function hmBatchItems(e){
+  var r=hmRng(e.id*7919+3), out=[], base=100+Math.floor(r()*800);
+  for(var i=0;i<e.n;i++){var f=r()<.1;out.push({ct:'CT26-9'+hmPad(0)+(base+i*3+Math.floor(r()*3)),cn:'บจก. ลูกค้าตัวอย่าง '+(1+((base+i)%150)),res:e.k==='กล่อง AG'?('ติดกล่อง AG จุดที่ '+(1+i)+' (S)'):(f?'พบปลวก (ปลวกงาน)':'ปกติทั้งหมด'),f:f});}
+  return out;
+}
+/* ค้นหา/กรองแบบง่าย: s={ct, cid, br, k, q, who, onlyChange} */
+function hmFor(s){
+  s=s||{};
+  return HM_ALL.filter(function(e){
+    if(s.ct&&e.ct!==s.ct) return false; if(s.cid&&e.cid!==s.cid) return false; if(s.br&&e.br!==s.br) return false;
+    if(s.k&&e.k!==s.k) return false; if(s.who&&e.who!==s.who) return false; if(s.onlyChange&&e.b) return false;
+    if(s.q){var q=s.q.toLowerCase().replace(/\s+/g,''), hay=(e.ct+e.cn+e.x+e.who+e.br+e.k).toLowerCase().replace(/\s+/g,''); if(hay.indexOf(q)<0) return false;}
+    return true;});
+}
+/* ===== /AGA-HISTORY-MOCK v1 ===== */
+
+
+var hv=(function(){
+  var S={mode:'chg',view:'table',shown:25}, PAGE=25, OPEN={}, SUBN={};
+  var $=function(id){return document.getElementById(id);};
+  var esc=function(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');};
+  var ACT={insert:'เพิ่ม',update:'แก้',delete:'ลบ'};
+  function fillSel(){
+    var uniq=function(f){var s={},o=[];HM_ALL.forEach(function(e){var v=f(e);if(v&&!s[v]){s[v]=1;o.push(v);}});return o;};
+    $('fWho').innerHTML='<option value="">ทุกคน</option>'+uniq(function(e){return e.who;}).map(function(v){return '<option>'+esc(v)+'</option>';}).join('');
+    $('fBr').innerHTML='<option value="">ทุกสาขา</option>'+uniq(function(e){return e.br;}).map(function(v){return '<option>'+esc(v)+'</option>';}).join('');
+    $('fKind').innerHTML='<option value="">ทุกประเภทข้อมูล</option>'+uniq(function(e){return e.k;}).map(function(v){return '<option>'+esc(v)+'</option>';}).join('');
+  }
+  function filt(includeBatch){
+    var days=+$('fPeriod').value, minD=10-(days-1), mk=$('fMonth').value, who=$('fWho').value, br=$('fBr').value, k=$('fKind').value, a=$('fAct').value;
+    var q=$('fQ').value.toLowerCase().replace(/\s+/g,''), co=$('fClosed').checked;
+    return HM_ALL.filter(function(e){
+      if(e.d<minD) return false; if(mk&&e.mk!==mk) return false; if(who&&e.who!==who) return false; if(br&&e.br!==br) return false;
+      if(k&&e.k!==k) return false; if(a&&e.a!==a) return false; if(co&&!e.closed) return false;
+      if(!includeBatch&&e.b) return false;
+      if(q){var hay=(e.ct+e.cn+e.x+e.who+e.br+e.k).toLowerCase().replace(/\s+/g,''); if(hay.indexOf(q)<0) return false;}
+      return true; });
+  }
+  function actPill(e){return '<span class="act '+e.a+'">'+ACT[e.a]+'</span>';}
+  function what(e){
+    return e.b ? '<span class="grp">กรอก '+e.n+' รายการ</span> '+esc(e.x)
+               : actPill(e)+esc(e.x)+(e.closed?'<span class="cl">แก้หลังปิด</span>':'');
+  }
+  function when(e){return e.ds+' '+e.t+(e.t2?'–'+e.t2:'');}
+  function detail(e){
+    if(e.b){
+      var n=SUBN[e.id]||10, items=hmBatchItems(e).slice(0,n);
+      return '<div class="kv">รายการย่อยของกลุ่มนี้ <b>'+e.n+'</b> รายการ · ผู้กรอก <b>'+esc(e.who)+'</b> · สาขา '+esc(e.br)+' · '+when(e)+'</div>'+
+        '<div class="sublist">'+items.map(function(i,ix){return '<div class="sr1'+(i.f?' f':'')+'"><span class="c1">'+esc(i.ct)+'</span><span class="c2">'+esc(i.cn)+'</span><span class="c3">'+esc(i.res)+'</span></div>';}).join('')+'</div>'+
+        (n<e.n?'<div style="margin-top:8px"><button class="btn sm" type="button" onclick="hv.sub('+e.id+')">แสดงเพิ่ม (เหลือ '+(e.n-n)+' รายการ)</button></div>':'');
+    }
+    return '<div class="kv">ตารางในฐานข้อมูล <b>'+esc(e.tbl)+'</b> · การกระทำ <b>'+e.a+'</b> · เดือนของข้อมูล <b>'+esc(e.mk)+'</b>'+(e.closed?' (ปิดแล้ว → แก้หลังปิด)':'')+
+      ' · ผู้ทำ <b>'+esc(e.who)+'</b> ('+esc(e.role)+') · สาขา '+esc(e.br)+(e.ct!=='-'&&e.ct!=='หลายสัญญา'?' · สัญญา <b>'+esc(e.ct)+'</b> '+esc(e.cn):'')+'</div>'+
+      (e.cid?'<div style="margin-top:6px"><a class="btn sm" href="customer-detail.html?c='+e.cid+'#tab=timeline" style="text-decoration:none">ดูไทม์ไลน์ของลูกค้านี้ ↗</a></div>':'');
+  }
+  function who(e){return esc(e.who)+'<small>'+esc(e.role)+'</small>';}
+  function whereCell(e){return esc(e.br)+'<small>'+esc(e.ct)+(e.cn?' · '+esc(e.cn):'')+'</small>';}
+  function table(rows){
+    return '<div class="tablewrap"><table class="hl"><thead><tr><th>เวลา</th><th>ใคร</th><th>สาขา · สัญญา</th><th>ข้อมูล</th><th>การเปลี่ยนแปลง</th></tr></thead><tbody>'+
+      rows.map(function(e){var o=!!OPEN[e.id];
+        return '<tr class="row"><td style="white-space:nowrap"><button class="tg" type="button" aria-expanded="'+o+'" aria-label="'+(o?'ซ่อน':'ดู')+'รายละเอียด" onclick="hv.tog('+e.id+')">'+(o?'▾':'▸')+'</button>'+when(e)+'</td><td>'+who(e)+'</td><td>'+whereCell(e)+'</td><td>'+esc(e.k)+'</td><td>'+what(e)+'</td></tr>'+
+          (o?'<tr class="detail"><td colspan="5"><div class="dbox">'+detail(e)+'</div></td></tr>':''); }).join('')+'</tbody></table></div>';
+  }
+  function line(rows){
+    var day=-1,h='';
+    rows.forEach(function(e){
+      if(e.d!==day){day=e.d;h+='<div class="dayh">'+e.d+' พ.ย. 2026'+(e.d===10?' · วันนี้':'')+'</div>';}
+      var o=!!OPEN[e.id];
+      h+='<div class="ev"><div class="rail"><span class="dot '+(e.b?'grpd':e.a)+'"></span><span class="line"></span></div><div class="body2">'+what(e)+' <b style="font-weight:600">'+esc(e.k)+'</b>'+
+        '<div class="sub">'+when(e)+' · '+esc(e.who)+' ('+esc(e.role)+') · '+esc(e.br)+(e.ct!=='-'&&e.ct!=='หลายสัญญา'?' · '+esc(e.ct):'')+
+        ' · <button class="tg" type="button" aria-expanded="'+o+'" onclick="hv.tog('+e.id+')" style="padding:0">'+(o?'ซ่อนรายละเอียด':'รายละเอียด')+'</button></div>'+(o?'<div class="dbox" style="padding:6px 0 4px">'+detail(e)+'</div>':'')+'</div></div>';
+    });
+    return '<div class="tl">'+h+'</div>';
+  }
+  function render(){
+    var all=filt(true), chg=all.filter(function(e){return !e.b;}), grpd=all.filter(function(e){return e.b;});
+    var rows=(S.mode==='all'?all:chg), cnt=function(a){return chg.filter(function(e){return e.a===a;}).length;};
+    var batchN=grpd.reduce(function(s,e){return s+e.n;},0);
+    $('sumrow').innerHTML=
+      '<span class="chip info num">แก้ '+cnt('update')+'</span><span class="chip miss num">ลบ '+cnt('delete')+'</span><span class="chip ok num">เพิ่ม/ไฟล์ '+cnt('insert')+'</span>'+
+      '<span class="chip pend num">แก้หลังปิด '+chg.filter(function(e){return e.closed;}).length+'</span>'+
+      '<span class="chip na num" title="การกรอกผลบริการ/ติดกล่อง AG ใหม่ รวมเป็นกลุ่มต่อคนต่อวัน">กรอกปกติ '+batchN+' รายการ → '+grpd.length+' กลุ่ม</span>';
+    var shown=rows.slice(0,S.shown);
+    $('list').innerHTML=!rows.length?'<div class="empty">ไม่พบรายการที่ตรงกับตัวกรอง <button class="btn sm" type="button" onclick="hv.reset()" style="margin-left:8px">ล้างตัวกรอง</button></div>':(S.view==='table'?table(shown):line(shown));
+    $('more').innerHTML='<span>แสดง <b>'+shown.length+'</b> จาก <b>'+rows.length+'</b> รายการ'+(S.mode==='chg'?' · ไม่รวมการกรอกปกติ '+grpd.length+' กลุ่ม':'')+'</span>'+
+      (shown.length<rows.length?'<button class="btn sm" type="button" onclick="hv.more()">โหลดเพิ่ม (+'+Math.min(PAGE,rows.length-shown.length)+')</button>':'');
+    [['mChg',S.mode==='chg'],['mAll',S.mode==='all'],['vTable',S.view==='table'],['vLine',S.view==='line']].forEach(function(p){$(p[0]).setAttribute('aria-pressed',p[1]?'true':'false');});
+    var act=!!($('fWho').value||$('fBr').value||$('fKind').value||$('fAct').value||$('fMonth').value||$('fQ').value||$('fClosed').checked||$('fPeriod').value!=='7');
+    $('bReset').hidden=!act;
+  }
+  return {
+    init:function(){fillSel();render();},
+    upd:function(){S.shown=PAGE;render();},
+    mode:function(m){S.mode=m;S.shown=PAGE;render();},
+    view:function(v){S.view=v;render();},
+    more:function(){S.shown+=PAGE;render();},
+    tog:function(id){OPEN[id]=!OPEN[id];render();},
+    sub:function(id){SUBN[id]=(SUBN[id]||10)+20;render();},
+    reset:function(){$('fPeriod').value='7';$('fMonth').value='';$('fWho').value='';$('fBr').value='';$('fKind').value='';$('fAct').value='';$('fQ').value='';$('fClosed').checked=false;S.shown=PAGE;render();},
+    /* ส่งออก: ทุกรายการที่ตรงตัวกรองและตามโหมดที่เลือก · กลุ่มกรอกปกติ = 1 แถว (คอลัมน์ "จำนวนรายการ") */
+    export:function(){
+      if(typeof XLSX==='undefined'){alert('ต้องมีอินเทอร์เน็ตเพื่อโหลดไลบรารีส่งออก Excel (SheetJS) — ลองใหม่เมื่อออนไลน์');return;}
+      var rows=(S.mode==='all'?filt(true):filt(false));
+      var data=[['วันที่','เวลา','ใคร','ตำแหน่ง','สาขา','เลขที่สัญญา','ลูกค้า','ประเภทข้อมูล','การกระทำ','รายละเอียด','จำนวนรายการ (กลุ่มกรอกปกติ)','แก้หลังปิด','เดือนของข้อมูล']];
+      rows.forEach(function(e){data.push(['2026-11-'+hmPad(e.d),e.t+(e.t2?'–'+e.t2:''),e.who,e.role,e.br,e.ct==='-'||e.ct==='หลายสัญญา'?'':e.ct,e.cn,e.k,ACT[e.a],e.x,e.b?e.n:'',e.closed?'ใช่':'',e.mk]);});
+      var wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(data),'ประวัติย้อนหลัง');
+      XLSX.writeFile(wb,'AGA-ประวัติย้อนหลัง.xlsx');
+    }
+  };
+})();
+
+/* ===== AGA-SHELL v2 : เปิด/ปิดลิ้นชักเมนูบนจอเล็ก (body.nav-open) + กรองเมนูตามสิทธิ์ ===== */
+function toggleNav(open){
+  var b=document.body, want=(typeof open==="boolean")?open:!b.classList.contains("nav-open");
+  b.classList.toggle("nav-open",want);
+  var t=document.getElementById("navToggle"); if(t) t.setAttribute("aria-expanded",want?"true":"false");
+}
+document.addEventListener("keydown",function(e){if(e.key==="Escape")toggleNav(false)});
+function applyNavRole(role){
+  document.querySelectorAll('#nav a[data-nav]').forEach(function(a){
+    var roles=(a.getAttribute('data-roles')||'').split(/\s+/);
+    a.style.display = roles.indexOf(role)>=0 ? '' : 'none';
+  });
+  document.querySelectorAll('#nav .group').forEach(function(g){
+    var n=g.nextElementSibling, any=false;
+    while(n && !n.classList.contains('group')){ if(n.style.display!=='none') any=true; n=n.nextElementSibling; }
+    g.style.display = any ? '' : 'none';
+  });
+}
+/* ===== /AGA-SHELL v2 ===== */
+function setRole(r){
+  var ok=(r==="host");
+  document.getElementById("lockMsg").hidden=ok;
+  document.getElementById("content").hidden=!ok;
+  applyNavRole(r);
+}
+function toggleTheme(){
+  var el=document.documentElement, cur=el.getAttribute("data-theme");
+  var next=cur==="dark"?"light":(cur==="light"?"dark":(matchMedia("(prefers-color-scheme: dark)").matches?"light":"dark"));
+  el.setAttribute("data-theme",next);
+  try{localStorage.setItem("aga-theme",next)}catch(e){}
+}
+hv.init();
+try{var _rs=document.getElementById('roleSel'); if(_rs) applyNavRole(_rs.value);}catch(e){}
+</script>
+</body>
+</html>
