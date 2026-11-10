@@ -1,8 +1,22 @@
-/* ===== AGA-SHELL v1 : เปิด/ปิดลิ้นชักเมนูบนจอเล็ก (body.nav-open) ===== */
+/* ===== AGA-SHELL v2 : เปิด/ปิดลิ้นชักเมนูบนจอเล็ก (body.nav-open) + กรองเมนูตามสิทธิ์ ===== */
 function toggleNav(open){
   var b=document.body, want=(typeof open==='boolean')?open:!b.classList.contains('nav-open');
   b.classList.toggle('nav-open',want);
   var t=document.getElementById('navToggle'); if(t) t.setAttribute('aria-expanded',want?'true':'false');
 }
 document.addEventListener('keydown',function(e){ if(e.key==='Escape') toggleNav(false); });
-/* ===== /AGA-SHELL v1 ===== */
+
+/* กรองเมนูตามสิทธิ์: ลิงก์ที่ data-roles ไม่มี role นี้ถูกซ่อน + ซ่อนหัวกลุ่มที่ไม่เหลือเมนู
+   เรียกตอนโหลดหน้า และทุกครั้งที่สลับ role (ใน setRole ของแต่ละหน้า) */
+function applyNavRole(role){
+  document.querySelectorAll('#nav a[data-nav]').forEach(function(a){
+    var roles=(a.getAttribute('data-roles')||'').split(/\s+/);
+    a.style.display = roles.indexOf(role)>=0 ? '' : 'none';
+  });
+  document.querySelectorAll('#nav .group').forEach(function(g){
+    var n=g.nextElementSibling, any=false;
+    while(n && !n.classList.contains('group')){ if(n.style.display!=='none') any=true; n=n.nextElementSibling; }
+    g.style.display = any ? '' : 'none';
+  });
+}
+/* ===== /AGA-SHELL v2 ===== */

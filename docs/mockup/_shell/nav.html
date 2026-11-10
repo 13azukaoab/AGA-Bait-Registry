@@ -1,21 +1,21 @@
-<!-- AGA-SHELL v1 : เมนูซ้าย — เหมือนกันทุกหน้า · ต่างกันแค่ลิงก์ของหน้าปัจจุบันใส่ class="active" aria-current="page" -->
+<!-- AGA-SHELL v2 : เมนูซ้าย — เหมือนกันทุกหน้า · ต่างกันแค่ลิงก์ของหน้าปัจจุบันใส่ class="active" aria-current="page"
+     data-roles = สิทธิ์ที่เห็นเมนูนี้ (host admin recorder viewer) · ตัวกรองอยู่ที่ applyNavRole() ใน shell.js -->
   <nav class="nav" id="nav" aria-label="เมนูหลัก">
     <div class="group">งานประจำวัน</div>
-    <a href="aga-bait-registry-prototype.html#todo" data-nav="todo"><span class="ic">◉</span> หน้า "ต้องทำ"</a>
-    <a href="aga-bait-registry-prototype.html#service" data-nav="service"><span class="ic">✎</span> กรอกผลบริการ (IG/IC)</a>
-    <a href="aga-bait-registry-prototype.html#bait" data-nav="bait"><span class="ic">▣</span> กล่องเหยื่อ AG นอกรอบ</a>
-    <a href="aga-bait-registry-prototype.html#collect" data-nav="collect"><span class="ic">⇲</span> รอเก็บสถานี (หมดสัญญา)</a>
+    <a href="aga-bait-registry-prototype.html#todo" data-nav="todo" data-roles="host recorder"><span class="ic">◉</span> สถานะทะเบียนบริการ</a>
+    <a href="aga-bait-registry-prototype.html#service" data-nav="service" data-roles="host recorder"><span class="ic">✎</span> กรอกข้อมูลทำบริการประจำเดือน</a>
+    <a href="aga-bait-registry-prototype.html#bait" data-nav="bait" data-roles="host recorder"><span class="ic">▣</span> ติดตามผล AG และติดกล่อง AG (ไม่พร้อมรอบบริการ)</a>
+    <a href="aga-bait-registry-prototype.html#collect" data-nav="collect" data-roles="host recorder"><span class="ic">⇲</span> ลูกค้ารอเก็บสถานี</a>
     <div class="group">ทะเบียนและสรุป</div>
-    <a href="aga-bait-registry-prototype.html#registry" data-nav="registry"><span class="ic">▤</span> ทะเบียนลูกค้า/สัญญา</a>
-    <a href="customer-detail.html" data-nav="customer"><span class="ic">◷</span> รายละเอียดลูกค้า</a>
-    <a href="admin-add-customer.html" data-nav="new"><span class="ic">＋</span> เปิดงาน (admin)</a>
-    <a href="aga-bait-registry-prototype.html#summary" data-nav="summary"><span class="ic">▦</span> สรุปตัวเลข</a>
-    <a href="aga-bait-registry-prototype.html#material" data-nav="material"><span class="ic">▥</span> สรุปวัสดุ</a>
-    <div class="group">ดูแลระบบ (host)</div>
-    <a href="month-closure.html" data-nav="closure"><span class="ic">🔒</span> ปิดเดือน</a>
-    <a href="provincial-port-update.html" data-nav="port"><span class="ic">⛰</span> port สาขาต่างจังหวัด</a>
-    <a href="dashboard-sync.html" data-nav="sync"><span class="ic">⇅</span> Dashboard Sync</a>
-    <a href="admin-user-management.html" data-nav="users"><span class="ic">☺</span> จัดการผู้ใช้</a>
-    <a href="settings.html" data-nav="settings"><span class="ic">⚙</span> ตั้งค่า</a>
+    <a href="aga-bait-registry-prototype.html#registry" data-nav="registry" data-roles="host admin recorder"><span class="ic">▤</span> ทะเบียนลูกค้า/สัญญา</a>
+    <a href="admin-add-customer.html" data-nav="new" data-roles="host admin"><span class="ic">＋</span> เปิดงานเข้าทะเบียนบริการ</a>
+    <a href="aga-bait-registry-prototype.html#material" data-nav="material" data-roles="host admin recorder"><span class="ic">▥</span> สรุปยอดใช้อุปกรณ์รายเดือน</a>
+    <a href="aga-bait-registry-prototype.html#summary" data-nav="summary" data-roles="host admin recorder viewer"><span class="ic">▦</span> Dashboard สรุปมูลค่าทั้งหมด</a>
+    <div class="group">ดูแลระบบ</div>
+    <a href="month-closure.html" data-nav="closure" data-roles="host recorder"><span class="ic">🔒</span> ส่งข้อมูล และสรุปงานประจำเดือน</a>
+    <a href="provincial-port-update.html" data-nav="port" data-roles="host"><span class="ic">⛰</span> ลงข้อมูล Port ต่างจังหวัด</a>
+    <a href="dashboard-sync.html" data-nav="sync" data-roles="host"><span class="ic">⇅</span> Dashboard Sync</a>
+    <a href="admin-user-management.html" data-nav="users" data-roles="host"><span class="ic">☺</span> จัดการผู้ใช้</a>
+    <a href="settings.html" data-nav="settings" data-roles="host"><span class="ic">⚙</span> ตั้งค่า</a>
   </nav>
   <div class="nav-backdrop" id="navBackdrop" onclick="toggleNav(false)" aria-hidden="true"></div>

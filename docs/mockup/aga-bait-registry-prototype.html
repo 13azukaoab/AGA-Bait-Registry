@@ -434,22 +434,21 @@ tfoot td{padding:10px 12px;font-weight:700;background:var(--surface-2);border-to
 <!-- AGA-SHELL v1 : เมนูซ้าย — เหมือนกันทุกหน้า · ต่างกันแค่ลิงก์ของหน้าปัจจุบันใส่ class="active" aria-current="page" -->
   <nav class="nav" id="nav" aria-label="เมนูหลัก">
     <div class="group">งานประจำวัน</div>
-    <a href="aga-bait-registry-prototype.html#todo" data-nav="todo" class="active" aria-current="page"><span class="ic">◉</span> หน้า "ต้องทำ"</a>
-    <a href="aga-bait-registry-prototype.html#service" data-nav="service"><span class="ic">✎</span> กรอกผลบริการ (IG/IC)</a>
-    <a href="aga-bait-registry-prototype.html#bait" data-nav="bait"><span class="ic">▣</span> กล่องเหยื่อ AG นอกรอบ</a>
-    <a href="aga-bait-registry-prototype.html#collect" data-nav="collect"><span class="ic">⇲</span> รอเก็บสถานี (หมดสัญญา)</a>
+    <a href="aga-bait-registry-prototype.html#todo" data-nav="todo" data-roles="host recorder" class="active" aria-current="page"><span class="ic">◉</span> สถานะทะเบียนบริการ</a>
+    <a href="aga-bait-registry-prototype.html#service" data-nav="service" data-roles="host recorder"><span class="ic">✎</span> กรอกข้อมูลทำบริการประจำเดือน</a>
+    <a href="aga-bait-registry-prototype.html#bait" data-nav="bait" data-roles="host recorder"><span class="ic">▣</span> ติดตามผล AG และติดกล่อง AG (ไม่พร้อมรอบบริการ)</a>
+    <a href="aga-bait-registry-prototype.html#collect" data-nav="collect" data-roles="host recorder"><span class="ic">⇲</span> ลูกค้ารอเก็บสถานี</a>
     <div class="group">ทะเบียนและสรุป</div>
-    <a href="aga-bait-registry-prototype.html#registry" data-nav="registry"><span class="ic">▤</span> ทะเบียนลูกค้า/สัญญา</a>
-    <a href="customer-detail.html" data-nav="customer"><span class="ic">◷</span> รายละเอียดลูกค้า</a>
-    <a href="admin-add-customer.html" data-nav="new"><span class="ic">＋</span> เปิดงาน (admin)</a>
-    <a href="aga-bait-registry-prototype.html#summary" data-nav="summary"><span class="ic">▦</span> สรุปตัวเลข</a>
-    <a href="aga-bait-registry-prototype.html#material" data-nav="material"><span class="ic">▥</span> สรุปวัสดุ</a>
-    <div class="group">ดูแลระบบ (host)</div>
-    <a href="month-closure.html" data-nav="closure"><span class="ic">🔒</span> ปิดเดือน</a>
-    <a href="provincial-port-update.html" data-nav="port"><span class="ic">⛰</span> port สาขาต่างจังหวัด</a>
-    <a href="dashboard-sync.html" data-nav="sync"><span class="ic">⇅</span> Dashboard Sync</a>
-    <a href="admin-user-management.html" data-nav="users"><span class="ic">☺</span> จัดการผู้ใช้</a>
-    <a href="settings.html" data-nav="settings"><span class="ic">⚙</span> ตั้งค่า</a>
+    <a href="aga-bait-registry-prototype.html#registry" data-nav="registry" data-roles="host admin recorder"><span class="ic">▤</span> ทะเบียนลูกค้า/สัญญา</a>
+    <a href="admin-add-customer.html" data-nav="new" data-roles="host admin"><span class="ic">＋</span> เปิดงานเข้าทะเบียนบริการ</a>
+    <a href="aga-bait-registry-prototype.html#material" data-nav="material" data-roles="host admin recorder"><span class="ic">▥</span> สรุปยอดใช้อุปกรณ์รายเดือน</a>
+    <a href="aga-bait-registry-prototype.html#summary" data-nav="summary" data-roles="host admin recorder viewer"><span class="ic">▦</span> Dashboard สรุปมูลค่าทั้งหมด</a>
+    <div class="group">ดูแลระบบ</div>
+    <a href="month-closure.html" data-nav="closure" data-roles="host recorder"><span class="ic">🔒</span> ส่งข้อมูล และสรุปงานประจำเดือน</a>
+    <a href="provincial-port-update.html" data-nav="port" data-roles="host"><span class="ic">⛰</span> ลงข้อมูล Port ต่างจังหวัด</a>
+    <a href="dashboard-sync.html" data-nav="sync" data-roles="host"><span class="ic">⇅</span> Dashboard Sync</a>
+    <a href="admin-user-management.html" data-nav="users" data-roles="host"><span class="ic">☺</span> จัดการผู้ใช้</a>
+    <a href="settings.html" data-nav="settings" data-roles="host"><span class="ic">⚙</span> ตั้งค่า</a>
   </nav>
   <div class="nav-backdrop" id="navBackdrop" onclick="toggleNav(false)" aria-hidden="true"></div>
 
@@ -1416,18 +1415,21 @@ function initEntryPages(){
     pkSelect(p,items.length?items[0].id:null);
   });
 }
-function setRole(r){
-  var viewerOnly=(r==='viewer');
-  /* viewer เห็นเฉพาะ "สรุปตัวเลข" · ซ่อนหัวกลุ่มที่ไม่เหลือเมนูด้วย */
-  document.querySelectorAll('#nav a[data-nav]').forEach(a=>{
-    var allow=!viewerOnly || a.dataset.nav==='summary';
-    a.style.display=allow?'':'none';
+/* กรองเมนูตามสิทธิ์จาก data-roles + ซ่อนหัวกลุ่มที่ไม่เหลือเมนู (ชุดมาตรฐาน AGA-SHELL v2) */
+function applyNavRole(role){
+  document.querySelectorAll('#nav a[data-nav]').forEach(function(a){
+    var roles=(a.getAttribute('data-roles')||'').split(/\s+/);
+    a.style.display = roles.indexOf(role)>=0 ? '' : 'none';
   });
-  document.querySelectorAll('#nav .group').forEach(g=>{
+  document.querySelectorAll('#nav .group').forEach(function(g){
     var n=g.nextElementSibling, any=false;
     while(n && !n.classList.contains('group')){ if(n.style.display!=='none') any=true; n=n.nextElementSibling; }
-    g.style.display=any?'':'none';
+    g.style.display = any ? '' : 'none';
   });
+}
+function setRole(r){
+  var viewerOnly=(r==='viewer');
+  applyNavRole(r);
   document.querySelectorAll('[data-internal]').forEach(function(e){ e.hidden=viewerOnly; });
   if(viewerOnly) go('summary');
 }
@@ -1440,5 +1442,7 @@ function toggleTheme(){
 function goHash(){ var h=location.hash.slice(1); if(SCREENS.indexOf(h)>=0) go(h); }
 initEntryPages();
 window.addEventListener('hashchange',goHash); goHash();
+/* กรองเมนูตามสิทธิ์เริ่มต้นตามค่าใน role selector */
+try{var _rs=document.getElementById('roleSel'); if(_rs) applyNavRole(_rs.value);}catch(e){}
 try{var t=localStorage.getItem('aga-theme'); if(t)document.documentElement.setAttribute('data-theme',t)}catch(e){}
 </script>

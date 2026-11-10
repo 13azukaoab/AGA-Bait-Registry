@@ -1,17 +1,45 @@
-# AGA-SHELL v1 — ชุด topbar / โลโก้ / เมนูซ้าย มาตรฐาน
+# AGA-SHELL v2 — ชุด topbar / โลโก้ / เมนูซ้าย มาตรฐาน (เมนูตามสิทธิ์ + เปลี่ยนชื่อเมนู)
 
 ใช้เหมือนกันทุกหน้า mockup (ยกเว้น `login.html`) · ทุกหน้ายังเป็น single-file HTML (คัดลอกบล็อกลงไฟล์ ไม่ได้ลิงก์ไฟล์นอก)
 หน้าอ้างอิงที่ทำเสร็จและเทสแล้ว = `../aga-bait-registry-prototype.html` (ดูวิธีวางจริงที่นั่น)
+
+## เปลี่ยนจาก v1 → v2 (งาน A5 — 10 พ.ย. 2026)
+1. **เปลี่ยนชื่อเมนูหลายอัน** + **เอา "รายละเอียดลูกค้า" (`data-nav="customer"`) ออกจาก sidebar** (เป็นหน้า detail เปิดจากคลิกชื่อลูกค้า ไม่ใช่เมนูหลัก)
+2. **เมนูแสดงตามสิทธิ์** — แต่ละลิงก์มี `data-roles="…"` (host/admin/recorder/viewer) · ตัวกรองคือ `applyNavRole(role)` ใน `shell.js`
+3. ลำดับกลุ่ม "ทะเบียนและสรุป" = registry · new (เปิดงาน) · material · summary · หัวกลุ่มเดิม "ดูแลระบบ (host)" → "ดูแลระบบ"
+
+**ชื่อเมนูใหม่ (ตาม `data-nav`):**
+| data-nav | ชื่อเดิม | ชื่อใหม่ | data-roles |
+|---|---|---|---|
+| todo | หน้า "ต้องทำ" | สถานะทะเบียนบริการ | host recorder |
+| service | กรอกผลบริการ (IG/IC) | กรอกข้อมูลทำบริการประจำเดือน | host recorder |
+| bait | กล่องเหยื่อ AG นอกรอบ | ติดตามผล AG และติดกล่อง AG (ไม่พร้อมรอบบริการ) | host recorder |
+| collect | รอเก็บสถานี (หมดสัญญา) | ลูกค้ารอเก็บสถานี | host recorder |
+| registry | ทะเบียนลูกค้า/สัญญา | ทะเบียนลูกค้า/สัญญา (คงเดิม) | host admin recorder |
+| new | เปิดงาน (admin) | เปิดงานเข้าทะเบียนบริการ | host admin |
+| material | สรุปวัสดุ | สรุปยอดใช้อุปกรณ์รายเดือน | host admin recorder |
+| summary | สรุปตัวเลข | Dashboard สรุปมูลค่าทั้งหมด | host admin recorder viewer |
+| closure | ปิดเดือน | ส่งข้อมูล และสรุปงานประจำเดือน | host recorder |
+| port | port สาขาต่างจังหวัด | ลงข้อมูล Port ต่างจังหวัด | host |
+| sync | Dashboard Sync | Dashboard Sync (คงเดิม) | host |
+| users | จัดการผู้ใช้ | จัดการผู้ใช้ (คงเดิม) | host |
+| settings | ตั้งค่า | ตั้งค่า (คงเดิม) | host |
+| ~~customer~~ | รายละเอียดลูกค้า | **ลบออกจากเมนู** | — |
+
+**การ wire role filter ในแต่ละหน้า (ต้องทำเพิ่มจาก v1):**
+- หน้าที่มี `setRole(r)` อยู่แล้ว → ใน setRole เรียก `applyNavRole(r)` (แทน loop ซ่อนเมนูเดิมถ้ามี) และตอนโหลดหน้าเรียก `applyNavRole(<role เริ่มต้นของ roleSel>)` หนึ่งครั้ง
+- หน้าที่ **ไม่มี** role selector (เช่น admin-add-customer ที่ fix เป็น host) → เรียก `applyNavRole('host')` ตอนโหลด (host เห็นครบอยู่แล้ว เมนูไม่หาย)
+- `applyNavRole` อยู่ใน `shell.js` — คัดลอกมาด้วยตอนวาง JS (ดูหน้า prototype เป็นตัวอย่าง)
 
 ## ไฟล์ในโฟลเดอร์นี้ (แหล่งจริง — แก้ที่นี่ แล้วคัดลอกไปทุกหน้า)
 | ไฟล์ | ใส่ตรงไหนของหน้า |
 |---|---|
 | `shell.css` | ใน `<style>` แทนที่ CSS เดิมของ `.topbar` `.logo` `.nav*` `.navtoggle` `.nav-backdrop` `.shell` และ media query ของเมนูมือถือ |
 | `topbar-left.html` | ในต้น `<div class="topbar">` แทนที่ปุ่ม ☰ + `<div class="logo">…</div>` เดิม (ฝั่งขวา: เดือน/บทบาท/ธีม/avatar เป็นของหน้าเอง คงไว้) |
-| `nav.html` | แทนที่ `<nav class="nav">…</nav>` + `.nav-backdrop` เดิมทั้งก้อน · **แก้อย่างเดียว:** ลิงก์ของหน้าตัวเองใส่ `class="active" aria-current="page"` |
-| `shell.js` | แทนที่ฟังก์ชัน `toggleNav` + listener ปุ่ม Esc เดิมของหน้า (กลไกคือ `body.nav-open` ทุกหน้า) |
+| `nav.html` | แทนที่ `<nav class="nav">…</nav>` + `.nav-backdrop` เดิมทั้งก้อน · **แก้อย่างเดียว:** ลิงก์ของหน้าตัวเองใส่ `class="active" aria-current="page"` (หน้า customer-detail ไม่มีเมนูของตัวเองแล้ว = ไม่ต้องใส่ active ที่ลิงก์ไหน) |
+| `shell.js` | แทนที่ฟังก์ชัน `toggleNav` + listener ปุ่ม Esc + **`applyNavRole`** เดิมของหน้า (กลไกคือ `body.nav-open` ทุกหน้า) |
 
-ค่า `data-nav` ของแต่ละลิงก์ = กุญแจหน้า: `todo service bait collect registry customer new summary material closure port sync users settings`
+ค่า `data-nav` ของแต่ละลิงก์ = กุญแจหน้า: `todo service bait collect registry new material summary closure port sync users settings` (v2 เอา `customer` ออกแล้ว)
 
 ## เช็กลิสต์ต่อหน้า
 1. มี `<meta charset="utf-8">` **และ `<meta name="viewport" content="width=device-width, initial-scale=1">`** (prototype กับ admin-add-customer เคยไม่มี viewport → มือถือวาดที่ 980px ทำให้ topbar แน่น)
