@@ -261,25 +261,24 @@ ul.plain{margin:6px 0 0;padding-left:18px;font-size:12.5px;color:var(--fg-muted)
 </div>
 
 <div class="shell">
-<!-- AGA-SHELL v1 : เมนูซ้าย — เหมือนกันทุกหน้า · ต่างกันแค่ลิงก์ของหน้าปัจจุบันใส่ class="active" aria-current="page" -->
+<!-- AGA-SHELL v2 : เมนูซ้าย — เหมือนกันทุกหน้า · เมนูตามสิทธิ์ (data-roles) — หน้านี้สิทธิ์ host เท่านั้น เมนูเลยไม่หาย -->
   <nav class="nav" id="nav" aria-label="เมนูหลัก">
     <div class="group">งานประจำวัน</div>
-    <a href="aga-bait-registry-prototype.html#todo" data-nav="todo"><span class="ic">◉</span> หน้า "ต้องทำ"</a>
-    <a href="aga-bait-registry-prototype.html#service" data-nav="service"><span class="ic">✎</span> กรอกผลบริการ (IG/IC)</a>
-    <a href="aga-bait-registry-prototype.html#bait" data-nav="bait"><span class="ic">▣</span> กล่องเหยื่อ AG นอกรอบ</a>
-    <a href="aga-bait-registry-prototype.html#collect" data-nav="collect"><span class="ic">⇲</span> รอเก็บสถานี (หมดสัญญา)</a>
+    <a href="aga-bait-registry-prototype.html#todo" data-nav="todo" data-roles="host recorder"><span class="ic">◉</span> สถานะทะเบียนบริการ</a>
+    <a href="aga-bait-registry-prototype.html#service" data-nav="service" data-roles="host recorder"><span class="ic">✎</span> กรอกข้อมูลทำบริการประจำเดือน</a>
+    <a href="aga-bait-registry-prototype.html#bait" data-nav="bait" data-roles="host recorder"><span class="ic">▣</span> ติดตามผล AG และติดกล่อง AG (ไม่พร้อมรอบบริการ)</a>
+    <a href="aga-bait-registry-prototype.html#collect" data-nav="collect" data-roles="host recorder"><span class="ic">⇲</span> ลูกค้ารอเก็บสถานี</a>
     <div class="group">ทะเบียนและสรุป</div>
-    <a href="aga-bait-registry-prototype.html#registry" data-nav="registry"><span class="ic">▤</span> ทะเบียนลูกค้า/สัญญา</a>
-    <a href="customer-detail.html" data-nav="customer"><span class="ic">◷</span> รายละเอียดลูกค้า</a>
-    <a href="admin-add-customer.html" data-nav="new"><span class="ic">＋</span> เปิดงาน (admin)</a>
-    <a href="aga-bait-registry-prototype.html#summary" data-nav="summary"><span class="ic">▦</span> สรุปตัวเลข</a>
-    <a href="aga-bait-registry-prototype.html#material" data-nav="material"><span class="ic">▥</span> สรุปวัสดุ</a>
-    <div class="group">ดูแลระบบ (host)</div>
-    <a href="month-closure.html" data-nav="closure"><span class="ic">🔒</span> ปิดเดือน</a>
-    <a href="provincial-port-update.html" data-nav="port"><span class="ic">⛰</span> port สาขาต่างจังหวัด</a>
-    <a href="dashboard-sync.html" data-nav="sync"><span class="ic">⇅</span> Dashboard Sync</a>
-    <a href="admin-user-management.html" data-nav="users" class="active" aria-current="page"><span class="ic">☺</span> จัดการผู้ใช้</a>
-    <a href="settings.html" data-nav="settings"><span class="ic">⚙</span> ตั้งค่า</a>
+    <a href="aga-bait-registry-prototype.html#registry" data-nav="registry" data-roles="host admin recorder"><span class="ic">▤</span> ทะเบียนลูกค้า/สัญญา</a>
+    <a href="admin-add-customer.html" data-nav="new" data-roles="host admin"><span class="ic">＋</span> เปิดงานเข้าทะเบียนบริการ</a>
+    <a href="aga-bait-registry-prototype.html#material" data-nav="material" data-roles="host admin recorder"><span class="ic">▥</span> สรุปยอดใช้อุปกรณ์รายเดือน</a>
+    <a href="aga-bait-registry-prototype.html#summary" data-nav="summary" data-roles="host admin recorder viewer"><span class="ic">▦</span> Dashboard สรุปมูลค่าทั้งหมด</a>
+    <div class="group">ดูแลระบบ</div>
+    <a href="month-closure.html" data-nav="closure" data-roles="host recorder"><span class="ic">🔒</span> ส่งข้อมูล และสรุปงานประจำเดือน</a>
+    <a href="provincial-port-update.html" data-nav="port" data-roles="host"><span class="ic">⛰</span> ลงข้อมูล Port ต่างจังหวัด</a>
+    <a href="dashboard-sync.html" data-nav="sync" data-roles="host"><span class="ic">⇅</span> Dashboard Sync</a>
+    <a href="admin-user-management.html" data-nav="users" data-roles="host" class="active" aria-current="page"><span class="ic">☺</span> จัดการผู้ใช้</a>
+    <a href="settings.html" data-nav="settings" data-roles="host"><span class="ic">⚙</span> ตั้งค่า</a>
   </nav>
   <div class="nav-backdrop" id="navBackdrop" onclick="toggleNav(false)" aria-hidden="true"></div>
 
@@ -297,8 +296,8 @@ ul.plain{margin:6px 0 0;padding-left:18px;font-size:12.5px;color:var(--fg-muted)
 
     <div class="toolbar">
       <div class="field grow"><label for="q">ค้นหา</label><input id="q" type="search" placeholder="ชื่อที่แสดง / username" oninput="render()"></div>
-      <div class="field"><label for="fRole">role</label>
-        <select id="fRole" onchange="render()"><option value="">ทุก role</option><option>host</option><option>admin</option><option>recorder</option></select></div>
+      <div class="field"><label for="fRole">ตำแหน่ง</label>
+        <select id="fRole" onchange="render()"><option value="">ทุกตำแหน่ง</option><option value="pm">Project Manager (PM)</option><option value="om">Operation Manager (OM)</option><option value="admin">Admin (เปิดงาน)</option><option value="recorder">หัวหน้างาน</option></select></div>
       <div class="field"><label for="fScope">หน่วยงาน</label>
         <select id="fScope" onchange="render()"><option value="">ทุกหน่วยงาน</option><option value="central">central (ส่วนกลาง)</option><option value="province">province (ต่างจังหวัด)</option><option value="all">ทุกหน่วยงาน (host)</option></select></div>
       <div class="field"><label for="fStatus">สถานะ</label>
@@ -308,7 +307,7 @@ ul.plain{margin:6px 0 0;padding-left:18px;font-size:12.5px;color:var(--fg-muted)
     <div class="tablewrap">
       <table>
         <thead><tr>
-          <th scope="col">ชื่อที่แสดง</th><th scope="col">role</th><th scope="col">หน่วยงาน (division_scope)</th>
+          <th scope="col">ชื่อที่แสดง</th><th scope="col">ตำแหน่ง</th><th scope="col">หน่วยงาน (division_scope)</th>
           <th scope="col">ทีม</th><th scope="col">สถานะ</th><th scope="col">เข้าใช้ล่าสุด</th><th scope="col"><span class="sr">จัดการ</span></th>
         </tr></thead>
         <tbody id="rows"></tbody>
@@ -323,7 +322,7 @@ ul.plain{margin:6px 0 0;padding-left:18px;font-size:12.5px;color:var(--fg-muted)
     <div class="panel">
       <h3>แต่ละ role ทำอะไรได้ (SPEC §5)</h3>
       <div class="body">
-        <div><b><span class="chip host">host</span></b><span class="d">ดู/แก้ทุกอย่าง + จัดการผู้ใช้ เกณฑ์ Tier ตั้งค่า ปิด/เปิดเดือน ตัวเลขต่างจังหวัด</span></div>
+        <div><b><span class="chip host">host</span> (PM / OM)</b><span class="d">ดู/แก้ทุกอย่าง + จัดการผู้ใช้ เกณฑ์ Tier ตั้งค่า ปิด/เปิดเดือน ตัวเลขต่างจังหวัด — PM กับ OM สิทธิ์เท่ากัน ต่างแค่ชื่อตำแหน่งที่แสดง</span></div>
         <div><b><span class="chip admin">admin</span></b><span class="d">ดูทุกเขต · เพิ่ม/แก้ลูกค้า สัญญา สถานี เฉพาะหน่วยงานที่ได้รับสิทธิ์</span></div>
         <div><b><span class="chip recorder">recorder</span></b><span class="d">ดูทุกเขต · กรอกผลบริการ เฉพาะหน่วยงานที่ได้รับสิทธิ์ · หน้าจอเริ่มต้นกรองตามทีมของตัวเอง</span></div>
       </div>
@@ -346,16 +345,28 @@ ul.plain{margin:6px 0 0;padding-left:18px;font-size:12.5px;color:var(--fg-muted)
 var ME = 'somying';                       // บัญชีที่กำลังล็อกอิน (host) — ใช้กันปิดบัญชีตัวเอง
 var TEAMS = ['A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','Z','Sup'];
 var DIVS  = {central:'central (ส่วนกลาง)', province:'province (ต่างจังหวัด)', all:'ทุกหน่วยงาน'};
+/* A2 (10 พ.ย. 2026): ผู้ใช้เลือก "ตำแหน่ง" ไม่ใช่ role ดิบ — PM/OM สิทธิ์เท่ากัน (role='host' เต็ม) ต่างแค่ชื่อตำแหน่งที่แสดง
+   key = ค่าที่เก็บใน dropdown/filter/สถิติ · role = สิทธิ์จริงที่ใช้คำนวณกฎฟอร์ม/RLS (ไม่เปลี่ยนจากเดิม) */
+var POSITIONS = [
+  {key:'pm',       label:'Project Manager (PM)', short:'PM',         role:'host'},
+  {key:'om',       label:'Operation Manager (OM)', short:'OM',       role:'host'},
+  {key:'admin',    label:'Admin (เปิดงาน)',       short:'Admin',     role:'admin'},
+  {key:'recorder', label:'หัวหน้างาน',            short:'หัวหน้างาน', role:'recorder'}
+];
+function posInfo(key){return POSITIONS.filter(function(p){return p.key===key;})[0];}
+function roleOfPos(key){var p=posInfo(key); return p?p.role:key;}
+function posLabel(key){var p=posInfo(key); return p?p.label:key;}
+function posShort(key){var p=posInfo(key); return p?p.short:key;}
 var USERS = [
-  {id:1, name:'สมหญิง ใจดี',   un:'somying',  role:'host',     scope:'all',     team:'',    on:true,  last:'วันนี้ 08:41'},
-  {id:2, name:'ประเสริฐ รักงาน', un:'prasert',  role:'host',     scope:'all',     team:'',    on:true,  last:'เมื่อวาน 17:20'},
-  {id:3, name:'วิภา สุขสันต์',   un:'wipa',     role:'admin',    scope:'central', team:'',    on:true,  last:'วันนี้ 09:05'},
-  {id:4, name:'กิตติ มั่นคง',    un:'kitti',    role:'admin',    scope:'central', team:'',    on:true,  last:'04/11/2026'},
-  {id:5, name:'นภา แสงทอง',     un:'napa',     role:'admin',    scope:'province',team:'',    on:true,  last:'30/10/2026'},
-  {id:6, name:'สมชาย ก้าวหน้า',  un:'somchai',  role:'recorder', scope:'central', team:'A',   on:true,  last:'วันนี้ 07:58'},
-  {id:7, name:'ธีรวัฒน์ เก่งกล้า', un:'theera',   role:'recorder', scope:'central', team:'E',   on:true,  last:'เมื่อวาน 16:02'},
-  {id:8, name:'มาลี ตั้งใจ',     un:'malee',    role:'recorder', scope:'central', team:'Z',   on:true,  last:'03/11/2026'},
-  {id:9, name:'อนุชา ใจเย็น',    un:'anucha',   role:'recorder', scope:'central', team:'I',   on:false, last:'12/09/2026'}
+  {id:1, name:'สมหญิง ใจดี',   un:'somying',  role:'host',     pos:'pm',       scope:'all',     team:'',    on:true,  last:'วันนี้ 08:41'},
+  {id:2, name:'ประเสริฐ รักงาน', un:'prasert',  role:'host',     pos:'om',       scope:'all',     team:'',    on:true,  last:'เมื่อวาน 17:20'},
+  {id:3, name:'วิภา สุขสันต์',   un:'wipa',     role:'admin',    pos:'admin',    scope:'central', team:'',    on:true,  last:'วันนี้ 09:05'},
+  {id:4, name:'กิตติ มั่นคง',    un:'kitti',    role:'admin',    pos:'admin',    scope:'central', team:'',    on:true,  last:'04/11/2026'},
+  {id:5, name:'นภา แสงทอง',     un:'napa',     role:'admin',    pos:'admin',    scope:'province',team:'',    on:true,  last:'30/10/2026'},
+  {id:6, name:'สมชาย ก้าวหน้า',  un:'somchai',  role:'recorder', pos:'recorder', scope:'central', team:'A',   on:true,  last:'วันนี้ 07:58'},
+  {id:7, name:'ธีรวัฒน์ เก่งกล้า', un:'theera',   role:'recorder', pos:'recorder', scope:'central', team:'E',   on:true,  last:'เมื่อวาน 16:02'},
+  {id:8, name:'มาลี ตั้งใจ',     un:'malee',    role:'recorder', pos:'recorder', scope:'central', team:'Z',   on:true,  last:'03/11/2026'},
+  {id:9, name:'อนุชา ใจเย็น',    un:'anucha',   role:'recorder', pos:'recorder', scope:'central', team:'I',   on:false, last:'12/09/2026'}
 ];
 var nextId = 10, roleFilterCard = '';
 
@@ -374,14 +385,15 @@ function scopeLabel(u){return DIVS[u.scope]||u.scope;}
 
 /* ===== การ์ดสรุป + ตาราง ===== */
 function counts(){
-  var c={host:0,admin:0,recorder:0,off:0};
-  USERS.forEach(function(u){ if(!u.on) c.off++; else c[u.role]++; });
+  var c={pm:0,om:0,admin:0,recorder:0,off:0};
+  USERS.forEach(function(u){ if(!u.on) c.off++; else c[u.pos]++; });
   return c;
 }
 function renderStats(){
   var c=counts(), box=$('stats'); box.textContent='';
-  [['','ทั้งหมด',USERS.length,'ทุกบัญชี'],['host','host',c.host,'ใช้งานอยู่'],['admin','admin',c.admin,'ใช้งานอยู่'],
-   ['recorder','recorder',c.recorder,'ใช้งานอยู่'],['off','ปิดบัญชี',c.off,'ล็อกอินไม่ได้']].forEach(function(s){
+  [['','ทั้งหมด',USERS.length,'ทุกบัญชี'],['pm','PM',c.pm,'ใช้งานอยู่'],['om','OM',c.om,'ใช้งานอยู่'],
+   ['admin','Admin',c.admin,'ใช้งานอยู่'],['recorder','หัวหน้างาน',c.recorder,'ใช้งานอยู่'],
+   ['off','ปิดบัญชี',c.off,'ล็อกอินไม่ได้']].forEach(function(s){
     var b=el('button','stat'+(roleFilterCard===s[0]?' on':'')); b.type='button';
     b.setAttribute('aria-pressed', roleFilterCard===s[0]?'true':'false');
     b.appendChild(el('div','lab',s[1])); b.appendChild(el('div','val',String(s[2]))); b.appendChild(el('div','sub',s[3]));
@@ -392,12 +404,12 @@ function renderStats(){
 function match(u){
   var q=$('q').value.trim().toLowerCase(), r=$('fRole').value, sc=$('fScope').value, st=$('fStatus').value;
   if(q && (u.name.toLowerCase().indexOf(q)<0 && u.un.toLowerCase().indexOf(q)<0)) return false;
-  if(r && u.role!==r) return false;
+  if(r && u.pos!==r) return false;
   if(sc && u.scope!==sc) return false;
   if(st==='on' && !u.on) return false;
   if(st==='off' && u.on) return false;
   if(roleFilterCard==='off' && u.on) return false;
-  if((roleFilterCard==='host'||roleFilterCard==='admin'||roleFilterCard==='recorder') && (u.role!==roleFilterCard||!u.on)) return false;
+  if((roleFilterCard==='pm'||roleFilterCard==='om'||roleFilterCard==='admin'||roleFilterCard==='recorder') && (u.pos!==roleFilterCard||!u.on)) return false;
   return true;
 }
 function render(flashId){
@@ -407,7 +419,7 @@ function render(flashId){
   list.forEach(function(u){
     var tr=el('tr', (u.on?'':'is-off')+(u.id===flashId?' flash':''));
     var td=el('td'); td.appendChild(el('div','nm',u.name+(u.un===ME?' (คุณ)':''))); td.appendChild(el('div','un',u.un)); tr.appendChild(td);
-    td=el('td'); td.appendChild(el('span','chip '+u.role,u.role)); tr.appendChild(td);
+    td=el('td'); td.appendChild(el('span','chip '+u.role,posShort(u.pos))); tr.appendChild(td);
     tr.appendChild(el('td',null,scopeLabel(u)));
     tr.appendChild(el('td',null,u.team||'—'));
     td=el('td'); var st=el('span','chip '+(u.on?'ok':'off')); st.appendChild(el('span','dot')); st.appendChild(document.createTextNode(u.on?'ใช้งาน':'ปิดบัญชี')); td.appendChild(st);
@@ -450,15 +462,15 @@ function fld(id,label,node,hint){
 function sel(opts, val){var s=document.createElement('select'); opts.forEach(function(o){var op=el('option',null,o[1]); op.value=o[0]; if(o[0]===val) op.selected=true; s.appendChild(op);}); return s;}
 function setErr(id,msg){ var w=$('f_'+id); if(!w) return; w.classList.toggle('bad',!!msg); $('e_'+id).textContent=msg||''; }
 
-/* กฎตาม role: host=ล็อกทุกหน่วยงาน/ไม่มีทีม · admin=เลือกหน่วยงาน/ไม่มีทีม · recorder=เลือกหน่วยงาน+ทีม */
+/* กฎตามตำแหน่ง (อ่านสิทธิ์จริงผ่าน roleOfPos): PM/OM(host)=ล็อกทุกหน่วยงาน/ไม่มีทีม · Admin=เลือกหน่วยงาน/ไม่มีทีม · หัวหน้างาน(recorder)=เลือกหน่วยงาน+ทีม */
 function applyRoleRules(){
-  var r=$('fr').value, sc=$('fs'), tm=$('ft');
-  if(r==='host'){ sc.value='all'; sc.disabled=true; tm.value=''; tm.disabled=true; }
+  var pos=$('fr').value, role=roleOfPos(pos), sc=$('fs'), tm=$('ft');
+  if(role==='host'){ sc.value='all'; sc.disabled=true; tm.value=''; tm.disabled=true; }
   else {
     sc.disabled=false; if(sc.value==='all') sc.value='central';
-    if(r==='admin'){ tm.value=''; tm.disabled=true; } else { tm.disabled=false; }
+    if(role==='admin'){ tm.value=''; tm.disabled=true; } else { tm.disabled=false; }
   }
-  [...sc.options].forEach(function(o){ o.hidden=(o.value==='all' && r!=='host'); o.disabled=(o.value==='all' && r!=='host'); });
+  [...sc.options].forEach(function(o){ o.hidden=(o.value==='all' && role!=='host'); o.disabled=(o.value==='all' && role!=='host'); });
 }
 
 /* ===== สร้าง / แก้ไข ===== */
@@ -469,8 +481,8 @@ function formBody(u){
   var un=document.createElement('input'); un.type='text'; un.value=u?u.un:''; un.maxLength=20; un.placeholder='เช่น napa'; un.autocomplete='off'; un.autocapitalize='none';
   if(isEdit) un.readOnly=true;
   wrap.appendChild(fld('fu','username',un, isEdit?'แก้ username ไม่ได้ (ใช้ล็อกอิน + อ้างอิงใน audit log)':'a-z 0-9 . _ - ยาว 3–20 ตัว · ห้ามซ้ำ · สร้างแล้วเปลี่ยนไม่ได้'));
-  var r=sel([['recorder','recorder · หัวหน้างาน'],['admin','admin · แอดมิน'],['host','host · ส่วนกลาง']], u?u.role:'recorder');
-  wrap.appendChild(fld('fr','role (สิทธิ์)',r,'ไม่มี viewer — ผู้ชมทั่วไปดูหน้าสรุป public ได้โดยไม่ต้องมีบัญชี'));
+  var r=sel([['pm','Project Manager (PM)'],['om','Operation Manager (OM)'],['admin','Admin (เปิดงาน)'],['recorder','หัวหน้างาน']], u?u.pos:'recorder');
+  wrap.appendChild(fld('fr','ตำแหน่ง',r,'PM และ OM มีสิทธิ์เท่ากัน (host เต็ม) ต่างกันแค่ชื่อตำแหน่งที่แสดง · ไม่มี viewer — ผู้ชมทั่วไปดูหน้าสรุป public ได้โดยไม่ต้องมีบัญชี'));
   var row=el('div','two');
   var sc=sel([['central','central (ส่วนกลาง)'],['province','province (ต่างจังหวัด)'],['all','ทุกหน่วยงาน (host)']], u?u.scope:'central');
   row.appendChild(fld('fs','หน่วยงาน (division_scope)',sc));
@@ -485,17 +497,17 @@ function wireRoleRules(){
   $('fr').onchange=function(){ applyRoleRules(); setErr('fs'); setErr('ft'); };
   applyRoleRules();
 }
-function readForm(){ return {name:$('fn').value.trim(), un:$('fu').value.trim().toLowerCase(), role:$('fr').value, scope:$('fs').value, team:$('ft').value}; }
+function readForm(){ return {name:$('fn').value.trim(), un:$('fu').value.trim().toLowerCase(), pos:$('fr').value, scope:$('fs').value, team:$('ft').value}; }
 function validate(v, existing){
-  var ok=true; ['fn','fu','fr','fs','ft'].forEach(function(i){setErr(i);});
+  var ok=true, role=roleOfPos(v.pos); ['fn','fu','fr','fs','ft'].forEach(function(i){setErr(i);});
   if(!v.name){ setErr('fn','กรอกชื่อที่แสดง'); ok=false; }
   if(!existing){
     if(!/^[a-z0-9._-]{3,20}$/.test(v.un)){ setErr('fu','username ต้องเป็น a-z 0-9 . _ - ยาว 3–20 ตัว'); ok=false; }
     else if(USERS.some(function(u){return u.un===v.un;})){ setErr('fu','username นี้มีคนใช้แล้ว ลองชื่ออื่น'); ok=false; }
   }
-  if(v.role==='recorder' && !v.team){ setErr('ft','recorder ต้องเลือกทีม'); ok=false; }
-  if(existing && existing.role==='host' && existing.on && v.role!=='host' && activeHosts(existing.id)===0){
-    setErr('fr','ลดสิทธิ์ไม่ได้ — ต้องมี host ที่ใช้งานอยู่อย่างน้อย 1 คน'); ok=false; }
+  if(role==='recorder' && !v.team){ setErr('ft',posLabel(v.pos)+' ต้องเลือกทีม'); ok=false; }
+  if(existing && existing.role==='host' && existing.on && role!=='host' && activeHosts(existing.id)===0){
+    setErr('fr','เปลี่ยนตำแหน่งนี้ไม่ได้ — ต้องมี host (PM/OM) ที่ใช้งานอยู่อย่างน้อย 1 คน'); ok=false; }
   return ok;
 }
 function openCreate(){
@@ -504,7 +516,8 @@ function openCreate(){
   body.appendChild(info);
   openModal('สร้างบัญชีใหม่', body, [btn('ยกเลิก','',closeModal), btn('สร้างบัญชี','primary',function(){
     var v=readForm(); if(!validate(v,null)) return;
-    var u={id:nextId++, name:v.name, un:v.un, role:v.role, scope:v.role==='host'?'all':v.scope, team:v.role==='recorder'?v.team:'', on:true, last:'ยังไม่เคยเข้า', must:true};
+    var role=roleOfPos(v.pos);
+    var u={id:nextId++, name:v.name, un:v.un, role:role, pos:v.pos, scope:role==='host'?'all':v.scope, team:role==='recorder'?v.team:'', on:true, last:'ยังไม่เคยเข้า', must:true};
     USERS.push(u); render(u.id);
     showPassword('สร้างบัญชีแล้ว', u, 'ส่งรหัสนี้ให้ '+u.name+' ด้วยตัวเอง (โทร/แชตส่วนตัว)');
   })]);
@@ -516,7 +529,8 @@ function openEdit(id){
   if(u.un===ME) body.insertBefore(el('div','banner warn','นี่คือบัญชีของคุณ — ถ้าลดสิทธิ์ตัวเอง คุณจะเข้าหน้านี้ไม่ได้อีก'), body.firstChild);
   openModal('แก้ไขบัญชี · '+u.un, body, [btn('ยกเลิก','',closeModal), btn('บันทึก','primary',function(){
     var v=readForm(); if(!validate(v,u)) return;
-    u.name=v.name; u.role=v.role; u.scope=v.role==='host'?'all':v.scope; u.team=v.role==='recorder'?v.team:'';
+    var role=roleOfPos(v.pos);
+    u.name=v.name; u.role=role; u.pos=v.pos; u.scope=role==='host'?'all':v.scope; u.team=role==='recorder'?v.team:'';
     closeModal(); render(u.id); toast('บันทึกการแก้ไขแล้ว · เขียน audit log');
   })]);
   wireRoleRules();
@@ -525,7 +539,7 @@ function openEdit(id){
 /* ===== แสดงรหัสชั่วคราว (สร้าง/รีเซ็ต) ===== */
 function showPassword(title, u, lead){
   var pw=pwGen(), w=el('div');
-  var kv=el('dl','kv'); [['ชื่อที่แสดง',u.name],['username',u.un],['role',u.role]].forEach(function(p){kv.appendChild(el('dt',null,p[0])); kv.appendChild(el('dd',null,p[1]));}); w.appendChild(kv);
+  var kv=el('dl','kv'); [['ชื่อที่แสดง',u.name],['username',u.un],['ตำแหน่ง',posLabel(u.pos)]].forEach(function(p){kv.appendChild(el('dt',null,p[0])); kv.appendChild(el('dd',null,p[1]));}); w.appendChild(kv);
   w.appendChild(el('div',null,'รหัสผ่านชั่วคราว'));
   var box=el('div','pwbox'); var code=el('code',null,pw); box.appendChild(code);
   box.appendChild(btn('คัดลอก','sm',function(){
@@ -566,6 +580,18 @@ function toggleNav(open){
   var b=document.body, want=(typeof open==='boolean')?open:!b.classList.contains('nav-open');
   b.classList.toggle('nav-open',want); $('navToggle').setAttribute('aria-expanded',want?'true':'false');
 }
+/* กรองเมนูตามสิทธิ์จาก data-roles + ซ่อนหัวกลุ่มที่ไม่เหลือเมนู (ชุดมาตรฐาน AGA-SHELL v2) */
+function applyNavRole(role){
+  document.querySelectorAll('#nav a[data-nav]').forEach(function(a){
+    var roles=(a.getAttribute('data-roles')||'').split(/\s+/);
+    a.style.display = roles.indexOf(role)>=0 ? '' : 'none';
+  });
+  document.querySelectorAll('#nav .group').forEach(function(g){
+    var n=g.nextElementSibling, any=false;
+    while(n && !n.classList.contains('group')){ if(n.style.display!=='none') any=true; n=n.nextElementSibling; }
+    g.style.display = any ? '' : 'none';
+  });
+}
 function toggleTheme(){
   var r=document.documentElement, cur=r.getAttribute('data-theme');
   var dark=cur?cur==='dark':window.matchMedia('(prefers-color-scheme:dark)').matches;
@@ -573,6 +599,7 @@ function toggleTheme(){
   r.setAttribute('data-theme',next);
   try{localStorage.setItem('aga-theme',next)}catch(e){}
 }
+applyNavRole('host'); // หน้านี้ไม่มี role selector — สิทธิ์ host เสมอ (ดู _shell/README.md)
 render();
 </script>
 </body>
