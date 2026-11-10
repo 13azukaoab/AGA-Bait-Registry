@@ -24,7 +24,7 @@
 |---|---|---|
 | โครง Next.js + TS + PWA | ✅ เสร็จ | 3 พ.ย. — App Router + TS strict + PWA(Serwist) + Noto Sans Thai · route stub ตาม §8 · typecheck/lint/test/build ผ่าน (โค้ดอยู่ branch `claude/focused-pike-c58fe0` → รวมเข้าสาย integration แล้ว ยังไม่ merge `main`) |
 | `lib/rules` + unit test | ✅ เสร็จ | 3 พ.ย. — 7 pure function ครบ · 16 เทสผ่าน (Vitest) · เหลือเทียบเกณฑ์ §15 รอ fixtures เขต 1 |
-| DB schema + RLS (Supabase) | ✅ เสร็จ (ตาม SPEC v1.1) → 🔄 ปรับตาม v1.6 | 4–5 พ.ย. — 10 migration + RLS ทุกตาราง + audit · 210 เทส pgTAP · 10 พ.ย. เพิ่ม migration ปรับ schema ให้ตรง SPEC v1.6 (ดู changelog 10 พ.ย.) |
+| DB schema + RLS (Supabase) | ✅ เสร็จ (ตรง SPEC v1.6) | 4–5 พ.ย. — 10 migration + RLS ทุกตาราง + audit · 10 พ.ย. — +6 migration ปรับให้ตรง SPEC v1.6 · รวม 331 เทส pgTAP ผ่าน (ดู changelog 10 พ.ย. "รวมสายโค้ด") · ยังไม่มี Supabase cloud project |
 | ~~นำเข้าสัญญา (หน้าจอ 7)~~ | ❌ ตัดหน้าจอออก (v1.3) | คง `lib/import` (68 เทส) ไว้ใช้ seed ข้อมูลครั้งเดียวตาม SPEC §14 ข้อ 12 (ไม่มีหน้าจอ) |
 | Snapshot + Dashboard Sync | 🔄 logic เสร็จ | 3 พ.ย. — `lib/dashboard` (ประกอบ JSON §9.1) 23 เทส · เหลือ GitHub API sync + Cron |
 | fixtures เขต 1 (`zone1_registry.*`) | ⚠️ รอไฟล์ | ใช้ตรวจเกณฑ์ยอมรับ §15 |
@@ -108,6 +108,30 @@
 ---
 
 ## บันทึกประจำวัน (Changelog)
+
+### 2026-11-10 (รวมสายโค้ดเข้าสายเอกสาร + ปรับ schema ให้ตรง SPEC v1.6) — sub session (Opus)
+ทำใน worktree `claude/sleepy-cori-b7ead6` (ตัดจาก `main` แล้ว merge `claude/focused-pike-c58fe0` เข้ามา) · ยังไม่ push / ยังไม่ merge `main`
+- **merge:** รวมโค้ดจริง (Next.js, `lib/rules`, `lib/import`, `lib/dashboard`, migration + pgTAP) เข้ากับเอกสาร SPEC v1.6 · `SPEC.md` ยึดฉบับ `main` + เติมหมายเหตุ RLS `ENABLE` ไม่ใช้ `FORCE` (§5) และคำถามสิทธิ์ลบเป็น §14 ข้อ 15, 16 · `task.md` ยึดฉบับ `main` + แก้ตาราง "เฟสสร้างจริง" + คง changelog 3–5 พ.ย.
+- **migration ใหม่ 6 ไฟล์ (เขียนเทสก่อน):**
+  1. `20261110090000_drop_month_lock` — ยกเลิกล็อกเดือนปิด (§7.7 v1.2): host + recorder (ในขอบเขต) แก้ visits/station_checks เดือนที่ปิดแล้วได้ · admin/viewer ถูก RLS กัน · ทุกการแก้ลง `audit_log`
+  2. `20261110090100_month_closures_scope` — key = (`month_key`, `scope`) enum `central`/`provincial` · ลบ `reopened_*` · เพิ่ม `last_resync_at/by` · recorder ปิด/ซิงก์ได้เฉพาะ `central` (ต้องมี `central` ใน division_scope) และลบ (= เปิดเดือนใหม่) ไม่ได้ · host ทำได้ทั้งหมด
+  3. `20261110090200_snapshot_manual_fields` — `v_s1…v_xl3`, `report_cust`, `report_value`, `confirmed_at`, `confirmed_by` · เขียน snapshot ได้เฉพาะ host (แถว manual จึงเป็นของ host เท่านั้น)
+  4. `20261110090300_positions_and_profile_accounts` — ตาราง `positions` 4 ตำแหน่ง (Admin (เปิดงาน)=admin, หัวหน้างาน=recorder, Project Manager=host, OM=host) · `profiles` เพิ่ม `username`/`is_active`/`must_change_password`/`last_login`/`position_code` · role ตามตำแหน่งอัตโนมัติ · กัน host คนสุดท้ายถูกปิด/ลดสิทธิ์/ลบ · ปิดบัญชีตัวเองไม่ได้ · บัญชีที่ปิดแล้วหมดสิทธิ์ทันที (helper เช็ก `is_active`)
+  5. `20261110090400_audit_log_context` — `audit_log` เพิ่ม `branch_id`/`contract_id`/`month_key` + index · trigger เติมให้อัตโนมัติ · เริ่ม audit `month_closures` และ snapshot แถว manual
+  6. `20261110090500_fuzzy_search_trgm` — เปิด `pg_trgm` + GIN index ชื่อลูกค้า/เลขสัญญา · ทดสอบชื่อไทยแล้วใช้ได้ (บน local)
+- **cleanup:** ลบ route `app/(app)/import` + ลิงก์หน้าแรก (หน้าจอ 7 ถูกตัด v1.3) · คง `lib/import` ไว้ seed ครั้งเดียว (§14 ข้อ 12) · อัปเดต `supabase/README.md`
+- **ผลตรวจ:** `typecheck` ✅ · `lint` ✅ · `npm test` 107 ✅ · `db:test` 331 ✅ (15 ไฟล์เทส, Supabase local + Docker)
+- **ไฟล์ที่แก้/เพิ่ม:** `SPEC.md`, `task.md`, `supabase/migrations/20261110090{0..5}00_*.sql`, `supabase/tests/{02,06,08,09}` (แก้) + `{10..14}` (ใหม่), `supabase/README.md`, `app/page.tsx`, ลบ `app/(app)/import/page.tsx`
+- **รอเจ้าของตัดสิน (ไม่บล็อก):**
+  1. ชื่อค่า scope `provincial` (ตาม SPEC §6) ไม่ตรงกับ `branches.division` = `province` — คงไว้ 2 แบบ หรือเปลี่ยนให้ตรงกัน
+  2. รูปแบบ `monthly_branch_snapshots.month_key` — `month_closures`/`audit_log` ใช้ `YYYY-MM` แต่เทสเดิมของ snapshot ใช้ `JAN.26` · เสนอให้ใช้ `YYYY-MM` ทั้งระบบ แปลงเป็น `MMM.YY` ตอนส่ง Dashboard
+  3. recorder ปิดเดือนแล้วใครเขียน snapshot แถว computed — ตอนนี้ host หรือ server (service role) เท่านั้น
+  4. recorder ควรอ่าน `audit_log` ได้ไหม (ชิป "แก้หลังปิด N" + ประวัติในหน้า 8) — ตอนนี้ host อ่านได้คนเดียว
+  5. anon อ่าน snapshot ได้ทุกคอลัมน์ รวม `report_*`/`confirmed_by` — ต้องซ่อนไหม
+  6. recorder แก้ `closed_by`/`closed_at` ของแถวปิดเดือน central ได้ (audit จับได้) — ต้องล็อกเพิ่มไหม
+  7. กฎ §6.5 "ยอดจากรายงานไม่ตรง = บันทึกไม่ได้" และ "ปิดได้เฉพาะเดือนที่จบแล้ว" (§7.7) — บังคับที่ฐานข้อมูลด้วย หรือแค่ที่แอป
+  8. §14 ข้อ 15, 16 สิทธิ์ลบ (ค้างจากรอบก่อน)
+- **ทำต่อ:** ตั้ง Supabase cloud project แล้วรันเทส `14_fuzzy_search` ซ้ำกับชื่อไทยจริง · SPEC §6 ยังมีหมายเหตุ "⚠ ต้องทำเป็น migration ใหม่ตอน build" (ทำแล้ว — ให้ session เอกสารลบออก)
 
 ### 2026-11-10 (A6 งานเก็บตก — ตารางล้นจอมือถือ + ธีมกะพริบ) — session หลัก (coordinator)
 เจ้าของตัดสิน D3 (PM/OM เท่ากัน ทั้งคู่ host เต็ม) + D6 (แยกหน้าเปิดงาน/ทะเบียน) + เลือกเริ่ม A6 · บันทึกผลตัดสินใน `docs/แผนงานแก้ไข.md`
