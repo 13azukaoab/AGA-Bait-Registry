@@ -29,7 +29,10 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="th">
+    // suppressHydrationWarning: สคริปต์ธีม (components/shell/ThemeScript) ตั้ง data-theme บน <html>
+    // ก่อน React hydrate เพื่อไม่ให้หน้ากะพริบ — React เลยเห็น attribute ที่ server ไม่ได้ render
+    // (ไม่กระทบผู้ใช้ แค่กัน warning ใน dev · ผลเฉพาะ attribute ของ <html> ไม่ลามถึงลูก)
+    <html lang="th" suppressHydrationWarning>
       <body className={notoSansThai.variable}>{children}</body>
     </html>
   );
