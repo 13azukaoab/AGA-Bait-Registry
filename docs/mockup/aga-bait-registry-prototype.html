@@ -299,6 +299,115 @@ tfoot td{padding:10px 12px;font-weight:700;background:var(--surface-2);border-to
 .fastclose b{color:var(--ok)}
 .orsep{text-align:center;font-size:12px;color:var(--fg-faint);margin:0 0 12px}
 .sech{font-weight:600;font-size:13px;margin:16px 0 8px}
+
+/* ===== หน้ากรอกผลบริการ (#service) + กล่องเหยื่อ AG นอกรอบ (#bait) =====
+   โครง split: ซ้ายรายชื่อลูกค้า / ขวาฟอร์มทีละราย · ส่วนกล่อง AG ใช้ชุดสไตล์เดียวกันทั้งสองหน้า · อ้างเฉพาะ CSS variable */
+[hidden]{display:none!important}
+.formpanel{scroll-margin-top:70px}
+.entry-left .body{padding:12px}
+.filters{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
+.filters .field select{min-width:0;width:100%}
+.searchbox{width:100%;font-family:inherit;font-size:14px;color:var(--fg);background:var(--surface);
+  border:1px solid var(--border-strong);border-radius:8px;padding:10px 12px}
+.searchbox:focus-visible,.fbtn:focus-visible,.bigok:focus-visible,.optbtn:focus-visible,.cust:focus-visible,
+.sugg-btn:focus-visible,.tog button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.sugg{margin:8px 0 0;padding:10px 12px;border-radius:9px;background:var(--warn-soft);color:var(--fg);
+  font-size:12.5px;border:1px solid var(--border)}
+.sugg-list{display:flex;flex-direction:column;gap:6px;margin-top:8px}
+.sugg-btn{font:inherit;font-size:13px;text-align:left;color:var(--fg);background:var(--surface);
+  border:1px solid var(--border-strong);border-radius:8px;padding:9px 10px;cursor:pointer}
+.sugg-btn small{color:var(--fg-muted);margin-left:4px}
+.sugg-btn:hover{border-color:var(--accent)}
+.prog{margin:12px 0 4px}
+.prog .t{display:flex;justify-content:space-between;align-items:baseline;font-size:12.5px;margin-bottom:6px}
+.prog .t .pc{color:var(--ok);font-weight:600}
+.tog{display:flex;gap:3px;padding:3px;background:var(--surface-2);border:1px solid var(--border);border-radius:9px;margin:10px 0}
+.tog button{flex:1;font:inherit;font-size:12.5px;border:0;background:transparent;color:var(--fg-muted);
+  padding:7px 8px;border-radius:7px;cursor:pointer}
+.tog button[aria-pressed="true"]{background:var(--accent);color:var(--accent-fg);font-weight:600}
+.custlist{display:flex;flex-direction:column;max-height:min(560px,calc(100vh - 320px));min-height:120px;overflow-y:auto;
+  border:1px solid var(--border);border-radius:9px}
+.custlist:empty{display:none}
+.cust{display:flex;align-items:center;gap:8px;width:100%;text-align:left;font:inherit;color:inherit;
+  background:var(--surface);border:0;border-top:1px solid var(--border);padding:10px 12px;cursor:pointer}
+.cust:first-child{border-top:0}
+.cust:hover{background:var(--surface-2)}
+.cust.sel{background:var(--accent-soft);box-shadow:inset 3px 0 0 var(--accent)}
+.cust .main{min-width:0;flex:1}
+.cust .main b{display:block;font-size:13.5px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cust .main small{display:block;font-size:11.5px;color:var(--fg-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cust .tags{display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex:none}
+.agtag{font-size:10.5px;font-weight:600;padding:1px 7px;border-radius:5px;background:var(--warn-soft);color:var(--warn)}
+.empty{padding:22px 14px;text-align:center;color:var(--fg-muted);font-size:13px}
+
+/* ฟอร์มขวา */
+.fhead{padding:14px 16px;border-bottom:1px solid var(--border)}
+.fhead .pos{font-size:12px;color:var(--fg-muted);display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.fhead .nm{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:3px 0 9px}
+.fhead .nm b{font-size:17px;font-weight:600}
+.fgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-bottom:14px}
+.fgrid .field label{font-size:12px}
+.fgrid .field select,.fgrid .field input{width:100%;min-width:0;padding:10px 12px;font-size:14px}
+.fgrid .field .sub{font-size:11px;color:var(--fg-faint)}
+.bigok{display:flex;align-items:center;justify-content:center;gap:12px;width:100%;min-height:58px;font:inherit;
+  font-size:16px;font-weight:600;line-height:1.3;border-radius:12px;cursor:pointer;color:var(--ok);
+  background:var(--ok-soft);border:2px solid var(--ok);padding:8px 14px}
+.bigok .tick{font-size:22px;line-height:1}
+.bigok small{display:block;font-size:12px;font-weight:400;opacity:.9}
+.bigok[aria-pressed="true"]{background:var(--ok);color:var(--accent-fg)}
+.fbtns{display:grid;grid-template-columns:repeat(auto-fit,minmax(135px,1fr));gap:8px;margin:12px 0 2px}
+.fbtn{display:flex;align-items:center;justify-content:center;gap:7px;min-height:50px;font:inherit;font-size:14px;
+  font-weight:500;color:var(--fg);background:var(--surface);border:1px solid var(--border-strong);
+  border-radius:10px;cursor:pointer;padding:6px 10px}
+.fbtn[aria-pressed="true"]{background:var(--accent-soft);border-color:var(--accent);color:var(--accent-strong);font-weight:600}
+.fbtn:disabled{opacity:.45;cursor:not-allowed}
+.fbtn .n{font-size:11px;font-weight:700;min-width:20px;padding:1px 6px;border-radius:999px;
+  background:var(--surface-3);color:var(--fg-muted);text-align:center}
+.fbtn[aria-pressed="true"] .n{background:var(--accent);color:var(--accent-fg)}
+.fsec,.agsec{border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-top:12px;background:var(--surface)}
+.fsec-h{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-weight:600;font-size:13.5px;margin-bottom:8px}
+.fsec .hint{margin:10px 0 0}
+.agsec-h{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px}
+.agsec-h b{font-size:13.5px}
+.agsec-h .btn{margin-left:auto;min-height:38px}
+.agfields{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.agfields .span2{grid-column:1/-1}
+.optrow{display:flex;gap:6px}
+.optbtn{flex:1 1 0;min-width:0;min-height:44px;font:inherit;font-size:14px;font-weight:600;color:var(--fg);
+  background:var(--surface);border:1px solid var(--border-strong);border-radius:9px;cursor:pointer}
+.optbtn[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-fg)}
+.optbtn:disabled{cursor:not-allowed}
+.pt .mini select{padding:9px 10px;font-size:13.5px}
+.pt.off{opacity:.5}
+.mini.need .optrow,.mini.need select{outline:2px solid var(--danger);outline-offset:2px;border-radius:9px}
+.mini.need>label{color:var(--danger)}
+.skipchk{display:flex;gap:10px;align-items:flex-start;padding:11px 12px;border:1px dashed var(--border-strong);
+  border-radius:9px;margin-top:4px;cursor:pointer;font-size:13.5px}
+.skipchk input{width:20px;height:20px;margin:1px 0 0;flex:none;accent-color:var(--accent)}
+.skipchk small{color:var(--fg-muted);font-size:12px}
+.rowadd{padding:9px 12px;border-top:1px solid var(--border);background:var(--surface-2)}
+.savebar{position:sticky;bottom:0;z-index:5;display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+  padding:12px 16px;border-top:1px solid var(--border);background:var(--surface);border-radius:0 0 var(--radius) var(--radius)}
+.savebar .btn{min-height:46px;font-size:14.5px;padding:8px 18px}
+.savebar .btn.primary{flex:1 1 120px;font-size:15px;font-weight:600}
+.savemsg{flex:1 1 100%;font-size:12.5px;color:var(--danger);background:var(--danger-soft);border-radius:8px;padding:8px 12px}
+.savemsg ul{margin:4px 0 0;padding-left:18px}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:60;background:var(--fg);color:var(--surface);
+  padding:10px 16px;border-radius:10px;font-size:13px;box-shadow:var(--shadow);max-width:calc(100vw - 32px)}
+/* หัวข้อย่อยในหน้าสรุป (ย้ายมาจากหน้ากรอกผลบริการ / กล่องเหยื่อ) */
+.subsec{margin-top:30px;padding-top:20px;border-top:1px solid var(--border)}
+.subhead{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:4px}
+.subhead h2{margin:0;font-size:17px;font-weight:600}
+.subdesc{margin:0 0 12px;color:var(--fg-muted);font-size:13px}
+@media (max-width:860px){
+  .custlist{max-height:300px}
+}
+@media (max-width:600px){
+  .agfields{grid-template-columns:1fr}
+  .fhead .nm b{font-size:16px}
+  .savebar{padding:10px 12px}
+  .agsec,.fsec{padding:11px 11px}
+}
 </style>
 
 <div class="topbar">
@@ -327,7 +436,7 @@ tfoot td{padding:10px 12px;font-weight:700;background:var(--surface-2);border-to
     <div class="group">งานประจำวัน</div>
     <a href="aga-bait-registry-prototype.html#todo" data-nav="todo" class="active" aria-current="page"><span class="ic">◉</span> หน้า "ต้องทำ"</a>
     <a href="aga-bait-registry-prototype.html#service" data-nav="service"><span class="ic">✎</span> กรอกผลบริการ (IG/IC)</a>
-    <a href="aga-bait-registry-prototype.html#bait" data-nav="bait"><span class="ic">▣</span> กล่องเหยื่อ (AG)</a>
+    <a href="aga-bait-registry-prototype.html#bait" data-nav="bait"><span class="ic">▣</span> กล่องเหยื่อ AG นอกรอบ</a>
     <a href="aga-bait-registry-prototype.html#collect" data-nav="collect"><span class="ic">⇲</span> รอเก็บสถานี (หมดสัญญา)</a>
     <div class="group">ทะเบียนและสรุป</div>
     <a href="aga-bait-registry-prototype.html#registry" data-nav="registry"><span class="ic">▤</span> ทะเบียนลูกค้า/สัญญา</a>
@@ -403,143 +512,16 @@ tfoot td{padding:10px 12px;font-weight:700;background:var(--surface-2);border-to
       </div>
     </section>
 
-    <!-- ========== 2. SERVICE IG/IC (exception-based) ========== -->
+    <!-- ========== 2. SERVICE IG/IC : หน้ากรอกผลบริการ (ซ้ายรายชื่อ / ขวาฟอร์มทีละราย) ==========
+         ซ้าย = ตัวกรอง + ค้นหาช่องเดียว + ความคืบหน้า + รายชื่อ · ขวา = ฟอร์มทีละราย (IG/IC + กล่อง AG ในฟอร์มเดียวกัน)
+         ทั้งสองฝั่งสร้างด้วย JS (ท้ายไฟล์ หัวข้อ "หน้ากรอกผลบริการ + กล่อง AG นอกรอบ") -->
     <section id="s-service" hidden>
       <div class="page-head"><h1>กรอกผลบริการรายเดือน (IG/IC)</h1>
-        <p>ตรวจสถานีในดิน/ในคอนกรีตรอบประจำเดือน — ลูกค้าบางรายมีเป็นร้อยจุด จึงกรอก <b>เฉพาะจุดที่พบปลวก</b> ที่เหลือถือว่าปกติ</p></div>
-      <div style="display:flex;gap:10px;align-items:flex-end;margin:16px 0 8px">
-        <div class="field" style="flex:1"><label>ค้นหาลูกค้าด่วน (เลขที่สัญญา / ชื่อลูกค้า)</label>
-          <input value="สยามพัฒนา" placeholder="เช่น CT26-0000142 หรือ สยามพัฒนา..." style="width:100%"></div>
+        <p>เลือกลูกค้าทางซ้าย แล้วกรอกทีละราย — ตั้งต้นว่าทุกจุดปกติ กรอกเฉพาะที่พบปลวก เปลี่ยนไม้ หรือมีงานซ่อม · งานกล่องเหยื่อ AG กรอกในฟอร์มเดียวกัน</p></div>
+      <div class="split entry" style="margin-top:16px">
+        <div class="panel entry-left" id="svLeft"></div>
+        <div class="panel formpanel" id="svForm"></div>
       </div>
-      <div class="card" style="margin:0 0 18px;max-width:560px">
-        <div class="rowlist">
-          <div class="r"><div class="main"><b>บมจ. สยามพัฒนาเฮ้าส์</b><small>CT26-0000142 · พุทธมณฑล · ทีม A · 120 สถานี</small></div><div class="meta"><span class="chip ok">ตรงตัว</span></div></div>
-          <div class="r"><div class="main"><b>บจก. สยามคอมเพล็กซ์</b><small>CT25-0000255 · พุทธมณฑล · ทีม B</small></div><div class="meta"><span class="chip info">ชื่อใกล้เคียง</span></div></div>
-          <div class="r"><div class="main"><b>หจก. สยามการช่าง</b><small>CT24-0000190 · นครปฐม · ทีม A</small></div><div class="meta"><span class="chip info">ชื่อใกล้เคียง</span></div></div>
-        </div>
-        <div style="padding:9px 14px;border-top:1px solid var(--border);font-size:11.5px;color:var(--fg-muted)">
-          รองรับพิมพ์ผิดเล็กน้อย (fuzzy) · ค้นเลขสัญญาบางส่วนได้ · ถ้าไม่พบจะขึ้น "ไม่พบลูกค้า — ลองเลขสัญญาหรือคำอื่น"
-        </div>
-      </div>
-      <div class="toolbar">
-        <div class="field"><label>เขต</label><select><option>เขต 1</option><option>ทุกเขต</option></select></div>
-        <div class="field"><label>สาขา</label><select><option>พุทธมณฑล</option><option>นครปฐม</option><option>หัวหิน</option></select></div>
-        <div class="field"><label>ทีม</label><select><option>ทีมของฉัน (A)</option><option>ทุกทีม</option></select></div>
-        <div class="field"><label>เดือน</label><select><option>ตุลาคม 2026</option><option>กันยายน 2026</option></select></div>
-      </div>
-      <div style="font-size:12.5px;color:var(--fg-muted);margin:0 0 10px;font-weight:600">สรุปสถานี IG/IC ในพื้นที่ · สาขาพุทธมณฑล</div>
-      <div class="stats">
-        <div class="stat accent"><div class="lab">สถานีทั้งหมด (IG+IC)</div><div class="val num">1,240</div><div class="sub">120 ลูกค้า</div></div>
-        <div class="stat"><div class="lab"><span class="sttype">IG</span> ในดิน</div><div class="val num">870</div><div class="sub">70% ของทั้งหมด</div></div>
-        <div class="stat"><div class="lab"><span class="sttype">IC</span> ในคอนกรีต</div><div class="val num">370</div><div class="sub">30% ของทั้งหมด</div></div>
-        <div class="stat ok"><div class="lab">ใช้งานอยู่</div><div class="val num">1,198</div><div class="sub">active</div></div>
-        <div class="stat warn"><div class="lab">ชำรุด / ถอน</div><div class="val num">42</div><div class="sub">ต้องซ่อม/เปลี่ยน</div></div>
-      </div>
-      <div class="split entry">
-        <div class="panel">
-          <h3>ลูกค้าในเดือนนี้ <span class="chip na num">24 ราย</span></h3>
-          <div class="tablewrap" style="border:0;box-shadow:none;border-radius:0">
-            <table>
-              <thead><tr><th>ลูกค้า</th><th class="c">สถานี IG/IC</th><th class="c">รอบเดือน</th><th></th></tr></thead>
-              <tbody>
-                <tr style="background:var(--accent-soft)"><td><b>บมจ. สยามพัฒนาเฮ้าส์</b></td><td class="c num">120</td><td class="c"><span class="chip miss">ยังไม่กรอก</span></td><td class="r"><button class="btn sm primary">กรอก</button></td></tr>
-                <tr><td>โรงแรมบ้านสวนรีสอร์ท</td><td class="c num">45</td><td class="c"><span class="chip miss">ยังไม่กรอก</span></td><td class="r"><button class="btn sm">กรอก</button></td></tr>
-                <tr><td>หจก. ทรัพย์เจริญ</td><td class="c num">18</td><td class="c"><span class="chip ok">เข้าแล้ว 6 ต.ค.</span></td><td class="r"><button class="btn sm">แก้ไข</button></td></tr>
-                <tr><td>ร้านอาหารครัวริมคลอง</td><td class="c num">12</td><td class="c"><span class="chip ok">เข้าแล้ว 8 ต.ค.</span></td><td class="r"><button class="btn sm">แก้ไข</button></td></tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-        <div class="panel">
-          <h3>รอบประจำเดือน — บมจ. สยามพัฒนาเฮ้าส์ <span class="chip na num">120 จุด</span></h3>
-          <div class="body">
-            <div class="fastclose">
-              <div><b>ตรวจครบแล้ว ทุกจุดปกติ?</b><br><span style="font-size:12px;color:var(--fg-muted)">ไม่พบปลวก ไม่เปลี่ยนไม้ ไม่มีงานซ่อม — ปิดงานรวดเดียว</span></div>
-              <button class="btn primary" style="white-space:nowrap">✓ ปกติทั้งหมด · ปิดงาน</button>
-            </div>
-            <div class="orsep">— หรือ บันทึกเฉพาะรายการที่ผิดปกติด้านล่าง —</div>
-            <div class="sech">1 · จุดที่พบปลวก</div>
-            <div class="hint"><b>ค่าเริ่มต้น: ทุกจุดปกติ ไม่พบปลวก</b> — เพิ่มเฉพาะจุดที่พบ: พิมพ์เลขสถานี (ระบบตรวจว่ามีจริง) แล้วเลือกชนิดปลวก (<b>ใต้ดิน</b> = ใส่เหยื่อ / <b>สวน</b> = เคมีผง กรอกจำนวนจุด → แปลงกรัมอัตโนมัติ 0.3 ก./จุด)</div>
-            <div class="sumchips">
-              <span class="chip ok">ปกติ 117 จุด</span>
-              <span class="chip miss">ปลวกใต้ดิน 2 จุด</span>
-              <span class="chip pend">ปลวกสวน 1 จุด</span>
-              <span class="chip na num">เหยื่อรวม 150 ก.</span>
-              <span class="chip na num">เคมีผง 4 จุด (1.2 ก.)</span>
-            </div>
-            <div class="st-tbl">
-              <div class="tablewrap">
-                <table>
-                  <thead><tr><th>หมายเลขสถานี</th><th>ชนิดปลวก</th><th>เหยื่อ / เคมีผง</th><th class="c"></th></tr></thead>
-                  <tbody>
-                    <tr>
-                      <td><div class="stcell"><input value="12" style="max-width:80px" oninput="validSt(this)"><span class="vchk ok">✓</span></div></td>
-                      <td><select onchange="termiteRow(this)"><option selected>ปลวกใต้ดิน</option><option>ปลวกสวน</option></select></td>
-                      <td class="baitcell"><select class="baitsel"><option>0 ก.</option><option selected>50 ก.</option><option>100 ก.</option><option>150 ก.</option><option>200 ก.</option></select><span class="powder powwrap" hidden><input class="powin num" value="0" oninput="powCalc(this)"> <span style="font-size:11px;color:var(--fg-muted)">จุด</span> <span class="powcalc">× 0.3 = 0 ก.</span></span></td>
-                      <td class="c"><button class="btn danger sm">ลบ</button></td>
-                    </tr>
-                    <tr>
-                      <td><div class="stcell"><input value="47" style="max-width:80px" oninput="validSt(this)"><span class="vchk ok">✓</span></div></td>
-                      <td><select onchange="termiteRow(this)"><option selected>ปลวกใต้ดิน</option><option>ปลวกสวน</option></select></td>
-                      <td class="baitcell"><select class="baitsel"><option>0 ก.</option><option>50 ก.</option><option selected>100 ก.</option><option>150 ก.</option><option>200 ก.</option></select><span class="powder powwrap" hidden><input class="powin num" value="0" oninput="powCalc(this)"> <span style="font-size:11px;color:var(--fg-muted)">จุด</span> <span class="powcalc">× 0.3 = 0 ก.</span></span></td>
-                      <td class="c"><button class="btn danger sm">ลบ</button></td>
-                    </tr>
-                    <tr>
-                      <td><div class="stcell"><input value="89" style="max-width:80px" oninput="validSt(this)"><span class="vchk ok">✓</span></div></td>
-                      <td><select onchange="termiteRow(this)"><option>ปลวกใต้ดิน</option><option selected>ปลวกสวน</option></select></td>
-                      <td class="baitcell"><select class="baitsel" hidden><option>0 ก.</option><option>50 ก.</option><option>100 ก.</option><option>150 ก.</option><option>200 ก.</option></select><span class="powder powwrap"><input class="powin num" value="4" oninput="powCalc(this)"> <span style="font-size:11px;color:var(--fg-muted)">จุด</span> <span class="powcalc">× 0.3 = 1.2 ก.</span></span></td>
-                      <td class="c"><button class="btn danger sm">ลบ</button></td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-              <div style="padding:9px 12px;border-top:1px solid var(--border);background:var(--surface-2)"><button class="btn sm">+ เพิ่มจุดที่พบปลวก</button></div>
-            </div>
-            <div class="sech">2 · เปลี่ยนไม้ล่อ (ไม้ที่โดนปลวกกิน/เสื่อม)</div>
-            <div class="hint">เพิ่มเฉพาะสถานีที่เปลี่ยนไม้ · <b>จำนวนไม้เติมอัตโนมัติตามชนิด</b> (IG = 2 ชิ้น · IC = 1 ชิ้น) ผู้ใช้แค่ใส่เลขสถานี + เลือกชนิด</div>
-            <div class="sumchips">
-              <span class="chip info num">เปลี่ยนไม้รวม 5 ชิ้น</span>
-              <span class="chip na">IG 2 จุด (×2) · IC 1 จุด (×1)</span>
-            </div>
-            <div class="st-tbl">
-              <div class="tablewrap">
-                <table>
-                  <thead><tr><th>หมายเลขสถานี</th><th>ชนิด</th><th>จำนวนไม้</th><th class="c"></th></tr></thead>
-                  <tbody>
-                    <tr><td><input value="15" style="max-width:90px"></td><td><select onchange="woodRow(this)"><option selected>IG</option><option>IC</option></select></td><td class="woodcnt" style="color:var(--fg-muted)">2 ชิ้น <span class="auto-tag">อัตโนมัติ</span></td><td class="c"><button class="btn danger sm">ลบ</button></td></tr>
-                    <tr><td><input value="22" style="max-width:90px"></td><td><select onchange="woodRow(this)"><option selected>IG</option><option>IC</option></select></td><td class="woodcnt" style="color:var(--fg-muted)">2 ชิ้น <span class="auto-tag">อัตโนมัติ</span></td><td class="c"><button class="btn danger sm">ลบ</button></td></tr>
-                    <tr><td><input value="63" style="max-width:90px"></td><td><select onchange="woodRow(this)"><option>IG</option><option selected>IC</option></select></td><td class="woodcnt" style="color:var(--fg-muted)">1 ชิ้น <span class="auto-tag">อัตโนมัติ</span></td><td class="c"><button class="btn danger sm">ลบ</button></td></tr>
-                  </tbody>
-                </table>
-              </div>
-              <div style="padding:9px 12px;border-top:1px solid var(--border);background:var(--surface-2)"><button class="btn sm">+ เพิ่มสถานีที่เปลี่ยนไม้</button></div>
-            </div>
-            <div class="sech">3 · งานซ่อม / ปรับสถานี</div>
-            <div class="hint">เพิ่มเฉพาะที่มีงาน — ฝังสถานีใหม่ (IG/IC), เปลี่ยนฝาสถานี ฯลฯ</div>
-            <div class="st-tbl">
-              <div class="tablewrap">
-                <table>
-                  <thead><tr><th>ประเภทงาน</th><th>หมายเลขสถานี</th><th>จำนวน</th><th class="c"></th></tr></thead>
-                  <tbody>
-                    <tr><td><select><option selected>ฝังสถานีใหม่ (IG)</option><option>ฝังสถานีใหม่ (IC)</option><option>เปลี่ยนฝาสถานี</option><option>อื่นๆ</option></select></td><td><input value="S-121" style="max-width:100px"></td><td><input value="1" class="num" style="max-width:70px"></td><td class="c"><button class="btn danger sm">ลบ</button></td></tr>
-                    <tr><td><select><option>ฝังสถานีใหม่ (IG)</option><option>ฝังสถานีใหม่ (IC)</option><option selected>เปลี่ยนฝาสถานี</option><option>อื่นๆ</option></select></td><td><input value="33" style="max-width:100px"></td><td><input value="1" class="num" style="max-width:70px"></td><td class="c"><button class="btn danger sm">ลบ</button></td></tr>
-                  </tbody>
-                </table>
-              </div>
-              <div style="padding:9px 12px;border-top:1px solid var(--border);background:var(--surface-2)"><button class="btn sm">+ เพิ่มงานซ่อม / ปรับสถานี</button></div>
-            </div>
-            <div style="display:flex;gap:9px;margin-top:18px">
-              <button class="btn primary">บันทึกรอบประจำเดือน</button>
-              <button class="btn">ยกเลิก</button>
-            </div>
-          </div>
-        </div>
-      </div>
-      <div class="legend">
-        <span><span class="sttype">IG</span> สถานีในดิน · ตรวจทุกเดือน</span>
-        <span><span class="sttype">IC</span> สถานีในคอนกรีต · ตรวจทุกเดือน</span>
-      </div>
-      <div class="note"><span class="ic">ℹ</span><span>กรณีลูกค้ามีสถานีหลักร้อยจุด ไม่ต้องไล่กรอกทีละจุด — ระบบตั้งต้นว่าทุกจุดปกติ แล้วบันทึกเฉพาะ "จุดที่พบปลวก" เท่านั้น (เลขสถานี + เหยื่อ) ทำให้กรอกเร็วและข้อมูลสะอาด</span></div>
     </section>
 
     <!-- ========== สรุปวัสดุ (internal: host/admin/recorder) ========== -->
@@ -624,105 +606,16 @@ tfoot td{padding:10px 12px;font-weight:700;background:var(--surface-2);border-to
       </div>
     </section>
 
-    <!-- ========== 3. BAIT BOX AG ========== -->
+    <!-- ========== 3. BAIT BOX AG นอกรอบ ==========
+         ใช้ส่วนกล่อง AG ชุดเดียวกับหน้ากรอกผลบริการ (agRender 'bx') · hash route #bait คงเดิม -->
     <section id="s-bait" hidden>
-      <div class="page-head"><h1>จัดการกล่องเหยื่อ (AG)</h1>
-        <p>กล่องเหยื่อติดตั้งเมื่อแก้ปัญหาปลวก — ติดตั้งครั้งแรก (S) → ติดตามผล F1, F2… แยกแต่ละจุด → รอถอด → ถอดกล่อง (จบปัญหา)</p></div>
-      <div class="toolbar">
-        <div class="field"><label>เขต</label><select><option>เขต 1</option><option>ทุกเขต</option></select></div>
-        <div class="field"><label>สาขา</label><select><option>พุทธมณฑล</option><option>ทุกสาขา</option></select></div>
-        <div class="field"><label>ทีม</label><select><option>ทุกทีม</option><option>A</option><option>B</option></select></div>
-        <div class="field"><label>เดือน</label><select><option>ตุลาคม 2026</option><option>กันยายน 2026</option></select></div>
-        <div class="field" style="flex:1;min-width:180px"><label>ค้นหาลูกค้า (ชื่อ / เลขที่สัญญา)</label><input placeholder="เช่น เมืองทอง หรือ CT23-0000017" style="width:100%"></div>
+      <div class="page-head"><h1>กล่องเหยื่อ AG นอกรอบ</h1>
+        <p>ใช้เฉพาะงานกล่องที่ <b>ไม่ได้เข้าพร้อมรอบบริการ</b> — กรอกผลติดตาม (F) หรือติดกล่องใหม่ (S) ได้เลย ไม่ต้องรอรอบประจำเดือน · งานกล่องที่ทำพร้อมรอบบริการ ให้กรอกในหน้า "กรอกผลบริการ"</p></div>
+      <div class="split entry" style="margin-top:16px">
+        <div class="panel entry-left" id="bxLeft"></div>
+        <div class="panel formpanel" id="bxForm"></div>
       </div>
-      <div class="stats">
-        <div class="stat accent"><div class="lab">กล่องในพื้นที่ทั้งหมด</div><div class="val num">86</div><div class="sub">ที่ยังไม่ถอด</div></div>
-        <div class="stat"><div class="lab">ติดตั้งใหม่ (S) เดือนนี้</div><div class="val num">10</div><div class="sub">4 ลูกค้า</div></div>
-        <div class="stat"><div class="lab">กำลังติดตาม (F)</div><div class="val num">58</div><div class="sub">สถานะส่วนใหญ่</div></div>
-        <div class="stat warn"><div class="lab">รอถอด</div><div class="val num">12</div><div class="sub">พบปลวกตาย</div></div>
-        <div class="stat ok"><div class="lab">ถอดแล้วเดือนนี้</div><div class="val num">6</div><div class="sub">จบปัญหา → Dashboard</div></div>
-      </div>
-      <div class="split entry">
-        <div class="panel">
-          <h3>ลูกค้าที่มีกล่องเหยื่อ <span class="chip na num">14 ราย</span></h3>
-          <div class="rowlist">
-            <div class="r sel"><div class="main"><b>บมจ. สยามพัฒนาเฮ้าส์</b><small>5 จุด · S 1 · F 3 · รอถอด 1</small></div><div class="meta"><b>กำลังติดตาม</b></div></div>
-            <div class="r"><div class="main"><b>บจก. เมืองทองคลังสินค้า</b><small>12 จุด · F 10 · รอถอด 2</small></div><div class="meta"><b>กำลังติดตาม</b></div></div>
-            <div class="r"><div class="main"><b>โรงแรมบ้านสวนรีสอร์ท</b><small>6 จุด · F 5 · รอถอด 1</small></div><div class="meta"><b>กำลังติดตาม</b></div></div>
-            <div class="r"><div class="main"><b>อพาร์ตเมนต์ศรีสุข</b><small>3 จุด · ถอดครบแล้ว</small></div><div class="meta"><b>จบปัญหา</b></div></div>
-          </div>
-        </div>
-        <div class="panel">
-          <h3>กล่องเหยื่อ — บมจ. สยามพัฒนาเฮ้าส์
-            <span style="flex:1"></span>
-            <button class="btn sm primary">+ เพิ่มจุดกล่อง (ติดตั้ง S)</button></h3>
-          <div class="body">
-            <div class="hint">แต่ละจุดติดตามผลแยกกัน (คนละรอบ F ได้) · เหยื่อเลือกทีละ 50 ก. · เลือกสัดส่วนปลวกและสถานะของจุดนั้น</div>
-
-            <div class="pt">
-              <div class="top"><span class="sttype">AG</span><b>จุดที่ 1</b><span class="chip info">กำลังติดตาม</span><span class="fno">รอบ F3 <span class="auto-tag">อัตโนมัติ</span></span></div>
-              <div class="grid">
-                <div class="mini"><label>ปริมาณเหยื่อที่ใช้</label><select><option>0 ก.</option><option>50 ก.</option><option selected>100 ก.</option><option>150 ก.</option><option>200 ก.</option></select></div>
-                <div class="mini"><label>สัดส่วนปลวกที่พบ</label><select><option selected>งาน &gt; ทหาร</option><option>ทหาร &gt; งาน</option><option>ทหาร</option><option>ทหาร + สืบพันธุ์สำรอง</option><option>สืบพันธุ์สำรอง</option><option>ปลวกตาย</option></select></div>
-                <div class="mini"><label>สถานะจุดนี้</label><select><option selected>กำลังติดตาม</option><option>รอถอด (พบปลวกตาย)</option><option>ถอดกล่อง (จบปัญหา)</option></select></div>
-              </div>
-            </div>
-
-            <div class="pt">
-              <div class="top"><span class="sttype">AG</span><b>จุดที่ 2</b><span class="chip pend">รอถอด</span><span class="fno">รอบ F6 <span class="auto-tag">อัตโนมัติ</span></span></div>
-              <div class="grid">
-                <div class="mini"><label>ปริมาณเหยื่อที่ใช้</label><select><option selected>0 ก.</option><option>50 ก.</option><option>100 ก.</option><option>150 ก.</option><option>200 ก.</option></select></div>
-                <div class="mini"><label>สัดส่วนปลวกที่พบ</label><select><option>งาน &gt; ทหาร</option><option>ทหาร &gt; งาน</option><option>ทหาร</option><option>ทหาร + สืบพันธุ์สำรอง</option><option>สืบพันธุ์สำรอง</option><option selected>ปลวกตาย</option></select></div>
-                <div class="mini"><label>สถานะจุดนี้</label><select><option>กำลังติดตาม</option><option selected>รอถอด (พบปลวกตาย)</option><option>ถอดกล่อง (จบปัญหา)</option></select></div>
-              </div>
-            </div>
-
-            <div class="pt">
-              <div class="top"><span class="sttype">AG</span><b>จุดที่ 3</b><span class="chip info">ติดตั้งใหม่</span><span class="fno">ติดตั้ง S <span class="auto-tag">อัตโนมัติ</span></span></div>
-              <div class="grid">
-                <div class="mini"><label>ปริมาณเหยื่อที่ใช้</label><select><option>0 ก.</option><option>50 ก.</option><option selected>100 ก.</option><option>150 ก.</option><option>200 ก.</option></select></div>
-                <div class="mini"><label>สัดส่วนปลวกที่พบ</label><select><option>งาน &gt; ทหาร</option><option>ทหาร &gt; งาน</option><option>ทหาร</option><option selected>ทหาร + สืบพันธุ์สำรอง</option><option>สืบพันธุ์สำรอง</option><option>ปลวกตาย</option></select></div>
-                <div class="mini"><label>สถานะจุดนี้</label><select><option selected>กำลังติดตาม</option><option>รอถอด (พบปลวกตาย)</option><option>ถอดกล่อง (จบปัญหา)</option></select></div>
-              </div>
-            </div>
-
-            <div class="pt done">
-              <div class="top"><span class="sttype">AG</span><b>จุดที่ 4</b><span class="chip done">ถอดแล้ว</span><span class="fno">จบปัญหา 2 ต.ค.</span></div>
-              <div style="font-size:12px;color:var(--fg-muted)">ถอดกล่องเรียบร้อย → ส่งสถานะ "เสร็จ" เข้า Dashboard แล้ว</div>
-            </div>
-
-            <div style="display:flex;gap:9px;margin-top:4px">
-              <button class="btn primary">บันทึกผลติดตาม</button>
-              <button class="btn">ยกเลิก</button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="panel" style="margin-top:16px">
-        <h3>สรุปการใช้เหยื่อ
-          <span style="flex:1"></span>
-          <select style="font-size:12px;padding:5px 8px;border:1px solid var(--border-strong);border-radius:7px;background:var(--surface);color:var(--fg)"><option>รายเดือน</option><option>รายวัน</option><option>รายปี</option><option>กำหนดช่วงเอง (custom)</option></select></h3>
-        <div class="body">
-          <div class="toolbar" style="margin:0 0 14px">
-            <div class="field"><label>เขต</label><select><option>เขต 1</option><option>ทุกเขต</option></select></div>
-            <div class="field"><label>สาขา</label><select><option>ทุกสาขา</option><option>พุทธมณฑล</option></select></div>
-            <div class="field"><label>ช่วงเวลา</label><select><option>ตุลาคม 2026</option><option>Q4 2026</option></select></div>
-            <div style="flex:1"></div>
-            <button class="btn sm">↓ Export</button>
-          </div>
-          <div class="sumchips" style="margin-bottom:16px">
-            <span class="chip info num">เหยื่อที่ใช้รวม 8,750 ก.</span>
-            <span class="chip na num">175 กล่อง-ครั้ง</span>
-            <span class="chip ok num">เฉลี่ย 50 ก./ครั้ง</span>
-          </div>
-          <div class="usebars">
-            <div class="userow"><span>พุทธมณฑล</span><div class="usetrack"><div class="usefill" style="width:82%"></div></div><span class="num" style="text-align:right">4,300 ก.</span></div>
-            <div class="userow"><span>หัวหิน</span><div class="usetrack"><div class="usefill" style="width:54%"></div></div><span class="num" style="text-align:right">2,850 ก.</span></div>
-            <div class="userow"><span>นครปฐม</span><div class="usetrack"><div class="usefill" style="width:30%"></div></div><span class="num" style="text-align:right">1,600 ก.</span></div>
-          </div>
-        </div>
-      </div>
+      <div class="note"><span class="ic">ℹ</span><span>ขั้นตอนกล่อง AG: ติดตั้งครั้งแรก (S) → ติดตามผล F1, F2… แยกแต่ละจุด → รอถอด (พบปลวกตาย) → ถอดกล่อง (จบปัญหา) · สถิติกล่องและสรุปการใช้เหยื่ออยู่ที่หน้า "สรุปตัวเลข"</span></div>
     </section>
 
     <!-- ========== COLLECT STATIONS (expired contracts) ========== -->
@@ -897,9 +790,57 @@ tfoot td{padding:10px 12px;font-weight:700;background:var(--surface-2);border-to
         </table>
       </div>
       <div class="note"><span class="ic">ℹ</span><span>16 ฟิลด์ต่อแถวตรงกับรูปแบบ <b>dashboard_data.json</b> เดิม (ห้ามเปลี่ยน) · ทุกเดือนต้องครบ 43 สาขา · viewer เรียกตารางลูกค้า/สัญญาผ่าน API ได้ 0 แถว ตาม RLS</span></div>
+
+      <!-- ย้ายมาจากหน้ากรอกผลบริการ / กล่องเหยื่อ AG (A1) · internal เท่านั้น (ข้อมูลระดับสถานี) → ซ่อนเมื่อเลือกบทบาท viewer -->
+      <div class="subsec" data-internal>
+        <div class="subhead"><h2>กล่องเหยื่อ AG และการใช้เหยื่อ</h2><span class="chip pend">🔒 internal เท่านั้น</span></div>
+        <p class="subdesc">สถิติสถานีและกล่องเหยื่อในพื้นที่ · สรุปการใช้เหยื่อ แยกตามสาขาและช่วงเวลา</p>
+        <div class="sech" style="margin-top:6px">สถานี IG/IC ในพื้นที่ · สาขาพุทธมณฑล</div>
+        <div class="stats">
+          <div class="stat accent"><div class="lab">สถานีทั้งหมด (IG+IC)</div><div class="val num">1,240</div><div class="sub">120 ลูกค้า</div></div>
+          <div class="stat"><div class="lab"><span class="sttype">IG</span> ในดิน</div><div class="val num">870</div><div class="sub">70% ของทั้งหมด</div></div>
+          <div class="stat"><div class="lab"><span class="sttype">IC</span> ในคอนกรีต</div><div class="val num">370</div><div class="sub">30% ของทั้งหมด</div></div>
+          <div class="stat ok"><div class="lab">ใช้งานอยู่</div><div class="val num">1,198</div><div class="sub">active</div></div>
+          <div class="stat warn"><div class="lab">ชำรุด / ถอน</div><div class="val num">42</div><div class="sub">ต้องซ่อม/เปลี่ยน</div></div>
+        </div>
+        <div class="sech">กล่องเหยื่อ AG ในพื้นที่</div>
+        <div class="stats">
+          <div class="stat accent"><div class="lab">กล่องในพื้นที่ทั้งหมด</div><div class="val num">86</div><div class="sub">ที่ยังไม่ถอด</div></div>
+          <div class="stat"><div class="lab">ติดตั้งใหม่ (S) เดือนนี้</div><div class="val num">10</div><div class="sub">4 ลูกค้า</div></div>
+          <div class="stat"><div class="lab">กำลังติดตาม (F)</div><div class="val num">58</div><div class="sub">สถานะส่วนใหญ่</div></div>
+          <div class="stat warn"><div class="lab">รอถอด</div><div class="val num">12</div><div class="sub">พบปลวกตาย</div></div>
+          <div class="stat ok"><div class="lab">ถอดแล้วเดือนนี้</div><div class="val num">6</div><div class="sub">จบปัญหา → Dashboard</div></div>
+        </div>
+        <div class="panel" style="margin-top:16px">
+          <h3>สรุปการใช้เหยื่อ
+            <span style="flex:1"></span>
+            <select aria-label="หน่วยช่วงเวลา" style="font-size:12px;padding:5px 8px;border:1px solid var(--border-strong);border-radius:7px;background:var(--surface);color:var(--fg)"><option>รายเดือน</option><option>รายวัน</option><option>รายปี</option><option>กำหนดช่วงเอง (custom)</option></select></h3>
+          <div class="body">
+            <div class="toolbar" style="margin:0 0 14px">
+              <div class="field"><label>เขต</label><select><option>เขต 1</option><option>ทุกเขต</option></select></div>
+              <div class="field"><label>สาขา</label><select><option>ทุกสาขา</option><option>พุทธมณฑล</option></select></div>
+              <div class="field"><label>ช่วงเวลา</label><select><option>ตุลาคม 2026</option><option>Q4 2026</option></select></div>
+              <div style="flex:1"></div>
+              <button class="btn sm">↓ Export</button>
+            </div>
+            <div class="sumchips" style="margin-bottom:16px">
+              <span class="chip info num">เหยื่อที่ใช้รวม 8,750 ก.</span>
+              <span class="chip na num">175 กล่อง-ครั้ง</span>
+              <span class="chip ok num">เฉลี่ย 50 ก./ครั้ง</span>
+            </div>
+            <div class="usebars">
+              <div class="userow"><span>พุทธมณฑล</span><div class="usetrack"><div class="usefill" style="width:82%"></div></div><span class="num" style="text-align:right">4,300 ก.</span></div>
+              <div class="userow"><span>หัวหิน</span><div class="usetrack"><div class="usefill" style="width:54%"></div></div><span class="num" style="text-align:right">2,850 ก.</span></div>
+              <div class="userow"><span>นครปฐม</span><div class="usetrack"><div class="usefill" style="width:30%"></div></div><span class="num" style="text-align:right">1,600 ก.</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
     </section>
   </main>
 </div>
+
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script>
@@ -940,10 +881,11 @@ function termiteRow(sel){
   var garden=(sel.value==='ปลวกสวน'); bs.hidden=garden; pw.hidden=!garden;
   if(garden){ var pin=pw.querySelector('.powin'); if(pin) powCalc(pin); }
 }
-/* ตรวจเลขสถานีว่ามีจริงของลูกค้ารายนี้ (demo: 1–120) → ✓/✗ กันพิมพ์ผิด */
+/* ตรวจเลขสถานีว่ามีจริงของลูกค้ารายนี้ (1 ถึง stationMax = IG+IC ของลูกค้าที่เลือก) → ✓/✗ กันพิมพ์ผิด · ช่องว่าง = ยังไม่ตรวจ */
 function validSt(inp){
-  var chk=inp.closest('.stcell').querySelector('.vchk');
-  var n=parseInt(inp.value,10), ok=(n>=1 && n<=120);
+  var chk=inp.closest('.stcell').querySelector('.vchk'), v=inp.value.trim();
+  if(!v){ chk.className='vchk'; chk.textContent=''; return; }
+  var n=parseInt(v,10), ok=(n>=1 && n<=stationMax);
   chk.className='vchk '+(ok?'ok':'bad');
   chk.textContent=ok?'✓':'✗ ไม่พบ';
 }
@@ -955,6 +897,523 @@ function powCalc(inp){
 function woodRow(sel){
   var cell=sel.closest('tr').querySelector('.woodcnt');
   cell.innerHTML=(sel.value==='IG'?'2':'1')+' ชิ้น <span class="auto-tag">อัตโนมัติ</span>';
+}
+/* ============================================================
+   หน้ากรอกผลบริการ (#service) + กล่องเหยื่อ AG นอกรอบ (#bait)
+   สรุป logic (สำหรับทีม):
+   - CUSTOMERS = ข้อมูลสมมติ · PK.sv / PK.bx = state ฝั่งซ้าย (ตัวกรอง/ค้นหา/รายชื่อ) ของแต่ละหน้า
+   - ค้นหา: ปรับคำ (ตัวเล็ก ตัดช่องว่าง . -) → substring ในชื่อ/เลขสัญญา → ไม่เจอ: คะแนน bigram >= 0.5 สูงสุด 3 ราย
+   - ฟอร์มขวาของ #service = SV (ปุ่มปกติ/หมวดที่เปิด) + AGM.sv · ของ #bait = AGM.bx
+   - ส่วนกล่อง AG ใช้ตัวเรนเดอร์ชุดเดียว agRender(ctx) · ctx = 'sv' (รอบบริการ) | 'bx' (นอกรอบ)
+   - เลขรอบ F นับอัตโนมัติ = จำนวนรอบที่ตรวจไปแล้ว + 1 (ผู้ใช้ไม่กรอก)
+   - กันลืมกล่อง (D10): ลูกค้าที่มีกล่องค้างติดตามต้องกรอกผลครบ หรือติ๊ก "รอบนี้ไม่ได้ตรวจกล่อง AG" ก่อนบันทึก
+   ============================================================ */
+var TEAMS=['A','B'];
+var BAITS=[0,50,100,150,200];
+var CASTES=['งาน > ทหาร','ทหาร > งาน','ทหาร','ทหาร + สืบพันธุ์สำรอง','สืบพันธุ์สำรอง','ปลวกตาย'];
+var TODAY_ISO='2026-10-28';
+var CUSTOMERS=[];
+(function(){
+  /* ag = [[จุดที่, จำนวนรอบ F ที่ตรวจไปแล้ว, สถานะ 'track' | 'pend']] */
+  function add(name,ct,tier,branch,team,ig,ic,ag,done){
+    CUSTOMERS.push({id:CUSTOMERS.length+1,name:name,ct:ct,tier:tier,branch:branch,team:team,ig:ig,ic:ic,ag:ag||[],done:!!done});
+  }
+  add('หจก. ทรัพย์เจริญ','CT26-0000203','m1','พุทธมณฑล','A',14,4,[],true);
+  add('ร้านอาหารครัวริมคลอง','CT26-0000151','s1','พุทธมณฑล','A',8,4,[],true);
+  add('คุณวิรัช ตั้งมั่น (บ้านพัก)','CT26-0000088','s1','พุทธมณฑล','A',8,0,[],true);
+  add('อพาร์ตเมนต์ศรีสุข','CT25-0000174','m3','พุทธมณฑล','B',22,10,[],true);
+  add('บมจ. สยามพัฒนาเฮ้าส์','CT26-0000142','l1','พุทธมณฑล','A',80,40,[[1,2,'track'],[2,5,'pend'],[3,0,'track']]);
+  add('โรงแรมบ้านสวนรีสอร์ท','CT25-0000311','m3','พุทธมณฑล','B',36,15,[[1,4,'track'],[2,5,'pend']]);
+  add('บจก. เมืองทองคลังสินค้า','CT23-0000017','xl3','พุทธมณฑล','A',40,12,[[3,9,'track'],[7,9,'pend']]);
+  add('อาคารชุดลุมพินีวิว','CT23-0000041','l3','พุทธมณฑล','B',24,6,[[1,1,'track']]);
+  add('คุณสมหญิง รุ่งเรือง','CT26-0000009','s1','พุทธมณฑล','A',6,0);
+  add('บจก. สยามคอมเพล็กซ์','CT25-0000255','l1','พุทธมณฑล','B',60,20);
+  add('โรงเรียนอนุบาลดอกไม้','CT25-0000298','m3','พุทธมณฑล','A',16,8,[[1,3,'track']]);
+  add('คลินิกทันตกรรมยิ้มสดใส','CT26-0000117','s3','พุทธมณฑล','A',6,2);
+  add('บจก. ไทยแพคโลจิสติกส์','CT24-0000066','xl1','พุทธมณฑล','B',70,30,[[1,6,'track'],[2,2,'track'],[4,0,'track']]);
+  add('ตลาดสดบางแค','CT24-0000102','l3','พุทธมณฑล','A',44,16);
+  add('บ้านพักคุณมาลี ศรีสวัสดิ์','CT26-0000230','s1','พุทธมณฑล','A',6,0);
+  add('โรงงานผลิตเฟอร์นิเจอร์ไม้ไทย','CT25-0000187','l1','พุทธมณฑล','B',48,12,[[1,2,'track'],[2,2,'track']]);
+  add('ร้านอาหารสวนครัวป้าแดง','CT26-0000174','s3','พุทธมณฑล','A',10,2);
+  add('หมู่บ้านจัดสรรสุขสันต์','CT24-0000049','xl3','พุทธมณฑล','A',90,40);
+  add('สำนักงานบัญชีเลขที่หนึ่ง','CT26-0000251','s1','พุทธมณฑล','B',4,2);
+  add('ศูนย์ฝึกอบรมพัฒนาทักษะ','CT25-0000263','m1','พุทธมณฑล','A',20,6);
+  add('บจก. เมโทรแวร์เฮ้าส์','CT25-0000333','l1','พุทธมณฑล','B',52,18);
+  add('ร้านเสริมสวยบ้านดอกไม้','CT26-0000266','s1','พุทธมณฑล','A',4,0);
+  add('โรงพยาบาลสัตว์เพื่อนรัก','CT25-0000219','m1','พุทธมณฑล','B',18,6);
+  add('คอนโดมิเนียมสวนสราญ','CT24-0000121','l3','พุทธมณฑล','A',66,24,[[2,4,'track']]);
+  add('หจก. สยามการช่าง','CT24-0000190','m1','นครปฐม','A',12,6);
+  add('ร้านกาแฟบ้านไร่','CT25-0000120','s1','นครปฐม','B',6,4);
+  add('หจก. รุ่งเรืองพาณิชย์','CT25-0000077','m1','นครปฐม','B',10,4,[[1,1,'track']]);
+  add('รีสอร์ทหาดทรายทอง','CT26-0000305','l3','หัวหิน','A',30,10,[[1,3,'track']]);
+  add('ร้านอาหารทะเลสดใหม่','CT26-0000312','s1','หัวหิน','B',6,2);
+})();
+
+function $(id){return document.getElementById(id)}
+function esc(s){return String(s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
+function custById(id){for(var i=0;i<CUSTOMERS.length;i++){if(CUSTOMERS[i].id===id)return CUSTOMERS[i]}return null}
+function tierBadge(t){return '<span class="tier '+t+'">'+t.toUpperCase()+'</span>'}
+var toastTimer=null;
+function toast(msg){var t=$('toast'); if(!t)return; t.textContent=msg; t.hidden=false; clearTimeout(toastTimer); toastTimer=setTimeout(function(){t.hidden=true},3600)}
+
+/* ---------- ค้นหา: ตรงตัว → ใกล้เคียง (bigram) ---------- */
+function norm(s){return String(s).toLowerCase().replace(/[\s.\-_]+/g,'')}
+function bigrams(s){var r=[]; for(var i=0;i<s.length-1;i++){r.push(s.substr(i,2))} return r}
+function simScore(q,t){
+  var b=bigrams(q); if(!b.length) return 0;
+  var tb=bigrams(t), hit=0;
+  b.forEach(function(g){ if(tb.indexOf(g)>=0) hit++; });
+  return hit/b.length;
+}
+function searchCustomers(list,raw){
+  var q=norm(raw);
+  var exact=list.filter(function(c){return norm(c.name).indexOf(q)>=0||norm(c.ct).indexOf(q)>=0});
+  if(exact.length) return {items:exact,suggest:[]};
+  var sug=list.map(function(c){return {c:c,s:Math.max(simScore(q,norm(c.name)),simScore(q,norm(c.ct)))}})
+    .filter(function(x){return x.s>=0.5}).sort(function(a,b){return b.s-a.s}).slice(0,3)
+    .map(function(x){return x.c});
+  return {items:[],suggest:sug};
+}
+
+/* ---------- ฝั่งซ้าย: ตัวกรอง + ค้นหา + รายชื่อ ---------- */
+var PK={
+  sv:{id:'sv',kind:'service',branch:'พุทธมณฑล',team:'',q:'',view:'todo',sel:null},
+  bx:{id:'bx',kind:'bait',branch:'',team:'',q:'',view:'ag',sel:null}
+};
+function pkBase(p){return CUSTOMERS.filter(function(c){return (!p.branch||c.branch===p.branch)&&(!p.team||c.team===p.team)})}
+function pkView(p,base){
+  return base.filter(function(c){
+    if(p.kind==='service') return p.view==='done'?c.done:!c.done;
+    return p.view==='ag'?c.ag.length>0:true;
+  });
+}
+function pkMarkup(p){
+  var svc=p.kind==='service', id=p.id;
+  function opt(v,l,cur){return '<option value="'+esc(v)+'"'+(v===cur?' selected':'')+'>'+esc(l)+'</option>'}
+  function tb(v,l){return '<button type="button" data-view="'+v+'" aria-pressed="'+(p.view===v)+'">'+l+'</button>'}
+  return '<h3>ลูกค้า <span class="chip na num" id="'+id+'Count"></span></h3><div class="body">'+
+    '<div class="filters">'+
+      '<div class="field"><label for="'+id+'Region">เขต</label><select id="'+id+'Region"><option>เขต 1</option><option>ทุกเขต</option></select></div>'+
+      '<div class="field"><label for="'+id+'Branch">สาขา</label><select id="'+id+'Branch">'+opt('','ทุกสาขา',p.branch)+opt('พุทธมณฑล','พุทธมณฑล',p.branch)+opt('นครปฐม','นครปฐม',p.branch)+opt('หัวหิน','หัวหิน',p.branch)+'</select></div>'+
+      '<div class="field"><label for="'+id+'Team">ทีม</label><select id="'+id+'Team" title="กรองตามทีมที่เข้าครั้งล่าสุด">'+opt('','ทุกทีม',p.team)+opt('A','ทีม A',p.team)+opt('B','ทีม B',p.team)+'</select></div>'+
+      '<div class="field"><label for="'+id+'Month">เดือน</label><select id="'+id+'Month"><option>ตุลาคม 2026</option><option>กันยายน 2026</option></select></div>'+
+    '</div>'+
+    '<input class="searchbox" id="'+id+'Q" type="search" autocomplete="off" placeholder="พิมพ์ชื่อลูกค้า หรือเลขที่สัญญา" aria-label="ค้นหาลูกค้า ด้วยชื่อหรือเลขที่สัญญา">'+
+    '<div class="sugg" id="'+id+'Sugg" role="status" hidden></div>'+
+    (svc?'<div class="prog" id="svProg"></div>':'')+
+    '<div class="tog" role="group" aria-label="กรองรายชื่อ">'+(svc?tb('todo','ยังไม่กรอก')+tb('done','กรอกแล้ว'):tb('ag','มีกล่องค้างติดตาม')+tb('all','ทุกราย'))+'</div>'+
+    '<div class="custlist" id="'+id+'List"></div>'+
+  '</div>';
+}
+function pkRender(p){
+  var base=pkBase(p), searching=!!norm(p.q), items, sug=[], svc=(p.kind==='service');
+  if(searching){var r=searchCustomers(base,p.q); items=r.items; sug=r.suggest}
+  else items=pkView(p,base);
+  $(p.id+'Count').textContent=base.length+' ราย';
+  var box=$(p.id+'Sugg');
+  if(searching && !items.length){
+    box.hidden=false;
+    box.innerHTML=sug.length
+      ? '<div>ไม่พบตรงตัว หมายถึงรายนี้ไหม</div><div class="sugg-list">'+sug.map(function(c){return '<button type="button" class="sugg-btn" data-id="'+c.id+'">'+esc(c.name)+'<small>'+esc(c.ct)+'</small></button>'}).join('')+'</div>'
+      : '<div>ไม่พบ ลองพิมพ์สั้นลง หรือเปลี่ยนตัวกรอง</div>';
+  } else {box.hidden=true; box.innerHTML=''}
+  var list=$(p.id+'List');
+  if(!items.length){
+    list.innerHTML=searching?'':'<div class="empty">'+(svc?(p.view==='done'?'ยังไม่มีรายที่กรอกแล้ว':'ไม่มีรายที่ยังไม่กรอก — ครบแล้ว'):'ไม่มีลูกค้าที่มีกล่องค้างติดตามตามตัวกรองนี้')+'</div>';
+  } else {
+    list.innerHTML=items.map(function(c){
+      var tags=tierBadge(c.tier)+(c.ag.length?'<span class="agtag">AG '+c.ag.length+'</span>':'')+((svc&&c.done&&(searching||p.view!=='done'))?'<span class="chip ok">กรอกแล้ว</span>':'');
+      return '<button type="button" class="cust'+(p.sel===c.id?' sel':'')+'" data-id="'+c.id+'"'+(p.sel===c.id?' aria-current="true"':'')+'>'+
+        '<span class="main"><b>'+esc(c.name)+'</b><small>'+esc(c.ct)+' · ทีม '+c.team+(svc?' · IG '+c.ig+' / IC '+c.ic:'')+'</small></span><span class="tags">'+tags+'</span></button>';
+    }).join('');
+  }
+  [].forEach.call(document.querySelectorAll('#'+p.id+'Left [data-view]'),function(b){b.setAttribute('aria-pressed',b.dataset.view===p.view?'true':'false')});
+  if(svc){
+    var done=base.filter(function(c){return c.done}).length, tot=base.length, pc=tot?Math.round(done*100/tot):0;
+    $('svProg').innerHTML='<div class="t"><span>กรอกแล้ว <b class="num">'+done+'</b> / <span class="num">'+tot+'</span></span><span class="pc num">'+pc+'%</span></div>'+
+      '<div class="usetrack" style="height:10px" role="progressbar" aria-valuemin="0" aria-valuemax="'+tot+'" aria-valuenow="'+done+'"><div class="usefill" style="width:'+pc+'%;background:var(--ok)"></div></div>';
+  }
+}
+function pkSelect(p,id,fromUser){
+  p.sel=id;
+  var c=id?custById(id):null;
+  if(c && !norm(p.q)){
+    if(p.kind==='service') p.view=c.done?'done':'todo';
+    else if(!c.ag.length) p.view='all';
+  }
+  pkRender(p);
+  if(p.id==='sv') svRenderForm(); else bxRenderForm();
+  if(fromUser){
+    var f=$(p.id+'Form');
+    if(window.innerWidth<=860 || f.getBoundingClientRect().top<70) f.scrollIntoView({behavior:'smooth',block:'start'});
+  }
+}
+function pkFiltersChanged(p){
+  var base=pkBase(p), c=p.sel?custById(p.sel):null;
+  if(!c || base.indexOf(c)<0){var items=pkView(p,base); pkSelect(p,items.length?items[0].id:null)}
+  else pkRender(p);
+}
+
+/* ---------- ส่วนกล่อง AG (ใช้ร่วม: 'sv' รอบบริการ / 'bx' นอกรอบ) ---------- */
+var AGM={};
+function agInit(ctx,c){
+  var maxNo=0; c.ag.forEach(function(a){if(a[0]>maxNo)maxNo=a[0]});
+  AGM[ctx]={ctx:ctx,cid:c.id,seq:0,nextNo:maxNo+1,skip:false,tried:false,
+    pts:c.ag.map(function(a){return {k:'e'+a[0],kind:'F',no:a[0],last:a[1],cur:a[2],bait:null,caste:'',st:a[2]}})};
+}
+function agPt(m,k){for(var i=0;i<m.pts.length;i++){if(m.pts[i].k===k)return m.pts[i]}return null}
+function agTouched(p){return p.bait!==null||p.caste!==''||p.st!==p.cur}
+function agComplete(p){return p.bait!==null&&p.caste!==''}
+function agMissing(ctx){
+  var m=AGM[ctx], round=(ctx==='sv'), need={}, filled=0, bad=[], hasF=false;
+  m.pts.forEach(function(p){
+    var relevant=(p.kind==='S')||(round?!m.skip:agTouched(p));
+    if(!relevant) return;
+    if(agComplete(p)){filled++; return}
+    need[p.k]=true; bad.push(p); if(p.kind==='F') hasF=true;
+  });
+  var miss=[];
+  if(bad.length) miss.push('กล่อง AG ยังกรอกไม่ครบ: จุดที่ '+bad.map(function(p){return p.no}).join(', ')+(round&&hasF?' — หรือติ๊ก “รอบนี้ไม่ได้ตรวจกล่อง AG”':''));
+  return {missing:miss,need:need,filled:filled};
+}
+function agPointHtml(ctx,m,p,bad){
+  var isS=(p.kind==='S'), off=(ctx==='sv'&&m.skip&&!isS), key='data-ctx="'+ctx+'" data-k="'+p.k+'"', dis=off?' disabled':'';
+  var chip=p.st==='pend'?'<span class="chip pend">รอถอด</span>':(p.st==='rm'?'<span class="chip done">ถอดกล่อง</span>':'<span class="chip info">กำลังติดตาม</span>');
+  var fno=isS?'ติดตั้งใหม่ (S)':'ติดตามผล F'+(p.last+1);
+  var h='<div class="pt'+(off?' off':'')+'"><div class="top"><span class="sttype">AG</span><b>จุดที่ '+p.no+'</b>'+chip+
+    '<span class="fno">'+fno+' <span class="auto-tag">อัตโนมัติ</span></span>'+
+    (isS?'<button type="button" class="btn danger sm" data-ag="del" '+key+'>ลบจุด</button>':'')+'</div><div class="agfields">';
+  h+='<div class="mini span2'+(bad&&p.bait===null?' need':'')+'"><label>ปริมาณเหยื่อที่ใช้</label><div class="optrow" role="group" aria-label="ปริมาณเหยื่อ จุดที่ '+p.no+'">'+
+    BAITS.map(function(b){return '<button type="button" class="optbtn" data-ag="bait" data-v="'+b+'" '+key+' aria-pressed="'+(p.bait===b)+'"'+dis+'>'+b+' ก.</button>'}).join('')+'</div></div>';
+  h+='<div class="mini'+(bad&&!p.caste?' need':'')+'"><label>สัดส่วนปลวกที่พบ</label><select data-ag="caste" '+key+dis+'>'+
+    '<option value=""'+(p.caste===''?' selected':'')+' disabled>— เลือก —</option>'+
+    '<option value="ไม่พบปลวก"'+(p.caste==='ไม่พบปลวก'?' selected':'')+'>ไม่พบปลวก</option>'+
+    CASTES.map(function(c){return '<option value="'+esc(c)+'"'+(p.caste===c?' selected':'')+'>'+esc(c)+'</option>'}).join('')+'</select></div>';
+  var sts=[['track','กำลังติดตาม'],['pend','รอถอด (พบปลวกตาย)'],['rm','ถอดกล่อง (จบปัญหา)']];
+  h+='<div class="mini"><label>สถานะจุดนี้</label><select data-ag="st" '+key+dis+'>'+
+    sts.map(function(s){return '<option value="'+s[0]+'"'+(p.st===s[0]?' selected':'')+'>'+s[1]+'</option>'}).join('')+'</select></div>';
+  return h+'</div></div>';
+}
+function agHtml(ctx){
+  var m=AGM[ctx], round=(ctx==='sv');
+  var exist=m.pts.filter(function(p){return p.kind==='F'}).length;
+  var need=m.tried?agMissing(ctx).need:{};
+  var h='<div class="agsec-h"><b>กล่องเหยื่อ AG</b>'+(exist?'<span class="chip pend">ค้างติดตาม '+exist+' จุด</span>':'<span class="chip na">ยังไม่มีกล่องค้างติดตาม</span>')+
+    '<button type="button" class="btn sm primary" data-ag="add" data-ctx="'+ctx+'">+ ติดกล่องใหม่ (S)</button></div>'+
+    '<div class="hint" style="margin-top:0">เลขรอบ F ระบบนับให้เอง · เหยื่อเลือกทีละ 50 ก. · เลือกสัดส่วนปลวกและสถานะของแต่ละจุด</div>';
+  if(!m.pts.length) h+='<div class="empty" style="padding:10px 2px;text-align:left">ยังไม่มีจุดกล่อง — กด “+ ติดกล่องใหม่ (S)” เพื่อเพิ่มจุดแรก</div>';
+  m.pts.forEach(function(p){h+=agPointHtml(ctx,m,p,!!need[p.k])});
+  if(round&&exist) h+='<label class="skipchk"><input type="checkbox" data-ag="skip" data-ctx="sv"'+(m.skip?' checked':'')+'><span><b>รอบนี้ไม่ได้ตรวจกล่อง AG</b><br><small>ติ๊กเมื่อทีมเข้ามาแต่ไม่ได้ตรวจกล่องเดิมของลูกค้ารายนี้ — ไม่ต้องกรอกผลกล่องเดิม</small></span></label>';
+  return h;
+}
+function agRender(ctx,focusSel){
+  var box=$(ctx+'AgBox'); if(!box||!AGM[ctx]) return;
+  box.innerHTML=agHtml(ctx);
+  if(focusSel){var el=box.querySelector(focusSel); if(el) el.focus()}
+  if(ctx==='sv') svRecalc(); else bxRefreshMsg();
+}
+function agAdd(ctx){
+  var m=AGM[ctx]; m.seq++; var k='n'+m.seq;
+  m.pts.push({k:k,kind:'S',no:m.nextNo++,last:0,cur:'track',bait:null,caste:'',st:'track'});
+  agRender(ctx,'.optbtn[data-k="'+k+'"]');
+}
+/* บันทึกผลลงข้อมูลสมมติ: F → นับรอบเพิ่ม/เปลี่ยนสถานะ · S → เพิ่มจุดใหม่ · ถอดกล่อง → ออกจากรายการค้างติดตาม */
+function agCommit(ctx){
+  var m=AGM[ctx], c=custById(m.cid), round=(ctx==='sv');
+  m.pts.forEach(function(p){
+    if(!agComplete(p)) return;
+    if(p.kind==='S'){ if(p.st!=='rm') c.ag.push([p.no,0,p.st]); return }
+    if(round&&m.skip) return;
+    var e=c.ag.filter(function(a){return a[0]===p.no})[0]; if(!e) return;
+    if(p.st==='rm') c.ag=c.ag.filter(function(a){return a!==e});
+    else {e[1]=e[1]+1; e[2]=p.st}
+  });
+}
+
+/* ---------- ฟอร์มกรอกผลบริการ (ขวาของ #service) ---------- */
+var SV=null;
+var stationMax=120;
+function fheadHtml(c,posHtml){
+  var agN=c.ag.length;
+  return '<div class="fhead"><div class="pos">'+posHtml+'</div><div class="nm"><b>'+esc(c.name)+'</b>'+tierBadge(c.tier)+'</div>'+
+    '<div class="sumchips" style="margin:0"><span class="chip na">สัญญา '+esc(c.ct)+'</span>'+
+    '<span class="chip na num"><span class="sttype">IG</span> '+c.ig+'</span><span class="chip na num"><span class="sttype">IC</span> '+c.ic+'</span>'+
+    '<span class="chip '+(agN?'pend':'na')+' num"><span class="sttype">AG</span> '+agN+(agN?' ค้างติดตาม':'')+'</span></div></div>';
+}
+function fieldsHtml(ctx,c,extra){
+  var teams=TEAMS.map(function(t){return '<option value="'+t+'"'+(t===c.team?' selected':'')+'>ทีม '+t+'</option>'}).join('');
+  return '<div class="fgrid"><div class="field"><label for="'+ctx+'Date">วันที่เข้า</label><input type="date" id="'+ctx+'Date" value="'+TODAY_ISO+'"></div>'+
+    '<div class="field"><label for="'+ctx+'Team">ทีมที่เข้า</label><select id="'+ctx+'Team">'+teams+'</select><span class="sub">เติมจากครั้งก่อน (ทีม '+c.team+') — แก้ได้ทุกครั้ง</span></div>'+(extra||'')+'</div>';
+}
+var BAIT_OPTS='<option>0 ก.</option><option selected>50 ก.</option><option>100 ก.</option><option>150 ก.</option><option>200 ก.</option>';
+function tmRowHtml(){
+  return '<tr><td><div class="stcell"><input placeholder="เลขสถานี" inputmode="numeric" style="max-width:96px" oninput="validSt(this)" aria-label="หมายเลขสถานี"><span class="vchk"></span></div></td>'+
+    '<td><select class="tmType" onchange="termiteRow(this)" aria-label="ชนิดปลวก"><option selected>ปลวกใต้ดิน</option><option>ปลวกสวน</option></select></td>'+
+    '<td class="baitcell"><select class="baitsel" aria-label="ปริมาณเหยื่อ">'+BAIT_OPTS+'</select><span class="powder powwrap" hidden><input class="powin num" value="0" oninput="powCalc(this)" aria-label="จำนวนจุดเคมีผง"> <span style="font-size:11px;color:var(--fg-muted)">จุด</span> <span class="powcalc">× 0.3 = 0 ก.</span></span></td>'+
+    '<td class="c"><button type="button" class="btn danger sm" data-act="delRow">ลบ</button></td></tr>';
+}
+function wdRowHtml(){
+  return '<tr><td><div class="stcell"><input placeholder="เลขสถานี" inputmode="numeric" style="max-width:96px" oninput="validSt(this)" aria-label="หมายเลขสถานี"><span class="vchk"></span></div></td>'+
+    '<td><select class="wdType" onchange="woodRow(this)" aria-label="ชนิดสถานี"><option selected>IG</option><option>IC</option></select></td>'+
+    '<td class="woodcnt" style="color:var(--fg-muted)">2 ชิ้น <span class="auto-tag">อัตโนมัติ</span></td>'+
+    '<td class="c"><button type="button" class="btn danger sm" data-act="delRow">ลบ</button></td></tr>';
+}
+function rpRowHtml(){
+  return '<tr><td><select aria-label="ประเภทงาน"><option selected>ฝังสถานีใหม่ (IG)</option><option>ฝังสถานีใหม่ (IC)</option><option>เปลี่ยนฝาสถานี</option><option>อื่นๆ</option></select></td>'+
+    '<td><input placeholder="เลขสถานี" style="max-width:100px" aria-label="หมายเลขสถานี"></td><td><input value="1" class="num" style="max-width:70px" aria-label="จำนวน"></td>'+
+    '<td class="c"><button type="button" class="btn danger sm" data-act="delRow">ลบ</button></td></tr>';
+}
+function tableSec(secId,bodyId,title,head,addAct,addLabel,hint,chipsId){
+  return '<div class="fsec" id="'+secId+'" hidden><div class="fsec-h">'+title+'</div>'+(chipsId?'<div class="sumchips" id="'+chipsId+'"></div>':'')+
+    '<div class="st-tbl"><div class="tablewrap"><table><thead><tr>'+head+'<th class="c"></th></tr></thead><tbody id="'+bodyId+'"></tbody></table></div>'+
+    '<div class="rowadd"><button type="button" class="btn sm" data-act="'+addAct+'">'+addLabel+'</button></div></div>'+
+    '<div class="hint">'+hint+'</div></div>';
+}
+function svRenderForm(){
+  var p=PK.sv, box=$('svForm'), c=p.sel?custById(p.sel):null;
+  if(!c){
+    var base=pkBase(p), done=base.filter(function(x){return x.done}).length;
+    SV=null;
+    box.innerHTML=(base.length&&done===base.length)
+      ? '<div class="empty" style="padding:56px 20px"><b style="display:block;font-size:16px;color:var(--ok);margin-bottom:6px">✓ กรอกครบทุกรายแล้ว</b>กรอกแล้ว '+done+' / '+base.length+' ราย ตามตัวกรองนี้ · กดสลับ “กรอกแล้ว” ทางซ้ายเพื่อแก้ไขรายที่กรอกไปแล้ว</div>'
+      : '<div class="empty" style="padding:56px 20px">ไม่มีลูกค้าตามตัวกรองนี้ — ลองเปลี่ยนตัวกรอง</div>';
+    return;
+  }
+  var base2=pkBase(p), pos=base2.indexOf(c)+1;
+  stationMax=c.ig+c.ic;
+  SV={id:c.id,normal:false,tried:false,open:{tm:false,wd:false,rp:false,ag:c.ag.length>0}};
+  agInit('sv',c);
+  var agN=c.ag.length;
+  var posHtml='รายที่ '+pos+' จาก '+base2.length+(c.done?' <span class="chip ok">กรอกแล้ว · บันทึกซ้ำเพื่อแก้ไข</span>':'');
+  box.innerHTML=fheadHtml(c,posHtml)+'<div class="body">'+
+    fieldsHtml('sv',c)+
+    '<button type="button" class="bigok" id="svNormal" data-act="svNormal" aria-pressed="false"><span class="tick" aria-hidden="true">✓</span><span>IG / IC ปกติทั้งหมด<small>ไม่พบปลวก ไม่เปลี่ยนไม้ ไม่มีงานซ่อม · ไม่รวมกล่อง AG</small></span></button>'+
+    '<div class="fbtns" role="group" aria-label="สิ่งที่พบ">'+
+      [['tm','พบปลวก'],['wd','เปลี่ยนไม้'],['rp','งานซ่อม'],['ag','กล่อง AG']].map(function(s){return '<button type="button" class="fbtn" data-act="sec" data-sec="'+s[0]+'" aria-pressed="false">'+s[1]+' <span class="n" id="svN_'+s[0]+'">0</span></button>'}).join('')+'</div>'+
+    tableSec('svSecTm','svTmBody','พบปลวก','<th>หมายเลขสถานี</th><th>ชนิดปลวก</th><th>เหยื่อ / เคมีผง</th>','addTm','+ เพิ่มจุดที่พบปลวก','ตั้งต้นว่าจุดอื่นปกติ — เพิ่มเฉพาะจุดที่พบ: พิมพ์เลขสถานี (ระบบตรวจว่ามีจริง) แล้วเลือกชนิดปลวก · <b>ใต้ดิน</b> = ใส่เหยื่อ · <b>สวน</b> = เคมีผง กรอกจำนวนจุด แปลงกรัมอัตโนมัติ 0.3 ก./จุด','svTmChips')+
+    tableSec('svSecWd','svWdBody','เปลี่ยนไม้ล่อ','<th>หมายเลขสถานี</th><th>ชนิด</th><th>จำนวนไม้</th>','addWd','+ เพิ่มสถานีที่เปลี่ยนไม้','จำนวนไม้เติมอัตโนมัติตามชนิด (IG = 2 ชิ้น · IC = 1 ชิ้น)','svWdChips')+
+    tableSec('svSecRp','svRpBody','งานซ่อม / ปรับสถานี','<th>ประเภทงาน</th><th>หมายเลขสถานี</th><th>จำนวน</th>','addRp','+ เพิ่มงานซ่อม / ปรับสถานี','เช่น ฝังสถานีใหม่ (IG/IC) เปลี่ยนฝาสถานี','')+
+    '<div class="agsec" id="svSecAg" hidden><div id="svAgBox"></div></div>'+
+  '</div>'+
+  '<div class="savebar"><div class="savemsg" id="svMsg" role="alert" hidden></div>'+
+    '<button type="button" class="btn" data-act="svPrev" aria-label="รายก่อนหน้า" title="รายก่อนหน้า" style="min-width:56px">←</button>'+
+    '<button type="button" class="btn primary" data-act="svSave">บันทึก + รายถัดไป</button>'+
+    '<button type="button" class="btn" data-act="svSkip">ข้าม</button></div>';
+  agRender('sv');
+  svSyncUi();
+}
+function svRows(k){return $({tm:'svTmBody',wd:'svWdBody',rp:'svRpBody'}[k]).querySelectorAll('tr')}
+function svFilledRows(k){
+  var n=0; [].forEach.call(svRows(k),function(tr){var i=tr.querySelector('input'); if(i&&i.value.trim()) n++});
+  return n;
+}
+function svSyncUi(){
+  if(!SV||!$('svForm')) return;
+  $('svNormal').setAttribute('aria-pressed',SV.normal?'true':'false');
+  ['tm','wd','rp','ag'].forEach(function(k){
+    var sec=$({tm:'svSecTm',wd:'svSecWd',rp:'svSecRp',ag:'svSecAg'}[k]);
+    sec.hidden=!SV.open[k];
+    var b=document.querySelector('#svForm [data-sec="'+k+'"]');
+    b.setAttribute('aria-pressed',SV.open[k]?'true':'false');
+    b.disabled=(k!=='ag'&&SV.normal);
+  });
+  svRecalc();
+}
+function svToggleSec(k){
+  if(!SV) return;
+  if(k!=='ag'&&SV.normal) return;
+  if(SV.open[k]){
+    if(k==='ag'){
+      var m=AGM.sv;
+      if(m.pts.some(function(p){return p.kind==='S'||agTouched(p)})){toast('มีข้อมูลกล่อง AG ที่กรอกไว้ — ลบ/ล้างก่อนจึงปิดหมวดนี้ได้'); return}
+      if(custById(SV.id).ag.length){toast('ลูกค้ารายนี้มีกล่อง AG ค้างติดตาม — ต้องกรอกผล หรือติ๊ก “รอบนี้ไม่ได้ตรวจกล่อง AG”'); return}
+    } else {
+      if(svFilledRows(k)){toast('มีรายการในหมวดนี้อยู่ — ลบแถวก่อนจึงปิดหมวดได้'); return}
+      $({tm:'svTmBody',wd:'svWdBody',rp:'svRpBody'}[k]).innerHTML='';
+    }
+    SV.open[k]=false;
+  } else {
+    SV.open[k]=true;
+    if(k!=='ag'&&!svRows(k).length) svAddRow(k);
+  }
+  svSyncUi();
+}
+function svAddRow(k){
+  var body=$({tm:'svTmBody',wd:'svWdBody',rp:'svRpBody'}[k]);
+  body.insertAdjacentHTML('beforeend',{tm:tmRowHtml,wd:wdRowHtml,rp:rpRowHtml}[k]());
+  var inp=body.lastElementChild.querySelector('input,select'); if(inp) inp.focus();
+  svRecalc();
+}
+function svNormalToggle(){
+  if(!SV) return;
+  if(SV.normal){SV.normal=false}
+  else {
+    if(svFilledRows('tm')||svFilledRows('wd')||svFilledRows('rp')){toast('มีรายการพบปลวก/เปลี่ยนไม้/งานซ่อมอยู่ — ลบออกก่อนจึงกด “ปกติทั้งหมด” ได้'); return}
+    ['tm','wd','rp'].forEach(function(k){SV.open[k]=false; $({tm:'svTmBody',wd:'svWdBody',rp:'svRpBody'}[k]).innerHTML=''});
+    SV.normal=true;
+  }
+  svSyncUi();
+}
+/* สรุปตัวเลขในหมวด + ตัวเลขบนปุ่ม (คำนวณจากแถวที่กรอก) */
+function svRecalc(){
+  if(!SV||!$('svTmBody')) return;
+  var c=custById(SV.id), tot=c.ig+c.ic;
+  var tm=svRows('tm'), under=0, garden=0, bait=0, pts=0;
+  [].forEach.call(tm,function(tr){
+    if(tr.querySelector('.tmType').value==='ปลวกสวน'){garden++; pts+=parseFloat(tr.querySelector('.powin').value)||0}
+    else {under++; bait+=parseInt(tr.querySelector('.baitsel').value,10)||0}
+  });
+  $('svTmChips').innerHTML='<span class="chip ok num">ปกติ '+Math.max(0,tot-tm.length)+' จุด</span><span class="chip miss">ปลวกใต้ดิน '+under+' จุด</span><span class="chip pend">ปลวกสวน '+garden+' จุด</span>'+
+    '<span class="chip na num">เหยื่อรวม '+bait+' ก.</span><span class="chip na num">เคมีผง '+pts+' จุด ('+Math.round(pts*0.3*100)/100+' ก.)</span>';
+  var wd=svRows('wd'), ig=0, ic=0;
+  [].forEach.call(wd,function(tr){if(tr.querySelector('.wdType').value==='IG') ig++; else ic++});
+  $('svWdChips').innerHTML='<span class="chip info num">เปลี่ยนไม้รวม '+(ig*2+ic)+' ชิ้น</span><span class="chip na">IG '+ig+' จุด (×2) · IC '+ic+' จุด (×1)</span>';
+  $('svN_tm').textContent=tm.length; $('svN_wd').textContent=wd.length; $('svN_rp').textContent=svRows('rp').length;
+  $('svN_ag').textContent=AGM.sv?AGM.sv.pts.length:0;
+  svRefreshMsg();
+}
+function svMissing(){
+  var miss=[];
+  if(!$('svDate').value) miss.push('วันที่เข้า');
+  if(!SV.normal&&!SV.open.tm&&!SV.open.wd&&!SV.open.rp) miss.push('ผล IG / IC — กด “IG / IC ปกติทั้งหมด” หรือเลือกสิ่งที่พบ (พบปลวก / เปลี่ยนไม้ / งานซ่อม)');
+  var names={tm:'พบปลวก',wd:'เปลี่ยนไม้',rp:'งานซ่อม'};
+  ['tm','wd','rp'].forEach(function(k){
+    if(!SV.open[k]) return;
+    var rows=svRows(k), bad=0;
+    [].forEach.call(rows,function(tr){var i=tr.querySelector('input'); if(!i.value.trim()||tr.querySelector('.vchk.bad')) bad++});
+    if(!rows.length) miss.push(names[k]+': ยังไม่มีรายการ');
+    else if(bad) miss.push(names[k]+': เลขสถานีไม่ถูกต้อง/ยังไม่กรอก '+bad+' แถว');
+  });
+  return miss.concat(agMissing('sv').missing);
+}
+function svRefreshMsg(){
+  var msg=$('svMsg'); if(!msg||!SV||!SV.tried) return;
+  var miss=svMissing();
+  if(miss.length){msg.hidden=false; msg.innerHTML='<b>บันทึกไม่ได้ — ยังขาด:</b><ul>'+miss.map(function(m){return '<li>'+esc(m)+'</li>'}).join('')+'</ul>'}
+  else msg.hidden=true;
+}
+function svNextUndone(fromId){
+  var base=pkBase(PK.sv), i=base.indexOf(custById(fromId)), n=base.length;
+  for(var s=1;s<n;s++){var c=base[(i+s)%n]; if(!c.done) return c}
+  return null;
+}
+function svSave(){
+  if(!SV) return;
+  SV.tried=true; AGM.sv.tried=true; agRender('sv');
+  if(svMissing().length) return;
+  var c=custById(SV.id);
+  agCommit('sv'); c.done=true; c.team=$('svTeam').value;
+  toast('บันทึกผล “'+c.name+'” แล้ว');
+  var next=svNextUndone(c.id);
+  pkSelect(PK.sv,next?next.id:null,true);
+  pkRender(PK.bx);
+}
+function svSkip(){
+  if(!SV) return;
+  var next=svNextUndone(SV.id);
+  if(!next){toast('ไม่มีรายอื่นที่ยังไม่กรอก'); return}
+  pkSelect(PK.sv,next.id,true);
+}
+function svPrev(){
+  if(!SV) return;
+  var base=pkBase(PK.sv), i=base.indexOf(custById(SV.id));
+  if(i<=0){toast('เป็นรายแรกแล้ว'); return}
+  pkSelect(PK.sv,base[i-1].id,true);
+}
+
+/* ---------- ฟอร์มกล่องเหยื่อ AG นอกรอบ (ขวาของ #bait) ---------- */
+var BX=null;
+function bxRenderForm(){
+  var p=PK.bx, box=$('bxForm'), c=p.sel?custById(p.sel):null;
+  if(!c){BX=null; box.innerHTML='<div class="empty" style="padding:56px 20px">เลือกลูกค้าทางซ้ายเพื่อกรอกงานกล่องเหยื่อ</div>'; return}
+  BX={id:c.id};
+  agInit('bx',c);
+  var round='<div class="field"><label for="bxRound">ประเภทรอบ</label><select id="bxRound"><option value="follow_up">ติดตามผล</option><option value="problem">แก้ปัญหา</option></select><span class="sub">งานกล่องนอกรอบบริการประจำเดือน</span></div>';
+  box.innerHTML=fheadHtml(c,'งานกล่องนอกรอบบริการ')+'<div class="body">'+fieldsHtml('bx',c,round)+
+    '<div class="agsec" style="margin-top:0"><div id="bxAgBox"></div></div></div>'+
+    '<div class="savebar"><div class="savemsg" id="bxMsg" role="alert" hidden></div>'+
+    '<button type="button" class="btn primary" data-act="bxSave">บันทึกงานกล่อง</button>'+
+    '<button type="button" class="btn" data-act="bxCancel">ยกเลิก</button></div>';
+  agRender('bx');
+}
+function bxMissing(){
+  var miss=[];
+  if(!$('bxDate').value) miss.push('วันที่เข้า');
+  var ag=agMissing('bx');
+  if(!ag.missing.length&&ag.filled===0) miss.push('ยังไม่ได้กรอกผลกล่องใดเลย — กรอกผลของจุดที่ติดตาม หรือกด “+ ติดกล่องใหม่ (S)”');
+  return miss.concat(ag.missing);
+}
+function bxRefreshMsg(){
+  var msg=$('bxMsg'), m=AGM.bx; if(!msg||!BX||!m||!m.tried) return;
+  var miss=bxMissing();
+  if(miss.length){msg.hidden=false; msg.innerHTML='<b>บันทึกไม่ได้ — ยังขาด:</b><ul>'+miss.map(function(x){return '<li>'+esc(x)+'</li>'}).join('')+'</ul>'}
+  else msg.hidden=true;
+}
+function bxSave(){
+  if(!BX) return;
+  AGM.bx.tried=true; agRender('bx');
+  if(bxMissing().length) return;
+  var c=custById(BX.id);
+  agCommit('bx'); c.team=$('bxTeam').value;
+  toast('บันทึกงานกล่องของ “'+c.name+'” แล้ว');
+  pkRender(PK.bx); pkRender(PK.sv); bxRenderForm();
+}
+
+/* ---------- ผูกเหตุการณ์ (delegation) + เริ่มต้น ---------- */
+document.addEventListener('click',function(e){
+  var ag=e.target.closest('[data-ag]');
+  if(ag&&ag.dataset.ag!=='skip'){
+    var ctx=ag.dataset.ctx, m=AGM[ctx], a=ag.dataset.ag;
+    if(!m) return;
+    if(a==='add') agAdd(ctx);
+    else if(a==='del'){m.pts=m.pts.filter(function(p){return p.k!==ag.dataset.k}); agRender(ctx)}
+    else if(a==='bait'){var p=agPt(m,ag.dataset.k); p.bait=parseInt(ag.dataset.v,10); agRender(ctx,'.optbtn[data-k="'+p.k+'"][data-v="'+p.bait+'"]')}
+    return;
+  }
+  var t=e.target.closest('[data-act]'); if(!t) return;
+  var act=t.dataset.act;
+  if(act==='delRow'){t.closest('tr').remove(); svRecalc()}
+  else if(act==='addTm') svAddRow('tm');
+  else if(act==='addWd') svAddRow('wd');
+  else if(act==='addRp') svAddRow('rp');
+  else if(act==='sec') svToggleSec(t.dataset.sec);
+  else if(act==='svNormal') svNormalToggle();
+  else if(act==='svSave') svSave();
+  else if(act==='svSkip') svSkip();
+  else if(act==='svPrev') svPrev();
+  else if(act==='bxSave') bxSave();
+  else if(act==='bxCancel') bxRenderForm();
+});
+document.addEventListener('change',function(e){
+  var t=e.target.closest&&e.target.closest('[data-ag]'); if(!t) return;
+  var ctx=t.dataset.ctx, m=AGM[ctx]; if(!m) return;
+  if(t.dataset.ag==='skip'){m.skip=t.checked; agRender(ctx,'input[data-ag="skip"]'); return}
+  var p=agPt(m,t.dataset.k); if(!p) return;
+  if(t.dataset.ag==='caste') p.caste=t.value;
+  else if(t.dataset.ag==='st') p.st=t.value;
+  agRender(ctx,'[data-ag="'+t.dataset.ag+'"][data-k="'+p.k+'"]');
+});
+/* กรอก/แก้ช่องในฟอร์มบริการ → อัปเดตสรุปตัวเลข (ทำหลัง inline handler เดิมของแถว) */
+document.addEventListener('input',function(e){if(e.target.closest&&e.target.closest('#svForm')) svRecalc()});
+document.addEventListener('change',function(e){if(e.target.closest&&e.target.closest('#svForm')&&!e.target.closest('[data-ag]')) svRecalc()});
+
+function initEntryPages(){
+  [PK.sv,PK.bx].forEach(function(p){
+    var el=$(p.id+'Left'); el.innerHTML=pkMarkup(p);
+    el.addEventListener('input',function(e){if(e.target.id===p.id+'Q'){p.q=e.target.value; pkRender(p)}});
+    el.addEventListener('change',function(e){
+      if(e.target.id===p.id+'Branch'){p.branch=e.target.value; pkFiltersChanged(p)}
+      else if(e.target.id===p.id+'Team'){p.team=e.target.value; pkFiltersChanged(p)}
+    });
+    el.addEventListener('click',function(e){
+      var row=e.target.closest('.cust'); if(row){pkSelect(p,+row.dataset.id,true); return}
+      var sg=e.target.closest('.sugg-btn');
+      if(sg){var c=custById(+sg.dataset.id); p.q=c.name; $(p.id+'Q').value=c.name; pkSelect(p,c.id,true); return}
+      var v=e.target.closest('[data-view]'); if(v){p.view=v.dataset.view; pkRender(p)}
+    });
+    var items=pkView(p,pkBase(p));
+    pkSelect(p,items.length?items[0].id:null);
+  });
 }
 function setRole(r){
   var viewerOnly=(r==='viewer');
@@ -968,6 +1427,7 @@ function setRole(r){
     while(n && !n.classList.contains('group')){ if(n.style.display!=='none') any=true; n=n.nextElementSibling; }
     g.style.display=any?'':'none';
   });
+  document.querySelectorAll('[data-internal]').forEach(function(e){ e.hidden=viewerOnly; });
   if(viewerOnly) go('summary');
 }
 function toggleTheme(){
@@ -977,6 +1437,7 @@ function toggleTheme(){
   try{localStorage.setItem('aga-theme',next)}catch(e){}
 }
 function goHash(){ var h=location.hash.slice(1); if(SCREENS.indexOf(h)>=0) go(h); }
+initEntryPages();
 window.addEventListener('hashchange',goHash); goHash();
 try{var t=localStorage.getItem('aga-theme'); if(t)document.documentElement.setAttribute('data-theme',t)}catch(e){}
 </script>
