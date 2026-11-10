@@ -761,81 +761,6 @@ table.xl .teambtn.multi{font-weight:700;color:var(--accent-strong)}
 
 <div style="font-size:11px;color:var(--fg-muted);margin:8px 2px 0">ทีม: <b>A–O</b> ทีมบริการประจำ · <b>Z</b> ทีมติดตั้งงานใหม่</div>
 
-<!-- บล็อกสรุปเหมือนด้านขวาของชีทต้นฉบับ -->
-<div class="xlsum">
-  <div class="panel">
-    <h3>สรุปจำนวนลูกค้าที่เพิ่มในเดือนนี้ <span class="chip na">ต.ค. 2026</span>
-      <button class="btn sm" type="button" style="margin-left:auto" onclick="exportSummaryXL()" title="ส่งออกตารางสรุปทั้งหมด + ข้อมูลกราฟ เป็นไฟล์ .xlsx หลายชีท">↓ ส่งออก Excel (สรุป)</button></h3>
-    <div class="body" style="display:flex;gap:26px;flex-wrap:wrap">
-      <table class="mini-t">
-        <thead><tr><th>ประเภท</th><th class="r">จำนวน</th></tr></thead>
-        <tbody>
-          <tr><td>New</td><td class="r num">60</td></tr>
-          <tr><td>Renew</td><td class="r num">73</td></tr>
-        </tbody>
-        <tfoot><tr><td>รวม</td><td class="r num">133</td></tr></tfoot>
-      </table>
-      <div class="miniwrap">
-      <table class="mini-t">
-        <thead>
-          <tr>
-            <th rowspan="2">Size</th>
-            <th colspan="2" class="c grp gl">New</th>
-            <th colspan="2" class="c grp gl">Renew</th>
-            <th rowspan="2" class="r gl">รวม</th>
-          </tr>
-          <tr>
-            <th class="r sub gl">1 ปี</th><th class="r sub">3 ปี</th>
-            <th class="r sub gl">1 ปี</th><th class="r sub">3 ปี</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr><td><span class="tier s">S</span></td><td class="r num gl">31</td><td class="r num">21</td><td class="r num gl">20</td><td class="r num">21</td><td class="r num gl">93</td></tr>
-          <tr><td><span class="tier m">M</span></td><td class="r num gl">5</td><td class="r num">1</td><td class="r num gl">7</td><td class="r num">4</td><td class="r num gl">17</td></tr>
-          <tr><td><span class="tier l">L</span></td><td class="r num gl">1</td><td class="r num">0</td><td class="r num gl">6</td><td class="r num">0</td><td class="r num gl">7</td></tr>
-          <tr><td><span class="tier xl">XL</span></td><td class="r num gl">1</td><td class="r num">0</td><td class="r num gl">13</td><td class="r num">1</td><td class="r num gl">15</td></tr>
-        </tbody>
-        <tfoot>
-          <tr><td>รวม</td><td class="r num gl">38</td><td class="r num">22</td><td class="r num gl">46</td><td class="r num">26</td><td class="r num gl">132</td></tr>
-          <tr><td style="font-weight:400;color:var(--fg-muted)">รวมประเภท</td>
-            <td colspan="2" class="c num gl">New 60</td>
-            <td colspan="2" class="c num gl">Renew 72</td>
-            <td class="gl"></td></tr>
-          <tr><td colspan="6" style="font-weight:400;color:var(--fg-muted);font-size:11px">
-            อีก 1 สัญญา (Renew) ยังไม่ได้กรอกมูลค่า จึงยังจัด Tier ไม่ได้ · รวมทั้งเดือน 133 สัญญา</td></tr>
-        </tfoot>
-      </table>
-      </div>
-      <div class="miniwrap"><table class="mini-t" id="zoneTbl" aria-label="สรุปแยกตามเขต"></table></div>
-      <div style="font-size:11.5px;color:var(--fg-muted);max-width:250px">
-        บล็อกนี้ตรงกับที่อยู่ด้านขวาของชีทเดิม — ต่างกันตรงที่<b>ระบบนับให้เอง</b>จากแถวในตาราง ไม่ต้องมาพิมพ์สรุปซ้ำ<br><br>
-        ตาราง Size ซอยละเอียดกว่าชีทเดิม: แยก <b>New / Renew</b> คร่อม 1 ปี/3 ปี ในตารางเดียว เห็นได้เลยว่าลูกค้าใหม่กับต่อสัญญาอยู่ Tier ไหน<br><br>
-        ตาราง<b>แยกตามเขต</b>: ทุกเขตเห็น <b>New / Renew × Size × 1 ปี / 3 ปี</b> พร้อมกัน (เขตละ 3 แถว: New · Renew · รวมเขต) · เขตมาจากสาขาของแต่ละสัญญาอัตโนมัติ (ชี้ที่ชื่อเขตเพื่อดูสาขาในเขตนั้น) · "กรุ๊ป" = งานกรุ๊ป (ลูกค้านอกสาขา) ไม่มีเขต
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- Dashboard สรุปการเปิดงาน — แบบ B (เจ้าของเลือก 10 พ.ย. 2026): KPI + สลับมุมมองทีละกราฟ + ตารางข้อมูลของกราฟที่เลือก
-     ตัวเลขเขต/Tier/ประเภทเป็นข้อมูลสมมติ (ผลรวมตรงตารางสรุปด้านบน 133 สัญญา) · งานต่อวันอ่านจากปฏิทินด้านล่างจริง -->
-<div class="panel" id="dash" style="margin-top:16px">
-  <h3>Dashboard สรุปการเปิดงาน <span class="chip na">ต.ค. 2026</span> <span class="chip pend">ตัวเลขสมมติ</span>
-    <button class="btn sm" type="button" style="margin-left:auto" onclick="exportSummaryXL()" title="ส่งออกตารางสรุปทั้งหมด + ข้อมูลกราฟ เป็นไฟล์ .xlsx หลายชีท">↓ ส่งออก Excel (สรุป)</button></h3>
-  <div class="body">
-    <div class="dkpi" id="dkpi"></div>
-    <div class="dgrid">
-      <div>
-        <div class="dtabs" role="tablist" aria-label="เลือกมุมมองกราฟ" id="dtabs"></div>
-        <div class="dcanvas" id="dcanvas"><canvas id="dcv" role="img" aria-label="กราฟสรุปการเปิดงาน"></canvas></div>
-      </div>
-      <div>
-        <div class="miniwrap" id="dtbl"></div>
-        <div class="dnote" id="dnote"></div>
-      </div>
-    </div>
-  </div>
-</div>
-
 <div class="panel" style="margin-top:16px">
   <h3>ปฏิทินงานรายวัน (ตามวันที่บริการ) <span class="chip na">ต.ค. 2026</span>
     <span style="margin-left:auto;font-size:12px;color:var(--fg-muted)">รวม 113 งานในเดือนนี้</span></h3>
@@ -1097,7 +1022,82 @@ table.xl .teambtn.multi{font-weight:700;color:var(--accent-strong)}
 09:30 คุณลูกค้า เก้า 3 · ประชาชื่น · S3 · New
 13:30 คุณลูกค้า สาม 5 · สุขุมวิท · S1 · New"><span class="d">31</span><span class="n">3</span><div class="hnames"><span class="ev s"><b>09:00</b>บจก. ลูกค้าตัวอย่าง 24</span><span class="ev s"><b>09:30</b>คุณลูกค้า เก้า 3</span><span class="ev s"><b>13:30</b>คุณลูกค้า สาม 5</span></div></div>
     </div></div>
-    </div></div>
+    </div>
+
+<!-- Dashboard สรุปการเปิดงาน — แบบ B (เจ้าของเลือก 10 พ.ย. 2026): KPI + สลับมุมมองทีละกราฟ + ตารางข้อมูลของกราฟที่เลือก
+     ตัวเลขเขต/Tier/ประเภทเป็นข้อมูลสมมติ (ผลรวมตรงตารางสรุปด้านบน 133 สัญญา) · งานต่อวันอ่านจากปฏิทินด้านล่างจริง -->
+<div class="panel" id="dash" style="margin-top:16px">
+  <h3>Dashboard สรุปการเปิดงาน <span class="chip na">ต.ค. 2026</span> <span class="chip pend">ตัวเลขสมมติ</span>
+    <button class="btn sm" type="button" style="margin-left:auto" onclick="exportSummaryXL()" title="ส่งออกตารางสรุปทั้งหมด + ข้อมูลกราฟ เป็นไฟล์ .xlsx หลายชีท">↓ ส่งออก Excel (สรุป)</button></h3>
+  <div class="body">
+    <div class="dkpi" id="dkpi"></div>
+    <div class="dgrid">
+      <div>
+        <div class="dtabs" role="tablist" aria-label="เลือกมุมมองกราฟ" id="dtabs"></div>
+        <div class="dcanvas" id="dcanvas"><canvas id="dcv" role="img" aria-label="กราฟสรุปการเปิดงาน"></canvas></div>
+      </div>
+      <div>
+        <div class="miniwrap" id="dtbl"></div>
+        <div class="dnote" id="dnote"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- บล็อกสรุปเหมือนด้านขวาของชีทต้นฉบับ -->
+<div class="xlsum">
+  <div class="panel">
+    <h3>สรุปจำนวนลูกค้าที่เพิ่มในเดือนนี้ <span class="chip na">ต.ค. 2026</span>
+      <button class="btn sm" type="button" style="margin-left:auto" onclick="exportSummaryXL()" title="ส่งออกตารางสรุปทั้งหมด + ข้อมูลกราฟ เป็นไฟล์ .xlsx หลายชีท">↓ ส่งออก Excel (สรุป)</button></h3>
+    <div class="body" style="display:flex;gap:26px;flex-wrap:wrap">
+      <table class="mini-t">
+        <thead><tr><th>ประเภท</th><th class="r">จำนวน</th></tr></thead>
+        <tbody>
+          <tr><td>New</td><td class="r num">60</td></tr>
+          <tr><td>Renew</td><td class="r num">73</td></tr>
+        </tbody>
+        <tfoot><tr><td>รวม</td><td class="r num">133</td></tr></tfoot>
+      </table>
+      <div class="miniwrap">
+      <table class="mini-t">
+        <thead>
+          <tr>
+            <th rowspan="2">Size</th>
+            <th colspan="2" class="c grp gl">New</th>
+            <th colspan="2" class="c grp gl">Renew</th>
+            <th rowspan="2" class="r gl">รวม</th>
+          </tr>
+          <tr>
+            <th class="r sub gl">1 ปี</th><th class="r sub">3 ปี</th>
+            <th class="r sub gl">1 ปี</th><th class="r sub">3 ปี</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td><span class="tier s">S</span></td><td class="r num gl">31</td><td class="r num">21</td><td class="r num gl">20</td><td class="r num">21</td><td class="r num gl">93</td></tr>
+          <tr><td><span class="tier m">M</span></td><td class="r num gl">5</td><td class="r num">1</td><td class="r num gl">7</td><td class="r num">4</td><td class="r num gl">17</td></tr>
+          <tr><td><span class="tier l">L</span></td><td class="r num gl">1</td><td class="r num">0</td><td class="r num gl">6</td><td class="r num">0</td><td class="r num gl">7</td></tr>
+          <tr><td><span class="tier xl">XL</span></td><td class="r num gl">1</td><td class="r num">0</td><td class="r num gl">13</td><td class="r num">1</td><td class="r num gl">15</td></tr>
+        </tbody>
+        <tfoot>
+          <tr><td>รวม</td><td class="r num gl">38</td><td class="r num">22</td><td class="r num gl">46</td><td class="r num">26</td><td class="r num gl">132</td></tr>
+          <tr><td style="font-weight:400;color:var(--fg-muted)">รวมประเภท</td>
+            <td colspan="2" class="c num gl">New 60</td>
+            <td colspan="2" class="c num gl">Renew 72</td>
+            <td class="gl"></td></tr>
+          <tr><td colspan="6" style="font-weight:400;color:var(--fg-muted);font-size:11px">
+            อีก 1 สัญญา (Renew) ยังไม่ได้กรอกมูลค่า จึงยังจัด Tier ไม่ได้ · รวมทั้งเดือน 133 สัญญา</td></tr>
+        </tfoot>
+      </table>
+      </div>
+      <div class="miniwrap"><table class="mini-t" id="zoneTbl" aria-label="สรุปแยกตามเขต"></table></div>
+      <div style="font-size:11.5px;color:var(--fg-muted);max-width:250px">
+        บล็อกนี้ตรงกับที่อยู่ด้านขวาของชีทเดิม — ต่างกันตรงที่<b>ระบบนับให้เอง</b>จากแถวในตาราง ไม่ต้องมาพิมพ์สรุปซ้ำ<br><br>
+        ตาราง Size ซอยละเอียดกว่าชีทเดิม: แยก <b>New / Renew</b> คร่อม 1 ปี/3 ปี ในตารางเดียว เห็นได้เลยว่าลูกค้าใหม่กับต่อสัญญาอยู่ Tier ไหน<br><br>
+        ตาราง<b>แยกตามเขต</b>: ทุกเขตเห็น <b>New / Renew × Size × 1 ปี / 3 ปี</b> พร้อมกัน (เขตละ 3 แถว: New · Renew · รวมเขต) · เขตมาจากสาขาของแต่ละสัญญาอัตโนมัติ (ชี้ที่ชื่อเขตเพื่อดูสาขาในเขตนั้น) · "กรุ๊ป" = งานกรุ๊ป (ลูกค้านอกสาขา) ไม่มีเขต
+      </div>
+    </div>
+  </div>
+</div></div>
     </div><div class="tb"><i style="width:100.0%;background:var(--tier-s)"></i></div></div>
     </div>
     <div class="hint">พื้นเซลล์เข้ม = วันนั้นงานเยอะ · แต่ละบรรทัด = 1 งาน <b>เวลานัด + ชื่อลูกค้า</b> เรียงตามเวลา พื้น/แถบซ้ายบอก Tier · ในเซลล์โชว์ 3 รายแรก · <b>ชี้ที่วันเพื่อดูรายการเต็ม</b> (เวลา · ชื่อลูกค้า · สาขา · Tier)</div>
