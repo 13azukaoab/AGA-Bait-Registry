@@ -723,11 +723,13 @@ tfoot td{padding:10px 12px;font-weight:700;background:var(--surface-2);border-to
       <div class="page-head"><h1>ทะเบียนลูกค้า / สัญญา</h1>
         <p>ตารางแบบ Excel — พิมพ์ในช่องได้ เลื่อนด้วย Tab/Enter กรอง/เรียง/คัดลอกได้ · Tier คำนวณจากมูลค่าต่อปีอัตโนมัติ</p></div>
       <div class="toolbar">
-        <div class="field"><label>เขต</label><select><option>เขต 1</option><option>ทุกเขต</option></select></div>
-        <div class="field"><label>สาขา</label><select><option>พุทธมณฑล</option><option>ทุกสาขา</option></select></div>
-        <div class="field"><label>ทีม</label><select><option>ทุกทีม</option><option>A</option><option>B</option></select></div>
-        <div class="field"><label>สถานะ</label><select><option>Active</option><option>ทั้งหมด</option></select></div>
-        <div class="field"><label>ค้นหา</label><input placeholder="ชื่อลูกค้า / เลขสัญญา"></div>
+        <div class="field"><label for="rgZone">เขต</label><select id="rgZone" onchange="rgFltZone()"></select></div>
+        <div class="field"><label for="rgBranch">สาขา</label><select id="rgBranch" onchange="rgFltApply()"></select></div>
+        <div class="field"><label for="rgTeam">ทีม</label><select id="rgTeam" onchange="rgFltApply()"><option value="">ทุกทีม</option><option>A</option><option>B</option></select></div>
+        <div class="field"><label for="rgStatus">สถานะ</label><select id="rgStatus" onchange="rgFltApply()"><option value="">ทั้งหมด</option><option>Active</option><option>ใกล้หมด</option></select></div>
+        <div class="field"><label for="rgSearch">ค้นหา</label><input id="rgSearch" type="search" placeholder="ชื่อลูกค้า / เลขที่สัญญา" oninput="rgFltApply()" autocomplete="off"></div>
+        <button class="btn sm" type="button" id="rgClear" onclick="rgFltReset()" hidden>✕ ล้างตัวกรอง</button>
+        <div id="rgShown" class="num" role="status" aria-live="polite" style="align-self:center;font-size:12.5px;font-weight:600"></div>
         <div id="regSortHint" style="flex:1;align-self:center;font-size:11.5px;color:var(--fg-muted)">คลิกหัวคอลัมน์เพื่อเรียงลำดับ · คลิกซ้ำ = มาก→น้อย · คลิกครั้งที่ 3 = กลับลำดับเดิม</div>
         <button class="btn" type="button" onclick="exportRegistryXL()" title="ส่งออกตารางทะเบียนทั้งหมดเป็น .xlsx (ตามลำดับที่เห็นอยู่)">↓ ส่งออก Excel</button>
         <button class="btn primary">+ เพิ่มลูกค้า</button>
@@ -740,15 +742,16 @@ tfoot td{padding:10px 12px;font-weight:700;background:var(--surface-2);border-to
             <th class="c">Tier <span class="auto-tag">อัตโนมัติ</span></th><th class="c">สถานี</th><th class="c">สถานะ</th>
           </tr></thead>
           <tbody>
-            <tr><td class="c num">1</td><td><b>บจก. เมืองทองคลังสินค้า</b></td><td class="num">CT23-0000017</td><td>A</td><td>โรงงาน</td><td class="num">14/11/66</td><td class="num">13/11/69</td><td class="r num">450,000</td><td class="r num">150,000</td><td class="c"><span class="tier xl3">XL3</span></td><td class="c num">52</td><td class="c"><span class="chip ok">Active</span></td></tr>
-            <tr><td class="c num">2</td><td><b>อาคารชุดลุมพินีวิว</b></td><td class="num">CT23-0000041</td><td>B</td><td>อาคาร</td><td class="num">26/11/66</td><td class="num">25/11/69</td><td class="r num">180,000</td><td class="r num">60,000</td><td class="c"><span class="tier l3">L3</span></td><td class="c num">30</td><td class="c"><span class="chip ok">Active</span></td></tr>
-            <tr><td class="c num">3</td><td><b>บมจ. สยามพัฒนาเฮ้าส์</b></td><td class="num">CT26-0000142</td><td>A</td><td>ออฟฟิศ</td><td class="num">01/09/69</td><td class="num">31/08/70</td><td class="r num">96,000</td><td class="r num">96,000</td><td class="c"><span class="tier l1">L1</span></td><td class="c num">125</td><td class="c"><span class="chip ok">Active</span></td></tr>
-            <tr><td class="c num">4</td><td><b>โรงแรมบ้านสวนรีสอร์ท</b></td><td class="num">CT25-0000311</td><td>B</td><td>โรงแรม</td><td class="num">01/07/68</td><td class="num">30/06/71</td><td class="r num">135,000</td><td class="r num">45,000</td><td class="c"><span class="tier m3">M3</span></td><td class="c num">51</td><td class="c"><span class="chip ok">Active</span></td></tr>
-            <tr><td class="c num">5</td><td><b>หจก. ทรัพย์เจริญ</b></td><td class="num">CT26-0000203</td><td>A</td><td>ทาวน์โฮม</td><td class="num">15/01/69</td><td class="num">14/01/70</td><td class="r num">36,000</td><td class="r num">36,000</td><td class="c"><span class="tier m1">M1</span></td><td class="c num">18</td><td class="c"><span class="chip ok">Active</span></td></tr>
-            <tr><td class="c num">6</td><td><b>คุณวิรัช ตั้งมั่น</b></td><td class="num">CT26-0000088</td><td>A</td><td>บ้าน</td><td class="num">03/04/69</td><td class="num">02/04/70</td><td class="r num">28,000</td><td class="r num">28,000</td><td class="c"><span class="tier s1">S1</span></td><td class="c num">8</td><td class="c"><span class="chip ok">Active</span></td></tr>
-            <tr><td class="c num">7</td><td><b>คุณสมหญิง รุ่งเรือง</b></td><td class="num">CT26-0000009</td><td>A</td><td>บ้าน</td><td class="num">07/12/68</td><td class="num">06/12/69</td><td class="r num">24,000</td><td class="r num">24,000</td><td class="c"><span class="tier s1">S1</span></td><td class="c num">6</td><td class="c"><span class="chip pend">ใกล้หมด</span></td></tr>
+            <tr data-zone="เขต 4" data-br="พัฒนาการ"><td class="c num">1</td><td><b>บจก. เมืองทองคลังสินค้า</b></td><td class="num">CT23-0000017</td><td>A</td><td>โรงงาน</td><td class="num">14/11/66</td><td class="num">13/11/69</td><td class="r num">450,000</td><td class="r num">150,000</td><td class="c"><span class="tier xl3">XL3</span></td><td class="c num">52</td><td class="c"><span class="chip ok">Active</span></td></tr>
+            <tr data-zone="เขต 6" data-br="สุขุมวิท"><td class="c num">2</td><td><b>อาคารชุดลุมพินีวิว</b></td><td class="num">CT23-0000041</td><td>B</td><td>อาคาร</td><td class="num">26/11/66</td><td class="num">25/11/69</td><td class="r num">180,000</td><td class="r num">60,000</td><td class="c"><span class="tier l3">L3</span></td><td class="c num">30</td><td class="c"><span class="chip ok">Active</span></td></tr>
+            <tr data-zone="เขต 4" data-br="ลาดพร้าว"><td class="c num">3</td><td><b>บมจ. สยามพัฒนาเฮ้าส์</b></td><td class="num">CT26-0000142</td><td>A</td><td>ออฟฟิศ</td><td class="num">01/09/69</td><td class="num">31/08/70</td><td class="r num">96,000</td><td class="r num">96,000</td><td class="c"><span class="tier l1">L1</span></td><td class="c num">125</td><td class="c"><span class="chip ok">Active</span></td></tr>
+            <tr data-zone="เขต 1" data-br="นครปฐม"><td class="c num">4</td><td><b>โรงแรมบ้านสวนรีสอร์ท</b></td><td class="num">CT25-0000311</td><td>B</td><td>โรงแรม</td><td class="num">01/07/68</td><td class="num">30/06/71</td><td class="r num">135,000</td><td class="r num">45,000</td><td class="c"><span class="tier m3">M3</span></td><td class="c num">51</td><td class="c"><span class="chip ok">Active</span></td></tr>
+            <tr data-zone="เขต 2" data-br="นนทบุรี"><td class="c num">5</td><td><b>หจก. ทรัพย์เจริญ</b></td><td class="num">CT26-0000203</td><td>A</td><td>ทาวน์โฮม</td><td class="num">15/01/69</td><td class="num">14/01/70</td><td class="r num">36,000</td><td class="r num">36,000</td><td class="c"><span class="tier m1">M1</span></td><td class="c num">18</td><td class="c"><span class="chip ok">Active</span></td></tr>
+            <tr data-zone="เขต 1" data-br="พุทธมณฑล"><td class="c num">6</td><td><b>คุณวิรัช ตั้งมั่น</b></td><td class="num">CT26-0000088</td><td>A</td><td>บ้าน</td><td class="num">03/04/69</td><td class="num">02/04/70</td><td class="r num">28,000</td><td class="r num">28,000</td><td class="c"><span class="tier s1">S1</span></td><td class="c num">8</td><td class="c"><span class="chip ok">Active</span></td></tr>
+            <tr data-zone="เขต 5" data-br="ระยอง"><td class="c num">7</td><td><b>คุณสมหญิง รุ่งเรือง</b></td><td class="num">CT26-0000009</td><td>A</td><td>บ้าน</td><td class="num">07/12/68</td><td class="num">06/12/69</td><td class="r num">24,000</td><td class="r num">24,000</td><td class="c"><span class="tier s1">S1</span></td><td class="c num">6</td><td class="c"><span class="chip pend">ใกล้หมด</span></td></tr>
           </tbody>
         </table>
+        <div class="empty" id="rgNoRes" hidden></div>
       </div>
       <div class="legend">
         <span><span class="tier s">S</span> &lt; 30,000/ปี</span>
@@ -1714,7 +1717,7 @@ function addCustLinks(){
    • คลิกหัวคอลัมน์: น้อย→มาก ▲ → มาก→น้อย ▼ → กลับลำดับเดิม · คลิก "#" = คืนลำดับเดิม · Enter/Space ได้
    • เทียบตามค่าจริง: ตัวเลข (มีคอมมา) · วันที่ dd/mm/yy (พ.ศ. 2 หลัก) · Tier (S<M<L<XL แล้วตามปี) · ที่เหลือเรียงตามตัวอักษรไทย (เลขในข้อความเรียงตามค่า)
    • ช่องว่างอยู่ท้ายเสมอทั้งสองทิศ · เลข # คงเดิม · ส่งออก Excel ตามลำดับที่เห็น
-   • ตัวกรอง (เขต/สาขา/ทีม/สถานะ/ค้นหา) ในแถบเครื่องมือหน้านี้ยังเป็น mock — รอเจ้าของสั่ง */
+   • ตัวกรอง (เขต/สาขา/ทีม/สถานะ/ค้นหา) ทำงานจริง — ดูหัวข้อ "ตัวกรองตารางทะเบียน" ถัดไป · เรียงกับกรองใช้ร่วมกันได้ (เรียงไม่แตะสถานะซ่อน/แสดงของแถว) */
 var RG={col:-1,dir:0}, RGC=new Intl.Collator('th',{numeric:true,sensitivity:'base'}), RG_TIER_COL=9;
 function rgKey(tr,i){
   var c=tr.cells[i]; if(!c) return '';
@@ -1767,6 +1770,71 @@ function rgInit(){
   });
 }
 
+/* ===== ตัวกรองตารางทะเบียน (หน้า #registry) — แนวเดียวกับตารางเปิดงานใน admin-add-customer.html (fltApply) =====
+   • เขต / สาขา / ทีม / สถานะ / ค้นหา ทำงานร่วมกัน (AND) · ซ่อนแถวด้วย tr.hidden (เรียงลำดับได้ต่อ ค่าในแถวไม่หาย)
+   • เลือกเขต → รายการสาขาแคบลงเหลือสาขาของเขตนั้น (ถ้าสาขาที่เลือกอยู่ไม่อยู่ในเขตใหม่ → ล้างเป็น "ทุกสาขา")
+   • ค้นหา = ชื่อลูกค้า (อ่านจาก <b> ไม่เอาลิงก์ ↗ / ปุ่มประวัติ) หรือ เลขที่สัญญา · ไม่สนตัวพิมพ์เล็กใหญ่และช่องว่าง
+   • สถานะอ่านจากชิปในคอลัมน์ "สถานะ" ของแถว · เขต/สาขาอ่านจาก data-zone / data-br ของแถว (ของจริงมาจากคอลัมน์ในฐานข้อมูล)
+   • กรองรันเฉพาะตอนผู้ใช้เปลี่ยนตัวกรอง — ไม่ผูกกับการแก้ค่าในแถวและไม่ผูกกับการเรียงลำดับ (กันแถวหายตอนกำลังพิมพ์)
+   • "ส่งออก Excel" ส่งทุกแถวของตาราง ไม่ขึ้นกับตัวกรอง (ตรงกับตารางเปิดงาน)
+   • ปุ่ม "⟲ ประวัติ (n)" ต่อท้ายชื่อลูกค้าทุกแถว: HD.btn() จากบล็อก AGA-HISTORY-DRAWER · ซ่อนเองเมื่อ role ไม่ใช่ host (HD.sync ใน setRole) */
+var RG_BR={'พัฒนาการ':'เขต 4','ลาดพร้าว':'เขต 4','ประชาชื่น':'เขต 4','สุวินทวงศ์':'เขต 4',
+  'รามอินทรา':'เขต 3','ปทุมธานี':'เขต 3','อยุธยา':'เขต 3',
+  'พุทธมณฑล':'เขต 1','พระราม2':'เขต 1','หัวหิน':'เขต 1','นครปฐม':'เขต 1',
+  'สุขุมวิท':'เขต 6','ปากน้ำ':'เขต 6','ชลบุรี':'เขต 6',
+  'นนทบุรี':'เขต 2','สาทร':'เขต 2','พระราม4':'เขต 2','ปทุมวัน':'เขต 2',
+  'สมุทรปราการ':'เขต 5','ระยอง':'เขต 5','ปราจีนบุรี':'เขต 5','พัทยา':'เขต 5',
+  'ปากช่อง':'เขต 9','สระบุรี':'เขต 9'};   /* master 24 สาขา → เขต (ชุดเดียวกับ BRZONE ใน admin-add-customer.html) */
+function rgNorm(s){ return String(s||'').toLowerCase().replace(/\s+/g,''); }
+function rgEl(id){ return document.getElementById(id); }
+function rgBranchOpts(zone){   /* รายการสาขาตามเขตที่เลือก (ว่าง = ทุกเขต) */
+  var b=rgEl('rgBranch'), keep=b.value;
+  var list=Object.keys(RG_BR).filter(function(n){ return !zone || RG_BR[n]===zone; });
+  b.innerHTML='<option value="">ทุกสาขา</option>'+list.map(function(n){return '<option>'+n+'</option>';}).join('');
+  b.value=(list.indexOf(keep)>=0)?keep:'';
+}
+function rgFltInit(){
+  var z=rgEl('rgZone'); if(!z) return;
+  var zones=[]; Object.keys(RG_BR).forEach(function(n){ if(zones.indexOf(RG_BR[n])<0) zones.push(RG_BR[n]); });
+  zones.sort(function(a,b){ return parseInt(a.replace(/\D/g,''),10)-parseInt(b.replace(/\D/g,''),10); });
+  z.innerHTML='<option value="">ทุกเขต</option>'+zones.map(function(c){return '<option>'+c+'</option>';}).join('');
+  rgBranchOpts('');
+}
+function rgFltMatch(tr,f){
+  if(f.zone && tr.dataset.zone!==f.zone) return false;
+  if(f.branch && tr.dataset.br!==f.branch) return false;
+  if(f.team && tr.cells[3].textContent.trim()!==f.team) return false;
+  if(f.status){ var ch=tr.cells[11].querySelector('.chip'); if((ch?ch.textContent:tr.cells[11].textContent).trim()!==f.status) return false; }
+  if(f.q){
+    var b=tr.cells[1].querySelector('b');
+    if(rgNorm(b?b.textContent:tr.cells[1].textContent).indexOf(f.q)<0 && rgNorm(tr.cells[2].textContent).indexOf(f.q)<0) return false;
+  }
+  return true;
+}
+function rgFltApply(){
+  if(!rgEl('rgZone')) return;
+  var f={zone:rgEl('rgZone').value, branch:rgEl('rgBranch').value, team:rgEl('rgTeam').value, status:rgEl('rgStatus').value, q:rgNorm(rgEl('rgSearch').value)};
+  var rows=document.querySelectorAll('#s-registry tbody tr'), shown=0;
+  [].forEach.call(rows,function(tr){ var ok=rgFltMatch(tr,f); tr.hidden=!ok; if(ok) shown++; });
+  rgEl('rgClear').hidden=!(f.zone||f.branch||f.team||f.status||f.q);
+  rgEl('rgShown').textContent='แสดง '+shown+' จาก '+rows.length+' แถว';
+  var nr=rgEl('rgNoRes');
+  if(shown){ nr.hidden=true; nr.innerHTML=''; }
+  else { nr.hidden=false; nr.innerHTML='ไม่พบแถวที่ตรงกับตัวกรองที่เลือก <button class="btn sm" type="button" onclick="rgFltReset()">ล้างตัวกรอง</button>'; }
+}
+function rgFltZone(){ rgBranchOpts(rgEl('rgZone').value); rgFltApply(); }
+function rgFltReset(){
+  ['rgZone','rgTeam','rgStatus'].forEach(function(id){ rgEl(id).value=''; });
+  rgEl('rgSearch').value=''; rgBranchOpts(''); rgFltApply();
+}
+/* ปุ่มประวัติ: ต่อท้ายลิงก์ ↗ (หรือชื่อ) ในคอลัมน์ชื่อลูกค้า — เรียงลำดับอ่านจาก <b> จึงไม่กระทบ */
+function rgAddHist(){
+  [].forEach.call(document.querySelectorAll('#s-registry tbody tr'),function(tr){
+    var b=tr.querySelector('td:nth-child(2) b'), no=tr.cells[2]; if(!b||!no||tr.querySelector('.hd-btn')) return;
+    (tr.querySelector('.rowlk')||b).insertAdjacentHTML('afterend',' '+HD.btn(no.textContent.trim(),b.textContent.trim()));
+  });
+}
+
 /* ===== ส่งออก Excel (.xlsx หลายชีทในไฟล์เดียว) ของจอทะเบียน / สรุปวัสดุ / สรุปมูลค่า — SheetJS =====
    ตารางอ่านจาก DOM ตรงๆ (ตรงกับที่เห็นเสมอ) · ตัวเลขที่มีคอมมา ("1,737,860") แปลงเป็นตัวเลขจริงใน Excel
    ชุดข้อมูลกราฟอ่านจากตัวแปรเดียวกับที่วาดกราฟ (DIV_*) · จอสรุปมูลค่าเป็นตัวเลขรวม ไม่มีข้อมูลรายลูกค้า (viewer ส่งออกได้) */
@@ -1784,7 +1852,7 @@ function xlNumFix(ws){
 }
 function xlTable(wb,name,table){
   var t=table.cloneNode(true);   /* ตัดลิงก์ ↗ ที่ใส่ไว้ในหน้าออกก่อน ไม่ให้ติดไปในไฟล์ Excel */
-  [].forEach.call(t.querySelectorAll('.rowlk'),function(e){ e.remove(); });
+  [].forEach.call(t.querySelectorAll('.rowlk,.hd-btn'),function(e){ e.remove(); });   /* ปุ่มประวัติก็ไม่ติดไปใน Excel */
   XLSX.utils.book_append_sheet(wb,xlNumFix(XLSX.utils.table_to_sheet(t)),name);
 }
 function xlRows(wb,name,rows){ XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rows),name); }
@@ -1830,7 +1898,7 @@ function goHash(){ var h=location.hash.slice(1); if(SCREENS.indexOf(h)>=0) go(h)
 initEntryPages();
 window.addEventListener('hashchange',goHash); goHash();
 addCustLinks();
-rgInit();
+rgInit(); rgAddHist(); rgFltInit(); rgFltApply();
 /* กรองเมนูตามสิทธิ์เริ่มต้นตามค่าใน role selector */
 try{var _rs=document.getElementById('roleSel'); if(_rs) applyNavRole(_rs.value);}catch(e){}
 try{var t=localStorage.getItem('aga-theme'); if(t)document.documentElement.setAttribute('data-theme',t)}catch(e){}
