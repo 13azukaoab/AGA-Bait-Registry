@@ -1,0 +1,20 @@
+{
+  "name": "AGA Bait Registry",
+  "short_name": "AGA Bait",
+  "description": "ระบบทะเบียนบริการ Bait — Advance Group Asia (AGA)",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#ffffff",
+  "theme_color": "#1f5fa8",
+  "lang": "th",
+  "dir": "ltr",
+  "icons": [
+    {
+      "src": "/icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
