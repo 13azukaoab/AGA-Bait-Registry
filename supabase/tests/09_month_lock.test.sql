@@ -1,83 +1,95 @@
--- Month lock trigger (Task 10) - SPEC §7.7, §15.3
+-- Closed months are NOT locked (SPEC v1.2 §7.7, §15.3)
+-- host + recorder may edit visits/station_checks of a closed month; other roles are
+-- blocked by RLS (not by a trigger); every edit leaves a row in audit_log.
 BEGIN;
-SELECT plan(13);
+SELECT plan(16);
 
 INSERT INTO auth.users (id, instance_id, aud, role, email) VALUES
   ('00000000-0000-0000-0000-0000000000a1', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'host@test.local'),
+  ('00000000-0000-0000-0000-0000000000a2', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'admin@test.local'),
   ('00000000-0000-0000-0000-0000000000a3', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'rec@test.local');
 INSERT INTO profiles (user_id, display_name, role, division_scope) VALUES
   ('00000000-0000-0000-0000-0000000000a1', 'host',     'host',     '{central,province}'),
-  ('00000000-0000-0000-0000-0000000000a3', 'recorder', 'recorder', '{central,province}');
+  ('00000000-0000-0000-0000-0000000000a2', 'admin',    'admin',    '{central}'),
+  ('00000000-0000-0000-0000-0000000000a3', 'recorder', 'recorder', '{central}');
 
 INSERT INTO customers (id, branch_id, name)
-  VALUES ('00000000-0000-0000-0000-0000000000c1', (SELECT id FROM branches LIMIT 1), 'Cust');
+  VALUES ('00000000-0000-0000-0000-0000000000c1',
+          (SELECT id FROM branches WHERE division = 'central' ORDER BY name LIMIT 1), 'Cust');
 INSERT INTO contracts (id, customer_id, contract_no, start_date, term_years, value_total)
   VALUES ('00000000-0000-0000-0000-0000000000d1', '00000000-0000-0000-0000-0000000000c1', 'T-1', '2026-01-15', 1, 50000);
 INSERT INTO stations (id, contract_id, code, type)
   VALUES ('00000000-0000-0000-0000-0000000000e1', '00000000-0000-0000-0000-0000000000d1', 'S-01', 'IG');
--- Sep visit (will be closed), Oct visit (stays open) - seeded before closing
 INSERT INTO visits (id, contract_id, visit_date, visit_type, note) VALUES
-  ('00000000-0000-0000-0000-0000000000f1', '00000000-0000-0000-0000-0000000000d1', '2026-09-10', 'routine', 'orig'),
-  ('00000000-0000-0000-0000-0000000000f2', '00000000-0000-0000-0000-0000000000d1', '2026-10-10', 'routine', 'orig');
+  ('00000000-0000-0000-0000-0000000000f1', '00000000-0000-0000-0000-0000000000d1', '2026-09-10', 'routine', 'orig');
 INSERT INTO station_checks (id, visit_id, station_id)
   VALUES ('00000000-0000-0000-0000-000000000a01', '00000000-0000-0000-0000-0000000000f1', '00000000-0000-0000-0000-0000000000e1');
 
+-- September is closed
 INSERT INTO month_closures (month_key, closed_at) VALUES ('2026-09', now());
 
-SELECT is_definer('public', 'block_closed_month', ARRAY[]::text[], 'block_closed_month is security definer');
+-- ===== the old lock is gone =====
+SELECT hasnt_function('public', 'block_closed_month', 'block_closed_month() removed');
+SELECT hasnt_trigger('public', 'visits', 'block_closed_month', 'no lock trigger on visits');
+SELECT hasnt_trigger('public', 'station_checks', 'block_closed_month', 'no lock trigger on station_checks');
 
--- ===== recorder (non-host) on a CLOSED month =====
+-- ===== recorder edits a CLOSED month =====
 SET LOCAL ROLE authenticated;
 SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a3', true);
-
-SELECT throws_ok(
-  $$INSERT INTO visits (contract_id, visit_date, visit_type) VALUES ('00000000-0000-0000-0000-0000000000d1', '2026-09-20', 'routine')$$,
-  'P0001', NULL, 'closed month: INSERT visit rejected');
-SELECT throws_ok(
-  $$UPDATE visits SET note = 'x' WHERE id = '00000000-0000-0000-0000-0000000000f1'$$,
-  'P0001', NULL, 'closed month: UPDATE visit rejected');
-SELECT throws_ok(
-  $$DELETE FROM visits WHERE id = '00000000-0000-0000-0000-0000000000f1'$$,
-  'P0001', NULL, 'closed month: DELETE visit rejected');
-SELECT throws_ok(
-  $$UPDATE visits SET visit_date = '2026-09-25' WHERE id = '00000000-0000-0000-0000-0000000000f2'$$,
-  'P0001', NULL, 'cannot move an open-month visit into a closed month');
-SELECT throws_ok(
-  $$INSERT INTO station_checks (visit_id, station_id) VALUES ('00000000-0000-0000-0000-0000000000f1', '00000000-0000-0000-0000-0000000000e1')$$,
-  'P0001', NULL, 'closed month: INSERT station_check rejected');
-SELECT throws_ok(
-  $$UPDATE station_checks SET note = 'x' WHERE id = '00000000-0000-0000-0000-000000000a01'$$,
-  'P0001', NULL, 'closed month: UPDATE station_check rejected');
-SELECT throws_ok(
+SELECT lives_ok(
+  $$INSERT INTO visits (id, contract_id, visit_date, visit_type) VALUES ('00000000-0000-0000-0000-0000000000f3', '00000000-0000-0000-0000-0000000000d1', '2026-09-20', 'problem')$$,
+  'recorder: INSERT visit in closed month');
+SELECT lives_ok(
+  $$UPDATE visits SET note = 'rec edit' WHERE id = '00000000-0000-0000-0000-0000000000f1'$$,
+  'recorder: UPDATE visit in closed month');
+SELECT lives_ok(
+  $$UPDATE station_checks SET note = 'rec check' WHERE id = '00000000-0000-0000-0000-000000000a01'$$,
+  'recorder: UPDATE station_check in closed month');
+SELECT lives_ok(
   $$DELETE FROM station_checks WHERE id = '00000000-0000-0000-0000-000000000a01'$$,
-  'P0001', NULL, 'closed month: DELETE station_check rejected');
-
--- ===== not-closed month =====
+  'recorder: DELETE station_check in closed month');
 SELECT lives_ok(
-  $$UPDATE visits SET note = 'edited' WHERE id = '00000000-0000-0000-0000-0000000000f2'$$,
-  'open month: UPDATE visit allowed');
-SELECT lives_ok(
-  $$INSERT INTO visits (contract_id, visit_date, visit_type) VALUES ('00000000-0000-0000-0000-0000000000d1', '2026-11-05', 'routine')$$,
-  'open month: INSERT visit allowed');
+  $$DELETE FROM visits WHERE id = '00000000-0000-0000-0000-0000000000f3'$$,
+  'recorder: DELETE visit in closed month');
 RESET ROLE;
 
--- ===== host may edit a closed month =====
+SELECT is((SELECT note FROM visits WHERE id = '00000000-0000-0000-0000-0000000000f1'), 'rec edit', 'recorder edit was applied');
+SELECT is(
+  (SELECT count(*)::int FROM audit_log
+    WHERE changed_by = '00000000-0000-0000-0000-0000000000a3'
+      AND table_name IN ('visits', 'station_checks')),
+  5, 'every recorder edit in the closed month is in audit_log');
+SELECT is(
+  (SELECT old_data->>'note' FROM audit_log
+    WHERE changed_by = '00000000-0000-0000-0000-0000000000a3'
+      AND table_name = 'visits' AND action = 'update'),
+  'orig', 'audit_log keeps the value before the edit');
+
+-- ===== admin cannot touch service results (RLS) =====
+SET LOCAL ROLE authenticated;
+SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a2', true);
+SELECT throws_ok(
+  $$INSERT INTO visits (contract_id, visit_date, visit_type) VALUES ('00000000-0000-0000-0000-0000000000d1', '2026-09-21', 'routine')$$,
+  '42501', NULL, 'admin: INSERT visit in closed month rejected');
+UPDATE visits SET note = 'admin edit' WHERE id = '00000000-0000-0000-0000-0000000000f1';
+RESET ROLE;
+SELECT is((SELECT note FROM visits WHERE id = '00000000-0000-0000-0000-0000000000f1'), 'rec edit', 'admin: UPDATE visit affected 0 rows');
+
+-- ===== anon (viewer) cannot write =====
+SET LOCAL ROLE anon;
+SELECT throws_ok(
+  $$INSERT INTO visits (contract_id, visit_date, visit_type) VALUES ('00000000-0000-0000-0000-0000000000d1', '2026-09-22', 'routine')$$,
+  '42501', NULL, 'anon: INSERT visit rejected');
+RESET ROLE;
+
+-- ===== host edits a closed month =====
 SET LOCAL ROLE authenticated;
 SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a1', true);
 SELECT lives_ok(
   $$UPDATE visits SET note = 'host edit' WHERE id = '00000000-0000-0000-0000-0000000000f1'$$,
-  'host: UPDATE in closed month allowed');
+  'host: UPDATE visit in closed month');
 RESET ROLE;
 SELECT is((SELECT note FROM visits WHERE id = '00000000-0000-0000-0000-0000000000f1'), 'host edit', 'host edit was applied');
-
--- ===== reopen -> recorder can edit again =====
-UPDATE month_closures SET reopened_at = now() WHERE month_key = '2026-09';
-SET LOCAL ROLE authenticated;
-SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a3', true);
-SELECT lives_ok(
-  $$UPDATE visits SET note = 'after reopen' WHERE id = '00000000-0000-0000-0000-0000000000f1'$$,
-  'reopened month: UPDATE visit allowed again');
-RESET ROLE;
 
 SELECT * FROM finish();
 ROLLBACK;
