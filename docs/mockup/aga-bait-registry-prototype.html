@@ -350,6 +350,15 @@ tfoot td{padding:10px 12px;font-weight:700;background:var(--surface-2);border-to
 /* ลิงก์จากชื่อลูกค้า → หน้ารายละเอียดลูกค้า (customer-detail.html) */
 .rowlk{flex:none;margin-left:6px;font-size:12px;color:var(--accent-strong);text-decoration:none;white-space:nowrap;border-radius:5px;padding:1px 4px}
 .rowlk:hover,.rowlk:focus-visible{background:var(--accent-soft);text-decoration:underline}
+/* เรียงลำดับตารางทะเบียน (คลิกหัวคอลัมน์) */
+#s-registry thead th.sortable{cursor:pointer;user-select:none}
+#s-registry thead th.sortable:hover{background:var(--surface-3)}
+#s-registry thead th.sortable:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+#s-registry thead th.sortable::after{content:"↕";margin-left:4px;font-size:10px;opacity:0;color:var(--fg-muted)}
+#s-registry thead th.sortable:hover::after{opacity:.7}
+#s-registry thead th.sortable[aria-sort="ascending"]::after{content:"▲";opacity:1;color:var(--accent-strong)}
+#s-registry thead th.sortable[aria-sort="descending"]::after{content:"▼";opacity:1;color:var(--accent-strong)}
+#s-registry thead th.sortable[aria-sort="ascending"],#s-registry thead th.sortable[aria-sort="descending"]{color:var(--accent-strong)}
 .fgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-bottom:14px}
 .fgrid .field label{font-size:12px}
 .fgrid .field select,.fgrid .field input{width:100%;min-width:0;padding:10px 12px;font-size:14px}
@@ -692,8 +701,8 @@ tfoot td{padding:10px 12px;font-weight:700;background:var(--surface-2);border-to
         <div class="field"><label>ทีม</label><select><option>ทุกทีม</option><option>A</option><option>B</option></select></div>
         <div class="field"><label>สถานะ</label><select><option>Active</option><option>ทั้งหมด</option></select></div>
         <div class="field"><label>ค้นหา</label><input placeholder="ชื่อลูกค้า / เลขสัญญา"></div>
-        <div style="flex:1"></div>
-        <button class="btn" type="button" onclick="exportRegistryXL()" title="ส่งออกตารางทะเบียนทั้งหมดเป็น .xlsx">↓ ส่งออก Excel</button>
+        <div id="regSortHint" style="flex:1;align-self:center;font-size:11.5px;color:var(--fg-muted)">คลิกหัวคอลัมน์เพื่อเรียงลำดับ · คลิกซ้ำ = มาก→น้อย · คลิกครั้งที่ 3 = กลับลำดับเดิม</div>
+        <button class="btn" type="button" onclick="exportRegistryXL()" title="ส่งออกตารางทะเบียนทั้งหมดเป็น .xlsx (ตามลำดับที่เห็นอยู่)">↓ ส่งออก Excel</button>
         <button class="btn primary">+ เพิ่มลูกค้า</button>
       </div>
       <div class="tablewrap">
@@ -1477,6 +1486,63 @@ function addCustLinks(){
   });
 }
 
+/* ===== เรียงลำดับตารางทะเบียนลูกค้า/สัญญา (หน้า #registry) — พฤติกรรมเดียวกับตารางเปิดงานใน admin-add-customer.html =====
+   • คลิกหัวคอลัมน์: น้อย→มาก ▲ → มาก→น้อย ▼ → กลับลำดับเดิม · คลิก "#" = คืนลำดับเดิม · Enter/Space ได้
+   • เทียบตามค่าจริง: ตัวเลข (มีคอมมา) · วันที่ dd/mm/yy (พ.ศ. 2 หลัก) · Tier (S<M<L<XL แล้วตามปี) · ที่เหลือเรียงตามตัวอักษรไทย (เลขในข้อความเรียงตามค่า)
+   • ช่องว่างอยู่ท้ายเสมอทั้งสองทิศ · เลข # คงเดิม · ส่งออก Excel ตามลำดับที่เห็น
+   • ตัวกรอง (เขต/สาขา/ทีม/สถานะ/ค้นหา) ในแถบเครื่องมือหน้านี้ยังเป็น mock — รอเจ้าของสั่ง */
+var RG={col:-1,dir:0}, RGC=new Intl.Collator('th',{numeric:true,sensitivity:'base'}), RG_TIER_COL=9;
+function rgKey(tr,i){
+  var c=tr.cells[i]; if(!c) return '';
+  var t=c.querySelector('.tier'); if(t) return t.textContent.trim();
+  var ch=c.querySelector('.chip'); if(ch) return ch.textContent.trim();
+  var b=c.querySelector('b'), s=(b?b.textContent:c.textContent).replace(/\s+/g,' ').trim();   /* ชื่อลูกค้า: อ่านจาก <b> ไม่เอาลิงก์ ↗ */
+  var d=/^(\d{2})\/(\d{2})\/(\d{2})$/.exec(s); if(d) return String(+d[3]*10000+(+d[2])*100+(+d[1]));   /* yy mm dd → ตัวเลขเรียงได้ */
+  return s==='—'?'':s;
+}
+function rgTierRank(s){ var m=/^(S|M|L|XL)(\d)?/.exec(s); return m?({S:1,M:2,L:3,XL:4}[m[1]]*10+(+m[2]||0)):null; }
+function rgApply(){
+  var tb=document.querySelector('#s-registry tbody'); if(!tb) return;
+  var rows=[].slice.call(tb.rows), col=RG.col, dir=RG.dir, ord=function(tr){return +tr.dataset.ord;};
+  if(dir===0||col<0){ rows.sort(function(a,b){return ord(a)-ord(b);}); }
+  else {
+    var keys=new Map(rows.map(function(tr){return [tr,rgKey(tr,col)];}));
+    var all=rows.map(function(tr){return keys.get(tr);});
+    var tier=(col===RG_TIER_COL);
+    var numeric=!tier && all.every(function(k){return k===''||/^-?\d[\d,]*\.?\d*$/.test(k);}) && all.some(function(k){return k!=='';});
+    var val=function(k){ return tier?rgTierRank(k):(numeric?parseFloat(k.replace(/,/g,'')):k); };
+    rows.sort(function(a,b){
+      var ka=keys.get(a), kb=keys.get(b), ea=(ka===''||(tier&&rgTierRank(ka)===null)), eb=(kb===''||(tier&&rgTierRank(kb)===null));
+      if(ea&&eb) return ord(a)-ord(b);
+      if(ea) return 1; if(eb) return -1;
+      var va=val(ka), vb=val(kb), r=(typeof va==='number')?(va-vb):RGC.compare(va,vb);
+      return r? r*dir : ord(a)-ord(b);
+    });
+  }
+  rows.forEach(function(tr){ tb.appendChild(tr); });
+  [].forEach.call(document.querySelectorAll('#s-registry thead th.sortable'),function(th){
+    th.setAttribute('aria-sort',(+th.dataset.col===col&&dir)?(dir>0?'ascending':'descending'):'none'); });
+  var h=document.getElementById('regSortHint');
+  if(h){ var th=document.querySelector('#s-registry thead th[data-col="'+col+'"]');
+    h.textContent=(dir&&th)?('เรียงตาม “'+th.textContent.replace(/\s+/g,' ').replace('อัตโนมัติ','').trim()+'” '+(dir>0?'น้อย→มาก':'มาก→น้อย')+' · คลิกหัวคอลัมน์เดิมอีกครั้งเพื่อเปลี่ยน/ยกเลิก'):'คลิกหัวคอลัมน์เพื่อเรียงลำดับ · คลิกซ้ำ = มาก→น้อย · คลิกครั้งที่ 3 = กลับลำดับเดิม'; }
+}
+function rgSortBy(col){
+  if(col===0) RG={col:-1,dir:0};
+  else if(RG.col===col){ RG.dir=RG.dir===1?-1:(RG.dir===-1?0:1); if(!RG.dir) RG.col=-1; }
+  else RG={col:col,dir:1};
+  rgApply();
+}
+function rgInit(){
+  var tbl=document.querySelector('#s-registry table'); if(!tbl) return;
+  [].forEach.call(tbl.tBodies[0].rows,function(tr,i){ tr.dataset.ord=i; });
+  [].forEach.call(tbl.tHead.rows[0].cells,function(th,i){
+    th.dataset.col=i; th.classList.add('sortable'); th.tabIndex=0; th.setAttribute('aria-sort','none');
+    th.title='คลิกเพื่อเรียงลำดับ'+(i===0?' (คืนลำดับเดิม)':'');
+    th.addEventListener('click',function(){ rgSortBy(i); });
+    th.addEventListener('keydown',function(e){ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); rgSortBy(i); } });
+  });
+}
+
 /* ===== ส่งออก Excel (.xlsx หลายชีทในไฟล์เดียว) ของจอทะเบียน / สรุปวัสดุ / สรุปมูลค่า — SheetJS =====
    ตารางอ่านจาก DOM ตรงๆ (ตรงกับที่เห็นเสมอ) · ตัวเลขที่มีคอมมา ("1,737,860") แปลงเป็นตัวเลขจริงใน Excel
    ชุดข้อมูลกราฟอ่านจากตัวแปรเดียวกับที่วาดกราฟ (DIV_*) · จอสรุปมูลค่าเป็นตัวเลขรวม ไม่มีข้อมูลรายลูกค้า (viewer ส่งออกได้) */
@@ -1540,6 +1606,7 @@ function goHash(){ var h=location.hash.slice(1); if(SCREENS.indexOf(h)>=0) go(h)
 initEntryPages();
 window.addEventListener('hashchange',goHash); goHash();
 addCustLinks();
+rgInit();
 /* กรองเมนูตามสิทธิ์เริ่มต้นตามค่าใน role selector */
 try{var _rs=document.getElementById('roleSel'); if(_rs) applyNavRole(_rs.value);}catch(e){}
 try{var t=localStorage.getItem('aga-theme'); if(t)document.documentElement.setAttribute('data-theme',t)}catch(e){}
