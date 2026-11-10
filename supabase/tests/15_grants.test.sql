@@ -5,7 +5,7 @@
 -- จึงจับไม่ได้ว่าตารางไม่ได้ GRANT ให้ role ของ API เลย — ตอนขึ้น cloud จริง
 -- PostgREST เลยตอบ "permission denied for table ..." ทุกตาราง
 BEGIN;
-SELECT plan(10);
+SELECT plan(11);
 
 -- ตารางที่มีข้อมูลส่วนบุคคล + ตารางระบบ (anon ห้ามแตะ — PDPA, CLAUDE.md ข้อ 2)
 CREATE TEMP VIEW protected_tables AS
@@ -28,6 +28,14 @@ SELECT is(
      WHERE has_table_privilege('anon', 'public.' || tbl, 'SELECT'))::int,
   0,
   'anon ไม่มีสิทธิ์ SELECT ตารางข้อมูลส่วนบุคคล/ตารางระบบเลยสักตาราง');
+
+SELECT is(
+  (SELECT count(*) FROM unnest(ARRAY[
+     'zones', 'branches', 'teams', 'customer_types', 'tier_rules', 'positions'
+   ]) AS t(tbl)
+     WHERE has_table_privilege('anon', 'public.' || tbl, 'SELECT'))::int,
+  0,
+  'anon ไม่มีสิทธิ์ SELECT ตารางอ้างอิง (ไม่มี policy ให้ anon อยู่แล้ว)');
 
 SELECT ok(
   has_table_privilege('anon', 'public.monthly_branch_snapshots', 'SELECT'),

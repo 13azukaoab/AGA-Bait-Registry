@@ -51,15 +51,17 @@ INSERT INTO monthly_branch_snapshots (month_key, branch_id, source, cust, value)
 
 -- ================= anon (viewer, SPEC §15.2) =================
 SET LOCAL ROLE anon;
-SELECT is((SELECT count(*)::int FROM customers),      0, 'anon: customers = 0 rows');
-SELECT is((SELECT count(*)::int FROM contracts),      0, 'anon: contracts = 0 rows');
-SELECT is((SELECT count(*)::int FROM stations),       0, 'anon: stations = 0 rows');
-SELECT is((SELECT count(*)::int FROM visits),         0, 'anon: visits = 0 rows');
-SELECT is((SELECT count(*)::int FROM station_checks), 0, 'anon: station_checks = 0 rows');
-SELECT is((SELECT count(*)::int FROM contract_teams), 0, 'anon: contract_teams = 0 rows');
-SELECT is((SELECT count(*)::int FROM profiles),       0, 'anon: profiles = 0 rows');
-SELECT is((SELECT count(*)::int FROM audit_log),      0, 'anon: audit_log = 0 rows');
-SELECT is((SELECT count(*)::int FROM branches),       0, 'anon: branches = 0 rows');
+-- anon ถูกปฏิเสธตั้งแต่ชั้นสิทธิ์ (SQLSTATE 42501) ไม่ใช่แค่ถูก RLS กรองจนเหลือ 0 แถว
+-- (เจ้าของเลือกแนวทาง "กัน 2 ชั้น" 10 พ.ย. 2026 — ดู migration 20261110100000 / 20261110110000)
+SELECT throws_ok($$SELECT 1 FROM customers$$,      '42501', NULL, 'anon: customers denied');
+SELECT throws_ok($$SELECT 1 FROM contracts$$,      '42501', NULL, 'anon: contracts denied');
+SELECT throws_ok($$SELECT 1 FROM stations$$,       '42501', NULL, 'anon: stations denied');
+SELECT throws_ok($$SELECT 1 FROM visits$$,         '42501', NULL, 'anon: visits denied');
+SELECT throws_ok($$SELECT 1 FROM station_checks$$, '42501', NULL, 'anon: station_checks denied');
+SELECT throws_ok($$SELECT 1 FROM contract_teams$$, '42501', NULL, 'anon: contract_teams denied');
+SELECT throws_ok($$SELECT 1 FROM profiles$$,       '42501', NULL, 'anon: profiles denied');
+SELECT throws_ok($$SELECT 1 FROM audit_log$$,      '42501', NULL, 'anon: audit_log denied');
+SELECT throws_ok($$SELECT 1 FROM branches$$,       '42501', NULL, 'anon: branches denied');
 SELECT cmp_ok((SELECT count(*)::int FROM monthly_branch_snapshots), '>=', 1, 'anon: snapshots readable');
 SELECT cmp_ok((SELECT count(*)::int FROM v_branch_summary), '>=', 1, 'anon: v_branch_summary readable');
 SELECT throws_ok(
