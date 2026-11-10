@@ -9,11 +9,11 @@ INSERT INTO auth.users (id, instance_id, aud, role, email) VALUES
   ('00000000-0000-0000-0000-0000000000a2', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'admin@test.local'),
   ('00000000-0000-0000-0000-0000000000a3', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'rec@test.local'),
   ('00000000-0000-0000-0000-0000000000a4', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'recprov@test.local');
-INSERT INTO profiles (user_id, display_name, role, division_scope) VALUES
-  ('00000000-0000-0000-0000-0000000000a1', 'host',      'host',     '{central,province}'),
-  ('00000000-0000-0000-0000-0000000000a2', 'admin',     'admin',    '{central}'),
-  ('00000000-0000-0000-0000-0000000000a3', 'recorder',  'recorder', '{central}'),
-  ('00000000-0000-0000-0000-0000000000a4', 'rec-prov',  'recorder', '{province}');
+INSERT INTO profiles (user_id, display_name, username, role, division_scope) VALUES
+  ('00000000-0000-0000-0000-0000000000a1', 'host', 'user_a1',      'host',     '{central,province}'),
+  ('00000000-0000-0000-0000-0000000000a2', 'admin', 'user_a2',     'admin',    '{central}'),
+  ('00000000-0000-0000-0000-0000000000a3', 'recorder', 'user_a3',  'recorder', '{central}'),
+  ('00000000-0000-0000-0000-0000000000a4', 'rec-prov', 'user_a4',  'recorder', '{province}');
 
 -- provincial August closed by host earlier (seeded as postgres)
 INSERT INTO month_closures (month_key, scope, closed_by, closed_at)

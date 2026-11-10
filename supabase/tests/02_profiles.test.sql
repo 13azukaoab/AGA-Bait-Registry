@@ -31,8 +31,8 @@ SELECT is(public.is_host(), false, 'no profile => is_host false');
 
 -- with a profile: simulate auth.uid() via request.jwt.claim.sub
 INSERT INTO auth.users (id) VALUES ('00000000-0000-0000-0000-0000000000a1');
-INSERT INTO profiles (user_id, display_name, role, division_scope)
-VALUES ('00000000-0000-0000-0000-0000000000a1', 'test host', 'host', '{central}');
+INSERT INTO profiles (user_id, display_name, username, role, division_scope)
+VALUES ('00000000-0000-0000-0000-0000000000a1', 'test host', 'user_a1', 'host', '{central}');
 SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a1', true);
 SELECT is(
   ROW(public.current_app_role(), public.current_division_scope(), public.is_host())::text,

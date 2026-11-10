@@ -8,10 +8,10 @@ INSERT INTO auth.users (id, instance_id, aud, role, email) VALUES
   ('00000000-0000-0000-0000-0000000000a1', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'host@test.local'),
   ('00000000-0000-0000-0000-0000000000a2', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'admin@test.local'),
   ('00000000-0000-0000-0000-0000000000a3', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'rec@test.local');
-INSERT INTO profiles (user_id, display_name, role, division_scope) VALUES
-  ('00000000-0000-0000-0000-0000000000a1', 'host',     'host',     '{central,province}'),
-  ('00000000-0000-0000-0000-0000000000a2', 'admin',    'admin',    '{central}'),
-  ('00000000-0000-0000-0000-0000000000a3', 'recorder', 'recorder', '{central}');
+INSERT INTO profiles (user_id, display_name, username, role, division_scope) VALUES
+  ('00000000-0000-0000-0000-0000000000a1', 'host', 'user_a1',     'host',     '{central,province}'),
+  ('00000000-0000-0000-0000-0000000000a2', 'admin', 'user_a2',    'admin',    '{central}'),
+  ('00000000-0000-0000-0000-0000000000a3', 'recorder', 'user_a3', 'recorder', '{central}');
 
 INSERT INTO customers (id, branch_id, name)
   VALUES ('00000000-0000-0000-0000-0000000000c1',
