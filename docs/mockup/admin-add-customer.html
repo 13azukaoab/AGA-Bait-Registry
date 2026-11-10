@@ -268,6 +268,16 @@ tr.badrow td{background:var(--danger-soft) !important}
 #zoneTbl tfoot tr.zfirst td{border-top:2px solid var(--border-strong)}
 #zoneTbl tfoot tr:nth-child(3) td{border-top:1px solid var(--border)}
 
+/* ===== ตัวกรองตารางเปิดงาน (เดือน / เขต / สาขา / สถานะ / ค้นหา + ชิป "ยังไม่แนบไฟล์") ===== */
+.fchip{font-family:inherit;border:0;cursor:pointer;line-height:inherit}
+.fchip:hover{filter:brightness(.97)}
+.fchip:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.fchip[aria-pressed="true"]{box-shadow:0 0 0 2px var(--accent)}
+.nores{margin:0 0 12px;padding:22px 16px;text-align:center;font-size:13px;color:var(--fg-muted);background:var(--surface);
+  border:1px dashed var(--border-strong);border-radius:var(--radius)}
+.nores .btn{margin-left:8px}
+table.xl tbody tr[hidden]{display:none}
+
 /* ===== เรียงลำดับ (sort) ทุกคอลัมน์ของตารางเปิดงาน — คลิกหัวคอลัมน์ ===== */
 .sorthint{margin-left:auto;font-size:11.5px;color:var(--fg-muted);align-self:center}
 table.xl thead th.sortable{cursor:pointer;user-select:none}
@@ -538,12 +548,15 @@ table.xl .teambtn.multi{font-weight:700;color:var(--accent-strong)}
 <span class="variant-tag">ตารางเปิดงาน — วางคอลัมน์ตามไฟล์ .xlsx เดิม</span>
 
 <div class="toolbar">
-  <div class="field"><label>เดือนเปิดงาน</label><select><option>ตุลาคม 2026</option><option>พฤศจิกายน 2026</option></select></div>
-  <div class="field"><label>เขต</label><select><option>ทุกเขต</option><option>C1</option><option>C4</option></select></div>
-  <div class="field"><label>สาขา</label><select><option>ทุกสาขา</option><option>พัฒนาการ</option><option>นนทบุรี</option></select></div>
-  <div class="field"><label>สถานะ</label><select><option>ทั้งหมด</option><option>ครบแล้ว</option><option>รอนัดบริการ</option><option>ขาดข้อมูลจำเป็น</option></select></div>
-  <div class="field" style="flex:1;min-width:150px"><label>ค้นหา</label><input placeholder="ชื่อลูกค้า / เลขที่สัญญา" style="width:100%"></div>
-  <button class="btn sm" type="button" onclick="exportXL()">↓ ส่งออก Excel</button>
+  <div class="field"><label for="fMonth">เดือนเปิดงาน</label><select id="fMonth" onchange="fltApply()"><option>ตุลาคม 2026</option><option>พฤศจิกายน 2026</option></select></div>
+  <div class="field"><label for="fZone">เขต</label><select id="fZone" onchange="fltApply()"></select></div>
+  <div class="field"><label for="fBranch">สาขา</label><select id="fBranch" onchange="fltApply()"></select></div>
+  <div class="field"><label for="fStatus">สถานะ</label><select id="fStatus" onchange="fltApply()">
+    <option value="">ทั้งหมด</option><option value="ok">ครบแล้ว</option><option value="pend">รอนัดบริการ</option><option value="miss">ขาดข้อมูลจำเป็น</option>
+    <option value="nofile">ยังไม่แนบไฟล์</option><option value="warn">มีคำเตือนอื่น (ระยะสัญญา/วันที่)</option></select></div>
+  <div class="field" style="flex:1;min-width:150px"><label for="fSearch">ค้นหา</label><input id="fSearch" type="search" placeholder="ชื่อลูกค้า / เลขที่สัญญา" style="width:100%" oninput="fltApply()" autocomplete="off"></div>
+  <button class="btn sm" type="button" id="fClear" onclick="fltReset()" hidden>✕ ล้างตัวกรอง</button>
+  <button class="btn sm" type="button" onclick="exportXL()" title="ส่งออกทุกแถวของเดือน (ไม่ขึ้นกับตัวกรองที่เลือกอยู่)">↓ ส่งออก Excel</button>
   <button class="btn sm primary" type="button" onclick="addRow()">+ เพิ่มแถว</button>
 </div>
 
@@ -555,9 +568,13 @@ table.xl .teambtn.multi{font-weight:700;color:var(--accent-strong)}
   <span class="chip info num">มูลค่ารวม 10,164,043</span>
   <span class="chip pend num">รอนัดบริการ 16</span>
   <span class="chip miss num">⚠ ขาดข้อมูลจำเป็น 1</span>
+  <button type="button" class="chip pend num fchip" id="chipNoFile" aria-pressed="false" onclick="fltChip('nofile')"
+    title="นับจากแถวที่แสดงในตาราง (เดโมแสดงตัวอย่าง 7 แถว) — คลิกเพื่อกรองเฉพาะแถวที่ยังไม่แนบไฟล์ คลิกอีกครั้งเพื่อยกเลิก">📎 ยังไม่แนบไฟล์ <b id="cNoFile">0</b></button>
+  <span class="chip na num" id="fShown" aria-live="polite"></span>
   <span class="sorthint" id="sorthint">คลิกหัวคอลัมน์เพื่อเรียงลำดับ · คลิกซ้ำ = มาก→น้อย · คลิกครั้งที่ 3 = กลับลำดับเดิม</span>
 </div>
 
+<div id="noRes" class="nores" hidden role="status"></div>
 <div class="tablewrap">
   <table class="xl">
     <!-- ความกว้างตั้งตามเนื้อหาจริงของแต่ละช่อง (วันที่ 120px พอดีกับ date picker ของเบราว์เซอร์)
@@ -1821,6 +1838,7 @@ function addRow(){
   tb.insertAdjacentHTML('beforeend', blankRow());
   var tr=tb.lastElementChild;
   renumber();
+  fltReset();      /* ล้างตัวกรองหลังแทรกแถวใหม่ → แถวใหม่มองเห็น และตัวนับ "แสดง n จาก N" / ชิป "ยังไม่แนบไฟล์" นับรวมแถวใหม่ */
   [].forEach.call(tr.querySelectorAll('.fbtn'),fileRepaint);
   fillBranches(); fillMasters();            // เติม options ให้ select ที่เพิ่งสร้าง
   if(typeof footSync==='function') footSync();
@@ -2032,6 +2050,7 @@ function fileDone(){
   fileBtn.dataset.pdfinfo=fileTmp.pdfInfo||'';
   fileBtn.dataset.spv=JSON.stringify(fileTmp.spv);
   fileRepaint(fileBtn);
+  if(typeof fltCounts==='function') fltCounts();   /* ชิป "ยังไม่แนบไฟล์ N" อัปเดตทันที (ไม่รันกรองใหม่ — แถวที่เพิ่งแนบยังอยู่ให้เห็น) */
   mdClose();
   if(!fileCtx && typeof footSync==='function') footSync();
 }
@@ -2270,6 +2289,63 @@ function exportSummaryXL(){
   XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(typeRows),'ประเภทลูกค้า');
   XLSX.writeFile(wb,'AGA-สรุปเปิดงาน-ต.ค.2026.xlsx');
 }
+/* ===== ตัวกรองตารางเปิดงาน (เจ้าของเลือกแบบ ก — ใช้ได้จริงทุกตัว · 10 พ.ย. 2026) =====
+   • เดือน / เขต / สาขา / สถานะ / ค้นหา ทำงานร่วมกัน (AND) · ซ่อนแถวด้วย tr.hidden (ค่าที่พิมพ์/เลือกไว้ในแถวไม่หาย)
+   • ค้นหา = ชื่อลูกค้า หรือ เลขที่สัญญา (ไม่สนตัวพิมพ์/ช่องว่าง)
+   • สถานะอ่านจากคอลัมน์ "สถานะ" ของแถว: ครบ / รอนัดบริการ / ขาด… / อื่นๆ (ระยะสัญญา, วันที่) · "ยังไม่แนบไฟล์" อ่านจากปุ่มไฟล์แนบของแถว
+   • ชิป "ยังไม่แนบไฟล์ N" นับจากแถวทั้งหมดในตาราง (ไม่ขึ้นกับตัวกรอง) · คลิกชิป = ตั้งสถานะเป็น "ยังไม่แนบไฟล์"
+   • ชิปสรุปเดือน (เดือนนี้ 133 สัญญา ฯลฯ) แสดงยอดทั้งเดือนเสมอ ไม่เปลี่ยนตามตัวกรอง — ตัวบอก "แสดง n จาก N แถว" แยกอยู่ต่างหาก
+   • เดโมมีข้อมูลเฉพาะ ต.ค. 2026 → เลือกเดือนอื่นแสดงข้อความแทนตาราง (ไม่ปล่อยว่างเปล่า)
+   • ตัวกรองไม่รันซ้ำเองตอนแก้ค่าในแถว (กันแถวหายตอนกำลังพิมพ์) — รันเฉพาะเมื่อเปลี่ยนตัวกรอง · "+ เพิ่มแถว" ล้างตัวกรองก่อนเสมอ
+   • "ส่งออก Excel" ส่งทุกแถวของเดือน ไม่ขึ้นกับตัวกรอง */
+var FLT_DEMO_MONTH='ตุลาคม 2026';
+function fltInit(){
+  var z=document.getElementById('fZone'), b=document.getElementById('fBranch'); if(!z||!b) return;
+  z.innerHTML='<option value="">ทุกเขต</option>'+DZONES.filter(function(x){return x!=='กรุ๊ป';}).map(function(c){return '<option>'+c+'</option>';}).join('')+'<option value="—">ไม่มีเขต (งานกรุ๊ป)</option>';
+  b.innerHTML='<option value="">ทุกสาขา</option>'+BRLIST.map(function(x){return '<option>'+x+'</option>';}).join('');
+}
+function fltNorm(s){ return String(s||'').toLowerCase().replace(/\s+/g,''); }
+function fltStatus(tr){
+  var t=tr.cells[22].textContent.trim();
+  return t==='ครบ'?'ok' : t.indexOf('รอนัด')>=0?'pend' : t.indexOf('ขาด')===0?'miss' : 'warn';
+}
+function fltNoFile(tr){ var b=tr.querySelector('.fbtn'); return !!b && !b.dataset.pdf; }
+function fltMatch(tr,f){
+  if(f.zone && tr.cells[9].textContent.trim()!==f.zone) return false;
+  if(f.branch && rowBranch(tr)!==f.branch) return false;
+  if(f.status){ if(f.status==='nofile'){ if(!fltNoFile(tr)) return false; } else if(fltStatus(tr)!==f.status) return false; }
+  if(f.q && (fltNorm(val(tr.cells[1])).indexOf(f.q)<0 && fltNorm(val(tr.cells[2])).indexOf(f.q)<0)) return false;
+  return true;
+}
+function fltCounts(){
+  var rows=document.querySelectorAll('table.xl tbody tr'), n=0;
+  [].forEach.call(rows,function(tr){ if(fltNoFile(tr)) n++; });
+  var c=document.getElementById('cNoFile'); if(c) c.textContent=n;
+}
+function fltApply(){
+  var g=function(id){return document.getElementById(id);};
+  if(!g('fMonth')) return;
+  var f={zone:g('fZone').value, branch:g('fBranch').value, status:g('fStatus').value, q:fltNorm(g('fSearch').value)};
+  var monthOK=(g('fMonth').value===FLT_DEMO_MONTH), rows=document.querySelectorAll('table.xl tbody tr'), shown=0;
+  [].forEach.call(rows,function(tr){ var ok=monthOK&&fltMatch(tr,f); tr.hidden=!ok; if(ok) shown++; });
+  var active=!!(f.zone||f.branch||f.status||f.q||!monthOK);
+  g('fClear').hidden=!active;
+  var chip=g('chipNoFile'); chip.setAttribute('aria-pressed',f.status==='nofile'?'true':'false');
+  fltCounts();
+  g('fShown').textContent='แสดง '+shown+' จาก '+rows.length+' แถว (เดโมแสดงตัวอย่าง '+rows.length+' แถว)';
+  var nr=g('noRes');
+  if(!monthOK){ nr.hidden=false; nr.innerHTML='เดโมมีข้อมูลเฉพาะเดือน <b>'+FLT_DEMO_MONTH+'</b> — ของจริงเลือกเดือนอื่นแล้วจะเห็นสัญญาของเดือนนั้น <button class="btn sm" type="button" onclick="fltReset()">กลับไปเดือน ต.ค. 2026</button>'; }
+  else if(!shown){ nr.hidden=false; nr.innerHTML='ไม่พบแถวที่ตรงกับตัวกรองที่เลือก <button class="btn sm" type="button" onclick="fltReset()">ล้างตัวกรอง</button>'; }
+  else nr.hidden=true;
+}
+function fltChip(st){ var s=document.getElementById('fStatus'); s.value=(s.value===st?'':st); fltApply(); }
+function fltReset(){
+  document.getElementById('fMonth').value=FLT_DEMO_MONTH;
+  ['fZone','fBranch','fStatus'].forEach(function(id){ document.getElementById(id).value=''; });
+  document.getElementById('fSearch').value='';
+  fltApply();
+}
+
 /* ===== เรียงลำดับตารางเปิดงาน (ทุกคอลัมน์) =====
    • คลิกหัวคอลัมน์: น้อย→มาก (▲) → มาก→น้อย (▼) → กลับลำดับเดิม · คอลัมน์ที่มี 2 ชั้น (ระยะสัญญา/มูลค่า) เรียงที่หัวย่อย
    • เรียงโดยย้ายแถว (ค่าที่พิมพ์/เลือกไว้ไม่หาย) · เลขลำดับคงเดิม (คลิก "ลำดับ" = กลับลำดับเดิม)
@@ -2344,6 +2420,7 @@ function xlInitSort(){
   });
 }
 xlInitSort();
+fltInit(); fltApply();
 renderZoneTable(); renderDash();
 
 /* หน้านี้ fix เป็นมุมมอง host ไม่มี role selector ใช้งานจริง (AGA-SHELL v2) */
