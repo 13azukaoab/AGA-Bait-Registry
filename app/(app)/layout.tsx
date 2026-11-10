@@ -1,23 +1,17 @@
-import type { ReactNode } from "react";
-import {
-  AppShell,
-  ThemeScript,
-  type MonthOption,
-  type Role,
-} from "@/components/shell";
-
 /*
- * ⚠ ค่าชั่วคราวทั้งหมดในไฟล์นี้ — รอหมวด BE ต่อของจริง
+ * โครงหน้าของทุกหน้าที่ต้องล็อกอิน (กลุ่ม app)
  *
- * - ยังไม่มีระบบ login: ตำแหน่งด้านล่างเป็นค่าสมมติ ไม่ได้มาจาก session
- *   (BE จะอ่านตำแหน่งจริงฝั่ง server แล้วส่งเข้า <AppShell role={…}>)
- * - `allowRoleSwitch` เปิดตัวสลับบทบาทใน Topbar ให้ลองดูหน้าตาเมนู —
- *   BE ต้องลบบรรทัดนี้ออกตอนต่อ login จริง
- * - การซ่อนเมนูไม่ใช่ระบบความปลอดภัย: ของจริงบังคับที่ฐานข้อมูลด้วย RLS (SPEC §5)
- *   และฝั่ง server ของแต่ละหน้า
- * - รายการเดือนเป็นข้อมูลสมมติ (ยังไม่ได้ดึงจาก month_closures / visits)
+ * - **ตำแหน่งมาจาก session จริง**: อ่านโปรไฟล์ฝั่ง server แล้วส่งเข้า <AppShell role={…}>
+ *   (`requireProfile` เด้งไปหน้าเข้าสู่ระบบถ้าไม่ได้ล็อกอิน — เป็นด่านสำรองของ middleware.ts)
+ * - การซ่อนเมนูไม่ใช่ระบบความปลอดภัย: ด่านจริงคือ RLS ในฐานข้อมูล (SPEC §5)
+ *   และการตรวจเส้นทางใน `middleware.ts`
+ * - ⚠ รายการเดือนยังเป็นข้อมูลสมมติ (ยังไม่ได้ดึงจาก month_closures / visits) — งานของหมวดอื่น
  */
-const TEMP_ROLE: Role = "host";
+import type { ReactNode } from "react";
+
+import { AppShell, ThemeScript, type MonthOption } from "@/components/shell";
+import { LOGOUT_PATH } from "@/lib/auth/access";
+import { requireProfile } from "@/lib/auth/session";
 
 const TEMP_MONTHS: readonly MonthOption[] = [
   { value: "2026-10", label: "ตุลาคม 2026" },
@@ -25,16 +19,13 @@ const TEMP_MONTHS: readonly MonthOption[] = [
   { value: "2026-08", label: "สิงหาคม 2026" },
 ];
 
-export default function AppLayout({ children }: { children: ReactNode }) {
+export default async function AppLayout({ children }: { children: ReactNode }) {
+  const profile = await requireProfile();
+
   return (
     <>
       <ThemeScript />
-      <AppShell
-        role={TEMP_ROLE}
-        allowRoleSwitch
-        months={TEMP_MONTHS}
-        logoutHref="/login"
-      >
+      <AppShell role={profile.role} months={TEMP_MONTHS} logoutHref={LOGOUT_PATH}>
         {children}
       </AppShell>
     </>
