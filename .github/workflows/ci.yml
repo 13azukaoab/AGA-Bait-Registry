@@ -1,0 +1,55 @@
+# CI — ตรวจอัตโนมัติตอน push และ pull request เข้า branch main
+#
+# สรุป logic การทำงาน (เผื่อทีมงานเปิดมาอ่าน):
+# 1. ทำงานเมื่อ push เข้า main หรือเปิด/อัปเดต pull request ที่จะ merge เข้า main
+# 2. ติดตั้ง dependency ด้วย `npm ci` (ยึดตาม package-lock.json ให้ผลเหมือนกันทุกครั้ง)
+# 3. รัน 3 คำสั่งตามลำดับ: typecheck (tsc --noEmit) -> lint (next lint) -> test (vitest run)
+#    ถ้าขั้นไหนไม่ผ่าน job จะแดงทันที และ GitHub จะกันไม่ให้ merge (ถ้าตั้ง branch protection ไว้)
+# 4. ยังไม่รวม `npm run db:test` (Supabase test db) เพราะต้องมี Docker / Supabase CLI
+#    ใน runner — ค่อยเพิ่มเป็น job แยกรอบหลัง
+#
+# หมายเหตุ: workflow นี้ไม่ใช้ secret ใดๆ (ไม่แตะ Supabase / Vercel) จึงรันบน PR จาก fork ได้ปลอดภัย
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# push ซ้ำเข้า ref เดิม ให้ยกเลิก run เก่าที่ยังค้าง ประหยัดเวลา runner
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  quality-checks:
+    name: typecheck + lint + test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type check
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Unit tests
+        run: npm test
