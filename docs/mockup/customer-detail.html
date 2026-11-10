@@ -203,6 +203,9 @@ tr.sub table{font-size:12px;background:var(--surface);border:1px solid var(--bor
 .empty{padding:26px 16px;text-align:center;color:var(--fg-muted);font-size:13px}
 .caret{border:0;background:transparent;color:var(--fg-muted);cursor:pointer;font-size:12px;width:22px;height:22px;border-radius:5px;padding:0}
 .caret:hover{background:var(--surface-3)}
+/* ปุ่ม "ประวัติ" ในตาราง (เฉพาะ host) — สไตล์เดียวกับลิ้นชัก แต่ต้องมีตั้งแต่โหลดหน้า เพราะ CSS ของลิ้นชักถูกใส่ตอนเปิดครั้งแรกเท่านั้น */
+.hd-btn{display:inline-flex;align-items:center;gap:4px;font:inherit;font-size:11.5px;line-height:1.2;padding:2px 8px;border-radius:999px;border:1px solid var(--border-strong);background:var(--surface);color:var(--accent-strong);cursor:pointer;white-space:nowrap;vertical-align:middle}
+.hd-btn:hover{background:var(--accent-soft);border-color:var(--accent)} .hd-btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px} .hd-btn[hidden]{display:none}
 .linkbtn{border:0;background:transparent;color:var(--accent-strong);font:inherit;cursor:pointer;padding:0;text-decoration:underline}
 .mono{font-family:ui-monospace,Consolas,monospace;font-size:12.5px}
 
@@ -467,6 +470,125 @@ function hmFor(s){
     return true;});
 }
 /* ===== /AGA-HISTORY-MOCK v1 ===== */
+</script>
+<script>
+/* ===== AGA-HISTORY-DRAWER v1 : ลิ้นชัก "ประวัติ" ตามจุด (เห็นเฉพาะ host) =====
+   แหล่งจริงอยู่ที่ docs/mockup/_shell/history-drawer.js — คัดลอกบล็อกนี้ไปทุกหน้าที่มีปุ่ม "ประวัติ" (ดู _shell/README.md)
+   ต้องมี history-mock.js (HM_ALL / HM_CUST / hmFor) อยู่ก่อนในหน้าเดียวกัน
+   วิธีใช้ในหน้า:
+     1) ใส่ปุ่มด้วย HD.btn(เลขสัญญา, ชื่อลูกค้า)  → ได้ <button class="hd-btn"> ที่ซ่อนเองเมื่อไม่ใช่ host
+     2) ตอนเปลี่ยน role เรียก HD.sync(role)       → โชว์/ซ่อนปุ่มทั้งหมด (ปุ่มที่สร้างทีหลังตามค่า role ล่าสุด)
+     3) ปุ่มระดับหน้า (ไม่ผูกสัญญา) เรียก HD.open({title:'…', k:'Port ต่างจังหวัด'}) ได้เลย
+   • โชว์เฉพาะ "การเปลี่ยนแปลง" (แก้/ลบ/ไฟล์/สถานี/ปิดเดือน) ล่าสุด 20 รายการ — ที่เหลือไปดูไทม์ไลน์เต็มในหน้าลูกค้า
+   • ของจริง: อ่านจาก audit_log (RLS = host เท่านั้น) ไม่ใช่แค่ซ่อนปุ่ม · ที่นี่ใช้ข้อมูลสมมติ
+   • ถ้าเลขสัญญาในเดโมไม่มีประวัติตรงตัว จะหยิบชุดตัวอย่างของลูกค้าเดโมรายหนึ่งมาแสดง (คงที่ตามเลขสัญญา) พร้อมป้ายบอก */
+var HD=(function(){
+  var role=null, el=null, lastFocus=null, LIMIT=20;
+  var ACT={insert:['ok','เพิ่ม'],update:['info','แก้ไข'],'delete':['miss','ลบ']};
+  function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+  function hash(s){var h=0;for(var i=0;i<s.length;i++)h=(h*31+s.charCodeAt(i))|0;return Math.abs(h);}
+  function isHost(){return role==='host';}
+  var css='.hd-btn{display:inline-flex;align-items:center;gap:4px;font:inherit;font-size:11.5px;line-height:1.2;padding:2px 8px;border-radius:999px;'+
+    'border:1px solid var(--border-strong);background:var(--surface);color:var(--accent-strong);cursor:pointer;white-space:nowrap;vertical-align:middle}'+
+    '.hd-btn:hover{background:var(--accent-soft);border-color:var(--accent)}.hd-btn[hidden]{display:none}'+
+    '.hd-ov{position:fixed;inset:0;background:rgba(10,18,28,.45);z-index:300}.hd-ov[hidden],.hd-panel[hidden]{display:none}'+
+    '.hd-panel{position:fixed;top:0;right:0;bottom:0;width:min(440px,100vw);background:var(--surface);color:var(--fg);z-index:301;display:flex;flex-direction:column;'+
+    'border-left:1px solid var(--border);box-shadow:var(--shadow);outline:none}'+
+    '.hd-head{display:flex;align-items:flex-start;gap:10px;padding:14px 16px;border-bottom:1px solid var(--border)}'+
+    '.hd-head h2{margin:0;font-size:15px;line-height:1.35;flex:1}.hd-head small{display:block;font-weight:400;font-size:12px;color:var(--fg-muted);margin-top:2px}'+
+    '.hd-x{font:inherit;font-size:18px;line-height:1;border:0;background:transparent;color:var(--fg-muted);cursor:pointer;padding:4px 8px;border-radius:8px}'+
+    '.hd-x:hover{background:var(--surface-3);color:var(--fg)}'+
+    '.hd-body{flex:1;overflow:auto;padding:10px 16px 16px}.hd-note{font-size:11.5px;color:var(--fg-muted);background:var(--surface-2);border:1px solid var(--border);border-radius:8px;padding:7px 10px;margin:0 0 10px;line-height:1.5}'+
+    '.hd-list{list-style:none;margin:0;padding:0 0 0 16px;border-left:2px solid var(--border)}'+
+    '.hd-it{position:relative;padding:5px 0 11px 12px}.hd-it::before{content:"";position:absolute;left:-23px;top:10px;width:10px;height:10px;border-radius:50%;background:var(--surface);border:2px solid var(--accent)}'+
+    '.hd-it.ins::before{border-color:var(--ok)}.hd-it.del::before{border-color:var(--danger)}'+
+    '.hd-day{font-size:12px;font-weight:600;color:var(--fg-muted);margin:12px 0 6px}.hd-day:first-child{margin-top:0}'+
+    '.hd-row{display:flex;flex-wrap:wrap;gap:4px 8px;align-items:center;font-size:13px}.hd-txt{font-size:13px;margin-top:3px;word-break:break-word}.hd-meta{font-size:11.5px;color:var(--fg-muted);margin-top:2px}'+
+    '.hd-chip{display:inline-block;font-size:11px;padding:1px 8px;border-radius:999px;white-space:nowrap;background:var(--surface-3);color:var(--fg-muted)}'+
+    '.hd-chip.ok{background:var(--ok-soft);color:var(--ok)}.hd-chip.miss{background:var(--danger-soft);color:var(--danger)}.hd-chip.info{background:var(--accent-soft);color:var(--accent-strong)}.hd-chip.pend{background:var(--warn-soft);color:var(--warn)}'+
+    '.hd-foot{padding:10px 16px;border-top:1px solid var(--border);display:flex;flex-wrap:wrap;gap:6px 14px;font-size:12.5px}'+
+    '.hd-foot a{color:var(--accent-strong)}.hd-empty{padding:18px 4px;color:var(--fg-muted);font-size:13px}';
+  function build(){
+    if(el) return;
+    var st=document.createElement('style'); st.textContent=css; document.head.appendChild(st);
+    el=document.createElement('div');
+    el.innerHTML='<div class="hd-ov" id="hdOv" hidden></div><aside class="hd-panel" id="hdPanel" role="dialog" aria-modal="true" aria-labelledby="hdTitle" tabindex="-1" hidden>'+
+      '<div class="hd-head"><h2 id="hdTitle"></h2><button type="button" class="hd-x" id="hdX" aria-label="ปิดประวัติ">✕</button></div>'+
+      '<div class="hd-body" id="hdBody"></div><div class="hd-foot" id="hdFoot"></div></aside>';
+    document.body.appendChild(el);
+    document.getElementById('hdOv').addEventListener('click',close);
+    document.getElementById('hdX').addEventListener('click',close);
+    document.addEventListener('keydown',function(e){if(e.key==='Escape'&&!document.getElementById('hdPanel').hidden)close();});
+  }
+  /* ปุ่มเปิดลิ้นชัก — ใส่ใน markup ของหน้า (ซ่อนเองถ้าไม่ใช่ host) */
+  function btn(ct,name){
+    var n=rowsFor({ct:ct,name:name}).list.length;
+    return '<button type="button" class="hd-btn" data-hd-ct="'+esc(ct)+'" data-hd-name="'+esc(name)+'"'+(isHost()?'':' hidden')+
+      ' title="ดูประวัติการแก้ไขของสัญญานี้ (เฉพาะ host)" aria-label="ดูประวัติการแก้ไข '+esc(ct)+'">⟲ ประวัติ ('+n+')</button>';
+  }
+  function sync(r){
+    role=r;
+    [].forEach.call(document.querySelectorAll('.hd-btn'),function(b){b.hidden=!isHost();});
+    if(!isHost()&&el&&!document.getElementById('hdPanel').hidden) close();
+  }
+  /* หารายการของสัญญา/ลูกค้า: ตรงตัวก่อน ไม่มีก็หยิบชุดตัวอย่างคงที่ */
+  function rowsFor(o){
+    var list, sample=false, cu=null;
+    if(o.k){ list=hmFor({k:o.k,onlyChange:true}); }
+    else {
+      list=hmFor({ct:o.ct,onlyChange:true});
+      HM_CUST.forEach(function(c){ if(c.ct===o.ct) cu=c; });
+      if(!list.length){
+        sample=true; cu=HM_CUST[hash(String(o.ct||o.name||''))%HM_CUST.length];
+        list=hmFor({ct:cu.ct,onlyChange:true});
+      }
+    }
+    return {list:list,sample:sample,cu:cu};
+  }
+  function open(o){
+    if(!isHost()) return;
+    build(); lastFocus=document.activeElement;
+    var r=rowsFor(o), list=r.list, shown=list.slice(0,LIMIT);
+    var cid=(r.cu&&r.cu.cid)||'';
+    document.getElementById('hdTitle').innerHTML=esc(o.title||('ประวัติการแก้ไข · '+(o.ct||'')))+
+      '<small>'+(o.name?esc(o.name)+' · ':'')+list.length+' รายการ (เฉพาะการเปลี่ยนแปลง) · 4–10 พ.ย. 2026</small>';
+    var h='<p class="hd-note">ข้อมูลตัวอย่าง — ของจริงอ่านจาก <b>audit_log</b> (host เท่านั้น) · การกรอกผลบริการปกติจำนวนมากไม่แสดงที่นี่'+
+      (r.sample?' · <b>เลขสัญญานี้ในเดโมยังไม่มีประวัติเฉพาะ จึงแสดงชุดตัวอย่าง</b>':'')+'</p>';
+    if(!shown.length){ h+='<div class="hd-empty">ยังไม่มีการแก้ไขในช่วงที่เก็บ</div>'; }
+    else {
+      var day=null,openUl=false;
+      shown.forEach(function(e){
+        if(e.ds!==day){ if(openUl) h+='</ul>'; day=e.ds; h+='<div class="hd-day">'+esc(e.ds)+' 2026</div><ul class="hd-list">'; openUl=true; }
+        var a=ACT[e.a]||ACT.update;
+        h+='<li class="hd-it '+(e.a==='insert'?'ins':e.a==='delete'?'del':'')+'"><div class="hd-row"><b>'+esc(e.t)+'</b><span>'+esc(e.who)+'</span>'+
+          '<span class="hd-meta" style="margin:0">'+esc(e.role)+'</span><span class="hd-chip '+a[0]+'">'+a[1]+'</span><span class="hd-chip">'+esc(e.k)+'</span>'+
+          (e.closed?'<span class="hd-chip pend" title="แก้ข้อมูลของเดือนที่ปิดแล้ว">แก้หลังปิดเดือน</span>':'')+'</div>'+
+          '<div class="hd-txt">'+esc(e.x)+'</div><div class="hd-meta">'+(e.ct&&e.ct!=='-'?esc(e.ct)+' · ':'')+'ข้อมูลเดือน '+esc(e.mk)+'</div></li>';
+      });
+      if(openUl) h+='</ul>';
+    }
+    document.getElementById('hdBody').innerHTML=h;
+    var f=(cid?'<a href="customer-detail.html?c='+esc(cid)+'#tab=timeline">ไทม์ไลน์เต็มของลูกค้า ↗</a>':'')+'<a href="history-log.html">ประวัติย้อนหลังทุกสาขา ↗</a>';
+    document.getElementById('hdFoot').innerHTML=f;
+    document.getElementById('hdOv').hidden=false; var p=document.getElementById('hdPanel'); p.hidden=false; p.focus();
+  }
+  function close(){
+    if(!el) return;
+    document.getElementById('hdOv').hidden=true; document.getElementById('hdPanel').hidden=true;
+    if(lastFocus&&lastFocus.focus) try{lastFocus.focus();}catch(e){}
+  }
+  document.addEventListener('click',function(e){
+    var b=e.target.closest&&e.target.closest('.hd-btn[data-hd-ct]'); if(!b) return;
+    e.preventDefault(); e.stopPropagation();
+    open({ct:b.getAttribute('data-hd-ct'),name:b.getAttribute('data-hd-name')});
+  });
+  /* หน้าที่ไม่ได้เรียก HD.sync เอง → ใช้ค่าจากตัวเลือก role ของ topbar (ถ้ามี) */
+  document.addEventListener('DOMContentLoaded',function(){
+    if(role===null){ var s=document.getElementById('roleSel'); sync(s?s.value:'host'); }
+  });
+  return {btn:btn,sync:sync,open:open,close:close};
+})();
+/* ===== /AGA-HISTORY-DRAWER v1 ===== */
 </script>
 <script>
 (function(){
@@ -797,8 +919,26 @@ function stationRows(){
     return a.code<b.code?-1:1;
   });
 }
+/* ปุ่ม "ประวัติ" รายสถานี / รายการเข้าบริการ (เห็นเฉพาะ host — ของจริงบังคับที่ RLS ของ audit_log)
+   ข้อมูลตัวอย่างใน history-mock ยังไม่แยกรายสถานี/รายครั้ง → กรองเท่าที่ได้: สัญญาของแถวนั้น + เรื่อง "สถานี" / "ผลบริการ" (+ "กล่อง AG")
+   ใช้ลิ้นชัก HD ตามเดิม (ไม่แก้บล็อก AGA-HISTORY-DRAWER): ครอบ hmFor ชั่วคราวระหว่าง HD.open แล้วคืนค่าเดิมเสมอ */
+function hdBtn(label,ct,kinds,title,sub){
+  if(role!=='host')return '';
+  return '<button type="button" class="hd-btn" data-hd-scope="1" data-hd-contract="'+esc(ct)+'" data-hd-kinds="'+esc(kinds.join('|'))+'" data-hd-title="'+esc(title)+'" data-hd-sub="'+esc(sub)+'" title="ดูประวัติการแก้ไขที่เกี่ยวข้อง (เฉพาะ host · ข้อมูลตัวอย่าง)" aria-label="ดูประวัติการแก้ไข '+esc(label)+'">⟲ ประวัติ</button>';
+}
+function hdOpenScoped(b){
+  if(role!=='host')return;
+  var kinds=(b.getAttribute('data-hd-kinds')||'').split('|'),orig=window.hmFor;
+  try{b.focus()}catch(x){}   // บางเบราว์เซอร์ไม่โฟกัสปุ่มตอนคลิก → ให้ลิ้นชักจำปุ่มนี้เพื่อคืนโฟกัสตอนปิด
+  window.hmFor=function(s){return orig(s).filter(function(e){return kinds.indexOf(e.k)>=0})};
+  try{HD.open({ct:b.getAttribute('data-hd-contract'),title:b.getAttribute('data-hd-title'),name:b.getAttribute('data-hd-sub')})}
+  finally{window.hmFor=orig}
+  var body=document.getElementById('hdBody');
+  if(body)body.insertAdjacentHTML('afterbegin','<p class="hd-note"><b>ข้อมูลตัวอย่างยังไม่แยกรายสถานี/รายครั้ง</b> — กรองจากสัญญาเดียวกัน เฉพาะเรื่อง “'+esc(kinds.join(' / '))+'” · ของจริงกรองด้วย <code>record_id</code> ของแถวนั้นใน <code>audit_log</code></p>');
+}
+
 function stationsHtml(){
-  var cu=cust(),multi=cu.contracts.length>1;
+  var cu=cust(),multi=cu.contracts.length>1,hc=(role==='host');
   var scope=cu.stations.filter(function(s){return S.st.contract==='all'||s.contract===S.st.contract});
   var cnt=stationCounts(scope),rows=stationRows(),pages=Math.max(1,Math.ceil(rows.length/PAGE_ST));
   if(S.st.page>pages)S.st.page=pages;
@@ -814,7 +954,7 @@ function stationsHtml(){
     '<button class="chip na'+(S.st.status==='all'?' on':'')+'" data-act="flt" data-k="status" data-v="all">ทั้งหมด</button>'+
     Object.keys(ST_LABEL).map(function(k){return '<button class="chip '+ST_LABEL[k][1]+(S.st.status===k?' on':'')+'" data-act="flt" data-k="status" data-v="'+k+'" title="'+k+'">'+ST_LABEL[k][0]+' '+cnt[k]+'</button>'}).join('')+'</div>';
   if(!rows.length)return h+'<div class="empty">ไม่พบสถานีตามเงื่อนไข — ลองล้างตัวกรอง <button class="linkbtn" data-act="clear-st">ล้างตัวกรอง</button></div>';
-  h+='<div class="tablewrap"><table><thead><tr><th style="width:34px" aria-label="ขยายดูประวัติ"></th><th scope="col">รหัส</th><th scope="col">ชนิด</th>'+(multi?'<th scope="col">สัญญา</th>':'')+'<th scope="col">ติดตั้ง</th><th scope="col">สถานะ</th><th scope="col">ตรวจ / F</th><th scope="col">ตรวจล่าสุด</th><th scope="col">ถอด / เก็บคืน</th></tr></thead><tbody>';
+  h+='<div class="tablewrap"><table><thead><tr><th style="width:34px" aria-label="ขยายดูประวัติ"></th><th scope="col">รหัส</th><th scope="col">ชนิด</th>'+(multi?'<th scope="col">สัญญา</th>':'')+'<th scope="col">ติดตั้ง</th><th scope="col">สถานะ</th><th scope="col">ตรวจ / F</th><th scope="col">ตรวจล่าสุด</th><th scope="col">ถอด / เก็บคืน</th>'+(hc?'<th scope="col">ประวัติแก้ไข</th>':'')+'</tr></thead><tbody>';
   slice.forEach(function(s){
     var key=s.contract+'|'+s.code,open=!!(S.st.open[key]||S.st.open['*|'+s.code]&&S.st.q),last=s.checks[s.checks.length-1],lab=ST_LABEL[s.status];
     var fcol=s.type==='AG'?(s.checks.length?'F'+s.checks.length:'S (ยังไม่ติดตาม)'):(s.checks.length?'พบ '+s.checks.length+' ครั้ง':'—');
@@ -822,9 +962,10 @@ function stationsHtml(){
       '<td class="mono">'+esc(s.code)+'</td><td><span class="sttype">'+s.type+'</span></td>'+(multi?'<td class="mono lab">'+esc(s.contract)+'</td>':'')+
       '<td>'+fmt(s.installed)+'</td><td>'+chip(lab[1],lab[0],s.status)+'</td><td>'+fcol+'</td>'+
       '<td>'+(last?fmt(last.date)+' · '+esc(last.caste):'<span class="lab">—</span>')+'</td>'+
-      '<td>'+(s.collectedAt?'เก็บคืน '+fmt(s.collectedAt):s.removedAt?'ถอด '+fmt(s.removedAt):'<span class="lab">—</span>')+'</td></tr>';
+      '<td>'+(s.collectedAt?'เก็บคืน '+fmt(s.collectedAt):s.removedAt?'ถอด '+fmt(s.removedAt):'<span class="lab">—</span>')+'</td>'+
+      (hc?'<td>'+hdBtn('สถานี '+s.code,s.contract,s.type==='AG'?['สถานี','ผลบริการ','กล่อง AG']:['สถานี','ผลบริการ'],'ประวัติสถานี '+s.code,'สัญญา '+s.contract+' · กรองเรื่องสถานี/ผลบริการ')+'</td>':'')+'</tr>';
     if(open){
-      h+='<tr class="sub"><td></td><td colspan="'+(multi?8:7)+'">';
+      h+='<tr class="sub"><td></td><td colspan="'+((multi?8:7)+(hc?1:0))+'">';
       if(!s.checks.length)h+='<span class="lab">'+(s.type==='AG'?'ติดตั้งแล้ว ยังไม่มีรอบติดตาม (F1)':'ไม่พบปลวกในทุกรอบ — ไม่มีบันทึกผิดปกติ (exception entry §7.5)')+'</span>';
       else h+='<table><thead><tr><th>'+(s.type==='AG'?'F':'ครั้งที่')+'</th><th>วันที่ตรวจ</th><th>รอบ</th><th>สัดส่วนปลวก</th><th class="r">เหยื่อเติม (ก.)</th><th>หมายเหตุ</th></tr></thead><tbody>'+
         s.checks.map(function(k){return '<tr><td><b>'+(s.type==='AG'?'F'+k.no:k.no)+'</b></td><td>'+fmt(k.date)+'</td><td>'+chip(VT_LABEL[k.type][1],VT_LABEL[k.type][0])+'</td><td>'+(k.caste==='ปลวกตาย'?chip('ok','ปลวกตาย'):esc(k.caste))+'</td><td class="r num">'+k.bait+'</td><td>'+(k.note?esc(k.note):'<span class="lab">—</span>')+'</td></tr>'}).join('')+'</tbody></table>';
@@ -843,7 +984,7 @@ function pager(total,page,size,act){
    8) แท็บ "ประวัติบริการ"  (visits + station_checks)
    ====================================================================== */
 function visitsHtml(){
-  var cu=cust(),multi=cu.contracts.length>1;
+  var cu=cust(),multi=cu.contracts.length>1,hc=(role==='host');
   var rows=cu.visits.filter(function(v){return (S.vi.contract==='all'||v.contract===S.vi.contract)&&(S.vi.type==='all'||v.type===S.vi.type)});
   var pages=Math.max(1,Math.ceil(rows.length/PAGE_VI));if(S.vi.page>pages)S.vi.page=pages;
   var slice=rows.slice((S.vi.page-1)*PAGE_VI,S.vi.page*PAGE_VI);
@@ -864,15 +1005,16 @@ function visitsHtml(){
   h+='<div class="filters"><div class="field"><label for="f-vi-contract">สัญญา</label><select id="f-vi-contract" data-bind="vi.contract"><option value="all">ทุกสัญญา</option>'+sortedContracts().map(function(k){return '<option value="'+esc(k.no)+'"'+(S.vi.contract===k.no?' selected':'')+'>'+esc(k.no)+'</option>'}).join('')+'</select></div>'+
     '<div class="field"><label for="f-vi-type">ประเภทการเข้า</label><select id="f-vi-type" data-bind="vi.type"><option value="all">ทุกประเภท</option>'+Object.keys(VT_LABEL).map(function(t){return '<option value="'+t+'"'+(S.vi.type===t?' selected':'')+'>'+VT_LABEL[t][0]+'</option>'}).join('')+'</select></div></div>';
   if(!rows.length)return h+'<div class="empty">ไม่พบการเข้าบริการตามเงื่อนไข</div>';
-  h+='<div class="tablewrap"><table><thead><tr><th style="width:34px"></th><th scope="col">วันที่</th><th scope="col">ประเภท</th>'+(multi?'<th scope="col">สัญญา</th>':'')+'<th scope="col">ทีม</th><th class="r" scope="col">เวลา (นาที)</th><th class="r" scope="col">เหยื่อ IG/IC (ก.)</th><th class="r" scope="col">เหยื่อ AG (ก.)</th><th class="r" scope="col">ไม้ล่อ (ชิ้น)</th><th scope="col">S</th><th scope="col">จุดที่ตรวจ</th><th scope="col">หมายเหตุ</th></tr></thead><tbody>';
+  h+='<div class="tablewrap"><table><thead><tr><th style="width:34px"></th><th scope="col">วันที่</th><th scope="col">ประเภท</th>'+(multi?'<th scope="col">สัญญา</th>':'')+'<th scope="col">ทีม</th><th class="r" scope="col">เวลา (นาที)</th><th class="r" scope="col">เหยื่อ IG/IC (ก.)</th><th class="r" scope="col">เหยื่อ AG (ก.)</th><th class="r" scope="col">ไม้ล่อ (ชิ้น)</th><th scope="col">S</th><th scope="col">จุดที่ตรวจ</th><th scope="col">หมายเหตุ</th>'+(hc?'<th scope="col">ประวัติแก้ไข</th>':'')+'</tr></thead><tbody>';
   slice.forEach(function(v){
     var key=v.contract+'|'+v.date+'|'+v.type,open=!!S.vi.open[key],locked=v.date.slice(0,7)<=CLOSED_THROUGH,lab=VT_LABEL[v.type];
     h+='<tr class="row"><td><button class="caret" data-act="vi-open" data-k="'+esc(key)+'" aria-expanded="'+open+'" aria-label="รายละเอียดการเข้าวันที่ '+fmt(v.date)+'">'+(open?'▾':'▸')+'</button></td>'+
       '<td>'+fmt(v.date)+(locked?' <span title="เดือนที่ปิดแล้ว แก้ไม่ได้" aria-label="เดือนที่ปิดแล้ว">🔒</span>':'')+'</td><td>'+chip(lab[1],lab[0],v.type)+'</td>'+(multi?'<td class="mono lab">'+esc(v.contract)+'</td>':'')+
       '<td>'+esc(v.team)+'</td><td class="r num">'+v.dur+'</td><td class="r num">'+(v.baitIgIc||'—')+'</td><td class="r num">'+(v.baitAg||'—')+'</td><td class="r num">'+(v.timber||'—')+'</td>'+
-      '<td>'+(v.first?chip('info','S ติดตั้ง'):'<span class="lab">—</span>')+'</td><td class="num">'+(v.checks.length?v.checks.length+' จุด':'<span class="lab">ไม่พบ</span>')+'</td><td style="white-space:normal;min-width:160px">'+(v.note?esc(v.note):'<span class="lab">—</span>')+'</td></tr>';
+      '<td>'+(v.first?chip('info','S ติดตั้ง'):'<span class="lab">—</span>')+'</td><td class="num">'+(v.checks.length?v.checks.length+' จุด':'<span class="lab">ไม่พบ</span>')+'</td><td style="white-space:normal;min-width:160px">'+(v.note?esc(v.note):'<span class="lab">—</span>')+'</td>'+
+      (hc?'<td>'+hdBtn('การเข้าบริการ '+fmt(v.date),v.contract,v.baitAg?['ผลบริการ','กล่อง AG']:['ผลบริการ'],'ประวัติการเข้าบริการ '+fmt(v.date),'สัญญา '+v.contract+' · '+lab[0]+' · กรองเรื่องผลบริการ')+'</td>':'')+'</tr>';
     if(open){
-      h+='<tr class="sub"><td></td><td colspan="'+(multi?11:10)+'"><div class="lab" style="margin-bottom:6px">บันทึกโดย '+esc(v.by)+' · '+(v.inspect?'ตรวจภายใน':'ไม่ตรวจภายใน')+' · '+(v.proxy?'เซ็นแทน':'ลูกค้าเซ็นเอง')+' · เคมีผง '+(v.powder||0)+' จุด</div>';
+      h+='<tr class="sub"><td></td><td colspan="'+((multi?11:10)+(hc?1:0))+'"><div class="lab" style="margin-bottom:6px">บันทึกโดย '+esc(v.by)+' · '+(v.inspect?'ตรวจภายใน':'ไม่ตรวจภายใน')+' · '+(v.proxy?'เซ็นแทน':'ลูกค้าเซ็นเอง')+' · เคมีผง '+(v.powder||0)+' จุด</div>';
       if(!v.checks.length)h+='<span class="lab">'+(v.type==='routine'?'ทุกสถานีปกติ — ไม่มีจุดที่พบปลวก (exception entry §7.5)':'ไม่มีการตรวจสถานีในครั้งนี้')+'</span>';
       else h+='<table><thead><tr><th>สถานี</th><th>ชนิด</th><th>F / ครั้งที่</th><th>สัดส่วนปลวก</th><th class="r">เหยื่อเติม (ก.)</th><th>หมายเหตุ</th></tr></thead><tbody>'+
         v.checks.map(function(x){return '<tr><td class="mono">'+esc(x.st.code)+'</td><td><span class="sttype">'+x.st.type+'</span></td><td>'+(x.st.type==='AG'?'<b>F'+x.k.no+'</b>':'<span class="lab">ครั้งที่ '+x.k.no+'</span>')+'</td><td>'+(x.k.caste==='ปลวกตาย'?chip('ok','ปลวกตาย'):esc(x.k.caste))+'</td><td class="r num">'+x.k.bait+'</td><td>'+(x.k.note?esc(x.k.note):'<span class="lab">—</span>')+'</td></tr>'}).join('')+'</tbody></table>';
@@ -917,6 +1059,7 @@ function filesHtml(){
    10) วาดหน้า + จัดการเหตุการณ์
    ====================================================================== */
 function render(){
+  HD.sync(role);   // ซ่อนปุ่ม "ประวัติ" + ปิดลิ้นชักถ้าไม่ใช่ host (เรียกก่อนทุกอย่าง รวมกรณี viewer)
   var viewer=(role==='viewer');
   document.getElementById('blocked').hidden=!viewer;
   document.getElementById('page').hidden=viewer;
@@ -983,6 +1126,11 @@ var ACT={
   'file-view':function(el){toast('ตัวอย่าง: เปิด "'+el.dataset.k+'" ผ่าน signed URL (ยังไม่เชื่อม Storage จริง)')},
   'file-dl':function(el){toast('ตัวอย่าง: ดาวน์โหลด "'+el.dataset.k+'" (ยังไม่เชื่อม Storage จริง)')}
 };
+/* ปุ่ม "ประวัติ" รายสถานี/รายครั้ง — ใช้ data-hd-scope (ไม่ใช้ data-hd-ct เพราะลิ้นชักมี listener ของมันเองที่จะเปิดแบบไม่กรอง) */
+document.addEventListener('click',function(e){
+  var b=e.target.closest('.hd-btn[data-hd-scope]');if(!b)return;
+  e.preventDefault();e.stopPropagation();hdOpenScoped(b);
+});
 document.addEventListener('click',function(e){
   var el=e.target.closest('[data-act]');if(!el||el.disabled)return;
   var fn=ACT[el.dataset.act];if(fn)fn(el,e);
