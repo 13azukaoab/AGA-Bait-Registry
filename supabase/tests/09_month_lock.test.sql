@@ -26,7 +26,7 @@ INSERT INTO station_checks (id, visit_id, station_id)
   VALUES ('00000000-0000-0000-0000-000000000a01', '00000000-0000-0000-0000-0000000000f1', '00000000-0000-0000-0000-0000000000e1');
 
 -- September is closed
-INSERT INTO month_closures (month_key, closed_at) VALUES ('2026-09', now());
+INSERT INTO month_closures (month_key, scope, closed_at) VALUES ('2026-09', 'central', now());
 
 -- ===== the old lock is gone =====
 SELECT hasnt_function('public', 'block_closed_month', 'block_closed_month() removed');
