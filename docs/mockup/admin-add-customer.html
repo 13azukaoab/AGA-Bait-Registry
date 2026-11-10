@@ -245,6 +245,41 @@ tr.badrow td{background:var(--danger-soft) !important}
 .mini-t th.grp{background:var(--surface-3);color:var(--fg);border-bottom:1px solid var(--border)}
 .mini-t th.sub{background:var(--surface-3);color:var(--fg-muted);font-weight:600}
 .mini-t .gl{border-left:1px solid var(--border-strong)}
+.mini-t td.zc{font-weight:600;cursor:help}
+.mini-t td.zg{color:var(--fg-muted)}
+
+/* ===== เรียงลำดับ (sort) ทุกคอลัมน์ของตารางเปิดงาน — คลิกหัวคอลัมน์ ===== */
+.sorthint{margin-left:auto;font-size:11.5px;color:var(--fg-muted);align-self:center}
+table.xl thead th.sortable{cursor:pointer;user-select:none}
+table.xl thead th.sortable:hover{background:var(--surface-3)}
+table.xl thead th.sortable:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+table.xl thead th.sortable::after{content:"↕";margin-left:3px;font-size:9px;opacity:0;color:var(--fg-muted)}
+table.xl thead th.sortable:hover::after{opacity:.7}
+table.xl thead th.sortable[aria-sort="ascending"]::after{content:"▲";opacity:1;color:var(--accent-strong)}
+table.xl thead th.sortable[aria-sort="descending"]::after{content:"▼";opacity:1;color:var(--accent-strong)}
+table.xl thead th.sortable[aria-sort="ascending"],table.xl thead th.sortable[aria-sort="descending"]{color:var(--accent-strong)}
+
+/* ===== Dashboard สรุปการเปิดงาน (แบบ B: KPI + สลับมุมมองทีละกราฟ + ตารางข้อมูลของกราฟ) ===== */
+.dkpi{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:14px}
+.dk{background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px}
+.dk .l{font-size:11.5px;color:var(--fg-muted)}
+.dk .v{font-size:22px;font-weight:700;line-height:1.2;margin-top:2px}
+.dk .s{font-size:11px;color:var(--fg-faint)}
+.dgrid{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);gap:16px;align-items:start}
+@media (max-width:900px){.dgrid{grid-template-columns:minmax(0,1fr)}}
+.dtabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.dtabs button{font-family:inherit;font-size:12.5px;padding:5px 12px;border-radius:999px;border:1px solid var(--border-strong);
+  background:var(--surface);color:var(--fg-muted);cursor:pointer}
+.dtabs button[aria-selected="true"]{background:var(--accent-soft);border-color:var(--accent);color:var(--accent-strong);font-weight:600}
+.dcanvas{position:relative;height:280px}
+.dnote{font-size:11.5px;color:var(--fg-muted);margin-top:8px}
+.dmiss{font-size:12.5px;color:var(--fg-muted);padding:40px 12px;text-align:center}
+/* ลิงก์จากชื่อลูกค้าในตาราง → หน้ารายละเอียดลูกค้า */
+td.nm{position:relative}
+td.nm input{padding-right:28px}
+td.nm .rowlk{position:absolute;right:8px;top:50%;transform:translateY(-50%);font-size:13px;line-height:1;text-decoration:none;
+  color:var(--accent-strong);padding:2px 4px;border-radius:5px}
+td.nm .rowlk:hover,td.nm .rowlk:focus-visible{background:var(--accent-soft)}
 
 /* ===== ปฏิทิน heat map รายวัน =====
    พื้นเซลล์ = จำนวนงาน (เทาไล่เฉด สีกลาง ไม่ชนกับ Tier)
@@ -492,6 +527,7 @@ table.xl .teambtn.multi{font-weight:700;color:var(--accent-strong)}
   <span class="chip info num">มูลค่ารวม 10,164,043</span>
   <span class="chip pend num">รอนัดบริการ 16</span>
   <span class="chip miss num">⚠ ขาดข้อมูลจำเป็น 1</span>
+  <span class="sorthint" id="sorthint">คลิกหัวคอลัมน์เพื่อเรียงลำดับ · คลิกซ้ำ = มาก→น้อย · คลิกครั้งที่ 3 = กลับลำดับเดิม</span>
 </div>
 
 <div class="tablewrap">
@@ -532,7 +568,7 @@ table.xl .teambtn.multi{font-weight:700;color:var(--accent-strong)}
       <tr>
         <td class="c num">1</td>
         <td><input value="CT26-9000001" oninput="ctFix(this)"></td>
-        <td><input value="บจก. ลูกค้าตัวอย่าง 1" class="wide" oninput="dupCheck(this)"></td>
+        <td class="nm"><input value="บจก. ลูกค้าตัวอย่าง 1" class="wide" oninput="dupCheck(this)"><a class="rowlk" href="customer-detail.html?c=c1#tab=contracts" title="ดูรายละเอียดลูกค้า (หน้าใหม่)" aria-label="ดูรายละเอียดลูกค้า">↗</a></td>
         <td class="c"><input type="checkbox"></td>
         <td><span class="jobsw" onclick="jobTog(this,event)" role="group" aria-label="ประเภทงาน"><span class="jo">New</span><span class="jo on">Renew</span></span></td>
         <td><span class="chip ok lk" tabindex="0" role="button" onclick="linkOpen(this)">🔗 CT26-9000002</span></td>
@@ -557,7 +593,7 @@ table.xl .teambtn.multi{font-weight:700;color:var(--accent-strong)}
       <tr>
         <td class="c num">2</td>
         <td><input value="CT26-9000003" oninput="ctFix(this)"></td>
-        <td><input value="บจก. ลูกค้าตัวอย่าง 2" class="wide" oninput="dupCheck(this)"></td>
+        <td class="nm"><input value="บจก. ลูกค้าตัวอย่าง 2" class="wide" oninput="dupCheck(this)"><a class="rowlk" href="customer-detail.html?c=c2#tab=contracts" title="ดูรายละเอียดลูกค้า (หน้าใหม่)" aria-label="ดูรายละเอียดลูกค้า">↗</a></td>
         <td class="c"><input type="checkbox"></td>
         <td><span class="jobsw" onclick="jobTog(this,event)" role="group" aria-label="ประเภทงาน"><span class="jo">New</span><span class="jo on">Renew</span></span></td>
         <td><span class="chip ok lk" tabindex="0" role="button" onclick="linkOpen(this)">🔗 CT26-9000004</span></td>
@@ -582,7 +618,7 @@ table.xl .teambtn.multi{font-weight:700;color:var(--accent-strong)}
       <tr>
         <td class="c num">3</td>
         <td><input value="CT26-9000005" oninput="ctFix(this)"></td>
-        <td><input value="บจก. ลูกค้าตัวอย่าง 3" class="wide" oninput="dupCheck(this)"></td>
+        <td class="nm"><input value="บจก. ลูกค้าตัวอย่าง 3" class="wide" oninput="dupCheck(this)"><a class="rowlk" href="customer-detail.html?c=c3#tab=contracts" title="ดูรายละเอียดลูกค้า (หน้าใหม่)" aria-label="ดูรายละเอียดลูกค้า">↗</a></td>
         <td class="c"><input type="checkbox" checked></td>
         <td><span class="jobsw" onclick="jobTog(this,event)" role="group" aria-label="ประเภทงาน"><span class="jo on">New</span><span class="jo">Renew</span></span></td>
         <td><span class="chip na">— งานใหม่ —</span></td>
@@ -607,7 +643,7 @@ table.xl .teambtn.multi{font-weight:700;color:var(--accent-strong)}
       <tr>
         <td class="c num">4</td>
         <td><input value="CT26-9000006" oninput="ctFix(this)"></td>
-        <td><input value="บจก. ลูกค้าตัวอย่าง 4" class="wide" oninput="dupCheck(this)"></td>
+        <td class="nm"><input value="บจก. ลูกค้าตัวอย่าง 4" class="wide" oninput="dupCheck(this)"><a class="rowlk" href="customer-detail.html?c=c1#tab=contracts" title="ดูรายละเอียดลูกค้า (หน้าใหม่)" aria-label="ดูรายละเอียดลูกค้า">↗</a></td>
         <td class="c"><input type="checkbox" checked></td>
         <td><span class="jobsw" onclick="jobTog(this,event)" role="group" aria-label="ประเภทงาน"><span class="jo on">New</span><span class="jo">Renew</span></span></td>
         <td><span class="chip na">— งานใหม่ —</span></td>
@@ -632,7 +668,7 @@ table.xl .teambtn.multi{font-weight:700;color:var(--accent-strong)}
       <tr class="pendrow">
         <td class="c num">5</td>
         <td><input value="CT26-9000007" oninput="ctFix(this)"></td>
-        <td><input value="บจก. ลูกค้าตัวอย่าง 5" class="wide" oninput="dupCheck(this)"></td>
+        <td class="nm"><input value="บจก. ลูกค้าตัวอย่าง 5" class="wide" oninput="dupCheck(this)"><a class="rowlk" href="customer-detail.html?c=c2#tab=contracts" title="ดูรายละเอียดลูกค้า (หน้าใหม่)" aria-label="ดูรายละเอียดลูกค้า">↗</a></td>
         <td class="c"><input type="checkbox"></td>
         <td><span class="jobsw" onclick="jobTog(this,event)" role="group" aria-label="ประเภทงาน"><span class="jo on">New</span><span class="jo">Renew</span></span></td>
         <td><span class="chip na">— งานใหม่ —</span></td>
@@ -657,7 +693,7 @@ table.xl .teambtn.multi{font-weight:700;color:var(--accent-strong)}
       <tr class="warnrow">
         <td class="c num">6</td>
         <td><input value="CT26-9000008" oninput="ctFix(this)"></td>
-        <td><input value="คุณลูกค้า หนึ่ง" class="wide" oninput="dupCheck(this)"></td>
+        <td class="nm"><input value="คุณลูกค้า หนึ่ง" class="wide" oninput="dupCheck(this)"><a class="rowlk" href="customer-detail.html?c=c3#tab=contracts" title="ดูรายละเอียดลูกค้า (หน้าใหม่)" aria-label="ดูรายละเอียดลูกค้า">↗</a></td>
         <td class="c"><input type="checkbox"></td>
         <td><span class="jobsw" onclick="jobTog(this,event)" role="group" aria-label="ประเภทงาน"><span class="jo">New</span><span class="jo on">Renew</span></span></td>
         <td><span class="chip miss lk" tabindex="0" role="button" onclick="linkOpen(this)">⚠ ยังไม่ผูก · ค้นหา</span></td>
@@ -682,7 +718,7 @@ table.xl .teambtn.multi{font-weight:700;color:var(--accent-strong)}
       <tr class="badrow">
         <td class="c num">7</td>
         <td><input value="CT26-9000009" oninput="ctFix(this)"></td>
-        <td><input value="คุณลูกค้า สอง" class="wide" oninput="dupCheck(this)"></td>
+        <td class="nm"><input value="คุณลูกค้า สอง" class="wide" oninput="dupCheck(this)"><a class="rowlk" href="customer-detail.html?c=c1#tab=contracts" title="ดูรายละเอียดลูกค้า (หน้าใหม่)" aria-label="ดูรายละเอียดลูกค้า">↗</a></td>
         <td class="c"><input type="checkbox"></td>
         <td><span class="jobsw" onclick="jobTog(this,event)" role="group" aria-label="ประเภทงาน"><span class="jo on">New</span><span class="jo">Renew</span></span></td>
         <td><span class="chip na">— งานใหม่ —</span></td>
@@ -719,7 +755,8 @@ table.xl .teambtn.multi{font-weight:700;color:var(--accent-strong)}
 <!-- บล็อกสรุปเหมือนด้านขวาของชีทต้นฉบับ -->
 <div class="xlsum">
   <div class="panel">
-    <h3>สรุปจำนวนลูกค้าที่เพิ่มในเดือนนี้ <span class="chip na">ต.ค. 2026</span></h3>
+    <h3>สรุปจำนวนลูกค้าที่เพิ่มในเดือนนี้ <span class="chip na">ต.ค. 2026</span>
+      <button class="btn sm" type="button" style="margin-left:auto" onclick="exportSummaryXL()" title="ส่งออกตารางสรุปทั้งหมด + ข้อมูลกราฟ เป็นไฟล์ .xlsx หลายชีท">↓ ส่งออก Excel (สรุป)</button></h3>
     <div class="body" style="display:flex;gap:26px;flex-wrap:wrap">
       <table class="mini-t">
         <thead><tr><th>ประเภท</th><th class="r">จำนวน</th></tr></thead>
@@ -760,15 +797,35 @@ table.xl .teambtn.multi{font-weight:700;color:var(--accent-strong)}
         </tfoot>
       </table>
       </div>
+      <div class="miniwrap"><table class="mini-t" id="zoneTbl" aria-label="สรุปแยกตามเขต"></table></div>
       <div style="font-size:11.5px;color:var(--fg-muted);max-width:250px">
         บล็อกนี้ตรงกับที่อยู่ด้านขวาของชีทเดิม — ต่างกันตรงที่<b>ระบบนับให้เอง</b>จากแถวในตาราง ไม่ต้องมาพิมพ์สรุปซ้ำ<br><br>
-        ตาราง Size ซอยละเอียดกว่าชีทเดิม: แยก <b>New / Renew</b> คร่อม 1 ปี/3 ปี ในตารางเดียว เห็นได้เลยว่าลูกค้าใหม่กับต่อสัญญาอยู่ Tier ไหน
+        ตาราง Size ซอยละเอียดกว่าชีทเดิม: แยก <b>New / Renew</b> คร่อม 1 ปี/3 ปี ในตารางเดียว เห็นได้เลยว่าลูกค้าใหม่กับต่อสัญญาอยู่ Tier ไหน<br><br>
+        ตาราง<b>แยกตามเขต</b>: เขตมาจากสาขาของแต่ละสัญญาอัตโนมัติ (ชี้ที่ชื่อเขตเพื่อดูสาขาในเขตนั้น) · "กรุ๊ป" = งานกรุ๊ป (ลูกค้านอกสาขา) ไม่มีเขต
       </div>
     </div>
   </div>
 </div>
 
-
+<!-- Dashboard สรุปการเปิดงาน — แบบ B (เจ้าของเลือก 10 พ.ย. 2026): KPI + สลับมุมมองทีละกราฟ + ตารางข้อมูลของกราฟที่เลือก
+     ตัวเลขเขต/Tier/ประเภทเป็นข้อมูลสมมติ (ผลรวมตรงตารางสรุปด้านบน 133 สัญญา) · งานต่อวันอ่านจากปฏิทินด้านล่างจริง -->
+<div class="panel" id="dash" style="margin-top:16px">
+  <h3>Dashboard สรุปการเปิดงาน <span class="chip na">ต.ค. 2026</span> <span class="chip pend">ตัวเลขสมมติ</span>
+    <button class="btn sm" type="button" style="margin-left:auto" onclick="exportSummaryXL()" title="ส่งออกตารางสรุปทั้งหมด + ข้อมูลกราฟ เป็นไฟล์ .xlsx หลายชีท">↓ ส่งออก Excel (สรุป)</button></h3>
+  <div class="body">
+    <div class="dkpi" id="dkpi"></div>
+    <div class="dgrid">
+      <div>
+        <div class="dtabs" role="tablist" aria-label="เลือกมุมมองกราฟ" id="dtabs"></div>
+        <div class="dcanvas" id="dcanvas"><canvas id="dcv" role="img" aria-label="กราฟสรุปการเปิดงาน"></canvas></div>
+      </div>
+      <div>
+        <div class="miniwrap" id="dtbl"></div>
+        <div class="dnote" id="dnote"></div>
+      </div>
+    </div>
+  </div>
+</div>
 
 <div class="panel" style="margin-top:16px">
   <h3>ปฏิทินงานรายวัน (ตามวันที่บริการ) <span class="chip na">ต.ค. 2026</span>
@@ -1099,6 +1156,9 @@ table.xl .teambtn.multi{font-weight:700;color:var(--accent-strong)}
 </main>
 </div>
 
+<!-- ไลบรารีกราฟ (Chart.js) + ส่งออก .xlsx (SheetJS) จาก CDN — ต้องมีอินเทอร์เน็ตตอนเปิด mockup เหมือนฟอนต์ที่ใช้อยู่ -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
 /* ประเภทงาน: สวิตช์ New / Renew
    กดช่องที่เลือกอยู่แล้ว = ไม่ทำอะไร (กันกดพลาดแล้วค่าเปลี่ยน)
@@ -1729,6 +1789,7 @@ function flashRow(tr){
 }
 function addRow(){
   var tb=document.querySelector('table.xl tbody');
+  xlResetSort();   /* คืนลำดับเดิมก่อนเพิ่ม เพื่อให้เลขลำดับ (renumber) ยังเรียงตามลำดับเดิม */
   tb.insertAdjacentHTML('beforeend', blankRow());
   var tr=tb.lastElementChild;
   renumber();
@@ -1941,7 +2002,217 @@ function toggleTheme(){
   var next=cur==='dark'?'light':(cur==='light'?'dark':(matchMedia('(prefers-color-scheme: dark)').matches?'light':'dark'));
   el.setAttribute('data-theme',next);
   try{localStorage.setItem('aga-theme',next)}catch(e){}
+  try{renderDash()}catch(e){}   /* กราฟอ่านสีจาก CSS variable → วาดใหม่ตามธีม */
 }
+
+/* ===== สรุปแยกเขต + Dashboard สรุปการเปิดงาน (แบบ B) + ส่งออก .xlsx =====
+   ข้อมูลเขต/Tier/ประเภทด้านล่างเป็นตัวเลขสมมติ แต่ผลรวมตรงกับตารางสรุปเดิม (New 60 / Renew 73 = 133 · S93 M17 L7 XL15 + 1 ยังไม่จัด Tier)
+   ตอน build จริง: นับจากตาราง contracts (สาขา→เขต อ่านจาก BRZONE / master สาขา) ไม่ใช่ค่าคงที่
+   • DZ  = ต่อเขต: n=New r=Renew s/m/l/x = จำนวนสัญญาต่อ Tier (S/M/L/XL) — "กรุ๊ป" = งานกรุ๊ป ไม่มีเขต
+   • งานต่อวัน อ่านจากปฏิทินในหน้านี้ (.hcal) จริง จึงตรงกับปฏิทินเสมอ */
+var DZ=[
+  {z:'C1',n:10,r:12,s:16,m:2,l:1,x:3}, {z:'C2',n:9,r:11,s:14,m:3,l:1,x:2},
+  {z:'C3',n:6,r:8,s:10,m:2,l:0,x:2},   {z:'C4',n:13,r:15,s:19,m:4,l:2,x:3},
+  {z:'C5',n:8,r:10,s:11,m:2,l:2,x:2},  {z:'C6',n:9,r:10,s:14,m:3,l:1,x:1},
+  {z:'C9',n:2,r:3,s:4,m:0,l:0,x:1},    {z:'กรุ๊ป',n:3,r:4,s:5,m:1,l:0,x:1}
+];
+var DUNCLASSIFIED=1;   /* สัญญา Renew ที่ยังไม่กรอกมูลค่า → ยังไม่จัด Tier (อยู่ C5) */
+var DTYPE=[['บ้านเดี่ยว',80],['ทาวน์โฮม / ตึกแถว',16],['คอนโด / อพาร์ตเมนต์ / หอพัก',8],['ออฟฟิต',9],
+  ['ห้างสรรพสินค้า / ร้านค้า',4],['โรงแรม/รีสอร์ท',3],['โรงงาน',2],['โกดังสินค้า',2],['โรงพยาบาล',1],
+  ['สถานศึกษา',2],['สถานที่ราชการ',2],['สถานที่ทางศาสนา',1],['สถานที่สำคัญ',1],['อื่นๆ (ระบุในหมายเหตุ)',2]];
+var dTab='zone', dChart=null;
+
+function sumOf(k){ return DZ.reduce(function(a,d){return a+d[k];},0); }
+function zoneBranches(z){ return Object.keys(BRZONE).filter(function(b){return BRZONE[b]===z;}).join(', ')||'งานกรุ๊ป (ลูกค้านอกสาขา) — ไม่มีเขต'; }
+function cssv(n){ return getComputedStyle(document.documentElement).getPropertyValue(n).trim(); }
+
+/* อ่านงานต่อวันจากปฏิทิน: [{d:วันที่, n:จำนวนงาน}] */
+function calDays(){
+  return [].map.call(document.querySelectorAll('.hcal .hday:not(.pad)'),function(el){
+    var d=parseInt((el.querySelector('.d')||{}).textContent,10), n=parseInt((el.querySelector('.n')||{}).textContent,10);
+    return {d:d||0, n:n||0};
+  }).filter(function(o){return o.d>0;});
+}
+function pendCount(){ var b=document.querySelector('.pendbar b'); var m=b&&b.textContent.match(/\d+/); return m?parseInt(m[0],10):0; }
+
+/* ตารางแยกเขตในกล่องสรุป */
+function renderZoneTable(){
+  var t=document.getElementById('zoneTbl'); if(!t) return;
+  var rows=DZ.map(function(d){
+    var g=(d.z==='กรุ๊ป');
+    return '<tr><td class="zc'+(g?' zg':'')+'" title="'+zoneBranches(d.z)+'">'+d.z+'</td>'+
+      '<td class="r num gl">'+d.n+'</td><td class="r num">'+d.r+'</td><td class="r num gl"><b>'+(d.n+d.r)+'</b></td>'+
+      '<td class="r num gl">'+d.s+'</td><td class="r num">'+d.m+'</td><td class="r num">'+d.l+'</td><td class="r num">'+d.x+'</td></tr>';
+  }).join('');
+  t.innerHTML='<thead><tr><th rowspan="2">เขต</th><th colspan="3" class="c grp gl">ประเภทงาน</th><th colspan="4" class="c grp gl">Tier</th></tr>'+
+    '<tr><th class="r sub gl">New</th><th class="r sub">Renew</th><th class="r sub gl">รวม</th>'+
+    '<th class="r sub gl"><span class="tier s">S</span></th><th class="r sub"><span class="tier m">M</span></th>'+
+    '<th class="r sub"><span class="tier l">L</span></th><th class="r sub"><span class="tier xl">XL</span></th></tr></thead>'+
+    '<tbody>'+rows+'</tbody>'+
+    '<tfoot><tr><td>รวม</td><td class="r num gl">'+sumOf('n')+'</td><td class="r num">'+sumOf('r')+'</td><td class="r num gl">'+(sumOf('n')+sumOf('r'))+'</td>'+
+    '<td class="r num gl">'+sumOf('s')+'</td><td class="r num">'+sumOf('m')+'</td><td class="r num">'+sumOf('l')+'</td><td class="r num">'+sumOf('x')+'</td></tr>'+
+    '<tr><td colspan="8" style="font-weight:400;color:var(--fg-muted);font-size:11px">อีก '+DUNCLASSIFIED+' สัญญา (Renew · C5) ยังไม่จัด Tier</td></tr></tfoot>';
+}
+
+function miniTable(head,rows,foot){
+  return '<table class="mini-t"><thead><tr>'+head.map(function(h,i){return '<th'+(i?' class="r"':'')+'>'+h+'</th>';}).join('')+'</tr></thead><tbody>'+
+    rows.map(function(r){return '<tr>'+r.map(function(c,i){return '<td'+(i?' class="r num"':'')+'>'+c+'</td>';}).join('')+'</tr>';}).join('')+'</tbody>'+
+    (foot?'<tfoot><tr>'+foot.map(function(c,i){return '<td'+(i?' class="r num"':'')+'>'+c+'</td>';}).join('')+'</tr></tfoot>':'')+'</table>';
+}
+function pct(a,b){ return b?Math.round(a*1000/b)/10+'%':'—'; }
+
+function renderDash(){
+  var tabs=[['zone','เขต'],['tier','Tier'],['day','งานต่อวัน'],['type','ประเภทลูกค้า']];
+  var total=sumOf('n')+sumOf('r'), days=calDays(), best=days.slice().sort(function(a,b){return b.n-a.n;})[0]||{d:0,n:0};
+  var topZ=DZ.filter(function(d){return d.z!=='กรุ๊ป';}).sort(function(a,b){return (b.n+b.r)-(a.n+a.r);})[0];
+  var k=function(l,v,s){return '<div class="dk"><div class="l">'+l+'</div><div class="v">'+v+'</div><div class="s">'+s+'</div></div>';};
+  document.getElementById('dkpi').innerHTML=
+    k('สัญญาเปิดใหม่',total,'ต.ค. 2026')+k('New',sumOf('n'),pct(sumOf('n'),total))+k('Renew',sumOf('r'),pct(sumOf('r'),total))+
+    k('รอนัดบริการ',pendCount(),'ยังไม่ลงวันที่')+k('เขตสูงสุด',topZ.z,(topZ.n+topZ.r)+' สัญญา')+
+    k('วันงานหนาแน่นสุด',best.d+' ต.ค.',best.n+' งาน');
+  document.getElementById('dtabs').innerHTML=tabs.map(function(t){
+    return '<button type="button" role="tab" aria-selected="'+(dTab===t[0])+'" data-t="'+t[0]+'">'+t[1]+'</button>';}).join('');
+  [].forEach.call(document.querySelectorAll('#dtabs button'),function(b){ b.onclick=function(){ dTab=b.dataset.t; renderDash(); }; });
+
+  /* ตารางข้อมูลของกราฟที่เลือก + ชุดข้อมูลกราฟ */
+  var tbl='', note='', cfg=null, h=280;
+  var txt=cssv('--fg-muted'), grid=cssv('--border');
+  var axis=function(stk,horiz){ var o={ticks:{color:txt,font:{size:11}},grid:{color:grid},stacked:!!stk}; return o; };
+  if(dTab==='zone'){
+    tbl=miniTable(['เขต','New','Renew','รวม'],DZ.map(function(d){return [d.z,d.n,d.r,d.n+d.r];}),['รวม',sumOf('n'),sumOf('r'),total]);
+    note='แท่งซ้อน New + Renew ต่อเขต · กรุ๊ป = งานกรุ๊ป (นอกสาขา ไม่มีเขต)';
+    cfg={type:'bar',data:{labels:DZ.map(function(d){return d.z;}),datasets:[
+      {label:'New',data:DZ.map(function(d){return d.n;}),backgroundColor:cssv('--accent')},
+      {label:'Renew',data:DZ.map(function(d){return d.r;}),backgroundColor:cssv('--ok')}]},
+      options:{scales:{x:axis(true),y:axis(true)}}};
+  } else if(dTab==='tier'){
+    var tv=[sumOf('s'),sumOf('m'),sumOf('l'),sumOf('x'),DUNCLASSIFIED], tn=['S','M','L','XL','ยังไม่จัด Tier'];
+    tbl=miniTable(['Tier','สัญญา','สัดส่วน'],tn.map(function(n,i){return [n,tv[i],pct(tv[i],total)];}),['รวม',total,'100%']);
+    note='สัดส่วน Tier ของสัญญาที่เปิดเดือนนี้ (สีตาม Tier ของระบบ)';
+    cfg={type:'doughnut',data:{labels:tn,datasets:[{data:tv,borderWidth:0,
+      backgroundColor:[cssv('--tier-s'),cssv('--tier-m'),cssv('--tier-l'),cssv('--tier-xl'),cssv('--border-strong')]}]},options:{}};
+  } else if(dTab==='day'){
+    var top=days.filter(function(o){return o.n>0;}).sort(function(a,b){return b.n-a.n||a.d-b.d;}).slice(0,8);
+    var sumd=days.reduce(function(a,o){return a+o.n;},0);
+    tbl=miniTable(['วันที่ (ต.ค.)','งาน'],top.map(function(o){return [o.d,o.n];}),['รวมทั้งเดือน',sumd]);
+    note='อ่านจากปฏิทินด้านล่างโดยตรง · ตารางแสดง 8 วันที่หนาแน่นสุด · ไม่รวมงานรอนัด '+pendCount()+' งาน';
+    cfg={type:'bar',data:{labels:days.map(function(o){return o.d;}),datasets:[{label:'งานต่อวัน',data:days.map(function(o){return o.n;}),backgroundColor:cssv('--new')}]},
+      options:{scales:{x:axis(false),y:axis(false)}}};
+  } else {
+    h=340;
+    tbl=miniTable(['ประเภท','สัญญา','สัดส่วน'],DTYPE.map(function(d){return [d[0],d[1],pct(d[1],total)];}),['รวม',total,'100%']);
+    note='ประเภทลูกค้าตาม master 14 ค่า (ตัวเลขสมมติ)';
+    cfg={type:'bar',data:{labels:DTYPE.map(function(d){return d[0];}),datasets:[{label:'สัญญา',data:DTYPE.map(function(d){return d[1];}),backgroundColor:cssv('--accent-strong')}]},
+      options:{indexAxis:'y',scales:{x:axis(false),y:{ticks:{color:txt,font:{size:11}},grid:{display:false}}}}};
+  }
+  document.getElementById('dtbl').innerHTML=tbl;
+  document.getElementById('dnote').textContent=note;
+  document.getElementById('dcanvas').style.height=h+'px';
+  if(dChart){ dChart.destroy(); dChart=null; }
+  if(typeof Chart==='undefined'){
+    document.getElementById('dcanvas').innerHTML='<div class="dmiss">ต้องมีอินเทอร์เน็ตเพื่อโหลดกราฟ (Chart.js) — ตารางด้านขวายังดูได้ตามปกติ</div>'; return; }
+  if(!document.getElementById('dcv')) document.getElementById('dcanvas').innerHTML='<canvas id="dcv" role="img" aria-label="กราฟสรุปการเปิดงาน"></canvas>';
+  cfg.options.responsive=true; cfg.options.maintainAspectRatio=false;
+  cfg.options.plugins={legend:{display:cfg.type!=='bar'||dTab==='zone',labels:{color:txt,font:{size:11},boxWidth:10}}};
+  dChart=new Chart(document.getElementById('dcv'),cfg);
+}
+
+/* ส่งออกสรุปทั้งหมดเป็น .xlsx หลายชีทในไฟล์เดียว (SheetJS)
+   ชีทจากตารางสรุปในหน้า (อ่านจาก DOM ตรงๆ จึงตรงกับที่เห็น) + ชีทข้อมูลกราฟ */
+function exportSummaryXL(){
+  if(typeof XLSX==='undefined'){ alert('ต้องมีอินเทอร์เน็ตเพื่อโหลดไลบรารีส่งออก Excel (SheetJS) — ลองใหม่เมื่อออนไลน์'); return; }
+  var wb=XLSX.utils.book_new();
+  var names=['สรุปประเภท','Size x New-Renew','แยกตามเขต'];
+  [].forEach.call(document.querySelectorAll('.xlsum table.mini-t'),function(t,i){
+    XLSX.utils.book_append_sheet(wb,XLSX.utils.table_to_sheet(t),names[i]||('ตาราง'+(i+1)));
+  });
+  var total=sumOf('n')+sumOf('r');
+  var tierRows=[['เขต','S','M','L','XL','รวมที่จัด Tier']].concat(DZ.map(function(d){return [d.z,d.s,d.m,d.l,d.x,d.s+d.m+d.l+d.x];}));
+  tierRows.push(['ยังไม่จัด Tier',DUNCLASSIFIED]);
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(tierRows),'Tier ต่อเขต');
+  var dayRows=[['วันที่ (ต.ค. 2026)','จำนวนงาน']].concat(calDays().map(function(o){return [o.d,o.n];}));
+  dayRows.push(['รอนัดบริการ (ยังไม่ลงวันที่)',pendCount()]);
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(dayRows),'งานต่อวัน');
+  var typeRows=[['ประเภทลูกค้า','สัญญา','สัดส่วน (%)']].concat(DTYPE.map(function(d){return [d[0],d[1],Math.round(d[1]*1000/total)/10];}));
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(typeRows),'ประเภทลูกค้า');
+  XLSX.writeFile(wb,'AGA-สรุปเปิดงาน-ต.ค.2026.xlsx');
+}
+/* ===== เรียงลำดับตารางเปิดงาน (ทุกคอลัมน์) =====
+   • คลิกหัวคอลัมน์: น้อย→มาก (▲) → มาก→น้อย (▼) → กลับลำดับเดิม · คอลัมน์ที่มี 2 ชั้น (ระยะสัญญา/มูลค่า) เรียงที่หัวย่อย
+   • เรียงโดยย้ายแถว (ค่าที่พิมพ์/เลือกไว้ไม่หาย) · เลขลำดับคงเดิม (คลิก "ลำดับ" = กลับลำดับเดิม)
+   • ช่องว่างอยู่ท้ายเสมอทั้งสองทิศ · ตัวเลข/วันที่/เวลา เทียบตามค่าจริง ไม่ใช่ตัวอักษร · Tier เรียง S<M<L<XL แล้วตามปี
+   • กด "+ เพิ่มแถว" = คืนลำดับเดิมก่อนเสมอ (กันเลขลำดับสลับ) */
+var xlS={col:-1,dir:0}, xlCol=new Intl.Collator('th',{numeric:true,sensitivity:'base'});
+function xlKey(tr,i){
+  var c=tr.cells[i]; if(!c) return '';
+  var cb=c.querySelector('input[type=checkbox]'); if(cb) return cb.checked?'1':'0';
+  var jo=c.querySelector('.jobsw .jo.on'); if(jo) return jo.textContent.trim();
+  var tb=c.querySelector('.teambtn'); if(tb) return (tb.dataset.teams||'').trim();
+  var tm=c.querySelector('.tmbtn'); if(tm) return (tm.dataset.h!=null&&tm.dataset.h!=='')?String(parseInt(tm.dataset.h,10)*60+parseInt(tm.dataset.m||'0',10)):'';
+  var fb=c.querySelector('.fbtn'); if(fb) return fb.dataset.pdf?'1':'0';
+  var e=c.querySelector('input,select'); if(e) return String(e.value).trim();
+  var t=c.textContent.trim(); return t==='—'?'':t;
+}
+function xlTierRank(s){ var m=/^(S|M|L|XL)(\d)?/.exec(s); return m?({S:1,M:2,L:3,XL:4}[m[1]]*10+(+m[2]||0)):null; }
+function xlApplySort(){
+  var tb=document.querySelector('table.xl tbody'), rows=[].slice.call(tb.rows), col=xlS.col, dir=xlS.dir;
+  /* แถวที่เพิ่มทีหลัง (+ เพิ่มแถว) ยังไม่มีลำดับเดิม → ให้ต่อท้ายตามตำแหน่งปัจจุบัน */
+  var mx=-1; rows.forEach(function(tr){ if(tr.dataset.ord!==undefined) mx=Math.max(mx,+tr.dataset.ord); });
+  rows.forEach(function(tr){ if(tr.dataset.ord===undefined) tr.dataset.ord=++mx; });
+  var ord=function(tr){return +tr.dataset.ord;};
+  if(dir===0||col<0){ rows.sort(function(a,b){return ord(a)-ord(b);}); }
+  else {
+    var keys=rows.map(function(tr){return xlKey(tr,col);});
+    var numeric=keys.every(function(k){return k===''||/^-?\d[\d,]*\.?\d*$/.test(k);}) && keys.some(function(k){return k!=='';});
+    var tier=(col===19);
+    var val=function(k){ return tier?xlTierRank(k):(numeric?parseFloat(k.replace(/,/g,'')):k); };
+    var idx=new Map(rows.map(function(tr,n){return [tr,keys[n]];}));
+    rows.sort(function(a,b){
+      var ka=idx.get(a), kb=idx.get(b), ea=(ka===''||(tier&&xlTierRank(ka)===null)), eb=(kb===''||(tier&&xlTierRank(kb)===null));
+      if(ea&&eb) return ord(a)-ord(b);
+      if(ea) return 1; if(eb) return -1;
+      var va=val(ka), vb=val(kb), r=(typeof va==='number')?(va-vb):xlCol.compare(va,vb);
+      return r? r*dir : ord(a)-ord(b);
+    });
+  }
+  rows.forEach(function(tr){ tb.appendChild(tr); });
+  [].forEach.call(document.querySelectorAll('table.xl thead th.sortable'),function(th){
+    th.setAttribute('aria-sort',(+th.dataset.col===col&&dir)?(dir>0?'ascending':'descending'):'none'); });
+  var h=document.getElementById('sorthint');
+  if(h) h.textContent=dir?('เรียงตาม “'+document.querySelector('table.xl thead th[data-col="'+col+'"]').textContent.replace(/\s+/g,' ').trim()+'” '+(dir>0?'น้อย→มาก':'มาก→น้อย')+' · คลิกหัวคอลัมน์เดิมอีกครั้งเพื่อเปลี่ยน/ยกเลิก'):'คลิกหัวคอลัมน์เพื่อเรียงลำดับ · คลิกซ้ำ = มาก→น้อย · คลิกครั้งที่ 3 = กลับลำดับเดิม';
+}
+function xlSortBy(col){
+  if(col===0){ xlS={col:-1,dir:0}; }                       /* "ลำดับ" = กลับลำดับเดิม */
+  else if(xlS.col===col){ xlS.dir = xlS.dir===1?-1:(xlS.dir===-1?0:1); if(!xlS.dir) xlS.col=-1; }
+  else xlS={col:col,dir:1};
+  xlApplySort();
+}
+function xlResetSort(){ if(xlS.dir||xlS.col>=0){ xlS={col:-1,dir:0}; xlApplySort(); } }
+function xlInitSort(){
+  var tbl=document.querySelector('table.xl'); if(!tbl) return;
+  [].forEach.call(tbl.tBodies[0].rows,function(tr,i){ tr.dataset.ord=i; });
+  /* หาเลขคอลัมน์จริงของหัวแต่ละอัน (รองรับหัว 2 ชั้นที่มี rowspan/colspan) */
+  var occ=[];
+  [].forEach.call(tbl.tHead.rows,function(row,ri){
+    occ[ri]=occ[ri]||[]; var c=0;
+    [].forEach.call(row.cells,function(th){
+      while(occ[ri][c]) c++;
+      var cs=th.colSpan||1, rs=th.rowSpan||1;
+      for(var r=0;r<rs;r++){ occ[ri+r]=occ[ri+r]||[]; for(var k=0;k<cs;k++) occ[ri+r][c+k]=true; }
+      if(cs===1){
+        var my=c;   /* จับเลขคอลัมน์ของหัวนี้ไว้ — c ถูกบวกต่อในลูป ห้ามให้ handler อ้าง c โดยตรง */
+        th.dataset.col=my; th.classList.add('sortable'); th.tabIndex=0; th.setAttribute('aria-sort','none');
+        th.title='คลิกเพื่อเรียงลำดับ'+(my===0?' (คืนลำดับเดิม)':'');
+        th.addEventListener('click',function(){ xlSortBy(my); });
+        th.addEventListener('keydown',function(e){ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); xlSortBy(my); } });
+      }
+      c+=cs;
+    });
+  });
+}
+xlInitSort();
+renderZoneTable(); renderDash();
+
 /* หน้านี้ fix เป็นมุมมอง host ไม่มี role selector ใช้งานจริง (AGA-SHELL v2) */
 applyNavRole('host');
 </script>
