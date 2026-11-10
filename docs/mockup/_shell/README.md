@@ -38,6 +38,8 @@
 | `topbar-left.html` | ในต้น `<div class="topbar">` แทนที่ปุ่ม ☰ + `<div class="logo">…</div>` เดิม (ฝั่งขวา: เดือน/บทบาท/ธีม/avatar เป็นของหน้าเอง คงไว้) |
 | `nav.html` | แทนที่ `<nav class="nav">…</nav>` + `.nav-backdrop` เดิมทั้งก้อน · **แก้อย่างเดียว:** ลิงก์ของหน้าตัวเองใส่ `class="active" aria-current="page"` (หน้า customer-detail ไม่มีเมนูของตัวเองแล้ว = ไม่ต้องใส่ active ที่ลิงก์ไหน) |
 | `shell.js` | แทนที่ฟังก์ชัน `toggleNav` + listener ปุ่ม Esc + **`applyNavRole`** เดิมของหน้า (กลไกคือ `body.nav-open` ทุกหน้า) |
+| `history-mock.js` | (A4) ข้อมูลตัวอย่างประวัติ — วางใน `<script>` ก่อนสคริปต์หลักของหน้าที่แสดงประวัติ (global `HM_ALL`, `hmFor`) · ใช้ร่วม `history-log.html`, `customer-detail.html` และลิ้นชัก → ตัวเลขตรงกันทุกที่ |
+| `history-drawer.js` | (A4) ลิ้นชัก "ประวัติ" ใช้ซ้ำ — วางต่อจาก `history-mock.js` · `HD.btn(ct,name)` สร้างปุ่ม (ซ่อนเองถ้าไม่ใช่ host) · `HD.sync(role)` เรียกทุกครั้งที่เปลี่ยน role · `HD.open({title,k})` ปุ่มระดับหน้า · เห็นเฉพาะ host (ของจริงบังคับที่ RLS ของ `audit_log`) |
 
 ค่า `data-nav` ของแต่ละลิงก์ = กุญแจหน้า: `todo service bait collect registry new material summary closure port sync users settings` (v2 เอา `customer` ออกแล้ว)
 

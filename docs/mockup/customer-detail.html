@@ -234,6 +234,16 @@ tr.sub table{font-size:12px;background:var(--surface);border:1px solid var(--bor
 .tabs{display:flex;gap:2px;border-bottom:1px solid var(--border);padding:0 10px;overflow-x:auto;background:var(--surface);border-radius:var(--radius) var(--radius) 0 0}
 .tab{font-family:inherit;font-size:13.5px;padding:11px 13px;color:var(--fg-muted);cursor:pointer;border:0;border-bottom:3px solid transparent;background:none;white-space:nowrap;display:flex;align-items:center;gap:7px}
 .tab:hover{color:var(--fg)}
+/* ไทม์ไลน์ (host เท่านั้น) — เส้นตั้ง + จุด แยกตามวัน */
+.tl-day{font-size:12.5px;font-weight:600;color:var(--fg-muted);margin:16px 0 6px;padding-bottom:4px;border-bottom:1px solid var(--border)}
+.tl-day:first-of-type{margin-top:4px}
+.tl{list-style:none;margin:0;padding:0 0 0 18px;border-left:2px solid var(--border)}
+.tl-item{position:relative;padding:6px 0 10px 12px}
+.tl-item::before{content:"";position:absolute;left:-25px;top:11px;width:10px;height:10px;border-radius:50%;background:var(--surface);border:2px solid var(--accent)}
+.tl-item.ins::before{border-color:var(--ok)} .tl-item.del::before{border-color:var(--danger)}
+.tl-head{display:flex;flex-wrap:wrap;gap:6px 8px;align-items:center;font-size:13px}
+.tl-body{font-size:13px;margin-top:3px;word-break:break-word}
+.tl-meta{margin-top:2px}
 .tab[aria-selected="true"]{color:var(--accent-strong);border-bottom-color:var(--accent);font-weight:600}
 .tabcard{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}
 .tabcard .tabs{border-radius:0}
@@ -378,6 +388,86 @@ tr.sub table{font-size:12px;background:var(--surface);border:1px solid var(--bor
 
 <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
 
+<script>
+/* ===== AGA-HISTORY-MOCK v1 : ข้อมูลตัวอย่างประวัติย้อนหลัง (โครงตามตาราง audit_log) =====
+   แหล่งจริงอยู่ที่ docs/mockup/_shell/history-mock.js — คัดลอกบล็อกนี้ไปทุกหน้าที่โชว์ประวัติ (ดู _shell/README.md)
+   ใช้ร่วมกันทั้งหน้ารวม history-log.html, ลิ้นชัก "ประวัติ" ตามจุด และไทม์ไลน์ในหน้าลูกค้า → ตัวเลข/เนื้อหาตรงกันเสมอ
+   • สร้างแบบกำหนดผลได้ (seed คงที่) 4–10 พ.ย. 2026 — ทุกครั้งที่เปิดได้ชุดเดิม · ข้อมูลทั้งหมดสมมติ ไม่ใช่ของจริง
+   • 2 ชนิดแถว:
+       เปลี่ยนแปลง (b=0): แก้/ลบ/ไฟล์/ปิดเดือน/Port — แถวละ 1 เหตุการณ์ (a = insert|update|delete เหมือน audit_log.action)
+       กลุ่มการกรอกปกติ (b=1): "กรอกผลบริการ/ติดกล่อง AG ใหม่" ของคนเดียวกัน วันเดียวกัน → รวมเป็น 1 แถว มี n รายการ
+         (ของจริงคำนวณกลุ่มนี้จากตาราง visits ด้วย created_by/created_at — ไม่ต้องเก็บ audit insert ซ้ำ ประหยัดที่เก็บ)
+   • closed=1 = "แก้หลังปิด" (แก้ข้อมูลของเดือนที่ปิดแล้ว) · mk = เดือนของข้อมูล (month_key) */
+var HM_PEOPLE=[
+  {n:'สมชาย ใจดี',role:'หัวหน้างาน',br:'ลาดพร้าว'},{n:'วิภา ศรีสุข',role:'หัวหน้างาน',br:'พุทธมณฑล'},
+  {n:'ประเสริฐ รักงาน',role:'หัวหน้างาน',br:'พัทยา'},{n:'สุดา แสงทอง',role:'Admin',br:'พุทธมณฑล'},
+  {n:'อรุณ เจริญสุข',role:'Admin',br:'ลาดพร้าว'},{n:'นที พัฒนา',role:'PM',br:'ส่วนกลาง'},{n:'สมหญิง ใจดี',role:'OM',br:'ส่วนกลาง'}];
+/* ลูกค้าเดโม: 3 รายแรกตรงกับ customer-detail.html (c1 / c2 / c3) */
+var HM_CUST=[
+  {ct:'CT26-0000142',cn:'บมจ. สยามพัฒนาเฮ้าส์',br:'ลาดพร้าว',cid:'c1'},{ct:'CT25-0000098',cn:'บมจ. สยามพัฒนาเฮ้าส์',br:'ลาดพร้าว',cid:'c1'},
+  {ct:'CT26-0000088',cn:'คุณวิรัช ตั้งมั่น (บ้านพัก)',br:'พุทธมณฑล',cid:'c2'},{ct:'CT23-0000311',cn:'โรงแรมบ้านสวนรีสอร์ท',br:'นครปฐม',cid:'c3'},
+  {ct:'CT23-0000017',cn:'บจก. เมืองทองคลังสินค้า',br:'พัฒนาการ'},{ct:'CT23-0000041',cn:'อาคารชุดลุมพินีวิว',br:'สุขุมวิท'},
+  {ct:'CT26-0000203',cn:'หจก. ทรัพย์เจริญ',br:'นนทบุรี'},{ct:'CT26-0000009',cn:'คุณสมหญิง รุ่งเรือง',br:'ระยอง'}];
+var HM_PROV=['เชียงใหม่','ขอนแก่น','ภูเก็ต','หาดใหญ่','สุราษฎร์ธานี','โคราช'];
+var HM_TPL=[ /* w=น้ำหนักการสุ่ม · who=ตำแหน่งที่ทำได้ · cl=โอกาสเป็น "แก้หลังปิด" · scope=ctr(ผูกสัญญา)|prov(ต่างจังหวัด)|sys(ระบบ) */
+  {k:'ผลบริการ',a:'update',w:6,who:['หัวหน้างาน'],cl:.3,tbl:'station_checks',f:function(r){var n=1+Math.floor(r()*40),p=r()<.7;return 'แก้ผลตรวจสถานี IG-'+n+' จาก "'+(p?'ไม่พบปลวก':'พบปลวก')+'" เป็น "'+(p?'พบปลวก':'ไม่พบปลวก')+'"';}},
+  {k:'ผลบริการ',a:'update',w:3,who:['หัวหน้างาน'],cl:.2,tbl:'visits',f:function(r){var d=2+Math.floor(r()*20);return 'แก้วันที่เข้าบริการจาก '+d+'/10 เป็น '+(d+1)+'/10';}},
+  {k:'กล่อง AG',a:'update',w:3,who:['หัวหน้างาน'],cl:0,tbl:'station_checks',f:function(r){var n=1+Math.floor(r()*8),a=[50,100,150,200];return 'แก้ปริมาณเหยื่อกล่อง AG จุดที่ '+n+' จาก '+a[Math.floor(r()*2)]+' ก. เป็น '+a[2+Math.floor(r()*2)]+' ก.';}},
+  {k:'สัญญา',a:'update',w:5,who:['Admin','PM','OM'],cl:0,tbl:'contracts',f:function(r){var v=[24000,36000,48000,96000,150000],i=Math.floor(r()*4);return 'มูลค่า '+v[i].toLocaleString('en-US')+' → '+(v[i]+Math.round((2+r()*8))*1000).toLocaleString('en-US');}},
+  {k:'สัญญา',a:'update',w:2,who:['Admin','PM','OM'],cl:0,tbl:'contracts',f:function(r){var t=['A','B','C','Z'],i=Math.floor(r()*3);return 'เปลี่ยนทีมที่ดูแลจาก '+t[i]+' เป็น '+t[i+1];}},
+  {k:'ลูกค้า',a:'update',w:2,who:['Admin'],cl:0,tbl:'customers',f:function(){return 'แก้ชื่อลูกค้า (พิมพ์ตกหล่น) — เพิ่มคำนำหน้า "บจก."';}},
+  {k:'ไฟล์แนบ',a:'insert',w:4,who:['Admin'],cl:0,tbl:'contract_files',f:function(r){var s=[8.0,9.0,7.2,6.5][Math.floor(r()*4)];return r()<.5?'แนบสัญญา + Site plan (บีบอัดจาก '+s.toFixed(1)+' MB เหลือ '+(s*.4).toFixed(1)+' MB)':'อัปเดต Site plan v'+(2+Math.floor(r()*2))+' · เหตุผล: แก้ตอนติดตั้ง';}},
+  {k:'สถานี',a:'delete',w:2,who:['Admin','หัวหน้างาน'],cl:0,tbl:'stations',f:function(r){return 'ลบสถานี '+(r()<.5?'IC':'IG')+'-'+(1+Math.floor(r()*30))+' (บันทึกผิดสัญญา)';}},
+  {k:'สถานี',a:'insert',w:2,who:['Admin'],cl:0,tbl:'stations',f:function(r){return 'เพิ่มสถานี IG-'+(31+Math.floor(r()*9))+' (ติดตั้งเพิ่มตามที่ลูกค้าขอ)';}},
+  {k:'Port ต่างจังหวัด',a:'update',w:3,who:['PM','OM'],cl:.2,tbl:'monthly_branch_snapshots',scope:'prov',f:function(r){var a=40+Math.floor(r()*30);return ['S 1 ปี','M 1 ปี','L 1 ปี'][Math.floor(r()*3)]+': '+a+' → '+(a+1+Math.floor(r()*4))+' ราย · ยอดรวมตรงรายงาน';}},
+  {k:'ปิดเดือน',a:'update',w:1,who:['PM','OM'],cl:0,tbl:'month_closures',scope:'sys',f:function(r){return r()<.5?'ปิดเดือน ต.ค. 2026 ส่วนกลาง 24 สาขา':'คำนวณ snapshot ใหม่ + ส่ง Dashboard (แก้หลังปิด '+(1+Math.floor(r()*4))+' รายการ)';}}
+];
+function hmRng(seed){return function(){seed|=0;seed=seed+0x6D2B79F5|0;var t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+function hmPad(n){return (n<10?'0':'')+n;}
+var HM_DAYS=[10,9,8,7,6,5,4]; /* พ.ย. 2026 (วันที่ 10 = "วันนี้" ของเดโม) */
+function hmBuild(){
+  var r=hmRng(20261110), out=[], id=0, rr=0, wsum=HM_TPL.reduce(function(a,t){return a+t.w;},0);
+  HM_DAYS.forEach(function(d){
+    var cnt=5+Math.floor(r()*5);
+    for(var i=0;i<cnt;i++){
+      var x=r()*wsum, tp=HM_TPL[0]; for(var j=0,acc=0;j<HM_TPL.length;j++){acc+=HM_TPL[j].w; if(x<acc){tp=HM_TPL[j];break;}}
+      var pool=HM_PEOPLE.filter(function(p){return tp.who.indexOf(p.role)>=0;}), who=pool[Math.floor(r()*pool.length)];
+      var cu=HM_CUST[(rr++)%HM_CUST.length], prov=(tp.scope==='prov'), sys=(tp.scope==='sys');
+      var h=8+Math.floor(r()*10), m=Math.floor(r()*60), closed=(tp.cl&&r()<tp.cl)?1:0;
+      out.push({id:++id,d:d,ds:d+' พ.ย.',t:hmPad(h)+':'+hmPad(m),who:who.n,role:who.role,
+        br:prov?HM_PROV[Math.floor(r()*HM_PROV.length)]:(sys?'ส่วนกลาง':cu.br),ct:(prov||sys)?'-':cu.ct,cn:(prov||sys)?'':cu.cn,cid:cu.cid||'',
+        k:tp.k,a:tp.a,x:tp.f(r),tbl:tp.tbl,mk:closed?'2026-10':'2026-11',closed:closed,b:0,n:0});
+    }
+    HM_PEOPLE.filter(function(p){return p.role==='หัวหน้างาน';}).forEach(function(p){
+      if(r()<.85){var n=25+Math.floor(r()*86),f=Math.floor(n*.1);
+        out.push({id:++id,d:d,ds:d+' พ.ย.',t:'09:'+hmPad(Math.floor(r()*30)),t2:'16:'+hmPad(10+Math.floor(r()*40)),who:p.n,role:p.role,br:p.br,ct:'หลายสัญญา',cn:'',cid:'',
+          k:'ผลบริการ',a:'insert',x:'กรอกผลบริการประจำเดือน '+n+' ราย (ปกติ '+(n-f)+' · พบปลวก '+f+')',tbl:'visits',mk:'2026-11',closed:0,b:1,n:n});}
+      if(r()<.25){var g=2+Math.floor(r()*8);
+        out.push({id:++id,d:d,ds:d+' พ.ย.',t:'11:'+hmPad(Math.floor(r()*50)),t2:'15:'+hmPad(Math.floor(r()*50)),who:p.n,role:p.role,br:p.br,ct:'หลายสัญญา',cn:'',cid:'',
+          k:'กล่อง AG',a:'insert',x:'ติดกล่อง AG ใหม่ '+g+' กล่อง (นอกรอบบริการ)',tbl:'station_checks',mk:'2026-11',closed:0,b:1,n:g});}
+    });
+  });
+  out.sort(function(a,b){return b.d-a.d || (b.t>a.t?1:b.t<a.t?-1:0);});
+  return out;
+}
+var HM_ALL=hmBuild();
+/* รายการย่อยของกลุ่มการกรอกปกติ (สร้างเมื่อกาง) — กำหนดผลได้จาก id ของกลุ่ม */
+function hmBatchItems(e){
+  var r=hmRng(e.id*7919+3), out=[], base=100+Math.floor(r()*800);
+  for(var i=0;i<e.n;i++){var f=r()<.1;out.push({ct:'CT26-9'+hmPad(0)+(base+i*3+Math.floor(r()*3)),cn:'บจก. ลูกค้าตัวอย่าง '+(1+((base+i)%150)),res:e.k==='กล่อง AG'?('ติดกล่อง AG จุดที่ '+(1+i)+' (S)'):(f?'พบปลวก (ปลวกงาน)':'ปกติทั้งหมด'),f:f});}
+  return out;
+}
+/* ค้นหา/กรองแบบง่าย: s={ct, cid, br, k, q, who, onlyChange} */
+function hmFor(s){
+  s=s||{};
+  return HM_ALL.filter(function(e){
+    if(s.ct&&e.ct!==s.ct) return false; if(s.cid&&e.cid!==s.cid) return false; if(s.br&&e.br!==s.br) return false;
+    if(s.k&&e.k!==s.k) return false; if(s.who&&e.who!==s.who) return false; if(s.onlyChange&&e.b) return false;
+    if(s.q){var q=s.q.toLowerCase().replace(/\s+/g,''), hay=(e.ct+e.cn+e.x+e.who+e.br+e.k).toLowerCase().replace(/\s+/g,''); if(hay.indexOf(q)<0) return false;}
+    return true;});
+}
+/* ===== /AGA-HISTORY-MOCK v1 ===== */
+</script>
 <script>
 (function(){
 'use strict';
@@ -546,8 +636,9 @@ var DB={c1:buildC1(),c2:buildC2(),c3:buildC3()};
 var role='recorder';
 var S={cid:'c1',tab:'contracts',sel:null,
   st:{contract:'all',type:'all',status:'all',q:'',page:1,open:{}},
-  vi:{contract:'all',type:'all',page:1,open:{}}};
-var PAGE_ST=10,PAGE_VI=8;
+  vi:{contract:'all',type:'all',page:1,open:{}},
+  tl:{contract:'all',kind:'all',page:1}};
+var PAGE_ST=10,PAGE_VI=8,PAGE_TL=12;
 
 function cust(){return DB[S.cid]}
 function contractOf(no){var cs=cust().contracts;for(var i=0;i<cs.length;i++)if(cs[i].no===no)return cs[i];return null}
@@ -562,7 +653,7 @@ function can(what){
 function readUrl(){
   var q=new URLSearchParams(location.search),h=new URLSearchParams((location.hash||'').replace(/^#/,''));
   if(q.get('c')&&DB[q.get('c')])S.cid=q.get('c');
-  var t=h.get('tab');if(['contracts','stations','visits','files'].indexOf(t)>=0)S.tab=t;
+  var t=h.get('tab');if(['contracts','stations','visits','files','timeline'].indexOf(t)>=0)S.tab=t;
   var cn=h.get('contract');
   if(cn&&contractOf(cn)){S.sel=cn;S.st.contract=cn;S.vi.contract=cn}
   if(h.get('type'))S.st.type=h.get('type');
@@ -634,13 +725,15 @@ function headHtml(){
   h+='<div class="acts">';
   if(can('entry'))h+='<a class="btn primary" href="'+ENTRY_URL+'" title="ไปหน้ากรอกผลบริการรายเดือน (IG/IC)">✎ กรอกผลบริการ ↗</a><a class="btn" href="'+ENTRY_URL+'" title="ไปหน้ากล่องเหยื่อ AG นอกรอบ">▣ กล่องเหยื่อ AG นอกรอบ ↗</a>';
   if(can('edit'))h+='<a class="btn'+(can('entry')?'':' primary')+'" href="'+EDIT_URL+'" title="ไปหน้าเปิดงาน/ทะเบียนเพื่อแก้ข้อมูลลูกค้า สัญญา สถานี">✎ แก้ข้อมูลลูกค้า/สัญญา ↗</a>';
+  if(role==='host')h+='<button class="btn" data-act="goto" data-tab="timeline" title="ดูประวัติการแก้ไขของลูกค้ารายนี้ (audit_log — เฉพาะ host)">⟲ ประวัติการแก้ไข</button>';
   if(!can('entry')&&!can('edit'))h+='<span class="lab">ดูอย่างเดียว</span>';
   h+='</div>';return h;
 }
-var TABS=[['contracts','สัญญา'],['stations','สถานี'],['visits','ประวัติบริการ'],['files','ไฟล์แนบ']];
+var TABS=[['contracts','สัญญา'],['stations','สถานี'],['visits','ประวัติบริการ'],['files','ไฟล์แนบ'],['timeline','ไทม์ไลน์']];
+function visTabs(){return TABS.filter(function(t){return t[0]!=='timeline'||role==='host'})}   // ไทม์ไลน์ = audit_log → host อ่านได้คนเดียว (RLS)
 function tabsHtml(){
-  var c=cust(),counts={contracts:c.contracts.length,stations:c.stations.length,visits:c.visits.length,files:fileCount()};
-  return TABS.map(function(t){
+  var c=cust(),counts={contracts:c.contracts.length,stations:c.stations.length,visits:c.visits.length,files:fileCount(),timeline:tlRows().length};
+  return visTabs().map(function(t){
     var on=S.tab===t[0];
     return '<button class="tab" role="tab" id="tab-'+t[0]+'" aria-selected="'+on+'" aria-controls="panel" tabindex="'+(on?0:-1)+'" data-act="tab" data-tab="'+t[0]+'">'+t[1]+' <span class="chip done">'+counts[t[0]]+'</span></button>';
   }).join('');
@@ -830,12 +923,43 @@ function render(){
   if(viewer)return;
   document.getElementById('head').innerHTML=headHtml();
   document.getElementById('info').innerHTML=infoHtml();
+  if(S.tab==='timeline'&&role!=='host')S.tab='contracts';   // ไทม์ไลน์ host เท่านั้น
   document.getElementById('tabs').innerHTML=tabsHtml();
   var p=document.getElementById('panel');
   p.setAttribute('aria-labelledby','tab-'+S.tab);
-  p.innerHTML=({contracts:contractsHtml,stations:stationsHtml,visits:visitsHtml,files:filesHtml})[S.tab]();
+  p.innerHTML=({contracts:contractsHtml,stations:stationsHtml,visits:visitsHtml,files:filesHtml,timeline:tlHtml})[S.tab]();
   writeUrl();
 }
+/* ======================================================================
+   9) แท็บ "ไทม์ไลน์"  (audit_log ของลูกค้ารายนี้ — host เท่านั้น)
+      แสดงเฉพาะ "การเปลี่ยนแปลง" (แก้/ลบ/ไฟล์/สถานี/ปิดเดือน) — การกรอกผลบริการปกติจำนวนมากอยู่ที่แท็บ "ประวัติบริการ"
+   ====================================================================== */
+var TL_ACT={insert:['ok','เพิ่ม'],update:['info','แก้ไข'],'delete':['miss','ลบ']};
+function tlRows(){
+  return hmFor({cid:S.cid,onlyChange:true}).filter(function(e){
+    return (S.tl.contract==='all'||e.ct===S.tl.contract)&&(S.tl.kind==='all'||e.k===S.tl.kind)});
+}
+function tlHtml(){
+  var all=hmFor({cid:S.cid,onlyChange:true}),rows=tlRows(),kinds=[];
+  all.forEach(function(e){if(kinds.indexOf(e.k)<0)kinds.push(e.k)});
+  var h='<p class="hint">ตาราง <code>audit_log</code> — ใครแก้อะไร เมื่อไหร่ ของลูกค้ารายนี้ (เห็นเฉพาะ host) · แสดงเฉพาะ <b>การเปลี่ยนแปลง</b> · การกรอกผลบริการปกติดูที่แท็บ “ประวัติบริการ” · ดูทุกสาขารวมกันที่ <a href="history-log.html">ประวัติย้อนหลัง ↗</a> · ข้อมูลตัวอย่าง</p>';
+  h+='<div class="filters"><div class="field"><label for="f-tl-contract">สัญญา</label><select id="f-tl-contract" data-bind="tl.contract"><option value="all">ทุกสัญญา</option>'+
+     cust().contracts.map(function(k){return '<option value="'+esc(k.no)+'"'+(S.tl.contract===k.no?' selected':'')+'>'+esc(k.no)+'</option>'}).join('')+'</select></div>'+
+     '<div class="field"><label for="f-tl-kind">เรื่องที่แก้</label><select id="f-tl-kind" data-bind="tl.kind"><option value="all">ทุกเรื่อง</option>'+
+     kinds.map(function(k){return '<option value="'+esc(k)+'"'+(S.tl.kind===k?' selected':'')+'>'+esc(k)+'</option>'}).join('')+'</select></div></div>';
+  if(!rows.length)return h+'<p class="lab" style="padding:14px 0">ไม่มีรายการตามเงื่อนไขที่เลือก (ช่วงข้อมูลตัวอย่าง 4–10 พ.ย. 2026)</p>';
+  var start=(S.tl.page-1)*PAGE_TL,page=rows.slice(start,start+PAGE_TL),day=null,open=false;
+  page.forEach(function(e){
+    if(e.ds!==day){if(open)h+='</ul>';day=e.ds;h+='<h4 class="tl-day">'+esc(e.ds)+' 2026</h4><ul class="tl">';open=true}
+    var a=TL_ACT[e.a]||TL_ACT.update;
+    h+='<li class="tl-item '+(e.a==='insert'?'ins':e.a==='delete'?'del':'')+'"><div class="tl-head"><b class="num">'+esc(e.t)+'</b><span>'+esc(e.who)+'</span><span class="lab">'+esc(e.role)+' · '+esc(e.br)+'</span>'+
+       chip(a[0],a[1])+chip('na',e.k)+(e.closed?chip('pend','แก้หลังปิดเดือน','แก้ข้อมูลของเดือนที่ปิดแล้ว — ค่าที่ส่ง Dashboard ยังคงเดิมจนกว่าจะคำนวณ snapshot ใหม่'):'')+'</div>'+
+       '<div class="tl-body">'+esc(e.x)+'</div><div class="tl-meta lab">'+(e.ct&&e.ct!=='-'?esc(e.ct)+' · ':'')+'ตาราง <span class="tag">'+esc(e.tbl)+'</span> · ข้อมูลเดือน '+esc(e.mk)+'</div></li>';
+  });
+  if(open)h+='</ul>';
+  return h+pager(rows.length,S.tl.page,PAGE_TL,'tl-page');
+}
+
 function setPath(path,val){var a=path.split('.');S[a[0]][a[1]]=val;S[a[0]].page=1}
 function toast(msg){var t=document.getElementById('toast');t.textContent=msg;t.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(function(){t.hidden=true},3200)}
 function gotoTab(tab,contract,status){
@@ -855,6 +979,7 @@ var ACT={
   'vi-open':function(el){var k=el.dataset.k;S.vi.open[k]=!S.vi.open[k];render()},
   'st-page':function(el){S.st.page+=+el.dataset.d;render()},
   'vi-page':function(el){S.vi.page+=+el.dataset.d;render()},
+  'tl-page':function(el){S.tl.page+=+el.dataset.d;render()},
   'file-view':function(el){toast('ตัวอย่าง: เปิด "'+el.dataset.k+'" ผ่าน signed URL (ยังไม่เชื่อม Storage จริง)')},
   'file-dl':function(el){toast('ตัวอย่าง: ดาวน์โหลด "'+el.dataset.k+'" (ยังไม่เชื่อม Storage จริง)')}
 };
@@ -871,7 +996,7 @@ document.addEventListener('input',function(e){
 });
 /* คีย์บอร์ดแท็บ: ← → Home End */
 document.getElementById('tabs').addEventListener('keydown',function(e){
-  var ids=TABS.map(function(t){return t[0]}),i=ids.indexOf(S.tab),n=i;
+  var ids=visTabs().map(function(t){return t[0]}),i=ids.indexOf(S.tab),n=i;
   if(e.key==='ArrowRight')n=(i+1)%ids.length;else if(e.key==='ArrowLeft')n=(i+ids.length-1)%ids.length;else if(e.key==='Home')n=0;else if(e.key==='End')n=ids.length-1;else return;
   e.preventDefault();S.tab=ids[n];render();document.getElementById('tab-'+S.tab).focus();
 });
@@ -880,7 +1005,7 @@ var demo=document.getElementById('demoSel');
 Object.keys(DB).forEach(function(k){var o=document.createElement('option');o.value=k;o.textContent=DB[k].name;demo.appendChild(o)});
 demo.addEventListener('change',function(){
   S.cid=demo.value;S.sel=null;S.tab='contracts';
-  S.st={contract:'all',type:'all',status:'all',q:'',page:1,open:{}};S.vi={contract:'all',type:'all',page:1,open:{}};
+  S.st={contract:'all',type:'all',status:'all',q:'',page:1,open:{}};S.vi={contract:'all',type:'all',page:1,open:{}};S.tl={contract:'all',kind:'all',page:1};
   try{history.replaceState(null,'','?c='+S.cid)}catch(x){}render();
 });
 document.getElementById('roleSel').addEventListener('change',function(e){role=e.target.value;applyNavRole(role);render()});
@@ -912,7 +1037,8 @@ function applyNavRole(role){
   });
 }
 
-readUrl();demo.value=S.cid;applyNavRole(role);render();
+readUrl();if(S.tab==='timeline'){role='host';document.getElementById('roleSel').value='host'}
+demo.value=S.cid;applyNavRole(role);render();
 })();
 </script>
 </body>
