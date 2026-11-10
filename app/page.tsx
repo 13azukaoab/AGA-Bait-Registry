@@ -16,7 +16,6 @@ export default function Home() {
         <Link href="/customers">ทะเบียนลูกค้า</Link>
         <Link href="/service">กรอกผล IG/IC</Link>
         <Link href="/bait">กล่องเหยื่อ AG</Link>
-        <Link href="/import">นำเข้า Excel</Link>
         <Link href="/collection">รอเก็บสถานี</Link>
         <Link href="/admin">ผู้ดูแลระบบ</Link>
         <Link href="/summary">สรุปตัวเลข (public)</Link>

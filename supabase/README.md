@@ -7,8 +7,10 @@ Schema, RLS และ migration ของฐานข้อมูล (Supabase /
 - **RLS เปิดทุกตาราง** — สิทธิ์บังคับที่ฐานข้อมูล ไม่ใช่แค่ซ่อนปุ่ม (SPEC §5)
 - `viewer` (anon) อ่านได้เฉพาะ `monthly_branch_snapshots` / view สรุป · ห้ามเข้าถึงตารางที่มีข้อมูลส่วนบุคคล (PDPA)
 
-## ยังไม่เริ่ม
-Data model เต็มอยู่ใน SPEC §6 · บทบาท/สิทธิ์ SPEC §5 — จะเขียน migration แรก (เขต/สาขา/ทีม/ประเภทลูกค้า + RLS) ในเฟสถัดไป
+## สถานะ (10 พ.ย. 2026)
+- `migrations/` — 16 ไฟล์: schema ตาม SPEC v1.1 (3–5 พ.ย.) + 6 ไฟล์ปรับให้ตรง SPEC v1.6 (10 พ.ย.: ยกเลิกล็อกเดือนปิด, `month_closures.scope`, ฟิลด์ต่างจังหวัดใน snapshot, `positions` + บัญชีผู้ใช้ใน `profiles`, บริบทใน `audit_log`, `pg_trgm`)
+- `tests/` — เทส pgTAP รันด้วย `npm run db:test` (ต้องมี Docker + `npx supabase start`)
+- month key ใน `month_closures` และ `audit_log` = ISO `YYYY-MM` · `monthly_branch_snapshots.month_key` ยังไม่กำหนดรูปแบบ (รอเจ้าของตัดสิน — ดู task.md 10 พ.ย.)
 
 ## ตั้งค่า (เมื่อเริ่มทำ schema)
 เชื่อม Supabase CLI กับ cloud project:
