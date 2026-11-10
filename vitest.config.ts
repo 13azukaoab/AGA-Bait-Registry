@@ -1,14 +1,21 @@
+import { fileURLToPath } from "node:url";
 import { defineConfig } from "vitest/config";
 
-// เทสเน้นที่ lib/rules (pure function) — ดูแผน TDD: docs/plans/2026-10-15-lib-rules.md
+// เทส pure function: lib/** (สูตรคำนวณ, auth, dashboard) และตัวช่วยคำนวณของหน้าจอใน components/**
+// alias "@" ให้ตรงกับ tsconfig paths เพื่อให้ไฟล์ที่ import "@/lib/..." รันในเทสได้
 export default defineConfig({
-  // เทส lib/rules เป็น pure function ไม่ใช้ CSS — ปิด postcss กันโหลด Tailwind v4 config (vite อ่าน string plugin ไม่ได้)
+  // เทสเป็น pure function ไม่ใช้ CSS — ปิด postcss กันโหลด Tailwind v4 config (vite อ่าน string plugin ไม่ได้)
   css: {
     postcss: { plugins: [] },
   },
+  resolve: {
+    alias: {
+      "@": fileURLToPath(new URL("./", import.meta.url)),
+    },
+  },
   test: {
     globals: true,
-    include: ["lib/**/*.test.ts"],
+    include: ["lib/**/*.test.ts", "components/**/*.test.ts"],
     passWithNoTests: true,
   },
 });
