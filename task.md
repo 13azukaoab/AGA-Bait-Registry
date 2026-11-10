@@ -19,14 +19,14 @@
 | master data | ✅ ตัดสินครบ | 24 สาขา→เขต · ทีม A–O/Z/Sup (เลือกได้หลายทีม) · ประเภทลูกค้า 14 ค่า 4 หมวด · Sale/AM |
 | flow + บทบาท 5 role | ✅ เสร็จ | `aga_bait_central_workflow_roles.svg` (ยังไม่ commit) |
 
-### เฟสสร้างจริง (ยังไม่เริ่มสักตัว)
+### เฟสสร้างจริง
 | ด้าน | สถานะ | หมายเหตุ |
 |---|---|---|
-| โครง Next.js + TS + PWA | ⬜ ยังไม่เริ่ม | |
-| `lib/rules` + unit test | ⬜ ยังไม่เริ่ม | มีแผน TDD แล้วที่ `docs/plans/2026-10-15-lib-rules.md` |
-| DB schema + RLS (Supabase) | ⬜ ยังไม่เริ่ม | SPEC §5, §6 |
-| ~~นำเข้าสัญญา (หน้าจอ 7)~~ | ❌ ตัดออก (v1.3) | ย้ายสัญญาเก่าตอนเจ้าของส่งไฟล์จริงมา ให้ Claude แปลงเข้า DB ครั้งเดียว หรืออาจไม่ย้าย (SPEC §14 ข้อ 12) · ใช้กฎล้างข้อมูลชุดเดิม |
-| Snapshot + Dashboard Sync | ⬜ ยังไม่เริ่ม | SPEC §9 |
+| โครง Next.js + TS + PWA | ✅ เสร็จ | 3 พ.ย. — App Router + TS strict + PWA(Serwist) + Noto Sans Thai · route stub ตาม §8 · typecheck/lint/test/build ผ่าน (โค้ดอยู่ branch `claude/focused-pike-c58fe0` → รวมเข้าสาย integration แล้ว ยังไม่ merge `main`) |
+| `lib/rules` + unit test | ✅ เสร็จ | 3 พ.ย. — 7 pure function ครบ · 16 เทสผ่าน (Vitest) · เหลือเทียบเกณฑ์ §15 รอ fixtures เขต 1 |
+| DB schema + RLS (Supabase) | ✅ เสร็จ (ตรง SPEC v1.6) | 4–5 พ.ย. — 10 migration + RLS ทุกตาราง + audit · 10 พ.ย. — +6 migration ปรับให้ตรง SPEC v1.6 · รวม 331 เทส pgTAP ผ่าน (ดู changelog 10 พ.ย. "รวมสายโค้ด") · ยังไม่มี Supabase cloud project |
+| ~~นำเข้าสัญญา (หน้าจอ 7)~~ | ❌ ตัดหน้าจอออก (v1.3) | คง `lib/import` (68 เทส) ไว้ใช้ seed ข้อมูลครั้งเดียวตาม SPEC §14 ข้อ 12 (ไม่มีหน้าจอ) |
+| Snapshot + Dashboard Sync | 🔄 logic เสร็จ | 3 พ.ย. — `lib/dashboard` (ประกอบ JSON §9.1) 23 เทส · เหลือ GitHub API sync + Cron |
 | fixtures เขต 1 (`zone1_registry.*`) | ⚠️ รอไฟล์ | ใช้ตรวจเกณฑ์ยอมรับ §15 |
 
 **ความหมายสัญลักษณ์:** ✅ เสร็จ · 🔄 กำลังทำ · ⬜ ยังไม่เริ่ม · ⚠️ ติด/รอข้อมูล
@@ -88,9 +88,9 @@
 ## แผนงาน (จาก SPEC §16)
 
 ### ต.ค. สัปดาห์ 3–4 — ตั้งระบบ
-- [ ] ตั้งโปรเจกต์ Next.js (App Router) + TS strict + PWA + Noto Sans Thai
-- [ ] `lib/rules/` core logic เป็น pure function + unit test (ดู CLAUDE.md "ตรรกะหลัก")
-- [ ] Supabase schema + RLS ทุกตาราง (SPEC §6, §5)
+- [x] ตั้งโปรเจกต์ Next.js (App Router) + TS strict + PWA + Noto Sans Thai
+- [x] `lib/rules/` core logic เป็น pure function + unit test (ดู CLAUDE.md "ตรรกะหลัก")
+- [x] Supabase schema + RLS ทุกตาราง (SPEC §6, §5)
 - [ ] Auth / สิทธิ์ตาม role (host/admin/recorder/viewer)
 - [ ] Master data: 13 เขต / 43 สาขา / ทีม / ประเภทลูกค้า
 - ~~นำเข้าสัญญาจาก Excel (หน้าจอ 7)~~ — ตัดออก v1.3 (ดู SPEC §14 ข้อ 12 เรื่องย้ายข้อมูลเก่า)
@@ -145,6 +145,30 @@
 - **ไฟล์ที่แตะ:** `docs/mockup/_shell/*` (nav.html, shell.js, README.md → v2) · `docs/mockup/` ทั้ง 8 หน้า html · `task.md`
 - **ค้าง / หมายเหตุ:** หัวข้อ h1 ในเนื้อหาแต่ละหน้ายังเป็นชื่อเดิม (เช่น h1 "ต้องทำ" vs เมนู "สถานะทะเบียนบริการ") — A5 ขอแค่เปลี่ยนชื่อเมนู ถ้าอยากให้ h1 ตรงเมนูด้วยทำเพิ่มทีหลัง · งาน A3 (ปุ่มแนบไฟล์ราย row) และ A4 (หน้าประวัติย้อนหลัง — ต้อง preview ก่อน) ยังไม่เริ่ม
 - **commit แล้ว 4 ก้อน (ยังไม่ push):** `2e7391b` (ชุด v2 + prototype), `e2e7d57` (admin-add-customer), `85702b3` (month-closure/dashboard-sync/port), `5f1a012` (customer-detail/settings/admin-user +A2)
+
+### 2026-11-10 (รวมสายโค้ดเข้าสายเอกสาร + ปรับ schema ให้ตรง SPEC v1.6) — sub session (Opus)
+ทำใน worktree `claude/sleepy-cori-b7ead6` (ตัดจาก `main` แล้ว merge `claude/focused-pike-c58fe0` เข้ามา) · ยังไม่ push / ยังไม่ merge `main`
+- **merge:** รวมโค้ดจริง (Next.js, `lib/rules`, `lib/import`, `lib/dashboard`, migration + pgTAP) เข้ากับเอกสาร SPEC v1.6 · `SPEC.md` ยึดฉบับ `main` + เติมหมายเหตุ RLS `ENABLE` ไม่ใช้ `FORCE` (§5) และคำถามสิทธิ์ลบเป็น §14 ข้อ 15, 16 · `task.md` ยึดฉบับ `main` + แก้ตาราง "เฟสสร้างจริง" + คง changelog 3–5 พ.ย.
+- **migration ใหม่ 6 ไฟล์ (เขียนเทสก่อน):**
+  1. `20261110090000_drop_month_lock` — ยกเลิกล็อกเดือนปิด (§7.7 v1.2): host + recorder (ในขอบเขต) แก้ visits/station_checks เดือนที่ปิดแล้วได้ · admin/viewer ถูก RLS กัน · ทุกการแก้ลง `audit_log`
+  2. `20261110090100_month_closures_scope` — key = (`month_key`, `scope`) enum `central`/`provincial` · ลบ `reopened_*` · เพิ่ม `last_resync_at/by` · recorder ปิด/ซิงก์ได้เฉพาะ `central` (ต้องมี `central` ใน division_scope) และลบ (= เปิดเดือนใหม่) ไม่ได้ · host ทำได้ทั้งหมด
+  3. `20261110090200_snapshot_manual_fields` — `v_s1…v_xl3`, `report_cust`, `report_value`, `confirmed_at`, `confirmed_by` · เขียน snapshot ได้เฉพาะ host (แถว manual จึงเป็นของ host เท่านั้น)
+  4. `20261110090300_positions_and_profile_accounts` — ตาราง `positions` 4 ตำแหน่ง (Admin (เปิดงาน)=admin, หัวหน้างาน=recorder, Project Manager=host, OM=host) · `profiles` เพิ่ม `username`/`is_active`/`must_change_password`/`last_login`/`position_code` · role ตามตำแหน่งอัตโนมัติ · กัน host คนสุดท้ายถูกปิด/ลดสิทธิ์/ลบ · ปิดบัญชีตัวเองไม่ได้ · บัญชีที่ปิดแล้วหมดสิทธิ์ทันที (helper เช็ก `is_active`)
+  5. `20261110090400_audit_log_context` — `audit_log` เพิ่ม `branch_id`/`contract_id`/`month_key` + index · trigger เติมให้อัตโนมัติ · เริ่ม audit `month_closures` และ snapshot แถว manual
+  6. `20261110090500_fuzzy_search_trgm` — เปิด `pg_trgm` + GIN index ชื่อลูกค้า/เลขสัญญา · ทดสอบชื่อไทยแล้วใช้ได้ (บน local)
+- **cleanup:** ลบ route `app/(app)/import` + ลิงก์หน้าแรก (หน้าจอ 7 ถูกตัด v1.3) · คง `lib/import` ไว้ seed ครั้งเดียว (§14 ข้อ 12) · อัปเดต `supabase/README.md`
+- **ผลตรวจ:** `typecheck` ✅ · `lint` ✅ · `npm test` 107 ✅ · `db:test` 331 ✅ (15 ไฟล์เทส, Supabase local + Docker)
+- **ไฟล์ที่แก้/เพิ่ม:** `SPEC.md`, `task.md`, `supabase/migrations/20261110090{0..5}00_*.sql`, `supabase/tests/{02,06,08,09}` (แก้) + `{10..14}` (ใหม่), `supabase/README.md`, `app/page.tsx`, ลบ `app/(app)/import/page.tsx`
+- **รอเจ้าของตัดสิน (ไม่บล็อก):**
+  1. ชื่อค่า scope `provincial` (ตาม SPEC §6) ไม่ตรงกับ `branches.division` = `province` — คงไว้ 2 แบบ หรือเปลี่ยนให้ตรงกัน
+  2. รูปแบบ `monthly_branch_snapshots.month_key` — `month_closures`/`audit_log` ใช้ `YYYY-MM` แต่เทสเดิมของ snapshot ใช้ `JAN.26` · เสนอให้ใช้ `YYYY-MM` ทั้งระบบ แปลงเป็น `MMM.YY` ตอนส่ง Dashboard
+  3. recorder ปิดเดือนแล้วใครเขียน snapshot แถว computed — ตอนนี้ host หรือ server (service role) เท่านั้น
+  4. recorder ควรอ่าน `audit_log` ได้ไหม (ชิป "แก้หลังปิด N" + ประวัติในหน้า 8) — ตอนนี้ host อ่านได้คนเดียว
+  5. anon อ่าน snapshot ได้ทุกคอลัมน์ รวม `report_*`/`confirmed_by` — ต้องซ่อนไหม
+  6. recorder แก้ `closed_by`/`closed_at` ของแถวปิดเดือน central ได้ (audit จับได้) — ต้องล็อกเพิ่มไหม
+  7. กฎ §6.5 "ยอดจากรายงานไม่ตรง = บันทึกไม่ได้" และ "ปิดได้เฉพาะเดือนที่จบแล้ว" (§7.7) — บังคับที่ฐานข้อมูลด้วย หรือแค่ที่แอป
+  8. §14 ข้อ 15, 16 สิทธิ์ลบ (ค้างจากรอบก่อน)
+- **ทำต่อ:** ตั้ง Supabase cloud project แล้วรันเทส `14_fuzzy_search` ซ้ำกับชื่อไทยจริง · SPEC §6 ยังมีหมายเหตุ "⚠ ต้องทำเป็น migration ใหม่ตอน build" (ทำแล้ว — ให้ session เอกสารลบออก)
 
 ### 2026-11-10 (ตัดสินใจเรื่องไฟล์สัญญา PDF + D5) — session หลัก (coordinator)
 เจ้าของถามเรื่องลดค่าใช้จ่ายที่เก็บไฟล์ → เทียบ "แปลง PDF เป็น JPG" กับ "บีบ PDF" → เลือกบีบที่ต้นทาง
@@ -390,6 +414,73 @@
 - เทสในเบราว์เซอร์: addRow 7→8 แถว · select 26/15 options · addTodayJob ใส่วันถูก · export 22 คอลัมน์ทุกแถวเท่ากัน ไม่ error
 - **ไฟล์ที่แตะ:** `docs/mockup/admin-add-customer.html`, `task.md`
 - **ค้าง:** — หน้า admin ครบแล้ว · งานเฟสถัดไป = เขียนโค้ดจริง (`lib/rules` + test / โครง Next.js)
+
+### 2026-11-04/05 (DB schema + RLS เสร็จ — subagent-driven 10 task)
+สร้าง schema ฐานข้อมูลครบตามแผน `docs/plans/2026-11-03-schema-rls.md` แบบ subagent-driven (แต่ละ task มี implementer + reviewer แยก) บน Supabase local (Docker)
+
+**✅ 10 migration ใน `supabase/migrations/` · 210 เทส pgTAP ผ่าน · typecheck/lint เขียว · final review (opus) = พร้อม merge**
+- enums 10 ตัว + 5 ตารางอ้างอิง + seed (13 เขต / 43 สาขา / 14 ประเภทลูกค้า / เกณฑ์ Tier)
+- profiles + helper สิทธิ์ (`current_app_role`/`current_division_scope`/`is_host`, SECURITY DEFINER)
+- customers · contracts (+contract_teams หลายทีม) · stations · visits · station_checks
+- trigger F1–F10 (`set_follow_up_no` นับแยกต่อสถานี §7.5) · audit_log + trigger ทุกการแก้ไข · ล็อกเดือนปิด (§7.7)
+- **RLS ทุกตาราง** — viewer(anon) เห็น 0 แถวจากตาราง PII (§15.2) · admin/recorder เขียนได้ตาม division scope · host ทำได้ทุกอย่าง
+- `v_branch_summary` (ไม่มี PII) ให้ anon อ่าน
+
+**ยังค้าง/ต้องตัดสิน (ไม่บล็อก merge):**
+- 🔸 **ยืนยันสิทธิ์ลบ:** recorder ลบ visit/station_check ได้ (SPEC §5 บอกแค่ "แก้") · admin ลบไม่ได้ (host เท่านั้น) — ให้เจ้าของยืนยัน
+- 🔸 branch ยังไม่ merge เข้า main · ยังไม่สร้าง Supabase cloud project จริง · เทส RLS บางเคส + ไฟล์ pin supabase CLI รอรอบ hardening
+- รายละเอียด ledger: `.superpowers/sdd/2026-11-03-schema-rls/progress.md`
+
+### 2026-11-03 (แยก 2 session ขนาน — lib/import + lib/dashboard)
+เจ้าของขอแบ่งงานเป็น session ขนานให้ไว → แยก 2 งาน pure logic ที่อิสระต่อกันและไม่ต้องใช้ Docker (รัน Sonnet, worktree แยก, TDD)
+
+**✅ `lib/import` (68 เทส)** — branch `claude/lib-import-b0db44` commit `a5484a7` → merge `cdac144`
+- parse แถว Excel → ล้าง+ตรวจ แบ่งผล 3 กลุ่ม: auto-fixed (บอกทุกการแก้) / must-fix (ไม่นำเข้า) / skipped
+- กฎครบตาม SPEC §10/§11 + mockup: เลขสัญญา `CTyy-nnnnnnn` + กันซ้ำ · สาขาแก้สะกด+คำนวณเขต · ประเภทลูกค้าแมปเก่า→ใหม่ · ทีมหลายทีม · วันที่/เวลา · term_years 1/3 · คอลัมน์เลื่อน
+- เดโม 8 แถว → ready 3 / must-fix 4 / skip 1 ตรงสเปค · ไฟล์: `branches` `customerTypes` `fields` `importContracts` `types` `index`
+
+**✅ `lib/dashboard` (23 เทส)** — branch `claude/lib-dashboard-f4824a` commit `3b5c7f2` → merge `26ed049`
+- `buildDashboardData` ประกอบ `dashboard_data.json` รูปแบบ §9.1 (key `MMM.YY`, 16 ฟิลด์ ตัด value_annual) · รวม computed/legacy/manual · guard 43 สาขา · ไฟล์: `row` `buildDashboardData` `branches` `validate` `types` `index`
+
+**รวมเข้า branch หลัก `claude/focused-pike-c58fe0` แล้ว** (--no-ff 2 ก้อน) · เทสรวม **107 ผ่าน** (rules 16 + import 68 + dashboard 23) · typecheck/lint เขียว
+- 2 session แก้คนละโฟลเดอร์ ไม่ชนกัน · ตรวจเทสในแต่ละ worktree ก่อน merge แล้วรันรวมยืนยันอีกครั้ง
+
+### 2026-11-03 (lib/rules เสร็จ + วางแผน schema + ติด Docker)
+ต่อจาก scaffold — ทำ 2 อย่าง: เขียนแผน schema และลงมือ lib/rules
+
+**✅ lib/rules เสร็จ (16 เทสผ่าน):** เขียน 7 pure function ตามแผน TDD → `annualValue`/`tierOf` (อ่าน tier_rules ไม่ hardcode), `serviceMonths`/`defaultEndDate`, `isMissedService`, `buildBranchSnapshot` (16 ฟิลด์), `monthKey`, date util + types + seed fixture · ครบกรณีบังคับ SPEC (S3/XL1/L3/S1, เดือนบริการ, F แยกสถานีผ่าน snapshot) · typecheck/lint clean · commit `05eeed5`
+- ปรับโค้ดจากแผนให้ผ่าน `noUncheckedIndexedAccess` (เลี่ยง array-destructure, แคบ key ของ snapshot)
+- **ค้าง:** เทียบเกณฑ์ §15 รอไฟล์ `fixtures/zone1_registry.*`
+
+**📋 แผน Schema + RLS:** `docs/plans/2026-11-03-schema-rls.md` (10 task TDD/pgTAP) commit `3007191` · เจ้าของเคาะ 3 จุด: contract_teams (หลายทีม), Docker เฉพาะเทส, check term_years 1/3
+
+**⏸️ Schema พัก — ติด Docker:** เลือก execute แบบ subagent-driven แล้วแต่เครื่อง **ไม่มี WSL/Docker** (Docker Desktop ต้องมี WSL 2 ก่อน) รัน `supabase start`/pgTAP ไม่ได้
+- **ต้องให้เจ้าของทำก่อน schema ไปต่อ:** admin PowerShell `wsl --install` → reboot → ติดตั้ง Docker Desktop → เปิดจนขึ้น "Engine running"
+- ledger ค้างสถานะไว้ที่ `.superpowers/sdd/2026-11-03-schema-rls/progress.md` (resume Task 1 ได้เลยเมื่อ Docker พร้อม) · เจอ 1 จุดต้องแก้ตอนทำ: helper `current_role` ชน built-in Postgres → ใช้ `current_app_role`
+
+### 2026-11-03 (เริ่มเฟสสร้างจริง — scaffold โปรเจกต์ Next.js)
+เริ่มงานเขียนโค้ดเฟสแรก วางโครงโปรเจกต์ (ยังไม่ทำฟีเจอร์) บน branch `claude/focused-pike-c58fe0`
+
+**ตัวเลือกที่เจ้าของเคาะ (เสนอก่อนทำ):** package manager = **npm** · ตัวรันเทส = **Vitest** · PWA = **Serwist** · Supabase dev = **Cloud free** (migration เก็บใน repo สลับ local ทีหลังได้)
+
+**✅ ทำไปแล้ว:**
+- โครง Next.js 15 (App Router) + TypeScript strict (`noUncheckedIndexedAccess`) + ฟอนต์ Noto Sans Thai + UI ไทย
+- PWA ผ่าน **Serwist** (`app/sw.ts` · ปิดใน dev กัน cache) + `manifest.webmanifest` + icon
+- token สี Tier 8 แบบใน `globals.css` เป็น CSS variable (light/dark) ตามกฎ CLAUDE.md — ไม่ hardcode hex
+- route stub ครบตาม SPEC §8: `login` · `(app)/{todo,customers,service,bait,import,collection,admin}` · `(public)/summary` (แยกกลุ่ม public/หลัง-login)
+- `lib/supabase/` client+server อ่านค่าจาก env เท่านั้น (`@supabase/ssr`) — ไม่มี secret ใน repo
+- Vercel Cron stub `/api/cron/sync` + `vercel.json` (`0 23 * * *` UTC = 06:00 ไทย, SPEC §9.2)
+- `lib/rules/` (README ชี้ไปแผน TDD) · `supabase/migrations/` พร้อมสำหรับ schema เฟสถัดไป
+- tooling: npm · Vitest · ESLint (next) · Tailwind v4 — **typecheck / lint / test / build ผ่านครบ** · dev HTTP 200
+- `.env.example` แม่แบบ + เพิ่ม `.gitignore` กัน `public/sw.js` (artifact)
+
+**ไฟล์ที่เพิ่ม (32):** `package.json`, `tsconfig.json`, `next.config.ts`, `eslint.config.mjs`, `postcss.config.mjs`, `vitest.config.ts`, `vercel.json`, `.env.example`, `app/**`, `components/ScreenStub.tsx`, `lib/supabase/**`, `lib/rules/README.md`, `supabase/**`, `public/**` · commit `804ac0c`
+
+**ค้าง/ถัดไป:**
+- เขียน `lib/rules` ตามแผน TDD (เขียนเทสก่อน) — โครง Vitest พร้อมแล้ว
+- schema + RLS migration แรก (เขต/สาขา/ทีม/ประเภทลูกค้า) — SPEC §6/§5
+- ตั้ง Supabase cloud project จริง + ใส่ env (ยังไม่ได้สร้าง — ตอน scaffold ไม่ต้องใช้)
+- ย้าย `next lint` → ESLint CLI ก่อนขึ้น Next 16 (ตอนนี้ยัง warn เฉยๆ)
 
 ### 2026-11-02 (หน้านำเข้าจาก Excel)
 - ✅ **ปุ่ม "↑ นำเข้าจาก Excel"** → วางข้อมูลจาก Excel (คั่นด้วย tab) แล้วกดตรวจ · มีปุ่ม "ใส่ข้อมูลตัวอย่าง" สำหรับเดโม
