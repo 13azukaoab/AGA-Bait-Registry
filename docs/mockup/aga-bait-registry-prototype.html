@@ -1143,7 +1143,8 @@ function fheadHtml(c,posHtml){
 function fieldsHtml(ctx,c,extra){
   var teams=TEAMS.map(function(t){return '<option value="'+t+'"'+(t===c.team?' selected':'')+'>ทีม '+t+'</option>'}).join('');
   return '<div class="fgrid"><div class="field"><label for="'+ctx+'Date">วันที่เข้า</label><input type="date" id="'+ctx+'Date" value="'+TODAY_ISO+'"></div>'+
-    '<div class="field"><label for="'+ctx+'Team">ทีมที่เข้า</label><select id="'+ctx+'Team">'+teams+'</select><span class="sub">เติมจากครั้งก่อน (ทีม '+c.team+') — แก้ได้ทุกครั้ง</span></div>'+(extra||'')+'</div>';
+    /* id ใช้ "VisitTeam" — ห้ามซ้ำกับตัวกรองทีมฝั่งซ้าย (id+'Team') ไม่งั้นตอนบันทึกจะอ่านค่าจากตัวกรองแทน */
+    '<div class="field"><label for="'+ctx+'VisitTeam">ทีมที่เข้า</label><select id="'+ctx+'VisitTeam">'+teams+'</select><span class="sub">เติมจากครั้งก่อน (ทีม '+c.team+') — แก้ได้ทุกครั้ง</span></div>'+(extra||'')+'</div>';
 }
 var BAIT_OPTS='<option>0 ก.</option><option selected>50 ก.</option><option>100 ก.</option><option>150 ก.</option><option>200 ก.</option>';
 function tmRowHtml(){
@@ -1302,7 +1303,7 @@ function svSave(){
   SV.tried=true; AGM.sv.tried=true; agRender('sv');
   if(svMissing().length) return;
   var c=custById(SV.id);
-  agCommit('sv'); c.done=true; c.team=$('svTeam').value;
+  agCommit('sv'); c.done=true; c.team=$('svVisitTeam').value;
   toast('บันทึกผล “'+c.name+'” แล้ว');
   var next=svNextUndone(c.id);
   pkSelect(PK.sv,next?next.id:null,true);
@@ -1354,7 +1355,7 @@ function bxSave(){
   AGM.bx.tried=true; agRender('bx');
   if(bxMissing().length) return;
   var c=custById(BX.id);
-  agCommit('bx'); c.team=$('bxTeam').value;
+  agCommit('bx'); c.team=$('bxVisitTeam').value;
   toast('บันทึกงานกล่องของ “'+c.name+'” แล้ว');
   pkRender(PK.bx); pkRender(PK.sv); bxRenderForm();
 }
