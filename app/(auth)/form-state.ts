@@ -1,0 +1,20 @@
+/**
+ * ชนิดข้อมูลและค่าคงที่ของฟอร์มในกลุ่ม auth
+ *
+ * ทำไมต้องแยกไฟล์: ไฟล์ที่มี `"use server"` **ส่งออกได้เฉพาะ async function**
+ * (ข้อบังคับของ Next) จึงเก็บ type กับค่าเริ่มต้นของ `useActionState` ไว้ที่นี่
+ * เพื่อให้ทั้ง server action และฟอร์มฝั่ง client ใช้ร่วมกันได้
+ */
+
+/** สถานะของฟอร์มเข้าสู่ระบบ — `error` = ข้อความที่แสดงให้ผู้ใช้ (null = ยังไม่มีข้อผิดพลาด) */
+export type LoginState = { error: string | null };
+
+export const LOGIN_INITIAL_STATE: LoginState = { error: null };
+
+/** สถานะของฟอร์มเปลี่ยนรหัสผ่าน */
+export type ChangePasswordState = { error: string | null };
+
+export const CHANGE_PASSWORD_INITIAL_STATE: ChangePasswordState = { error: null };
+
+/** ความยาวขั้นต่ำของรหัสผ่าน (เข้มกว่าค่าตั้งต้นของ Supabase ที่ 6 ตัว) */
+export const PASSWORD_MIN_LENGTH = 8;

@@ -1,0 +1,21 @@
+/*
+ * หน้าจอกลุ่ม auth (เข้าสู่ระบบ / เปลี่ยนรหัสผ่าน / ออกจากระบบ)
+ * ส่วนที่ Tailwind class ทำไม่สะดวก (เงื่อนไขธีมมืดแบบ data-theme + prefers-color-scheme)
+ * ห้ามใส่รหัสสี hex — อ้าง var(--…) จาก app/globals.css เท่านั้น
+ */
+
+/* โลโก้ AGA — ใช้ไฟล์เดียวกับแถบบน (components/shell/aga-logo.png)
+   ใช้เป็นภาพพื้นหลังผ่าน CSS แทน import ในโค้ด เพื่อให้ `tsc --noEmit` ใน CI ผ่าน
+   สว่าง = สีเดิม · มืด = ฟิลเตอร์ทำเป็นสีขาว (เจ้าของตัดสิน 8 พ.ย. 2026) */
+.logo {
+  background: url("../../components/shell/aga-logo.png") center / contain no-repeat;
+  filter: none;
+}
+:global(:root[data-theme="dark"]) .logo {
+  filter: brightness(0) invert(0.93);
+}
+@media (prefers-color-scheme: dark) {
+  :global(:root:not([data-theme="light"])) .logo {
+    filter: brightness(0) invert(0.93);
+  }
+}
