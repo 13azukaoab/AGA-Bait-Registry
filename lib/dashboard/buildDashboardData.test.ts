@@ -103,3 +103,105 @@ describe("buildDashboardData", () => {
     expect(data["SEP.26"]).toHaveLength(BRANCH_COUNT);
   });
 });
+
+/**
+ * กฎ "ยกค่าเดือนล่าสุด" — SPEC §6.5 (ต่างจังหวัดเดือนที่ยังไม่มีข้อมูล)
+ * และ §7.7 v1.5 (ปิดส่วนไหนเสร็จส่งทันที ส่วนที่ยังไม่ปิดใช้ค่าที่มีอยู่/ค่ายกมา)
+ */
+describe("buildDashboardData — ยกค่าเดือนล่าสุด (ต่างจังหวัด)", () => {
+  /** แถวต่างจังหวัดแบบย่อ (ใส่เฉพาะค่าที่เทสสนใจ) */
+  const province = (branch: string, value: number): SnapshotRow => ({
+    area: "เขต 9", branch,
+    s1: 1, s3: 0, m1: 0, m3: 0, l1: 0, l3: 0, xl1: 0, xl3: 0,
+    cust: 1, vS: value, vM: 0, vL: 0, vXL: 0, value, value_annual: value,
+  });
+
+  const central = (branch: string, value: number): SnapshotRow => ({
+    area: "เขต 1", branch,
+    s1: 1, s3: 0, m1: 0, m3: 0, l1: 0, l3: 0, xl1: 0, xl3: 0,
+    cust: 1, vS: value, vM: 0, vL: 0, vXL: 0, value, value_annual: value,
+  });
+
+  const rowOf = (data: ReturnType<typeof buildDashboardData>, key: string, branch: string) =>
+    (data[key] ?? []).find((r) => r.branch === branch);
+
+  it("ต่างจังหวัดเดือนที่ไม่มีข้อมูล → ยกค่าเดือนก่อนมาทั้งแถว", () => {
+    const data = buildDashboardData({
+      manual: { "2026-01": [province("ลพบุรี", 500)] },
+      computed: { "2026-02": [central("พุทธมณฑล", 10)] },
+    });
+    expect(rowOf(data, "FEB.26", "ลพบุรี")?.value).toBe(500);
+    expect(rowOf(data, "FEB.26", "ลพบุรี")?.cust).toBe(1);
+  });
+
+  it("ยกต่อได้หลายเดือนติดกัน (ยกค่าเดือนล่าสุดที่มีข้อมูลจริง)", () => {
+    const data = buildDashboardData({
+      manual: { "2026-01": [province("ลพบุรี", 500)] },
+      computed: {
+        "2026-02": [central("พุทธมณฑล", 10)],
+        "2026-03": [central("พุทธมณฑล", 10)],
+      },
+    });
+    expect(rowOf(data, "MAR.26", "ลพบุรี")?.value).toBe(500);
+  });
+
+  it("มีข้อมูลใหม่แล้วยกค่าใหม่ต่อ (ไม่ยกค่าเก่าค้าง)", () => {
+    const data = buildDashboardData({
+      manual: {
+        "2026-01": [province("ลพบุรี", 500)],
+        "2026-02": [province("ลพบุรี", 800)],
+      },
+      computed: { "2026-03": [central("พุทธมณฑล", 10)] },
+    });
+    expect(rowOf(data, "MAR.26", "ลพบุรี")?.value).toBe(800);
+  });
+
+  it("เดือนแรกที่ยังไม่เคยมีข้อมูลต่างจังหวัด → แถวศูนย์ (ไม่มีค่าให้ยก)", () => {
+    const data = buildDashboardData({
+      computed: { "2026-01": [central("พุทธมณฑล", 10)] },
+      manual: { "2026-02": [province("ลพบุรี", 500)] },
+    });
+    expect(rowOf(data, "JAN.26", "ลพบุรี")?.value).toBe(0);
+    expect(rowOf(data, "JAN.26", "ลพบุรี")?.cust).toBe(0);
+  });
+
+  it("ส่วนกลางไม่ยกค่าเดือนก่อน — เดือนที่ไม่มีข้อมูลเป็นแถวศูนย์", () => {
+    const data = buildDashboardData({
+      computed: { "2026-01": [central("พุทธมณฑล", 10)] },
+      manual: { "2026-02": [province("ลพบุรี", 500)] },
+    });
+    expect(rowOf(data, "FEB.26", "พุทธมณฑล")?.value).toBe(0);
+  });
+
+  it("ปิด carryForwardProvince ได้ (ใช้ตรวจความครบก่อนปิดเดือน) → แถวศูนย์", () => {
+    const data = buildDashboardData(
+      {
+        manual: { "2026-01": [province("ลพบุรี", 500)] },
+        computed: { "2026-02": [central("พุทธมณฑล", 10)] },
+      },
+      { carryForwardProvince: false },
+    );
+    expect(rowOf(data, "FEB.26", "ลพบุรี")?.value).toBe(0);
+  });
+
+  it("แถวที่ยกมามี 16 ฟิลด์ และไม่ใช้ object เดียวกันกับเดือนก่อน", () => {
+    const data = buildDashboardData({
+      manual: { "2026-01": [province("ลพบุรี", 500)] },
+      computed: { "2026-02": [central("พุทธมณฑล", 10)] },
+    });
+    const jan = rowOf(data, "JAN.26", "ลพบุรี");
+    const feb = rowOf(data, "FEB.26", "ลพบุรี");
+    expect(Object.keys(feb ?? {})).toHaveLength(16);
+    expect(feb).not.toBe(jan);
+    expect(feb).toEqual(jan);
+  });
+
+  it("ทุกเดือนยังครบ 43 สาขาเมื่อมีการยกค่า", () => {
+    const data = buildDashboardData({
+      manual: { "2026-01": [province("ลพบุรี", 500)] },
+      computed: { "2026-02": [central("พุทธมณฑล", 10)] },
+    });
+    expect(data["JAN.26"]).toHaveLength(BRANCH_COUNT);
+    expect(data["FEB.26"]).toHaveLength(BRANCH_COUNT);
+  });
+});

@@ -8,12 +8,22 @@ import type {
   MonthlyRows,
 } from "./types";
 
+/**
+ * ประกอบไฟล์ dashboard_data.json จาก 3 แหล่ง (SPEC §9.1)
+ *
+ * กฎ "ยกค่าเดือนล่าสุด" (SPEC §6.5, §7.7 v1.5, §9.1):
+ * - สาขา **ต่างจังหวัด** (`division = province`) เดือนไหนไม่มีข้อมูล → ใช้ค่าของเดือนล่าสุดที่มีข้อมูล
+ * - สาขา **ส่วนกลาง** (`division = central`) ไม่ยกค่า — คำนวณจากทะเบียนเสมอ ไม่มีข้อมูล = แถวศูนย์
+ * - ต่างจังหวัดที่ยังไม่เคยมีข้อมูลเลย (เดือนแรกของไฟล์) → แถวศูนย์ เพราะไม่มีค่าให้ยก
+ *   (ไฟล์ต้องครบ 43 สาขาทุกเดือนเสมอ — ห้ามข้ามแถว)
+ */
+
 /** ค้นหา Branch (area + division) จากชื่อสาขา — ใช้ยืนยันการสะกด + เติม area ที่ถูกต้อง */
 const BRANCH_BY_NAME: ReadonlyMap<string, Branch> = new Map(
   BRANCHES.map((b) => [b.branch, b]),
 );
 
-/** แถวศูนย์สำหรับสาขาที่ไม่มีข้อมูลในเดือนนั้น (ยังต้องมีครบ 43 สาขา — SPEC §9.1) */
+/** แถวศูนย์สำหรับสาขาที่ไม่มีข้อมูลและไม่มีค่าให้ยกมา (ยังต้องมีครบ 43 สาขา — SPEC §9.1) */
 function zeroRow(b: Branch): DashboardRow {
   return {
     area: b.area,
@@ -54,7 +64,7 @@ function applySource(
   }
 }
 
-/** รวบรวมคีย์เดือน (YYYY-MM) จากทุกแหล่ง */
+/** รวบรวมคีย์เดือน (YYYY-MM) จากทุกแหล่ง เรียงจากเก่าไปใหม่ (จำเป็นต่อการยกค่าเดือนก่อน) */
 function collectMonths(sources: DashboardSources): string[] {
   const months = new Set<string>();
   const add = (m?: MonthlyRows) => {
@@ -66,17 +76,33 @@ function collectMonths(sources: DashboardSources): string[] {
   return [...months].sort();
 }
 
+export interface BuildDashboardDataOptions {
+  /**
+   * ยกค่าเดือนล่าสุดให้สาขาต่างจังหวัดที่เดือนนั้นไม่มีข้อมูล (ค่าตั้งต้น `true` ตาม SPEC §6.5)
+   * ตั้ง `false` เมื่ออยากเห็นเฉพาะข้อมูลที่กรอกจริง (เช่น หน้าตรวจความครบก่อนปิดเดือน)
+   */
+  carryForwardProvince?: boolean;
+}
+
 /**
  * ประกอบ dashboard_data.json จาก 3 แหล่ง (SPEC §9.1)
  *
  * input ทุกแหล่ง key = `YYYY-MM` · output key = `MMM.YY` (แปลงด้วย monthKey)
  * รวมแบบ override ต่อ (เดือน, สาขา) ตาม precedence: legacy → computed → manual (ค่าหลังทับ)
- * ทุกเดือนรับประกันครบ 43 สาขา (เติมแถวศูนย์ให้สาขาที่ไม่มีข้อมูล) เรียงตามลำดับ SPEC §4
+ * ทุกเดือนรับประกันครบ 43 สาขา เรียงตามลำดับ SPEC §4
+ * สาขาที่ไม่มีข้อมูลในเดือนนั้น: ต่างจังหวัด = ยกค่าเดือนล่าสุด · ส่วนกลาง = แถวศูนย์
  *
  * throw เมื่อ: ชื่อสาขาสะกดผิด/ไม่รู้จัก, สาขาซ้ำในแหล่งเดียวกันของเดือนเดียวกัน
  */
-export function buildDashboardData(sources: DashboardSources): DashboardData {
+export function buildDashboardData(
+  sources: DashboardSources,
+  options: BuildDashboardDataOptions = {},
+): DashboardData {
+  const carryForward = options.carryForwardProvince ?? true;
   const out: DashboardData = {};
+
+  /** ค่าล่าสุดที่ "มีข้อมูลจริง" ของแต่ละสาขาต่างจังหวัด (ไม่เก็บค่าที่ยกมา — ผลลัพธ์เท่ากันแต่ตามรอยง่ายกว่า) */
+  const lastProvinceRow = new Map<string, DashboardRow>();
 
   for (const month of collectMonths(sources)) {
     const byBranch = new Map<string, DashboardRow>();
@@ -84,8 +110,19 @@ export function buildDashboardData(sources: DashboardSources): DashboardData {
     applySource(byBranch, sources.computed?.[month], month, "computed");
     applySource(byBranch, sources.manual?.[month], month, "manual");
 
-    // เรียงตามลำดับสาขามาตรฐาน + เติมแถวศูนย์ให้ครบ 43
-    const rows = BRANCHES.map((b) => byBranch.get(b.branch) ?? zeroRow(b));
+    // เรียงตามลำดับสาขามาตรฐาน + เติมให้ครบ 43 (ยกค่าเดือนก่อน / แถวศูนย์)
+    const rows = BRANCHES.map((b) => {
+      const row = byBranch.get(b.branch);
+      if (row) {
+        if (b.division === "province") lastProvinceRow.set(b.branch, row);
+        return row;
+      }
+      if (carryForward && b.division === "province") {
+        const prev = lastProvinceRow.get(b.branch);
+        if (prev) return { ...prev }; // copy — ห้ามใช้ reference ร่วมกันหลายเดือน
+      }
+      return zeroRow(b);
+    });
 
     const key = monthKey(month);
     if (rows.length !== BRANCH_COUNT) {
