@@ -14,7 +14,9 @@
      ส่วน "การกรอกปกติ" (กรอกผลบริการ/ติดกล่อง AG ใหม่) รวมเป็น 1 แถวต่อคนต่อวันต่อประเภท กางดูรายการย่อยได้ — เปิดด้วยปุ่ม "รวมการกรอกปกติ"
   2) สลับมุมมอง ตาราง ↔ ไทม์ไลน์ ใช้ตัวกรองชุดเดียวกัน · แสดงทีละ 25 รายการ (ของจริง 50) กด "โหลดเพิ่ม"
   3) ตัวกรอง: ช่วงเวลา · เดือนของข้อมูล · ใคร · สาขา · ประเภทข้อมูล · เพิ่ม/แก้/ลบ · ค้นหา · เฉพาะ "แก้หลังปิด"
-     "แก้หลังปิด" = แก้ข้อมูลของเดือนที่ปิดแล้ว (SPEC §7.7 — เดือนปิดแล้วไม่ล็อก แต่ทุกการแก้ต้องมีร่องรอย)
+     "แก้หลังปิดเดือน" = แก้ข้อมูลของเดือนที่ปิดแล้ว (SPEC §7.7 — เดือนปิดแล้วไม่ล็อก แต่ทุกการแก้ต้องมีร่องรอย)
+     "วันที่แก้" (คอลัมน์เวลา = created_at) ≠ "เดือนของข้อมูล" (mk = month_key): แก้ 9 พ.ย. แต่ข้อมูลเดือน ต.ค. ที่ปิดแล้ว = แก้หลังปิดเดือน
+     แถวพวกนี้เน้นด้วยป้าย 🔒 + แถบสีทั้งแถว + ชิปสรุปกดกรองได้ (ผู้บริหารต้องตามมากที่สุด) · ค่าที่ส่ง Dashboard คงเดิมจนกว่าสั่ง "คำนวณ snapshot ใหม่"
   4) ส่งออก Excel = ทุกรายการที่ตรงตัวกรอง (ไม่จำกัดจำนวนที่แสดงอยู่) · กลุ่มการกรอกปกติส่งออกเป็น 1 แถวพร้อมจำนวน
   5) ข้อมูลตัวอย่างมาจาก _shell/history-mock.js (ใช้ร่วมกับลิ้นชัก "ประวัติ" ตามจุดและไทม์ไลน์ในหน้าลูกค้า)
   ของจริง: อ่านจาก audit_log (ใช้ดัชนี branch/contract/month ที่มีแล้ว) · กลุ่มการกรอกปกติคำนวณจาก visits (created_by/created_at)
@@ -193,7 +195,26 @@ tr.detail>td{padding:0;background:var(--surface-2)}
 .act{display:inline-block;font-size:11px;font-weight:600;padding:1px 8px;border-radius:6px;margin-right:4px}
 .act.insert{background:var(--ok-soft);color:var(--ok)} .act.update{background:var(--accent-soft);color:var(--accent-strong)} .act.delete{background:var(--danger-soft);color:var(--danger)}
 .grp{display:inline-block;font-size:11px;padding:1px 8px;border-radius:6px;margin-right:4px;background:var(--surface-3);color:var(--fg-muted);border:1px solid var(--border-strong)}
-.cl{display:inline-block;font-size:11px;padding:1px 7px;border-radius:6px;background:var(--warn-soft);color:var(--warn);margin-left:4px}
+/* "แก้หลังปิดเดือน" — ต้องเด่นกว่าชิปอื่น: ขอบหนาสี warn + พื้นขาว + ไอคอนกุญแจ + แถวทั้งแถวมีแถบสี/พื้นอ่อน
+   (ตัวอักษรใช้สี --fg บนพื้น --surface เพื่อให้ contrast ผ่านทั้งโหมดสว่าง/มืด · สี warn ใช้แค่ขอบ/ไอคอน/แถบ) */
+.clb{display:inline-flex;align-items:center;gap:4px;font-size:11.5px;font-weight:700;line-height:1.5;padding:1px 9px;margin-left:6px;border-radius:999px;background:var(--surface);color:var(--fg);border:1.5px solid var(--warn);white-space:nowrap;vertical-align:baseline}
+.clb .ic{color:var(--warn);font-size:11px}
+table.hl tbody tr.row.closed td{background:var(--warn-soft)}
+table.hl tbody tr.row.closed:hover td{background:var(--warn-soft);filter:brightness(.97)}
+table.hl tbody tr.row.closed td:first-child{box-shadow:inset 4px 0 0 var(--warn)}
+.mkn{display:block;font-size:11px;color:var(--fg-muted)} .mkn.cl2{color:var(--fg);font-weight:600}
+.mkn.cl2 .ic{color:var(--warn)}
+/* ชิปสรุป "เฉพาะที่แก้หลังปิดเดือน" — กดเพื่อกรอง (ปุ่มเดียวกับช่องติ๊กในแถบตัวกรอง) */
+.clchip{display:flex;align-items:center;gap:10px;font-family:inherit;text-align:left;cursor:pointer;color:var(--fg);background:var(--warn-soft);border:1.5px solid var(--warn);border-radius:10px;padding:7px 14px;max-width:100%}
+.clchip:hover{filter:brightness(.97)}
+.clchip .ic{font-size:18px;line-height:1;color:var(--warn);flex:none}
+.clchip b{display:block;font-size:13.5px;font-weight:700}
+.clchip small{display:block;font-size:11.5px;color:var(--fg-muted);font-weight:400;line-height:1.4}
+.clchip .x{flex:none;font-size:11.5px;font-weight:600;padding:2px 9px;border-radius:999px;background:var(--surface);border:1px solid var(--warn)}
+.clchip[aria-pressed="true"]{box-shadow:0 0 0 3px var(--warn)}
+.mkexp{margin:0 0 14px}
+.mkexp .eg{display:block;margin-top:5px;color:var(--fg)}
+.tl .ev.closed{background:var(--warn-soft);box-shadow:inset 3px 0 0 var(--warn);border-radius:0 8px 8px 0;padding-left:10px;padding-right:8px;margin:3px 0}
 .kv{font-size:12px;color:var(--fg-muted)} .kv b{color:var(--fg);font-weight:600}
 .sublist{margin:8px 0 0;border:1px solid var(--border);border-radius:8px;background:var(--surface);overflow:hidden}
 .sublist .sr1{display:flex;gap:10px;padding:6px 10px;border-top:1px solid var(--border);font-size:12.5px}
@@ -272,19 +293,25 @@ tr.detail>td{padding:0;background:var(--surface-2)}
 
     <div id="content">
       <div class="sumrow" id="sumrow" aria-live="polite"></div>
+      <div class="alert info mkexp" role="note"><span class="ic" aria-hidden="true">ⓘ</span><div>
+        <b>"วันที่แก้" ไม่เท่ากับ "เดือนของข้อมูล"</b>
+        <small><b>วันที่แก้</b> = วันที่มีคนกดบันทึก (คอลัมน์ "เวลา") · <b>เดือนของข้อมูล</b> = เดือนบริการที่ข้อมูลนั้นสังกัด (ใต้คอลัมน์ "ข้อมูล")</small>
+        <small class="eg">ตัวอย่าง: แก้เมื่อ <b>9 พ.ย.</b> แต่เป็นผลบริการของเดือน <b>ต.ค.</b> ที่ปิดแล้ว → ขึ้นป้าย <span class="clb" style="margin-left:2px"><span class="ic" aria-hidden="true">🔒</span>แก้หลังปิดเดือน</span>
+          ระบบไม่ล็อกข้อมูล แต่ <b>ค่าที่ส่ง Dashboard ยังเป็นค่าเดิม จนกว่าจะสั่ง "คำนวณ snapshot ใหม่"</b> ที่หน้า <a href="month-closure.html">ส่งข้อมูล และสรุปงานประจำเดือน</a></small>
+      </div></div>
       <section class="panel" aria-label="รายการประวัติ">
         <div class="tools">
           <div class="field"><label for="fPeriod">ช่วงเวลา</label><select id="fPeriod" onchange="hv.upd()">
             <option value="1">วันนี้ (10 พ.ย.)</option><option value="3">3 วันล่าสุด</option><option value="7" selected>7 วันล่าสุด</option></select></div>
           <div class="field"><label for="fMonth">เดือนของข้อมูล</label><select id="fMonth" onchange="hv.upd()">
-            <option value="">ทุกเดือน</option><option value="2026-11">พ.ย. 2026</option><option value="2026-10">ต.ค. 2026 (ปิดแล้ว)</option></select></div>
+            <option value="">ทุกเดือน</option><option value="2026-10">ต.ค. 2026 (ปิดแล้ว)</option><option value="2026-11">พ.ย. 2026 (เดือนปัจจุบัน)</option></select></div>
           <div class="field"><label for="fWho">ใคร</label><select id="fWho" onchange="hv.upd()"></select></div>
           <div class="field"><label for="fBr">สาขา</label><select id="fBr" onchange="hv.upd()"></select></div>
           <div class="field"><label for="fKind">ประเภทข้อมูล</label><select id="fKind" onchange="hv.upd()"></select></div>
           <div class="field"><label for="fAct">การกระทำ</label><select id="fAct" onchange="hv.upd()">
             <option value="">เพิ่ม / แก้ / ลบ</option><option value="insert">เพิ่ม</option><option value="update">แก้</option><option value="delete">ลบ</option></select></div>
           <div class="field" style="flex:1;min-width:180px"><label for="fQ">ค้นหา</label><input id="fQ" type="search" placeholder="เลขสัญญา / ชื่อลูกค้า / ข้อความ" oninput="hv.upd()" autocomplete="off" style="width:100%"></div>
-          <label class="chk"><input type="checkbox" id="fClosed" onchange="hv.upd()"> เฉพาะ "แก้หลังปิด"</label>
+          <label class="chk"><input type="checkbox" id="fClosed" onchange="hv.upd()"> เฉพาะ "แก้หลังปิดเดือน"</label>
         </div>
         <div class="tools" style="padding-top:10px;padding-bottom:10px;align-items:center">
           <div class="seg" role="group" aria-label="เลือกว่าจะแสดงอะไร">
@@ -410,10 +437,17 @@ var hv=(function(){
       if(q){var hay=(e.ct+e.cn+e.x+e.who+e.br+e.k).toLowerCase().replace(/\s+/g,''); if(hay.indexOf(q)<0) return false;}
       return true; });
   }
+  var MTH=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+  function mkLabel(mk){var p=String(mk).split('-');return MTH[(+p[1])-1]+' '+p[0];} /* '2026-10' → 'ต.ค. 2026' */
   function actPill(e){return '<span class="act '+e.a+'">'+ACT[e.a]+'</span>';}
   function what(e){
     return e.b ? '<span class="grp">กรอก '+e.n+' รายการ</span> '+esc(e.x)
-               : actPill(e)+esc(e.x)+(e.closed?'<span class="cl">แก้หลังปิด</span>':'');
+               : actPill(e)+esc(e.x)+(e.closed?'<span class="clb" title="แก้ข้อมูลของเดือนที่ปิดแล้ว · ค่าที่ส่ง Dashboard ยังเป็นค่าเดิมจนกว่าจะสั่งคำนวณ snapshot ใหม่"><span class="ic" aria-hidden="true">🔒</span>แก้หลังปิดเดือน</span>':'');
+  }
+  /* เดือนของข้อมูล (month_key) — แสดงใต้ "ข้อมูล" ทุกแถว เพื่อแยกจาก "วันที่แก้" ในคอลัมน์เวลา */
+  function monthNote(e){
+    return e.closed ? '<span class="mkn cl2"><span class="ic" aria-hidden="true">🔒</span> ข้อมูลเดือน '+mkLabel(e.mk)+' (ปิดแล้ว)</span>'
+                    : '<span class="mkn">ข้อมูลเดือน '+mkLabel(e.mk)+'</span>';
   }
   function when(e){return e.ds+' '+e.t+(e.t2?'–'+e.t2:'');}
   function detail(e){
@@ -423,7 +457,9 @@ var hv=(function(){
         '<div class="sublist">'+items.map(function(i,ix){return '<div class="sr1'+(i.f?' f':'')+'"><span class="c1">'+esc(i.ct)+'</span><span class="c2">'+esc(i.cn)+'</span><span class="c3">'+esc(i.res)+'</span></div>';}).join('')+'</div>'+
         (n<e.n?'<div style="margin-top:8px"><button class="btn sm" type="button" onclick="hv.sub('+e.id+')">แสดงเพิ่ม (เหลือ '+(e.n-n)+' รายการ)</button></div>':'');
     }
-    return '<div class="kv">ตารางในฐานข้อมูล <b>'+esc(e.tbl)+'</b> · การกระทำ <b>'+e.a+'</b> · เดือนของข้อมูล <b>'+esc(e.mk)+'</b>'+(e.closed?' (ปิดแล้ว → แก้หลังปิด)':'')+
+    return (e.closed?'<div class="alert warn" style="margin:0 0 8px"><span class="ic" aria-hidden="true">🔒</span><div><b>แก้หลังปิดเดือน</b> — แก้เมื่อ '+esc(e.ds)+' แต่เป็นข้อมูลของเดือน '+mkLabel(e.mk)+' ที่ปิดแล้ว'+
+        '<small>ระบบไม่ล็อกข้อมูล แต่ <b>ค่าที่ส่ง Dashboard ยังเป็นค่าเดิม</b> จนกว่าจะสั่ง "คำนวณ snapshot ใหม่ + ส่ง Dashboard" ที่หน้า <a href="month-closure.html">ส่งข้อมูล และสรุปงานประจำเดือน</a></small></div></div>':'')+
+      '<div class="kv">ตารางในฐานข้อมูล <b>'+esc(e.tbl)+'</b> · การกระทำ <b>'+e.a+'</b> · เดือนของข้อมูล <b>'+mkLabel(e.mk)+'</b> ('+esc(e.mk)+')'+(e.closed?' · ปิดแล้ว':'')+
       ' · ผู้ทำ <b>'+esc(e.who)+'</b> ('+esc(e.role)+') · สาขา '+esc(e.br)+(e.ct!=='-'&&e.ct!=='หลายสัญญา'?' · สัญญา <b>'+esc(e.ct)+'</b> '+esc(e.cn):'')+'</div>'+
       (e.cid?'<div style="margin-top:6px"><a class="btn sm" href="customer-detail.html?c='+e.cid+'#tab=timeline" style="text-decoration:none">ดูไทม์ไลน์ของลูกค้านี้ ↗</a></div>':'');
   }
@@ -432,7 +468,7 @@ var hv=(function(){
   function table(rows){
     return '<div class="tablewrap"><table class="hl"><thead><tr><th>เวลา</th><th>ใคร</th><th>สาขา · สัญญา</th><th>ข้อมูล</th><th>การเปลี่ยนแปลง</th></tr></thead><tbody>'+
       rows.map(function(e){var o=!!OPEN[e.id];
-        return '<tr class="row"><td style="white-space:nowrap"><button class="tg" type="button" aria-expanded="'+o+'" aria-label="'+(o?'ซ่อน':'ดู')+'รายละเอียด" onclick="hv.tog('+e.id+')">'+(o?'▾':'▸')+'</button>'+when(e)+'</td><td>'+who(e)+'</td><td>'+whereCell(e)+'</td><td>'+esc(e.k)+'</td><td>'+what(e)+'</td></tr>'+
+        return '<tr class="row'+(e.closed?' closed':'')+'"><td style="white-space:nowrap"><button class="tg" type="button" aria-expanded="'+o+'" aria-label="'+(o?'ซ่อน':'ดู')+'รายละเอียด" onclick="hv.tog('+e.id+')">'+(o?'▾':'▸')+'</button>'+when(e)+'</td><td>'+who(e)+'</td><td>'+whereCell(e)+'</td><td>'+esc(e.k)+monthNote(e)+'</td><td>'+what(e)+'</td></tr>'+
           (o?'<tr class="detail"><td colspan="5"><div class="dbox">'+detail(e)+'</div></td></tr>':''); }).join('')+'</tbody></table></div>';
   }
   function line(rows){
@@ -440,8 +476,9 @@ var hv=(function(){
     rows.forEach(function(e){
       if(e.d!==day){day=e.d;h+='<div class="dayh">'+e.d+' พ.ย. 2026'+(e.d===10?' · วันนี้':'')+'</div>';}
       var o=!!OPEN[e.id];
-      h+='<div class="ev"><div class="rail"><span class="dot '+(e.b?'grpd':e.a)+'"></span><span class="line"></span></div><div class="body2">'+what(e)+' <b style="font-weight:600">'+esc(e.k)+'</b>'+
+      h+='<div class="ev'+(e.closed?' closed':'')+'"><div class="rail"><span class="dot '+(e.b?'grpd':e.a)+'"></span><span class="line"></span></div><div class="body2">'+what(e)+' <b style="font-weight:600">'+esc(e.k)+'</b>'+
         '<div class="sub">'+when(e)+' · '+esc(e.who)+' ('+esc(e.role)+') · '+esc(e.br)+(e.ct!=='-'&&e.ct!=='หลายสัญญา'?' · '+esc(e.ct):'')+
+        ' · <span'+(e.closed?' style="color:var(--fg);font-weight:600"':'')+'>ข้อมูลเดือน '+mkLabel(e.mk)+(e.closed?' (ปิดแล้ว)':'')+'</span>'+
         ' · <button class="tg" type="button" aria-expanded="'+o+'" onclick="hv.tog('+e.id+')" style="padding:0">'+(o?'ซ่อนรายละเอียด':'รายละเอียด')+'</button></div>'+(o?'<div class="dbox" style="padding:6px 0 4px">'+detail(e)+'</div>':'')+'</div></div>';
     });
     return '<div class="tl">'+h+'</div>';
@@ -450,9 +487,12 @@ var hv=(function(){
     var all=filt(true), chg=all.filter(function(e){return !e.b;}), grpd=all.filter(function(e){return e.b;});
     var rows=(S.mode==='all'?all:chg), cnt=function(a){return chg.filter(function(e){return e.a===a;}).length;};
     var batchN=grpd.reduce(function(s,e){return s+e.n;},0);
+    var clN=chg.filter(function(e){return e.closed;}).length, clOn=$('fClosed').checked;
     $('sumrow').innerHTML=
+      '<button type="button" class="clchip" aria-pressed="'+clOn+'" onclick="hv.closedOnly()" title="รายการที่ผู้บริหารต้องตามมากที่สุด — กดเพื่อกรองเฉพาะที่แก้ข้อมูลของเดือนที่ปิดแล้ว">'+
+        '<span class="ic" aria-hidden="true">🔒</span><span><b>เฉพาะที่แก้หลังปิดเดือน (<span class="num">'+clN+'</span>)</b>'+
+        '<small>Dashboard ยังเป็นค่าเดิม จนกว่าจะสั่งคำนวณ snapshot ใหม่</small></span>'+(clOn?'<span class="x">✕ ยกเลิกกรอง</span>':'')+'</button>'+
       '<span class="chip info num">แก้ '+cnt('update')+'</span><span class="chip miss num">ลบ '+cnt('delete')+'</span><span class="chip ok num">เพิ่ม/ไฟล์ '+cnt('insert')+'</span>'+
-      '<span class="chip pend num">แก้หลังปิด '+chg.filter(function(e){return e.closed;}).length+'</span>'+
       '<span class="chip na num" title="การกรอกผลบริการ/ติดกล่อง AG ใหม่ รวมเป็นกลุ่มต่อคนต่อวัน">กรอกปกติ '+batchN+' รายการ → '+grpd.length+' กลุ่ม</span>';
     var shown=rows.slice(0,S.shown);
     $('list').innerHTML=!rows.length?'<div class="empty">ไม่พบรายการที่ตรงกับตัวกรอง <button class="btn sm" type="button" onclick="hv.reset()" style="margin-left:8px">ล้างตัวกรอง</button></div>':(S.view==='table'?table(shown):line(shown));
@@ -465,6 +505,8 @@ var hv=(function(){
   return {
     init:function(){fillSel();render();},
     upd:function(){S.shown=PAGE;render();},
+    /* ชิปสรุป "เฉพาะที่แก้หลังปิดเดือน" = สลับช่องติ๊กเดียวกับในแถบตัวกรอง (AND กับตัวกรองอื่น) */
+    closedOnly:function(){$('fClosed').checked=!$('fClosed').checked;S.shown=PAGE;render();var b=document.querySelector('#sumrow .clchip');if(b)b.focus();},
     mode:function(m){S.mode=m;S.shown=PAGE;render();},
     view:function(v){S.view=v;render();},
     more:function(){S.shown+=PAGE;render();},
@@ -475,7 +517,7 @@ var hv=(function(){
     export:function(){
       if(typeof XLSX==='undefined'){alert('ต้องมีอินเทอร์เน็ตเพื่อโหลดไลบรารีส่งออก Excel (SheetJS) — ลองใหม่เมื่อออนไลน์');return;}
       var rows=(S.mode==='all'?filt(true):filt(false));
-      var data=[['วันที่','เวลา','ใคร','ตำแหน่ง','สาขา','เลขที่สัญญา','ลูกค้า','ประเภทข้อมูล','การกระทำ','รายละเอียด','จำนวนรายการ (กลุ่มกรอกปกติ)','แก้หลังปิด','เดือนของข้อมูล']];
+      var data=[['วันที่','เวลา','ใคร','ตำแหน่ง','สาขา','เลขที่สัญญา','ลูกค้า','ประเภทข้อมูล','การกระทำ','รายละเอียด','จำนวนรายการ (กลุ่มกรอกปกติ)','แก้หลังปิดเดือน','เดือนของข้อมูล']];
       rows.forEach(function(e){data.push(['2026-11-'+hmPad(e.d),e.t+(e.t2?'–'+e.t2:''),e.who,e.role,e.br,e.ct==='-'||e.ct==='หลายสัญญา'?'':e.ct,e.cn,e.k,ACT[e.a],e.x,e.b?e.n:'',e.closed?'ใช่':'',e.mk]);});
       var wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(data),'ประวัติย้อนหลัง');
       XLSX.writeFile(wb,'AGA-ประวัติย้อนหลัง.xlsx');
