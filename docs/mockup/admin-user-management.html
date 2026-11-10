@@ -387,11 +387,12 @@ function scopeLabel(u){return DIVS[u.scope]||u.scope;}
 function counts(){
   var c={pm:0,om:0,admin:0,recorder:0,off:0};
   USERS.forEach(function(u){ if(!u.on) c.off++; else c[u.pos]++; });
+  c.host=c.pm+c.om; // การ์ดสรุปรวม PM+OM เป็น host การ์ดเดียว (เจ้าของเลือก 10 พ.ย. 2026) — ตัวกรองตำแหน่งแยก PM/OM ยังอยู่ที่ dropdown เดิม
   return c;
 }
 function renderStats(){
   var c=counts(), box=$('stats'); box.textContent='';
-  [['','ทั้งหมด',USERS.length,'ทุกบัญชี'],['pm','PM',c.pm,'ใช้งานอยู่'],['om','OM',c.om,'ใช้งานอยู่'],
+  [['','ทั้งหมด',USERS.length,'ทุกบัญชี'],['host','host (PM+OM)',c.host,'PM '+c.pm+' · OM '+c.om],
    ['admin','Admin',c.admin,'ใช้งานอยู่'],['recorder','หัวหน้างาน',c.recorder,'ใช้งานอยู่'],
    ['off','ปิดบัญชี',c.off,'ล็อกอินไม่ได้']].forEach(function(s){
     var b=el('button','stat'+(roleFilterCard===s[0]?' on':'')); b.type='button';
@@ -409,7 +410,8 @@ function match(u){
   if(st==='on' && !u.on) return false;
   if(st==='off' && u.on) return false;
   if(roleFilterCard==='off' && u.on) return false;
-  if((roleFilterCard==='pm'||roleFilterCard==='om'||roleFilterCard==='admin'||roleFilterCard==='recorder') && (u.pos!==roleFilterCard||!u.on)) return false;
+  if(roleFilterCard==='host' && (u.role!=='host'||!u.on)) return false;
+  if((roleFilterCard==='admin'||roleFilterCard==='recorder') && (u.pos!==roleFilterCard||!u.on)) return false;
   return true;
 }
 function render(flashId){
