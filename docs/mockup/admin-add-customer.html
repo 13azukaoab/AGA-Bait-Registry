@@ -1,5 +1,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- อ่านธีมที่บันทึกไว้ก่อน render เพื่อกันสีกะพริบตอนโหลด (ต้องอยู่บนสุดก่อน <style>) -->
+<script>try{var t=localStorage.getItem('aga-theme');if(t)document.documentElement.setAttribute('data-theme',t)}catch(e){}</script>
 <title>เปิดงาน · เพิ่มลูกค้า (admin) — mockup</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -235,6 +237,7 @@ tr.badrow td{background:var(--danger-soft) !important}
 
 .xlsum{margin-top:16px}
 .mini-t{width:auto;font-size:12px;border:1px solid var(--border);border-radius:8px;overflow:hidden}
+.miniwrap{overflow-x:auto;max-width:100%;min-width:0}
 .mini-t th{background:var(--surface-2);padding:6px 12px;font-size:11px}
 .mini-t td{padding:5px 12px}
 .mini-t tfoot td{background:var(--surface-2);font-weight:700;border-top:1px solid var(--border-strong)}
@@ -727,6 +730,7 @@ table.xl .teambtn.multi{font-weight:700;color:var(--accent-strong)}
         </tbody>
         <tfoot><tr><td>รวม</td><td class="r num">133</td></tr></tfoot>
       </table>
+      <div class="miniwrap">
       <table class="mini-t">
         <thead>
           <tr>
@@ -756,6 +760,7 @@ table.xl .teambtn.multi{font-weight:700;color:var(--accent-strong)}
             อีก 1 สัญญา (Renew) ยังไม่ได้กรอกมูลค่า จึงยังจัด Tier ไม่ได้ · รวมทั้งเดือน 133 สัญญา</td></tr>
         </tfoot>
       </table>
+      </div>
       <div style="font-size:11.5px;color:var(--fg-muted);max-width:250px">
         บล็อกนี้ตรงกับที่อยู่ด้านขวาของชีทเดิม — ต่างกันตรงที่<b>ระบบนับให้เอง</b>จากแถวในตาราง ไม่ต้องมาพิมพ์สรุปซ้ำ<br><br>
         ตาราง Size ซอยละเอียดกว่าชีทเดิม: แยก <b>New / Renew</b> คร่อม 1 ปี/3 ปี ในตารางเดียว เห็นได้เลยว่าลูกค้าใหม่กับต่อสัญญาอยู่ Tier ไหน
@@ -1926,5 +1931,4 @@ function toggleTheme(){
   el.setAttribute('data-theme',next);
   try{localStorage.setItem('aga-theme',next)}catch(e){}
 }
-try{var t=localStorage.getItem('aga-theme'); if(t)document.documentElement.setAttribute('data-theme',t)}catch(e){}
 </script>

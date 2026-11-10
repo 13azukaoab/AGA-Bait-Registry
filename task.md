@@ -109,6 +109,15 @@
 
 ## บันทึกประจำวัน (Changelog)
 
+### 2026-11-10 (A6 งานเก็บตก — ตารางล้นจอมือถือ + ธีมกะพริบ) — session หลัก (coordinator)
+เจ้าของตัดสิน D3 (PM/OM เท่ากัน ทั้งคู่ host เต็ม) + D6 (แยกหน้าเปิดงาน/ทะเบียน) + เลือกเริ่ม A6 · บันทึกผลตัดสินใน `docs/แผนงานแก้ไข.md`
+- **ตรวจจริงในเบราว์เซอร์ 375px พบสาเหตุต่างจากที่ handoff เดาไว้** (handoff คิดว่าตารางไม่มี wrapper):
+  - `admin-user-management.html` (ล้น 297px) + `dashboard-sync.html` (ล้น 276px): ตารางมี `.tablewrap` อยู่แล้ว · ตัวการจริงคือ `span.sr` (ข้อความ screen-reader ในหัวตารางคอลัมน์ขวาสุด) เป็น `position:absolute` ไม่กำหนด `left` เลยไปวางที่ x จริงของ `<th>` ในตารางกว้าง ~850px และหลุดนอกกรอบ scroll เพราะ `.tablewrap` ไม่ได้ `position:relative` → แก้ด้วย `.tablewrap{position:relative}` (abs child ถูก clip ในกรอบ)
+  - `admin-add-customer.html` (ล้น 76px): ตาราง `.mini-t` สรุป Size/New/Renew ไม่ได้ห่อ scroll → ห่อด้วย `<div class="miniwrap">` (`overflow-x:auto;max-width:100%;min-width:0`)
+- **ธีมกะพริบตอนโหลด:** `admin-user-management.html` ไม่มีสคริปต์อ่านธีมใน `<head>` และปุ่มสลับไม่ persist → เพิ่มสคริปต์อ่านใน `<head>` + ให้ปุ่มบันทึก `localStorage` · `admin-add-customer.html` สคริปต์อ่านอยู่ท้าย body → ย้ายขึ้น `<head>` · `dashboard-sync.html` มีใน `<head>` อยู่แล้ว
+- ทดสอบ: จอมือถือ 375px + จอคอม 938px → overflow 0 ทุกไฟล์ · ธีมค้างถูก ไม่กะพริบ · ไม่มี console error
+- ไฟล์ที่แก้: `admin-user-management.html`, `dashboard-sync.html`, `admin-add-customer.html`, `docs/แผนงานแก้ไข.md`, `task.md`
+
 ### 2026-11-10 (ปรับ SPEC §8 ให้ตรง mockup ใหม่ — v1.6) — session หลัก (coordinator)
 เจ้าของยืนยัน (option ก) ให้ย้ายสถิติกล่อง/สรุปการใช้เหยื่อไปหน้าสรุปเป็นหัวข้อย่อย internal ซ่อนจาก viewer
 - บั๊มเวอร์ชันหัวเอกสาร 1.5 → 1.6

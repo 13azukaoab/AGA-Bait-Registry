@@ -7,6 +7,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@300;400;500;600;700&display=swap">
+<!-- อ่านธีมที่บันทึกไว้ก่อน render เพื่อกันสีกะพริบตอนโหลด (ต้องอยู่ใน <head>) -->
+<script>try{var t=localStorage.getItem('aga-theme');if(t)document.documentElement.setAttribute('data-theme',t)}catch(e){}</script>
 <!--
   หน้าจอ 11 "จัดการผู้ใช้" (SPEC §8) — เฉพาะ role host
   ----------------------------------------------------------------------------
@@ -179,7 +181,7 @@ main{flex:1;min-width:0;padding:20px 24px 48px}
 .field.grow{flex:1;min-width:180px}
 
 /* ตาราง */
-.tablewrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);overflow-x:auto}
+.tablewrap{position:relative;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);overflow-x:auto}
 table{border-collapse:collapse;width:100%;font-size:13px}
 thead th{background:var(--surface-2);color:var(--fg-muted);font-weight:600;font-size:11.5px;text-align:left;
   padding:9px 12px;border-bottom:1px solid var(--border);white-space:nowrap}
@@ -567,7 +569,9 @@ function toggleNav(open){
 function toggleTheme(){
   var r=document.documentElement, cur=r.getAttribute('data-theme');
   var dark=cur?cur==='dark':window.matchMedia('(prefers-color-scheme:dark)').matches;
-  r.setAttribute('data-theme',dark?'light':'dark');
+  var next=dark?'light':'dark';
+  r.setAttribute('data-theme',next);
+  try{localStorage.setItem('aga-theme',next)}catch(e){}
 }
 render();
 </script>
