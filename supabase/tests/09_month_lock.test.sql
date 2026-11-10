@@ -58,7 +58,9 @@ SELECT is(
   (SELECT count(*)::int FROM audit_log
     WHERE changed_by = '00000000-0000-0000-0000-0000000000a3'
       AND table_name IN ('visits', 'station_checks')),
-  5, 'every recorder edit in the closed month is in audit_log');
+  -- M3 (20261111090100): INSERT ของ visits/station_checks ไม่ลง audit แล้ว
+  -- เหลือ UPDATE visit + UPDATE check + DELETE check + DELETE visit = 4
+  4, 'every recorder edit (update/delete) in the closed month is in audit_log');
 SELECT is(
   (SELECT old_data->>'note' FROM audit_log
     WHERE changed_by = '00000000-0000-0000-0000-0000000000a3'

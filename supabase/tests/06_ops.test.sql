@@ -10,7 +10,8 @@ SELECT col_is_pk('public', 'month_closures', ARRAY['month_key', 'scope'], 'month
 SELECT col_type_is('public', 'month_closures', 'month_key', 'text', 'month_key is text');
 SELECT col_type_is('public', 'month_closures', 'scope', 'public', 'closure_scope', 'scope uses closure_scope enum');
 SELECT col_not_null('public', 'month_closures', 'scope', 'scope NOT NULL');
-SELECT enum_has_labels('public', 'closure_scope', ARRAY['central', 'provincial'], 'closure_scope = central / provincial');
+-- M4 (20261111090000): label 'provincial' เปลี่ยนเป็น 'province' ให้ตรง branches.division
+SELECT enum_has_labels('public', 'closure_scope', ARRAY['central', 'province'], 'closure_scope = central / province');
 SELECT col_type_is('public', 'month_closures', 'closed_at', 'timestamp with time zone', 'closed_at timestamptz');
 SELECT col_type_is('public', 'month_closures', 'closed_by', 'uuid', 'closed_by uuid');
 SELECT col_type_is('public', 'month_closures', 'last_resync_at', 'timestamp with time zone', 'last_resync_at timestamptz');

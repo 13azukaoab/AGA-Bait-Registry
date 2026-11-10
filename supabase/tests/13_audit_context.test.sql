@@ -36,6 +36,10 @@ INSERT INTO visits (id, contract_id, visit_date, visit_type)
   VALUES ('00000000-0000-0000-0000-0000000000f1', '00000000-0000-0000-0000-0000000000d1', '2026-09-10', 'routine');
 INSERT INTO station_checks (id, visit_id, station_id)
   VALUES ('00000000-0000-0000-0000-000000000a01', '00000000-0000-0000-0000-0000000000f1', '00000000-0000-0000-0000-0000000000e1');
+-- M3 (20261111090100): INSERT ของ visits/station_checks ไม่ลง audit แล้ว จึงสร้างแถว audit
+-- ด้วยการแก้ (UPDATE) แทน — แก้ขณะยังอยู่เดือน ก.ย. ก่อน แล้วค่อยย้ายเดือน
+UPDATE station_checks SET note = 'ctx' WHERE id = '00000000-0000-0000-0000-000000000a01';
+UPDATE visits SET note = 'ctx' WHERE id = '00000000-0000-0000-0000-0000000000f1';
 UPDATE visits SET visit_date = '2026-10-02' WHERE id = '00000000-0000-0000-0000-0000000000f1';
 INSERT INTO monthly_branch_snapshots (month_key, branch_id, source, cust) SELECT 'SEP.26', prov_id, 'manual', 3 FROM _b;
 INSERT INTO monthly_branch_snapshots (month_key, branch_id, source, cust) SELECT 'SEP.26', cen_id, 'computed', 1 FROM _b;
@@ -50,11 +54,15 @@ SELECT is((SELECT ROW(contract_id, branch_id)::text FROM audit_log WHERE table_n
   (SELECT ROW('00000000-0000-0000-0000-0000000000d1'::uuid, cen_id)::text FROM _b), 'contract_teams: contract_id + branch_id');
 SELECT is((SELECT ROW(contract_id, branch_id)::text FROM audit_log WHERE table_name = 'stations'),
   (SELECT ROW('00000000-0000-0000-0000-0000000000d1'::uuid, cen_id)::text FROM _b), 'stations: contract_id + branch_id');
-SELECT is((SELECT ROW(contract_id, branch_id, month_key)::text FROM audit_log WHERE table_name = 'visits' AND action = 'insert'),
+SELECT is((SELECT ROW(contract_id, branch_id, month_key)::text FROM audit_log
+            WHERE table_name = 'visits' AND action = 'update' AND new_data->>'note' = 'ctx'
+              AND (old_data->>'visit_date') = (new_data->>'visit_date')),
   (SELECT ROW('00000000-0000-0000-0000-0000000000d1'::uuid, cen_id, '2026-09')::text FROM _b), 'visits: contract, branch, month');
 SELECT is((SELECT ROW(contract_id, branch_id, month_key)::text FROM audit_log WHERE table_name = 'station_checks'),
   (SELECT ROW('00000000-0000-0000-0000-0000000000d1'::uuid, cen_id, '2026-09')::text FROM _b), 'station_checks: contract, branch, month of the visit');
-SELECT is((SELECT month_key FROM audit_log WHERE table_name = 'visits' AND action = 'update'),
+SELECT is((SELECT month_key FROM audit_log
+            WHERE table_name = 'visits' AND action = 'update'
+              AND (old_data->>'visit_date') <> (new_data->>'visit_date')),
   '2026-10', 'visit moved to another month: month_key = new month');
 SELECT is((SELECT ROW(branch_id, month_key)::text FROM audit_log WHERE table_name = 'monthly_branch_snapshots'),
   (SELECT ROW(prov_id, '2026-09')::text FROM _b), 'manual snapshot: branch + normalised month');
