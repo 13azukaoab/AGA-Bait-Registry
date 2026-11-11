@@ -62,7 +62,9 @@ SELECT throws_ok($$SELECT 1 FROM contract_teams$$, '42501', NULL, 'anon: contrac
 SELECT throws_ok($$SELECT 1 FROM profiles$$,       '42501', NULL, 'anon: profiles denied');
 SELECT throws_ok($$SELECT 1 FROM audit_log$$,      '42501', NULL, 'anon: audit_log denied');
 SELECT throws_ok($$SELECT 1 FROM branches$$,       '42501', NULL, 'anon: branches denied');
-SELECT cmp_ok((SELECT count(*)::int FROM monthly_branch_snapshots), '>=', 1, 'anon: snapshots readable');
+-- M6 ค (20261111100100): anon อ่าน snapshot ทาง view เท่านั้น — ตารางมีช่องเบื้องหลัง
+-- (report_cust/report_value/confirmed_at/confirmed_by) ที่คนทั่วไปไม่ควรเห็น
+SELECT throws_ok($$SELECT 1 FROM monthly_branch_snapshots$$, '42501', NULL, 'anon: snapshots table denied (view only)');
 SELECT cmp_ok((SELECT count(*)::int FROM v_branch_summary), '>=', 1, 'anon: v_branch_summary readable');
 SELECT throws_ok(
   $$INSERT INTO customers (branch_id, name) SELECT central_id, 'x' FROM _b$$,

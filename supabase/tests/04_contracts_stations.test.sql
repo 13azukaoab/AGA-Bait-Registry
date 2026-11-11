@@ -69,9 +69,11 @@ SELECT throws_ok(
 INSERT INTO public.stations (contract_id, type)
 SELECT id, 'IG' FROM public.contracts WHERE contract_no = 'T5-001';
 
-SELECT throws_ok(
+-- เจ้าของตัดสิน 11 พ.ย. 2026 (20261111100000): ลบสัญญาเปล่าแล้วสถานีหายตาม (CASCADE)
+-- สัญญาที่มีผลบริการยังลบไม่ได้ — ทดสอบไว้ใน 19_migrations_batch2.test.sql
+SELECT lives_ok(
   $$ DELETE FROM public.contracts WHERE contract_no = 'T5-001' $$,
-  '23503', NULL, 'contract with stations cannot be deleted');
+  'contract with stations but no visits is deleted together with its stations');
 
 SELECT throws_ok(
   $$ DELETE FROM public.customers WHERE name = 'T5 customer' $$,
