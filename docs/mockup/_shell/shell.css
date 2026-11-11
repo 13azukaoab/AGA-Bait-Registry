@@ -74,4 +74,6 @@
   body.nav-mini .nav:not(:hover):not(:focus-within) .group{font-size:0;padding:0;margin:9px 6px;border-top:1px solid var(--border)}
 }
 @media (prefers-reduced-motion:reduce){body.nav-mini .nav{transition:none}}
+/* ตอนโหลดหน้า: ตั้งสถานะเมนูทันทีโดยไม่เล่นแอนิเมชันหุบ (ใส่/ถอดโดย init ใน JS) */
+body.nav-noanim .nav{transition:none!important}
 /* ===== /AGA-SHELL v1 ===== */

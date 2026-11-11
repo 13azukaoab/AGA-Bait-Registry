@@ -1,5 +1,6 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="aga-nav-start" content="mini"><!-- เข้าหน้านี้แล้วเมนูย่อทันที (ตารางกว้าง 22 คอลัมน์) — เจ้าของสั่ง 11 พ.ย. 2026 -->
 <!-- อ่านธีมที่บันทึกไว้ก่อน render เพื่อกันสีกะพริบตอนโหลด (ต้องอยู่บนสุดก่อน <style>) -->
 <script>try{var t=localStorage.getItem('aga-theme');if(t)document.documentElement.setAttribute('data-theme',t)}catch(e){}</script>
 <title>เปิดงาน · เพิ่มลูกค้า (admin) — mockup</title>
@@ -130,6 +131,8 @@ h1{font-size:20px;font-weight:600;margin:0 0 3px}
   body.nav-mini .nav:not(:hover):not(:focus-within) .group{font-size:0;padding:0;margin:9px 6px;border-top:1px solid var(--border)}
 }
 @media (prefers-reduced-motion:reduce){body.nav-mini .nav{transition:none}}
+/* ตอนโหลดหน้า: ตั้งสถานะเมนูทันทีโดยไม่เล่นแอนิเมชันหุบ (ใส่/ถอดโดย init ใน JS) */
+body.nav-noanim .nav{transition:none!important}
 /* ===== /AGA-SHELL v1 ===== */
 
 
@@ -2429,7 +2432,7 @@ fileDeepLink();
 /* เมนูย่อบนจอกว้าง (body.nav-mini) — ปุ่ม ☰ บนจอกว้าง = ย่อ/ขยาย · จอเล็กยังเปิดลิ้นชัก (body.nav-open)
    จำค่าใน localStorage ใช้ร่วมทุกหน้า · private mode อาจใช้ storage ไม่ได้ จึงครอบ try */
 function navWide(){ return window.matchMedia('(min-width:861px)').matches; }
-function navMini(on){
+function navMini(on,noSave){   // noSave = หน้าที่บังคับเริ่มแบบย่อ ไม่เขียนทับค่าที่ผู้ใช้เลือกไว้ของหน้าอื่น
   document.body.classList.toggle('nav-mini',on);
   var t=document.getElementById('navToggle');
   if(t && navWide()){
@@ -2437,10 +2440,17 @@ function navMini(on){
     t.setAttribute('aria-label',on?'ขยายเมนู (ตอนนี้ย่อไว้ ชี้ที่แถบเมนูเพื่อดูชั่วคราว)':'ย่อเมนูให้เนื้อหากว้างขึ้น');
     t.title=t.getAttribute('aria-label');
   }
-  try{ localStorage.setItem('aga-nav-mini',on?'1':'0'); }catch(e){}
+  if(!noSave){ try{ localStorage.setItem('aga-nav-mini',on?'1':'0'); }catch(e){} }
 }
 (function(){
-  function init(){ var on=false; try{ on=localStorage.getItem('aga-nav-mini')==='1'; }catch(e){} navMini(on); }
+  /* หน้าที่มี <meta name="aga-nav-start" content="mini"> (เช่น หน้าเปิดงาน ตารางกว้าง) เริ่มแบบย่อเสมอ ไม่บันทึกค่า */
+  function init(){
+    document.body.classList.add('nav-noanim');
+    requestAnimationFrame(function(){ requestAnimationFrame(function(){ document.body.classList.remove('nav-noanim'); }); });
+    var m=document.querySelector('meta[name="aga-nav-start"]');
+    if(m && m.getAttribute('content')==='mini'){ navMini(true,true); return; }
+    var on=false; try{ on=localStorage.getItem('aga-nav-mini')==='1'; }catch(e){} navMini(on);
+  }
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',init); else init();
 })();
 function toggleNav(open){
