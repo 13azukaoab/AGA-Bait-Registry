@@ -208,7 +208,7 @@ table select,table input{font-family:inherit;font-size:12px;color:var(--fg);back
 .tag-new{font-size:10px;font-weight:700;color:var(--new);background:var(--new-soft);border:1px solid #d8cdf0;border-radius:5px;padding:1px 7px}
 
 /* ===== โหมดตารางเหมือน Excel ===== */
-table.xl{font-size:12px;width:2454px;table-layout:fixed}
+table.xl{font-size:12px;width:2504px;table-layout:fixed}
 table.xl thead th{padding:5px 7px;font-size:10.5px;line-height:1.3;vertical-align:bottom;border-right:1px solid var(--border);white-space:normal}
 table.xl thead th.grp{background:var(--surface-3);color:var(--fg);border-bottom:1px solid var(--border-strong)}
 table.xl thead th.sub{background:var(--surface-3);font-weight:600}
@@ -310,6 +310,11 @@ td.nm input{padding-right:28px}
 td.nm .rowlk{position:absolute;right:8px;top:50%;transform:translateY(-50%);font-size:13px;line-height:1;text-decoration:none;
   color:var(--accent-strong);padding:2px 4px;border-radius:5px}
 td.nm .rowlk:hover,td.nm .rowlk:focus-visible{background:var(--accent-soft)}
+/* host เห็นปุ่ม "⟲ ประวัติ" ต่อท้ายชื่อ → ย่อช่องชื่อเว้นที่ให้ปุ่ม (เดิมช่องชื่อกว้าง 100% ดันปุ่มออกนอกขอบแล้วโดนตัด) */
+td.nm{white-space:nowrap}
+td.nm .hd-btn{margin-left:6px;vertical-align:middle}
+td.nm:has(.hd-btn:not([hidden])) input{width:calc(100% - 90px)}
+td.nm:has(.hd-btn:not([hidden])) .rowlk{right:98px}
 
 /* ===== ปฏิทิน heat map รายวัน =====
    พื้นเซลล์ = จำนวนงาน (เทาไล่เฉด สีกลาง ไม่ชนกับ Tier)
@@ -389,6 +394,13 @@ td.nm .rowlk:hover,td.nm .rowlk:focus-visible{background:var(--accent-soft)}
 /* ===== modal กลาง (ใช้ร่วม: ผูกลูกค้าเดิม / รอนัดบริการ / ตรวจก่อนบันทึก) ===== */
 table.xl .chip.lk{cursor:pointer}
 table.xl .chip.fbtn{border:0;font-family:inherit;white-space:nowrap}
+/* ไอคอนไฟล์ PDF (แทน 📎) — สีอ้าง token เพื่อสลับ light/dark · ยังไม่แนบ = ป้ายสีเทา */
+.pdfic{width:16px;height:16px;flex:none;margin-right:4px;vertical-align:-3px}
+.pdfic .pg{fill:var(--surface);stroke:var(--border-strong);stroke-width:1}
+.pdfic .fd{fill:var(--border-strong)}
+.pdfic .lb{fill:var(--danger)}
+.pdfic text{fill:var(--surface);font-size:6.2px;font-weight:700;font-family:inherit}
+.na .pdfic .lb{fill:var(--fg-muted)}
 .fl-row{display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid var(--border)}
 .fl-row .ic{flex:none;width:38px;height:38px;border-radius:8px;background:var(--surface-3);color:var(--fg-muted);
   font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center}
@@ -535,12 +547,12 @@ table.xl .teambtn.multi{font-weight:700;color:var(--accent-strong)}
     <li><b>มูลค่า = ช่องเดียว</b> + เลือกระยะ (1/3 ปี) แยก → เลิกมี 2 ช่อง "1ปี/3ปี" ที่ลงผิดช่อง 4 แถว ทำ Tier เพี้ยน</li>
     <li><b>วันสิ้นสุด auto</b> = วันเริ่ม + N ปี − 1 วัน → กันพิมพ์ผิด (เคยมี <span class="num">15/10/8202</span> และสัญญา 0 วัน)</li>
     <li><b>เขต auto จากสาขา</b> → เลิกมี "นนทบรี" โผล่ในช่องเขต</li>
-    <li><b>สาขา/ทีม/ประเภท/ผู้ขาย = dropdown จาก master</b> → เลิก "พระราม2" ≠ "พระราม 2", "Sup"/"sup", ประเภท 28 แบบ</li>
+    <li><b>สาขา/ทีม/ประเภท/ผู้ขาย = เลือกจาก master</b> (ช่องสาขาพิมพ์แล้วระบบเดาคำให้ รับเฉพาะชื่อในรายการ) → เลิก "พระราม2" ≠ "พระราม 2", "Sup"/"sup", ประเภท 28 แบบ</li>
     <li><b>เวลาเป็น time picker</b> (08:00–17:00 · นาที 00/30) → เลิกหลายรูปแบบ (<span class="num">09.00 น.</span> / <span class="num">09:00:00</span>) · ไฟล์ ต.ค.2026 จริงใช้แค่ช่วงนี้และนาที 00/30 เท่านั้น</li>
     <li><b>เลขที่สัญญา ตัดช่องว่าง + พิมพ์ใหญ่อัตโนมัติ</b> แล้วตรวจรูปแบบ/ซ้ำ → ไฟล์จริงมีเว้นวรรคท้าย 4 รายการ และ <span class="num">ct26-</span> ตัวเล็ก 1 รายการ ถ้าไม่ล้างก่อนเทียบจะกลายเป็นสัญญาคนละใบ</li>
     <li><b>ทีม/ประเภทลูกค้าเป็น dropdown จาก master</b> → ไฟล์จริงมี <span class="num">sup</span>/<span class="num">Sup</span>/<span class="num">หนง.</span>/<span class="num">o</span> และเวลา <span class="num">11:30:00</span> หลุดมาอยู่ในช่องทีม · ประเภทมี "ทาวโฮม" ขาด น์</li>
     <li><b>New/Renew รวมเป็น dropdown "ประเภทงาน"</b> ช่องเดียว → ประหยัดคอลัมน์ และไม่มีเคสติ๊กทั้งคู่/ไม่ติ๊กเลย</li>
-    <li><b>แนบ "สัญญา + Site plan" เป็น PDF ไฟล์เดียวตอนเปิดงาน</b> (คอลัมน์ "ไฟล์แนบ" 📎) → ไฟล์มากับสัญญาตั้งแต่วันแรก ไม่ต้องไล่หาทีหลัง · ตอนติดตั้งมีแก้ Site plan ใช้ปุ่ม "อัปเดต Site plan" (ใส่เหตุผล เก็บทุกเวอร์ชัน) · ยังไม่แนบ = เตือน บันทึกต่อได้</li>
+    <li><b>แนบ "สัญญา + Site plan" เป็น PDF ไฟล์เดียวตอนเปิดงาน</b> (คอลัมน์ "ไฟล์แนบ" <svg class="pdfic" viewBox="0 0 24 24" aria-hidden="true"><path class="pg" d="M6 1.5h9l5 5V21a1.5 1.5 0 0 1-1.5 1.5h-12A1.5 1.5 0 0 1 4.5 21V3A1.5 1.5 0 0 1 6 1.5z"/><path class="fd" d="M15 1.5v3.5a1.5 1.5 0 0 0 1.5 1.5H20z"/><rect class="lb" x="1.5" y="10" width="16" height="8" rx="1.5"/><text x="9.5" y="16.2" text-anchor="middle">PDF</text></svg>) → ไฟล์มากับสัญญาตั้งแต่วันแรก ไม่ต้องไล่หาทีหลัง · ตอนติดตั้งมีแก้ Site plan ใช้ปุ่ม "อัปเดต Site plan" (ใส่เหตุผล เก็บทุกเวอร์ชัน) · ยังไม่แนบ = เตือน บันทึกต่อได้</li>
     <li><b>Tier โชว์สด</b> ทันทีที่ใส่มูลค่า → admin เห็นเลยว่าลูกค้านี้ S/M/L/XL กี่ปี</li>
   </ul>
 </div>
@@ -570,7 +582,7 @@ table.xl .teambtn.multi{font-weight:700;color:var(--accent-strong)}
   <span class="chip pend num">รอนัดบริการ 16</span>
   <span class="chip miss num">⚠ ขาดข้อมูลจำเป็น 1</span>
   <button type="button" class="chip pend num fchip" id="chipNoFile" aria-pressed="false" onclick="fltChip('nofile')"
-    title="นับจากแถวที่แสดงในตาราง (เดโมแสดงตัวอย่าง 7 แถว) — คลิกเพื่อกรองเฉพาะแถวที่ยังไม่แนบไฟล์ คลิกอีกครั้งเพื่อยกเลิก">📎 ยังไม่แนบไฟล์ <b id="cNoFile">0</b></button>
+    title="นับจากแถวที่แสดงในตาราง (เดโมแสดงตัวอย่าง 7 แถว) — คลิกเพื่อกรองเฉพาะแถวที่ยังไม่แนบไฟล์ คลิกอีกครั้งเพื่อยกเลิก"><svg class="pdfic" viewBox="0 0 24 24" aria-hidden="true"><path class="pg" d="M6 1.5h9l5 5V21a1.5 1.5 0 0 1-1.5 1.5h-12A1.5 1.5 0 0 1 4.5 21V3A1.5 1.5 0 0 1 6 1.5z"/><path class="fd" d="M15 1.5v3.5a1.5 1.5 0 0 0 1.5 1.5H20z"/><rect class="lb" x="1.5" y="10" width="16" height="8" rx="1.5"/><text x="9.5" y="16.2" text-anchor="middle">PDF</text></svg>ยังไม่แนบไฟล์ <b id="cNoFile">0</b></button>
   <span class="chip na num" id="fShown" aria-live="polite"></span>
   <span class="sorthint" id="sorthint">คลิกหัวคอลัมน์เพื่อเรียงลำดับ · คลิกซ้ำ = มาก→น้อย · คลิกครั้งที่ 3 = กลับลำดับเดิม</span>
 </div>
@@ -580,7 +592,7 @@ table.xl .teambtn.multi{font-weight:700;color:var(--accent-strong)}
   <table class="xl">
     <!-- ความกว้างตั้งตามเนื้อหาจริงของแต่ละช่อง (วันที่ 120px พอดีกับ date picker ของเบราว์เซอร์)
          รวม 2,454px (ชื่อลูกค้ากว้าง 280px ตามข้อมูลจริง p90 = 47 ตัวอักษร) เลื่อนแนวนอนน้อยลง -->
-    <colgroup><col style="width:40px"><col style="width:104px"><col style="width:280px"><col style="width:44px"><col style="width:104px"><col style="width:140px"><col style="width:118px"><col style="width:72px"><col style="width:112px"><col style="width:54px"><col style="width:120px"><col style="width:120px"><col style="width:88px"><col style="width:62px"><col style="width:108px"><col style="width:120px"><col style="width:120px"><col style="width:96px"><col style="width:96px"><col style="width:56px"><col style="width:150px"><col style="width:104px"><col style="width:150px"></colgroup>
+    <colgroup><col style="width:40px"><col style="width:104px"><col style="width:330px"><col style="width:44px"><col style="width:104px"><col style="width:140px"><col style="width:118px"><col style="width:72px"><col style="width:112px"><col style="width:54px"><col style="width:120px"><col style="width:120px"><col style="width:88px"><col style="width:62px"><col style="width:108px"><col style="width:120px"><col style="width:120px"><col style="width:96px"><col style="width:96px"><col style="width:56px"><col style="width:150px"><col style="width:104px"><col style="width:150px"></colgroup>
     <thead>
       <tr>
         <th rowspan="2" class="c">ลำดับ</th>
@@ -620,7 +632,7 @@ table.xl .teambtn.multi{font-weight:700;color:var(--accent-strong)}
         <td><span class="chip ok lk" tabindex="0" role="button" onclick="linkOpen(this)">🔗 CT26-9000002</span></td>
         <td><input list="sllist" value="พนักงานขาย 18"></td>
         <td><select><option>Sale</option><option selected>AM</option></select></td>
-        <td><select class="brsel" onchange="rowZone(this)"><option selected>สมุทรปราการ</option></select></td>
+        <td><input class="brsel" list="brlist" value="สมุทรปราการ" placeholder="พิมพ์ชื่อสาขา…" autocomplete="off" onfocus="this.select()" oninput="rowZone(this)" onchange="brFix(this)"></td>
         <td><span class="auto rzone">C5</span></td>
         <td><input type="date" value="2026-09-11"></td>
         <td><input type="date" value="2026-10-14"></td>
@@ -645,7 +657,7 @@ table.xl .teambtn.multi{font-weight:700;color:var(--accent-strong)}
         <td><span class="chip ok lk" tabindex="0" role="button" onclick="linkOpen(this)">🔗 CT26-9000004</span></td>
         <td><input list="sllist" value="พนักงานขาย 02"></td>
         <td><select><option>Sale</option><option selected>AM</option></select></td>
-        <td><select class="brsel" onchange="rowZone(this)"><option selected>นนทบุรี</option></select></td>
+        <td><input class="brsel" list="brlist" value="นนทบุรี" placeholder="พิมพ์ชื่อสาขา…" autocomplete="off" onfocus="this.select()" oninput="rowZone(this)" onchange="brFix(this)"></td>
         <td><span class="auto rzone">C2</span></td>
         <td><input type="date" value="2026-09-11"></td>
         <td><input type="date" value="2026-10-11"></td>
@@ -670,7 +682,7 @@ table.xl .teambtn.multi{font-weight:700;color:var(--accent-strong)}
         <td><span class="chip na">— งานใหม่ —</span></td>
         <td><input list="sllist" value="พนักงานขาย 26"></td>
         <td><select><option selected>Sale</option><option>AM</option></select></td>
-        <td><select class="brsel" onchange="rowZone(this)"><option selected>นครปฐม</option></select></td>
+        <td><input class="brsel" list="brlist" value="นครปฐม" placeholder="พิมพ์ชื่อสาขา…" autocomplete="off" onfocus="this.select()" oninput="rowZone(this)" onchange="brFix(this)"></td>
         <td><span class="auto rzone">C1</span></td>
         <td><input type="date" value="2026-09-14"></td>
         <td><input type="date" value="2026-09-17"></td>
@@ -695,7 +707,7 @@ table.xl .teambtn.multi{font-weight:700;color:var(--accent-strong)}
         <td><span class="chip na">— งานใหม่ —</span></td>
         <td><input list="sllist" value="พนักงานขาย 03"></td>
         <td><select><option>Sale</option><option selected>AM</option></select></td>
-        <td><select class="brsel" onchange="rowZone(this)"><option selected>พัฒนาการ</option></select></td>
+        <td><input class="brsel" list="brlist" value="พัฒนาการ" placeholder="พิมพ์ชื่อสาขา…" autocomplete="off" onfocus="this.select()" oninput="rowZone(this)" onchange="brFix(this)"></td>
         <td><span class="auto rzone">C4</span></td>
         <td><input type="date" value="2026-09-20"></td>
         <td><input type="date" value="2026-10-22"></td>
@@ -720,7 +732,7 @@ table.xl .teambtn.multi{font-weight:700;color:var(--accent-strong)}
         <td><span class="chip na">— งานใหม่ —</span></td>
         <td><input list="sllist" value="พนักงานขาย 24"></td>
         <td><select><option selected>Sale</option><option>AM</option></select></td>
-        <td><select class="brsel" onchange="rowZone(this)"><option selected>ปากช่อง</option></select></td>
+        <td><input class="brsel" list="brlist" value="ปากช่อง" placeholder="พิมพ์ชื่อสาขา…" autocomplete="off" onfocus="this.select()" oninput="rowZone(this)" onchange="brFix(this)"></td>
         <td><span class="auto rzone">C6</span></td>
         <td><input type="date" value="2026-09-28"></td>
         <td><input type="date" value="" class="wait"></td>
@@ -745,7 +757,7 @@ table.xl .teambtn.multi{font-weight:700;color:var(--accent-strong)}
         <td><span class="chip miss lk" tabindex="0" role="button" onclick="linkOpen(this)">⚠ ยังไม่ผูก · ค้นหา</span></td>
         <td><input list="sllist" value="พนักงานขาย 20"></td>
         <td><select><option>Sale</option><option selected>AM</option></select></td>
-        <td><select class="brsel" onchange="rowZone(this)"><option selected>ลาดพร้าว</option></select></td>
+        <td><input class="brsel" list="brlist" value="ลาดพร้าว" placeholder="พิมพ์ชื่อสาขา…" autocomplete="off" onfocus="this.select()" oninput="rowZone(this)" onchange="brFix(this)"></td>
         <td><span class="auto rzone">C4</span></td>
         <td><input type="date" value="2026-09-25"></td>
         <td><input type="date" value="2026-10-28"></td>
@@ -770,7 +782,7 @@ table.xl .teambtn.multi{font-weight:700;color:var(--accent-strong)}
         <td><span class="chip na">— งานใหม่ —</span></td>
         <td><input list="sllist" value="" placeholder="ยังไม่ใส่" style="border-color:var(--danger)"></td>
         <td><select><option selected>Sale</option><option>AM</option></select></td>
-        <td><select class="brsel" onchange="rowZone(this)"><option selected>หัวหิน</option></select></td>
+        <td><input class="brsel" list="brlist" value="หัวหิน" placeholder="พิมพ์ชื่อสาขา…" autocomplete="off" onfocus="this.select()" oninput="rowZone(this)" onchange="brFix(this)"></td>
         <td><span class="auto rzone">C1</span></td>
         <td><input type="date" value="2026-09-30"></td>
         <td><input type="date" value=""></td>
@@ -1533,7 +1545,7 @@ var CUST=[
 ];
 var lkCell=null, lkBranch='', lkAll=false;
 
-function rowBranch(tr){ var s=tr.cells[8].querySelector('select'); return s? s.value.trim():''; }
+function rowBranch(tr){ var s=tr.cells[8].querySelector('.brsel'); return s? s.value.trim():''; }
 
 function linkOpen(chip){
   var tr=chip.closest('tr');
@@ -1565,7 +1577,7 @@ function linkOpen(chip){
 function goBranch(){
   mdClose();
   if(!lkCell) return;
-  var sel=lkCell.closest('tr').cells[8].querySelector('select');
+  var sel=lkCell.closest('tr').cells[8].querySelector('.brsel');
   if(sel){ sel.focus(); sel.style.borderColor='var(--accent)';
     setTimeout(function(){ sel.style.borderColor=''; },1800); }
 }
@@ -1802,8 +1814,10 @@ var BRZONE={'พัฒนาการ':'C4','ลาดพร้าว':'C4','ป
 
 /* พิมพ์สาขาในแถวไหน เขตของแถวนั้นเปลี่ยนตาม
    งานกรุ๊ป = ลูกค้านอกสาขา ไม่มีเขต ไม่ถือว่าผิด */
-/* ช่องสาขาเป็น dropdown จาก master 24 สาขา — พิมพ์เองไม่ได้
-   กัน "พระราม2" ≠ "พระราม 2" และกันสาขาที่ไม่มีอยู่จริงหลุดเข้าระบบ */
+/* ช่องสาขา = พิมพ์แล้วระบบเดาคำจาก master 24 สาขา (datalist) เช่น พิมพ์ "ปท" → ปทุมธานี / ปทุมวัน
+   รับเฉพาะชื่อใน master: พิมพ์เว้นวรรคต่างกัน ("พระราม 2") ระบบแก้เป็นชื่อมาตรฐานให้ (brFix)
+   ชื่อที่ไม่มีใน master → ขอบแดง เขตขึ้น "—" และกดบันทึกไม่ผ่าน (saveScan) กันสาขาที่ไม่มีอยู่จริงหลุดเข้าระบบ
+   หน้าจอจริง: ใช้ combobox ที่บังคับเลือกจากรายการ (พฤติกรรมเดียวกัน) */
 var BRLIST=Object.keys(BRZONE).concat(['งานกรุ๊ป (ลูกค้านอกสาขา)']);
 
 /* master ทีม + ประเภทลูกค้า — ประเภทลูกค้าเจ้าของกำหนดเอง 12 ค่า (2 พ.ย. 2026)
@@ -1855,12 +1869,18 @@ function ctFix(inp){
 }
 
 function fillBranches(){
-  [].forEach.call(document.querySelectorAll('select.brsel'),function(s){
-    var cur=s.value;
-    s.innerHTML='<option value="">— เลือกสาขา —</option>'+
-      BRLIST.map(function(b){ return '<option'+(b===cur?' selected':'')+'>'+b+'</option>'; }).join('');
-    rowZone(s);
-  });
+  var dl=document.getElementById('brlist');
+  if(!dl){ dl=document.createElement('datalist'); dl.id='brlist'; document.body.appendChild(dl); }
+  if(!dl.options.length) dl.innerHTML=BRLIST.map(function(b){ return '<option value="'+b+'">'; }).join('');
+  [].forEach.call(document.querySelectorAll('input.brsel'),rowZone);
+}
+/* ออกจากช่องสาขา: ชื่อตรง master เมื่อไม่นับเว้นวรรค → แก้เป็นชื่อมาตรฐาน */
+function brFix(inp){
+  var k=inp.value.replace(/\s/g,'');
+  var hit=BRLIST.filter(function(b){ return b.replace(/\s/g,'')===k; })[0];
+  if(hit) inp.value=hit;
+  inp.title=(inp.value.trim()&&!hit)?'ไม่มีสาขานี้ในระบบ — เลือกจากรายการที่ขึ้นมาตอนพิมพ์':'';
+  rowZone(inp);
 }
 
 function rowZone(inp){
@@ -2004,7 +2024,7 @@ function blankRow(){
     '<td><span class="chip na">— งานใหม่ —</span></td>'+
     '<td><input list="sllist" value="" placeholder="ผู้ขาย"></td>'+
     '<td><select><option selected>Sale</option><option>AM</option></select></td>'+
-    '<td><select class="brsel" onchange="rowZone(this)"></select></td>'+
+    '<td><input class="brsel" list="brlist" value="" placeholder="พิมพ์ชื่อสาขา…" autocomplete="off" onfocus="this.select()" oninput="rowZone(this)" onchange="brFix(this)"></td>'+
     '<td><span class="auto rzone">—</span></td>'+
     '<td><input type="date" value=""></td>'+
     '<td><input type="date" value="" class="wait"></td>'+
@@ -2129,9 +2149,10 @@ function spvOf(b){ try{ var a=JSON.parse(b.dataset.spv||'[]'); return Array.isAr
 function fileFmt(d){ var p=(d||'').split('-'); return p.length===3?p[2]+'/'+p[1]+'/'+p[0]:'—'; }
 function escHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
+var PDFIC='<svg class="pdfic" viewBox="0 0 24 24" aria-hidden="true"><path class="pg" d="M6 1.5h9l5 5V21a1.5 1.5 0 0 1-1.5 1.5h-12A1.5 1.5 0 0 1 4.5 21V3A1.5 1.5 0 0 1 6 1.5z"/><path class="fd" d="M15 1.5v3.5a1.5 1.5 0 0 0 1.5 1.5H20z"/><rect class="lb" x="1.5" y="10" width="16" height="8" rx="1.5"/><text x="9.5" y="16.2" text-anchor="middle">PDF</text></svg>';
 function fileRepaint(b){
   var pdf=b.dataset.pdf||'', n=spvOf(b).length;
-  b.textContent=pdf?('📎 PDF ✓'+(n?' · แก้ '+n:'')):'📎 ยังไม่แนบ';
+  b.innerHTML=PDFIC+escHtml(pdf?('PDF ✓'+(n?' · แก้ '+n:'')):'ยังไม่แนบ');
   b.className='chip fbtn lk '+(pdf?'ok':'na');
   b.title='สัญญา+Site plan: '+(pdf||'ยังไม่แนบ')+(n?' · อัปเดต Site plan '+n+' ครั้ง':'');
 }
