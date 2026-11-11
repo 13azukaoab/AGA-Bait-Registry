@@ -59,4 +59,19 @@
 }
 @media (max-width:420px){.tb-title{display:none}}
 @media (prefers-reduced-motion:reduce){.nav{transition:none}}
+/* เมนูย่อ (จอกว้าง ≥861px · เจ้าของสั่งใช้ทุกหน้า 11 พ.ย. 2026)
+   กด ☰ = ย่อเมนูเหลือแถบไอคอน 58px → เนื้อหา/ตารางกว้างขึ้น 180px
+   ชี้เมาส์หรือกด Tab เข้าแถบ → เมนูกางทับเนื้อหาชั่วคราว (margin-right ติดลบ = ไม่ดันเนื้อหา ไม่กระตุก) · ออกแล้วหุบเอง
+   จำค่าในเครื่อง (localStorage 'aga-nav-mini') ใช้ร่วมทุกหน้า · จอเล็ก ≤860px ยังเป็นลิ้นชักเดิม (body.nav-open) */
+@media (min-width:861px){
+  .navtoggle{display:inline-flex}
+  body.nav-mini .nav{position:sticky;top:57px;align-self:flex-start;height:calc(100vh - 57px);width:58px;
+    overflow:hidden;z-index:15;transition:width .18s ease,margin-right .18s ease,box-shadow .18s ease}
+  body.nav-mini .nav:is(:hover,:focus-within){width:238px;margin-right:-180px;overflow-y:auto;
+    box-shadow:var(--drawer-shadow);transition-delay:.12s}
+  /* ตอนหุบ: ซ่อนข้อความเหลือไอคอน · หัวกลุ่มเป็นเส้นคั่นบางๆ */
+  body.nav-mini .nav:not(:hover):not(:focus-within) a{white-space:nowrap;overflow:hidden}
+  body.nav-mini .nav:not(:hover):not(:focus-within) .group{font-size:0;padding:0;margin:9px 6px;border-top:1px solid var(--border)}
+}
+@media (prefers-reduced-motion:reduce){body.nav-mini .nav{transition:none}}
 /* ===== /AGA-SHELL v1 ===== */
