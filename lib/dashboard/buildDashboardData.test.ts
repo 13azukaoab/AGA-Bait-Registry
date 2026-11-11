@@ -205,3 +205,45 @@ describe("buildDashboardData — ยกค่าเดือนล่าสุ�
     expect(data["FEB.26"]).toHaveLength(BRANCH_COUNT);
   });
 });
+
+/**
+ * กฎ "ใช้เขตปัจจุบัน" — เจ้าของตัดสิน 11 พ.ย. 2026
+ * ข้อมูลเดิมบน Dashboard ให้ พระราม 2 อยู่เขต 1 และ ปราจีนบุรี อยู่เขต 5 จนถึง MAY.26
+ * แล้วย้ายเข้าเขต 13 ตั้งแต่ JUN.26 — ระบบนี้ใช้เขตปัจจุบันกับทุกเดือนรวมเดือนย้อนหลัง
+ */
+describe("buildDashboardData — ใช้เขตปัจจุบันกับทุกเดือน (รวมเดือนย้อนหลัง)", () => {
+  const legacyRow = (branch: string, area: string): SnapshotRow => ({
+    area, branch,
+    s1: 1, s3: 0, m1: 0, m3: 0, l1: 0, l3: 0, xl1: 0, xl3: 0,
+    cust: 1, vS: 100, vM: 0, vL: 0, vXL: 0, value: 100, value_annual: 100,
+  });
+
+  it("พระราม 2 ในข้อมูลเดิมเขียน 'เขต 1' → ออกมาเป็น 'เขต 13'", () => {
+    const data = buildDashboardData({
+      legacy: { "2025-01": [legacyRow("พระราม 2", "เขต 1")] },
+    });
+    const row = (data["JAN.25"] ?? []).find((r) => r.branch === "พระราม 2");
+    expect(row?.area).toBe("เขต 13");
+  });
+
+  it("ปราจีนบุรี ในข้อมูลเดิมเขียน 'เขต 5' → ออกมาเป็น 'เขต 13'", () => {
+    const data = buildDashboardData({
+      legacy: { "2025-01": [legacyRow("ปราจีนบุรี", "เขต 5")] },
+    });
+    const row = (data["JAN.25"] ?? []).find((r) => r.branch === "ปราจีนบุรี");
+    expect(row?.area).toBe("เขต 13");
+  });
+
+  it("ยอดรวมทั้งประเทศไม่เปลี่ยนเพราะการย้ายเขต (ย้ายแค่ป้ายเขต)", () => {
+    const data = buildDashboardData({
+      legacy: {
+        "2025-01": [
+          legacyRow("พระราม 2", "เขต 1"),
+          legacyRow("ปราจีนบุรี", "เขต 5"),
+        ],
+      },
+    });
+    const total = (data["JAN.25"] ?? []).reduce((sum, r) => sum + r.value, 0);
+    expect(total).toBe(200);
+  });
+});
