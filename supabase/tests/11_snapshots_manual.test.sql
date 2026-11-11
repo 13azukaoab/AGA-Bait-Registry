@@ -66,7 +66,8 @@ SELECT is((SELECT count(*)::int FROM monthly_branch_snapshots WHERE month_key = 
 
 -- ===== still public for the Dashboard / summary page =====
 SET LOCAL ROLE anon;
-SELECT is((SELECT count(*)::int FROM monthly_branch_snapshots WHERE month_key = '2026-09'), 1, 'anon reads snapshot rows');
+-- M6 ค (20261111100100): anon อ่านทาง view v_branch_summary เท่านั้น
+SELECT is((SELECT count(*)::int FROM v_branch_summary WHERE month_key = '2026-09'), 1, 'anon reads snapshot rows through v_branch_summary');
 -- anon ถูกปฏิเสธตั้งแต่ชั้นสิทธิ์ (SQLSTATE 42501) ไม่ใช่แค่แก้แล้วโดน RLS กรองจนกระทบ 0 แถว
 SELECT throws_ok($$UPDATE monthly_branch_snapshots SET value = 0$$,
   '42501', NULL, 'anon cannot update snapshots');

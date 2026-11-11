@@ -157,8 +157,9 @@ SET LOCAL ROLE anon;
 SELECT throws_ok($$SELECT public.current_app_role()$$, '42501', NULL, 'anon cannot call current_app_role()');
 SELECT lives_ok($$SELECT count(*) FROM v_branch_summary$$,
   'anon still reads v_branch_summary after the revoke');
-SELECT lives_ok($$SELECT count(*) FROM monthly_branch_snapshots$$,
-  'anon still reads monthly_branch_snapshots after the revoke');
+-- M6 ค (20261111100100): ตาราง snapshot ปิดสำหรับ anon แล้ว อ่านทาง view เท่านั้น
+SELECT throws_ok($$SELECT count(*) FROM monthly_branch_snapshots$$, '42501', NULL,
+  'anon reads snapshots only through the view (table denied)');
 RESET ROLE;
 
 SELECT * FROM finish();

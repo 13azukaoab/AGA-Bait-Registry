@@ -37,9 +37,10 @@ SELECT is(
   0,
   'anon ไม่มีสิทธิ์ SELECT ตารางอ้างอิง (ไม่มี policy ให้ anon อยู่แล้ว)');
 
+-- M6 ค (20261111100100): anon อ่าน snapshot ทาง view v_branch_summary เท่านั้น
 SELECT ok(
-  has_table_privilege('anon', 'public.monthly_branch_snapshots', 'SELECT'),
-  'anon อ่าน monthly_branch_snapshots ได้ (ข้อมูล Dashboard สาธารณะ)');
+  NOT has_table_privilege('anon', 'public.monthly_branch_snapshots', 'SELECT'),
+  'anon อ่านตาราง monthly_branch_snapshots ตรงไม่ได้ (อ่านทาง view เท่านั้น)');
 
 SELECT ok(
   has_table_privilege('anon', 'public.v_branch_summary', 'SELECT'),
