@@ -257,6 +257,13 @@ tr.warnrow td{background:var(--warn-soft) !important}
 tr.badrow td{background:var(--danger-soft) !important}
 
 .xlsum{margin-top:16px}
+/* สรุปจำนวนลูกค้า — แบบ B: ซ้าย (ตาราง Size + คำอธิบาย) กว้างเท่าเนื้อหา ≤440px · ขวา (ตารางเขต) กินที่ที่เหลือ
+   align-items:start = ไม่ยืดตารางสั้นให้สูงเท่าตารางเขต (สาเหตุแถวกระจายเดิม) · คอลัมน์ซ้ายติดจอตอนเลื่อนดูตารางเขตที่ยาว */
+.xls-grid{display:grid;grid-template-columns:fit-content(440px) minmax(0,1fr);gap:24px;align-items:start}
+.xls-side{display:flex;flex-direction:column;gap:14px;position:sticky;top:72px}
+.xls-note{font-size:11.5px;color:var(--fg-muted);line-height:1.6;width:0;min-width:100%}
+.xls-main #zoneTbl{width:100%}
+@media (max-width:1100px){.xls-grid{grid-template-columns:minmax(0,1fr)} .xls-side{position:static} .xls-note{width:auto;max-width:640px}}
 .mini-t{width:auto;font-size:12px;border:1px solid var(--border);border-radius:8px;overflow:hidden}
 .miniwrap{overflow-x:auto;max-width:100%;min-width:0}
 .mini-t th{background:var(--surface-2);padding:6px 12px;font-size:11px}
@@ -1171,17 +1178,13 @@ table.xl .teambtn.multi{font-weight:700;color:var(--accent-strong)}
   <div class="panel">
     <h3>สรุปจำนวนลูกค้าที่เพิ่มในเดือนนี้ <span class="chip na">ต.ค. 2026</span>
       <button class="btn sm" type="button" style="margin-left:auto" onclick="exportSummaryXL()" title="ส่งออกตารางสรุปทั้งหมด + ข้อมูลกราฟ เป็นไฟล์ .xlsx หลายชีท">↓ ส่งออก Excel (สรุป)</button></h3>
-    <div class="body" style="display:flex;gap:26px;flex-wrap:wrap">
-      <table class="mini-t">
-        <thead><tr><th>ประเภท</th><th class="r">จำนวน</th></tr></thead>
-        <tbody>
-          <tr><td>New</td><td class="r num">60</td></tr>
-          <tr><td>Renew</td><td class="r num">73</td></tr>
-        </tbody>
-        <tfoot><tr><td>รวม</td><td class="r num">133</td></tr></tfoot>
-      </table>
+    <!-- แบบ B (เจ้าของเลือก 11 พ.ย. 2026): 2 คอลัมน์ — ซ้าย = ตาราง Size + คำอธิบาย (ติดจอตอนเลื่อน) · ขวา = ตารางเขตเต็มความกว้าง
+         เดิมเป็น flex แถวเดียว → ตาราง "ประเภท" ถูกยืดสูงเท่าตารางเขต แถวเลยกระจาย · ตาราง "ประเภท" เอาออก (ซ้ำกับแถว "รวมประเภท" ของตาราง Size
+         และการ์ดตัวเลขด้านบน) แต่ไฟล์ Excel ยังมีชีท "สรุปประเภท" (สร้างจากตัวเลขใน exportSummaryXL) -->
+    <div class="body xls-grid">
+      <div class="xls-side">
       <div class="miniwrap">
-      <table class="mini-t">
+      <table class="mini-t" id="sizeTbl" aria-label="สรุปตาม Size แยก New / Renew">
         <thead>
           <tr>
             <th rowspan="2">Size</th>
@@ -1211,12 +1214,13 @@ table.xl .teambtn.multi{font-weight:700;color:var(--accent-strong)}
         </tfoot>
       </table>
       </div>
-      <div class="miniwrap"><table class="mini-t" id="zoneTbl" aria-label="สรุปแยกตามเขต"></table></div>
-      <div style="font-size:11.5px;color:var(--fg-muted);max-width:250px">
+      <div class="xls-note">
         บล็อกนี้ตรงกับที่อยู่ด้านขวาของชีทเดิม — ต่างกันตรงที่<b>ระบบนับให้เอง</b>จากแถวในตาราง ไม่ต้องมาพิมพ์สรุปซ้ำ<br><br>
         ตาราง Size ซอยละเอียดกว่าชีทเดิม: แยก <b>New / Renew</b> คร่อม 1 ปี/3 ปี ในตารางเดียว เห็นได้เลยว่าลูกค้าใหม่กับต่อสัญญาอยู่ Tier ไหน<br><br>
         ตาราง<b>แยกตามเขต</b>: ทุกเขตเห็น <b>New / Renew × Size × 1 ปี / 3 ปี</b> พร้อมกัน (เขตละ 3 แถว: New · Renew · รวมเขต) · เขตมาจากสาขาของแต่ละสัญญาอัตโนมัติ (ชี้ที่ชื่อเขตเพื่อดูสาขาในเขตนั้น) · "กรุ๊ป" = งานกรุ๊ป (ลูกค้านอกสาขา) ไม่มีเขต
       </div>
+      </div>
+      <div class="miniwrap xls-main"><table class="mini-t" id="zoneTbl" aria-label="สรุปแยกตามเขต"></table></div>
     </div>
   </div>
 </div></div>
@@ -2715,11 +2719,11 @@ function renderDash(){
 function exportSummaryXL(){
   if(typeof XLSX==='undefined'){ alert('ต้องมีอินเทอร์เน็ตเพื่อโหลดไลบรารีส่งออก Excel (SheetJS) — ลองใหม่เมื่อออนไลน์'); return; }
   var wb=XLSX.utils.book_new();
-  var names=['สรุปประเภท','Size x New-Renew'];
-  [].slice.call(document.querySelectorAll('.xlsum table.mini-t'),0,2).forEach(function(t,i){
-    XLSX.utils.book_append_sheet(wb,XLSX.utils.table_to_sheet(t),names[i]);
-  });
   var total=sumOf('n')+sumOf('r');
+  /* ชีท "สรุปประเภท" สร้างจากตัวเลข (ตารางนี้เอาออกจากหน้าแล้ว — แบบ B) · ชีท Size อ่านจากตาราง #sizeTbl ในหน้า */
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([['ประเภท','จำนวน'],['New',sumOf('n')],['Renew',sumOf('r')],['รวม',total]]),'สรุปประเภท');
+  var st=document.getElementById('sizeTbl');
+  if(st) XLSX.utils.book_append_sheet(wb,XLSX.utils.table_to_sheet(st),'Size x New-Renew');
   /* ชีทแยกเขตแบบ "แบนราบ" (ทุกแถวมีชื่อเขต ไม่มีเซลล์ merge) เพื่อกรอง/Pivot ใน Excel ได้ — 1 แถว = เขต × ประเภทงาน */
   var zh=['เขต','ประเภทงาน','รวม'];
   DSIZES.forEach(function(s){ zh.push(s+' 1 ปี',s+' 3 ปี'); }); zh.push('ยังไม่ระบุ');
