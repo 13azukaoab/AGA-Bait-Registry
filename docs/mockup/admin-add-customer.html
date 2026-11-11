@@ -2455,7 +2455,8 @@ function renderDash(){
   /* ตารางข้อมูลของกราฟที่เลือก + ชุดข้อมูลกราฟ */
   var tbl='', note='', cfg=null, h=280;
   var txt=cssv('--fg-muted'), grid=cssv('--border');
-  var axis=function(stk,horiz){ var o={ticks:{color:txt,font:{size:11}},grid:{color:grid},stacked:!!stk}; return o; };
+  /* ไม่มีเส้นกริดในกราฟ (เจ้าของสั่ง 11 พ.ย.) — เหลือเส้นแกนไว้อ่านทิศทาง ค่าจริงดูจากตารางข้างกราฟ */
+  var axis=function(stk,horiz){ var o={ticks:{color:txt,font:{size:11}},grid:{display:false},border:{color:grid},stacked:!!stk}; return o; };
   if(dTab==='zone'){
     tbl=miniTable(['เขต','New','Renew','รวม'],DZ.map(function(d){return [d.z,d.n,d.r,d.n+d.r];}),['รวม',sumOf('n'),sumOf('r'),total]);
     note='แท่งซ้อน New + Renew ต่อเขต · กรุ๊ป = งานกรุ๊ป (นอกสาขา ไม่มีเขต)';
@@ -2481,7 +2482,7 @@ function renderDash(){
     tbl=miniTable(['ประเภท','สัญญา','สัดส่วน'],DTYPE.map(function(d){return [d[0],d[1],pct(d[1],total)];}),['รวม',total,'100%']);
     note='ประเภทลูกค้าตาม master 14 ค่า (ตัวเลขสมมติ)';
     cfg={type:'bar',data:{labels:DTYPE.map(function(d){return d[0];}),datasets:[{label:'สัญญา',data:DTYPE.map(function(d){return d[1];}),backgroundColor:cssv('--accent-strong')}]},
-      options:{indexAxis:'y',scales:{x:axis(false),y:{ticks:{color:txt,font:{size:11}},grid:{display:false}}}}};
+      options:{indexAxis:'y',scales:{x:axis(false),y:{ticks:{color:txt,font:{size:11}},grid:{display:false},border:{color:grid}}}}};
   }
   document.getElementById('dtbl').innerHTML=tbl;
   document.getElementById('dnote').textContent=note;
