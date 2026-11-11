@@ -2510,13 +2510,16 @@ function sumOf(k){ return DZ.reduce(function(a,d){return a+d[k];},0); }
 function zoneBranches(z){ return Object.keys(BRZONE).filter(function(b){return BRZONE[b]===z;}).join(', ')||'งานกรุ๊ป (ลูกค้านอกสาขา) — ไม่มีเขต'; }
 function cssv(n){ return getComputedStyle(document.documentElement).getPropertyValue(n).trim(); }
 
-/* อ่านงานต่อวันจากปฏิทิน: [{d:วันที่, n:จำนวนงาน}] */
+/* อ่านงานต่อวันจากปฏิทิน: [{d:วันที่, n:จำนวนงาน, w:วันในสัปดาห์ 0=อา…6=ส, wd:'จ'}]
+   วันในสัปดาห์ = ตำแหน่งคอลัมน์ในปฏิทิน (นับรวมช่องว่างต้นเดือน) → ตรงกับปฏิทินเสมอ ไม่ต้องคำนวณจากเดือนที่เลือก */
+var WD_TH=['อา','จ','อ','พ','พฤ','ศ','ส'];
 function calDays(){
-  return [].map.call(document.querySelectorAll('.hcal .hday:not(.pad)'),function(el){
+  return [].map.call(document.querySelectorAll('.hcal .hday'),function(el,i){
+    if(el.classList.contains('pad')) return {d:0};
     // data-total = ยอดเต็มของวัน (ไม่เปลี่ยนตามตัวกรองปฏิทิน) · ไม่มีค่อยอ่านเลขที่โชว์
     var d=parseInt((el.querySelector('.d')||{}).textContent,10),
         n=parseInt(el.getAttribute('data-total')||(el.querySelector('.n')||{}).textContent,10);
-    return {d:d||0, n:n||0};
+    return {d:d||0, n:n||0, w:i%7, wd:WD_TH[i%7]};
   }).filter(function(o){return o.d>0;});
 }
 function pendCount(){ var b=document.querySelector('.pendbar b'); var m=b&&b.textContent.match(/\d+/); return m?parseInt(m[0],10):0; }
@@ -2648,10 +2651,14 @@ function renderDash(){
   } else if(dTab==='day'){
     var top=days.filter(function(o){return o.n>0;}).sort(function(a,b){return b.n-a.n||a.d-b.d;}).slice(0,8);
     var sumd=days.reduce(function(a,o){return a+o.n;},0);
-    tbl=miniTable(['วันที่ (ต.ค.)','งาน'],top.map(function(o){return [o.d,o.n];}),['รวมทั้งเดือน',sumd]);
-    note='อ่านจากปฏิทินด้านล่างโดยตรง · ตารางแสดง 8 วันที่หนาแน่นสุด · ไม่รวมงานรอนัด '+pendCount()+' งาน';
-    cfg={type:'bar',data:{labels:days.map(function(o){return o.d;}),datasets:[{label:'งานต่อวัน',data:days.map(function(o){return o.n;}),backgroundColor:cssv('--new')}]},
-      options:{scales:{x:axis(false),y:axis(false)}}};
+    tbl=miniTable(['วันที่ (ต.ค.)','วัน','งาน'],top.map(function(o){return [o.d,o.wd,o.n];}),['รวมทั้งเดือน','',sumd]);
+    note='อ่านจากปฏิทินด้านล่างโดยตรง · ตารางแสดง 8 วันที่หนาแน่นสุด · ไม่รวมงานรอนัด '+pendCount()+' งาน · แกนล่าง: วันที่ / วันในสัปดาห์ (เสาร์–อาทิตย์สีจาง)';
+    /* ป้ายแกน X 2 บรรทัด: บน = วันที่ · ล่าง = ชื่อวัน · เสาร์/อาทิตย์ใช้สีจางให้เห็นช่วงสุดสัปดาห์ */
+    var faint=cssv('--fg-faint'), xAx=axis(false);
+    xAx.ticks={font:{size:11},autoSkip:false,maxRotation:0,
+      color:function(c){ var o=days[c.index]; return (o&&(o.w===0||o.w===6))?faint:txt; }};
+    cfg={type:'bar',data:{labels:days.map(function(o){return [String(o.d),o.wd];}),datasets:[{label:'งานต่อวัน',data:days.map(function(o){return o.n;}),backgroundColor:cssv('--new')}]},
+      options:{scales:{x:xAx,y:axis(false)}}};
   } else {
     h=340;
     tbl=miniTable(['ประเภท','สัญญา','สัดส่วน'],DTYPE.map(function(d){return [d[0],d[1],pct(d[1],total)];}),['รวม',total,'100%']);
@@ -2694,8 +2701,8 @@ function exportSummaryXL(){
   XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(zr),'แยกตามเขต');
   var brRows=[['สาขา','เขต','New','Renew','รวม']].concat(DBR.map(function(d){return [d.b,d.z,d.n,d.r,d.n+d.r];}));
   XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(brRows),'แยกตามสาขา');
-  var dayRows=[['วันที่ (ต.ค. 2026)','จำนวนงาน']].concat(calDays().map(function(o){return [o.d,o.n];}));
-  dayRows.push(['รอนัดบริการ (ยังไม่ลงวันที่)',pendCount()]);
+  var dayRows=[['วันที่ (ต.ค. 2026)','วัน','จำนวนงาน']].concat(calDays().map(function(o){return [o.d,o.wd,o.n];}));
+  dayRows.push(['รอนัดบริการ (ยังไม่ลงวันที่)','',pendCount()]);
   XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(dayRows),'งานต่อวัน');
   var typeRows=[['ประเภทลูกค้า','สัญญา','สัดส่วน (%)']].concat(DTYPE.map(function(d){return [d[0],d[1],Math.round(d[1]*1000/total)/10];}));
   XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(typeRows),'ประเภทลูกค้า');
