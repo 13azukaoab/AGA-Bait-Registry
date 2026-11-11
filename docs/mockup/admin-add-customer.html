@@ -311,7 +311,13 @@ table.xl thead th.sortable[aria-sort="ascending"],table.xl thead th.sortable[ari
 .dk .l{font-size:11.5px;color:var(--fg-muted)}
 .dk .v{font-size:22px;font-weight:700;line-height:1.2;margin-top:2px}
 .dk .s{font-size:11px;color:var(--fg-faint)}
-.dgrid{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);gap:16px;align-items:start}
+/* กราฟกินที่ที่เหลือทั้งหมด · คอลัมน์ตารางกว้างเท่าเนื้อตาราง (ไม่เกิน 400px) ชิดขวา
+   (เดิม 1.6fr/1fr → คอลัมน์ขวากว้าง ~40% แต่ตารางกว้างแค่เนื้อหา เหลือที่ว่างขวามือ) */
+.dgrid{display:grid;grid-template-columns:minmax(0,1fr) fit-content(400px);gap:20px;align-items:start}
+.dgrid #dtbl .mini-t{width:100%}
+/* หมายเหตุใต้ตารางไม่ให้ดันคอลัมน์ให้กว้างขึ้น (width:0 + min-width:100% = กว้างเท่าตาราง แล้วตัดบรรทัด) */
+.dgrid .dnote{width:0;min-width:100%}
+@media (max-width:900px){.dgrid .dnote{width:auto}}
 @media (max-width:900px){.dgrid{grid-template-columns:minmax(0,1fr)}}
 .dtabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
 .dtabs button{font-family:inherit;font-size:12.5px;padding:5px 12px;border-radius:999px;border:1px solid var(--border-strong);
@@ -2675,6 +2681,9 @@ function renderDash(){
   if(!document.getElementById('dcv')) document.getElementById('dcanvas').innerHTML='<canvas id="dcv" role="img" aria-label="กราฟสรุปการเปิดงาน"></canvas>';
   cfg.options.responsive=true; cfg.options.maintainAspectRatio=false;
   cfg.options.plugins={legend:{display:cfg.type!=='bar'||dTab==='zone'||dTab==='branch',labels:{color:txt,font:{size:11},boxWidth:10}}};
+  /* ป้ายแกนงานต่อวันเป็น 2 บรรทัด → tooltip เขียนหัวเองให้อ่านว่า "14 ต.ค. (พ)" แทน "14,พ" */
+  if(dTab==='day') cfg.options.plugins.tooltip={callbacks:{title:function(it){
+    var o=days[it[0].dataIndex]; return o?o.d+' ต.ค. ('+o.wd+')':''; }}};
   cfg.options.layout={padding:{top:18,right:28}};   /* เว้นที่ให้ป้ายตัวเลขบนสุด/ปลายแท่ง ไม่ให้โดนตัด */
   cfg.plugins=[TOT_LABELS];
   dChart=new Chart(document.getElementById('dcv'),cfg);
