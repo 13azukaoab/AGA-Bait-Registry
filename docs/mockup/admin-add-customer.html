@@ -631,7 +631,7 @@ table.xl .teambtn.multi{font-weight:700;color:var(--accent-strong)}
   <div class="field"><label for="fStatus">สถานะ</label><select id="fStatus" onchange="fltApply()">
     <option value="">ทั้งหมด</option><option value="ok">ครบแล้ว</option><option value="pend">รอนัดบริการ</option><option value="miss">ขาดข้อมูลจำเป็น</option>
     <option value="nofile">ยังไม่แนบไฟล์</option><option value="warn">มีคำเตือนอื่น (ระยะสัญญา/วันที่)</option></select></div>
-  <div class="field" style="flex:1;min-width:150px"><label for="fSearch">ค้นหา</label><input id="fSearch" type="search" placeholder="ชื่อลูกค้า / เลขที่สัญญา" style="width:100%" oninput="fltApply()" autocomplete="off"></div>
+  <div class="field" style="flex:1;min-width:150px"><label for="fSearch">กรองในตารางนี้</label><input id="fSearch" type="search" placeholder="พิมพ์ชื่อลูกค้า / เลขที่สัญญา (เฉพาะเดือนที่เลือก)" title="กรองแถวในตารางเปิดงานของเดือนที่เลือก — ค้นทั้งระบบใช้ช่องค้นหาบนแถบหัว" style="width:100%" oninput="fltApply()" autocomplete="off"></div>
   <button class="btn sm" type="button" id="fClear" onclick="fltReset()" hidden>✕ ล้างตัวกรอง</button>
   <button class="btn sm" type="button" onclick="exportXL()" title="ส่งออกทุกแถวของเดือน (ไม่ขึ้นกับตัวกรองที่เลือกอยู่)">↓ ส่งออก Excel</button>
   <button class="btn sm primary" type="button" onclick="addRow()">+ เพิ่มแถว</button>
