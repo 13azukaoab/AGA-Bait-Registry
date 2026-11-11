@@ -112,12 +112,14 @@ git revert <commit-hash>   # ย้อน commit นั้น (ปลอดภ�
 | DB schema, migration, RLS, Auth/สิทธิ์ (PDPA) | **Opus** | `code-review-and-quality`, `security-review` |
 | ตัดสินสถาปัตยกรรม / แก้ SPEC / debug หา root cause ยาก | **Opus** | `superpowers:brainstorming` (งานใหม่), `superpowers:systematic-debugging` (บั๊ก) |
 | ตรวจรอบสุดท้ายก่อน merge/push | **Opus** | `code-review-and-quality`, `superpowers:verification-before-completion` |
-| ทำ UI/หน้าจอตาม mockup ที่อนุมัติแล้ว, CSS, nav, โลโก้ | **Sonnet** | `frontend-design` หรือ `anthropic-skills:impeccable`, `webapp-testing` |
+| ทำ UI/หน้าจอจริงตาม mockup ที่อนุมัติแล้ว, CSS, nav, โลโก้ | **Sonnet** | `webapp-testing` (ไม่ต้องเปิด skill ออกแบบ — ทำตาม mockup ที่อนุมัติแล้ว) |
 | mockup หน้าใหม่ (ต้องทำ preview เทียบก่อน) | **Sonnet** (เสนอ layout) | `frontend-design`, `webapp-testing` |
+| ตรวจ UX ของ mockup ก่อนเจ้าของบอก final | **Sonnet** | `anthropic-skills:ui-ux-pro-max` (ตรวจเฉพาะ UX/การจัดวาง/ความง่ายในการใช้) |
 | กราฟ / dashboard | **Sonnet** | `dataviz` |
 | เขียน doc / changelog / handoff / แก้ข้อความ | **Sonnet** | — (ไม่ต้องมี skill) |
 | ค้นหา/อ่านไฟล์เพื่อตอบคำถามสั้นๆ | Sonnet หรือ Haiku | — |
 
+- **skill ออกแบบ เปิดทีละตัวตามช่วงงาน ห้ามเปิดพร้อมกัน** (`frontend-design` / `anthropic-skills:ui-ux-pro-max` / `anthropic-skills:impeccable` คำแนะนำซ้อนและขัดกัน ทำงานวนแก้ + เปลือง token) · ทุกตัว **ห้ามใช้ชุดสี/ฟอนต์ที่ skill เสนอ** ให้ยึดสี Tier 8 แบบ, Noto Sans Thai และ CSS variable เดิมเสมอ (ดูหัวข้อ UI / Design)
 - ถ้างานผสม (เช่น สร้าง UI แล้วต้องต่อ RLS) → แยกเป็น sub session ตามความเสี่ยง ไม่ใช้ Opus ทั้งก้อน
 - `superpowers:brainstorming` / `writing-plans` เปิดเฉพาะงาน **ที่ยังไม่ตัดสินใจ** — ถ้าดีไซน์/สเปคตัดสินแล้วและมี handoff ให้ข้าม (กันวนถามซ้ำ)
 - ใน brief ของ session ใหม่ให้ระบุ: ไฟล์ที่ต้องอ่านก่อน, ไฟล์ที่แตะได้, "เสร็จ = อะไร" และข้อห้าม (เช่น ห้าม push ให้ coordinator ทำ)
