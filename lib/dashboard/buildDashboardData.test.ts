@@ -247,3 +247,79 @@ describe("buildDashboardData — ใช้เขตปัจจุบันก�
     expect(total).toBe(200);
   });
 });
+
+/**
+ * DECISIONS 5.12a (เดิม X8) — เจ้าของตัดสิน 11 พ.ย. 2026 ข้อ ข
+ * เดือนแรกหลัง go-live ที่สาขาต่างจังหวัดยังไม่มีแถว manual → ใช้แถว legacy เดือนล่าสุดของสาขานั้น
+ * ไม่มีทั้ง manual และ legacy → แถวศูนย์ (กรณีที่ไม่ควรเกิด)
+ */
+describe("buildDashboardData — เดือนแรกหลัง go-live ยกค่า legacy (DECISIONS 5.12a)", () => {
+  const row = (area: string, branch: string, value: number): SnapshotRow => ({
+    area, branch,
+    s1: 1, s3: 0, m1: 0, m3: 0, l1: 0, l3: 0, xl1: 0, xl3: 0,
+    cust: 1, vS: value, vM: 0, vL: 0, vXL: 0, value, value_annual: value,
+  });
+
+  const find = (data: ReturnType<typeof buildDashboardData>, key: string, branch: string) =>
+    (data[key] ?? []).find((r) => r.branch === branch);
+
+  /** legacy 2 เดือนสุดท้ายก่อน go-live (ค่าไม่เท่ากัน เพื่อพิสูจน์ว่าเลือก "เดือนล่าสุด") */
+  const legacy = {
+    "2026-09": [row("เขต 7", "เชียงใหม่", 900)],
+    "2026-10": [row("เขต 7", "เชียงใหม่", 1000)],
+  };
+
+  it("เดือนแรกหลัง go-live ไม่มี manual → ใช้ค่า legacy เดือนล่าสุด (ไม่ใช่แถวศูนย์)", () => {
+    const data = buildDashboardData({
+      legacy,
+      computed: { "2026-11": [row("เขต 1", "พุทธมณฑล", 10)] },
+    });
+    expect(find(data, "NOV.26", "เชียงใหม่")?.value).toBe(1000);
+    expect(find(data, "NOV.26", "เชียงใหม่")?.area).toBe("เขต 7");
+  });
+
+  it("ยกค่า legacy ต่อได้หลายเดือนจนกว่าจะมี manual", () => {
+    const data = buildDashboardData({
+      legacy,
+      computed: {
+        "2026-11": [row("เขต 1", "พุทธมณฑล", 10)],
+        "2026-12": [row("เขต 1", "พุทธมณฑล", 10)],
+        "2027-01": [row("เขต 1", "พุทธมณฑล", 10)],
+      },
+    });
+    expect(find(data, "DEC.26", "เชียงใหม่")?.value).toBe(1000);
+    expect(find(data, "JAN.27", "เชียงใหม่")?.value).toBe(1000);
+  });
+
+  it("มี manual แล้วใช้ manual และเดือนถัดไปยกค่า manual ต่อ (ไม่ย้อนไปใช้ legacy)", () => {
+    const data = buildDashboardData({
+      legacy,
+      computed: {
+        "2026-11": [row("เขต 1", "พุทธมณฑล", 10)],
+        "2026-12": [row("เขต 1", "พุทธมณฑล", 10)],
+      },
+      manual: { "2026-11": [row("เขต 7", "เชียงใหม่", 1234)] },
+    });
+    expect(find(data, "NOV.26", "เชียงใหม่")?.value).toBe(1234);
+    expect(find(data, "DEC.26", "เชียงใหม่")?.value).toBe(1234);
+  });
+
+  it("ไม่มีทั้ง manual และ legacy ของสาขานั้นเลย → แถวศูนย์", () => {
+    const data = buildDashboardData({
+      legacy,
+      computed: { "2026-11": [row("เขต 1", "พุทธมณฑล", 10)] },
+    });
+    // ตาก ไม่มีใน legacy ตัวอย่างนี้ (ข้อมูลจริงมีครบ 43 สาขา — กรณีนี้ไม่ควรเกิด)
+    expect(find(data, "NOV.26", "ตาก")?.value).toBe(0);
+    expect(find(data, "NOV.26", "ตาก")?.cust).toBe(0);
+  });
+
+  it("ค่าที่ยกจาก legacy ไม่ใช้ object เดียวกับแถว legacy (แก้เดือนหนึ่งไม่กระทบอีกเดือน)", () => {
+    const data = buildDashboardData({
+      legacy,
+      computed: { "2026-11": [row("เขต 1", "พุทธมณฑล", 10)] },
+    });
+    expect(find(data, "NOV.26", "เชียงใหม่")).not.toBe(find(data, "OCT.26", "เชียงใหม่"));
+    expect(find(data, "NOV.26", "เชียงใหม่")).toEqual(find(data, "OCT.26", "เชียงใหม่"));
+  });
+});
