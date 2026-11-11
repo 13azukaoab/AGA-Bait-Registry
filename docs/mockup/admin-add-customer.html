@@ -2368,6 +2368,24 @@ var DZ=DZONES.map(function(z){
 var DTYPE=[['บ้านเดี่ยว',80],['ทาวน์โฮม / ตึกแถว',16],['คอนโด / อพาร์ตเมนต์ / หอพัก',8],['ออฟฟิต',9],
   ['ห้างสรรพสินค้า / ร้านค้า',4],['โรงแรม/รีสอร์ท',3],['โรงงาน',2],['โกดังสินค้า',2],['โรงพยาบาล',1],
   ['สถานศึกษา',2],['สถานที่ราชการ',2],['สถานที่ทางศาสนา',1],['สถานที่สำคัญ',1],['อื่นๆ (ระบุในหมายเหตุ)',2]];
+/* แยกสาขา (ตัวเลขสมมติ) — ผลรวม New/Renew ของสาขาในแต่ละเขต = ยอดเขตใน DZ เสมอ (ตรวจด้วย dbrCheck ตอนโหลด)
+   ของจริง: นับจาก contracts ตามสาขา ไม่ใช่ค่าคงที่ · "งานกรุ๊ป" = ลูกค้านอกสาขา ไม่มีเขต */
+var DBR=[
+  ['พุทธมณฑล',3,3],['พระราม2',2,3],['หัวหิน',3,4],['นครปฐม',2,2],
+  ['นนทบุรี',4,4],['สาทร',2,3],['พระราม4',1,2],['ปทุมวัน',2,2],
+  ['รามอินทรา',3,3],['ปทุมธานี',2,3],['อยุธยา',1,2],
+  ['พัฒนาการ',4,5],['ลาดพร้าว',4,4],['ประชาชื่น',3,3],['สุวินทวงศ์',2,3],
+  ['สมุทรปราการ',3,4],['ระยอง',2,2],['ปราจีนบุรี',1,1],['พัทยา',2,3],
+  ['สุขุมวิท',4,4],['ปากน้ำ',3,3],['ชลบุรี',2,3],
+  ['ปากช่อง',1,2],['สระบุรี',1,1],
+  ['งานกรุ๊ป',3,4]
+].map(function(a){ return {b:a[0], z:BRZONE[a[0]]||'กรุ๊ป', n:a[1], r:a[2]}; });
+(function dbrCheck(){
+  DZ.forEach(function(d){
+    var n=0,r=0; DBR.forEach(function(x){ if(x.z===d.z){ n+=x.n; r+=x.r; } });
+    if(n!==d.n||r!==d.r) console.warn('DBR ไม่ตรงยอดเขต',d.z,'สาขา',n,r,'เขต',d.n,d.r);
+  });
+})();
 var dTab='zone', dChart=null;
 
 function sumOf(k){ return DZ.reduce(function(a,d){return a+d[k];},0); }
@@ -2439,8 +2457,35 @@ function miniTable(head,rows,foot){
 }
 function pct(a,b){ return b?Math.round(a*1000/b)/10+'%':'—'; }
 
+/* ป้ายตัวเลขบนกราฟ (เจ้าของสั่ง 11 พ.ย. — อ่านค่าได้ทันทีไม่ต้องชี้เมาส์)
+   แท่งซ้อน = ยอดรวมทุกชุดที่เปิดอยู่ วางบนแท่ง (แท่งตั้ง) หรือปลายแท่ง (แท่งนอน) · กดซ่อน New/Renew ที่ legend ยอดจะคิดใหม่
+   โดนัท = จำนวนในชิ้น (ชิ้นเล็กกว่า 4% ไม่ใส่ กันตัวเลขทับกัน) · ค่า 0 ไม่ใส่ */
+var TOT_LABELS={id:'totLabels',afterDatasetsDraw:function(ch){
+  var ctx=ch.ctx, ds=ch.data.datasets, horiz=ch.options.indexAxis==='y';
+  ctx.save();
+  ctx.font='600 11px '+getComputedStyle(document.body).fontFamily;
+  if(ch.config.type==='doughnut'){
+    var meta=ch.getDatasetMeta(0), data=ds[0].data, tot=data.reduce(function(a,b){return a+b;},0);
+    ctx.fillStyle=cssv('--surface'); ctx.textAlign='center'; ctx.textBaseline='middle';
+    meta.data.forEach(function(arc,i){
+      var v=data[i]; if(!v||!tot||v/tot<0.04||!ch.getDataVisibility(i)) return;
+      var pt=arc.tooltipPosition(); ctx.fillText(v,pt.x,pt.y);
+    });
+  } else {
+    ctx.fillStyle=cssv('--fg');
+    ch.data.labels.forEach(function(_,i){
+      var sum=0, top=null;
+      ds.forEach(function(d,k){ if(!ch.isDatasetVisible(k)) return; sum+=+d.data[i]||0; top=ch.getDatasetMeta(k).data[i]; });
+      if(!sum||!top) return;
+      if(horiz){ ctx.textAlign='left'; ctx.textBaseline='middle'; ctx.fillText(sum,top.x+4,top.y); }
+      else { ctx.textAlign='center'; ctx.textBaseline='bottom'; ctx.fillText(sum,top.x,top.y-3); }
+    });
+  }
+  ctx.restore();
+}};
+
 function renderDash(){
-  var tabs=[['zone','เขต'],['tier','Tier'],['day','งานต่อวัน'],['type','ประเภทลูกค้า']];
+  var tabs=[['zone','เขต'],['branch','สาขา'],['tier','Tier'],['day','งานต่อวัน'],['type','ประเภทลูกค้า']];
   var total=sumOf('n')+sumOf('r'), days=calDays(), best=days.slice().sort(function(a,b){return b.n-a.n;})[0]||{d:0,n:0};
   var topZ=DZ.filter(function(d){return d.z!=='กรุ๊ป';}).sort(function(a,b){return (b.n+b.r)-(a.n+a.r);})[0];
   var k=function(l,v,s){return '<div class="dk"><div class="l">'+l+'</div><div class="v">'+v+'</div><div class="s">'+s+'</div></div>';};
@@ -2464,6 +2509,16 @@ function renderDash(){
       {label:'New',data:DZ.map(function(d){return d.n;}),backgroundColor:cssv('--accent')},
       {label:'Renew',data:DZ.map(function(d){return d.r;}),backgroundColor:cssv('--ok')}]},
       options:{scales:{x:axis(true),y:axis(true)}}};
+  } else if(dTab==='branch'){
+    /* แท่งนอน เรียงรวมมาก → น้อย (24 สาขาแท่งตั้งอ่านไม่ออก) · ป้ายแกน = สาขา · ตารางข้างกราฟมีเขตกำกับ */
+    var br=DBR.slice().sort(function(a,b){ return (b.n+b.r)-(a.n+a.r) || a.b.localeCompare(b.b,'th'); });
+    h=Math.max(280, br.length*22+60);
+    tbl=miniTable(['สาขา','เขต','New','Renew','รวม'],br.map(function(d){return [d.b,d.z,d.n,d.r,d.n+d.r];}),['รวม','',sumOf('n'),sumOf('r'),total]);
+    note='แท่งซ้อน New + Renew ต่อสาขา เรียงจากมากไปน้อย · งานกรุ๊ป = ลูกค้านอกสาขา (ไม่มีเขต) · ตัวเลขสมมติ ผลรวมตรงกับแท็บเขต';
+    cfg={type:'bar',data:{labels:br.map(function(d){return d.b;}),datasets:[
+      {label:'New',data:br.map(function(d){return d.n;}),backgroundColor:cssv('--accent')},
+      {label:'Renew',data:br.map(function(d){return d.r;}),backgroundColor:cssv('--ok')}]},
+      options:{indexAxis:'y',scales:{x:axis(true),y:axis(true)}}};
   } else if(dTab==='tier'){
     var tv=[sumOf('s'),sumOf('m'),sumOf('l'),sumOf('x'),DUNCLASSIFIED], tn=['S','M','L','XL','ยังไม่จัด Tier'];
     tbl=miniTable(['Tier','สัญญา','สัดส่วน'],tn.map(function(n,i){return [n,tv[i],pct(tv[i],total)];}),['รวม',total,'100%']);
@@ -2492,7 +2547,9 @@ function renderDash(){
     document.getElementById('dcanvas').innerHTML='<div class="dmiss">ต้องมีอินเทอร์เน็ตเพื่อโหลดกราฟ (Chart.js) — ตารางด้านขวายังดูได้ตามปกติ</div>'; return; }
   if(!document.getElementById('dcv')) document.getElementById('dcanvas').innerHTML='<canvas id="dcv" role="img" aria-label="กราฟสรุปการเปิดงาน"></canvas>';
   cfg.options.responsive=true; cfg.options.maintainAspectRatio=false;
-  cfg.options.plugins={legend:{display:cfg.type!=='bar'||dTab==='zone',labels:{color:txt,font:{size:11},boxWidth:10}}};
+  cfg.options.plugins={legend:{display:cfg.type!=='bar'||dTab==='zone'||dTab==='branch',labels:{color:txt,font:{size:11},boxWidth:10}}};
+  cfg.options.layout={padding:{top:18,right:28}};   /* เว้นที่ให้ป้ายตัวเลขบนสุด/ปลายแท่ง ไม่ให้โดนตัด */
+  cfg.plugins=[TOT_LABELS];
   dChart=new Chart(document.getElementById('dcv'),cfg);
 }
 
@@ -2515,6 +2572,8 @@ function exportSummaryXL(){
     DSIZES.forEach(function(s){ row.push(o[s+'1'],o[s+'3']); }); row.push(ru); zr.push(row);
   }); });
   XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(zr),'แยกตามเขต');
+  var brRows=[['สาขา','เขต','New','Renew','รวม']].concat(DBR.map(function(d){return [d.b,d.z,d.n,d.r,d.n+d.r];}));
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(brRows),'แยกตามสาขา');
   var dayRows=[['วันที่ (ต.ค. 2026)','จำนวนงาน']].concat(calDays().map(function(o){return [o.d,o.n];}));
   dayRows.push(['รอนัดบริการ (ยังไม่ลงวันที่)',pendCount()]);
   XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(dayRows),'งานต่อวัน');
