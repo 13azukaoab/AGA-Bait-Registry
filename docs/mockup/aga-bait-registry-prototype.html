@@ -1005,9 +1005,12 @@ var HD=(function(){
     '.hd-chip.ok{background:var(--ok-soft);color:var(--ok)}.hd-chip.miss{background:var(--danger-soft);color:var(--danger)}.hd-chip.info{background:var(--accent-soft);color:var(--accent-strong)}.hd-chip.pend{background:var(--warn-soft);color:var(--warn)}'+
     '.hd-foot{padding:10px 16px;border-top:1px solid var(--border);display:flex;flex-wrap:wrap;gap:6px 14px;font-size:12.5px}'+
     '.hd-foot a{color:var(--accent-strong)}.hd-empty{padding:18px 4px;color:var(--fg-muted);font-size:13px}';
+  /* ใส่สไตล์ปุ่มตั้งแต่สร้างปุ่มแรก (เดิมใส่ตอนเปิดลิ้นชักครั้งแรก ปุ่มเลยเป็นปุ่มเทาพื้นฐานจนกว่าจะมีคนกด) */
+  var cssOn=false;
+  function ensureCss(){ if(cssOn) return; cssOn=true; var st=document.createElement('style'); st.textContent=css; document.head.appendChild(st); }
   function build(){
     if(el) return;
-    var st=document.createElement('style'); st.textContent=css; document.head.appendChild(st);
+    ensureCss();
     el=document.createElement('div');
     el.innerHTML='<div class="hd-ov" id="hdOv" hidden></div><aside class="hd-panel" id="hdPanel" role="dialog" aria-modal="true" aria-labelledby="hdTitle" tabindex="-1" hidden>'+
       '<div class="hd-head"><h2 id="hdTitle"></h2><button type="button" class="hd-x" id="hdX" aria-label="ปิดประวัติ">✕</button></div>'+
@@ -1019,6 +1022,7 @@ var HD=(function(){
   }
   /* ปุ่มเปิดลิ้นชัก — ใส่ใน markup ของหน้า (ซ่อนเองถ้าไม่ใช่ host) */
   function btn(ct,name){
+    ensureCss();
     var n=rowsFor({ct:ct,name:name}).list.length;
     return '<button type="button" class="hd-btn" data-hd-ct="'+esc(ct)+'" data-hd-name="'+esc(name)+'"'+(isHost()?'':' hidden')+
       ' title="ดูประวัติการแก้ไขของสัญญานี้ (เฉพาะ host)" aria-label="ดูประวัติการแก้ไข '+esc(ct)+'">⟲ ประวัติ ('+n+')</button>';
