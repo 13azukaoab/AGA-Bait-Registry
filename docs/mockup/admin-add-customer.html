@@ -409,7 +409,16 @@ td.nm:has(.hd-btn:not([hidden])) .rowlk{right:98px}
 .hday .hnames{margin-top:4px;display:flex;flex-direction:column;gap:2px;overflow:hidden}
 .hday .hnames .more{font-size:10px;color:var(--fg-faint);padding-left:5px}
 .hday[data-tip]:hover::after{white-space:pre;text-align:left;line-height:1.6;max-width:none}
-@media (max-width:620px){.hday{min-height:78px} .hday .n{font-size:14px}}
+/* แบบ 4 (เจ้าของเลือก 11 พ.ย. 2026): วันที่ชิดซ้าย + "N ราย" ชิดขวาในแถวเดียวกัน → ได้บรรทัดคืน 1 บรรทัด
+   ช่องจึงโชว์รายชื่อได้ 4 ราย (เดิม 3) · ใช้ grid แทน flex: แถว 1 = วันที่ | จำนวน · แถว 2 = รายชื่อเต็มความกว้าง */
+.hday:not(.pad){display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-rows:auto 1fr;align-content:start;column-gap:6px}
+.hday .d{font-size:12.5px;line-height:1.35;align-self:baseline}
+.hday .n{font-size:15px;line-height:1.35;margin-top:0;justify-self:end;align-self:baseline;white-space:nowrap}
+.hday .hnames{grid-column:1 / -1;margin-top:3px}
+/* จอแคบ (ช่องกว้าง ~38px): วันที่กับจำนวนแถวเดียวกันจะติดกันจนอ่านเป็น "1410" → ให้จำนวนลงบรรทัดใต้วันที่เหมือนเดิม */
+@media (max-width:620px){.hday{min-height:78px} .hday .d{font-size:11px}
+  .hday:not(.pad){grid-template-columns:minmax(0,1fr);grid-template-rows:auto auto 1fr}
+  .hday .n{font-size:14px;justify-self:start} .hday .hnames{grid-column:1}}
 
 /* ===== popup รายวัน (คลิก/Enter ที่ช่องวันในปฏิทิน) =====
    เซลล์โชว์ได้แค่ 3 รายแรก — popup นี้คือที่ดูงานทั้งวันแบบครบ */
@@ -1578,7 +1587,7 @@ hcal.addEventListener('keydown',function(e){
 
 /* ===== ตัวกรองปฏิทิน (ประเภทงาน New/Renew + Tier S/M/L/XL) =====
    ตอนโหลด: เก็บรายการงานเต็มของแต่ละวัน (จาก data-jobs) ไว้ที่ el._jobs + ยอดเต็มใน data-total
-   ตอนเปลี่ยนตัวกรอง: วาดช่องวันใหม่จากงานที่ผ่านตัวกรอง — จำนวน · 3 รายแรก · "+N ราย" · เฉดพื้น ·
+   ตอนโหลดและตอนเปลี่ยนตัวกรอง: วาดช่องวันจากงานที่ผ่านตัวกรอง — จำนวน · 4 รายแรก · "+N ราย" · เฉดพื้น ·
    tooltip · data-jobs (popup รายวันจึงโชว์เฉพาะงานที่กรอง) · วันที่เหลือ 0 งานกดไม่ได้
    calDays() (กราฟสรุป) อ่าน data-total = ยอดเต็ม ไม่เปลี่ยนตามตัวกรอง */
 (function(){
@@ -1594,13 +1603,14 @@ hcal.addEventListener('keydown',function(e){
   function part(j,i){ return (j.slice(6).split('·')[i]||'').trim(); }   // 0 ชื่อ · 1 สาขา · 2 Tier(S3) · 3 New/Renew
   function tierGrp(t){ return t.replace(/\d/g,'').toLowerCase(); }       // S3 → s · XL1 → xl
   function heat(n){ return n===0?'h0':n<=2?'h1':n<=4?'h2':n<=7?'h3':'h4'; } // เกณฑ์เดียวกับปฏิทินเดิม
+  var SHOW=4;   // รายชื่อที่โชว์ในช่อง (แบบ 4: จำนวนย้ายขึ้นแถววันที่ → มีที่ 4 ราย) · tooltip ยังย่อ 3 บรรทัด
   function draw(el,jobs){
     var n=jobs.length, head=el._head+' · '+(n?n+' งาน':'ไม่มีงาน');
     el.classList.remove('h0','h1','h2','h3','h4'); el.classList.add(heat(n));
     el.querySelector('.n').textContent=n?n:'';
-    el.querySelector('.hnames').innerHTML=jobs.slice(0,3).map(function(j){
+    el.querySelector('.hnames').innerHTML=jobs.slice(0,SHOW).map(function(j){
       return '<span class="ev '+tierGrp(part(j,2))+'"><b>'+j.slice(0,5)+'</b>'+esc(part(j,0))+'</span>';
-    }).join('')+(n>3?'<span class="more">+'+(n-3)+' ราย</span>':'');
+    }).join('')+(n>SHOW?'<span class="more">+'+(n-SHOW)+' ราย</span>':'');
     el.setAttribute('data-jobs',[head].concat(jobs).join('\n'));
     el.setAttribute('data-tip',[head].concat(n>3?jobs.slice(0,3).concat('… คลิกที่วันเพื่อดูทั้งหมด '+n+' งาน'):jobs).join('\n'));
     if(n){ el.setAttribute('tabindex','0'); el.setAttribute('role','button'); }
@@ -1619,6 +1629,7 @@ hcal.addEventListener('keydown',function(e){
     if(tot) tot.textContent=(sale==='all'&&tier==='all')?'รวม '+TOTAL+' งานในเดือนนี้':'แสดง '+shown+' จาก '+TOTAL+' งาน';
   }
   document.querySelectorAll('.calfilter input[type=radio]').forEach(function(i){ i.addEventListener('change',apply); });
+  apply();   // วาดครั้งแรก: HTML เดิมเขียนไว้ 3 ราย → วาดใหม่ให้เป็น 4 ราย (SHOW)
 })();
 dayOv.addEventListener('mousedown',function(e){ if(e.target===dayOv) dayClose(); });
 document.addEventListener('keydown',function(e){
