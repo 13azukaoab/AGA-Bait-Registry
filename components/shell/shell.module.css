@@ -8,7 +8,7 @@
 
 /* โลโก้ AGA เต็มชุด A + ADVANCE + GROUP ASIA (aga-logo-full.png สูง 144px = 3 เท่าของที่แสดง 48px ให้คมบนจอความละเอียดสูง
    ครอปขอบจาก docs/mockup/Logo Advance Group Asia.png แล้วย่อ Lanczos — ไฟล์เดียวกับใน mockup _shell/shell.css)
-   ⚠ aga-logo.png เดิมยังอยู่ เพราะหน้า login/summary ใช้อยู่ (นอกขอบเขตงานโครงหน้า)
+   หน้า login + /summary ใช้ไฟล์เดียวกันนี้ (aga-logo.png เดิมลบแล้ว 12 พ.ย. 2026)
    ใช้เป็นภาพพื้นหลังผ่าน CSS แทน import ในโค้ด เพื่อให้ `tsc --noEmit` ใน CI ผ่านโดยไม่ต้องพึ่ง next-env.d.ts
    สว่าง = สีเดิม · มืด = ฟิลเตอร์ทำเป็นสีขาว (เจ้าของตัดสิน 8 พ.ย. 2026) */
 .logo {
