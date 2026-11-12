@@ -9,7 +9,7 @@
  *     · "กำลังแก้" (กดปุ่ม แก้ ที่แถวบันทึกแล้ว → แถวเดิมกลายเป็นช่องกรอก ดู `editRow.ts`) · และ "ร่าง"
  *     (แถวที่กำลังกรอก ยังไม่บันทึก) — ร่างแสดงเสมอ ไม่ถูกตัวกรองซ่อน กันงานที่พิมพ์ค้างหาย
  *   * แก้แถว (รอบ 1.3): บันทึก = RPC `save_job_opening` โหมดแก้ (ส่ง `p_contract_id`) ทีละแถว · ล็อกสาขา/ชื่อลูกค้า/
- *     ประเภทลูกค้า · สัญญา closed/cancelled ปิดปุ่มแก้ · แก้แล้ว trigger ลง audit_log เอง → router.refresh() ให้ตัวนับ
+ *     ประเภทลูกค้า · สัญญา closed/cancelled ปิดปุ่มแก้ยกเว้น host · แก้แล้ว trigger ลง audit_log เอง → router.refresh() ให้ตัวนับ
  *     "ประวัติ (n)" อัปเดต · ยกเลิก = ทิ้งแถวที่แก้ ค่ากลับเป็นของเดิมในฐานข้อมูล
  *   * ช่องคำนวณ (เขต/Tier/วันสิ้นสุด) เรียก `rowCalc.ts` → `lib/rules` · เกณฑ์ Tier มาจาก `tier_rules` ที่ server ส่งมา
  *   * ตัวกรอง เดือน = เปลี่ยน `?month=` (server โหลดใหม่) · เขต/สาขา/สถานะ/ค้นหา = กรองฝั่ง client
@@ -659,7 +659,7 @@ export function NewContractsClient({ role, month, monthChoices, master, saved, t
                   />
                 );
               }
-              const editBlocked = contractEditBlockReason(s.status);
+              const editBlocked = contractEditBlockReason(s.status, role);
               return (
                 <tr key={s.contractId}>
                   <td className={cx(TD, "num text-center text-fg-muted")}>{idx + 1}</td>

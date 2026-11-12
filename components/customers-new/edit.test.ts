@@ -157,11 +157,20 @@ describe("isEditUnchanged", () => {
 });
 
 describe("contractEditBlockReason — สัญญาปิด/ยกเลิกแก้ไม่ได้", () => {
-  it("closed / cancelled มีเหตุผล · active / expired_pending_collection แก้ได้", () => {
-    expect(contractEditBlockReason("closed")).toMatch(/ปิดแล้ว/);
-    expect(contractEditBlockReason("cancelled")).toMatch(/ยกเลิก/);
-    expect(contractEditBlockReason("active")).toBeNull();
-    expect(contractEditBlockReason("expired_pending_collection")).toBeNull();
+  it("admin: closed / cancelled มีเหตุผล · active / expired_pending_collection แก้ได้", () => {
+    expect(contractEditBlockReason("closed", "admin")).toMatch(/ปิดแล้ว/);
+    expect(contractEditBlockReason("cancelled", "admin")).toMatch(/ยกเลิก/);
+    expect(contractEditBlockReason("active", "admin")).toBeNull();
+    expect(contractEditBlockReason("expired_pending_collection", "admin")).toBeNull();
+  });
+  it("recorder ก็แก้สัญญาปิด/ยกเลิกไม่ได้เหมือน admin", () => {
+    expect(contractEditBlockReason("closed", "recorder")).not.toBeNull();
+    expect(contractEditBlockReason("cancelled", "recorder")).not.toBeNull();
+  });
+  it("host แก้ได้ทุกสถานะ (DECISIONS 3.11)", () => {
+    for (const s of ["active", "expired_pending_collection", "closed", "cancelled"] as const) {
+      expect(contractEditBlockReason(s, "host")).toBeNull();
+    }
   });
   it("ข้อความล็อกสาขาบอกวิธีแก้ (ลบแล้วเปิดใหม่)", () => {
     expect(EDIT_LOCK_REASONS.branch).toMatch(/ลบ.*เปิดงานใหม่/);
