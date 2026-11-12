@@ -439,7 +439,11 @@ tfoot td{padding:10px 12px;font-weight:700;background:var(--surface-2);border-to
 .agsec-h{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px}
 .agsec-h b{font-size:13.5px}
 .agsec-h .btn{margin-left:auto;min-height:38px}
-.agfields{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.agfields{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.baitcustom{display:flex;align-items:center;gap:6px;margin-top:6px;font-size:13px;color:var(--fg-muted)}
+.baitcustom input{width:100%;min-width:0;font-family:inherit;font-size:13.5px;color:var(--fg);background:var(--surface);border:1px solid var(--border-strong);border-radius:7px;padding:9px 10px}
+.bhint{font-size:11px;color:var(--danger);margin-top:4px}
+.bhint[hidden]{display:none}
 .agfields .span2{grid-column:1/-1}
 .optrow{display:flex;gap:6px}
 .optbtn{flex:1 1 0;min-width:0;min-height:44px;font:inherit;font-size:14px;font-weight:600;color:var(--fg);
@@ -447,8 +451,22 @@ tfoot td{padding:10px 12px;font-weight:700;background:var(--surface-2);border-to
 .optbtn[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-fg)}
 .optbtn:disabled{cursor:not-allowed}
 .pt .mini select{padding:9px 10px;font-size:13.5px}
+.lblwrap{position:relative;display:inline-flex}
+.lblbtn{font:inherit;font-size:12.5px;display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:999px;cursor:pointer;
+  color:var(--fg-muted);background:transparent;border:1px dashed var(--border-strong)}
+.lblbtn:hover{border-color:var(--accent);color:var(--accent-strong)}
+.lblbtn.has{font-weight:600;color:var(--accent-strong);background:var(--accent-soft);border:1px solid var(--accent-soft)}
+.lblbtn .ed{font-size:11px;opacity:.7}
+.lblbtn:focus-visible,.lblin:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.lblpop{position:absolute;top:calc(100% + 6px);left:0;z-index:30;width:290px;max-width:80vw;padding:12px;display:flex;flex-direction:column;gap:8px;
+  background:var(--surface);border:1px solid var(--border-strong);border-radius:10px;box-shadow:0 8px 24px var(--drawer-shadow,rgba(20,40,70,.18))}
+.lblpop[hidden]{display:none}
+.lblpop label{font-size:12px;color:var(--fg-muted)}
+.lblpop .opt{color:var(--fg-faint)}
+.lblin{font-family:inherit;font-size:13.5px;color:var(--fg);background:var(--surface);border:1px solid var(--border-strong);border-radius:7px;padding:9px 10px;width:100%}
+.lblact{display:flex;justify-content:flex-end;gap:8px}
 .pt.off{opacity:.5}
-.mini.need .optrow,.mini.need select{outline:2px solid var(--danger);outline-offset:2px;border-radius:9px}
+.mini.need .optrow,.mini.need select,.mini.need .baitnum{outline:2px solid var(--danger);outline-offset:2px;border-radius:9px}
 .mini.need>label{color:var(--danger)}
 .skipchk{display:flex;gap:10px;align-items:flex-start;padding:11px 12px;border:1px dashed var(--border-strong);
   border-radius:9px;margin-top:4px;cursor:pointer;font-size:13.5px}
@@ -470,6 +488,9 @@ tfoot td{padding:10px 12px;font-weight:700;background:var(--surface-2);border-to
 .subdesc{margin:0 0 12px;color:var(--fg-muted);font-size:13px}
 @media (max-width:860px){
   .custlist{max-height:300px}
+}
+@media (max-width:900px){
+  .agfields{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
 @media (max-width:600px){
   .agfields{grid-template-columns:1fr}
@@ -1243,7 +1264,7 @@ var CUSTOMERS=[];
   add('ร้านอาหารครัวริมคลอง','CT26-0000151','s1','พุทธมณฑล','A',8,4,[],true);
   add('คุณวิรัช ตั้งมั่น (บ้านพัก)','CT26-0000088','s1','พุทธมณฑล','A',8,0,[],true);
   add('อพาร์ตเมนต์ศรีสุข','CT25-0000174','m3','พุทธมณฑล','B',22,10,[],true);
-  add('บมจ. สยามพัฒนาเฮ้าส์','CT26-0000142','l1','พุทธมณฑล','A',80,40,[[1,2,'track'],[2,5,'pend'],[3,0,'track']]);
+  add('บมจ. สยามพัฒนาเฮ้าส์','CT26-0000142','l1','พุทธมณฑล','A',80,40,[[1,2,'track','ห้องนอนใหญ่'],[2,5,'pend','ห้องนั่งเล่น'],[3,0,'track']]);
   add('โรงแรมบ้านสวนรีสอร์ท','CT25-0000311','m3','พุทธมณฑล','B',36,15,[[1,4,'track'],[2,5,'pend']]);
   add('บจก. เมืองทองคลังสินค้า','CT23-0000017','xl3','พุทธมณฑล','A',40,12,[[3,9,'track'],[7,9,'pend']]);
   add('อาคารชุดลุมพินีวิว','CT23-0000041','l3','พุทธมณฑล','B',24,6,[[1,1,'track']]);
@@ -1380,10 +1401,10 @@ var AGM={};
 function agInit(ctx,c){
   var maxNo=0; c.ag.forEach(function(a){if(a[0]>maxNo)maxNo=a[0]});
   AGM[ctx]={ctx:ctx,cid:c.id,seq:0,nextNo:maxNo+1,skip:false,tried:false,
-    pts:c.ag.map(function(a){return {k:'e'+a[0],kind:'F',no:a[0],last:a[1],cur:a[2],bait:null,caste:'',st:a[2]}})};
+    pts:c.ag.map(function(a){return {k:'e'+a[0],kind:'F',no:a[0],last:a[1],cur:a[2],bait:null,cust:false,eat:'',caste:'',st:a[2],label:a[3]||'',label0:a[3]||''}})};
 }
 function agPt(m,k){for(var i=0;i<m.pts.length;i++){if(m.pts[i].k===k)return m.pts[i]}return null}
-function agTouched(p){return p.bait!==null||p.caste!==''||p.st!==p.cur}
+function agTouched(p){return p.bait!==null||p.caste!==''||p.st!==p.cur||p.eat!==''}
 function agComplete(p){return p.bait!==null&&p.caste!==''}
 function agMissing(ctx){
   var m=AGM[ctx], round=(ctx==='sv'), need={}, filled=0, bad=[], hasF=false;
@@ -1397,15 +1418,35 @@ function agMissing(ctx){
   if(bad.length) miss.push('กล่อง AG ยังกรอกไม่ครบ: จุดที่ '+bad.map(function(p){return p.no}).join(', ')+(round&&hasF?' — หรือติ๊ก “รอบนี้ไม่ได้ตรวจกล่อง AG”':''));
   return {missing:miss,need:need,filled:filled};
 }
+/* ป้ายกำกับจุด (ไม่บังคับ) — ปุ่มที่หัวการ์ดจุด กดแล้วเปิดกล่องเล็กให้พิมพ์/แก้ไข เช่น ห้องนอน, ห้องนั่งเล่น
+   เก็บไว้กับจุดนั้นข้ามรอบ · ไม่กินที่ในฟอร์ม */
+function agLabelBtnHtml(label){
+  return label?esc(label)+' <span class="ed" aria-hidden="true">✎</span>':'<span class="plus" aria-hidden="true">+</span> ป้ายกำกับ';
+}
+function agLabelHtml(ctx,p,key,dis){
+  return '<span class="lblwrap"><button type="button" class="lblbtn'+(p.label?' has':'')+'" data-ag="lblopen" '+key+dis+' aria-haspopup="dialog" title="ป้ายกำกับจุด (ไม่บังคับ) — บอกตำแหน่ง เช่น ห้องนอน">'+agLabelBtnHtml(p.label)+'</button>'+
+    '<div class="lblpop" role="dialog" aria-label="ป้ายกำกับจุดที่ '+p.no+'" hidden><label for="lbl_'+ctx+p.k+'">ป้ายกำกับจุดที่ '+p.no+' <span class="opt">(ไม่บังคับ)</span></label>'+
+    '<input type="text" id="lbl_'+ctx+p.k+'" class="lblin" data-ag="label" '+key+' maxlength="40" autocomplete="off" placeholder="เช่น ห้องนอน, ห้องนั่งเล่น, หลังบ้าน" value="'+esc(p.label||'')+'">'+
+    '<div class="lblact"><button type="button" class="btn sm" data-ag="lblclear" '+key+'>ล้าง</button><button type="button" class="btn sm primary" data-ag="lblclose" '+key+'>เสร็จ</button></div></div></span>';
+}
 function agPointHtml(ctx,m,p,bad){
   var isS=(p.kind==='S'), off=(ctx==='sv'&&m.skip&&!isS), key='data-ctx="'+ctx+'" data-k="'+p.k+'"', dis=off?' disabled':'';
   var chip=p.st==='pend'?'<span class="chip pend">รอถอด</span>':(p.st==='rm'?'<span class="chip done">ถอดกล่อง</span>':'<span class="chip info">กำลังติดตาม</span>');
   var fno=isS?'ติดตั้งใหม่ (S)':'ติดตามผล F'+(p.last+1);
-  var h='<div class="pt'+(off?' off':'')+'"><div class="top"><span class="sttype">AG</span><b>จุดที่ '+p.no+'</b>'+chip+
+  var h='<div class="pt'+(off?' off':'')+'"><div class="top"><span class="sttype">AG</span><b>จุดที่ '+p.no+'</b>'+agLabelHtml(ctx,p,key,dis)+chip+
     '<span class="fno">'+fno+' <span class="auto-tag">อัตโนมัติ</span></span>'+
     (isS?'<button type="button" class="btn danger sm" data-ag="del" '+key+'>ลบจุด</button>':'')+'</div><div class="agfields">';
-  h+='<div class="mini span2'+(bad&&p.bait===null?' need':'')+'"><label>ปริมาณเหยื่อที่ใช้</label><div class="optrow" role="group" aria-label="ปริมาณเหยื่อ จุดที่ '+p.no+'">'+
-    BAITS.map(function(b){return '<button type="button" class="optbtn" data-ag="bait" data-v="'+b+'" '+key+' aria-pressed="'+(p.bait===b)+'"'+dis+'>'+b+' ก.</button>'}).join('')+'</div></div>';
+  /* ปริมาณเหยื่อ: เลือกจากรายการ 0–200 ก. · ถ้าใช้มากกว่านั้นเลือก "มากกว่า 200" แล้วพิมพ์เอง (ต้องหาร 50 ลงตัว เช่น 250, 300, 350) */
+  var custom=p.cust||(p.bait!==null&&BAITS.indexOf(p.bait)<0);
+  h+='<div class="mini'+(bad&&p.bait===null?' need':'')+'"><label for="bs_'+ctx+p.k+'">ปริมาณเหยื่อที่ใช้</label><select id="bs_'+ctx+p.k+'" data-ag="baitsel" '+key+dis+'>'+
+    '<option value=""'+(p.bait===null&&!custom?' selected':'')+' disabled>— เลือก —</option>'+
+    BAITS.map(function(b){return '<option value="'+b+'"'+(!custom&&p.bait===b?' selected':'')+'>'+b+' ก.</option>'}).join('')+
+    '<option value="other"'+(custom?' selected':'')+'>มากกว่า 200 (พิมพ์เอง)</option></select>'+
+    (custom?'<div class="baitcustom"><input type="number" class="baitnum num" data-ag="baitnum" '+key+dis+' min="250" max="5000" step="50" inputmode="numeric" placeholder="เช่น 250" aria-label="ปริมาณเหยื่อ (ก.) จุดที่ '+p.no+'" value="'+(p.bait!==null?p.bait:'')+'"> <span>ก.</span></div>'+
+      '<div class="bhint" data-bhint hidden>ต้องมากกว่า 200 และหาร 50 ลงตัว เช่น 250, 300, 350</div>':'')+'</div>';
+  h+='<div class="mini"><label for="be_'+ctx+p.k+'">การกินเหยื่อ <span class="opt">(ไม่บังคับ)</span></label><select id="be_'+ctx+p.k+'" data-ag="eat" '+key+dis+'>'+
+    '<option value=""'+(p.eat===''?' selected':'')+'>— เลือก —</option>'+
+    [0,25,50,75,100].map(function(v){return '<option value="'+v+'"'+(p.eat===String(v)?' selected':'')+'>'+v+'%</option>'}).join('')+'</select></div>';
   h+='<div class="mini'+(bad&&!p.caste?' need':'')+'"><label>สัดส่วนปลวกที่พบ</label><select data-ag="caste" '+key+dis+'>'+
     '<option value=""'+(p.caste===''?' selected':'')+' disabled>— เลือก —</option>'+
     '<option value="ไม่พบปลวก"'+(p.caste==='ไม่พบปลวก'?' selected':'')+'>ไม่พบปลวก</option>'+
@@ -1421,7 +1462,7 @@ function agHtml(ctx){
   var need=m.tried?agMissing(ctx).need:{};
   var h='<div class="agsec-h"><b>กล่องเหยื่อ AG</b>'+(exist?'<span class="chip pend">ค้างติดตาม '+exist+' จุด</span>':'<span class="chip na">ยังไม่มีกล่องค้างติดตาม</span>')+
     '<button type="button" class="btn sm primary" data-ag="add" data-ctx="'+ctx+'">+ ติดกล่องใหม่ (S)</button></div>'+
-    '<div class="hint" style="margin-top:0">เลขรอบ F ระบบนับให้เอง · เหยื่อเลือกทีละ 50 ก. · เลือกสัดส่วนปลวกและสถานะของแต่ละจุด</div>';
+    '<div class="hint" style="margin-top:0">เลขรอบ F ระบบนับให้เอง · เหยื่อเลือกจากรายการ (เกิน 200 ก. เลือก “มากกว่า 200” แล้วพิมพ์เอง ต้องหาร 50 ลงตัว) · เลือกสัดส่วนปลวกและสถานะของแต่ละจุด</div>';
   if(!m.pts.length) h+='<div class="empty" style="padding:10px 2px;text-align:left">ยังไม่มีจุดกล่อง — กด “+ ติดกล่องใหม่ (S)” เพื่อเพิ่มจุดแรก</div>';
   m.pts.forEach(function(p){h+=agPointHtml(ctx,m,p,!!need[p.k])});
   if(round&&exist) h+='<label class="skipchk"><input type="checkbox" data-ag="skip" data-ctx="sv"'+(m.skip?' checked':'')+'><span><b>รอบนี้ไม่ได้ตรวจกล่อง AG</b><br><small>ติ๊กเมื่อทีมเข้ามาแต่ไม่ได้ตรวจกล่องเดิมของลูกค้ารายนี้ — ไม่ต้องกรอกผลกล่องเดิม</small></span></label>';
@@ -1435,15 +1476,17 @@ function agRender(ctx,focusSel){
 }
 function agAdd(ctx){
   var m=AGM[ctx]; m.seq++; var k='n'+m.seq;
-  m.pts.push({k:k,kind:'S',no:m.nextNo++,last:0,cur:'track',bait:null,caste:'',st:'track'});
+  m.pts.push({k:k,kind:'S',no:m.nextNo++,last:0,cur:'track',bait:null,cust:false,eat:'',caste:'',st:'track',label:'',label0:''});
   agRender(ctx,'.optbtn[data-k="'+k+'"]');
 }
 /* บันทึกผลลงข้อมูลสมมติ: F → นับรอบเพิ่ม/เปลี่ยนสถานะ · S → เพิ่มจุดใหม่ · ถอดกล่อง → ออกจากรายการค้างติดตาม */
 function agCommit(ctx){
   var m=AGM[ctx], c=custById(m.cid), round=(ctx==='sv');
   m.pts.forEach(function(p){
+    /* ป้ายกำกับจุด: แก้ได้ทุกครั้ง แม้รอบนี้ไม่ได้ตรวจกล่อง */
+    if(p.kind==='F'&&p.label!==p.label0){var le=c.ag.filter(function(a){return a[0]===p.no})[0]; if(le) le[3]=p.label}
     if(!agComplete(p)) return;
-    if(p.kind==='S'){ if(p.st!=='rm') c.ag.push([p.no,0,p.st]); return }
+    if(p.kind==='S'){ if(p.st!=='rm') c.ag.push([p.no,0,p.st,p.label]); return }
     if(round&&m.skip) return;
     var e=c.ag.filter(function(a){return a[0]===p.no})[0]; if(!e) return;
     if(p.st==='rm') c.ag=c.ag.filter(function(a){return a!==e});
@@ -1819,9 +1862,15 @@ document.addEventListener('click',function(e){
   if(ag&&ag.dataset.ag!=='skip'){
     var ctx=ag.dataset.ctx, m=AGM[ctx], a=ag.dataset.ag;
     if(!m) return;
-    if(a==='add') agAdd(ctx);
+    if(a==='lblopen'){
+      var wrap=ag.closest('.lblwrap'), pop=wrap.querySelector('.lblpop'), willOpen=pop.hidden;
+      agLblCloseAll(); pop.hidden=!willOpen;
+      if(willOpen) wrap.querySelector('input').focus();
+    }
+    else if(a==='lblclose') agLblCloseAll();
+    else if(a==='lblclear'){var w=ag.closest('.lblwrap'), inp=w.querySelector('input'); inp.value=''; inp.dispatchEvent(new Event('input',{bubbles:true})); inp.focus()}
+    else if(a==='add') agAdd(ctx);
     else if(a==='del'){m.pts=m.pts.filter(function(p){return p.k!==ag.dataset.k}); agRender(ctx)}
-    else if(a==='bait'){var p=agPt(m,ag.dataset.k); p.bait=parseInt(ag.dataset.v,10); agRender(ctx,'.optbtn[data-k="'+p.k+'"][data-v="'+p.bait+'"]')}
     return;
   }
   var t=e.target.closest('[data-act]'); if(!t) return;
@@ -1842,11 +1891,39 @@ document.addEventListener('change',function(e){
   var t=e.target.closest&&e.target.closest('[data-ag]'); if(!t) return;
   var ctx=t.dataset.ctx, m=AGM[ctx]; if(!m) return;
   if(t.dataset.ag==='skip'){m.skip=t.checked; agRender(ctx,'input[data-ag="skip"]'); return}
+  if(t.dataset.ag==='label'||t.dataset.ag==='baitnum') return;
   var p=agPt(m,t.dataset.k); if(!p) return;
+  if(t.dataset.ag==='baitsel'){
+    if(t.value==='other'){p.cust=true; if(BAITS.indexOf(p.bait)>=0) p.bait=null}
+    else {p.cust=false; p.bait=parseInt(t.value,10)}
+    agRender(ctx,p.cust?'.baitnum[data-k="'+p.k+'"]':'[data-ag="baitsel"][data-k="'+p.k+'"]'); return;
+  }
+  if(t.dataset.ag==='eat'){p.eat=t.value; return}
   if(t.dataset.ag==='caste') p.caste=t.value;
   else if(t.dataset.ag==='st') p.st=t.value;
   agRender(ctx,'[data-ag="'+t.dataset.ag+'"][data-k="'+p.k+'"]');
 });
+/* ป้ายกำกับจุด AG: เก็บค่าทันทีที่พิมพ์ (ไม่วาดใหม่ เพื่อไม่ให้เสียโฟกัส) + อัปเดตหัวการ์ดของจุด */
+document.addEventListener('input',function(e){
+  var bt=e.target;
+  if(bt.dataset&&bt.dataset.ag==='baitnum'){
+    var bm=AGM[bt.dataset.ctx], bp=bm&&agPt(bm,bt.dataset.k); if(!bp) return;
+    var v=Number(bt.value), ok=bt.value!==''&&Number.isInteger(v)&&v>200&&v<=5000&&v%50===0;
+    bp.bait=ok?v:null; bp.cust=true;
+    bt.closest('.mini').querySelector('[data-bhint]').hidden=(ok||bt.value==='');
+    return;
+  }
+  var t=e.target; if(!t.dataset||t.dataset.ag!=='label') return;
+  var m=AGM[t.dataset.ctx], p=m&&agPt(m,t.dataset.k); if(!p) return;
+  p.label=t.value.trim();
+  var b=t.closest('.lblwrap').querySelector('.lblbtn'); b.innerHTML=agLabelBtnHtml(p.label); b.classList.toggle('has',!!p.label);
+});
+function agLblCloseAll(){[].forEach.call(document.querySelectorAll('.lblpop'),function(x){x.hidden=true})}
+/* ปิดกล่องป้ายกำกับ: กด Enter/Esc หรือคลิกนอกกล่อง */
+document.addEventListener('keydown',function(e){
+  if((e.key==='Enter'||e.key==='Escape')&&e.target.classList&&e.target.classList.contains('lblin')){e.preventDefault(); var b=e.target.closest('.lblwrap').querySelector('.lblbtn'); agLblCloseAll(); b.focus()}
+});
+document.addEventListener('click',function(e){if(!e.target.closest('.lblwrap')) agLblCloseAll()});
 /* กรอก/แก้ช่องในฟอร์มบริการ → อัปเดตสรุปตัวเลข (ทำหลัง inline handler เดิมของแถว) */
 document.addEventListener('input',function(e){if(e.target.closest&&e.target.closest('#svForm')) svRecalc()});
 document.addEventListener('change',function(e){if(e.target.closest&&e.target.closest('#svForm')&&!e.target.closest('[data-ag]')) svRecalc()});
