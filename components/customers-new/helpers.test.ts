@@ -149,6 +149,7 @@ describe("filters", () => {
     zoneId: "z1",
     hasPdf: true,
     missing: false,
+    pendingService: false,
     warned: false,
   };
   const rows: FilterableRow[] = [
@@ -172,6 +173,12 @@ describe("filters", () => {
     expect(applyFilters(rows, { ...f, month: "", status: "nofile" })).toHaveLength(1);
     expect(applyFilters(rows, { ...f, month: "", status: "miss" })).toHaveLength(1);
     expect(applyFilters(rows, { ...f, month: "", status: "ok" })).toHaveLength(1);
+  });
+  it("กรอง รอนัดบริการ (ยังไม่มีวันที่บริการ)", () => {
+    const withPend = [...rows, { ...base, contractNo: "CT26-0000004", pendingService: true }];
+    expect(applyFilters(withPend, { ...f, month: "", status: "pend" })).toHaveLength(1);
+    // แถวที่ยังรอนัด ไม่นับเป็น "ครบแล้ว"
+    expect(applyFilters(withPend, { ...f, month: "", status: "ok" })).toHaveLength(1);
   });
   it("ตัวเลือกเดือน ใหม่→เก่า ไม่ซ้ำ", () => {
     expect(monthOptions(["2026-10-05", "2026-11-01", "2026-10-20", ""])).toEqual(["2026-11", "2026-10"]);

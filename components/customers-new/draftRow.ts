@@ -23,6 +23,8 @@ export type DraftField =
   | "branch"
   | "startDate"
   | "endDate"
+  | "mailDate"
+  | "serviceDate"
   | "value";
 
 export interface DraftCheck {
@@ -36,7 +38,15 @@ export interface DraftCheck {
   valueTotal: number | null;
   /** วันสิ้นสุดที่ใช้บันทึกจริง (ว่าง = null) */
   endDate: string | null;
+  /** ยังไม่นัดบริการ (ไม่มีวันที่บริการ) = "รอนัดบริการ" */
+  pendingService: boolean;
 }
+
+/** เวลานัดบริการที่เลือกได้: 08:00–17:30 นาที 00/30 (ตาม mockup — time picker 24 ชม.) */
+export const SERVICE_TIME_SLOTS: readonly string[] = Array.from({ length: 20 }, (_, i) => {
+  const h = 8 + Math.floor(i / 2);
+  return `${String(h).padStart(2, "0")}:${i % 2 === 0 ? "00" : "30"}`;
+});
 
 let counter = 0;
 /** key ชั่วคราวของแถว (ไม่ใช่ id ในฐานข้อมูล) */
@@ -51,7 +61,14 @@ export function createDraft(): DraftRow {
     contractNo: "",
     customerName: "",
     saleType: "new",
+    sellerRole: "sale",
     saleName: "",
+    isUrgent: false,
+    renewal: null,
+    mailReceivedDate: "",
+    firstServiceDate: "",
+    firstServiceTime: "",
+    note: "",
     branchText: "",
     customerTypeCode: "",
     teamIds: [],
@@ -119,9 +136,29 @@ export function checkDraft(
   if (draft.endDate && !isPlausibleDate(draft.endDate)) {
     errors.endDate = "วันสิ้นสุดไม่ถูกต้อง";
   }
+  if (draft.mailReceivedDate && !isPlausibleDate(draft.mailReceivedDate)) {
+    errors.mailDate = "วันที่รับ Mail ไม่ถูกต้อง";
+  }
+  if (draft.firstServiceDate && !isPlausibleDate(draft.firstServiceDate)) {
+    errors.serviceDate = "วันที่บริการไม่ถูกต้อง";
+  } else if (draft.firstServiceTime && !draft.firstServiceDate) {
+    // ตรงกับ constraint ของ DB: มีเวลาต้องมีวันที่
+    errors.serviceDate = "เลือกวันที่บริการก่อนใส่เวลา";
+  }
+  if (draft.saleType === "renew" && !draft.renewal) {
+    warnings.push("Renew ยังไม่ผูกลูกค้าเดิม");
+  }
   if (!draft.pendingPdf) warnings.push("ยังไม่แนบไฟล์สัญญา + Site plan");
 
-  return { errors, warnings, branch, termYears, valueTotal, endDate };
+  return {
+    errors,
+    warnings,
+    branch,
+    termYears,
+    valueTotal,
+    endDate,
+    pendingService: !draft.firstServiceDate,
+  };
 }
 
 /** แถวนี้บันทึกได้ไหม (ไม่มี error) */
@@ -138,6 +175,8 @@ export function missingLabel(check: DraftCheck): string {
     branch: "สาขา",
     startDate: "วันเริ่ม",
     endDate: "วันสิ้นสุด",
+    mailDate: "วันที่รับ Mail",
+    serviceDate: "วันที่บริการ",
     value: "มูลค่า",
   };
   const missing = (Object.keys(check.errors) as DraftField[]).map((f) => names[f]);

@@ -41,10 +41,20 @@ export function describeDbError(error: DbErrorLike, context: ErrorContext = "sav
       : "เลขที่สัญญานี้มีอยู่ในระบบแล้ว";
   }
   if (code === "23503") {
+    if (context === "save" && msg.includes("renewed_from")) {
+      return "ไม่พบสัญญาเก่าที่ผูกไว้ (อาจถูกลบไปแล้ว) เลือกสัญญาเก่าใหม่";
+    }
     return "ลบไม่ได้ เพราะมีผลบริการหรือข้อมูลที่อ้างอิงอยู่แล้ว (ให้ใช้สถานะยกเลิกแทน)";
   }
-  if (code === "23514") return "ข้อมูลไม่ผ่านเงื่อนไขของระบบ ตรวจค่าที่กรอกอีกครั้ง";
+  if (code === "23514") {
+    if (msg.includes("first_service_time")) return "ใส่เวลาบริการได้เมื่อมีวันที่บริการ เลือกวันที่ก่อน";
+    if (msg.includes("renewed_from_itself")) return "สัญญาผูกกับตัวเองไม่ได้ เลือกสัญญาเก่าอีกใบ";
+    return "ข้อมูลไม่ผ่านเงื่อนไขของระบบ ตรวจค่าที่กรอกอีกครั้ง";
+  }
   if (code === "P0001") {
+    if (msg.includes("same customer")) {
+      return "Renew ต้องผูกกับสัญญาเก่าของลูกค้าคนเดียวกัน เลือกสัญญาเก่าใหม่";
+    }
     if (msg.includes("closed")) return "สัญญานี้ปิดแล้ว ไฟล์ถูกล็อก เพิ่ม/แก้/ลบไม่ได้";
     if (msg.includes("attach the contract pdf")) {
       return "ต้องแนบ PDF สัญญาก่อน จึงจะอัปเดต Site plan ได้";

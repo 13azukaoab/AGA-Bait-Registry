@@ -4,8 +4,11 @@
  * Logic summary:
  *   * บันทึก 1 แถว = ลูกค้า → สัญญา → ทีม (contract_teams) ตามลำดับ · RLS เป็นผู้ตัดสินสิทธิ์
  *     (admin บันทึกได้เฉพาะสาขาในขอบเขตตัวเอง) ถูกปฏิเสธ = ข้อความไทยจาก `describeDbError`
- *   * ลูกค้า: ถ้าในสาขานั้นมีลูกค้าชื่อตรงกันเป๊ะอยู่แล้ว ใช้รายเดิม (1 ลูกค้ามีได้หลายสัญญา — SPEC §6)
- *     ไม่งั้นสร้างใหม่ · ถ้าสร้างสัญญา/ทีมไม่สำเร็จ จะลบลูกค้าที่เพิ่งสร้างคืน (ไม่ทิ้งลูกค้าเปล่า)
+ *   * Renew ที่ผูกสัญญาเก่าไว้: ใช้ customer_id ของสัญญาเก่า **ไม่สร้างลูกค้าใหม่** (กันนับลูกค้าซ้ำบน
+ *     Dashboard — M9) และบันทึก renewed_from_contract_id · DB ตรวจซ้ำด้วย trigger (P0001)
+ *   * ลูกค้า (กรณีไม่ได้ผูก): ถ้าในสาขานั้นมีลูกค้าชื่อตรงกันเป๊ะอยู่แล้ว ใช้รายเดิม (1 ลูกค้ามีได้หลายสัญญา
+ *     — SPEC §6) ไม่งั้นสร้างใหม่ · ถ้าสร้างสัญญา/ทีมไม่สำเร็จ จะลบลูกค้าที่เพิ่งสร้างคืน
+ *   * ตำแหน่งผู้ขาย: Sale → ชื่อลง sale_name · AM → ชื่อลง am_name (ไม่มีคอลัมน์ตำแหน่ง)
  *   * ไม่สร้างแถว stations ตอนเปิดงาน — สถานีสร้างตอนติดตั้งจริง (เจ้าของตัดสิน 12 พ.ย. 2026)
  *   * ลบสัญญา: ตรวจก่อนว่ายังไม่มีผลบริการ → ลบไฟล์ใน Storage ก่อน (policy ของ bucket ต้องเห็นแถวสัญญา
  *     อยู่) → ลบสัญญา (contract_teams/contract_files/stations ลบตามด้วย CASCADE) → ลบลูกค้าที่ไม่เหลือสัญญา
@@ -34,18 +37,23 @@ export async function saveDraft(
   }
   const name = draft.customerName.trim();
 
-  // 1) ลูกค้า: ใช้รายเดิมถ้าชื่อตรงในสาขาเดียวกัน
+  // 1) ลูกค้า: Renew ที่ผูกสัญญาเก่า = ลูกค้าเดิมของสัญญานั้น · ไม่งั้นใช้รายเดิมถ้าชื่อตรงในสาขาเดียวกัน
   let customerId: string | null = null;
   let createdCustomer = false;
-  const existing = await supabase
-    .from("customers")
-    .select("id")
-    .eq("branch_id", branch.id)
-    .eq("name", name)
-    .limit(1);
-  if (existing.error) return { ok: false, error: describeDbError(existing.error) };
-  const found = (existing.data ?? [])[0] as { id: string } | undefined;
-  if (found) customerId = found.id;
+  const renewal = draft.saleType === "renew" ? draft.renewal : null;
+  if (renewal) {
+    customerId = renewal.customerId;
+  } else {
+    const existing = await supabase
+      .from("customers")
+      .select("id")
+      .eq("branch_id", branch.id)
+      .eq("name", name)
+      .limit(1);
+    if (existing.error) return { ok: false, error: describeDbError(existing.error) };
+    const found = (existing.data ?? [])[0] as { id: string } | undefined;
+    if (found) customerId = found.id;
+  }
 
   if (!customerId) {
     const inserted = await supabase
@@ -79,7 +87,14 @@ export async function saveDraft(
       term_years: termYears,
       value_total: valueTotal,
       sale_type: draft.saleType,
-      sale_name: draft.saleName.trim(),
+      sale_name: draft.sellerRole === "sale" ? draft.saleName.trim() : null,
+      am_name: draft.sellerRole === "am" ? draft.saleName.trim() : null,
+      is_urgent: draft.isUrgent,
+      renewed_from_contract_id: renewal ? renewal.contractId : null,
+      mail_received_date: draft.mailReceivedDate || null,
+      first_service_date: draft.firstServiceDate || null,
+      first_service_time: draft.firstServiceDate && draft.firstServiceTime ? draft.firstServiceTime : null,
+      note: draft.note.trim() || null,
     })
     .select("id")
     .single();

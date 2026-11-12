@@ -4,11 +4,11 @@
  * Logic summary:
  *   * เดือน = เดือนของ "วันเริ่มสัญญา" (เดือนเปิดงาน) รูปแบบ 'YYYY-MM'
  *   * ค้นหา = ชื่อลูกค้า หรือ เลขที่สัญญา เฉพาะแถวของเดือนที่เลือก (ตัดช่องว่าง/ไม่สนตัวพิมพ์)
- *   * สถานะที่กรองได้ตอนนี้: ครบแล้ว / ขาดข้อมูลจำเป็น / ยังไม่แนบไฟล์ / มีคำเตือนอื่น
- *     ("รอนัดบริการ" ผูกกับช่องวันที่บริการที่ schema ยังไม่มี — เพิ่มเมื่อมี migration)
+ *   * สถานะที่กรองได้: ครบแล้ว / รอนัดบริการ (ยังไม่มีวันที่บริการ) / ขาดข้อมูลจำเป็น /
+ *     ยังไม่แนบไฟล์ / มีคำเตือนอื่น (ระยะสัญญา/วันที่)
  */
 
-export type StatusFilter = "" | "ok" | "miss" | "nofile" | "warn";
+export type StatusFilter = "" | "ok" | "pend" | "miss" | "nofile" | "warn";
 
 export interface FilterableRow {
   customerName: string;
@@ -20,6 +20,8 @@ export interface FilterableRow {
   hasPdf: boolean;
   /** ขาดข้อมูลจำเป็น */
   missing: boolean;
+  /** ยังไม่นัดบริการ (ไม่มี first_service_date) */
+  pendingService: boolean;
   /** มีคำเตือนที่ไม่บล็อก (ระยะสัญญา/วันที่) */
   warned: boolean;
 }
@@ -48,7 +50,9 @@ export function matchesFilters(row: FilterableRow, f: RowFilters): boolean {
 
   switch (f.status) {
     case "ok":
-      return !row.missing && !row.warned && row.hasPdf;
+      return !row.missing && !row.pendingService && !row.warned && row.hasPdf;
+    case "pend":
+      return row.pendingService && !row.missing;
     case "miss":
       return row.missing;
     case "nofile":

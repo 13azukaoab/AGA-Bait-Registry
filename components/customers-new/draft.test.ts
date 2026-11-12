@@ -1,7 +1,15 @@
 import { describe, expect, it } from "vitest";
 
 import type { BranchOption } from "./branchMatch";
-import { canSave, checkDraft, createDraft, missingLabel, termFromValues } from "./draftRow";
+import {
+  SERVICE_TIME_SLOTS,
+  canSave,
+  checkDraft,
+  createDraft,
+  missingLabel,
+  termFromValues,
+} from "./draftRow";
+import { sanitizeSearch } from "./renewal";
 import { describeDbError } from "./errors";
 import { currentBangkokMonth, monthChoices, monthLabel, monthRange, resolveMonth } from "./months";
 import { sortTeams } from "./data";
@@ -67,6 +75,46 @@ describe("checkDraft", () => {
     expect(termFromValues("", "1")).toBe(3);
     expect(termFromValues("", "")).toBeNull();
     expect(termFromValues("1", "1")).toBeNull();
+  });
+});
+
+describe("ช่องเปิดงานใหม่ (M9)", () => {
+  it("ยังไม่มีวันที่บริการ = รอนัดบริการ (บันทึกได้)", () => {
+    const c = checkDraft(filled(), branches, undefined);
+    expect(c.pendingService).toBe(true);
+    expect(canSave(c)).toBe(true);
+    const d2 = checkDraft({ ...filled(), firstServiceDate: "2026-11-20" }, branches, undefined);
+    expect(d2.pendingService).toBe(false);
+  });
+  it("มีเวลาแต่ไม่มีวันที่บริการ = ผิด (ตรงกฎ DB)", () => {
+    const c = checkDraft({ ...filled(), firstServiceTime: "09:30" }, branches, undefined);
+    expect(c.errors.serviceDate).toMatch(/เลือกวันที่บริการก่อน/);
+    expect(canSave(c)).toBe(false);
+  });
+  it("วันที่รับ Mail / วันที่บริการที่ไม่ใช่วันจริง = ผิด", () => {
+    expect(checkDraft({ ...filled(), mailReceivedDate: "2026-02-31" }, branches, undefined).errors.mailDate).toBeTruthy();
+    expect(checkDraft({ ...filled(), firstServiceDate: "8202-01-01" }, branches, undefined).errors.serviceDate).toBeTruthy();
+  });
+  it("Renew ที่ยังไม่ผูกลูกค้าเดิม = เตือน ไม่บล็อก", () => {
+    const c = checkDraft({ ...filled(), saleType: "renew" }, branches, undefined);
+    expect(c.warnings).toContain("Renew ยังไม่ผูกลูกค้าเดิม");
+    expect(canSave(c)).toBe(true);
+  });
+  it("ตัวเลือกเวลานัด 08:00–17:30 ทุก 30 นาที", () => {
+    expect(SERVICE_TIME_SLOTS[0]).toBe("08:00");
+    expect(SERVICE_TIME_SLOTS[1]).toBe("08:30");
+    expect(SERVICE_TIME_SLOTS.at(-1)).toBe("17:30");
+    expect(SERVICE_TIME_SLOTS).toHaveLength(20);
+  });
+  it("คำค้นสัญญาเก่าตัดอักขระที่ทำให้ตัวกรองเพี้ยน", () => {
+    expect(sanitizeSearch(" ab%c,(d)*  e_f ")).toBe("ab c d e f");
+    expect(sanitizeSearch("   ")).toBe("");
+  });
+  it("แปล error ใหม่เป็นไทย", () => {
+    expect(describeDbError({ code: "23514", message: 'violates check constraint "contracts_first_service_time_needs_date"' })).toMatch(/วันที่บริการ/);
+    expect(describeDbError({ code: "23514", message: 'violates check constraint "contracts_not_renewed_from_itself"' })).toMatch(/ผูกกับตัวเอง/);
+    expect(describeDbError({ code: "P0001", message: "a renewal must link to a contract of the same customer" })).toMatch(/ลูกค้าคนเดียวกัน/);
+    expect(describeDbError({ code: "23503", message: 'violates foreign key constraint "contracts_renewed_from_contract_id_fkey"' })).toMatch(/ไม่พบสัญญาเก่า/);
   });
 });
 

@@ -135,6 +135,13 @@ type ContractRowDb = {
   value_total: number | string;
   sale_type: SaleType | null;
   sale_name: string | null;
+  am_name: string | null;
+  is_urgent: boolean;
+  renewed_from_contract_id: string | null;
+  mail_received_date: string | null;
+  first_service_date: string | null;
+  first_service_time: string | null;
+  note: string | null;
   customers: {
     name: string;
     customer_type: string | null;
@@ -154,7 +161,8 @@ export async function loadMonthContracts(
   const { data, error } = await supabase
     .from("contracts")
     .select(
-      `id, customer_id, contract_no, start_date, end_date, term_years, value_total, sale_type, sale_name,
+      `id, customer_id, contract_no, start_date, end_date, term_years, value_total, sale_type, sale_name, am_name,
+       is_urgent, renewed_from_contract_id, mail_received_date, first_service_date, first_service_time, note,
        customers ( name, customer_type, branch_id ),
        contract_teams ( team_id ),
        contract_files ( ${FILE_COLUMNS} )`,
@@ -169,6 +177,17 @@ export async function loadMonthContracts(
   const raw = (data ?? []) as unknown as ContractRowDb[];
   const counts = role === "host" ? await loadAuditCounts(supabase, raw.map((r) => r.id)) : null;
 
+  // เลขที่สัญญาเก่าของแถว Renew (สัญญาเก่าอาจอยู่คนละเดือน จึงอ่านแยก)
+  const oldIds = [...new Set(raw.map((r) => r.renewed_from_contract_id).filter((v): v is string => !!v))];
+  const oldNo = new Map<string, string>();
+  for (let i = 0; i < oldIds.length; i += 80) {
+    const { data: olds } = await supabase
+      .from("contracts")
+      .select("id, contract_no")
+      .in("id", oldIds.slice(i, i + 80));
+    for (const o of (olds ?? []) as { id: string; contract_no: string }[]) oldNo.set(o.id, o.contract_no);
+  }
+
   const rows: SavedContract[] = raw
     .filter((r) => r.customers)
     .map((r) => ({
@@ -179,7 +198,16 @@ export async function loadMonthContracts(
       customerTypeCode: r.customers?.customer_type ?? null,
       branchId: r.customers?.branch_id ?? "",
       saleType: r.sale_type ?? "new",
-      saleName: r.sale_name ?? "",
+      sellerName: r.sale_name?.trim() ? r.sale_name : (r.am_name ?? ""),
+      sellerRole: r.sale_name?.trim() || !r.am_name?.trim() ? "sale" : "am",
+      isUrgent: r.is_urgent,
+      renewedFrom: r.renewed_from_contract_id
+        ? { contractId: r.renewed_from_contract_id, contractNo: oldNo.get(r.renewed_from_contract_id) ?? "—" }
+        : null,
+      mailReceivedDate: r.mail_received_date ?? "",
+      firstServiceDate: r.first_service_date ?? "",
+      firstServiceTime: (r.first_service_time ?? "").slice(0, 5),
+      note: r.note ?? "",
       startDate: r.start_date,
       endDate: r.end_date ?? "",
       termYears: (r.term_years === 3 ? 3 : 1) as TermYears,

@@ -10,6 +10,18 @@ import type { ContractFileKind } from "./fileRules";
 
 export type SaleType = "new" | "renew";
 
+/** ตำแหน่งของผู้ขาย — ตัวบอกว่าเก็บชื่อลง `sale_name` (Sale) หรือ `am_name` (AM) */
+export type SellerRole = "sale" | "am";
+
+/** สัญญาเก่าที่ Renew ผูกไว้ (ลูกค้าเดิม) — สัญญาใหม่ใช้ customer_id เดียวกัน ไม่สร้างลูกค้าใหม่ */
+export interface RenewalLink {
+  contractId: string;
+  contractNo: string;
+  customerId: string;
+  customerName: string;
+  branchId: string;
+}
+
 export interface TeamOption {
   id: string;
   code: string;
@@ -54,7 +66,17 @@ export interface SavedContract {
   customerTypeCode: string | null;
   branchId: string;
   saleType: SaleType;
-  saleName: string;
+  /** ชื่อผู้ขาย (sale_name หรือ am_name ตามตำแหน่ง) */
+  sellerName: string;
+  sellerRole: SellerRole;
+  isUrgent: boolean;
+  renewedFrom: { contractId: string; contractNo: string } | null;
+  mailReceivedDate: string;
+  /** วันที่นัดบริการครั้งแรก — ว่าง = "รอนัดบริการ" */
+  firstServiceDate: string;
+  /** 'HH:MM' หรือว่าง */
+  firstServiceTime: string;
+  note: string;
   startDate: string;
   endDate: string;
   termYears: TermYears;
@@ -71,7 +93,15 @@ export interface DraftRow {
   contractNo: string;
   customerName: string;
   saleType: SaleType;
+  sellerRole: SellerRole;
   saleName: string;
+  isUrgent: boolean;
+  /** Renew: ลูกค้าเดิม/สัญญาเก่าที่เลือก (null = ยังไม่ผูก) */
+  renewal: RenewalLink | null;
+  mailReceivedDate: string;
+  firstServiceDate: string;
+  firstServiceTime: string;
+  note: string;
   branchText: string;
   customerTypeCode: string;
   teamIds: string[];

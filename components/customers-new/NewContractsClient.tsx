@@ -24,17 +24,31 @@ import { createClient } from "@/lib/supabase/client";
 
 import { resolveBranch } from "./branchMatch";
 import { checkContractNos, normalizeContractNo } from "./contractNo";
-import { canSave, checkDraft, createDraft, missingLabel, termFromValues } from "./draftRow";
+import {
+  SERVICE_TIME_SLOTS,
+  canSave,
+  checkDraft,
+  createDraft,
+  missingLabel,
+  termFromValues,
+} from "./draftRow";
 import { applyFilters, type FilterableRow, type StatusFilter } from "./filters";
 import { FileDialog } from "./FileDialog";
 import { uploadAfterSave } from "./uploadAfterSave";
 import { HistoryDialog } from "./HistoryDialog";
 import { monthLabel } from "./months";
 import { PdfIcon } from "./PdfIcon";
+import { RenewalDialog } from "./RenewalDialog";
 import { deleteContract, saveDraft } from "./save";
 import { TeamPicker } from "./TeamPicker";
 import { autoEndDate, endDateWarning, formatMoney, tierFor } from "./rowCalc";
-import type { CustomerTypeOption, DraftRow, MasterData, SavedContract } from "./types";
+import type {
+  CustomerTypeOption,
+  DraftRow,
+  MasterData,
+  RenewalLink,
+  SavedContract,
+} from "./types";
 
 type Props = {
   role: UserRole;
@@ -75,6 +89,8 @@ export function NewContractsClient({ role, month, monthChoices, master, saved, t
   );
   const [fileTarget, setFileTarget] = useState<FileTarget>(null);
   const [historyFor, setHistoryFor] = useState<SavedContract | null>(null);
+  /** key ของแถวร่างที่กำลังเลือกลูกค้าเดิม (Renew) */
+  const [renewalFor, setRenewalFor] = useState<string | null>(null);
   const [showErrors, setShowErrors] = useState(false);
 
   const branchById = useMemo(() => new Map(master.branches.map((b) => [b.id, b])), [master]);
@@ -107,7 +123,8 @@ export function NewContractsClient({ role, month, monthChoices, master, saved, t
           branchId: s.branchId,
           zoneId: branch?.zoneId ?? null,
           hasPdf,
-          missing: s.saleName.trim() === "",
+          missing: s.sellerName.trim() === "",
+          pendingService: s.firstServiceDate === "",
           warned: warn !== null,
         };
         return { s, branch, warn, hasPdf, filterable };
@@ -130,13 +147,17 @@ export function NewContractsClient({ role, month, monthChoices, master, saved, t
     let isNew = 0;
     let renew = 0;
     let noFile = 0;
+    let urgent = 0;
+    let pending = 0;
     for (const v of savedView) {
+      if (v.s.isUrgent) urgent += 1;
+      if (v.filterable.pendingService) pending += 1;
       value += v.s.valueTotal;
       if (v.s.saleType === "renew") renew += 1;
       else isNew += 1;
       if (!v.hasPdf) noFile += 1;
     }
-    return { count: savedView.length, value, isNew, renew, noFile };
+    return { count: savedView.length, value, isNew, renew, noFile, urgent, pending };
   }, [savedView]);
 
   const filtersActive =
@@ -323,6 +344,7 @@ export function NewContractsClient({ role, month, monthChoices, master, saved, t
             >
               <option value="">ทั้งหมด</option>
               <option value="ok">ครบแล้ว</option>
+              <option value="pend">รอนัดบริการ</option>
               <option value="miss">ขาดข้อมูลจำเป็น</option>
               <option value="nofile">ยังไม่แนบไฟล์</option>
               <option value="warn">มีคำเตือนอื่น (ระยะสัญญา/วันที่)</option>
@@ -366,8 +388,20 @@ export function NewContractsClient({ role, month, monthChoices, master, saved, t
         <Chip tone="na">
           Renew <span className="num">{totals.renew}</span>
         </Chip>
+        <Chip tone="pend">
+          เบิกด่วน <span className="num">{totals.urgent}</span>
+        </Chip>
         <Chip tone="info">
           มูลค่ารวม <span className="num">{formatMoney(totals.value)}</span>
+        </Chip>
+        <Chip
+          tone="pend"
+          selected={filters.status === "pend"}
+          onClick={() =>
+            setFilters((f) => ({ ...f, status: f.status === "pend" ? "" : "pend" }))
+          }
+        >
+          รอนัดบริการ <b className="num">{totals.pending}</b>
         </Chip>
         <Chip
           tone="pend"
@@ -400,17 +434,23 @@ export function NewContractsClient({ role, month, monthChoices, master, saved, t
             <option key={b.id} value={b.name} />
           ))}
         </datalist>
-        <table className="w-full min-w-[1900px] border-collapse text-[13px]">
+        <table className="w-full min-w-[2560px] border-collapse text-[13px]">
           <caption className="sr-only">ตารางเปิดงานของ {monthLabel(month)}</caption>
           <thead>
             <tr>
               <th scope="col" className={cx(TH, "w-[44px] text-center")}>ลำดับ</th>
               <th scope="col" className={cx(TH, "w-[130px]")}>เลขที่สัญญา</th>
               <th scope="col" className={cx(TH, "w-[300px]")}>รายชื่อ</th>
+              <th scope="col" className={cx(TH, "w-[52px] text-center")}>เบิกด่วน</th>
               <th scope="col" className={cx(TH, "w-[110px]")}>ประเภทงาน</th>
+              <th scope="col" className={cx(TH, "w-[150px]")}>ลูกค้าเดิม (Renew)</th>
               <th scope="col" className={cx(TH, "w-[140px]")}>ผู้ขาย</th>
+              <th scope="col" className={cx(TH, "w-[100px]")}>ตำแหน่ง</th>
               <th scope="col" className={cx(TH, "w-[130px]")}>สาขา</th>
               <th scope="col" className={cx(TH, "w-[70px]")}>เขต</th>
+              <th scope="col" className={cx(TH, "w-[130px]")}>วันที่รับ Mail</th>
+              <th scope="col" className={cx(TH, "w-[130px]")}>วันที่บริการ</th>
+              <th scope="col" className={cx(TH, "w-[96px]")}>เวลาบริการ</th>
               <th scope="col" className={cx(TH, "w-[90px]")}>ทีม</th>
               <th scope="col" className={cx(TH, "w-[170px]")}>ประเภท</th>
               <th scope="col" className={cx(TH, "w-[130px]")}>เริ่มสัญญา</th>
@@ -418,6 +458,7 @@ export function NewContractsClient({ role, month, monthChoices, master, saved, t
               <th scope="col" className={cx(TH, "w-[120px] text-right")}>มูลค่า 1 ปี</th>
               <th scope="col" className={cx(TH, "w-[120px] text-right")}>มูลค่า 3 ปี</th>
               <th scope="col" className={cx(TH, "w-[64px] text-center")}>Tier</th>
+              <th scope="col" className={cx(TH, "w-[200px]")}>หมายเหตุ</th>
               <th scope="col" className={cx(TH, "w-[110px] text-center")}>ไฟล์แนบ</th>
               <th scope="col" className={cx(TH, "w-[170px] text-center")}>สถานะ</th>
               <th scope="col" className={cx(TH, "w-[56px]")}>
@@ -452,16 +493,36 @@ export function NewContractsClient({ role, month, monthChoices, master, saved, t
                       ) : null}
                     </div>
                   </td>
+                  <td className={cx(TD, "text-center")}>
+                    {s.isUrgent ? <Chip tone="pend">ด่วน</Chip> : <span className="text-fg-faint">—</span>}
+                  </td>
                   <td className={TD}>
                     <Chip tone={s.saleType === "renew" ? "na" : "ok"}>
                       {s.saleType === "renew" ? "Renew" : "New"}
                     </Chip>
                   </td>
                   <td className={TD}>
-                    {s.saleName || <span className="text-danger">ยังไม่ใส่</span>}
+                    {s.renewedFrom ? (
+                      <Chip tone="ok">
+                        🔗 <span className="num">{s.renewedFrom.contractNo}</span>
+                      </Chip>
+                    ) : s.saleType === "renew" ? (
+                      <Chip tone="miss">⚠ ยังไม่ผูก</Chip>
+                    ) : (
+                      <Chip tone="na">— งานใหม่ —</Chip>
+                    )}
                   </td>
+                  <td className={TD}>
+                    {s.sellerName || <span className="text-danger">ยังไม่ใส่</span>}
+                  </td>
+                  <td className={TD}>{s.sellerRole === "am" ? "AM" : "Sale"}</td>
                   <td className={TD}>{v.branch?.name ?? "—"}</td>
                   <td className={TD}>{v.branch?.zoneName.replace("เขต ", "") ?? "—"}</td>
+                  <td className={cx(TD, "num")}>{s.mailReceivedDate || "—"}</td>
+                  <td className={cx(TD, "num")}>
+                    {s.firstServiceDate || <Chip tone="pend">รอนัด</Chip>}
+                  </td>
+                  <td className={cx(TD, "num")}>{s.firstServiceTime || "—"}</td>
                   <td className={TD}>
                     {s.teamIds.map((id) => teamCode.get(id)).filter(Boolean).join(", ") || "—"}
                   </td>
@@ -483,6 +544,9 @@ export function NewContractsClient({ role, month, monthChoices, master, saved, t
                       <Chip tone="na">—</Chip>
                     )}
                   </td>
+                  <td className={cx(TD, "max-w-[200px] truncate")} title={s.note}>
+                    {s.note || <span className="text-fg-faint">—</span>}
+                  </td>
                   <td className={cx(TD, "text-center")}>
                     <FileChip
                       attached={hasPdf}
@@ -495,6 +559,8 @@ export function NewContractsClient({ role, month, monthChoices, master, saved, t
                       <Chip tone="miss">ขาด ผู้ขาย</Chip>
                     ) : v.warn ? (
                       <Chip tone="pend">{v.warn}</Chip>
+                    ) : v.filterable.pendingService ? (
+                      <Chip tone="pend">รอนัดบริการ</Chip>
                     ) : (
                       <Chip tone="ok">ครบ</Chip>
                     )}
@@ -539,6 +605,7 @@ export function NewContractsClient({ role, month, monthChoices, master, saved, t
                   master={master}
                   onPatch={(patch) => patchDraft(d.key, patch)}
                   onFile={() => setFileTarget({ kind: "draft", key: d.key })}
+                  onRenewal={() => setRenewalFor(d.key)}
                   onRemove={() => removeDraft(d.key)}
                 />
               );
@@ -546,7 +613,7 @@ export function NewContractsClient({ role, month, monthChoices, master, saved, t
 
             {visibleSaved.length === 0 && drafts.length === 0 ? (
               <tr>
-                <td colSpan={17} className="px-4 py-10 text-center text-[13px] text-fg-muted">
+                <td colSpan={24} className="px-4 py-10 text-center text-[13px] text-fg-muted">
                   {saved.length === 0 ? (
                     <>
                       ยังไม่มีงานที่เปิดใน <b>{monthLabel(month)}</b> — กด <b>+ เพิ่มแถว</b>{" "}
@@ -611,6 +678,22 @@ export function NewContractsClient({ role, month, monthChoices, master, saved, t
           onClose={() => setFileTarget(null)}
         />
       ) : null}
+      {renewalFor ? (
+        <RenewalDialog
+          supabase={supabase}
+          branchNameOf={(id) => branchById.get(id)?.name ?? ""}
+          onClose={() => setRenewalFor(null)}
+          onPick={(link: RenewalLink) => {
+            // ลูกค้าเดิม: ใช้ชื่อ/สาขาของลูกค้านั้น (ไม่สร้างลูกค้าใหม่ตอนบันทึก)
+            patchDraft(renewalFor, {
+              renewal: link,
+              customerName: link.customerName,
+              branchText: branchById.get(link.branchId)?.name ?? "",
+            });
+            setRenewalFor(null);
+          }}
+        />
+      ) : null}
       {historyFor ? (
         <HistoryDialog
           supabase={supabase}
@@ -644,7 +727,18 @@ function FileChip({
   );
 }
 
-type DraftErr = (f: "contractNo" | "customerName" | "saleName" | "branch" | "startDate" | "endDate" | "value") => boolean;
+type DraftErr = (
+  f:
+    | "contractNo"
+    | "customerName"
+    | "saleName"
+    | "branch"
+    | "startDate"
+    | "endDate"
+    | "mailDate"
+    | "serviceDate"
+    | "value",
+) => boolean;
 
 function DraftTableRow({
   rowNo,
@@ -659,6 +753,7 @@ function DraftTableRow({
   master,
   onPatch,
   onFile,
+  onRenewal,
   onRemove,
 }: {
   rowNo: number;
@@ -673,6 +768,7 @@ function DraftTableRow({
   master: MasterData;
   onPatch: (patch: Partial<DraftRow>) => void;
   onFile: () => void;
+  onRenewal: () => void;
   onRemove: () => void;
 }) {
   const hasErrors = !canSave(c);
@@ -729,8 +825,18 @@ function DraftTableRow({
             aria-label="ชื่อลูกค้า"
             value={d.customerName}
             autoComplete="off"
+            readOnly={d.renewal !== null}
+            title={d.renewal ? "ลูกค้าเดิมตามสัญญาที่ผูกไว้ — แก้ชื่อไม่ได้" : ""}
             onChange={(e) => onPatch({ customerName: e.target.value })}
-            className={cx(INPUT, border(err("customerName")))}
+            className={cx(INPUT, border(err("customerName")), d.renewal && "bg-surface-2")}
+          />
+        </td>
+        <td className={cx(TD, "text-center")}>
+          <input
+            type="checkbox"
+            aria-label="เบิกด่วน"
+            checked={d.isUrgent}
+            onChange={(e) => onPatch({ isUrgent: e.target.checked })}
           />
         </td>
         <td className={TD}>
@@ -740,7 +846,7 @@ function DraftTableRow({
                 key={t}
                 type="button"
                 aria-pressed={d.saleType === t}
-                onClick={() => onPatch({ saleType: t })}
+                onClick={() => onPatch(t === "new" ? { saleType: t, renewal: null } : { saleType: t })}
                 className={cx(
                   "cursor-pointer px-2 py-1 focus-visible:outline-2 focus-visible:outline-accent",
                   d.saleType === t ? "bg-accent text-accent-fg" : "bg-surface text-fg-muted hover:bg-surface-2",
@@ -750,6 +856,34 @@ function DraftTableRow({
               </button>
             ))}
           </div>
+        </td>
+        <td className={TD}>
+          {d.saleType === "new" ? (
+            <Chip tone="na">— งานใหม่ —</Chip>
+          ) : (
+            <div className="flex items-center gap-1">
+              <Chip tone={d.renewal ? "ok" : "miss"} onClick={onRenewal}>
+                {d.renewal ? (
+                  <>
+                    🔗 <span className="num">{d.renewal.contractNo}</span>
+                  </>
+                ) : (
+                  "⚠ ยังไม่ผูก · ค้นหา"
+                )}
+              </Chip>
+              {d.renewal ? (
+                <button
+                  type="button"
+                  aria-label="เลิกผูกลูกค้าเดิม"
+                  title="เลิกผูกลูกค้าเดิม"
+                  onClick={() => onPatch({ renewal: null })}
+                  className="cursor-pointer rounded px-1 text-fg-muted hover:bg-surface-3 focus-visible:outline-2 focus-visible:outline-accent"
+                >
+                  ✕
+                </button>
+              ) : null}
+            </div>
+          )}
         </td>
         <td className={TD}>
           <input
@@ -762,16 +896,34 @@ function DraftTableRow({
           />
         </td>
         <td className={TD}>
+          <select
+            aria-label="ตำแหน่งผู้ขาย"
+            value={d.sellerRole}
+            onChange={(e) => onPatch({ sellerRole: e.target.value as "sale" | "am" })}
+            className={cx(INPUT, "border-border-strong")}
+          >
+            <option value="sale">Sale</option>
+            <option value="am">AM</option>
+          </select>
+        </td>
+        <td className={TD}>
           <input
             aria-label="สาขา"
             list="branch-list"
             value={d.branchText}
             autoComplete="off"
             placeholder="พิมพ์ชื่อสาขา…"
-            title={branchBad ? "ไม่พบสาขานี้ในรายการ — เลือกจากที่ระบบเดาให้" : ""}
+            readOnly={d.renewal !== null}
+            title={
+              d.renewal
+                ? "สาขาของลูกค้าเดิม — แก้ไม่ได้"
+                : branchBad
+                  ? "ไม่พบสาขานี้ในรายการ — เลือกจากที่ระบบเดาให้"
+                  : ""
+            }
             onFocus={(e) => e.currentTarget.select()}
             onChange={(e) => onPatch({ branchText: e.target.value })}
-            className={cx(INPUT, border(branchBad))}
+            className={cx(INPUT, border(branchBad), d.renewal && "bg-surface-2")}
           />
         </td>
         <td className={cx(TD, "text-center")}>
@@ -780,6 +932,47 @@ function DraftTableRow({
           ) : (
             <span className="text-fg-faint">—</span>
           )}
+        </td>
+        <td className={TD}>
+          <input
+            type="date"
+            aria-label="วันที่รับ Mail"
+            value={d.mailReceivedDate}
+            onChange={(e) => onPatch({ mailReceivedDate: e.target.value })}
+            className={cx(INPUT, "num", border(err("mailDate")))}
+          />
+        </td>
+        <td className={TD}>
+          <input
+            type="date"
+            aria-label="วันที่บริการ"
+            value={d.firstServiceDate}
+            title="ยังไม่นัด = ปล่อยว่าง (สถานะ รอนัดบริการ) เติมทีหลังได้"
+            onChange={(e) =>
+              onPatch(
+                e.target.value
+                  ? { firstServiceDate: e.target.value }
+                  : { firstServiceDate: "", firstServiceTime: "" },
+              )
+            }
+            className={cx(INPUT, "num", border(err("serviceDate")), !d.firstServiceDate && "border-warn")}
+          />
+        </td>
+        <td className={TD}>
+          <select
+            aria-label="เวลาบริการ"
+            value={d.firstServiceTime}
+            disabled={!d.firstServiceDate}
+            onChange={(e) => onPatch({ firstServiceTime: e.target.value })}
+            className={cx(INPUT, "num border-border-strong")}
+          >
+            <option value="">— เลือก —</option>
+            {SERVICE_TIME_SLOTS.map((t) => (
+              <option key={t} value={t}>
+                {t}
+              </option>
+            ))}
+          </select>
         </td>
         <td className={TD}>
           <TeamPicker
@@ -836,6 +1029,16 @@ function DraftTableRow({
             <Chip tone="na">—</Chip>
           )}
         </td>
+        <td className={TD}>
+          <input
+            aria-label="หมายเหตุ"
+            value={d.note}
+            maxLength={500}
+            autoComplete="off"
+            onChange={(e) => onPatch({ note: e.target.value })}
+            className={cx(INPUT, "border-border-strong")}
+          />
+        </td>
         <td className={cx(TD, "text-center")}>
           <FileChip attached={d.pendingPdf !== null} extra={0} onClick={onFile} />
         </td>
@@ -844,6 +1047,8 @@ function DraftTableRow({
             <Chip tone="miss">{showErrors || missingLabel(c) ? missingLabel(c) : "ยังไม่ครบ"}</Chip>
           ) : warn ? (
             <Chip tone="pend">{warn}</Chip>
+          ) : c.pendingService ? (
+            <Chip tone="pend">รอนัดบริการ</Chip>
           ) : (
             <Chip tone="ok">ครบ</Chip>
           )}
@@ -863,7 +1068,7 @@ function DraftTableRow({
       {d.saveError ? (
         <tr className="bg-danger-soft">
           <td />
-          <td colSpan={16} className="px-2 py-1 text-[12.5px] text-danger" role="alert">
+          <td colSpan={23} className="px-2 py-1 text-[12.5px] text-danger" role="alert">
             บันทึกแถวนี้ไม่สำเร็จ: {d.saveError}
           </td>
         </tr>
