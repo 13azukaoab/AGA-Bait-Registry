@@ -10,14 +10,19 @@ import {
   EDIT_LOCK_REASONS,
   checkRenewalPickForEdit,
   contractEditBlockReason,
+  contractFileBlockReason,
   draftFromSaved,
   isEditUnchanged,
   monthOfDate,
 } from "./editRow";
+import { describeDbError } from "./errors";
 import { saveDraft } from "./save";
-import { buildSaveParams } from "./savePayload";
+import { buildSaveParams, parseSaveRow } from "./savePayload";
 import { tierFor } from "./rowCalc";
 import type { SavedContract } from "./types";
+
+const EXPECTED = "2026-11-12T10:00:00.123456+00:00";
+const NEWER = "2026-11-12T10:05:00.654321+00:00";
 
 const branches: BranchOption[] = [{ id: "b1", name: "นครปฐม", zoneId: "z1", zoneName: "เขต 1" }];
 const master = { branches };
@@ -53,6 +58,7 @@ function saved(over: Partial<SavedContract> = {}): SavedContract {
     teamIds: ["t2", "t1"],
     files: [],
     auditCount: 1,
+    updatedAt: "2026-11-12T10:00:00.123456+00:00",
     auditCountFailed: false,
     ...over,
   };
@@ -213,7 +219,7 @@ describe("buildSaveParams โหมดแก้", () => {
       saved({ saleType: "renew", renewedFrom: { contractId: "old", contractNo: "X" } }),
       master,
     );
-    const p = buildSaveParams(d, values, { contractId: "c1" });
+    const p = buildSaveParams(d, values, { contractId: "c1", expectedUpdatedAt: EXPECTED });
     expect(p.p_contract_id).toBe("c1");
     expect("p_customer_id" in p).toBe(false);
     expect(p.p_renewed_from_contract_id).toBe("old");
@@ -255,7 +261,7 @@ describe("saveDraft โหมดแก้ (client ปลอม)", () => {
     const c = client({
       data: [{ contract_id: "c1", customer_id: "u1", reused_customer: true, existing_customer_type: "B" }],
     });
-    const res = await saveDraft(c.supabase, d, check, { contractId: "c1" });
+    const res = await saveDraft(c.supabase, d, check, { contractId: "c1", expectedUpdatedAt: EXPECTED });
     expect(c.calls).toHaveLength(1);
     expect(c.calls[0]).toMatchObject({ fn: "save_job_opening", args: { p_contract_id: "c1" } });
     expect(res).toMatchObject({ ok: true, contractId: "c1", customerTypeMismatch: null });
@@ -264,12 +270,12 @@ describe("saveDraft โหมดแก้ (client ปลอม)", () => {
     const c = client({
       data: [{ contract_id: "c1", customer_id: "u1", reused_customer: true, existing_customer_type: "B" }],
     });
-    const res = await saveDraft(c.supabase, d, check, { contractId: "c1" });
+    const res = await saveDraft(c.supabase, d, check, { contractId: "c1", expectedUpdatedAt: EXPECTED });
     expect(res.ok && res.customerTypeMismatch).toBeNull();
   });
   it("เลขสัญญาซ้ำ (23505) / นอกขอบเขต (42501) / AG006 / AG004 → ข้อความไทย", async () => {
     const run = async (code: string) =>
-      saveDraft(client({ error: { code, message: "x" } }).supabase, d, check, { contractId: "c1" });
+      saveDraft(client({ error: { code, message: "x" } }).supabase, d, check, { contractId: "c1", expectedUpdatedAt: EXPECTED });
     const dup = await run("23505");
     expect(!dup.ok && dup.error).toMatch(/เลขที่สัญญา/);
     const scope = await run("42501");
@@ -285,8 +291,106 @@ describe("saveDraft โหมดแก้ (client ปลอม)", () => {
         .supabase,
       d,
       check,
-      { contractId: "c1" },
+      { contractId: "c1", expectedUpdatedAt: EXPECTED },
     );
     expect(!r.ok && r.error).toMatch(/ลูกค้าคนเดียวกัน/);
+  });
+});
+
+describe("M12 กันเขียนทับ (p_expected_updated_at)", () => {
+  const values = { branchId: "b1", termYears: 1, valueTotal: 99510, endDate: "2027-09-30" };
+  const d = draftFromSaved(saved(), master);
+  const check = checkDraft(d, branches, undefined);
+  const okRow = (updatedAt?: string) => [
+    {
+      contract_id: "c1",
+      customer_id: "u1",
+      reused_customer: true,
+      existing_customer_type: "B",
+      ...(updatedAt ? { updated_at: updatedAt } : {}),
+    },
+  ];
+  function client(reply: { data?: unknown; error?: { code?: string; message?: string } | null }) {
+    const calls: { fn: string; args: Record<string, unknown> }[] = [];
+    return {
+      calls,
+      supabase: {
+        rpc: async (fn: string, args: Record<string, unknown>) => {
+          calls.push({ fn, args });
+          return { data: null, error: null, ...reply };
+        },
+      } as never,
+    };
+  }
+
+  it("payload โหมดแก้มี p_expected_updated_at (ส่งสตริงตามที่ DB คืน ไม่ผ่าน Date)", () => {
+    const p = buildSaveParams(d, values, { contractId: "c1", expectedUpdatedAt: EXPECTED });
+    expect(p.p_expected_updated_at).toBe(EXPECTED);
+  });
+  it("โหมดสร้างใหม่ไม่ส่ง p_expected_updated_at", () => {
+    expect("p_expected_updated_at" in buildSaveParams(d, values)).toBe(false);
+  });
+  it("saveDraft โหมดแก้ส่ง p_expected_updated_at ไปกับ RPC", async () => {
+    const c = client({ data: okRow(NEWER) });
+    await saveDraft(c.supabase, d, check, { contractId: "c1", expectedUpdatedAt: EXPECTED });
+    expect(c.calls[0]?.args.p_expected_updated_at).toBe(EXPECTED);
+  });
+  it("saveDraft โหมดแก้ที่ลืมส่ง expected → ไม่ยิง RPC (บั๊กหน้าจอ) ขึ้นข้อความไทย", async () => {
+    const c = client({ data: okRow() });
+    const r = await saveDraft(c.supabase, d, check, { contractId: "c1" });
+    expect(c.calls).toHaveLength(0);
+    expect(!r.ok && r.error).toMatch(/เวลาแก้ล่าสุด/);
+  });
+  it("หลังบันทึกสำเร็จ คืน updatedAt ใหม่ที่ RPC ส่งมา (ใช้แทนค่าเดิม) · แล้วแก้ครั้งต่อไปส่งค่าใหม่", async () => {
+    const c = client({ data: okRow(NEWER) });
+    const first = await saveDraft(c.supabase, d, check, { contractId: "c1", expectedUpdatedAt: EXPECTED });
+    expect(first.ok && first.updatedAt).toBe(NEWER);
+    const next = first.ok && first.updatedAt ? first.updatedAt : EXPECTED;
+    await saveDraft(c.supabase, d, check, { contractId: "c1", expectedUpdatedAt: next });
+    expect(c.calls[1]?.args.p_expected_updated_at).toBe(NEWER);
+  });
+  it("parseSaveRow อ่าน updated_at · ไม่มี = null", () => {
+    expect(parseSaveRow(okRow(NEWER))?.updatedAt).toBe(NEWER);
+    expect(parseSaveRow(okRow())?.updatedAt).toBeNull();
+  });
+  it("AG008 → conflict: true + ข้อความไทย · error อื่นไม่มี conflict", async () => {
+    const r = await saveDraft(client({ error: { code: "AG008", message: "x" } }).supabase, d, check, {
+      contractId: "c1",
+      expectedUpdatedAt: EXPECTED,
+    });
+    expect(!r.ok && r.conflict).toBe(true);
+    expect(!r.ok && r.error).toBe("มีคนแก้สัญญานี้ไปก่อนแล้ว กรุณาโหลดใหม่");
+    const other = await saveDraft(client({ error: { code: "AG006", message: "x" } }).supabase, d, check, {
+      contractId: "c1",
+      expectedUpdatedAt: EXPECTED,
+    });
+    expect(!other.ok && other.conflict).toBeUndefined();
+  });
+});
+
+describe("แปล error M12 (describeDbError)", () => {
+  it("AG007 → สัญญาปิด/ยกเลิกแล้ว แก้ได้เฉพาะผู้ดูแลระบบ (Host) ทุก context", () => {
+    const msg = "สัญญาปิด/ยกเลิกแล้ว แก้ได้เฉพาะผู้ดูแลระบบ (Host)";
+    expect(describeDbError({ code: "AG007" })).toBe(msg);
+    expect(describeDbError({ code: "AG007" }, "file")).toBe(msg);
+    expect(describeDbError({ code: "AG007" }, "delete")).toBe(msg);
+  });
+  it("AG008 → มีคนแก้สัญญานี้ไปก่อนแล้ว กรุณาโหลดใหม่", () => {
+    expect(describeDbError({ code: "AG008" })).toBe("มีคนแก้สัญญานี้ไปก่อนแล้ว กรุณาโหลดใหม่");
+  });
+  it("22004 → บอกว่าเป็นข้อผิดพลาดของหน้าจอ ไม่ใช่ข้อความทั่วไป", () => {
+    expect(describeDbError({ code: "22004" })).toMatch(/ข้อผิดพลาดของหน้าจอ/);
+  });
+});
+
+describe("contractFileBlockReason (ล็อกไฟล์ตามสถานะ · ตรงกับ DB M12)", () => {
+  it("closed ล็อกทุกคน (รวม host) · cancelled ล็อกเฉพาะที่ไม่ใช่ host · active ไม่ล็อก", () => {
+    expect(contractFileBlockReason("closed", "host")).not.toBeNull();
+    expect(contractFileBlockReason("closed", "admin")).not.toBeNull();
+    expect(contractFileBlockReason("cancelled", "admin")).toMatch(/Host/);
+    expect(contractFileBlockReason("cancelled", "recorder")).not.toBeNull();
+    expect(contractFileBlockReason("cancelled", "host")).toBeNull();
+    expect(contractFileBlockReason("active", "admin")).toBeNull();
+    expect(contractFileBlockReason("expired_pending_collection", "admin")).toBeNull();
   });
 });

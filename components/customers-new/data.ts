@@ -6,6 +6,7 @@
  *   * ทุก select ระบุคอลัมน์ชัดเจน ไม่ใช้ `select('*')`
  *   * master (สาขา/เขต/ทีม/ประเภทลูกค้า/เกณฑ์ Tier) อ่านจากตารางจริง · เกณฑ์ Tier มาจาก `tier_rules`
  *   * สัญญาของเดือน = สัญญาที่ "วันเริ่ม" อยู่ในเดือนนั้น
+ *   * `updatedAt` (M12) ถูกอ่านมากับสัญญาทุกใบ — ส่งกลับเป็น `p_expected_updated_at` ตอนแก้ · `loadContractById` ใช้โหลดแถวใหม่หลัง AG008
  *   * `auditCount` นับจาก audit_log เฉพาะ host (RLS ให้ host อ่านได้คนเดียว) — role อื่นได้ null
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -23,6 +24,12 @@ export const MONTH_ROW_LIMIT = 1000;
 
 const FILE_COLUMNS =
   "id, kind, version, is_current, storage_path, file_name, size_bytes, was_compressed, reason, uploaded_at";
+
+const CONTRACT_SELECT = `id, customer_id, contract_no, start_date, end_date, term_years, value_total, sale_type, status, sale_name, am_name,
+       is_urgent, renewed_from_contract_id, mail_received_date, first_service_date, first_service_time, note, updated_at,
+       customers ( name, customer_type, branch_id ),
+       contract_teams ( team_id ),
+       contract_files ( ${FILE_COLUMNS} )`;
 
 type FileRowDb = {
   id: string;
@@ -143,6 +150,7 @@ type ContractRowDb = {
   first_service_date: string | null;
   first_service_time: string | null;
   note: string | null;
+  updated_at: string;
   customers: {
     name: string;
     customer_type: string | null;
@@ -161,13 +169,7 @@ export async function loadMonthContracts(
   const { from, toExclusive } = monthRange(month);
   const { data, error } = await supabase
     .from("contracts")
-    .select(
-      `id, customer_id, contract_no, start_date, end_date, term_years, value_total, sale_type, status, sale_name, am_name,
-       is_urgent, renewed_from_contract_id, mail_received_date, first_service_date, first_service_time, note,
-       customers ( name, customer_type, branch_id ),
-       contract_teams ( team_id ),
-       contract_files ( ${FILE_COLUMNS} )`,
-    )
+    .select(CONTRACT_SELECT)
     .gte("start_date", from)
     .lt("start_date", toExclusive)
     .order("contract_no", { ascending: true })
@@ -176,13 +178,43 @@ export async function loadMonthContracts(
   if (error) return { rows: [], truncated: false, error: error.message };
 
   const raw = (data ?? []) as unknown as ContractRowDb[];
+  const rows = await toSavedContracts(supabase, raw, role);
+  return { rows, truncated: raw.length >= MONTH_ROW_LIMIT, error: null };
+}
+
+/**
+ * อ่านสัญญาใบเดียวตาม id (ค่าล่าสุดจากฐานข้อมูล) — ใช้ปุ่ม "โหลดแถวใหม่" หลังเจอ AG008 (มีคนแก้ไปก่อน)
+ * `row: null` + `error: null` = ไม่พบ (ถูกลบแล้วหรือไม่มีสิทธิ์ดู)
+ */
+export async function loadContractById(
+  supabase: SupabaseClient,
+  contractId: string,
+  role: UserRole,
+): Promise<{ row: SavedContract | null; error: string | null }> {
+  const { data, error } = await supabase
+    .from("contracts")
+    .select(CONTRACT_SELECT)
+    .eq("id", contractId)
+    .maybeSingle();
+  if (error) return { row: null, error: error.message };
+  if (!data) return { row: null, error: null };
+  const [row] = await toSavedContracts(supabase, [data as unknown as ContractRowDb], role);
+  return { row: row ?? null, error: null };
+}
+
+/** แปลงแถวจากฐานข้อมูลเป็น `SavedContract` (อ่านจำนวนประวัติ/เลขที่สัญญาเก่าเพิ่มตามที่ต้องใช้) */
+async function toSavedContracts(
+  supabase: SupabaseClient,
+  raw: ContractRowDb[],
+  role: UserRole,
+): Promise<SavedContract[]> {
   const audit = role === "host" ? await loadAuditCounts(supabase, raw.map((r) => r.id)) : null;
 
   // เลขที่สัญญาเก่าของแถว Renew (สัญญาเก่าอาจอยู่คนละเดือน จึงอ่านแยก) · อ่านไม่ได้ = null (หน้าจอแสดง "โหลดไม่ได้")
   const oldIds = [...new Set(raw.map((r) => r.renewed_from_contract_id).filter((v): v is string => !!v))];
   const oldNo = await loadContractNos(supabase, oldIds);
 
-  const rows: SavedContract[] = raw
+  return raw
     .filter((r) => r.customers)
     .map((r) => ({
       contractId: r.id,
@@ -208,6 +240,7 @@ export async function loadMonthContracts(
       termYears: (r.term_years === 3 ? 3 : 1) as TermYears,
       valueTotal: Number(r.value_total),
       teamIds: (r.contract_teams ?? []).map((t) => t.team_id),
+      updatedAt: r.updated_at,
       files: (r.contract_files ?? [])
         .map(toFileRow)
         .sort((a, b) => a.kind.localeCompare(b.kind) || a.version - b.version),
@@ -215,8 +248,6 @@ export async function loadMonthContracts(
       auditCount: audit && !audit.failedIds.has(r.id) ? (audit.counts.get(r.id) ?? 0) : null,
       auditCountFailed: audit ? audit.failedIds.has(r.id) : false,
     }));
-
-  return { rows, truncated: raw.length >= MONTH_ROW_LIMIT, error: null };
 }
 
 /** อ่านเลขที่สัญญาตาม id (แบ่งชุด) — ชุดที่ query ล้มจะไม่มี id ในผลลัพธ์ (ผู้เรียกแสดง "โหลดไม่ได้") */

@@ -106,7 +106,7 @@ describe("parseSaveRow", () => {
   it("อ่านอาร์เรย์ 1 แถวจาก RETURNS TABLE", () => {
     expect(
       parseSaveRow([{ contract_id: "c", customer_id: "u", reused_customer: true, existing_customer_type: "A" }]),
-    ).toEqual({ contractId: "c", customerId: "u", reusedCustomer: true, existingCustomerType: "A" });
+    ).toEqual({ contractId: "c", customerId: "u", reusedCustomer: true, existingCustomerType: "A", updatedAt: null });
     expect(parseSaveRow({ contract_id: "c", customer_id: "u", reused_customer: false, existing_customer_type: null }))
       .toMatchObject({ reusedCustomer: false, existingCustomerType: null });
   });
@@ -206,7 +206,7 @@ describe("saveDraft — เรียก RPC", () => {
       error: expect.stringMatching(/ไม่มีสิทธิ์/),
     });
     const moved = fakeRpc(() => ({ error: { code: "AG006", message: "x" } }));
-    expect(await saveDraft(moved.client, baseDraft, check, { contractId: "c1" })).toMatchObject({
+    expect(await saveDraft(moved.client, baseDraft, check, { contractId: "c1", expectedUpdatedAt: "2026-11-12T10:00:00.123456+00:00" })).toMatchObject({
       ok: false,
       error: expect.stringMatching(/เปลี่ยนสาขา/),
     });

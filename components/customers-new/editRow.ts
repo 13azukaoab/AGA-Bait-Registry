@@ -31,6 +31,19 @@ export function contractEditBlockReason(status: ContractStatus, role: UserRole):
   return null;
 }
 
+/**
+ * เหตุผลที่แนบ/เปลี่ยน/ลบไฟล์ของสัญญานี้ไม่ได้ (null = ทำได้) — ตรงกับ DB (M12 `contract_files_writable`):
+ *   * `closed` → ล็อกทุกคน (รวม host) · `cancelled` → host เท่านั้น (admin/role อื่น AG007)
+ * เปิดดูไฟล์ทำได้เสมอ (อ่านอย่างเดียว)
+ */
+export function contractFileBlockReason(status: ContractStatus, role: UserRole): string | null {
+  if (status === "closed") return "สัญญาปิดแล้ว ไฟล์ถูกล็อก เปิดดูได้อย่างเดียว";
+  if (status === "cancelled" && role !== "host") {
+    return "สัญญายกเลิกแล้ว แก้ไฟล์ได้เฉพาะผู้ดูแลระบบ (Host) เปิดดูได้อย่างเดียว";
+  }
+  return null;
+}
+
 /** ข้อความอธิบายช่องที่ล็อกตอนแก้ (ใช้เป็น tooltip) */
 export const EDIT_LOCK_REASONS = {
   branch: "แก้สาขาไม่ได้ — ถ้าลงผิดสาขาให้ลบสัญญานี้แล้วเปิดงานใหม่",

@@ -87,6 +87,8 @@ export interface SavedContract {
   termYears: TermYears;
   valueTotal: number;
   teamIds: string[];
+  /** เวลาแก้ล่าสุด (`contracts.updated_at` ตามที่ DB คืน) — ส่งกลับเป็น `p_expected_updated_at` ตอนแก้ (M12) */
+  updatedAt: string;
   files: ContractFileRow[];
   /** จำนวนครั้งที่แก้ใน audit_log — มีค่าเฉพาะ host (role อื่นอ่าน audit ไม่ได้) */
   auditCount: number | null;
