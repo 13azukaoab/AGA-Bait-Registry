@@ -423,6 +423,8 @@ tfoot td{padding:10px 12px;font-weight:700;background:var(--surface-2);border-to
   font-weight:500;color:var(--fg);background:var(--surface);border:1px solid var(--border-strong);
   border-radius:10px;cursor:pointer;padding:6px 10px}
 .fbtn[aria-pressed="true"]{background:var(--accent-soft);border-color:var(--accent);color:var(--accent-strong);font-weight:600}
+.fbtn .fl{display:flex;flex-direction:column;align-items:center;line-height:1.25}
+.fbtn .fl small{font-size:11px;font-weight:400;color:var(--fg-muted)}
 .fbtn:disabled{opacity:.45;cursor:not-allowed}
 .fbtn .n{font-size:11px;font-weight:700;min-width:20px;padding:1px 6px;border-radius:999px;
   background:var(--surface-3);color:var(--fg-muted);text-align:center}
@@ -1560,7 +1562,7 @@ function wdRowHtml(){
 }
 function rpRowHtml(){
   /* "สถานีหาย" และ "อื่นๆ" ต้องระบุรายละเอียดในช่องหมายเหตุ (เช่น สถานีหาย แต่รอบนี้อุปกรณ์ไม่พอซ่อม) */
-  return '<tr><td><select class="rpType" onchange="rpTypeChange(this)" aria-label="ประเภทงาน"><option selected>ฝังสถานีใหม่ (IG)</option><option>ฝังสถานีใหม่ (IC)</option><option>เปลี่ยนฝาสถานี</option><option>สถานีหาย</option><option>อื่นๆ</option></select></td>'+
+  return '<tr><td><select class="rpType" onchange="rpTypeChange(this)" aria-label="ประเภทงาน"><option selected>ฝังสถานีใหม่ (IG)</option><option>ฝังสถานีใหม่ (IC)</option><option>เปลี่ยนฝาสถานี</option><option>สถานีหาย</option><option>ถอนสถานีออก</option><option>อื่นๆ</option></select></td>'+
     '<td><div class="stcell"><input class="rpSt" placeholder="เช่น 3, 5, 8-12" style="min-width:170px" oninput="rpStCalc(this)" aria-label="หมายเลขสถานี (ใส่ได้หลายเลข คั่นด้วยจุลภาค หรือช่วงด้วยขีด)"><span class="vchk"></span></div></td>'+
     '<td class="rpCnt num" style="color:var(--fg-muted)">0 สถานี <span class="auto-tag">อัตโนมัติ</span></td>'+
     '<td><input class="rpNote" placeholder="ไม่บังคับ" style="min-width:220px;width:100%" aria-label="รายละเอียดงานซ่อม"></td>'+
@@ -1621,7 +1623,7 @@ function svRenderForm(){
     fieldsHtml('sv',c)+
     '<button type="button" class="bigok" id="svNormal" data-act="svNormal" aria-pressed="false"><span class="cbox" aria-hidden="true"><svg viewBox="0 0 20 20"><path d="M3 10.5l4.5 4.5L17 5"/></svg></span><span class="txt">IG / IC ปกติทั้งหมด<small>ไม่พบปลวก ไม่เปลี่ยนไม้ ไม่มีงานซ่อม · ไม่รวมกล่อง AG</small></span><span class="state"><span class="off">ยังไม่ได้กด</span><span class="on">กดแล้ว ✓</span></span></button>'+
     '<div class="fbtns" role="group" aria-label="สิ่งที่พบ">'+
-      [['tm','พบปลวก'],['wd','เปลี่ยนไม้'],['rp','งานซ่อม'],['ag','กล่อง AG']].map(function(s){return '<button type="button" class="fbtn" data-act="sec" data-sec="'+s[0]+'" aria-pressed="false">'+s[1]+' <span class="n" id="svN_'+s[0]+'">0</span></button>'}).join('')+'</div>'+
+      [['tm','พบปลวก',''],['wd','เปลี่ยนไม้',''],['rp','งานซ่อม','(เปลี่ยนฝา, ฝังใหม่, หาย, ถอนออก)'],['ag','กล่อง AG','']].map(function(s){return '<button type="button" class="fbtn" data-act="sec" data-sec="'+s[0]+'" aria-pressed="false"><span class="fl">'+s[1]+(s[2]?'<small>'+s[2]+'</small>':'')+'</span> <span class="n" id="svN_'+s[0]+'">0</span></button>'}).join('')+'</div>'+
     tableSec('svSecTm','svTmBody','พบปลวก','<th>หมายเลขสถานี</th><th>ชนิดปลวก</th><th>เหยื่อ / เคมีผง</th>','addTm','+ เพิ่มจุดที่พบปลวก','ตั้งต้นว่าจุดอื่นปกติ — เพิ่มเฉพาะจุดที่พบ: พิมพ์เลขสถานี (ระบบตรวจว่ามีจริง) แล้วเลือกชนิดปลวก · <b>ใต้ดิน</b> = ใส่เหยื่อ · <b>สวน</b> = เคมีผง กรอกจำนวนจุด แปลงกรัมอัตโนมัติ 0.3 ก./จุด','svTmChips')+
     tableSec('svSecWd','svWdBody','เปลี่ยนไม้ล่อ','<th>หมายเลขสถานี</th><th>ชนิด</th><th>จำนวนไม้</th>','addWd','+ เพิ่มสถานีที่เปลี่ยนไม้','จำนวนไม้เติมอัตโนมัติตามชนิด (IG = 2 ชิ้น · IC = 1 ชิ้น)','svWdChips')+
     tableSec('svSecRp','svRpBody','งานซ่อม / ปรับสถานี','<th>ประเภทงาน</th><th>หมายเลขสถานี (ใส่ได้หลายเลข)</th><th>จำนวน</th><th>รายละเอียด</th>','addRp','+ เพิ่มงานซ่อม / ปรับสถานี','เช่น ฝังสถานีใหม่ (IG/IC) เปลี่ยนฝาสถานี · <b>ซ่อมหลายสถานีพร้อมกัน ใส่ในแถวเดียว</b> คั่นด้วยจุลภาค หรือใช้ขีดเป็นช่วง เช่น <b>3, 5, 8-12</b> = 7 สถานี (ระบบนับจำนวนให้) · ถ้า <b>สถานีหาย</b> แต่รอบนี้ยังซ่อมไม่ได้ (เช่น อุปกรณ์ไม่พอ) ให้เลือก “สถานีหาย” แล้วเขียนเหตุผลในช่องรายละเอียด · “อื่นๆ” ต้องระบุว่าเกิดอะไรขึ้น','')+
