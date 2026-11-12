@@ -376,10 +376,20 @@ tfoot td{padding:10px 12px;font-weight:700;background:var(--surface-2);border-to
 #s-registry thead th.sortable[aria-sort="ascending"]::after{content:"▲";opacity:1;color:var(--accent-strong)}
 #s-registry thead th.sortable[aria-sort="descending"]::after{content:"▼";opacity:1;color:var(--accent-strong)}
 #s-registry thead th.sortable[aria-sort="ascending"],#s-registry thead th.sortable[aria-sort="descending"]{color:var(--accent-strong)}
-.fgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-bottom:14px}
+.fgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:14px}
+.fgrid.f4{grid-template-columns:minmax(0,.85fr) minmax(0,1.25fr) minmax(0,1fr) minmax(0,1fr);gap:10px;margin-bottom:10px}
+.fgrid.f4 .field select,.fgrid.f4 .field input{padding:10px 8px;font-size:13px}
+.fgrid.f2{grid-template-columns:repeat(2,minmax(0,1fr))}
+.fgrid.f2 .field:only-child{grid-column:1/-1}
+@media (max-width:640px){.fgrid,.fgrid.f4{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .fgrid .field label{font-size:12px}
 .fgrid .field select,.fgrid .field input{width:100%;min-width:0;padding:10px 12px;font-size:14px}
 .fgrid .field .sub{font-size:11px;color:var(--fg-faint)}
+.wtbox{display:flex;align-items:center;gap:4px;min-height:44px;padding:10px 12px;font-size:14px;border:1px dashed var(--border);border-radius:8px;background:var(--surface-2);color:var(--fg)}
+.rpNote.need{border-color:var(--warn);background:var(--warn-soft)}
+.wtbox b{font-size:16px}
+.wtbox .wt-empty{color:var(--fg-faint);font-size:12px}
+.wtbox .wt-bad{color:var(--danger);font-size:12px;font-weight:600}
 /* ปุ่มใหญ่ "ปกติทั้งหมด" — ยังไม่กด = เส้นประเทา + ช่องติ๊กว่าง · กดแล้ว = พื้นเขียว + ติ๊กถูก (วาดเส้นเข้ามา) */
 .bigok{display:flex;align-items:center;justify-content:flex-start;gap:14px;width:100%;min-height:62px;font:inherit;
   font-size:16px;font-weight:600;line-height:1.3;border-radius:12px;cursor:pointer;text-align:left;
@@ -417,6 +427,8 @@ tfoot td{padding:10px 12px;font-weight:700;background:var(--surface-2);border-to
   font-weight:500;color:var(--fg);background:var(--surface);border:1px solid var(--border-strong);
   border-radius:10px;cursor:pointer;padding:6px 10px}
 .fbtn[aria-pressed="true"]{background:var(--accent-soft);border-color:var(--accent);color:var(--accent-strong);font-weight:600}
+.fbtn .fl{display:flex;flex-direction:column;align-items:center;line-height:1.25}
+.fbtn .fl small{font-size:11px;font-weight:400;color:var(--fg-muted)}
 .fbtn:disabled{opacity:.45;cursor:not-allowed}
 .fbtn .n{font-size:11px;font-weight:700;min-width:20px;padding:1px 6px;border-radius:999px;
   background:var(--surface-3);color:var(--fg-muted);text-align:center}
@@ -585,15 +597,20 @@ tfoot td{padding:10px 12px;font-weight:700;background:var(--surface-2);border-to
     <section id="s-material" hidden>
       <div class="page-head"><h1>สรุปวัสดุ</h1>
         <p>สรุปการใช้วัสดุ 3 ชนิดในพื้นที่ แยกสาขา/ช่วงเวลา — สำหรับวางแผนสต็อก/ต้นทุน <span class="chip pend">🔒 internal เท่านั้น</span></p></div>
+      <div class="seg" role="tablist" aria-label="หัวข้อสรุป">
+        <button type="button" class="segbtn on" role="tab" aria-selected="true" id="matTabMat" onclick="matTab('mat')">วัสดุ</button>
+        <button type="button" class="segbtn" role="tab" aria-selected="false" id="matTabTime" onclick="matTab('time')">เวลาทำงาน</button>
+      </div>
       <div class="toolbar">
         <div class="field"><label>เขต</label><select><option>เขต 1</option><option>ทุกเขต</option></select></div>
-        <div class="field"><label>สาขา</label><select><option>ทุกสาขา</option><option>พุทธมณฑล</option><option>หัวหิน</option><option>นครปฐม</option></select></div>
-        <div class="field"><label>ทีม</label><select><option>ทุกทีม</option><option>A</option><option>B</option></select></div>
-        <div class="field"><label>ชนิดวัสดุ</label><select><option>ทุกชนิด</option><option>NEMESIS</option><option>เคมีผง</option><option>ไม้ล่อ</option></select></div>
+        <div class="field"><label for="matBranch">สาขา</label><select id="matBranch" onchange="wtSumRender()"><option value="">ทุกสาขา</option><option>พุทธมณฑล</option><option>หัวหิน</option><option>นครปฐม</option></select></div>
+        <div class="field"><label for="matTeam">ทีม</label><select id="matTeam" onchange="wtSumRender()"><option value="">ทุกทีม</option><option>A</option><option>B</option></select></div>
+        <div class="field" id="matKindField"><label>ชนิดวัสดุ</label><select><option>ทุกชนิด</option><option>NEMESIS</option><option>เคมีผง</option><option>ไม้ล่อ</option></select></div>
         <div class="field"><label>ช่วงเวลา</label><select><option>ตุลาคม 2026</option><option>Q4 2026</option><option>ปี 2026</option><option>กำหนดช่วงเอง</option></select></div>
         <div style="flex:1"></div>
-        <button class="btn sm" type="button" onclick="exportMaterialXL()" title="ส่งออกสรุปการใช้วัสดุ + ตารางแยกสาขา เป็น .xlsx">↓ ส่งออก Excel</button>
+        <button class="btn sm" type="button" id="matExport" onclick="exportMaterialXL()" title="ส่งออกสรุปการใช้วัสดุ + ตารางแยกสาขา เป็น .xlsx">↓ ส่งออก Excel</button>
       </div>
+      <div id="matMat">
       <div class="stats">
         <div class="stat matn"><div class="lab"><span class="dot" style="background:var(--nem)"></span> NEMESIS (เหยื่อ)</div><div class="val num">10,000 <span style="font-size:14px;color:var(--fg-muted)">ก.</span></div><div class="sub">ภายนอก IG+IC 1,250 · ภายใน AG 8,750 ก.</div></div>
         <div class="stat matp"><div class="lab"><span class="dot" style="background:var(--pow)"></span> เคมีผง (ปลวกสวน)</div><div class="val num">420 <span style="font-size:14px;color:var(--fg-muted)">จุด</span></div><div class="sub">≈ 126 ก. (0.3 ก./จุด)</div></div>
@@ -660,6 +677,18 @@ tfoot td{padding:10px 12px;font-weight:700;background:var(--surface-2);border-to
           </div>
           <div class="note"><span class="ic">ℹ</span><span>ข้อมูลเคมีผงมาจากช่อง "จำนวนจุด" ในหน้ากรอกผลบริการ (จุดที่ระบุชนิด = ปลวกสวน)</span></div>
         </div>
+      </div>
+      </div><!-- /matMat -->
+
+      <!-- สรุปเวลาทำงานจริง: คำนวณจากเวลาเข้า–เวลาจบในหน้ากรอกข้อมูลทำบริการ · ข้อมูลในตารางเป็นตัวอย่างสมมติ -->
+      <div id="matTime" hidden>
+        <div class="stats" id="wtStats"></div>
+        <div class="seg" role="tablist" aria-label="มุมมองเวลาทำงาน">
+          <button type="button" class="segbtn on" role="tab" aria-selected="true" id="wtViewTeam" onclick="wtView('team')">รายทีม</button>
+          <button type="button" class="segbtn" role="tab" aria-selected="false" id="wtViewCust" onclick="wtView('cust')">รายลูกค้า</button>
+        </div>
+        <div class="tablewrap" id="wtTable"></div>
+        <div class="note"><span class="ic">ℹ</span><span>เวลาทำงานจริง = เวลาออก − เวลาเข้า ของแต่ละครั้งที่เข้า · ตัวเลขในตารางนี้เป็น <b>ข้อมูลตัวอย่าง (สมมติ)</b> เพื่อดูหน้าตา</span></div>
       </div>
     </section>
 
@@ -1435,9 +1464,106 @@ function fheadHtml(c,posHtml){
 }
 function fieldsHtml(ctx,c,extra){
   var teams=TEAMS.map(function(t){return '<option value="'+t+'"'+(t===c.team?' selected':'')+'>ทีม '+t+'</option>'}).join('');
-  return '<div class="fgrid"><div class="field"><label for="'+ctx+'Date">วันที่เข้า</label><input type="date" id="'+ctx+'Date" value="'+TODAY_ISO+'"></div>'+
+  /* ลำดับกรอก: ทีม → วันที่ → เวลาเข้า → เวลาออก อยู่แถวเดียวกัน · เวลาทำงานจริง (คำนวณเอง) ขึ้นแถวใหม่ */
+  return '<div class="fgrid f4">'+
     /* id ใช้ "VisitTeam" — ห้ามซ้ำกับตัวกรองทีมฝั่งซ้าย (id+'Team') ไม่งั้นตอนบันทึกจะอ่านค่าจากตัวกรองแทน */
-    '<div class="field"><label for="'+ctx+'VisitTeam">ทีมที่เข้า</label><select id="'+ctx+'VisitTeam">'+teams+'</select><span class="sub">เติมจากครั้งก่อน (ทีม '+c.team+') — แก้ได้ทุกครั้ง</span></div>'+(extra||'')+'</div>';
+    '<div class="field"><label for="'+ctx+'VisitTeam">ทีมที่เข้า</label><select id="'+ctx+'VisitTeam" title="เติมจากครั้งก่อน (ทีม '+c.team+') — แก้ได้">'+teams+'</select><span class="sub">เติมจากครั้งก่อน</span></div>'+
+    '<div class="field"><label for="'+ctx+'Date">วันที่เข้า</label><input type="date" id="'+ctx+'Date" value="'+TODAY_ISO+'"></div>'+
+    /* เวลาเข้า/ออก → ระบบคำนวณชั่วโมงทำงานจริงของวันนั้น (สรุปต่อลูกค้า/ต่อทีมดูที่หน้าสรุป) */
+    /* เวลา 24 ชั่วโมง (HH:MM) พิมพ์เลขล้วน เช่น 1445 → 14:45 ไม่มี AM/PM */
+    '<div class="field"><label for="'+ctx+'TimeIn">เวลาเข้า (24 ชม.)</label><input type="text" class="tinput num" inputmode="numeric" maxlength="5" autocomplete="off" placeholder="เช่น 09:30" id="'+ctx+'TimeIn" oninput="wtFormat(this);wtCalc(\''+ctx+'\')"></div>'+
+    '<div class="field"><label for="'+ctx+'TimeOut">เวลาออก (24 ชม.)</label><input type="text" class="tinput num" inputmode="numeric" maxlength="5" autocomplete="off" placeholder="เช่น 14:45" id="'+ctx+'TimeOut" oninput="wtFormat(this);wtCalc(\''+ctx+'\')"></div></div>'+
+    '<div class="fgrid f2">'+
+    '<div class="field"><label>เวลาทำงานจริง</label><div class="wtbox" id="'+ctx+'WorkTime" aria-live="polite"><span class="wt-empty">กรอกเวลาเข้า–ออก</span></div></div>'+
+    (extra||'')+'</div>';
+}
+/* คำนวณเวลาทำงานจริง (นาที) จากเวลาเข้า–เวลาจบ · คืน null ถ้ายังกรอกไม่ครบ/ไม่ถูกต้อง */
+var WT_RE=/^([01]\d|2[0-3]):[0-5]\d$/;
+/* พิมพ์เลขล้วนได้ → ใส่ : ให้เอง (1445 → 14:45) · เก็บได้สูงสุด 4 หลัก */
+function wtFormat(inp){
+  var d=inp.value.replace(/\D/g,'').slice(0,4);
+  inp.value=d.length>2?d.slice(0,2)+':'+d.slice(2):d;
+}
+/* คืน null = ยังกรอกไม่ครบ · -1 = รูปแบบผิดหรือเวลาออกไม่หลังเวลาเข้า · >0 = จำนวนนาที */
+function wtMinutes(ctx){
+  var a=$(ctx+'TimeIn').value, b=$(ctx+'TimeOut').value;
+  if(!a||!b) return null;
+  if(!WT_RE.test(a)||!WT_RE.test(b)) return -2;
+  var m=(parseInt(b.slice(0,2),10)*60+parseInt(b.slice(3),10))-(parseInt(a.slice(0,2),10)*60+parseInt(a.slice(3),10));
+  return m>0?m:-1;
+}
+function wtCalc(ctx){
+  var el=$(ctx+'WorkTime'); if(!el) return;
+  var m=wtMinutes(ctx);
+  if(m===null) el.innerHTML='<span class="wt-empty">กรอกเวลาเข้า–ออก</span>';
+  else if(m===-2) el.innerHTML='<span class="wt-bad">กรอกเวลาให้ครบรูปแบบ 24 ชม. เช่น 09:30</span>';
+  else if(m<0) el.innerHTML='<span class="wt-bad">เวลาออกต้องหลังเวลาเข้า</span>';
+  else el.innerHTML='<b class="num">'+Math.floor(m/60)+'</b> ชม. <b class="num">'+(m%60)+'</b> นาที';
+  if(ctx==='sv') svRefreshMsg(); else bxRefreshMsg();
+}
+/* ตรวจเวลา: ต้องกรอกทั้งคู่ และเวลาออกต้องหลังเวลาเข้า */
+function wtMissing(ctx){
+  var a=$(ctx+'TimeIn').value, b=$(ctx+'TimeOut').value, out=[];
+  if(!a) out.push('เวลาเข้า');
+  if(!b) out.push('เวลาออก');
+  if(a&&b){
+    var m=wtMinutes(ctx);
+    if(m===-2) out.push('เวลาเข้า/ออกต้องเป็นรูปแบบ 24 ชม. เช่น 09:30');
+    else if(m<0) out.push('เวลาออกต้องหลังเวลาเข้า');
+  }
+  return out;
+}
+
+/* ---------- สรุปเวลาทำงาน (หน้าสรุปยอดใช้อุปกรณ์ → แท็บ "เวลาทำงาน") ----------
+   ข้อมูลเป็นตัวอย่างสมมติ: เวลาต่อครั้งสร้างจากขนาดลูกค้า (จำนวนสถานี) + ค่าแกว่งคงที่ตาม id
+   ของจริง = รวม (เวลาจบ − เวลาเข้า) ของ visits ในช่วงเวลาที่เลือก จัดกลุ่มตามลูกค้า/ทีม */
+var WT_VIEW='team';
+function wtFmt(m){return Math.floor(m/60)+':'+('0'+(m%60)).slice(-2)}
+function wtSampleRows(){
+  return CUSTOMERS.map(function(c){
+    var visits=1+(c.id%7===0?1:0), mins=0;
+    for(var i=0;i<visits;i++) mins+=Math.round((35+(c.ig+c.ic)*2.4+((c.id*7+i*11)%6)*5)/5)*5;
+    return {c:c,visits:visits,mins:mins};
+  });
+}
+function wtView(v){
+  WT_VIEW=v;
+  [['wtViewTeam','team'],['wtViewCust','cust']].forEach(function(p){
+    var b=$(p[0]); b.classList.toggle('on',p[1]===v); b.setAttribute('aria-selected',p[1]===v?'true':'false');
+  });
+  wtSumRender();
+}
+function matTab(t){
+  var time=(t==='time');
+  $('matMat').hidden=time; $('matTime').hidden=!time; $('matKindField').hidden=time; $('matExport').hidden=time;
+  [['matTabMat',!time],['matTabTime',time]].forEach(function(p){
+    var b=$(p[0]); b.classList.toggle('on',p[1]); b.setAttribute('aria-selected',p[1]?'true':'false');
+  });
+  if(time) wtSumRender();
+}
+function wtSumRender(){
+  if(!$('wtTable')) return;
+  var br=$('matBranch').value, tm=$('matTeam').value;
+  var rows=wtSampleRows().filter(function(r){return (!br||r.c.branch===br)&&(!tm||r.c.team===tm)});
+  var tv=0,tm_=0; rows.forEach(function(r){tv+=r.visits; tm_+=r.mins});
+  $('wtStats').innerHTML=
+    '<div class="stat"><div class="lab">เวลาทำงานจริงรวม</div><div class="val num">'+Math.floor(tm_/60)+' <span style="font-size:14px;color:var(--fg-muted)">ชม. '+(tm_%60)+' นาที</span></div><div class="sub">'+rows.length+' ราย</div></div>'+
+    '<div class="stat"><div class="lab">จำนวนครั้งที่เข้า</div><div class="val num">'+tv+' <span style="font-size:14px;color:var(--fg-muted)">ครั้ง</span></div></div>'+
+    '<div class="stat"><div class="lab">เฉลี่ยต่อครั้ง</div><div class="val num">'+(tv?wtFmt(Math.round(tm_/tv)):'–')+' <span style="font-size:14px;color:var(--fg-muted)">ชม.:นาที</span></div></div>';
+  var html;
+  if(!rows.length){ $('wtTable').innerHTML='<div class="empty" style="padding:28px 20px">ไม่มีข้อมูลตามตัวกรองนี้ — ลองเปลี่ยนสาขา/ทีม</div>'; return; }
+  if(WT_VIEW==='team'){
+    var g={}; rows.forEach(function(r){var k=r.c.team, o=g[k]||(g[k]={custs:0,visits:0,mins:0}); o.custs++; o.visits+=r.visits; o.mins+=r.mins});
+    html='<table><thead><tr><th>ทีม</th><th class="r">ลูกค้า (ราย)</th><th class="r">เข้า (ครั้ง)</th><th class="r">เวลารวม (ชม.:นาที)</th><th class="r">เฉลี่ย/ครั้ง</th></tr></thead><tbody>'+
+      Object.keys(g).sort().map(function(k){var o=g[k]; return '<tr><td><b>ทีม '+esc(k)+'</b></td><td class="r num">'+o.custs+'</td><td class="r num">'+o.visits+'</td><td class="r num">'+wtFmt(o.mins)+'</td><td class="r num" style="color:var(--fg-muted)">'+wtFmt(Math.round(o.mins/o.visits))+'</td></tr>'}).join('')+
+      '</tbody><tfoot><tr><td>รวม</td><td class="r num">'+rows.length+'</td><td class="r num">'+tv+'</td><td class="r num">'+wtFmt(tm_)+'</td><td class="r num">'+wtFmt(Math.round(tm_/tv))+'</td></tr></tfoot></table>';
+  } else {
+    rows.sort(function(a,b){return b.mins-a.mins});
+    html='<table><thead><tr><th>ลูกค้า</th><th>เลขที่สัญญา</th><th>สาขา</th><th>ทีม</th><th class="r">เข้า (ครั้ง)</th><th class="r">เวลารวม (ชม.:นาที)</th><th class="r">เฉลี่ย/ครั้ง</th></tr></thead><tbody>'+
+      rows.map(function(r){return '<tr><td><b>'+esc(r.c.name)+'</b></td><td class="num" style="color:var(--fg-muted)">'+esc(r.c.ct)+'</td><td>'+esc(r.c.branch)+'</td><td>ทีม '+esc(r.c.team)+'</td><td class="r num">'+r.visits+'</td><td class="r num">'+wtFmt(r.mins)+'</td><td class="r num" style="color:var(--fg-muted)">'+wtFmt(Math.round(r.mins/r.visits))+'</td></tr>'}).join('')+
+      '</tbody><tfoot><tr><td colspan="4">รวม '+rows.length+' ราย</td><td class="r num">'+tv+'</td><td class="r num">'+wtFmt(tm_)+'</td><td class="r num">'+wtFmt(Math.round(tm_/tv))+'</td></tr></tfoot></table>';
+  }
+  $('wtTable').innerHTML=html;
 }
 var BAIT_OPTS='<option>0 ก.</option><option selected>50 ก.</option><option>100 ก.</option><option>150 ก.</option><option>200 ก.</option>';
 function tmRowHtml(){
@@ -1453,9 +1579,41 @@ function wdRowHtml(){
     '<td class="c"><button type="button" class="btn danger sm" data-act="delRow">ลบ</button></td></tr>';
 }
 function rpRowHtml(){
-  return '<tr><td><select aria-label="ประเภทงาน"><option selected>ฝังสถานีใหม่ (IG)</option><option>ฝังสถานีใหม่ (IC)</option><option>เปลี่ยนฝาสถานี</option><option>อื่นๆ</option></select></td>'+
-    '<td><input placeholder="เลขสถานี" style="max-width:100px" aria-label="หมายเลขสถานี"></td><td><input value="1" class="num" style="max-width:70px" aria-label="จำนวน"></td>'+
+  /* "สถานีหาย" และ "อื่นๆ" ต้องระบุรายละเอียดในช่องหมายเหตุ (เช่น สถานีหาย แต่รอบนี้อุปกรณ์ไม่พอซ่อม) */
+  return '<tr><td><select class="rpType" onchange="rpTypeChange(this)" aria-label="ประเภทงาน"><option selected>ฝังสถานีใหม่ (IG)</option><option>ฝังสถานีใหม่ (IC)</option><option>เปลี่ยนฝาสถานี</option><option>สถานีหาย</option><option>ถอนสถานีออก</option><option>อื่นๆ</option></select></td>'+
+    '<td><div class="stcell"><input class="rpSt" placeholder="เช่น 3, 5, 8-12" style="min-width:170px" oninput="rpStCalc(this)" aria-label="หมายเลขสถานี (ใส่ได้หลายเลข คั่นด้วยจุลภาค หรือช่วงด้วยขีด)"><span class="vchk"></span></div></td>'+
+    '<td class="rpCnt num" style="color:var(--fg-muted)">0 สถานี <span class="auto-tag">อัตโนมัติ</span></td>'+
+    '<td><input class="rpNote" placeholder="ไม่บังคับ" style="min-width:220px;width:100%" aria-label="รายละเอียดงานซ่อม"></td>'+
     '<td class="c"><button type="button" class="btn danger sm" data-act="delRow">ลบ</button></td></tr>';
+}
+/* งานซ่อม: ช่องเลขสถานีใส่ได้หลายเลขในช่องเดียว — คั่นด้วย , หรือเว้นวรรค · ช่วงใช้ขีด เช่น "3, 5, 8-12" = 7 สถานี
+   ระบบนับจำนวนให้เอง (เลขซ้ำนับครั้งเดียว) และตรวจว่าทุกเลขมีจริง (1 ถึง stationMax) */
+function parseStList(v){
+  var nums={}, bad=[];
+  v.split(/[,\s;、]+/).forEach(function(t){
+    if(!t) return;
+    var m=t.match(/^(\d+)(?:[-–](\d+))?$/);
+    if(!m){bad.push(t); return}
+    var a=parseInt(m[1],10), b=m[2]?parseInt(m[2],10):a;
+    if(b<a||a<1||b>stationMax||b-a>500){bad.push(t); return}
+    for(var i=a;i<=b;i++) nums[i]=1;
+  });
+  return {count:Object.keys(nums).length, bad:bad};
+}
+function rpStCalc(inp){
+  var tr=inp.closest('tr'), chk=tr.querySelector('.vchk'), cnt=tr.querySelector('.rpCnt'), v=inp.value.trim();
+  if(!v){chk.className='vchk'; chk.textContent=''; cnt.firstChild.nodeValue='0 สถานี '; return}
+  var r=parseStList(v);
+  cnt.firstChild.nodeValue=r.count+' สถานี ';
+  chk.className='vchk '+(r.bad.length?'bad':'ok');
+  chk.textContent=r.bad.length?'✗ ไม่พบ/รูปแบบผิด: '+r.bad.join(', '):'✓';
+}
+function rpNeedsNote(tr){var t=tr.querySelector('.rpType'); return !!t&&(t.value==='อื่นๆ'||t.value==='สถานีหาย')}
+function rpTypeChange(sel){
+  var tr=sel.closest('tr'), n=tr.querySelector('.rpNote'), need=rpNeedsNote(tr);
+  n.placeholder=sel.value==='สถานีหาย'?'ระบุ เช่น สถานีหาย อุปกรณ์ไม่พอซ่อมรอบนี้':sel.value==='อื่นๆ'?'ระบุว่าเกิดอะไรขึ้น (จำเป็น)':'ไม่บังคับ';
+  n.classList.toggle('need',need);
+  if(SV) svRecalc();
 }
 function tableSec(secId,bodyId,title,head,addAct,addLabel,hint,chipsId){
   return '<div class="fsec" id="'+secId+'" hidden><div class="fsec-h">'+title+'</div>'+(chipsId?'<div class="sumchips" id="'+chipsId+'"></div>':'')+
@@ -1483,10 +1641,10 @@ function svRenderForm(){
     fieldsHtml('sv',c)+
     '<button type="button" class="bigok" id="svNormal" data-act="svNormal" aria-pressed="false"><span class="cbox" aria-hidden="true"><svg viewBox="0 0 20 20"><path d="M3 10.5l4.5 4.5L17 5"/></svg></span><span class="txt">IG / IC ปกติทั้งหมด<small>ไม่พบปลวก ไม่เปลี่ยนไม้ ไม่มีงานซ่อม · ไม่รวมกล่อง AG</small></span><span class="state"><span class="off">ยังไม่ได้กด</span><span class="on">กดแล้ว ✓</span></span></button>'+
     '<div class="fbtns" role="group" aria-label="สิ่งที่พบ">'+
-      [['tm','พบปลวก'],['wd','เปลี่ยนไม้'],['rp','งานซ่อม'],['ag','กล่อง AG']].map(function(s){return '<button type="button" class="fbtn" data-act="sec" data-sec="'+s[0]+'" aria-pressed="false">'+s[1]+' <span class="n" id="svN_'+s[0]+'">0</span></button>'}).join('')+'</div>'+
+      [['tm','พบปลวก',''],['wd','เปลี่ยนไม้',''],['rp','งานซ่อม','(เปลี่ยนฝา, ฝังใหม่, หาย, ถอนออก)'],['ag','กล่อง AG','']].map(function(s){return '<button type="button" class="fbtn" data-act="sec" data-sec="'+s[0]+'" aria-pressed="false"><span class="fl">'+s[1]+(s[2]?'<small>'+s[2]+'</small>':'')+'</span> <span class="n" id="svN_'+s[0]+'">0</span></button>'}).join('')+'</div>'+
     tableSec('svSecTm','svTmBody','พบปลวก','<th>หมายเลขสถานี</th><th>ชนิดปลวก</th><th>เหยื่อ / เคมีผง</th>','addTm','+ เพิ่มจุดที่พบปลวก','ตั้งต้นว่าจุดอื่นปกติ — เพิ่มเฉพาะจุดที่พบ: พิมพ์เลขสถานี (ระบบตรวจว่ามีจริง) แล้วเลือกชนิดปลวก · <b>ใต้ดิน</b> = ใส่เหยื่อ · <b>สวน</b> = เคมีผง กรอกจำนวนจุด แปลงกรัมอัตโนมัติ 0.3 ก./จุด','svTmChips')+
     tableSec('svSecWd','svWdBody','เปลี่ยนไม้ล่อ','<th>หมายเลขสถานี</th><th>ชนิด</th><th>จำนวนไม้</th>','addWd','+ เพิ่มสถานีที่เปลี่ยนไม้','จำนวนไม้เติมอัตโนมัติตามชนิด (IG = 2 ชิ้น · IC = 1 ชิ้น)','svWdChips')+
-    tableSec('svSecRp','svRpBody','งานซ่อม / ปรับสถานี','<th>ประเภทงาน</th><th>หมายเลขสถานี</th><th>จำนวน</th>','addRp','+ เพิ่มงานซ่อม / ปรับสถานี','เช่น ฝังสถานีใหม่ (IG/IC) เปลี่ยนฝาสถานี','')+
+    tableSec('svSecRp','svRpBody','งานซ่อม / ปรับสถานี','<th>ประเภทงาน</th><th>หมายเลขสถานี (ใส่ได้หลายเลข)</th><th>จำนวน</th><th>รายละเอียด</th>','addRp','+ เพิ่มงานซ่อม / ปรับสถานี','เช่น ฝังสถานีใหม่ (IG/IC) เปลี่ยนฝาสถานี · <b>ซ่อมหลายสถานีพร้อมกัน ใส่ในแถวเดียว</b> คั่นด้วยจุลภาค หรือใช้ขีดเป็นช่วง เช่น <b>3, 5, 8-12</b> = 7 สถานี (ระบบนับจำนวนให้) · ถ้า <b>สถานีหาย</b> แต่รอบนี้ยังซ่อมไม่ได้ (เช่น อุปกรณ์ไม่พอ) ให้เลือก “สถานีหาย” แล้วเขียนเหตุผลในช่องรายละเอียด · “อื่นๆ” ต้องระบุว่าเกิดอะไรขึ้น','')+
     '<div class="agsec" id="svSecAg" hidden><div id="svAgBox"></div></div>'+
   '</div>'+
   '<div class="savebar"><div class="savemsg" id="svMsg" role="alert" hidden></div>'+
@@ -1569,14 +1727,15 @@ function svRecalc(){
 function svMissing(){
   var miss=[];
   if(!$('svDate').value) miss.push('วันที่เข้า');
+  miss=miss.concat(wtMissing('sv'));
   /* เจ้าของตัดสิน 10 พ.ย. 2026: ไม่บังคับระบุผล IG/IC — บันทึกได้ทั้งแบบระบุและไม่ระบุ (บังคับเฉพาะกล่อง AG ที่ค้างติดตาม) */
   var names={tm:'พบปลวก',wd:'เปลี่ยนไม้',rp:'งานซ่อม'};
   ['tm','wd','rp'].forEach(function(k){
     if(!SV.open[k]) return;
     var rows=svRows(k), bad=0;
-    [].forEach.call(rows,function(tr){var i=tr.querySelector('input'); if(!i.value.trim()||tr.querySelector('.vchk.bad')) bad++});
+    [].forEach.call(rows,function(tr){var i=tr.querySelector('input'); if(!i.value.trim()||tr.querySelector('.vchk.bad')||(k==='rp'&&rpNeedsNote(tr)&&!tr.querySelector('.rpNote').value.trim())) bad++});
     if(!rows.length) miss.push(names[k]+': ยังไม่มีรายการ');
-    else if(bad) miss.push(names[k]+': เลขสถานีไม่ถูกต้อง/ยังไม่กรอก '+bad+' แถว');
+    else if(bad) miss.push(names[k]+': เลขสถานีไม่ถูกต้อง/ยังไม่กรอก (หรือยังไม่ระบุรายละเอียดของ “สถานีหาย/อื่นๆ”) '+bad+' แถว');
   });
   return miss.concat(agMissing('sv').missing);
 }
@@ -1633,6 +1792,7 @@ function bxRenderForm(){
 function bxMissing(){
   var miss=[];
   if(!$('bxDate').value) miss.push('วันที่เข้า');
+  miss=miss.concat(wtMissing('bx'));
   var ag=agMissing('bx');
   if(!ag.missing.length&&ag.filled===0) miss.push('ยังไม่ได้กรอกผลกล่องใดเลย — กรอกผลของจุดที่ติดตาม หรือกด “+ ติดกล่องใหม่ (S)”');
   return miss.concat(ag.missing);
