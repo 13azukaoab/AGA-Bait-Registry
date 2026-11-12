@@ -31,8 +31,8 @@ INSERT INTO stations (id, contract_id, code, type) VALUES
   ('00000000-0000-0000-0000-0000000000e1', '00000000-0000-0000-0000-0000000000d1', 'S-01', 'IG'),
   ('00000000-0000-0000-0000-0000000000e2', '00000000-0000-0000-0000-0000000000d1', 'S-02', 'IG'),
   ('00000000-0000-0000-0000-0000000000e3', '00000000-0000-0000-0000-0000000000d2', 'S-01', 'IG');
-INSERT INTO visits (id, contract_id, visit_date, visit_type) VALUES
-  ('00000000-0000-0000-0000-0000000000f1', '00000000-0000-0000-0000-0000000000d1', '2026-09-10', 'routine');
+INSERT INTO visits (id, contract_id, visit_date, visit_type, start_time, end_time) VALUES
+  ('00000000-0000-0000-0000-0000000000f1', '00000000-0000-0000-0000-0000000000d1', '2026-09-10', 'routine', '09:00', '10:00');
 INSERT INTO station_checks (id, visit_id, station_id) VALUES
   ('00000000-0000-0000-0000-000000000a01', '00000000-0000-0000-0000-0000000000f1', '00000000-0000-0000-0000-0000000000e1');
 
@@ -77,9 +77,9 @@ SELECT is((SELECT count(*)::int FROM stations WHERE id = '00000000-0000-0000-000
 -- ===================== M3: audit ไม่เก็บ INSERT ของผลบริการ =====================
 SET LOCAL ROLE authenticated;
 SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a3', true);
-INSERT INTO visits (id, contract_id, visit_date, visit_type, created_by) VALUES
+INSERT INTO visits (id, contract_id, visit_date, visit_type, created_by, start_time, end_time) VALUES
   ('00000000-0000-0000-0000-0000000000f2', '00000000-0000-0000-0000-0000000000d1', '2026-10-05', 'routine',
-   '00000000-0000-0000-0000-0000000000a4');  -- พยายามใส่ชื่อคนอื่น
+   '00000000-0000-0000-0000-0000000000a4', '09:00', '10:00');  -- พยายามใส่ชื่อคนอื่น
 INSERT INTO station_checks (id, visit_id, station_id) VALUES
   ('00000000-0000-0000-0000-000000000a02', '00000000-0000-0000-0000-0000000000f2', '00000000-0000-0000-0000-0000000000e1');
 RESET ROLE;

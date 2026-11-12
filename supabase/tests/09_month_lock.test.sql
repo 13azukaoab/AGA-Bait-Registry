@@ -20,8 +20,8 @@ INSERT INTO contracts (id, customer_id, contract_no, start_date, term_years, val
   VALUES ('00000000-0000-0000-0000-0000000000d1', '00000000-0000-0000-0000-0000000000c1', 'T-1', '2026-01-15', 1, 50000);
 INSERT INTO stations (id, contract_id, code, type)
   VALUES ('00000000-0000-0000-0000-0000000000e1', '00000000-0000-0000-0000-0000000000d1', 'S-01', 'IG');
-INSERT INTO visits (id, contract_id, visit_date, visit_type, note) VALUES
-  ('00000000-0000-0000-0000-0000000000f1', '00000000-0000-0000-0000-0000000000d1', '2026-09-10', 'routine', 'orig');
+INSERT INTO visits (id, contract_id, visit_date, visit_type, note, start_time, end_time) VALUES
+  ('00000000-0000-0000-0000-0000000000f1', '00000000-0000-0000-0000-0000000000d1', '2026-09-10', 'routine', 'orig', '09:00', '10:00');
 INSERT INTO station_checks (id, visit_id, station_id)
   VALUES ('00000000-0000-0000-0000-000000000a01', '00000000-0000-0000-0000-0000000000f1', '00000000-0000-0000-0000-0000000000e1');
 
@@ -37,7 +37,7 @@ SELECT hasnt_trigger('public', 'station_checks', 'block_closed_month', 'no lock 
 SET LOCAL ROLE authenticated;
 SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a3', true);
 SELECT lives_ok(
-  $$INSERT INTO visits (id, contract_id, visit_date, visit_type) VALUES ('00000000-0000-0000-0000-0000000000f3', '00000000-0000-0000-0000-0000000000d1', '2026-09-20', 'problem')$$,
+  $$INSERT INTO visits (id, contract_id, visit_date, visit_type, start_time, end_time) VALUES ('00000000-0000-0000-0000-0000000000f3', '00000000-0000-0000-0000-0000000000d1', '2026-09-20', 'problem', '09:00', '10:00')$$,
   'recorder: INSERT visit in closed month');
 SELECT lives_ok(
   $$UPDATE visits SET note = 'rec edit' WHERE id = '00000000-0000-0000-0000-0000000000f1'$$,
@@ -71,7 +71,7 @@ SELECT is(
 SET LOCAL ROLE authenticated;
 SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a2', true);
 SELECT throws_ok(
-  $$INSERT INTO visits (contract_id, visit_date, visit_type) VALUES ('00000000-0000-0000-0000-0000000000d1', '2026-09-21', 'routine')$$,
+  $$INSERT INTO visits (contract_id, visit_date, visit_type, start_time, end_time) VALUES ('00000000-0000-0000-0000-0000000000d1', '2026-09-21', 'routine', '09:00', '10:00')$$,
   '42501', NULL, 'admin: INSERT visit in closed month rejected');
 UPDATE visits SET note = 'admin edit' WHERE id = '00000000-0000-0000-0000-0000000000f1';
 RESET ROLE;
@@ -80,7 +80,7 @@ SELECT is((SELECT note FROM visits WHERE id = '00000000-0000-0000-0000-000000000
 -- ===== anon (viewer) cannot write =====
 SET LOCAL ROLE anon;
 SELECT throws_ok(
-  $$INSERT INTO visits (contract_id, visit_date, visit_type) VALUES ('00000000-0000-0000-0000-0000000000d1', '2026-09-22', 'routine')$$,
+  $$INSERT INTO visits (contract_id, visit_date, visit_type, start_time, end_time) VALUES ('00000000-0000-0000-0000-0000000000d1', '2026-09-22', 'routine', '09:00', '10:00')$$,
   '42501', NULL, 'anon: INSERT visit rejected');
 RESET ROLE;
 

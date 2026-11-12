@@ -32,8 +32,8 @@ INSERT INTO contract_teams (contract_id, team_id)
   SELECT '00000000-0000-0000-0000-0000000000d1', id FROM teams LIMIT 1;
 INSERT INTO stations (id, contract_id, code, type)
   VALUES ('00000000-0000-0000-0000-0000000000e1', '00000000-0000-0000-0000-0000000000d1', 'S-01', 'IG');
-INSERT INTO visits (id, contract_id, visit_date, visit_type)
-  VALUES ('00000000-0000-0000-0000-0000000000f1', '00000000-0000-0000-0000-0000000000d1', '2026-09-10', 'routine');
+INSERT INTO visits (id, contract_id, visit_date, visit_type, start_time, end_time)
+  VALUES ('00000000-0000-0000-0000-0000000000f1', '00000000-0000-0000-0000-0000000000d1', '2026-09-10', 'routine', '09:00', '10:00');
 INSERT INTO station_checks (id, visit_id, station_id)
   VALUES ('00000000-0000-0000-0000-000000000a01', '00000000-0000-0000-0000-0000000000f1', '00000000-0000-0000-0000-0000000000e1');
 -- M3 (20261111090100): INSERT ของ visits/station_checks ไม่ลง audit แล้ว จึงสร้างแถว audit
