@@ -324,7 +324,8 @@ tfoot td{padding:10px 12px;font-weight:700;background:var(--surface-2);border-to
 [hidden]{display:none!important}
 .formpanel{scroll-margin-top:70px}
 .entry-left .body{padding:12px}
-.filters{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
+.filters{display:grid;grid-template-columns:minmax(0,.85fr) minmax(0,1fr) minmax(0,1.15fr);gap:8px;margin-bottom:10px}
+.filters .field select{padding-left:8px;padding-right:6px}
 .filters .field select{min-width:0;width:100%}
 .searchbox{width:100%;font-family:inherit;font-size:14px;color:var(--fg);background:var(--surface);
   border:1px solid var(--border-strong);border-radius:8px;padding:10px 12px}
@@ -1278,8 +1279,8 @@ function woodRow(sel){
    - เลขรอบ F นับอัตโนมัติ = จำนวนรอบที่ตรวจไปแล้ว + 1 (ผู้ใช้ไม่กรอก)
    - กันลืมกล่อง (D10): ลูกค้าที่มีกล่องค้างติดตามต้องกรอกผลครบ หรือติ๊ก "รอบนี้ไม่ได้ตรวจกล่อง AG" ก่อนบันทึก
    ============================================================ */
-/* ทีมที่เข้ารอบบริการ = A–O · ทีม Z ทำหน้าที่ติดตั้งอย่างเดียว (เห็นเฉพาะงานเปิดงาน) จึงไม่อยู่ในรายการนี้ */
-var TEAMS='ABCDEFGHIJKLMNO'.split('');
+/* ทีมของแผนก = A–O และ Z (Z ปกติติดตั้งอย่างเดียว แต่เลือกในรอบบริการได้เมื่อเข้าร่วม) */
+var TEAMS='ABCDEFGHIJKLMNOZ'.split('');
 var BAITS=[0,50,100,150,200];
 var CASTES=['งาน > ทหาร','ทหาร > งาน','ทหาร','ทหาร + สืบพันธุ์สำรอง','สืบพันธุ์สำรอง','ปลวกตาย'];
 var TODAY_ISO='2026-10-28';
@@ -1367,7 +1368,6 @@ function pkMarkup(p){
     '<div class="filters">'+
       '<div class="field"><label for="'+id+'Region">เขต</label><select id="'+id+'Region"><option>เขต 1</option><option>ทุกเขต</option></select></div>'+
       '<div class="field"><label for="'+id+'Branch">สาขา</label><select id="'+id+'Branch">'+opt('','ทุกสาขา',p.branch)+opt('พุทธมณฑล','พุทธมณฑล',p.branch)+opt('นครปฐม','นครปฐม',p.branch)+opt('หัวหิน','หัวหิน',p.branch)+'</select></div>'+
-      '<div class="field"><label for="'+id+'Team">ทีม</label><select id="'+id+'Team" title="กรองตามทีมที่เข้าครั้งล่าสุด">'+opt('','ทุกทีม',p.team)+TEAMS.map(function(t){return opt(t,'ทีม '+t,p.team)}).join('')+'</select></div>'+
       '<div class="field"><label for="'+id+'Month">เดือน</label><select id="'+id+'Month"><option>ตุลาคม 2026</option><option>กันยายน 2026</option></select></div>'+
     '</div>'+
     '<input class="searchbox" id="'+id+'Q" type="search" autocomplete="off" placeholder="พิมพ์ชื่อลูกค้า หรือเลขที่สัญญา" aria-label="ค้นหาลูกค้า ด้วยชื่อหรือเลขที่สัญญา">'+
