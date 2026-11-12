@@ -15,7 +15,7 @@ export function PublicHeader() {
         <span
           role="img"
           aria-label="Advance Group Asia (AGA)"
-          className={`${styles.logo} h-[38px] w-[76px] shrink-0 max-[600px]:h-8 max-[600px]:w-16`}
+          className={`${styles.logo} h-[38px] w-[74px] shrink-0 max-[600px]:h-8 max-[600px]:w-[62px]`}
         />
         <div className="min-w-0 flex-1 border-l border-border pl-3 max-[600px]:pl-2">
           <b className="block truncate text-[14.5px] leading-tight font-semibold text-fg max-[600px]:text-[13px]">

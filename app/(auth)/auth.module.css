@@ -4,11 +4,11 @@
  * ห้ามใส่รหัสสี hex — อ้าง var(--…) จาก app/globals.css เท่านั้น
  */
 
-/* โลโก้ AGA — ใช้ไฟล์เดียวกับแถบบน (components/shell/aga-logo.png)
+/* โลโก้ AGA — ใช้ไฟล์เดียวกับแถบบน (components/shell/aga-logo-full.png · 280×144 สัดส่วน ≈1.94:1 · กล่องใน layout.tsx 176×89 ตาม mockup)
    ใช้เป็นภาพพื้นหลังผ่าน CSS แทน import ในโค้ด เพื่อให้ `tsc --noEmit` ใน CI ผ่าน
    สว่าง = สีเดิม · มืด = ฟิลเตอร์ทำเป็นสีขาว (เจ้าของตัดสิน 8 พ.ย. 2026) */
 .logo {
-  background: url("../../components/shell/aga-logo.png") center / contain no-repeat;
+  background: url("../../components/shell/aga-logo-full.png") center / contain no-repeat;
   filter: none;
 }
 :global(:root[data-theme="dark"]) .logo {
