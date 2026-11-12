@@ -376,11 +376,13 @@ tfoot td{padding:10px 12px;font-weight:700;background:var(--surface-2);border-to
 #s-registry thead th.sortable[aria-sort="ascending"]::after{content:"▲";opacity:1;color:var(--accent-strong)}
 #s-registry thead th.sortable[aria-sort="descending"]::after{content:"▼";opacity:1;color:var(--accent-strong)}
 #s-registry thead th.sortable[aria-sort="ascending"],#s-registry thead th.sortable[aria-sort="descending"]{color:var(--accent-strong)}
-.fgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-bottom:14px}
+.fgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:14px}
+@media (max-width:640px){.fgrid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .fgrid .field label{font-size:12px}
 .fgrid .field select,.fgrid .field input{width:100%;min-width:0;padding:10px 12px;font-size:14px}
 .fgrid .field .sub{font-size:11px;color:var(--fg-faint)}
 .wtbox{display:flex;align-items:center;gap:4px;min-height:44px;padding:10px 12px;font-size:14px;border:1px dashed var(--border);border-radius:8px;background:var(--surface-2);color:var(--fg)}
+.rpNote.need{border-color:var(--warn);background:var(--warn-soft)}
 .wtbox b{font-size:16px}
 .wtbox .wt-empty{color:var(--fg-faint);font-size:12px}
 .wtbox .wt-bad{color:var(--danger);font-size:12px;font-weight:600}
@@ -680,7 +682,7 @@ tfoot td{padding:10px 12px;font-weight:700;background:var(--surface-2);border-to
           <button type="button" class="segbtn" role="tab" aria-selected="false" id="wtViewCust" onclick="wtView('cust')">รายลูกค้า</button>
         </div>
         <div class="tablewrap" id="wtTable"></div>
-        <div class="note"><span class="ic">ℹ</span><span>เวลาทำงานจริง = เวลาจบการทำบริการ − เวลาเข้าทำบริการ ของแต่ละครั้งที่เข้า · ตัวเลขในตารางนี้เป็น <b>ข้อมูลตัวอย่าง (สมมติ)</b> เพื่อดูหน้าตา</span></div>
+        <div class="note"><span class="ic">ℹ</span><span>เวลาทำงานจริง = เวลาออก − เวลาเข้า ของแต่ละครั้งที่เข้า · ตัวเลขในตารางนี้เป็น <b>ข้อมูลตัวอย่าง (สมมติ)</b> เพื่อดูหน้าตา</span></div>
       </div>
     </section>
 
@@ -1456,14 +1458,17 @@ function fheadHtml(c,posHtml){
 }
 function fieldsHtml(ctx,c,extra){
   var teams=TEAMS.map(function(t){return '<option value="'+t+'"'+(t===c.team?' selected':'')+'>ทีม '+t+'</option>'}).join('');
-  return '<div class="fgrid"><div class="field"><label for="'+ctx+'Date">วันที่เข้า</label><input type="date" id="'+ctx+'Date" value="'+TODAY_ISO+'"></div>'+
+  /* ลำดับกรอก: ทีม → วันที่ → เวลาเข้า → เวลาออก → เวลาทำงาน (คำนวณเอง) · แถวบน 3 ช่อง แถวล่าง 3 ช่อง */
+  return '<div class="fgrid">'+
     /* id ใช้ "VisitTeam" — ห้ามซ้ำกับตัวกรองทีมฝั่งซ้าย (id+'Team') ไม่งั้นตอนบันทึกจะอ่านค่าจากตัวกรองแทน */
-    '<div class="field"><label for="'+ctx+'VisitTeam">ทีมที่เข้า</label><select id="'+ctx+'VisitTeam">'+teams+'</select><span class="sub">เติมจากครั้งก่อน (ทีม '+c.team+') — แก้ได้ทุกครั้ง</span></div>'+
+    '<div class="field"><label for="'+ctx+'VisitTeam">ทีมที่เข้า</label><select id="'+ctx+'VisitTeam">'+teams+'</select><span class="sub">เติมจากครั้งก่อน (ทีม '+c.team+') — แก้ได้</span></div>'+
+    '<div class="field"><label for="'+ctx+'Date">วันที่เข้า</label><input type="date" id="'+ctx+'Date" value="'+TODAY_ISO+'"></div>'+
+    (extra||'')+'</div>'+
     /* เวลาเข้า/ออก → ระบบคำนวณชั่วโมงทำงานจริงของวันนั้น (สรุปต่อลูกค้า/ต่อทีมดูที่หน้าสรุป) */
-    '<div class="field"><label for="'+ctx+'TimeIn">เวลาเข้าทำบริการ</label><input type="time" id="'+ctx+'TimeIn" oninput="wtCalc(\''+ctx+'\')"></div>'+
-    '<div class="field"><label for="'+ctx+'TimeOut">เวลาจบการทำบริการ</label><input type="time" id="'+ctx+'TimeOut" oninput="wtCalc(\''+ctx+'\')"></div>'+
-    '<div class="field"><label>เวลาทำงานจริง</label><div class="wtbox" id="'+ctx+'WorkTime" aria-live="polite"><span class="wt-empty">กรอกเวลาเข้าและเวลาจบ</span></div><span class="sub">คำนวณอัตโนมัติ</span></div>'+
-    (extra||'')+'</div>';
+    '<div class="fgrid">'+
+    '<div class="field"><label for="'+ctx+'TimeIn">เวลาเข้า</label><input type="time" id="'+ctx+'TimeIn" oninput="wtCalc(\''+ctx+'\')"></div>'+
+    '<div class="field"><label for="'+ctx+'TimeOut">เวลาออก</label><input type="time" id="'+ctx+'TimeOut" oninput="wtCalc(\''+ctx+'\')"></div>'+
+    '<div class="field"><label>เวลาทำงานจริง</label><div class="wtbox" id="'+ctx+'WorkTime" aria-live="polite"><span class="wt-empty">กรอกเวลาเข้า–ออก</span></div></div></div>';
 }
 /* คำนวณเวลาทำงานจริง (นาที) จากเวลาเข้า–เวลาจบ · คืน null ถ้ายังกรอกไม่ครบ/ไม่ถูกต้อง */
 function wtMinutes(ctx){
@@ -1475,17 +1480,17 @@ function wtMinutes(ctx){
 function wtCalc(ctx){
   var el=$(ctx+'WorkTime'); if(!el) return;
   var m=wtMinutes(ctx);
-  if(m===null) el.innerHTML='<span class="wt-empty">กรอกเวลาเข้าและเวลาจบ</span>';
-  else if(m<0) el.innerHTML='<span class="wt-bad">เวลาจบต้องหลังเวลาเข้า</span>';
+  if(m===null) el.innerHTML='<span class="wt-empty">กรอกเวลาเข้า–ออก</span>';
+  else if(m<0) el.innerHTML='<span class="wt-bad">เวลาออกต้องหลังเวลาเข้า</span>';
   else el.innerHTML='<b class="num">'+Math.floor(m/60)+'</b> ชม. <b class="num">'+(m%60)+'</b> นาที';
   if(ctx==='sv') svRefreshMsg(); else bxRefreshMsg();
 }
-/* ตรวจเวลา: ต้องกรอกทั้งคู่ และเวลาจบต้องหลังเวลาเข้า */
+/* ตรวจเวลา: ต้องกรอกทั้งคู่ และเวลาออกต้องหลังเวลาเข้า */
 function wtMissing(ctx){
   var a=$(ctx+'TimeIn').value, b=$(ctx+'TimeOut').value, out=[];
-  if(!a) out.push('เวลาเข้าทำบริการ');
-  if(!b) out.push('เวลาจบการทำบริการ');
-  if(a&&b&&wtMinutes(ctx)<0) out.push('เวลาจบต้องหลังเวลาเข้า');
+  if(!a) out.push('เวลาเข้า');
+  if(!b) out.push('เวลาออก');
+  if(a&&b&&wtMinutes(ctx)<0) out.push('เวลาออกต้องหลังเวลาเข้า');
   return out;
 }
 
@@ -1554,9 +1559,18 @@ function wdRowHtml(){
     '<td class="c"><button type="button" class="btn danger sm" data-act="delRow">ลบ</button></td></tr>';
 }
 function rpRowHtml(){
-  return '<tr><td><select aria-label="ประเภทงาน"><option selected>ฝังสถานีใหม่ (IG)</option><option>ฝังสถานีใหม่ (IC)</option><option>เปลี่ยนฝาสถานี</option><option>อื่นๆ</option></select></td>'+
+  /* "สถานีหาย" และ "อื่นๆ" ต้องระบุรายละเอียดในช่องหมายเหตุ (เช่น สถานีหาย แต่รอบนี้อุปกรณ์ไม่พอซ่อม) */
+  return '<tr><td><select class="rpType" onchange="rpTypeChange(this)" aria-label="ประเภทงาน"><option selected>ฝังสถานีใหม่ (IG)</option><option>ฝังสถานีใหม่ (IC)</option><option>เปลี่ยนฝาสถานี</option><option>สถานีหาย</option><option>อื่นๆ</option></select></td>'+
     '<td><input placeholder="เลขสถานี" style="max-width:100px" aria-label="หมายเลขสถานี"></td><td><input value="1" class="num" style="max-width:70px" aria-label="จำนวน"></td>'+
+    '<td><input class="rpNote" placeholder="ไม่บังคับ" style="min-width:220px;width:100%" aria-label="รายละเอียดงานซ่อม"></td>'+
     '<td class="c"><button type="button" class="btn danger sm" data-act="delRow">ลบ</button></td></tr>';
+}
+function rpNeedsNote(tr){var t=tr.querySelector('.rpType'); return !!t&&(t.value==='อื่นๆ'||t.value==='สถานีหาย')}
+function rpTypeChange(sel){
+  var tr=sel.closest('tr'), n=tr.querySelector('.rpNote'), need=rpNeedsNote(tr);
+  n.placeholder=sel.value==='สถานีหาย'?'ระบุ เช่น สถานีหาย อุปกรณ์ไม่พอซ่อมรอบนี้':sel.value==='อื่นๆ'?'ระบุว่าเกิดอะไรขึ้น (จำเป็น)':'ไม่บังคับ';
+  n.classList.toggle('need',need);
+  if(SV) svRecalc();
 }
 function tableSec(secId,bodyId,title,head,addAct,addLabel,hint,chipsId){
   return '<div class="fsec" id="'+secId+'" hidden><div class="fsec-h">'+title+'</div>'+(chipsId?'<div class="sumchips" id="'+chipsId+'"></div>':'')+
@@ -1587,7 +1601,7 @@ function svRenderForm(){
       [['tm','พบปลวก'],['wd','เปลี่ยนไม้'],['rp','งานซ่อม'],['ag','กล่อง AG']].map(function(s){return '<button type="button" class="fbtn" data-act="sec" data-sec="'+s[0]+'" aria-pressed="false">'+s[1]+' <span class="n" id="svN_'+s[0]+'">0</span></button>'}).join('')+'</div>'+
     tableSec('svSecTm','svTmBody','พบปลวก','<th>หมายเลขสถานี</th><th>ชนิดปลวก</th><th>เหยื่อ / เคมีผง</th>','addTm','+ เพิ่มจุดที่พบปลวก','ตั้งต้นว่าจุดอื่นปกติ — เพิ่มเฉพาะจุดที่พบ: พิมพ์เลขสถานี (ระบบตรวจว่ามีจริง) แล้วเลือกชนิดปลวก · <b>ใต้ดิน</b> = ใส่เหยื่อ · <b>สวน</b> = เคมีผง กรอกจำนวนจุด แปลงกรัมอัตโนมัติ 0.3 ก./จุด','svTmChips')+
     tableSec('svSecWd','svWdBody','เปลี่ยนไม้ล่อ','<th>หมายเลขสถานี</th><th>ชนิด</th><th>จำนวนไม้</th>','addWd','+ เพิ่มสถานีที่เปลี่ยนไม้','จำนวนไม้เติมอัตโนมัติตามชนิด (IG = 2 ชิ้น · IC = 1 ชิ้น)','svWdChips')+
-    tableSec('svSecRp','svRpBody','งานซ่อม / ปรับสถานี','<th>ประเภทงาน</th><th>หมายเลขสถานี</th><th>จำนวน</th>','addRp','+ เพิ่มงานซ่อม / ปรับสถานี','เช่น ฝังสถานีใหม่ (IG/IC) เปลี่ยนฝาสถานี','')+
+    tableSec('svSecRp','svRpBody','งานซ่อม / ปรับสถานี','<th>ประเภทงาน</th><th>หมายเลขสถานี</th><th>จำนวน</th><th>รายละเอียด</th>','addRp','+ เพิ่มงานซ่อม / ปรับสถานี','เช่น ฝังสถานีใหม่ (IG/IC) เปลี่ยนฝาสถานี · ถ้า <b>สถานีหาย</b> แต่รอบนี้ยังซ่อมไม่ได้ (เช่น อุปกรณ์ไม่พอ) ให้เลือก “สถานีหาย” แล้วเขียนเหตุผลในช่องรายละเอียด · “อื่นๆ” ต้องระบุว่าเกิดอะไรขึ้น','')+
     '<div class="agsec" id="svSecAg" hidden><div id="svAgBox"></div></div>'+
   '</div>'+
   '<div class="savebar"><div class="savemsg" id="svMsg" role="alert" hidden></div>'+
@@ -1676,9 +1690,9 @@ function svMissing(){
   ['tm','wd','rp'].forEach(function(k){
     if(!SV.open[k]) return;
     var rows=svRows(k), bad=0;
-    [].forEach.call(rows,function(tr){var i=tr.querySelector('input'); if(!i.value.trim()||tr.querySelector('.vchk.bad')) bad++});
+    [].forEach.call(rows,function(tr){var i=tr.querySelector('input'); if(!i.value.trim()||tr.querySelector('.vchk.bad')||(k==='rp'&&rpNeedsNote(tr)&&!tr.querySelector('.rpNote').value.trim())) bad++});
     if(!rows.length) miss.push(names[k]+': ยังไม่มีรายการ');
-    else if(bad) miss.push(names[k]+': เลขสถานีไม่ถูกต้อง/ยังไม่กรอก '+bad+' แถว');
+    else if(bad) miss.push(names[k]+': เลขสถานีไม่ถูกต้อง/ยังไม่กรอก (หรือยังไม่ระบุรายละเอียดของ “สถานีหาย/อื่นๆ”) '+bad+' แถว');
   });
   return miss.concat(agMissing('sv').missing);
 }
