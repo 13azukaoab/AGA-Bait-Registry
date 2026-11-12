@@ -149,6 +149,14 @@
 
 ## บันทึกประจำวัน (Changelog)
 
+> **📌 จุดพัก 12 พ.ย. 2026 บ่าย (ศูนย์กลาง) — เปิด session ใหม่อ่านตรงนี้ก่อน:**
+> - **กำลังทำ:** หมวด 2 = แก้ก้อน ② schema กรอกผลบริการ (advisory lock F + minor 4 ข้อ) แล้วทำ M12 (ล็อกสัญญาปิด + กันเขียนทับ + กัน admin ย้าย stations.contract_id) · **ถือ DB local อยู่** · หมวด 1 = รอบ 1.3 ปุ่มแก้แถว ทดสอบหน้าจอเสร็จ รอรายงาน 6.1 → ศูนย์กลางตรวจ/รวม
+> - **ลำดับรวม/ส่ง cloud:** ก้อน ① (รวม main แล้ว) → ก้อน ② → M12 · cloud ตอนนี้ 31 migration · ก่อนส่งเช็ก cloud visits/stations = 0
+> - **Vercel:** บัญชีใหม่ (team `aga`) ยังไม่ Import โปรเจกต์ · เจ้าของต่อ Vercel connector กับ Claude แล้ว (ใช้อ่านสถานะ/log เท่านั้น · ค่าลับเจ้าของวางเอง) · ขั้นต่อ: Import repo `AGA-Bait-Registry` (ให้สิทธิ์เฉพาะ repo นี้) + env 4 ตัว `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `CRON_SECRET` (ยังไม่ใส่ `GITHUB_TOKEN`) → Deploy → ศูนย์กลางตรวจเว็บ · แผน: Hobby ช่วงพัฒนา → Pro ก่อน go-live (เงื่อนไขเชิงพาณิชย์)
+> - **รอเจ้าของ:** บัญชีทดสอบ admin/หัวหน้างานบน cloud · ไฟล์ `fixtures/` · ยืนยัน mockup หน้าที่เหลือ
+> - **แถบความคืบหน้า (mod `aga-progress-band`):** ติดตั้งถาวรแล้ว ขึ้นเฉพาะ session ที่พิมพ์ `/aga-band` (session ศูนย์กลางใหม่พิมพ์ครั้งเดียว)
+> - main ในเครื่องนำ GitHub อยู่ราว 10 commit (เอกสาร + ก้อน ①) ยังไม่ push — push ได้ปลอดภัย (ก้อน ① ไม่มีหน้าจอเรียกใช้)
+
 ### 2026-11-12 (ส่งงานหน้าจริง /customers/new + M9 ช่องเปิดงาน) — session ศูนย์กลาง
 - **หมวด 1 เปิด sub 2 ตัว (Sonnet, worktree):** ก โครงหน้าร่วม เมนูย่อ + โลโก้ (local_cdabd55a) · ข หน้าเปิดงานรอบ 1 (local_dbe03baf — ถือ DB local)
 - **mockup กรอกผลบริการ (หัวหน้างาน):** เจ้าของต้องการให้เป็น sub ของหมวด 1 — ศูนย์กลางเปิดผิดที่ก่อน (local_8eb09250 ไม่ได้แก้ไฟล์ · archive แล้ว) → หมวด 1 เสนอการ์ดใหม่ รอเจ้าของกดเริ่ม
