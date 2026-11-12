@@ -139,8 +139,8 @@ GRANT SELECT ON _ids TO PUBLIC;
 SET LOCAL ROLE authenticated;
 SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a3', true);
 SELECT lives_ok($$SELECT public.save_service_visit(pg_temp.payload('00000000-0000-0000-0000-0000000000f2', '2026-02-20',
-                   jsonb_build_object('checks', jsonb_build_array(
-                     jsonb_build_object('station_id', (SELECT ag3 FROM _ids), 'bait_added_g', 50, 'bait_eaten_pct', 10)))))$$,
+                   jsonb_build_object('skip_all_ag', true, 'checks', jsonb_build_array(
+                     jsonb_build_object('station_id', (SELECT ag3 FROM _ids), 'bait_added_g', 50, 'bait_eaten_pct', 25)))))$$,
   'next visit checks AG-3');
 RESET ROLE;
 SELECT is((SELECT follow_up_no FROM station_checks WHERE visit_id = '00000000-0000-0000-0000-0000000000f2'
