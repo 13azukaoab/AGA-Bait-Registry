@@ -385,6 +385,17 @@ tfoot td{padding:10px 12px;font-weight:700;background:var(--surface-2);border-to
 .fgrid .field label{font-size:12px}
 .fgrid .field select,.fgrid .field input{width:100%;min-width:0;padding:10px 12px;font-size:14px}
 .fgrid .field .sub{font-size:11px;color:var(--fg-faint)}
+.teamsel{position:relative}
+.teambtn{width:100%;min-height:44px;display:flex;align-items:center;justify-content:space-between;gap:6px;font:inherit;font-size:13.5px;color:var(--fg);background:var(--surface);border:1px solid var(--border-strong);border-radius:8px;padding:8px 10px;cursor:pointer;text-align:left}
+.teambtn .ph{color:var(--fg-faint)}
+.teambtn .car{color:var(--fg-muted);font-size:11px}
+.teambtn:hover{border-color:var(--accent)}
+.teambtn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.teampop{position:absolute;top:calc(100% + 6px);left:0;z-index:30;width:270px;max-width:80vw;padding:12px;background:var(--surface);border:1px solid var(--border-strong);border-radius:10px;box-shadow:0 8px 24px var(--drawer-shadow,rgba(20,40,70,.18))}
+.teampop[hidden]{display:none}
+.teampop .tgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px 6px}
+.teampop .tchk input{width:16px;height:16px;padding:0;margin:0}
+.teampop .tfoot{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:10px;padding-top:10px;border-top:1px solid var(--border);font-size:11.5px;color:var(--fg-muted)}
 .teamchk{display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center;min-height:44px;padding:6px 10px;border:1px solid var(--border-strong);border-radius:8px;background:var(--surface)}
 .tchk{display:inline-flex;align-items:center;gap:6px;font-size:13.5px;color:var(--fg);cursor:pointer;white-space:nowrap}
 .tchk input{width:16px;height:16px;margin:0;accent-color:var(--accent)}
@@ -1262,7 +1273,8 @@ function woodRow(sel){
    - เลขรอบ F นับอัตโนมัติ = จำนวนรอบที่ตรวจไปแล้ว + 1 (ผู้ใช้ไม่กรอก)
    - กันลืมกล่อง (D10): ลูกค้าที่มีกล่องค้างติดตามต้องกรอกผลครบ หรือติ๊ก "รอบนี้ไม่ได้ตรวจกล่อง AG" ก่อนบันทึก
    ============================================================ */
-var TEAMS=['A','B'];
+/* ทีมที่เข้ารอบบริการ = A–O · ทีม Z ทำหน้าที่ติดตั้งอย่างเดียว (เห็นเฉพาะงานเปิดงาน) จึงไม่อยู่ในรายการนี้ */
+var TEAMS='ABCDEFGHIJKLMNO'.split('');
 var BAITS=[0,50,100,150,200];
 var CASTES=['งาน > ทหาร','ทหาร > งาน','ทหาร','ทหาร + สืบพันธุ์สำรอง','สืบพันธุ์สำรอง','ปลวกตาย'];
 var TODAY_ISO='2026-10-28';
@@ -1350,7 +1362,7 @@ function pkMarkup(p){
     '<div class="filters">'+
       '<div class="field"><label for="'+id+'Region">เขต</label><select id="'+id+'Region"><option>เขต 1</option><option>ทุกเขต</option></select></div>'+
       '<div class="field"><label for="'+id+'Branch">สาขา</label><select id="'+id+'Branch">'+opt('','ทุกสาขา',p.branch)+opt('พุทธมณฑล','พุทธมณฑล',p.branch)+opt('นครปฐม','นครปฐม',p.branch)+opt('หัวหิน','หัวหิน',p.branch)+'</select></div>'+
-      '<div class="field"><label for="'+id+'Team">ทีม</label><select id="'+id+'Team" title="กรองตามทีมที่เข้าครั้งล่าสุด">'+opt('','ทุกทีม',p.team)+opt('A','ทีม A',p.team)+opt('B','ทีม B',p.team)+'</select></div>'+
+      '<div class="field"><label for="'+id+'Team">ทีม</label><select id="'+id+'Team" title="กรองตามทีมที่เข้าครั้งล่าสุด">'+opt('','ทุกทีม',p.team)+TEAMS.map(function(t){return opt(t,'ทีม '+t,p.team)}).join('')+'</select></div>'+
       '<div class="field"><label for="'+id+'Month">เดือน</label><select id="'+id+'Month"><option>ตุลาคม 2026</option><option>กันยายน 2026</option></select></div>'+
     '</div>'+
     '<input class="searchbox" id="'+id+'Q" type="search" autocomplete="off" placeholder="พิมพ์ชื่อลูกค้า หรือเลขที่สัญญา" aria-label="ค้นหาลูกค้า ด้วยชื่อหรือเลขที่สัญญา">'+
@@ -1519,12 +1531,16 @@ function fheadHtml(c,posHtml){
     '<span class="chip '+(agN?'pend':'na')+' num"><span class="sttype">AG</span> '+agN+(agN?' ค้างติดตาม':'')+'</span></div></div>';
 }
 function fieldsHtml(ctx,c,extra){
-  var cur=c.visitTeams||[c.team];
+  /* ทีมที่เข้า: เติมจากการเข้าครั้งล่าสุดของลูกค้ารายนี้ (ไม่อ้างอิงทีมในเปิดงาน) · ลูกค้าใหม่ยังไม่เคยเข้า = ว่าง ต้องเลือกเอง */
+  var cur=c.fresh?[]:(c.visitTeams||[c.team]);
   var teams=TEAMS.map(function(t){return '<label class="tchk"><input type="checkbox" value="'+t+'"'+(cur.indexOf(t)>=0?' checked':'')+'> ทีม '+t+'</label>'}).join('');
   /* ลำดับกรอก: ทีม → วันที่ → เวลาเข้า → เวลาออก อยู่แถวเดียวกัน · เวลาทำงานจริง (คำนวณเอง) ขึ้นแถวใหม่ */
   return '<div class="fgrid f4">'+
     /* id ใช้ "VisitTeam" — ห้ามซ้ำกับตัวกรองทีมฝั่งซ้าย (id+'Team') ไม่งั้นตอนบันทึกจะอ่านค่าจากตัวกรองแทน */
-    '<div class="field"><label id="'+ctx+'VisitTeamLbl">ทีมที่เข้า</label><div class="teamchk" id="'+ctx+'VisitTeam" role="group" aria-labelledby="'+ctx+'VisitTeamLbl">'+teams+'</div><span class="sub">เลือกได้หลายทีม · เติมจากครั้งก่อน</span></div>'+
+    '<div class="field"><label id="'+ctx+'VisitTeamLbl">ทีมที่เข้า</label><div class="teamsel" id="'+ctx+'VisitTeam" role="group" aria-labelledby="'+ctx+'VisitTeamLbl">'+
+      '<button type="button" class="teambtn" aria-haspopup="dialog"><span class="tv">'+teamText(cur)+'</span><span class="car" aria-hidden="true">▾</span></button>'+
+      '<div class="teampop" role="dialog" aria-label="เลือกทีมที่เข้า" hidden><div class="tgrid">'+teams+'</div><div class="tfoot"><span>เลือกได้หลายทีม</span><button type="button" class="btn sm primary teamdone">เสร็จ</button></div></div></div>'+
+      '<span class="sub">'+(c.fresh?'ลูกค้าใหม่ — เลือกทีมที่เข้าครั้งแรก':'เติมจากครั้งก่อน')+'</span></div>'+
     '<div class="field"><label for="'+ctx+'Date">วันที่เข้า</label><input type="date" id="'+ctx+'Date" value="'+TODAY_ISO+'"></div>'+
     /* เวลาเข้า/ออก → ระบบคำนวณชั่วโมงทำงานจริงของวันนั้น (สรุปต่อลูกค้า/ต่อทีมดูที่หน้าสรุป) */
     /* เวลา 24 ชั่วโมง (HH:MM) พิมพ์เลขล้วน เช่น 1445 → 14:45 ไม่มี AM/PM */
@@ -1560,6 +1576,11 @@ function wtCalc(ctx){
 }
 /* ตรวจเวลา: ต้องกรอกทั้งคู่ และเวลาออกต้องหลังเวลาเข้า */
 /* ทีมที่เข้า: เลือกได้หลายทีม (checkbox) · ต้องเลือกอย่างน้อย 1 ทีม · c.team = ทีมแรกที่เลือก (ใช้กับตัวกรอง) */
+/* ข้อความบนปุ่มเลือกทีม: ไม่เลือก = "เลือกทีม" · 1–3 ทีม แสดงชื่อ · มากกว่านั้นย่อเป็น +n */
+function teamText(list){
+  if(!list.length) return '<span class="ph">เลือกทีม</span>';
+  return 'ทีม '+list.slice(0,3).join(', ')+(list.length>3?' +'+(list.length-3):'');
+}
 function teamsOf(ctx){return [].map.call($(ctx+'VisitTeam').querySelectorAll('input:checked'),function(i){return i.value})}
 function teamSave(c,ctx){var t=teamsOf(ctx); c.visitTeams=t; c.team=t[0]}
 function wtMissing(ctx){
@@ -2022,6 +2043,21 @@ document.addEventListener('keydown',function(e){
   if((e.key==='Enter'||e.key==='Escape')&&e.target.classList&&e.target.classList.contains('lblin')){e.preventDefault(); var b=e.target.closest('.lblwrap').querySelector('.lblbtn'); agLblCloseAll(); b.focus()}
 });
 document.addEventListener('click',function(e){if(!e.target.closest('.lblwrap')) agLblCloseAll()});
+/* ปุ่มเลือกทีม (ติ๊กได้หลายทีม): กดเปิด/ปิด · เปลี่ยนแล้วอัปเดตข้อความบนปุ่ม · คลิกนอกกล่อง/Esc ปิด */
+function teamPopCloseAll(){[].forEach.call(document.querySelectorAll('.teampop'),function(x){x.hidden=true})}
+document.addEventListener('click',function(e){
+  var btn=e.target.closest('.teambtn'), done=e.target.closest('.teamdone');
+  if(btn){var pop=btn.parentNode.querySelector('.teampop'), open=pop.hidden; teamPopCloseAll(); pop.hidden=!open; return}
+  if(done){teamPopCloseAll(); return}
+  if(!e.target.closest('.teamsel')) teamPopCloseAll();
+});
+document.addEventListener('change',function(e){
+  var g=e.target.closest&&e.target.closest('.teamsel'); if(!g) return;
+  var list=[].map.call(g.querySelectorAll('input:checked'),function(i){return i.value});
+  g.querySelector('.tv').innerHTML=teamText(list);
+  var ctx=g.id.slice(0,2); if(ctx==='sv') svRefreshMsg(); else bxRefreshMsg();
+});
+document.addEventListener('keydown',function(e){if(e.key==='Escape') teamPopCloseAll()});
 /* กรอก/แก้ช่องในฟอร์มบริการ → อัปเดตสรุปตัวเลข (ทำหลัง inline handler เดิมของแถว) */
 document.addEventListener('input',function(e){if(e.target.closest&&e.target.closest('#svForm')) svRecalc()});
 document.addEventListener('change',function(e){if(e.target.closest&&e.target.closest('#svForm')&&!e.target.closest('[data-ag]')) svRecalc()});
