@@ -4,7 +4,7 @@
 -- Role simulation: seed as postgres, then SET LOCAL ROLE authenticated/anon and set
 -- request.jwt.claim.sub (what auth.uid() reads). RESET ROLE to inspect as superuser.
 BEGIN;
-SELECT plan(58);
+SELECT plan(63);
 
 -- =====================================================================
 -- โครงสร้าง + สิทธิ์
@@ -45,6 +45,8 @@ INSERT INTO contracts (id, customer_id, contract_no, start_date, term_years, val
   ('00000000-0000-0000-0000-0000000000d3', '00000000-0000-0000-0000-0000000000c1', 'X',    '2026-01-15', 1, 50000, NULL),
   ('00000000-0000-0000-0000-0000000000d4', '00000000-0000-0000-0000-0000000000c2', 'PROV', '2026-01-15', 1, 50000, NULL),
   ('00000000-0000-0000-0000-0000000000d6', '00000000-0000-0000-0000-0000000000c1', 'X2',   '2026-01-15', 1, 50000, NULL);
+INSERT INTO contracts (id, customer_id, contract_no, start_date, term_years, value_total, status, cancelled_at) VALUES
+  ('00000000-0000-0000-0000-0000000000d7', '00000000-0000-0000-0000-0000000000c1', 'CANCEL', '2026-01-15', 1, 50000, 'cancelled', now());
 INSERT INTO contracts (id, customer_id, contract_no, start_date, term_years, value_total, renewed_from_contract_id) VALUES
   ('00000000-0000-0000-0000-0000000000d2', '00000000-0000-0000-0000-0000000000c1', 'NEW',  '2026-01-15', 1, 50000, '00000000-0000-0000-0000-0000000000d1'),
   ('00000000-0000-0000-0000-0000000000d5', '00000000-0000-0000-0000-0000000000c1', 'NEW3', '2026-01-15', 1, 50000, '00000000-0000-0000-0000-0000000000d1');
@@ -244,6 +246,21 @@ SELECT ok(NOT has_function_privilege('authenticated', 'public.compute_follow_up_
 SELECT ok(NOT has_function_privilege('authenticated', 'public.renumber_station_follow_ups(uuid)', 'EXECUTE')
           AND NOT has_function_privilege('anon', 'public.renumber_station_follow_ups(uuid)', 'EXECUTE'),
   'renumber_station_follow_ups is internal');
+
+-- ---------- แก้ตามผลตรวจของศูนย์กลาง ----------
+SET LOCAL ROLE authenticated;
+SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a3', true);
+SELECT throws_ok($$UPDATE stations SET created_at = now() - interval '1 day' WHERE id = '00000000-0000-0000-0000-0000000000e9'$$,
+  '42501', NULL, 'recorder cannot change created_at of a station');
+SELECT throws_ok($$SELECT public.initialize_contract_stations('00000000-0000-0000-0000-0000000000d7', '{1}')$$,
+  'AG007', NULL, 'recorder cannot set up stations of a cancelled contract (AG007, DECISIONS 3.11)');
+SELECT throws_ok($$SELECT public.initialize_contract_stations('00000000-0000-0000-0000-0000000000d6', '{1}')$$,
+  'SV009', NULL, 'a new number that collides with a station already in use on the contract gives SV009 (not a raw 23505)');
+RESET ROLE;
+SELECT ok((SELECT prosrc LIKE '%pg_advisory_xact_lock%' FROM pg_proc WHERE proname = 'set_follow_up_no'),
+  'F numbering takes a per-station lock (concurrent saves of one station)');
+SELECT ok((SELECT prosrc LIKE '%pg_advisory_xact_lock%' FROM pg_proc WHERE proname = 'renumber_station_follow_ups'),
+  'F renumbering takes the same per-station lock');
 
 SELECT * FROM finish();
 ROLLBACK;

@@ -9,7 +9,8 @@
 --       - `point_label` ป้ายจุด (AG · จำข้ามเดือนเพราะอยู่ที่สถานี)
 --       - `contracts.stations_initialized_at` แยก "ยังไม่ระบุจำนวนสถานี" ออกจาก "ระบุแล้วว่า IC = 0"
 --   * หัวหน้างาน (recorder) เขียน stations ได้ในขอบเขตหน่วยงาน (ค่าเริ่มต้นทางเทคนิคที่เจ้าของรับ):
---       เพิ่มสถานีใหม่ (ต้องเป็น active และมีเลขสถานี) · แก้ได้แค่ `status`, `removed_at`, `collected_at`, `point_label` ·
+--       เพิ่มสถานีใหม่ (ต้องเป็น active และมีเลขสถานี) · แก้ได้แค่ `status`, `removed_at`, `collected_at`, `point_label`
+--       (`updated_at` ระบบตั้งเอง · `id`, `created_at` และช่องอื่นแก้ไม่ได้) ·
 --       ลบไม่ได้ (ไม่มี policy) · trigger `stations_recorder_guard` กันแก้ช่องอื่น (42501)
 --       ฟังก์ชันระบบที่เป็น SECURITY DEFINER (เช่นย้ายสถานีตอน Renew) ไม่ติดด่านนี้ เพราะทำในนามเจ้าของตาราง
 --   * station_checks (เจ้าของเลือก ก1 เก็บวัสดุรายสถานี · ข1 เก็บแถว "ไม่ได้ตรวจ")
@@ -21,6 +22,8 @@
 --   * F1–F10 (`follow_up_no`) นับต่อสถานี เฉพาะแถวที่ตรวจจริง · วันเดียวกันได้เลขเดียวกัน (กติกาเดิม)
 --       - คำนวณเองเสมอทั้งตอนเพิ่มและตอนแก้ (ผู้ใช้ส่งเลขมาก็ถูกทับ)
 --       - **แก้ช่องโหว่เดิม:** เพิ่ม/ลบผลตรวจ · เปลี่ยน checked · แก้วันที่ของการเข้า → คำนวณเลขใหม่ทั้งสถานี
+--       - ล็อกต่อสถานี (pg_advisory_xact_lock) ทั้งตอนคำนวณและคำนวณใหม่ → บันทึกสถานีเดียวกันพร้อมกัน
+--         ไม่ได้เลขซ้ำ (ครอบทั้ง RPC และการเขียนตรงผ่าน REST) · คำนวณหลายสถานีเรียงตาม id กัน deadlock
 --       - การเปลี่ยนเลข F อย่างเดียวไม่ลง audit_log (เป็นค่าที่ระบบคำนวณ ไม่ใช่การแก้ของคน —
 --         กันจำนวน "แก้หลังปิดเดือน" พองเกินจริง)
 --   * ตั้งสถานีเดือนแรก / Renew: `initialize_contract_stations()` (SECURITY DEFINER · ตรวจสิทธิ์เองทุกข้อ)
@@ -30,6 +33,7 @@
 --       - **ย้ายแถวสถานี ไม่สร้างใหม่** → F ของกล่อง AG นับต่อ · ผลบริการของสัญญาเก่าไม่ถูกย้าย
 --         เปิดดูได้เสมอ · บันทึกถาวรใน `station_transfers` · สถานีที่ไม่ได้เลือกค้างที่สัญญาเก่า
 --         (เข้ารายการรอเก็บสถานี §7.8) · ลบสัญญา Renew ภายหลัง → สถานีที่ย้ายเข้ามาคืนกลับสัญญาเดิมเอง
+--       - สัญญาปิด/ยกเลิก: เฉพาะ host (AG007 — สอดคล้อง DECISIONS 3.11)
 --       - error: SV007 ตั้งสถานีไปแล้ว · SV008 สถานีย้ายไม่ได้ (ไม่ใช่ของสัญญาเก่าที่ผูก / ไม่ได้ใช้งาน) ·
 --         SV009 เลขสถานีไม่ถูกต้องหรือซ้ำ · AG004 ไม่พบสัญญา · 42501 ไม่มีสิทธิ์
 
@@ -40,9 +44,18 @@ ALTER TABLE public.stations
   ADD COLUMN station_no  int CONSTRAINT stations_station_no_positive CHECK (station_no > 0),
   ADD COLUMN point_label text;
 
-UPDATE public.stations
-   SET station_no = nullif(regexp_replace(code, '\D', '', 'g'), '')::int
- WHERE code ~ '\d' AND length(regexp_replace(code, '\D', '', 'g')) <= 6;
+-- แถวเก่าดึงเลขจาก code: ไม่เอา 0 (ชน CHECK) และถ้าเลขซ้ำในสัญญา/ชนิดเดียวกัน ให้เฉพาะแถวแรก (ที่เหลือว่างไว้
+-- ให้ host แก้เอง) — กันสร้าง unique index ไม่ผ่านจน migration ล้ม
+UPDATE public.stations s
+   SET station_no = d.n
+  FROM (SELECT x.id, x.n,
+               row_number() OVER (PARTITION BY x.contract_id, x.type, x.n ORDER BY x.created_at, x.id) AS rn
+          FROM (SELECT st.id, st.contract_id, st.type, st.created_at,
+                       nullif(nullif(regexp_replace(st.code, '\D', '', 'g'), '')::int, 0) AS n
+                  FROM public.stations st
+                 WHERE st.code ~ '\d' AND length(regexp_replace(st.code, '\D', '', 'g')) <= 6) x
+         WHERE x.n IS NOT NULL) d
+ WHERE s.id = d.id AND d.rn = 1;
 
 CREATE UNIQUE INDEX stations_in_use_no_key
   ON public.stations (contract_id, type, station_no)
@@ -76,13 +89,19 @@ BEGIN
     IF NEW.station_no IS NULL THEN
       RAISE EXCEPTION 'a new station needs a station number' USING ERRCODE = '42501';
     END IF;
-  ELSIF NEW.contract_id  IS DISTINCT FROM OLD.contract_id
+  ELSIF NEW.id           IS DISTINCT FROM OLD.id
+     OR NEW.created_at   IS DISTINCT FROM OLD.created_at
+     OR NEW.contract_id  IS DISTINCT FROM OLD.contract_id
      OR NEW.type         IS DISTINCT FROM OLD.type
      OR NEW.station_no   IS DISTINCT FROM OLD.station_no
      OR NEW.code         IS DISTINCT FROM OLD.code
      OR NEW.installed_at IS DISTINCT FROM OLD.installed_at THEN
     RAISE EXCEPTION 'recorder may only change status, removed_at, collected_at and point_label'
       USING ERRCODE = '42501';
+  END IF;
+  -- เวลาแก้ล่าสุดระบบตั้งเอง (หัวหน้างานกำหนดเองไม่ได้)
+  IF TG_OP = 'UPDATE' THEN
+    NEW.updated_at := now();
   END IF;
   RETURN NEW;
 END;
@@ -144,6 +163,8 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 BEGIN
+  -- บันทึกสถานีเดียวกันพร้อมกัน (คนละการเข้า) ต้องเข้าทีละรายการ ไม่งั้นได้ F ซ้ำกัน
+  PERFORM pg_advisory_xact_lock(hashtextextended('public.station_follow_up:' || NEW.station_id::text, 0));
   IF NEW.checked THEN
     NEW.follow_up_no := public.compute_follow_up_no(NEW.station_id, NEW.visit_id, NEW.id);
   ELSE
@@ -164,6 +185,8 @@ LANGUAGE sql
 SECURITY DEFINER
 SET search_path = public
 AS $$
+  -- ล็อกต่อสถานี (คำสั่งแรก) → UPDATE ข้างล่างเห็นผลตรวจที่ commit แล้วของคนที่บันทึกก่อน
+  SELECT pg_advisory_xact_lock(hashtextextended('public.station_follow_up:' || p_station_id::text, 0));
   UPDATE public.station_checks sc
      SET follow_up_no = CASE WHEN sc.checked
                              THEN public.compute_follow_up_no(sc.station_id, sc.visit_id, sc.id) END
@@ -202,9 +225,15 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
 AS $$
+DECLARE
+  v_station uuid;
 BEGIN
-  PERFORM public.renumber_station_follow_ups(s.station_id)
-     FROM (SELECT DISTINCT sc.station_id FROM public.station_checks sc WHERE sc.visit_id = NEW.id) s;
+  -- เรียงตาม id เสมอ → 2 รายการที่ล็อกหลายสถานีพร้อมกันได้ลำดับเดียวกัน ไม่ deadlock
+  FOR v_station IN
+    SELECT DISTINCT sc.station_id FROM public.station_checks sc WHERE sc.visit_id = NEW.id ORDER BY 1
+  LOOP
+    PERFORM public.renumber_station_follow_ups(v_station);
+  END LOOP;
   RETURN NULL;
 END;
 $$;
@@ -325,6 +354,7 @@ DECLARE
   v_role        public.user_role := public.current_app_role();
   v_initialized timestamptz;
   v_old         uuid;
+  v_status      public.contract_status;
   v_ig          int[] := coalesce(p_ig_nos, '{}');
   v_ic          int[] := coalesce(p_ic_nos, '{}');
   v_moves       uuid[] := ARRAY(SELECT DISTINCT s FROM unnest(coalesce(p_transfer_station_ids, '{}')) s
@@ -336,7 +366,8 @@ BEGIN
     RAISE EXCEPTION 'not allowed' USING ERRCODE = '42501';
   END IF;
 
-  SELECT c.stations_initialized_at, c.renewed_from_contract_id INTO v_initialized, v_old
+  SELECT c.stations_initialized_at, c.renewed_from_contract_id, c.status
+    INTO v_initialized, v_old, v_status
     FROM public.contracts c WHERE c.id = p_contract_id
      FOR UPDATE;
   IF NOT FOUND THEN
@@ -344,6 +375,10 @@ BEGIN
   END IF;
   IF v_role <> 'host' AND NOT public.contract_in_scope(p_contract_id) THEN
     RAISE EXCEPTION 'not allowed' USING ERRCODE = '42501';
+  END IF;
+  -- สัญญาปิด/ยกเลิก: เฉพาะ host (สอดคล้อง DECISIONS 3.11)
+  IF v_status IN ('closed', 'cancelled') AND v_role <> 'host' THEN
+    RAISE EXCEPTION 'a closed or cancelled contract can be changed by host only' USING ERRCODE = 'AG007';
   END IF;
   IF v_initialized IS NOT NULL THEN
     RAISE EXCEPTION 'stations of this contract are already set' USING ERRCODE = 'SV007';
@@ -357,7 +392,7 @@ BEGIN
     RAISE EXCEPTION 'invalid or duplicate station numbers' USING ERRCODE = 'SV009';
   END IF;
 
-  -- ย้ายสถานีจากสัญญาเก่า (Renew): ต้องเป็นของสัญญาเก่าที่ผูกไว้ และยังใช้งาน
+  -- สถานีที่จะย้ายต้องเป็นของสัญญาเก่าที่ผูกไว้ (Renew) และยังใช้งาน — ตรวจก่อนเรื่องเลขชน
   IF cardinality(v_moves) > 0 THEN
     IF v_old IS NULL
        OR (SELECT count(*) FROM public.stations s
@@ -365,6 +400,22 @@ BEGIN
               AND s.status IN ('active', 'eliminated', 'pending_removal')) <> cardinality(v_moves) THEN
       RAISE EXCEPTION 'station cannot be moved to this contract' USING ERRCODE = 'SV008';
     END IF;
+  END IF;
+
+  -- เลขใหม่/เลขที่ย้ายมา ต้องไม่ชนกับสถานีที่ใช้งานอยู่แล้วในสัญญาปลายทาง (แจ้ง SV009 แทน 23505)
+  IF EXISTS (SELECT 1 FROM public.stations s
+              WHERE s.contract_id = p_contract_id
+                AND s.status IN ('active', 'eliminated', 'pending_removal')
+                AND NOT (s.id = ANY (v_moves))
+                AND ((s.type = 'IG' AND s.station_no = ANY (v_ig))
+                  OR (s.type = 'IC' AND s.station_no = ANY (v_ic))
+                  OR EXISTS (SELECT 1 FROM public.stations m
+                              WHERE m.id = ANY (v_moves) AND m.type = s.type AND m.station_no = s.station_no))) THEN
+    RAISE EXCEPTION 'station number already used on this contract' USING ERRCODE = 'SV009';
+  END IF;
+
+  -- ย้ายสถานีจากสัญญาเก่า (Renew): ต้องเป็นของสัญญาเก่าที่ผูกไว้ และยังใช้งาน
+  IF cardinality(v_moves) > 0 THEN
 
     -- เลขที่ย้ายมาต้องไม่ชนกับเลขใหม่ที่จะสร้าง
     IF EXISTS (SELECT 1 FROM public.stations s
