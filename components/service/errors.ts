@@ -1,0 +1,73 @@
+/**
+ * แปล error ของหน้ากรอกข้อมูลทำบริการเป็นภาษาไทย — pure function
+ *
+ * Logic summary:
+ *   * SV001–SV009 / AG004 / AG007 = error ของ RPC `save_service_visit` / `delete_service_visit` /
+ *     `initialize_contract_stations` (ดูหัว migration 20261112130100 และ 20261112150000)
+ *   * 22004 / 22023 / 23514 / 21000 = ข้อมูลที่หน้าจอส่งไปไม่ถูก (บั๊กหน้าจอ ไม่ใช่ความผิดผู้ใช้) →
+ *     ข้อความทั่วไป + `isBug = true` ให้ผู้เรียก `console.error` ข้อความดิบ (ไม่โชว์ข้อความดิบให้ผู้ใช้)
+ *   * 42501 = ไม่มีสิทธิ์ · อื่นๆ = ข้อความทั่วไป
+ */
+
+export interface DbErrorLike {
+  code?: string | null;
+  message?: string | null;
+  statusCode?: string | number | null;
+}
+
+export interface ServiceError {
+  message: string;
+  /** true = บั๊กหน้าจอ → ผู้เรียกควร console.error(raw) */
+  isBug: boolean;
+}
+
+const RPC_ERRORS: Record<string, string> = {
+  SV001: "มีเลขสถานีที่ไม่พบหรือไม่ได้ใช้งานแล้ว (อาจมีคนแก้ข้อมูลพร้อมกัน) รีเฟรชรายนี้แล้วตรวจเลขสถานีอีกครั้ง",
+  SV002: "เลขสถานีที่ฝังใหม่ซ้ำกับสถานีที่ใช้งานอยู่ แก้เลขแล้วบันทึกอีกครั้ง",
+  SV003: "สัญญานี้ยังไม่ได้ตั้งจำนวนสถานี รีเฟรชรายนี้แล้วระบุจำนวนสถานีก่อน",
+  SV004: "กล่อง AG ยังกรอกไม่ครบทุกจุด — กรอกผล หรือติ๊ก “ไม่ได้ตรวจจุดนี้” ให้ครบ (หรือข้ามทุกจุด)",
+  SV005:
+    "แก้หรือลบงานซ่อม/ฝังเพิ่มนี้ไม่ได้ เพราะการเข้าบริการครั้งอื่นใช้สถานีเหล่านี้แล้ว — ให้แก้ที่การเข้าครั้งหลังก่อน",
+  SV006: "ต้องเลือกทีมอย่างน้อย 1 ทีม และเลือกได้เฉพาะทีม A–O และ Z",
+  SV007: "สัญญานี้ตั้งจำนวนสถานีไปแล้ว",
+  SV008: "ย้ายสถานีจากสัญญาเก่าไม่ได้ (สถานีไม่ใช่ของสัญญาเก่าที่ผูกไว้ หรือเลิกใช้งานแล้ว) รีเฟรชแล้วเลือกใหม่",
+  SV009: "เลขสถานีไม่ถูกต้องหรือซ้ำกัน ตรวจจำนวน/เลขสถานีแล้วบันทึกอีกครั้ง",
+  AG004: "ไม่พบสัญญาหรือการเข้าบริการนี้ (อาจถูกลบไปแล้ว) รีเฟรชหน้า",
+  AG007: "สัญญานี้ปิดหรือยกเลิกแล้ว — เฉพาะ Host เท่านั้นที่แก้ได้",
+};
+
+const BUG_CODES = new Set(["22004", "22023", "22P02", "23514", "21000", "23502"]);
+
+const BUG_MESSAGE =
+  "บันทึกไม่สำเร็จเพราะข้อมูลที่ส่งไม่ครบหรือไม่ถูกรูปแบบ (ข้อผิดพลาดของระบบ) กรุณาแจ้งผู้ดูแลระบบพร้อมบอกว่ากรอกอะไรไว้";
+
+export function describeServiceError(error: DbErrorLike): ServiceError {
+  const code = error.code ?? "";
+  const msg = (error.message ?? "").toLowerCase();
+  const status = String(error.statusCode ?? "");
+
+  const rpc = RPC_ERRORS[code];
+  if (rpc) return { message: rpc, isBug: false };
+
+  if (BUG_CODES.has(code)) return { message: BUG_MESSAGE, isBug: true };
+
+  if (
+    code === "42501" ||
+    status === "403" ||
+    msg.includes("row-level security") ||
+    msg.includes("permission denied") ||
+    msg.includes("not allowed")
+  ) {
+    return {
+      message: "ไม่มีสิทธิ์บันทึกข้อมูลของสัญญานี้ (สัญญาอาจอยู่นอกขอบเขตของบัญชี หรือบัญชีนี้ไม่ใช่หัวหน้างาน/Host)",
+      isBug: false,
+    };
+  }
+  if (msg.includes("failed to fetch") || msg.includes("network") || msg.includes("load failed")) {
+    return { message: "เชื่อมต่อเซิร์ฟเวอร์ไม่ได้ ตรวจอินเทอร์เน็ตแล้วกดบันทึกอีกครั้ง (กดซ้ำได้ ไม่เกิดรายการซ้ำ)", isBug: false };
+  }
+  return {
+    message: "บันทึกไม่สำเร็จ ลองอีกครั้ง หากยังไม่ได้ให้แจ้งผู้ดูแลระบบ",
+    isBug: true,
+  };
+}
