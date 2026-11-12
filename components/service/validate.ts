@@ -28,6 +28,8 @@ export interface ValidationContext {
   plan: InitPlan | null;
   /** เดือนที่เลือกในตัวกรอง 'YYYY-MM' */
   month: string;
+  /** สถานีที่มีผลตรวจอยู่แล้วในการเข้านี้ แม้ตอนนี้ไม่ใช่ "ใช้งาน" แล้ว (เช่น "IG-3") — แก้ผลเดิมได้ */
+  savedCheckKeys?: ReadonlySet<string>;
 }
 
 export interface FindingIssue {
@@ -184,7 +186,9 @@ export function validateForm(form: FormState, ctx: ValidationContext): FormIssue
   const blocked = (type: "IG" | "IC", n: number): string | null => {
     if (removedNos[type].has(n)) return "สถานีนี้ถูกบันทึกว่าหาย/ถอนออกในฟอร์มเดียวกัน — ลงผลตรวจไม่ได้";
     if (addedNos[type].has(n)) return "สถานีที่ฝังใหม่ในการเข้านี้ตรวจรอบหน้า (ลงผลตรวจเลยไม่ได้)";
-    if (!index[type].has(n)) return `ไม่พบสถานี ${type}-${n} ที่ใช้งานอยู่`;
+    if (!index[type].has(n) && !ctx.savedCheckKeys?.has(`${type}-${n}`)) {
+      return `ไม่พบสถานี ${type}-${n} ที่ใช้งานอยู่`;
+    }
     return null;
   };
 
