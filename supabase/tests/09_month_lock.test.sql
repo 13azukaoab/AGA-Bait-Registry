@@ -48,9 +48,10 @@ SELECT lives_ok(
 SELECT lives_ok(
   $$DELETE FROM station_checks WHERE id = '00000000-0000-0000-0000-000000000a01'$$,
   'recorder: DELETE station_check in closed month');
+-- M15 (20261112180000): ลบ visits ตรงไม่ได้แล้ว — ลบผ่าน delete_service_visit เท่านั้น
 SELECT lives_ok(
-  $$DELETE FROM visits WHERE id = '00000000-0000-0000-0000-0000000000f3'$$,
-  'recorder: DELETE visit in closed month');
+  $$SELECT public.delete_service_visit('00000000-0000-0000-0000-0000000000f3')$$,
+  'recorder: DELETE visit in closed month (through delete_service_visit)');
 RESET ROLE;
 
 SELECT is((SELECT note FROM visits WHERE id = '00000000-0000-0000-0000-0000000000f1'), 'rec edit', 'recorder edit was applied');
