@@ -1675,13 +1675,18 @@ function wdRowHtml(){
     '<td class="woodcnt" style="color:var(--fg-muted)">2 ชิ้น <span class="auto-tag">อัตโนมัติ</span></td>'+
     '<td class="c"><button type="button" class="btn danger sm" data-act="delRow">ลบ</button></td></tr>';
 }
-function rpRowHtml(){
+var RP_REPAIR=['เปลี่ยนฝาสถานี','สถานีหาย','ถอนสถานีออก','อื่นๆ'], RP_ADD=['ฝังสถานีใหม่ (IG)','ฝังสถานีใหม่ (IC)'];
+function rpTypeOptions(sel){
+  function o(t){return '<option'+(t===sel?' selected':'')+'>'+t+'</option>'}
+  return '<optgroup label="งานซ่อม">'+RP_REPAIR.map(o).join('')+'</optgroup><optgroup label="เพิ่มสถานี (ฝังเพิ่ม — ไม่ใช่งานซ่อม)">'+RP_ADD.map(o).join('')+'</optgroup>';
+}
+function rpRowHtml(type){
   /* ประเภทงาน → ช่องที่โชว์ต่างกัน:
      • ฝังสถานีใหม่ (IG/IC) = พิมพ์ "จำนวน" ระบบให้เลขสถานีต่อจากเดิม + เพิ่มจำนวนสถานีของลูกค้าให้เอง
      • สถานีหาย / ถอนสถานีออก = เลือก IG/IC + เลขสถานีเดิม (หลายเลขได้) → หักออกจากจำนวนที่ใช้งาน
      • เปลี่ยนฝา / อื่นๆ = เลขสถานีเดิม ไม่เปลี่ยนจำนวน
      "สถานีหาย" และ "อื่นๆ" ต้องระบุรายละเอียด (เช่น สถานีหาย แต่รอบนี้อุปกรณ์ไม่พอซ่อม) */
-  return '<tr><td><select class="rpType" onchange="rpApply(this.closest(\'tr\'));svRecalc()" aria-label="ประเภทงาน"><option selected>ฝังสถานีใหม่ (IG)</option><option>ฝังสถานีใหม่ (IC)</option><option>เปลี่ยนฝาสถานี</option><option>สถานีหาย</option><option>ถอนสถานีออก</option><option>อื่นๆ</option></select></td>'+
+  return '<tr><td><select class="rpType" onchange="rpApply(this.closest(\'tr\'));svRecalc()" aria-label="ประเภทงาน">'+rpTypeOptions(type||'เปลี่ยนฝาสถานี')+'</select></td>'+
     '<td><div class="rpQtyWrap"><label class="rpql">จำนวนที่ฝัง <input type="number" class="rpQty num" min="1" max="500" value="1" inputmode="numeric" aria-label="จำนวนสถานีที่ฝังเพิ่ม"> สถานี</label><div class="rpNums"></div></div>'+
     '<div class="stcell rpStWrap" hidden><select class="rpKind" onchange="rpCount(this.closest(\'tr\'));svRecalc()" aria-label="ชนิดสถานี" hidden><option>IG</option><option>IC</option></select><input class="rpSt" placeholder="เช่น 3, 5, 8-12" style="min-width:150px" oninput="rpCount(this.closest(\'tr\'))" aria-label="หมายเลขสถานี (ใส่ได้หลายเลข คั่นด้วยจุลภาค หรือช่วงด้วยขีด)"><span class="vchk"></span></div></td>'+
     '<td class="rpCnt num" style="color:var(--fg-muted)">1 สถานี <span class="auto-tag">อัตโนมัติ</span></td>'+
@@ -1773,10 +1778,10 @@ function rpDeltas(){
   });
   return d;
 }
-function tableSec(secId,bodyId,title,head,addAct,addLabel,hint,chipsId){
+function tableSec(secId,bodyId,title,head,addAct,addLabel,hint,chipsId,extraBtn){
   return '<div class="fsec" id="'+secId+'" hidden><div class="fsec-h">'+title+'</div>'+(chipsId?'<div class="sumchips" id="'+chipsId+'"></div>':'')+
     '<div class="st-tbl"><div class="tablewrap"><table><thead><tr>'+head+'<th class="c"></th></tr></thead><tbody id="'+bodyId+'"></tbody></table></div>'+
-    '<div class="rowadd"><button type="button" class="btn sm" data-act="'+addAct+'">'+addLabel+'</button></div></div>'+
+    '<div class="rowadd"><button type="button" class="btn sm" data-act="'+addAct+'">'+addLabel+'</button>'+(extraBtn||'')+'</div></div>'+
     '<div class="hint">'+hint+'</div></div>';
 }
 /* ลูกค้าใหม่จาก "เปิดงาน" ยังไม่มีจำนวนสถานี → หัวหน้างานระบุ IG/IC ครั้งเดียวในเดือนแรก (บังคับก่อนบันทึก)
@@ -1807,10 +1812,10 @@ function svRenderForm(){
     fieldsHtml('sv',c)+
     '<button type="button" class="bigok" id="svNormal" data-act="svNormal" aria-pressed="false"><span class="cbox" aria-hidden="true"><svg viewBox="0 0 20 20"><path d="M3 10.5l4.5 4.5L17 5"/></svg></span><span class="txt">IG / IC ปกติทั้งหมด<small>ไม่พบปลวก ไม่เปลี่ยนไม้ ไม่มีงานซ่อม · ไม่รวมกล่อง AG</small></span><span class="state"><span class="off">ยังไม่ได้กด</span><span class="on">กดแล้ว ✓</span></span></button>'+
     '<div class="fbtns" role="group" aria-label="สิ่งที่พบ">'+
-      [['tm','พบปลวก',''],['wd','เปลี่ยนไม้',''],['rp','งานซ่อม','(เปลี่ยนฝา, ฝังใหม่, หาย, ถอนออก)'],['ag','กล่อง AG','']].map(function(s){return '<button type="button" class="fbtn" data-act="sec" data-sec="'+s[0]+'" aria-pressed="false"><span class="fl">'+s[1]+(s[2]?'<small>'+s[2]+'</small>':'')+'</span> <span class="n" id="svN_'+s[0]+'">0</span></button>'}).join('')+'</div>'+
+      [['tm','พบปลวก',''],['wd','เปลี่ยนไม้',''],['rp','งานซ่อม / ฝังเพิ่ม','(เปลี่ยนฝา, หาย, ถอนออก, ฝังเพิ่ม)'],['ag','กล่อง AG','']].map(function(s){return '<button type="button" class="fbtn" data-act="sec" data-sec="'+s[0]+'" aria-pressed="false"><span class="fl">'+s[1]+(s[2]?'<small>'+s[2]+'</small>':'')+'</span> <span class="n" id="svN_'+s[0]+'">0</span></button>'}).join('')+'</div>'+
     tableSec('svSecTm','svTmBody','พบปลวก','<th>หมายเลขสถานี</th><th>ชนิดปลวก</th><th>เหยื่อ / เคมีผง</th>','addTm','+ เพิ่มจุดที่พบปลวก','ตั้งต้นว่าจุดอื่นปกติ — เพิ่มเฉพาะจุดที่พบ: พิมพ์เลขสถานี (ระบบตรวจว่ามีจริง) แล้วเลือกชนิดปลวก · <b>ใต้ดิน</b> = ใส่เหยื่อ · <b>สวน</b> = เคมีผง กรอกจำนวนจุด แปลงกรัมอัตโนมัติ 0.3 ก./จุด','svTmChips')+
     tableSec('svSecWd','svWdBody','เปลี่ยนไม้ล่อ','<th>หมายเลขสถานี</th><th>ชนิด</th><th>จำนวนไม้</th>','addWd','+ เพิ่มสถานีที่เปลี่ยนไม้','จำนวนไม้เติมอัตโนมัติตามชนิด (IG = 2 ชิ้น · IC = 1 ชิ้น)','svWdChips')+
-    tableSec('svSecRp','svRpBody','งานซ่อม / ปรับสถานี','<th>ประเภทงาน</th><th>หมายเลขสถานี / จำนวนที่ฝัง</th><th>จำนวน</th><th>รายละเอียด</th>','addRp','+ เพิ่มงานซ่อม / ปรับสถานี','<b>ฝังสถานีใหม่</b> พิมพ์แค่จำนวน ระบบให้เลขสถานีต่อจากเดิมและเพิ่มจำนวนสถานีของลูกค้าให้เอง · <b>สถานีหาย / ถอนออก</b> เลือก IG/IC แล้วใส่เลขสถานีเดิมได้หลายเลขในแถวเดียว (เช่น <b>3, 5, 8-12</b> = 7 สถานี) ระบบหักออกจากจำนวนที่ใช้งาน · ถ้าสถานีหายแต่รอบนี้ซ่อมไม่ได้ (เช่น อุปกรณ์ไม่พอ) เขียนเหตุผลในช่องรายละเอียด · “อื่นๆ” ต้องระบุว่าเกิดอะไรขึ้น','svRpChips')+
+    tableSec('svSecRp','svRpBody','งานซ่อม และ ฝังเพิ่มสถานี','<th>ประเภทงาน</th><th>หมายเลขสถานี / จำนวนที่ฝัง</th><th>จำนวน</th><th>รายละเอียด</th>','addRp','+ เพิ่มงานซ่อม','<b>ฝังสถานีใหม่</b> พิมพ์แค่จำนวน ระบบให้เลขสถานีต่อจากเดิมและเพิ่มจำนวนสถานีของลูกค้าให้เอง · <b>สถานีหาย / ถอนออก</b> เลือก IG/IC แล้วใส่เลขสถานีเดิมได้หลายเลขในแถวเดียว (เช่น <b>3, 5, 8-12</b> = 7 สถานี) ระบบหักออกจากจำนวนที่ใช้งาน · ถ้าสถานีหายแต่รอบนี้ซ่อมไม่ได้ (เช่น อุปกรณ์ไม่พอ) เขียนเหตุผลในช่องรายละเอียด · “อื่นๆ” ต้องระบุว่าเกิดอะไรขึ้น','svRpChips','<button type="button" class="btn sm" data-act="addRpNew">+ ฝังสถานีเพิ่ม</button>')+
     '<div class="agsec" id="svSecAg" hidden><div id="svAgBox"></div></div>'+
   '</div>'+
   '<div class="savebar"><div class="savemsg" id="svMsg" role="alert" hidden></div>'+
@@ -1856,9 +1861,9 @@ function svToggleSec(k){
   }
   svSyncUi();
 }
-function svAddRow(k){
+function svAddRow(k,type){
   var body=$({tm:'svTmBody',wd:'svWdBody',rp:'svRpBody'}[k]);
-  body.insertAdjacentHTML('beforeend',{tm:tmRowHtml,wd:wdRowHtml,rp:rpRowHtml}[k]());
+  body.insertAdjacentHTML('beforeend',{tm:tmRowHtml,wd:wdRowHtml,rp:rpRowHtml}[k](type));
   if(k==='rp') rpApply(body.lastElementChild);
   var inp=body.lastElementChild.querySelector('input,select'); if(inp) inp.focus();
   svRecalc();
@@ -1901,7 +1906,7 @@ function svMissing(){
   miss=miss.concat(wtMissing('sv'));
   if(custById(SV.id).fresh){var fn=svCounts(); if(fn.ig+fn.ic<1) miss.push('จำนวนสถานี IG / IC ของลูกค้าใหม่ (ระบุครั้งแรกครั้งเดียว)')}
   /* เจ้าของตัดสิน 10 พ.ย. 2026: ไม่บังคับระบุผล IG/IC — บันทึกได้ทั้งแบบระบุและไม่ระบุ (บังคับเฉพาะกล่อง AG ที่ค้างติดตาม) */
-  var names={tm:'พบปลวก',wd:'เปลี่ยนไม้',rp:'งานซ่อม'};
+  var names={tm:'พบปลวก',wd:'เปลี่ยนไม้',rp:'งานซ่อม/ฝังเพิ่ม'};
   ['tm','wd','rp'].forEach(function(k){
     if(!SV.open[k]) return;
     var rows=svRows(k), bad=0;
@@ -2039,7 +2044,8 @@ document.addEventListener('click',function(e){
   if(act==='delRow'){t.closest('tr').remove(); svRecalc()}
   else if(act==='addTm') svAddRow('tm');
   else if(act==='addWd') svAddRow('wd');
-  else if(act==='addRp') svAddRow('rp');
+  else if(act==='addRp') svAddRow('rp','เปลี่ยนฝาสถานี');
+  else if(act==='addRpNew') svAddRow('rp','ฝังสถานีใหม่ (IG)');
   else if(act==='sec') svToggleSec(t.dataset.sec);
   else if(act==='svNormal') svNormalToggle();
   else if(act==='svSave') svSave();
