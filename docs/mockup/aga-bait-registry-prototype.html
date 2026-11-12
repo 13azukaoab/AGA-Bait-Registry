@@ -484,11 +484,13 @@ tfoot td{padding:10px 12px;font-weight:700;background:var(--surface-2);border-to
 .optbtn[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-fg)}
 .optbtn:disabled{cursor:not-allowed}
 .pt .mini select{padding:9px 10px;font-size:13.5px}
-.pskip{font:inherit;font-size:12px;color:var(--fg-muted);background:var(--surface);border:1px dashed var(--border-strong);border-radius:999px;padding:3px 11px;cursor:pointer}
-.pskip:hover{border-color:var(--accent);color:var(--accent-strong)}
-.pskip[aria-pressed="true"]{background:var(--surface-3);border-style:solid;color:var(--fg);font-weight:600}
-.pskip:disabled{cursor:not-allowed;opacity:.7}
-.pskip:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.pskip{display:inline-flex;align-items:center;gap:6px;font:inherit;font-size:12.5px;font-weight:600;color:var(--danger);background:var(--danger-soft);border:1px solid var(--danger);border-radius:999px;padding:3px 12px 3px 9px;cursor:pointer;user-select:none}
+.pskip input{width:16px;height:16px;margin:0;accent-color:var(--danger);cursor:pointer}
+.pskip:hover{filter:brightness(.97)}
+.pskip.on{background:var(--danger);color:var(--accent-fg)}
+.pskip.on input{accent-color:var(--accent-fg)}
+.pskip:has(input:disabled){cursor:not-allowed;opacity:.7}
+.pskip:has(input:focus-visible){outline:2px solid var(--danger);outline-offset:2px}
 .lblwrap{position:relative;display:inline-flex}
 .lblbtn{font:inherit;font-size:12.5px;display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:999px;cursor:pointer;
   color:var(--fg-muted);background:transparent;border:1px dashed var(--border-strong)}
@@ -503,7 +505,7 @@ tfoot td{padding:10px 12px;font-weight:700;background:var(--surface-2);border-to
 .lblpop .opt{color:var(--fg-faint)}
 .lblin{font-family:inherit;font-size:13.5px;color:var(--fg);background:var(--surface);border:1px solid var(--border-strong);border-radius:7px;padding:9px 10px;width:100%}
 .lblact{display:flex;justify-content:flex-end;gap:8px}
-.pt.off{opacity:.5}
+.pt.off .agfields{opacity:.45}
 .mini.need .optrow,.mini.need select,.mini.need .baitnum{outline:2px solid var(--danger);outline-offset:2px;border-radius:9px}
 .mini.need>label{color:var(--danger)}
 .skipchk{display:flex;gap:10px;align-items:flex-start;padding:11px 12px;border:1px dashed var(--border-strong);
@@ -1475,7 +1477,7 @@ function agPointHtml(ctx,m,p,bad){
   var h='<div class="pt'+(off?' off':'')+'"><div class="top"><span class="sttype">AG</span><b>จุดที่ '+p.no+'</b>'+agLabelHtml(ctx,p,key,dis)+chip+
     '<span class="fno">'+fno+' <span class="auto-tag">อัตโนมัติ</span></span>'+
     (isS?'<button type="button" class="btn danger sm" data-ag="del" '+key+'>ลบจุด</button>'
-        :(ctx==='sv'?'<button type="button" class="pskip" data-ag="pskip" '+key+(m.skip?' disabled':'')+' aria-pressed="'+(!!p.skip||m.skip)+'" title="ทีมเข้ามาแต่ไม่ได้ตรวจกล่องจุดนี้ — ไม่ต้องกรอกผล และไม่นับเป็นรอบตรวจ">'+((p.skip||m.skip)?'✓ ไม่ได้ตรวจจุดนี้':'ไม่ได้ตรวจจุดนี้')+'</button>':''))+'</div><div class="agfields">';
+        :(ctx==='sv'?'<label class="pskip'+((p.skip||m.skip)?' on':'')+'" title="ทีมเข้ามาแต่ไม่ได้ตรวจกล่องจุดนี้ — ไม่ต้องกรอกผล และไม่นับเป็นรอบตรวจ"><input type="checkbox" data-ag="pskip" '+key+((p.skip||m.skip)?' checked':'')+(m.skip?' disabled':'')+'> ไม่ได้ตรวจจุดนี้</label>':''))+'</div><div class="agfields">';
   /* ปริมาณเหยื่อ: เลือกจากรายการ 0–200 ก. · ถ้าใช้มากกว่านั้นเลือก "มากกว่า 200" แล้วพิมพ์เอง (ต้องหาร 50 ลงตัว เช่น 250, 300, 350) */
   var custom=p.cust||(p.bait!==null&&BAITS.indexOf(p.bait)<0);
   h+='<div class="mini'+(bad&&p.bait===null?' need':'')+'"><label for="bs_'+ctx+p.k+'">ปริมาณเหยื่อที่ใช้</label><select id="bs_'+ctx+p.k+'" data-ag="baitsel" '+key+dis+'>'+
@@ -2034,7 +2036,6 @@ document.addEventListener('click',function(e){
       agLblCloseAll(); pop.hidden=!willOpen;
       if(willOpen) wrap.querySelector('input').focus();
     }
-    else if(a==='pskip'){var sp=agPt(m,ag.dataset.k); if(sp){sp.skip=!sp.skip; agRender(ctx,'.pskip[data-k="'+sp.k+'"]')}}
     else if(a==='lblclose') agLblCloseAll();
     else if(a==='lblclear'){var w=ag.closest('.lblwrap'), inp=w.querySelector('input'); inp.value=''; inp.dispatchEvent(new Event('input',{bubbles:true})); inp.focus()}
     else if(a==='add') agAdd(ctx);
@@ -2062,6 +2063,7 @@ document.addEventListener('change',function(e){
   if(t.dataset.ag==='skip'){m.skip=t.checked; agRender(ctx,'input[data-ag="skip"]'); return}
   if(t.dataset.ag==='label'||t.dataset.ag==='baitnum') return;
   var p=agPt(m,t.dataset.k); if(!p) return;
+  if(t.dataset.ag==='pskip'){p.skip=t.checked; agRender(ctx,'input[data-ag="pskip"][data-k="'+p.k+'"]'); return}
   if(t.dataset.ag==='baitsel'){
     if(t.value==='other'){p.cust=true; if(BAITS.indexOf(p.bait)>=0) p.bait=null}
     else {p.cust=false; p.bait=parseInt(t.value,10)}
