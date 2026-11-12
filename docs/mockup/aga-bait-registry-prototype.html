@@ -474,6 +474,11 @@ tfoot td{padding:10px 12px;font-weight:700;background:var(--surface-2);border-to
 .optbtn[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-fg)}
 .optbtn:disabled{cursor:not-allowed}
 .pt .mini select{padding:9px 10px;font-size:13.5px}
+.pskip{font:inherit;font-size:12px;color:var(--fg-muted);background:var(--surface);border:1px dashed var(--border-strong);border-radius:999px;padding:3px 11px;cursor:pointer}
+.pskip:hover{border-color:var(--accent);color:var(--accent-strong)}
+.pskip[aria-pressed="true"]{background:var(--surface-3);border-style:solid;color:var(--fg);font-weight:600}
+.pskip:disabled{cursor:not-allowed;opacity:.7}
+.pskip:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .lblwrap{position:relative;display:inline-flex}
 .lblbtn{font:inherit;font-size:12.5px;display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:999px;cursor:pointer;
   color:var(--fg-muted);background:transparent;border:1px dashed var(--border-strong)}
@@ -1434,13 +1439,13 @@ function agComplete(p){return p.bait!==null&&p.caste!==''}
 function agMissing(ctx){
   var m=AGM[ctx], round=(ctx==='sv'), need={}, filled=0, bad=[], hasF=false;
   m.pts.forEach(function(p){
-    var relevant=(p.kind==='S')||(round?!m.skip:agTouched(p));
+    var relevant=(p.kind==='S')||(round?(!m.skip&&!p.skip):agTouched(p));
     if(!relevant) return;
     if(agComplete(p)){filled++; return}
     need[p.k]=true; bad.push(p); if(p.kind==='F') hasF=true;
   });
   var miss=[];
-  if(bad.length) miss.push('กล่อง AG ยังกรอกไม่ครบ: จุดที่ '+bad.map(function(p){return p.no}).join(', ')+(round&&hasF?' — หรือติ๊ก “รอบนี้ไม่ได้ตรวจกล่อง AG”':''));
+  if(bad.length) miss.push('กล่อง AG ยังกรอกไม่ครบ: จุดที่ '+bad.map(function(p){return p.no}).join(', ')+(round&&hasF?' — หรือกด “ไม่ได้ตรวจจุดนี้” ที่จุดนั้น (ถ้าไม่ได้ตรวจทุกจุด ติ๊ก “รอบนี้ไม่ได้ตรวจกล่อง AG เลย” ด้านล่าง)':''));
   return {missing:miss,need:need,filled:filled};
 }
 /* ป้ายกำกับจุด (ไม่บังคับ) — ปุ่มที่หัวการ์ดจุด กดแล้วเปิดกล่องเล็กให้พิมพ์/แก้ไข เช่น ห้องนอน, ห้องนั่งเล่น
@@ -1455,12 +1460,13 @@ function agLabelHtml(ctx,p,key,dis){
     '<div class="lblact"><button type="button" class="btn sm" data-ag="lblclear" '+key+'>ล้าง</button><button type="button" class="btn sm primary" data-ag="lblclose" '+key+'>เสร็จ</button></div></div></span>';
 }
 function agPointHtml(ctx,m,p,bad){
-  var isS=(p.kind==='S'), off=(ctx==='sv'&&m.skip&&!isS), key='data-ctx="'+ctx+'" data-k="'+p.k+'"', dis=off?' disabled':'';
+  var isS=(p.kind==='S'), off=(ctx==='sv'&&(m.skip||p.skip)&&!isS), key='data-ctx="'+ctx+'" data-k="'+p.k+'"', dis=off?' disabled':'';
   var chip=p.st==='pend'?'<span class="chip pend">รอถอด</span>':(p.st==='rm'?'<span class="chip ok">ถอดกล่อง</span>':'<span class="chip miss">กำลังติดตาม</span>');
   var fno=isS?'ติดตั้งใหม่ (S)':'ติดตามผล F'+(p.last+1);
   var h='<div class="pt'+(off?' off':'')+'"><div class="top"><span class="sttype">AG</span><b>จุดที่ '+p.no+'</b>'+agLabelHtml(ctx,p,key,dis)+chip+
     '<span class="fno">'+fno+' <span class="auto-tag">อัตโนมัติ</span></span>'+
-    (isS?'<button type="button" class="btn danger sm" data-ag="del" '+key+'>ลบจุด</button>':'')+'</div><div class="agfields">';
+    (isS?'<button type="button" class="btn danger sm" data-ag="del" '+key+'>ลบจุด</button>'
+        :(ctx==='sv'?'<button type="button" class="pskip" data-ag="pskip" '+key+(m.skip?' disabled':'')+' aria-pressed="'+(!!p.skip||m.skip)+'" title="ทีมเข้ามาแต่ไม่ได้ตรวจกล่องจุดนี้ — ไม่ต้องกรอกผล และไม่นับเป็นรอบตรวจ">'+((p.skip||m.skip)?'✓ ไม่ได้ตรวจจุดนี้':'ไม่ได้ตรวจจุดนี้')+'</button>':''))+'</div><div class="agfields">';
   /* ปริมาณเหยื่อ: เลือกจากรายการ 0–200 ก. · ถ้าใช้มากกว่านั้นเลือก "มากกว่า 200" แล้วพิมพ์เอง (ต้องหาร 50 ลงตัว เช่น 250, 300, 350) */
   var custom=p.cust||(p.bait!==null&&BAITS.indexOf(p.bait)<0);
   h+='<div class="mini'+(bad&&p.bait===null?' need':'')+'"><label for="bs_'+ctx+p.k+'">ปริมาณเหยื่อที่ใช้</label><select id="bs_'+ctx+p.k+'" data-ag="baitsel" '+key+dis+'>'+
@@ -1490,7 +1496,7 @@ function agHtml(ctx){
     '<div class="hint" style="margin-top:0">เลขรอบ F ระบบนับให้เอง · เหยื่อเลือกจากรายการ (เกิน 200 ก. เลือก “มากกว่า 200” แล้วพิมพ์เอง ต้องหาร 50 ลงตัว) · เลือกสัดส่วนปลวกและสถานะของแต่ละจุด</div>';
   if(!m.pts.length) h+='<div class="empty" style="padding:10px 2px;text-align:left">ยังไม่มีจุดกล่อง — กด “+ ติดกล่องใหม่ (S)” เพื่อเพิ่มจุดแรก</div>';
   m.pts.forEach(function(p){h+=agPointHtml(ctx,m,p,!!need[p.k])});
-  if(round&&exist) h+='<label class="skipchk"><input type="checkbox" data-ag="skip" data-ctx="sv"'+(m.skip?' checked':'')+'><span><b>รอบนี้ไม่ได้ตรวจกล่อง AG</b><br><small>ติ๊กเมื่อทีมเข้ามาแต่ไม่ได้ตรวจกล่องเดิมของลูกค้ารายนี้ — ไม่ต้องกรอกผลกล่องเดิม</small></span></label>';
+  if(round&&exist) h+='<label class="skipchk"><input type="checkbox" data-ag="skip" data-ctx="sv"'+(m.skip?' checked':'')+'><span><b>รอบนี้ไม่ได้ตรวจกล่อง AG เลย (ข้ามทุกจุด)</b><br><small>ทางลัดเมื่อทีมเข้ามาแต่ไม่ได้ตรวจกล่องเดิมของลูกค้ารายนี้เลยสักจุด · ถ้าตรวจบางจุด ให้กด “ไม่ได้ตรวจจุดนี้” ที่จุดที่ข้ามแทน</small></span></label>';
   return h;
 }
 function agRender(ctx,focusSel){
@@ -1512,7 +1518,7 @@ function agCommit(ctx){
     if(p.kind==='F'&&p.label!==p.label0){var le=c.ag.filter(function(a){return a[0]===p.no})[0]; if(le) le[3]=p.label}
     if(!agComplete(p)) return;
     if(p.kind==='S'){ if(p.st!=='rm') c.ag.push([p.no,0,p.st,p.label]); return }
-    if(round&&m.skip) return;
+    if(round&&(m.skip||p.skip)) return;
     var e=c.ag.filter(function(a){return a[0]===p.no})[0]; if(!e) return;
     if(p.st==='rm') c.ag=c.ag.filter(function(a){return a!==e});
     else {e[1]=e[1]+1; e[2]=p.st}
@@ -1829,7 +1835,7 @@ function svToggleSec(k){
     if(k==='ag'){
       var m=AGM.sv;
       if(m.pts.some(function(p){return p.kind==='S'||agTouched(p)})){toast('มีข้อมูลกล่อง AG ที่กรอกไว้ — ลบ/ล้างก่อนจึงปิดหมวดนี้ได้'); return}
-      if(custById(SV.id).ag.length){toast('ลูกค้ารายนี้มีกล่อง AG ค้างติดตาม — ต้องกรอกผล หรือติ๊ก “รอบนี้ไม่ได้ตรวจกล่อง AG”'); return}
+      if(custById(SV.id).ag.length){toast('ลูกค้ารายนี้มีกล่อง AG ค้างติดตาม — ต้องกรอกผล หรือกด “ไม่ได้ตรวจจุดนี้”'); return}
     } else {
       if(svFilledRows(k)){toast('มีรายการในหมวดนี้อยู่ — ลบแถวก่อนจึงปิดหมวดได้'); return}
       $({tm:'svTmBody',wd:'svWdBody',rp:'svRpBody'}[k]).innerHTML='';
@@ -1986,6 +1992,7 @@ document.addEventListener('click',function(e){
       agLblCloseAll(); pop.hidden=!willOpen;
       if(willOpen) wrap.querySelector('input').focus();
     }
+    else if(a==='pskip'){var sp=agPt(m,ag.dataset.k); if(sp){sp.skip=!sp.skip; agRender(ctx,'.pskip[data-k="'+sp.k+'"]')}}
     else if(a==='lblclose') agLblCloseAll();
     else if(a==='lblclear'){var w=ag.closest('.lblwrap'), inp=w.querySelector('input'); inp.value=''; inp.dispatchEvent(new Event('input',{bubbles:true})); inp.focus()}
     else if(a==='add') agAdd(ctx);
