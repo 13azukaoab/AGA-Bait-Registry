@@ -380,6 +380,10 @@ tfoot td{padding:10px 12px;font-weight:700;background:var(--surface-2);border-to
 .fgrid .field label{font-size:12px}
 .fgrid .field select,.fgrid .field input{width:100%;min-width:0;padding:10px 12px;font-size:14px}
 .fgrid .field .sub{font-size:11px;color:var(--fg-faint)}
+.wtbox{display:flex;align-items:center;gap:4px;min-height:44px;padding:10px 12px;font-size:14px;border:1px dashed var(--border);border-radius:8px;background:var(--surface-2);color:var(--fg)}
+.wtbox b{font-size:16px}
+.wtbox .wt-empty{color:var(--fg-faint);font-size:12px}
+.wtbox .wt-bad{color:var(--danger);font-size:12px;font-weight:600}
 /* ปุ่มใหญ่ "ปกติทั้งหมด" — ยังไม่กด = เส้นประเทา + ช่องติ๊กว่าง · กดแล้ว = พื้นเขียว + ติ๊กถูก (วาดเส้นเข้ามา) */
 .bigok{display:flex;align-items:center;justify-content:flex-start;gap:14px;width:100%;min-height:62px;font:inherit;
   font-size:16px;font-weight:600;line-height:1.3;border-radius:12px;cursor:pointer;text-align:left;
@@ -585,15 +589,20 @@ tfoot td{padding:10px 12px;font-weight:700;background:var(--surface-2);border-to
     <section id="s-material" hidden>
       <div class="page-head"><h1>สรุปวัสดุ</h1>
         <p>สรุปการใช้วัสดุ 3 ชนิดในพื้นที่ แยกสาขา/ช่วงเวลา — สำหรับวางแผนสต็อก/ต้นทุน <span class="chip pend">🔒 internal เท่านั้น</span></p></div>
+      <div class="seg" role="tablist" aria-label="หัวข้อสรุป">
+        <button type="button" class="segbtn on" role="tab" aria-selected="true" id="matTabMat" onclick="matTab('mat')">วัสดุ</button>
+        <button type="button" class="segbtn" role="tab" aria-selected="false" id="matTabTime" onclick="matTab('time')">เวลาทำงาน</button>
+      </div>
       <div class="toolbar">
         <div class="field"><label>เขต</label><select><option>เขต 1</option><option>ทุกเขต</option></select></div>
-        <div class="field"><label>สาขา</label><select><option>ทุกสาขา</option><option>พุทธมณฑล</option><option>หัวหิน</option><option>นครปฐม</option></select></div>
-        <div class="field"><label>ทีม</label><select><option>ทุกทีม</option><option>A</option><option>B</option></select></div>
-        <div class="field"><label>ชนิดวัสดุ</label><select><option>ทุกชนิด</option><option>NEMESIS</option><option>เคมีผง</option><option>ไม้ล่อ</option></select></div>
+        <div class="field"><label for="matBranch">สาขา</label><select id="matBranch" onchange="wtSumRender()"><option value="">ทุกสาขา</option><option>พุทธมณฑล</option><option>หัวหิน</option><option>นครปฐม</option></select></div>
+        <div class="field"><label for="matTeam">ทีม</label><select id="matTeam" onchange="wtSumRender()"><option value="">ทุกทีม</option><option>A</option><option>B</option></select></div>
+        <div class="field" id="matKindField"><label>ชนิดวัสดุ</label><select><option>ทุกชนิด</option><option>NEMESIS</option><option>เคมีผง</option><option>ไม้ล่อ</option></select></div>
         <div class="field"><label>ช่วงเวลา</label><select><option>ตุลาคม 2026</option><option>Q4 2026</option><option>ปี 2026</option><option>กำหนดช่วงเอง</option></select></div>
         <div style="flex:1"></div>
-        <button class="btn sm" type="button" onclick="exportMaterialXL()" title="ส่งออกสรุปการใช้วัสดุ + ตารางแยกสาขา เป็น .xlsx">↓ ส่งออก Excel</button>
+        <button class="btn sm" type="button" id="matExport" onclick="exportMaterialXL()" title="ส่งออกสรุปการใช้วัสดุ + ตารางแยกสาขา เป็น .xlsx">↓ ส่งออก Excel</button>
       </div>
+      <div id="matMat">
       <div class="stats">
         <div class="stat matn"><div class="lab"><span class="dot" style="background:var(--nem)"></span> NEMESIS (เหยื่อ)</div><div class="val num">10,000 <span style="font-size:14px;color:var(--fg-muted)">ก.</span></div><div class="sub">ภายนอก IG+IC 1,250 · ภายใน AG 8,750 ก.</div></div>
         <div class="stat matp"><div class="lab"><span class="dot" style="background:var(--pow)"></span> เคมีผง (ปลวกสวน)</div><div class="val num">420 <span style="font-size:14px;color:var(--fg-muted)">จุด</span></div><div class="sub">≈ 126 ก. (0.3 ก./จุด)</div></div>
@@ -660,6 +669,18 @@ tfoot td{padding:10px 12px;font-weight:700;background:var(--surface-2);border-to
           </div>
           <div class="note"><span class="ic">ℹ</span><span>ข้อมูลเคมีผงมาจากช่อง "จำนวนจุด" ในหน้ากรอกผลบริการ (จุดที่ระบุชนิด = ปลวกสวน)</span></div>
         </div>
+      </div>
+      </div><!-- /matMat -->
+
+      <!-- สรุปเวลาทำงานจริง: คำนวณจากเวลาเข้า–เวลาจบในหน้ากรอกข้อมูลทำบริการ · ข้อมูลในตารางเป็นตัวอย่างสมมติ -->
+      <div id="matTime" hidden>
+        <div class="stats" id="wtStats"></div>
+        <div class="seg" role="tablist" aria-label="มุมมองเวลาทำงาน">
+          <button type="button" class="segbtn on" role="tab" aria-selected="true" id="wtViewTeam" onclick="wtView('team')">รายทีม</button>
+          <button type="button" class="segbtn" role="tab" aria-selected="false" id="wtViewCust" onclick="wtView('cust')">รายลูกค้า</button>
+        </div>
+        <div class="tablewrap" id="wtTable"></div>
+        <div class="note"><span class="ic">ℹ</span><span>เวลาทำงานจริง = เวลาจบการทำบริการ − เวลาเข้าทำบริการ ของแต่ละครั้งที่เข้า · ตัวเลขในตารางนี้เป็น <b>ข้อมูลตัวอย่าง (สมมติ)</b> เพื่อดูหน้าตา</span></div>
       </div>
     </section>
 
@@ -1437,7 +1458,87 @@ function fieldsHtml(ctx,c,extra){
   var teams=TEAMS.map(function(t){return '<option value="'+t+'"'+(t===c.team?' selected':'')+'>ทีม '+t+'</option>'}).join('');
   return '<div class="fgrid"><div class="field"><label for="'+ctx+'Date">วันที่เข้า</label><input type="date" id="'+ctx+'Date" value="'+TODAY_ISO+'"></div>'+
     /* id ใช้ "VisitTeam" — ห้ามซ้ำกับตัวกรองทีมฝั่งซ้าย (id+'Team') ไม่งั้นตอนบันทึกจะอ่านค่าจากตัวกรองแทน */
-    '<div class="field"><label for="'+ctx+'VisitTeam">ทีมที่เข้า</label><select id="'+ctx+'VisitTeam">'+teams+'</select><span class="sub">เติมจากครั้งก่อน (ทีม '+c.team+') — แก้ได้ทุกครั้ง</span></div>'+(extra||'')+'</div>';
+    '<div class="field"><label for="'+ctx+'VisitTeam">ทีมที่เข้า</label><select id="'+ctx+'VisitTeam">'+teams+'</select><span class="sub">เติมจากครั้งก่อน (ทีม '+c.team+') — แก้ได้ทุกครั้ง</span></div>'+
+    /* เวลาเข้า/ออก → ระบบคำนวณชั่วโมงทำงานจริงของวันนั้น (สรุปต่อลูกค้า/ต่อทีมดูที่หน้าสรุป) */
+    '<div class="field"><label for="'+ctx+'TimeIn">เวลาเข้าทำบริการ</label><input type="time" id="'+ctx+'TimeIn" oninput="wtCalc(\''+ctx+'\')"></div>'+
+    '<div class="field"><label for="'+ctx+'TimeOut">เวลาจบการทำบริการ</label><input type="time" id="'+ctx+'TimeOut" oninput="wtCalc(\''+ctx+'\')"></div>'+
+    '<div class="field"><label>เวลาทำงานจริง</label><div class="wtbox" id="'+ctx+'WorkTime" aria-live="polite"><span class="wt-empty">กรอกเวลาเข้าและเวลาจบ</span></div><span class="sub">คำนวณอัตโนมัติ</span></div>'+
+    (extra||'')+'</div>';
+}
+/* คำนวณเวลาทำงานจริง (นาที) จากเวลาเข้า–เวลาจบ · คืน null ถ้ายังกรอกไม่ครบ/ไม่ถูกต้อง */
+function wtMinutes(ctx){
+  var a=$(ctx+'TimeIn').value, b=$(ctx+'TimeOut').value;
+  if(!a||!b) return null;
+  var m=(parseInt(b.slice(0,2),10)*60+parseInt(b.slice(3),10))-(parseInt(a.slice(0,2),10)*60+parseInt(a.slice(3),10));
+  return m>0?m:-1;
+}
+function wtCalc(ctx){
+  var el=$(ctx+'WorkTime'); if(!el) return;
+  var m=wtMinutes(ctx);
+  if(m===null) el.innerHTML='<span class="wt-empty">กรอกเวลาเข้าและเวลาจบ</span>';
+  else if(m<0) el.innerHTML='<span class="wt-bad">เวลาจบต้องหลังเวลาเข้า</span>';
+  else el.innerHTML='<b class="num">'+Math.floor(m/60)+'</b> ชม. <b class="num">'+(m%60)+'</b> นาที';
+  if(ctx==='sv') svRefreshMsg(); else bxRefreshMsg();
+}
+/* ตรวจเวลา: ต้องกรอกทั้งคู่ และเวลาจบต้องหลังเวลาเข้า */
+function wtMissing(ctx){
+  var a=$(ctx+'TimeIn').value, b=$(ctx+'TimeOut').value, out=[];
+  if(!a) out.push('เวลาเข้าทำบริการ');
+  if(!b) out.push('เวลาจบการทำบริการ');
+  if(a&&b&&wtMinutes(ctx)<0) out.push('เวลาจบต้องหลังเวลาเข้า');
+  return out;
+}
+
+/* ---------- สรุปเวลาทำงาน (หน้าสรุปยอดใช้อุปกรณ์ → แท็บ "เวลาทำงาน") ----------
+   ข้อมูลเป็นตัวอย่างสมมติ: เวลาต่อครั้งสร้างจากขนาดลูกค้า (จำนวนสถานี) + ค่าแกว่งคงที่ตาม id
+   ของจริง = รวม (เวลาจบ − เวลาเข้า) ของ visits ในช่วงเวลาที่เลือก จัดกลุ่มตามลูกค้า/ทีม */
+var WT_VIEW='team';
+function wtFmt(m){return Math.floor(m/60)+':'+('0'+(m%60)).slice(-2)}
+function wtSampleRows(){
+  return CUSTOMERS.map(function(c){
+    var visits=1+(c.id%7===0?1:0), mins=0;
+    for(var i=0;i<visits;i++) mins+=Math.round((35+(c.ig+c.ic)*2.4+((c.id*7+i*11)%6)*5)/5)*5;
+    return {c:c,visits:visits,mins:mins};
+  });
+}
+function wtView(v){
+  WT_VIEW=v;
+  [['wtViewTeam','team'],['wtViewCust','cust']].forEach(function(p){
+    var b=$(p[0]); b.classList.toggle('on',p[1]===v); b.setAttribute('aria-selected',p[1]===v?'true':'false');
+  });
+  wtSumRender();
+}
+function matTab(t){
+  var time=(t==='time');
+  $('matMat').hidden=time; $('matTime').hidden=!time; $('matKindField').hidden=time; $('matExport').hidden=time;
+  [['matTabMat',!time],['matTabTime',time]].forEach(function(p){
+    var b=$(p[0]); b.classList.toggle('on',p[1]); b.setAttribute('aria-selected',p[1]?'true':'false');
+  });
+  if(time) wtSumRender();
+}
+function wtSumRender(){
+  if(!$('wtTable')) return;
+  var br=$('matBranch').value, tm=$('matTeam').value;
+  var rows=wtSampleRows().filter(function(r){return (!br||r.c.branch===br)&&(!tm||r.c.team===tm)});
+  var tv=0,tm_=0; rows.forEach(function(r){tv+=r.visits; tm_+=r.mins});
+  $('wtStats').innerHTML=
+    '<div class="stat"><div class="lab">เวลาทำงานจริงรวม</div><div class="val num">'+Math.floor(tm_/60)+' <span style="font-size:14px;color:var(--fg-muted)">ชม. '+(tm_%60)+' นาที</span></div><div class="sub">'+rows.length+' ราย</div></div>'+
+    '<div class="stat"><div class="lab">จำนวนครั้งที่เข้า</div><div class="val num">'+tv+' <span style="font-size:14px;color:var(--fg-muted)">ครั้ง</span></div></div>'+
+    '<div class="stat"><div class="lab">เฉลี่ยต่อครั้ง</div><div class="val num">'+(tv?wtFmt(Math.round(tm_/tv)):'–')+' <span style="font-size:14px;color:var(--fg-muted)">ชม.:นาที</span></div></div>';
+  var html;
+  if(!rows.length){ $('wtTable').innerHTML='<div class="empty" style="padding:28px 20px">ไม่มีข้อมูลตามตัวกรองนี้ — ลองเปลี่ยนสาขา/ทีม</div>'; return; }
+  if(WT_VIEW==='team'){
+    var g={}; rows.forEach(function(r){var k=r.c.team, o=g[k]||(g[k]={custs:0,visits:0,mins:0}); o.custs++; o.visits+=r.visits; o.mins+=r.mins});
+    html='<table><thead><tr><th>ทีม</th><th class="r">ลูกค้า (ราย)</th><th class="r">เข้า (ครั้ง)</th><th class="r">เวลารวม (ชม.:นาที)</th><th class="r">เฉลี่ย/ครั้ง</th></tr></thead><tbody>'+
+      Object.keys(g).sort().map(function(k){var o=g[k]; return '<tr><td><b>ทีม '+esc(k)+'</b></td><td class="r num">'+o.custs+'</td><td class="r num">'+o.visits+'</td><td class="r num">'+wtFmt(o.mins)+'</td><td class="r num" style="color:var(--fg-muted)">'+wtFmt(Math.round(o.mins/o.visits))+'</td></tr>'}).join('')+
+      '</tbody><tfoot><tr><td>รวม</td><td class="r num">'+rows.length+'</td><td class="r num">'+tv+'</td><td class="r num">'+wtFmt(tm_)+'</td><td class="r num">'+wtFmt(Math.round(tm_/tv))+'</td></tr></tfoot></table>';
+  } else {
+    rows.sort(function(a,b){return b.mins-a.mins});
+    html='<table><thead><tr><th>ลูกค้า</th><th>เลขที่สัญญา</th><th>สาขา</th><th>ทีม</th><th class="r">เข้า (ครั้ง)</th><th class="r">เวลารวม (ชม.:นาที)</th><th class="r">เฉลี่ย/ครั้ง</th></tr></thead><tbody>'+
+      rows.map(function(r){return '<tr><td><b>'+esc(r.c.name)+'</b></td><td class="num" style="color:var(--fg-muted)">'+esc(r.c.ct)+'</td><td>'+esc(r.c.branch)+'</td><td>ทีม '+esc(r.c.team)+'</td><td class="r num">'+r.visits+'</td><td class="r num">'+wtFmt(r.mins)+'</td><td class="r num" style="color:var(--fg-muted)">'+wtFmt(Math.round(r.mins/r.visits))+'</td></tr>'}).join('')+
+      '</tbody><tfoot><tr><td colspan="4">รวม '+rows.length+' ราย</td><td class="r num">'+tv+'</td><td class="r num">'+wtFmt(tm_)+'</td><td class="r num">'+wtFmt(Math.round(tm_/tv))+'</td></tr></tfoot></table>';
+  }
+  $('wtTable').innerHTML=html;
 }
 var BAIT_OPTS='<option>0 ก.</option><option selected>50 ก.</option><option>100 ก.</option><option>150 ก.</option><option>200 ก.</option>';
 function tmRowHtml(){
@@ -1569,6 +1670,7 @@ function svRecalc(){
 function svMissing(){
   var miss=[];
   if(!$('svDate').value) miss.push('วันที่เข้า');
+  miss=miss.concat(wtMissing('sv'));
   /* เจ้าของตัดสิน 10 พ.ย. 2026: ไม่บังคับระบุผล IG/IC — บันทึกได้ทั้งแบบระบุและไม่ระบุ (บังคับเฉพาะกล่อง AG ที่ค้างติดตาม) */
   var names={tm:'พบปลวก',wd:'เปลี่ยนไม้',rp:'งานซ่อม'};
   ['tm','wd','rp'].forEach(function(k){
@@ -1633,6 +1735,7 @@ function bxRenderForm(){
 function bxMissing(){
   var miss=[];
   if(!$('bxDate').value) miss.push('วันที่เข้า');
+  miss=miss.concat(wtMissing('bx'));
   var ag=agMissing('bx');
   if(!ag.missing.length&&ag.filled===0) miss.push('ยังไม่ได้กรอกผลกล่องใดเลย — กรอกผลของจุดที่ติดตาม หรือกด “+ ติดกล่องใหม่ (S)”');
   return miss.concat(ag.missing);
