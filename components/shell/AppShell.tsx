@@ -5,6 +5,8 @@
  *
  * โครง: แถบบน (Topbar) ติดบน · ใต้แถบ = เมนูซ้าย (NavDrawer) ติดที่ + เนื้อหา (children) เลื่อนได้
  * จอ ≤860px เมนูเป็นลิ้นชัก: เปิดด้วย ☰ · ปิดด้วย Esc / กดฉากหลัง / กดลิงก์ / ขยายจอ / เปลี่ยนหน้า
+ * จอ ≥861px ☰ = ย่อ/ขยายเมนู (แถบไอคอน 58px · ชี้เมาส์/Tab = กางทับชั่วคราว) — ตรรกะอยู่ใน nav-mini.ts
+ *   บางหน้าเริ่มแบบย่อเสมอ (NAV_MINI_START_PATHS) โดยไม่บันทึกค่า
  *
  * สิทธิ์ (สำคัญ):
  * - รับ `role` เป็น prop เท่านั้น — ไม่อ่าน session ไม่แตะ Supabase ไม่มีตรรกะสิทธิ์ในนี้
@@ -19,16 +21,37 @@ import {
   useEffect,
   useRef,
   useState,
+  useSyncExternalStore,
   type CSSProperties,
   type ReactNode,
 } from "react";
 import { NavDrawer } from "./NavDrawer";
+import {
+  NAV_MINI_INIT_SCRIPT,
+  applyMini,
+  getMini,
+  readStoredMini,
+  releaseNoAnim,
+  resolveMini,
+  setMiniByUser,
+  subscribeMini,
+} from "./nav-mini";
 import { Topbar } from "./Topbar";
 import type { MonthOption, Role } from "./types";
 
 const NAV_ID = "app-nav";
 /** จุดตัดจอกว้าง/จอเล็กของเมนู — ต้องตรงกับ `min-[861px]` / `max-[860px]` ใน NavDrawer */
 const DESKTOP_QUERY = "(min-width: 861px)";
+
+function subscribeDesktop(onChange: () => void): () => void {
+  const query = window.matchMedia(DESKTOP_QUERY);
+  query.addEventListener("change", onChange);
+  return () => query.removeEventListener("change", onChange);
+}
+const getDesktop = () => window.matchMedia(DESKTOP_QUERY).matches;
+/** ฝั่ง server ไม่รู้ขนาดจอ → เริ่มด้วยโหมดลิ้นชัก แล้วอัปเดตหลัง hydrate (ไม่ mismatch) */
+const getDesktopOnServer = () => false;
+const getMiniOnServer = () => false;
 
 export type AppShellProps = {
   /** ตำแหน่งของผู้ใช้ (ค่าจริงมาจากหมวด BE ผ่าน app/(app)/layout.tsx) */
@@ -69,6 +92,19 @@ export function AppShell({
     [pathname],
   );
 
+  // เมนูย่อ (จอกว้าง): ค่าอยู่ที่ attribute บน <html> — script ใน JSX ตั้งก่อนวาด, effect นี้ตั้งซ้ำตอนเปลี่ยนหน้า
+  const wide = useSyncExternalStore(subscribeDesktop, getDesktop, getDesktopOnServer);
+  const mini = useSyncExternalStore(subscribeMini, getMini, getMiniOnServer);
+  useEffect(() => releaseNoAnim(), []);
+  useEffect(() => {
+    applyMini(resolveMini(pathname, readStoredMini()));
+  }, [pathname]);
+
+  const onToggleNav = () => {
+    if (wide) setMiniByUser(!mini);
+    else setNavOpen(!navOpen);
+  };
+
   const toggleRef = useRef<HTMLButtonElement>(null);
   const navRef = useRef<HTMLElement>(null);
 
@@ -106,6 +142,8 @@ export function AppShell({
       className="min-h-dvh bg-bg text-fg"
       style={{ "--topbar-h": "57px" } as CSSProperties}
     >
+      {/* ตั้ง data-nav-mini บน <html> ก่อนวาดเมนู กันกะพริบ/แอนิเมชันหุบตอนโหลด */}
+      <script dangerouslySetInnerHTML={{ __html: NAV_MINI_INIT_SCRIPT }} />
       <a
         href="#content"
         className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:rounded-lg focus:bg-surface focus:px-3 focus:py-2 focus:text-sm focus:text-accent-strong focus:shadow-lg"
@@ -116,7 +154,9 @@ export function AppShell({
         ref={toggleRef}
         navId={NAV_ID}
         navOpen={navOpen}
-        onToggleNav={() => setNavOpen(!navOpen)}
+        wide={wide}
+        mini={mini}
+        onToggleNav={onToggleNav}
         months={months}
         month={month}
         onMonthChange={setMonth}

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { cx } from "./cx";
+import styles from "./shell.module.css";
 import {
   NAV_GROUPS,
   filterNavForRole,
@@ -42,7 +43,10 @@ export function NavLinks({
           <div key={group.key} role="group" aria-labelledby={headingId}>
             <p
               id={headingId}
-              className="px-2.5 pt-3 pb-[5px] text-[11px] tracking-[0.06em] text-fg-faint"
+              className={cx(
+                styles.navGroupTitle,
+                "px-2.5 pt-3 pb-[5px] text-[11px] tracking-[0.06em] text-fg-faint",
+              )}
             >
               {group.title}
             </p>
@@ -55,6 +59,7 @@ export function NavLinks({
                   onClick={onNavigate}
                   aria-current={active ? "page" : undefined}
                   className={cx(
+                    styles.navLink,
                     "mb-px flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13.5px] leading-snug no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",
                     active
                       ? "bg-accent-soft font-semibold text-accent-strong"
