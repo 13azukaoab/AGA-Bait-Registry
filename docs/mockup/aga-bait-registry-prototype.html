@@ -1561,9 +1561,32 @@ function wdRowHtml(){
 function rpRowHtml(){
   /* "สถานีหาย" และ "อื่นๆ" ต้องระบุรายละเอียดในช่องหมายเหตุ (เช่น สถานีหาย แต่รอบนี้อุปกรณ์ไม่พอซ่อม) */
   return '<tr><td><select class="rpType" onchange="rpTypeChange(this)" aria-label="ประเภทงาน"><option selected>ฝังสถานีใหม่ (IG)</option><option>ฝังสถานีใหม่ (IC)</option><option>เปลี่ยนฝาสถานี</option><option>สถานีหาย</option><option>อื่นๆ</option></select></td>'+
-    '<td><input placeholder="เลขสถานี" style="max-width:100px" aria-label="หมายเลขสถานี"></td><td><input value="1" class="num" style="max-width:70px" aria-label="จำนวน"></td>'+
+    '<td><div class="stcell"><input class="rpSt" placeholder="เช่น 3, 5, 8-12" style="min-width:170px" oninput="rpStCalc(this)" aria-label="หมายเลขสถานี (ใส่ได้หลายเลข คั่นด้วยจุลภาค หรือช่วงด้วยขีด)"><span class="vchk"></span></div></td>'+
+    '<td class="rpCnt num" style="color:var(--fg-muted)">0 สถานี <span class="auto-tag">อัตโนมัติ</span></td>'+
     '<td><input class="rpNote" placeholder="ไม่บังคับ" style="min-width:220px;width:100%" aria-label="รายละเอียดงานซ่อม"></td>'+
     '<td class="c"><button type="button" class="btn danger sm" data-act="delRow">ลบ</button></td></tr>';
+}
+/* งานซ่อม: ช่องเลขสถานีใส่ได้หลายเลขในช่องเดียว — คั่นด้วย , หรือเว้นวรรค · ช่วงใช้ขีด เช่น "3, 5, 8-12" = 7 สถานี
+   ระบบนับจำนวนให้เอง (เลขซ้ำนับครั้งเดียว) และตรวจว่าทุกเลขมีจริง (1 ถึง stationMax) */
+function parseStList(v){
+  var nums={}, bad=[];
+  v.split(/[,\s;、]+/).forEach(function(t){
+    if(!t) return;
+    var m=t.match(/^(\d+)(?:[-–](\d+))?$/);
+    if(!m){bad.push(t); return}
+    var a=parseInt(m[1],10), b=m[2]?parseInt(m[2],10):a;
+    if(b<a||a<1||b>stationMax||b-a>500){bad.push(t); return}
+    for(var i=a;i<=b;i++) nums[i]=1;
+  });
+  return {count:Object.keys(nums).length, bad:bad};
+}
+function rpStCalc(inp){
+  var tr=inp.closest('tr'), chk=tr.querySelector('.vchk'), cnt=tr.querySelector('.rpCnt'), v=inp.value.trim();
+  if(!v){chk.className='vchk'; chk.textContent=''; cnt.firstChild.nodeValue='0 สถานี '; return}
+  var r=parseStList(v);
+  cnt.firstChild.nodeValue=r.count+' สถานี ';
+  chk.className='vchk '+(r.bad.length?'bad':'ok');
+  chk.textContent=r.bad.length?'✗ ไม่พบ/รูปแบบผิด: '+r.bad.join(', '):'✓';
 }
 function rpNeedsNote(tr){var t=tr.querySelector('.rpType'); return !!t&&(t.value==='อื่นๆ'||t.value==='สถานีหาย')}
 function rpTypeChange(sel){
@@ -1601,7 +1624,7 @@ function svRenderForm(){
       [['tm','พบปลวก'],['wd','เปลี่ยนไม้'],['rp','งานซ่อม'],['ag','กล่อง AG']].map(function(s){return '<button type="button" class="fbtn" data-act="sec" data-sec="'+s[0]+'" aria-pressed="false">'+s[1]+' <span class="n" id="svN_'+s[0]+'">0</span></button>'}).join('')+'</div>'+
     tableSec('svSecTm','svTmBody','พบปลวก','<th>หมายเลขสถานี</th><th>ชนิดปลวก</th><th>เหยื่อ / เคมีผง</th>','addTm','+ เพิ่มจุดที่พบปลวก','ตั้งต้นว่าจุดอื่นปกติ — เพิ่มเฉพาะจุดที่พบ: พิมพ์เลขสถานี (ระบบตรวจว่ามีจริง) แล้วเลือกชนิดปลวก · <b>ใต้ดิน</b> = ใส่เหยื่อ · <b>สวน</b> = เคมีผง กรอกจำนวนจุด แปลงกรัมอัตโนมัติ 0.3 ก./จุด','svTmChips')+
     tableSec('svSecWd','svWdBody','เปลี่ยนไม้ล่อ','<th>หมายเลขสถานี</th><th>ชนิด</th><th>จำนวนไม้</th>','addWd','+ เพิ่มสถานีที่เปลี่ยนไม้','จำนวนไม้เติมอัตโนมัติตามชนิด (IG = 2 ชิ้น · IC = 1 ชิ้น)','svWdChips')+
-    tableSec('svSecRp','svRpBody','งานซ่อม / ปรับสถานี','<th>ประเภทงาน</th><th>หมายเลขสถานี</th><th>จำนวน</th><th>รายละเอียด</th>','addRp','+ เพิ่มงานซ่อม / ปรับสถานี','เช่น ฝังสถานีใหม่ (IG/IC) เปลี่ยนฝาสถานี · ถ้า <b>สถานีหาย</b> แต่รอบนี้ยังซ่อมไม่ได้ (เช่น อุปกรณ์ไม่พอ) ให้เลือก “สถานีหาย” แล้วเขียนเหตุผลในช่องรายละเอียด · “อื่นๆ” ต้องระบุว่าเกิดอะไรขึ้น','')+
+    tableSec('svSecRp','svRpBody','งานซ่อม / ปรับสถานี','<th>ประเภทงาน</th><th>หมายเลขสถานี (ใส่ได้หลายเลข)</th><th>จำนวน</th><th>รายละเอียด</th>','addRp','+ เพิ่มงานซ่อม / ปรับสถานี','เช่น ฝังสถานีใหม่ (IG/IC) เปลี่ยนฝาสถานี · <b>ซ่อมหลายสถานีพร้อมกัน ใส่ในแถวเดียว</b> คั่นด้วยจุลภาค หรือใช้ขีดเป็นช่วง เช่น <b>3, 5, 8-12</b> = 7 สถานี (ระบบนับจำนวนให้) · ถ้า <b>สถานีหาย</b> แต่รอบนี้ยังซ่อมไม่ได้ (เช่น อุปกรณ์ไม่พอ) ให้เลือก “สถานีหาย” แล้วเขียนเหตุผลในช่องรายละเอียด · “อื่นๆ” ต้องระบุว่าเกิดอะไรขึ้น','')+
     '<div class="agsec" id="svSecAg" hidden><div id="svAgBox"></div></div>'+
   '</div>'+
   '<div class="savebar"><div class="savemsg" id="svMsg" role="alert" hidden></div>'+
