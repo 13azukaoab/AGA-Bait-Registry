@@ -149,13 +149,14 @@
 
 ## บันทึกประจำวัน (Changelog)
 
-> **📌 จุดพัก 12 พ.ย. 2026 บ่าย (ศูนย์กลาง) — เปิด session ใหม่อ่านตรงนี้ก่อน:**
-> - **กำลังทำ:** หมวด 2 = แก้ก้อน ② schema กรอกผลบริการ (advisory lock F + minor 4 ข้อ) แล้วทำ M12 (ล็อกสัญญาปิด + กันเขียนทับ + กัน admin ย้าย stations.contract_id) · **ถือ DB local อยู่** · หมวด 1 = ว่าง (รอบ 1.3 รวมแล้ว f716156) รอ M12 แล้วทำรอบเล็กกันเขียนทับ
-> - **ลำดับรวม/ส่ง cloud:** ก้อน ① (รวม main แล้ว) → ก้อน ② → M12 · cloud ตอนนี้ 31 migration · ก่อนส่งเช็ก cloud visits/stations = 0
-> - **Vercel:** บัญชีใหม่ (team `aga`) ยังไม่ Import โปรเจกต์ · เจ้าของต่อ Vercel connector กับ Claude แล้ว (ใช้อ่านสถานะ/log เท่านั้น · ค่าลับเจ้าของวางเอง) · ขั้นต่อ: Import repo `AGA-Bait-Registry` (ให้สิทธิ์เฉพาะ repo นี้) + env 4 ตัว `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `CRON_SECRET` (ยังไม่ใส่ `GITHUB_TOKEN`) → Deploy → ศูนย์กลางตรวจเว็บ · แผน: Hobby ช่วงพัฒนา → Pro ก่อน go-live (เงื่อนไขเชิงพาณิชย์)
-> - **รอเจ้าของ:** บัญชีทดสอบ admin/หัวหน้างานบน cloud · ไฟล์ `fixtures/` · ยืนยัน mockup หน้าที่เหลือ
-> - **แถบความคืบหน้า (mod `aga-progress-band`):** ติดตั้งถาวรแล้ว ขึ้นเฉพาะ session ที่พิมพ์ `/aga-band` (session ศูนย์กลางใหม่พิมพ์ครั้งเดียว)
-> - main ในเครื่องนำ GitHub อยู่ราว 10 commit (เอกสาร + ก้อน ①) ยังไม่ push — push ได้ปลอดภัย (ก้อน ① ไม่มีหน้าจอเรียกใช้)
+> **📌 จุดพัก 12 พ.ย. 2026 เย็น (ศูนย์กลาง) — เปิด session ใหม่อ่านตรงนี้ก่อน:**
+> - **ความคืบหน้า ~59%** (1:97 · 2:99 · 3:99 · 4:40 · 5:55 · 6:0 · 7:0) · วันนี้ ~54% → ~59%
+> - **กำลังทำ:** หมวด 2 = แก้ M12 + ก้อน ③ ตามผลตรวจรอบ 2 (8 ข้อ) · **ถือ DB local** · ลำดับรวม: M12 → ก้อน ③ · หมวด 1 ว่าง → งานถัดไป: รอบเล็กหน้าเปิดงานหลัง M12 (ส่ง `p_expected_updated_at` + แปล AG007/AG008) และหน้าจอจริงกรอกผลบริการ (`initialize_contract_stations` + `save_service_visit` jsonb + `lib/service/stationNumbers.ts` · แปล SV001–SV009)
+> - **main:** schema กรอกผลบริการก้อน ①+② รวมแล้ว (db test 647/647 ศูนย์กลางรัน) · push แล้ว 5f7716e · **cloud 31 migration** (ก้อน ①② + M12 + ③ ยังไม่ขึ้น) · ก่อนส่งเช็ก cloud visits/stations = 0 · ส่งตามลำดับ 120000 → 130000/130100 → 140000 → 150000
+> - **Vercel:** บัญชีใหม่ team `AGA` (slug `aga-1c82`) · **0 โปรเจกต์ — ยังไม่ Import** · ตัวเชื่อม Vercel ↔ Claude ต่อแล้ว (ใช้อ่าน/ตรวจเท่านั้น · ค่าลับเจ้าของวางเอง) · Vercel plugin ปิดแล้ว · ขั้นต่อ: Import repo `AGA-Bait-Registry` (สิทธิ์เฉพาะ repo นี้) + env 4 ตัว → Deploy · แผน: Hobby ช่วงพัฒนา → Pro ก่อน go-live
+> - **Supabase ↔ Claude ต่อแล้ว** (เห็น aga-bait-registry · ใช้ตรวจ: migration list, security advisor, log) · ส่ง migration ยังผ่าน CLI + dry run + เจ้าของยืนยันเท่านั้น · แนะนำเจ้าของตั้ง tool permissions ฝั่งเขียนเป็น Ask · advisor เจอ: view `v_branch_summary` DEFINER (ตั้งใจ) · trigger fn 2 ตัว → REVOKE ใน M12 · **เจ้าของต้องเปิด Leaked password protection** (Auth settings)
+> - **รอเจ้าของ:** Import Vercel + env · บัญชีทดสอบ admin/หัวหน้างานบน cloud · ไฟล์ `fixtures/` · ยืนยัน mockup หน้าที่เหลือ · เปิด leaked password protection
+> - **แถบความคืบหน้า:** mod `aga-progress-band` ติดตั้งถาวร ขึ้นเฉพาะ session ที่พิมพ์ `/aga-band`
 
 ### 2026-11-12 (ส่งงานหน้าจริง /customers/new + M9 ช่องเปิดงาน) — session ศูนย์กลาง
 - **หมวด 1 เปิด sub 2 ตัว (Sonnet, worktree):** ก โครงหน้าร่วม เมนูย่อ + โลโก้ (local_cdabd55a) · ข หน้าเปิดงานรอบ 1 (local_dbe03baf — ถือ DB local)
