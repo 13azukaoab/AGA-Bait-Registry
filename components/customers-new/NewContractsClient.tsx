@@ -21,7 +21,7 @@
  *   * ช่องที่ schema ยังไม่มี 6 ช่อง ซ่อนด้วย `SHOW_PENDING_SCHEMA_COLUMNS` (config.ts)
  */
 import { useRouter } from "next/navigation";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { Alert, Button, Chip, Field, TierBadge, Toast, cx } from "@/components/ui";
 import type { UserRole } from "@/lib/db/types";
@@ -39,10 +39,12 @@ import {
   missingLabel,
 } from "./draftRow";
 import { buildDeleteConfirmText, contractDeleteBlockReason } from "./deleteRules";
+import { loadContractById } from "./data";
 import {
   EDIT_LOCK_REASONS,
   checkRenewalPickForEdit,
   contractEditBlockReason,
+  contractFileBlockReason,
   draftFromSaved,
   isEditUnchanged,
   monthOfDate,
@@ -84,8 +86,19 @@ const TD = "border-b border-border px-1.5 py-1 align-middle";
 
 const border = (bad: boolean) => (bad ? "border-danger" : "border-border-strong");
 
-/** แถวที่กำลังแก้: `draft` = ค่าที่กำลังพิมพ์ · `original` = ค่าตอนกดแก้ (ไว้เทียบว่าแก้อะไรหรือยัง) */
-type EditState = { draft: DraftRow; original: DraftRow };
+/**
+ * แถวที่กำลังแก้: `draft` = ค่าที่กำลังพิมพ์ · `original` = ค่าตอนกดแก้ (ไว้เทียบว่าแก้อะไรหรือยัง)
+ * `expectedUpdatedAt` = เวลาแก้ล่าสุดของสัญญาตอนกดแก้ (ส่งเป็น `p_expected_updated_at` — M12 กันเขียนทับ)
+ * `conflict` = บันทึกแล้วเจอ AG008 (มีคนแก้ไปก่อน) → แสดงปุ่ม "โหลดแถวใหม่"
+ */
+type EditState = { draft: DraftRow; original: DraftRow; expectedUpdatedAt: string; conflict: boolean };
+
+/** เวลา a ใหม่กว่า b ไหม (สตริงจาก DB — อ่านไม่ออก = ถือว่าเก่ากว่า) */
+function isNewer(a: string, b: string): boolean {
+  const ta = Date.parse(a);
+  const tb = Date.parse(b);
+  return !Number.isNaN(ta) && (Number.isNaN(tb) || ta > tb);
+}
 
 type RenewalTarget = { kind: "draft"; key: string } | { kind: "edit"; contractId: string };
 
@@ -94,7 +107,14 @@ type FileTarget =
   | { kind: "draft"; key: string }
   | null;
 
-export function NewContractsClient({ role, month, monthChoices, master, saved, truncated }: Props) {
+export function NewContractsClient({
+  role,
+  month,
+  monthChoices,
+  master,
+  saved: savedFromServer,
+  truncated,
+}: Props) {
   const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
 
@@ -118,7 +138,31 @@ export function NewContractsClient({ role, month, monthChoices, master, saved, t
   const [edits, setEdits] = useState<Record<string, EditState>>({});
   /** contractId ของแถวที่กำลังส่งบันทึก (กันกดซ้ำ) */
   const [savingEditId, setSavingEditId] = useState<string | null>(null);
+  /** แถวที่โหลดใหม่จากฐานข้อมูลหลังเจอ AG008 (ใช้แทนแถวจาก server จนกว่า router.refresh จะมาทับ) */
+  const [reloaded, setReloaded] = useState<Record<string, SavedContract>>({});
+  /** เวลาแก้ล่าสุดที่ RPC คืนหลังบันทึกสำเร็จ — ใช้แทนค่าเดิมกรณีกดแก้ซ้ำก่อน router.refresh จะมา */
+  const [knownUpdatedAt, setKnownUpdatedAt] = useState<Record<string, string>>({});
+  const [reloadingId, setReloadingId] = useState<string | null>(null);
   const [showErrors, setShowErrors] = useState(false);
+
+  // ข้อมูลจาก server ชุดใหม่ (หลัง router.refresh) ถูกต้องที่สุด → ล้างค่าชั่วคราวทิ้ง
+  useEffect(() => {
+    setReloaded({});
+    setKnownUpdatedAt({});
+  }, [savedFromServer]);
+
+  const saved = useMemo(
+    () =>
+      savedFromServer.map((s) => {
+        let row = s;
+        const fresh = reloaded[s.contractId];
+        if (fresh && isNewer(fresh.updatedAt, row.updatedAt)) row = fresh;
+        const known = knownUpdatedAt[s.contractId];
+        if (known && isNewer(known, row.updatedAt)) row = { ...row, updatedAt: known };
+        return row;
+      }),
+    [savedFromServer, reloaded, knownUpdatedAt],
+  );
   /** กล่องถามชื่อลูกค้าซ้ำ (AG001) — `resolve` ส่งคำตอบกลับให้ลูปบันทึกที่รออยู่ */
   const [dupPrompt, setDupPrompt] = useState<{
     contractNo: string;
@@ -226,7 +270,10 @@ export function NewContractsClient({ role, month, monthChoices, master, saved, t
     setEdits((all) => {
       if (all[s.contractId]) return all;
       const draft = draftFromSaved(s, master);
-      return { ...all, [s.contractId]: { draft, original: draft } };
+      return {
+        ...all,
+        [s.contractId]: { draft, original: draft, expectedUpdatedAt: s.updatedAt, conflict: false },
+      };
     });
   };
 
@@ -245,11 +292,38 @@ export function NewContractsClient({ role, month, monthChoices, master, saved, t
     });
   }, []);
 
-  const setEditError = (contractId: string, message: string) =>
+  const setEditError = (contractId: string, message: string, conflict = false) =>
     setEdits((all) => {
       const cur = all[contractId];
-      return cur ? { ...all, [contractId]: { ...cur, draft: { ...cur.draft, saveError: message } } } : all;
+      return cur
+        ? { ...all, [contractId]: { ...cur, conflict, draft: { ...cur.draft, saveError: message } } }
+        : all;
     });
+
+  /**
+   * "โหลดแถวใหม่" หลัง AG008: อ่านสัญญาใบนี้จากฐานข้อมูลใหม่ → ทิ้งค่าที่แก้ค้างไว้ → แสดงค่าล่าสุด
+   * (ผู้ใช้กด แก้ ใหม่ได้จากค่าล่าสุด) · อ่านไม่ได้ = แจ้งบนแถว ไม่ทิ้งงานที่พิมพ์ไว้
+   */
+  async function reloadEdit(s: SavedContract) {
+    if (reloadingId) return;
+    setReloadingId(s.contractId);
+    const res = await loadContractById(supabase, s.contractId, role);
+    setReloadingId(null);
+    if (res.error) {
+      setEditError(s.contractId, `โหลดแถวใหม่ไม่สำเร็จ ลองอีกครั้ง (${res.error})`, true);
+      return;
+    }
+    cancelEdit(s.contractId);
+    if (!res.row) {
+      setBanner({ variant: "warn", text: `ไม่พบสัญญา ${s.contractNo} แล้ว (อาจถูกลบไป) รีเฟรชหน้า` });
+      router.refresh();
+      return;
+    }
+    const fresh = res.row;
+    setReloaded((all) => ({ ...all, [s.contractId]: fresh }));
+    setToast(`โหลดสัญญา ${fresh.contractNo} ล่าสุดแล้ว — กด แก้ เพื่อแก้ต่อจากค่าล่าสุด`);
+    router.refresh();
+  }
 
   async function saveEdit(s: SavedContract) {
     const edit = edits[s.contractId];
@@ -261,12 +335,18 @@ export function NewContractsClient({ role, month, monthChoices, master, saved, t
       return;
     }
     setSavingEditId(s.contractId);
-    const res = await saveDraft(supabase, edit.draft, check, { contractId: s.contractId });
+    const res = await saveDraft(supabase, edit.draft, check, {
+      contractId: s.contractId,
+      expectedUpdatedAt: edit.expectedUpdatedAt,
+    });
     setSavingEditId(null);
     if (!res.ok) {
-      setEditError(s.contractId, res.error);
+      setEditError(s.contractId, res.error, res.conflict === true);
       return;
     }
+    // ใช้เวลาแก้ล่าสุดที่ RPC คืนมาแทนค่าเดิม (กันกดแก้ซ้ำแล้วเจอ AG008 ปลอมก่อน refresh มา)
+    const newUpdatedAt = res.updatedAt;
+    if (newUpdatedAt) setKnownUpdatedAt((all) => ({ ...all, [s.contractId]: newUpdatedAt }));
     cancelEdit(s.contractId);
     const no = edit.draft.contractNo.trim();
     const movedTo = monthOfDate(edit.draft.startDate);
@@ -419,6 +499,8 @@ export function NewContractsClient({ role, month, monthChoices, master, saved, t
     openFileDialog?.kind === "saved"
       ? saved.find((s) => s.contractId === openFileDialog.contractId)
       : null;
+
+  const fileBlock = savedForDialog ? contractFileBlockReason(savedForDialog.status, role) : null;
 
   const readyCount = draftChecks.filter(canSave).length;
 
@@ -651,6 +733,9 @@ export function NewContractsClient({ role, month, monthChoices, master, saved, t
                       unchanged: isEditUnchanged(edit.original, ed),
                       onSave: () => void saveEdit(s),
                       onCancel: () => cancelEdit(s.contractId),
+                      conflict: edit.conflict,
+                      reloading: reloadingId === s.contractId,
+                      onReload: () => void reloadEdit(s),
                     }}
                     onPatch={(patch) => patchEdit(s.contractId, patch)}
                     onFile={() => setFileTarget({ kind: "saved", contractId: s.contractId })}
@@ -890,7 +975,8 @@ export function NewContractsClient({ role, month, monthChoices, master, saved, t
           subtitle={savedForDialog.customerName}
           contractId={savedForDialog.contractId}
           files={savedForDialog.files}
-          locked={savedForDialog.status === "closed"}
+          locked={fileBlock !== null}
+          lockedReason={fileBlock ?? undefined}
           onChanged={() => router.refresh()}
           onClose={() => setFileTarget(null)}
         />
@@ -986,6 +1072,10 @@ type EditingControls = {
   unchanged: boolean;
   onSave: () => void;
   onCancel: () => void;
+  /** บันทึกแล้วเจอ AG008 (มีคนแก้ไปก่อน) — แสดงปุ่ม "โหลดแถวใหม่" */
+  conflict: boolean;
+  reloading: boolean;
+  onReload: () => void;
 };
 
 function DraftTableRow({
@@ -1378,6 +1468,17 @@ function DraftTableRow({
           <td />
           <td colSpan={23} className="px-2 py-1 text-[12.5px] text-danger" role="alert">
             {isEdit ? "แก้สัญญานี้ไม่สำเร็จ" : "บันทึกแถวนี้ไม่สำเร็จ"}: {d.saveError}
+            {editing?.conflict ? (
+              <Button
+                size="sm"
+                className="ml-2 align-middle"
+                loading={editing.reloading}
+                onClick={editing.onReload}
+                title="อ่านสัญญานี้จากฐานข้อมูลใหม่ แล้วแสดงค่าล่าสุด (ค่าที่พิมพ์ค้างไว้จะถูกทิ้ง)"
+              >
+                โหลดแถวใหม่
+              </Button>
+            ) : null}
           </td>
         </tr>
       ) : null}

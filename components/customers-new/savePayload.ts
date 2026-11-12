@@ -11,6 +11,7 @@
  *     · ผู้ใช้เลือก "คนละราย" → `p_confirm_new_customer: true`
  *   * ตำแหน่งผู้ขาย: Sale → `p_sale_name` · AM → `p_am_name` (ไม่มีคอลัมน์ตำแหน่ง)
  *   * วันที่/เวลาที่ว่างส่งเป็น null · เวลาบริการส่งเฉพาะเมื่อมีวันที่บริการ (constraint ของ DB)
+ *   * โหมดแก้ส่ง `p_expected_updated_at` เสมอ (M12 กันเขียนทับ) · RPC คืน `updated_at` ใหม่ให้เก็บไว้ใช้ครั้งต่อไป
  *   * ไม่ส่งสถานี (stations) — สร้างตอนติดตั้งจริง (DECISIONS 3.7)
  */
 import { normalizeContractNo } from "./contractNo";
@@ -31,6 +32,12 @@ export interface SaveOptions {
   customerId?: string | null;
   /** ผู้ใช้ยืนยันว่า "เป็นคนละราย" (ข้ามการเตือนชื่อซ้ำ) */
   confirmNewCustomer?: boolean;
+  /**
+   * โหมดแก้: เวลาแก้ล่าสุด (`contracts.updated_at`) ที่หน้าจอเห็นตอนโหลดแถว — **ต้องส่ง** (M12 · DECISIONS 3.12)
+   * ไม่ส่ง = DB ตอบ 22004 · ไม่ตรงกับในฐาน = AG008 (มีคนแก้ไปก่อน) · ส่งต่อเป็นสตริง ISO ตามที่ DB คืน ไม่แปลงผ่าน Date
+   * (Date ตัดไมโครวินาทีทิ้ง — DB เทียบที่ระดับมิลลิวินาทีเองแล้ว)
+   */
+  expectedUpdatedAt?: string | null;
 }
 
 export interface SaveJobOpeningParams {
@@ -55,6 +62,8 @@ export interface SaveJobOpeningParams {
   p_confirm_new_customer: boolean;
   p_contract_id?: string;
   p_customer_id?: string;
+  /** เฉพาะโหมดแก้ (ดู `SaveOptions.expectedUpdatedAt`) */
+  p_expected_updated_at?: string;
 }
 
 export function buildSaveParams(
@@ -94,7 +103,10 @@ export function buildSaveParams(
     ? (options.customerId ?? null)
     : (options.customerId ?? renewal?.customerId ?? null);
   if (customerId) params.p_customer_id = customerId;
-  if (options.contractId) params.p_contract_id = options.contractId;
+  if (options.contractId) {
+    params.p_contract_id = options.contractId;
+    if (options.expectedUpdatedAt) params.p_expected_updated_at = options.expectedUpdatedAt;
+  }
   return params;
 }
 
@@ -105,6 +117,8 @@ export interface SaveJobOpeningRow {
   reusedCustomer: boolean;
   /** ประเภทของลูกค้าเดิมเมื่อใช้รายเดิม (null = ไม่ได้ใช้รายเดิม/รายเดิมยังไม่ระบุ) */
   existingCustomerType: string | null;
+  /** เวลาแก้ล่าสุดใหม่ของสัญญา (M12) — ใช้เป็น expected ของการแก้ครั้งต่อไป · null = RPC ไม่ได้คืนมา */
+  updatedAt: string | null;
 }
 
 /** อ่านผลของ RPC · รูปแบบไม่ตรง = null (ผู้เรียกต้องถือว่าบันทึกไม่สำเร็จ ห้ามเดา) */
@@ -121,5 +135,6 @@ export function parseSaveRow(data: unknown): SaveJobOpeningRow | null {
       typeof r.existing_customer_type === "string" && r.existing_customer_type !== ""
         ? r.existing_customer_type
         : null,
+    updatedAt: typeof r.updated_at === "string" && r.updated_at !== "" ? r.updated_at : null,
   };
 }

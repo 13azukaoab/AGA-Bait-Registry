@@ -4,7 +4,8 @@
  * Logic summary:
  *   * บันทึก = `rpc('save_job_opening')` 1 ครั้ง = 1 transaction (ลูกค้า → สัญญา → ทีม) ล้มตรงไหน DB ย้อนทั้งหมด
  *     จึงไม่มีโค้ด rollback ฝั่ง client แล้ว · RPC เป็น SECURITY INVOKER → RLS ตัดสินสิทธิ์ (admin นอกขอบเขต = 42501)
- *   * ใช้ได้ทั้งเปิดงานใหม่และแก้สัญญาเดิม (`options.contractId`) — หน้าจอตอนนี้ยังไม่มีปุ่มแก้แถว
+ *   * ใช้ได้ทั้งเปิดงานใหม่และแก้สัญญาเดิม (`options.contractId` + `options.expectedUpdatedAt` — M12 กันเขียนทับ:
+ *     ไม่มี expected = ไม่ยิง RPC · AG008 → `conflict: true` · สำเร็จคืน `updatedAt` ใหม่)
  *   * ชื่อลูกค้าซ้ำในสาขา (AG001): ไม่บันทึกอะไรเลย คืน `duplicates` ให้หน้าจอถามผู้ใช้ แล้วเรียกซ้ำ
  *     ด้วย `options.customerId` (ใช้รายเดิม) หรือ `options.confirmNewCustomer` (คนละราย) — ดู `duplicateCustomer.ts`
  *   * Renew ที่ผูกสัญญาเก่า: ส่ง customer_id ของสัญญาเก่า + renewed_from_contract_id (ไม่สร้างลูกค้าใหม่ — M9)
@@ -12,12 +13,12 @@
  *     ที่ RPC ส่งกลับ) ให้หน้าจอเตือน · ประเภทเป็นของลูกค้า ไม่ถูกเขียนทับ
  *   * ลบสัญญา = `rpc('delete_job_opening')` (ตรวจสถานะ/ผลบริการ → ลบสัญญา → ลบลูกค้าที่ไม่เหลือสัญญา ใน transaction เดียว)
  *     **ไม่ลบไฟล์ใน Storage ฝั่ง client** — trigger ลงคิว `storage_deletion_queue` แล้ว cron ลบให้
- *   * error ทุกตัวแปลเป็นไทยที่ `describeDbError` (รวม AG001–AG006)
+ *   * error ทุกตัวแปลเป็นไทยที่ `describeDbError` (รวม AG001–AG008)
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { parseDuplicateMatches, type DuplicateCustomerMatch } from "./duplicateCustomer";
-import { describeDbError } from "./errors";
+import { CONFLICT_ERROR_CODE, describeDbError } from "./errors";
 import type { DraftCheck } from "./draftRow";
 import { buildSaveParams, parseSaveRow, type SaveOptions } from "./savePayload";
 import { customerTypeMismatch, type CustomerTypeMismatch } from "./saveRules";
@@ -31,12 +32,16 @@ export type SaveResult =
       reusedCustomer: boolean;
       /** ใช้ลูกค้าเดิมแต่ประเภทที่เลือกไม่ตรงของเดิม (ไม่ถูกบันทึก) — null = ไม่มีปัญหา */
       customerTypeMismatch: CustomerTypeMismatch | null;
+      /** เวลาแก้ล่าสุดใหม่ของสัญญา (M12) — ใช้แทนค่าเดิมเป็น expected ของการแก้ครั้งต่อไป · null = RPC ไม่ได้คืนมา */
+      updatedAt: string | null;
     }
   | {
       ok: false;
       error: string;
       /** มีค่า (ไม่ว่าง) = พบลูกค้าชื่อซ้ำ (AG001) — ให้ถามผู้ใช้แล้วเรียกซ้ำ */
       duplicates?: DuplicateCustomerMatch[];
+      /** true = AG008 มีคนแก้สัญญานี้ไปก่อน — หน้าจอแสดงปุ่ม "โหลดแถวใหม่" */
+      conflict?: boolean;
     };
 
 export async function saveDraft(
@@ -48,6 +53,11 @@ export async function saveDraft(
   const { branch, termYears, valueTotal } = check;
   if (!branch || !termYears || valueTotal === null) {
     return { ok: false, error: "ข้อมูลไม่ครบ ตรวจช่องที่ขึ้นแดง" };
+  }
+
+  // โหมดแก้ต้องมีเวลาแก้ล่าสุดที่หน้าจอเห็น (M12) — ไม่มี = บั๊กหน้าจอ ไม่ยิง RPC (DB จะตอบ 22004 อยู่แล้ว)
+  if (options.contractId && !options.expectedUpdatedAt) {
+    return { ok: false, error: describeDbError({ code: "22004" }) };
   }
 
   const params = buildSaveParams(
@@ -62,6 +72,7 @@ export async function saveDraft(
       const duplicates = parseDuplicateMatches(error.details);
       if (duplicates.length > 0) return { ok: false, error: describeDbError(error), duplicates };
     }
+    if (error.code === CONFLICT_ERROR_CODE) return { ok: false, error: describeDbError(error), conflict: true };
     return { ok: false, error: describeDbError(error) };
   }
 
@@ -77,6 +88,7 @@ export async function saveDraft(
     customerTypeMismatch: row.reusedCustomer
       ? customerTypeMismatch(row.existingCustomerType, draft.customerTypeCode)
       : null,
+    updatedAt: row.updatedAt,
   };
 }
 

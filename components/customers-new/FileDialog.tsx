@@ -47,6 +47,8 @@ type Props = {
       onChanged: () => void;
       /** สัญญาปิดแล้ว — ไฟล์ถูกล็อก (trigger ใน DB) ปิดปุ่มแนบ/เปลี่ยน/ลบ เหลือเปิดดูอย่างเดียว */
       locked?: boolean;
+      /** เหตุผลที่ล็อก (แสดงในกล่องเตือนและ tooltip ปุ่ม) — ไม่ส่ง = ใช้ข้อความ "สัญญาปิดแล้ว" */
+      lockedReason?: string;
     }
 );
 
@@ -66,6 +68,8 @@ export function FileDialog(props: Props) {
 
   const pdf = files.find((f) => f.kind === "contract_pdf") ?? null;
   const locked = props.mode === "saved" && props.locked === true;
+  const lockedReason =
+    (props.mode === "saved" ? props.lockedReason : undefined) ?? "สัญญาปิดแล้ว ไฟล์ถูกล็อก เปิดดูได้อย่างเดียว";
   const sitePlans = files.filter((f) => f.kind === "site_plan");
 
   async function refresh(contractId: string) {
@@ -176,7 +180,7 @@ export function FileDialog(props: Props) {
         {info ? <Alert variant="ok">{info}</Alert> : null}
         {warning ? <Alert variant="warn">{warning}</Alert> : null}
         {locked ? (
-          <Alert variant="warn">สัญญานี้ปิดแล้ว ไฟล์ถูกล็อก เปิดดูได้อย่างเดียว</Alert>
+          <Alert variant="warn">{lockedReason}</Alert>
         ) : null}
 
         <section aria-labelledby="fd-pdf" className="flex flex-col gap-2">
@@ -199,12 +203,13 @@ export function FileDialog(props: Props) {
               <p className="m-0 text-fg-muted">ยังไม่ได้เลือกไฟล์ — แนบทีหลังได้ ไม่บล็อกการบันทึกแถว</p>
             )
           ) : pdf ? (
-            <FileLine file={pdf} onView={view} onRemove={remove} busy={busy} locked={locked} />
+            <FileLine file={pdf} onView={view} onRemove={remove} busy={busy} locked={locked} lockedReason={lockedReason} />
           ) : (
             <p className="m-0 text-fg-muted">ยังไม่ได้แนบไฟล์สัญญา</p>
           )}
 
-          <label className="inline-flex w-fit cursor-pointer items-center rounded-lg border border-border-strong bg-surface px-3 py-1.5 text-[12.5px] hover:bg-surface-2 has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-50 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-accent">
+          <label className="inline-flex w-fit cursor-pointer items-center rounded-lg border border-border-strong bg-surface px-3 py-1.5 text-[12.5px] hover:bg-surface-2 has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-50 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-accent"
+              title={locked ? lockedReason : undefined}>
             {props.mode === "draft"
               ? props.pending
                 ? "เลือกไฟล์ใหม่"
@@ -240,7 +245,7 @@ export function FileDialog(props: Props) {
               <ul className="m-0 flex list-none flex-col gap-2 p-0">
                 {sitePlans.map((f) => (
                   <li key={f.id} className="rounded-lg border border-border px-3 py-2">
-                    <FileLine file={f} onView={view} onRemove={remove} busy={busy} locked={locked} />
+                    <FileLine file={f} onView={view} onRemove={remove} busy={busy} locked={locked} lockedReason={lockedReason} />
                   </li>
                 ))}
               </ul>
@@ -257,7 +262,8 @@ export function FileDialog(props: Props) {
                 className="w-full rounded-lg border border-border-strong bg-surface px-2.5 py-1.5 text-[13px] text-fg placeholder:text-fg-faint disabled:opacity-60 focus-visible:outline-2 focus-visible:outline-accent"
               />
             </label>
-            <label className="inline-flex w-fit cursor-pointer items-center rounded-lg border border-border-strong bg-surface px-3 py-1.5 text-[12.5px] hover:bg-surface-2 has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-50 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-accent">
+            <label className="inline-flex w-fit cursor-pointer items-center rounded-lg border border-border-strong bg-surface px-3 py-1.5 text-[12.5px] hover:bg-surface-2 has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-50 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-accent"
+              title={locked ? lockedReason : undefined}>
               เลือกไฟล์ Site plan (PDF / PNG / JPG)
               <input
                 type="file"
@@ -294,12 +300,14 @@ function FileLine({
   onRemove,
   busy,
   locked,
+  lockedReason,
 }: {
   file: ContractFileRow;
   onView: (f: ContractFileRow) => void;
   onRemove: (f: ContractFileRow) => void;
   busy: boolean;
   locked: boolean;
+  lockedReason: string;
 }) {
   return (
     <div className="flex flex-col gap-1">
@@ -324,7 +332,7 @@ function FileLine({
           variant="danger"
           onClick={() => onRemove(file)}
           disabled={busy || locked}
-          title={locked ? "สัญญาปิดแล้ว ไฟล์ถูกล็อก" : undefined}
+          title={locked ? lockedReason : undefined}
         >
           ลบ
         </Button>
