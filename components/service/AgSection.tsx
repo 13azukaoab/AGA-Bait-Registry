@@ -8,8 +8,8 @@
  *     "ไม่ได้ตรวจจุดนี้" ไม่นับเป็นรอบ F
  *   * ป้ายกำกับจุด (ไม่บังคับ) ผูกกับจุดข้ามรอบ แก้ได้ทุกเดือนแม้ไม่ได้ตรวจ
  *   * สถานะจุด: ติดตามต่อ / รอถอด / ถอดแล้ว — จุดที่ถอด/กำจัดแล้วเปลี่ยนไม่ได้
- *   * "ติดกล่องใหม่ (S)" รอบ 1: บันทึกเฉพาะเลขกล่อง (ฐานข้อมูลสร้างสถานีฝั่งเซิร์ฟเวอร์ ส่งผล/ป้ายในครั้งเดียวกันไม่ได้) —
- *     เหยื่อและป้ายกรอกในการเข้ารอบถัดไป · F1 คือการติดตามครั้งแรกหลังติดตั้ง (SPEC §7.5)
+ *   * "ติดกล่องใหม่ (S)": กรอก "เหยื่อที่ใส่" + "ป้ายจุด" (ไม่มี % กิน · ไม่นับเป็นรอบตรวจ → ครั้งถัดไปเป็น F1 SPEC §7.5)
+ *     · ตอนนี้ส่งเข้า RPC แค่เลขกล่อง (รอ BE M13) — สวิตช์ `SEND_NEW_AG_DETAILS` ใน featureFlags.ts
  *   * ชิป: ใต้ดิน/ติดตาม = ฟ้า · ถอดแล้ว = เขียว · ไม่ได้ตรวจ = ส้ม · แดงใช้เฉพาะขาด/ผิด
  */
 import { useState } from "react";
@@ -19,6 +19,7 @@ import { cx } from "@/components/ui/cx";
 
 import { BaitField } from "./BaitField";
 import { EATEN_OPTIONS } from "./bait";
+import { SEND_NEW_AG_DETAILS } from "./featureFlags";
 import { newId, nextFollowUp, statusLabel } from "./formState";
 import { nextAgNumber } from "./stationIndex";
 import {
@@ -260,7 +261,7 @@ export function AgSection({
                   className={cx(INPUT, "num w-[90px]", issue.no && INVALID)}
                   aria-invalid={issue.no ? true : undefined}
                 />
-                <span className="text-[12px] text-fg-muted">ติดตั้งใหม่ (S) — เหยื่อและป้ายกำกับกรอกในการเข้ารอบถัดไป</span>
+                <span className="text-[12px] text-fg-muted">ติดตั้งใหม่ (S) — ไม่นับเป็นรอบตรวจ ครั้งถัดไปเป็น F1</span>
                 <Button
                   variant="danger"
                   size="sm"
@@ -270,6 +271,40 @@ export function AgSection({
                   ลบจุด
                 </Button>
               </div>
+              <div className="mt-2 flex flex-wrap items-start gap-3">
+                <BaitField
+                  label="เหยื่อที่ใส่"
+                  idPrefix={`new-${w.id}`}
+                  select={w.baitSelect ?? ""}
+                  custom={w.baitCustom ?? ""}
+                  onChange={(v) =>
+                    onChange({
+                      works: form.works.map((x) => (x.id === w.id ? { ...x, baitSelect: v.select, baitCustom: v.custom } : x)),
+                    })
+                  }
+                />
+                <div className="flex min-w-[220px] flex-col gap-1">
+                  <label htmlFor={`new-${w.id}-lbl`} className={LABEL}>
+                    ป้ายจุด <span className="text-fg-faint">(ไม่บังคับ)</span>
+                  </label>
+                  <input
+                    id={`new-${w.id}-lbl`}
+                    maxLength={40}
+                    autoComplete="off"
+                    placeholder="เช่น ห้องนอน, หลังบ้าน"
+                    value={w.label ?? ""}
+                    onChange={(e) =>
+                      onChange({ works: form.works.map((x) => (x.id === w.id ? { ...x, label: e.target.value } : x)) })
+                    }
+                    className={INPUT}
+                  />
+                </div>
+              </div>
+              {!SEND_NEW_AG_DETAILS ? (
+                <p className="m-0 mt-1.5 text-[11.5px] text-warn">
+                  ชั่วคราว: ตอนนี้ระบบบันทึกเฉพาะเลขกล่องที่ติดใหม่ — เหยื่อและป้ายจุดจะบันทึกได้เมื่อฐานข้อมูลอัปเดต (กำลังทำ)
+                </p>
+              ) : null}
               {issue.no ? <p className={cx(ERROR_TEXT, "mt-1")}>{issue.no}</p> : null}
             </div>
           );

@@ -158,6 +158,10 @@ export interface WorkRow {
   type: StationType;
   noText: string;
   detail: string;
+  /** เฉพาะกล่อง AG ใหม่ (S): เหยื่อที่ใส่ตอนติดตั้ง + ป้ายจุด (ยังไม่ส่งเข้า RPC — ดู featureFlags.ts) */
+  baitSelect?: BaitSelect;
+  baitCustom?: string;
+  label?: string;
 }
 
 export type AgStatusChoice = "active" | "pending_removal" | "removed";

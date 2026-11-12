@@ -234,3 +234,16 @@ describe("buildPayload — งานซ่อม", () => {
     expect(r.ok).toBe(false);
   });
 });
+
+describe("newAgDetails — กล่อง AG ใหม่ (S) เตรียมไว้ ยังไม่ส่งเข้า RPC", () => {
+  it("ไม่รวมเข้า payload ตอนนี้ แต่เตรียมเหยื่อ+ป้ายตามเลขกล่อง", async () => {
+    const { newAgDetails } = await import("./buildPayload");
+    const form = baseForm({
+      works: [work({ id: "s1", kind: "added", type: "AG", noText: "3", baitSelect: "100", label: " ห้องนอน " })],
+    });
+    expect(newAgDetails(form)).toEqual([{ station_no: 3, bait_added_g: 100, point_label: "ห้องนอน" }]);
+    const p = ok(form);
+    expect(JSON.stringify(p)).not.toContain("point_label\":\"ห้องนอน");
+    expect(p.works[0]).toMatchObject({ kind: "added", station_type: "AG", station_nos: [3] });
+  });
+});

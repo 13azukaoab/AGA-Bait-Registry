@@ -8,8 +8,8 @@
  *     แล้วโหลดสถานีใหม่ (2) `save_service_visit` ครั้งเดียว (ผลตรวจ · ทีม · งานซ่อม · ป้าย/สถานะ AG)
  *     — 2 ขั้นไม่ atomic: ถ้าขั้น 2 ล้ม สัญญาถือว่าตั้งสถานีแล้ว ฟอร์มที่กรอกไว้ยังอยู่ กดบันทึกซ้ำได้
  *   * `visit_id` สร้างตอนเปิดฟอร์ม (formState.ts) → กดบันทึกซ้ำ/เน็ตสะดุดแล้วกดใหม่ = แก้ครั้งเดิม ไม่เกิดรายการซ้ำ
- *   * ถอดกล่อง AG พร้อมผลตรวจในการเข้าใหม่ครั้งเดียว: ฐานข้อมูลเปลี่ยนสถานะก่อนตรวจ (SV001) → ตัวสำรอง 2 ขั้น
- *     (`DEFER_AG_REMOVAL`) บันทึกผลก่อน แล้วค่อยบันทึกซ้ำพร้อมสถานะ "ถอดแล้ว" (รอหมวด BE ตัดสิน ดูรายงาน)
+ *   * ถอดกล่อง AG พร้อมผลตรวจในการเข้าใหม่ครั้งเดียว: ปกติบันทึกครั้งเดียว (BE แก้ M13) · ตัวสำรอง 2 ขั้นไม่ atomic
+ *     อยู่หลังสวิตช์ `DEFER_AG_REMOVAL` ใน featureFlags.ts (ปิดไว้)
  *   * ตรวจฟอร์มก่อนบันทึก (validate.ts) · หลังกด "บันทึก" ครั้งแรกช่องที่ขาด/ผิดขึ้นกรอบแดง อัปเดตสดตามที่แก้ ·
  *     รายการ "บันทึกไม่ได้ — ยังขาด" กดแล้วเลื่อนไปที่ช่อง
  *   * F1–F10 ไม่ให้กรอก (แสดงจากฐานข้อมูล) · ข้อมูลทุกอย่างมาจากฐานข้อมูล ไม่มีตัวเลขสมมติ
@@ -23,6 +23,7 @@ import { cx } from "@/components/ui/cx";
 import { AgSection } from "./AgSection";
 import { buildPayload, hasPendingRemoval } from "./buildPayload";
 import { ConfirmDialog } from "./ConfirmDialog";
+import { DEFER_AG_REMOVAL } from "./featureFlags";
 import { loadStations } from "./data";
 import { FindingsSection } from "./FindingsSection";
 import { deleteServiceVisit, initializeStations, saveServiceVisit } from "./rpc";
@@ -43,8 +44,6 @@ import { validateForm } from "./validate";
 import { VisitHeader } from "./VisitHeader";
 import { WorksSection } from "./WorksSection";
 
-/** true = ถอดกล่อง AG แล้วบันทึกเป็น 2 ขั้น (ตัวสำรองของช่องโหว่ SV001 ใน RPC — เปลี่ยนเป็น false เมื่อ BE แก้) */
-const DEFER_AG_REMOVAL = true;
 
 export interface SavedInfo {
   /** true = การเข้านี้เป็นรายการใหม่ (นับ "กรอกแล้ว" เพิ่ม) */

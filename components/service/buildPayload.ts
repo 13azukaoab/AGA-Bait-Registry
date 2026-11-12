@@ -195,6 +195,26 @@ export function buildPayload(
   };
 }
 
+/**
+ * ข้อมูลกล่อง AG ใหม่ (S) ที่ผู้ใช้กรอก (เหยื่อที่ใส่ + ป้ายจุด) เตรียมไว้พร้อมส่ง — ยังไม่ต่อเข้า payload
+ * จนกว่า BE (M13) กำหนดชื่อ field และเปิด `SEND_NEW_AG_DETAILS` ใน featureFlags.ts
+ * อ้างด้วยเลขสถานี (ฐานข้อมูลสร้าง station id ฝั่งเซิร์ฟเวอร์) · ไม่มี % กิน (เพิ่งใส่เหยื่อ)
+ */
+export function newAgDetails(form: FormState): { station_no: number; bait_added_g: number | null; point_label: string | null }[] {
+  const out: { station_no: number; bait_added_g: number | null; point_label: string | null }[] = [];
+  for (const w of form.works) {
+    if (w.type !== "AG" || w.kind !== "added") continue;
+    const nums = parseStationNumbers(w.noText);
+    if (!nums.ok) continue;
+    const bait = resolveBait(w.baitSelect ?? "", w.baitCustom ?? "");
+    const label = (w.label ?? "").trim();
+    for (const n of nums.numbers) {
+      out.push({ station_no: n, bait_added_g: bait.status === "ok" ? bait.grams : null, point_label: label === "" ? null : label });
+    }
+  }
+  return out;
+}
+
 /** สถานะที่ต้องส่ง (null = ไม่เปลี่ยน/ไม่ส่ง) */
 function agStatusToSend(
   p: AgPointState,
