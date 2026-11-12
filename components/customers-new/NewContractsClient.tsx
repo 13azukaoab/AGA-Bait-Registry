@@ -1,0 +1,872 @@
+"use client";
+
+/**
+ * NewContractsClient — หน้า "เปิดงานเข้าทะเบียนบริการ" (ตารางกรอกแบบ Excel + ตัวกรอง + แนบไฟล์)
+ * ตาม mockup FINAL `docs/mockup/admin-add-customer.html`
+ *
+ * Logic summary:
+ *   * แถวมี 2 ชนิด: "บันทึกแล้ว" (มาจากฐานข้อมูล ตามเดือนที่เลือก · อ่านอย่างเดียว + แนบไฟล์/ลบ/ดูประวัติ)
+ *     และ "ร่าง" (แถวที่กำลังกรอก ยังไม่บันทึก) — ร่างแสดงเสมอ ไม่ถูกตัวกรองซ่อน กันงานที่พิมพ์ค้างหาย
+ *   * ช่องคำนวณ (เขต/Tier/วันสิ้นสุด) เรียก `rowCalc.ts` → `lib/rules` · เกณฑ์ Tier มาจาก `tier_rules` ที่ server ส่งมา
+ *   * ตัวกรอง เดือน = เปลี่ยน `?month=` (server โหลดใหม่) · เขต/สาขา/สถานะ/ค้นหา = กรองฝั่ง client
+ *     เฉพาะแถวที่บันทึกแล้วของเดือนที่เลือก
+ *   * บันทึก = ทีละแถวด้วย Supabase client ของผู้ใช้จริง (RLS ตัดสินสิทธิ์) แถวที่ผ่านถูกเอาออกจากร่าง
+ *     แถวที่ไม่ผ่านค้างไว้พร้อมข้อความผิดพลาด
+ *   * ช่องที่ schema ยังไม่มี 6 ช่อง ซ่อนด้วย `SHOW_PENDING_SCHEMA_COLUMNS` (config.ts)
+ */
+import { useRouter } from "next/navigation";
+import { useCallback, useMemo, useState } from "react";
+
+import { Alert, Button, Chip, Field, TierBadge, Toast, cx } from "@/components/ui";
+import type { UserRole } from "@/lib/db/types";
+import type { TermYears } from "@/lib/rules";
+import { createClient } from "@/lib/supabase/client";
+
+import { resolveBranch } from "./branchMatch";
+import { checkContractNos, normalizeContractNo } from "./contractNo";
+import { canSave, checkDraft, createDraft, missingLabel, termFromValues } from "./draftRow";
+import { applyFilters, type FilterableRow, type StatusFilter } from "./filters";
+import { FileDialog } from "./FileDialog";
+import { uploadAfterSave } from "./uploadAfterSave";
+import { HistoryDialog } from "./HistoryDialog";
+import { monthLabel } from "./months";
+import { PdfIcon } from "./PdfIcon";
+import { deleteContract, saveDraft } from "./save";
+import { TeamPicker } from "./TeamPicker";
+import { autoEndDate, endDateWarning, formatMoney, tierFor } from "./rowCalc";
+import type { CustomerTypeOption, DraftRow, MasterData, SavedContract } from "./types";
+
+type Props = {
+  role: UserRole;
+  month: string;
+  monthChoices: string[];
+  master: MasterData;
+  saved: SavedContract[];
+  truncated: boolean;
+};
+
+const INPUT =
+  "w-full min-w-0 rounded-md border bg-surface px-1.5 py-1 text-[13px] text-fg placeholder:text-fg-faint focus-visible:outline-2 focus-visible:outline-offset-0 focus-visible:outline-accent disabled:bg-surface-2 disabled:text-fg-faint";
+const TH = "whitespace-nowrap border-b border-border bg-surface-2 px-2 py-2 text-left text-[12px] font-semibold text-fg-muted";
+const TD = "border-b border-border px-1.5 py-1 align-middle";
+
+const border = (bad: boolean) => (bad ? "border-danger" : "border-border-strong");
+
+type FileTarget =
+  | { kind: "saved"; contractId: string }
+  | { kind: "draft"; key: string }
+  | null;
+
+export function NewContractsClient({ role, month, monthChoices, master, saved, truncated }: Props) {
+  const router = useRouter();
+  const supabase = useMemo(() => createClient(), []);
+
+  const [drafts, setDrafts] = useState<DraftRow[]>([]);
+  const [filters, setFilters] = useState({
+    zoneId: "",
+    branchId: "",
+    status: "" as StatusFilter,
+    search: "",
+  });
+  const [saving, setSaving] = useState(false);
+  const [toast, setToast] = useState("");
+  const [banner, setBanner] = useState<{ variant: "ok" | "warn" | "danger"; text: string } | null>(
+    null,
+  );
+  const [fileTarget, setFileTarget] = useState<FileTarget>(null);
+  const [historyFor, setHistoryFor] = useState<SavedContract | null>(null);
+  const [showErrors, setShowErrors] = useState(false);
+
+  const branchById = useMemo(() => new Map(master.branches.map((b) => [b.id, b])), [master]);
+  const typeLabel = useMemo(
+    () => new Map(master.customerTypes.map((t) => [t.code, t.label])),
+    [master],
+  );
+  const teamCode = useMemo(() => new Map(master.teams.map((t) => [t.id, t.code])), [master]);
+
+  // ---------- ตรวจร่างทั้งตาราง (เลขที่สัญญาซ้ำ = เทียบกับแถวที่บันทึกแล้วในเดือนด้วย) ----------
+  const draftChecks = useMemo(() => {
+    const all = [...saved.map((s) => s.contractNo), ...drafts.map((d) => d.contractNo)];
+    const noErrors = checkContractNos(all);
+    return drafts.map((d, i) =>
+      checkDraft(d, master.branches, noErrors.get(saved.length + i)),
+    );
+  }, [drafts, saved, master.branches]);
+
+  // ---------- แถวที่บันทึกแล้ว: คำนวณเพื่อกรอง/แสดง ----------
+  const savedView = useMemo(
+    () =>
+      saved.map((s) => {
+        const branch = branchById.get(s.branchId) ?? null;
+        const warn = endDateWarning(s.startDate, s.endDate, s.termYears);
+        const hasPdf = s.files.some((f) => f.kind === "contract_pdf");
+        const filterable: FilterableRow = {
+          customerName: s.customerName,
+          contractNo: s.contractNo,
+          startDate: s.startDate,
+          branchId: s.branchId,
+          zoneId: branch?.zoneId ?? null,
+          hasPdf,
+          missing: s.saleName.trim() === "",
+          warned: warn !== null,
+        };
+        return { s, branch, warn, hasPdf, filterable };
+      }),
+    [saved, branchById],
+  );
+
+  const visibleSaved = useMemo(() => {
+    const keep = new Set(
+      applyFilters(
+        savedView.map((v) => v.filterable),
+        { month: "", ...filters },
+      ),
+    );
+    return savedView.filter((v) => keep.has(v.filterable));
+  }, [savedView, filters]);
+
+  const totals = useMemo(() => {
+    let value = 0;
+    let isNew = 0;
+    let renew = 0;
+    let noFile = 0;
+    for (const v of savedView) {
+      value += v.s.valueTotal;
+      if (v.s.saleType === "renew") renew += 1;
+      else isNew += 1;
+      if (!v.hasPdf) noFile += 1;
+    }
+    return { count: savedView.length, value, isNew, renew, noFile };
+  }, [savedView]);
+
+  const filtersActive =
+    filters.zoneId !== "" || filters.branchId !== "" || filters.status !== "" || filters.search !== "";
+  const branchChoices = filters.zoneId
+    ? master.branches.filter((b) => b.zoneId === filters.zoneId)
+    : master.branches;
+
+  // ---------- แก้ร่าง ----------
+  const patchDraft = useCallback((key: string, patch: Partial<DraftRow>) => {
+    setDrafts((rows) =>
+      rows.map((r) => {
+        if (r.key !== key) return r;
+        const next = { ...r, ...patch, saveError: null };
+        // วันสิ้นสุดอัตโนมัติ: ตามวันเริ่ม + ระยะ จนกว่าผู้ใช้แก้วันสิ้นสุดเอง
+        if (!next.endTouched) {
+          const term = termFromValues(next.value1y, next.value3y);
+          next.endDate = term ? (autoEndDate(next.startDate, term) ?? "") : "";
+        }
+        return next;
+      }),
+    );
+  }, []);
+
+  const removeDraft = (key: string) => setDrafts((rows) => rows.filter((r) => r.key !== key));
+
+  // ---------- บันทึก ----------
+  async function saveAll() {
+    setShowErrors(true);
+    setBanner(null);
+    const jobs = drafts.map((d, i) => ({ d, c: draftChecks[i]! }));
+    const ready = jobs.filter((j) => canSave(j.c));
+    if (jobs.length === 0) {
+      setBanner({ variant: "warn", text: "ยังไม่มีแถวให้บันทึก — กด + เพิ่มแถว แล้วกรอกข้อมูล" });
+      return;
+    }
+    if (ready.length === 0) {
+      setBanner({ variant: "danger", text: "ไม่มีแถวที่ข้อมูลครบ ตรวจช่องที่ขึ้นขอบแดง" });
+      return;
+    }
+
+    setSaving(true);
+    let okCount = 0;
+    const failedMessages = new Map<string, string>();
+    const doneKeys = new Set<string>();
+    let fileWarn = 0;
+
+    for (const { d, c } of ready) {
+      const res = await saveDraft(supabase, d, c);
+      if (!res.ok) {
+        failedMessages.set(d.key, res.error);
+        continue;
+      }
+      okCount += 1;
+      doneKeys.add(d.key);
+      if (d.pendingPdf) {
+        const up = await uploadAfterSave(supabase, res.contractId, d.pendingPdf);
+        if (!up.ok) fileWarn += 1;
+      }
+    }
+    setSaving(false);
+
+    setDrafts((rows) =>
+      rows
+        .filter((r) => !doneKeys.has(r.key))
+        .map((r) => (failedMessages.has(r.key) ? { ...r, saveError: failedMessages.get(r.key)! } : r)),
+    );
+
+    const skipped = jobs.length - ready.length;
+    const failed = failedMessages.size;
+    if (okCount > 0) {
+      setToast(`บันทึกเข้าทะเบียนแล้ว ${okCount} แถว`);
+      router.refresh();
+    }
+    if (failed > 0 || skipped > 0 || fileWarn > 0) {
+      const parts = [
+        okCount > 0 ? `บันทึกสำเร็จ ${okCount} แถว` : null,
+        failed > 0 ? `ไม่สำเร็จ ${failed} แถว (ดูข้อความใต้แถว)` : null,
+        skipped > 0 ? `ข้าม ${skipped} แถวที่ข้อมูลไม่ครบ` : null,
+        fileWarn > 0 ? `แนบไฟล์ไม่สำเร็จ ${fileWarn} แถว — แนบใหม่ได้จากปุ่มไฟล์แนบ` : null,
+      ].filter(Boolean);
+      setBanner({ variant: okCount > 0 ? "warn" : "danger", text: parts.join(" · ") });
+    } else {
+      setBanner({ variant: "ok", text: `บันทึกเข้าทะเบียนครบ ${okCount} แถว` });
+      setShowErrors(false);
+    }
+  }
+
+  async function removeSaved(s: SavedContract) {
+    if (
+      !window.confirm(
+        `ลบสัญญา ${s.contractNo} (${s.customerName}) ?\nลบได้เฉพาะสัญญาที่ยังไม่มีผลบริการ · ไฟล์แนบจะถูกลบด้วย · เอากลับคืนไม่ได้`,
+      )
+    ) {
+      return;
+    }
+    setBanner(null);
+    const res = await deleteContract(supabase, s.contractId, s.customerId);
+    if (!res.ok) {
+      setBanner({ variant: "danger", text: res.error });
+      return;
+    }
+    setToast(`ลบสัญญา ${s.contractNo} แล้ว`);
+    router.refresh();
+  }
+
+  const openFileDialog = fileTarget;
+  const draftForDialog =
+    openFileDialog?.kind === "draft" ? drafts.find((d) => d.key === openFileDialog.key) : null;
+  const savedForDialog =
+    openFileDialog?.kind === "saved"
+      ? saved.find((s) => s.contractId === openFileDialog.contractId)
+      : null;
+
+  const readyCount = draftChecks.filter(canSave).length;
+
+  return (
+    <div className="flex flex-col gap-3">
+      <div>
+        <h1 className="m-0 text-xl font-bold">เปิดงาน · เพิ่มลูกค้าเข้าระบบ</h1>
+        <p className="m-0 mt-1 text-[13px] text-fg-muted">
+          บันทึกงานที่เปิดใหม่ → ไหลเข้าทะเบียนบริการให้หัวหน้างานใช้ต่อ
+          {role === "admin" ? " · คุณบันทึกได้เฉพาะสาขาในขอบเขตของบัญชี" : ""}
+        </p>
+      </div>
+
+      {/* ---------- ตัวกรอง ---------- */}
+      <div className="flex flex-wrap items-end gap-3 rounded-[var(--radius-card)] border border-border bg-surface p-3">
+        <Field label="เดือนเปิดงาน" className="w-[160px]">
+          {(c) => (
+            <select
+              {...c}
+              value={month}
+              onChange={(e) => router.push(`/customers/new?month=${e.target.value}`)}
+            >
+              {monthChoices.map((m) => (
+                <option key={m} value={m}>
+                  {monthLabel(m)}
+                </option>
+              ))}
+            </select>
+          )}
+        </Field>
+        <Field label="เขต" className="w-[120px]">
+          {(c) => (
+            <select
+              {...c}
+              value={filters.zoneId}
+              onChange={(e) => setFilters((f) => ({ ...f, zoneId: e.target.value, branchId: "" }))}
+            >
+              <option value="">ทั้งหมด</option>
+              {master.zones.map((z) => (
+                <option key={z.id} value={z.id}>
+                  {z.name}
+                </option>
+              ))}
+            </select>
+          )}
+        </Field>
+        <Field label="สาขา" className="w-[150px]">
+          {(c) => (
+            <select
+              {...c}
+              value={filters.branchId}
+              onChange={(e) => setFilters((f) => ({ ...f, branchId: e.target.value }))}
+            >
+              <option value="">ทั้งหมด</option>
+              {branchChoices.map((b) => (
+                <option key={b.id} value={b.id}>
+                  {b.name}
+                </option>
+              ))}
+            </select>
+          )}
+        </Field>
+        <Field label="สถานะ" className="w-[190px]">
+          {(c) => (
+            <select
+              {...c}
+              value={filters.status}
+              onChange={(e) =>
+                setFilters((f) => ({ ...f, status: e.target.value as StatusFilter }))
+              }
+            >
+              <option value="">ทั้งหมด</option>
+              <option value="ok">ครบแล้ว</option>
+              <option value="miss">ขาดข้อมูลจำเป็น</option>
+              <option value="nofile">ยังไม่แนบไฟล์</option>
+              <option value="warn">มีคำเตือนอื่น (ระยะสัญญา/วันที่)</option>
+            </select>
+          )}
+        </Field>
+        <Field label="กรองในตารางนี้" className="min-w-[180px] flex-1">
+          {(c) => (
+            <input
+              {...c}
+              type="search"
+              autoComplete="off"
+              value={filters.search}
+              placeholder="พิมพ์ชื่อลูกค้า / เลขที่สัญญา (เฉพาะเดือนที่เลือก)"
+              title="กรองแถวในตารางเปิดงานของเดือนที่เลือก — ค้นทั้งระบบใช้ช่องค้นหาบนแถบหัว"
+              onChange={(e) => setFilters((f) => ({ ...f, search: e.target.value }))}
+            />
+          )}
+        </Field>
+        {filtersActive ? (
+          <Button
+            size="sm"
+            onClick={() => setFilters({ zoneId: "", branchId: "", status: "", search: "" })}
+          >
+            ✕ ล้างตัวกรอง
+          </Button>
+        ) : null}
+        <Button size="sm" variant="primary" onClick={() => setDrafts((r) => [...r, createDraft()])}>
+          + เพิ่มแถว
+        </Button>
+      </div>
+
+      {/* ---------- ชิปสรุป (จากข้อมูลจริงของเดือนที่เลือก) ---------- */}
+      <div className="flex flex-wrap items-center gap-2">
+        <Chip tone="info">
+          เดือนนี้ <span className="num">{totals.count}</span> สัญญา
+        </Chip>
+        <Chip tone="ok">
+          New <span className="num">{totals.isNew}</span>
+        </Chip>
+        <Chip tone="na">
+          Renew <span className="num">{totals.renew}</span>
+        </Chip>
+        <Chip tone="info">
+          มูลค่ารวม <span className="num">{formatMoney(totals.value)}</span>
+        </Chip>
+        <Chip
+          tone="pend"
+          selected={filters.status === "nofile"}
+          onClick={() =>
+            setFilters((f) => ({ ...f, status: f.status === "nofile" ? "" : "nofile" }))
+          }
+        >
+          <PdfIcon />
+          ยังไม่แนบไฟล์ <b className="num">{totals.noFile}</b>
+        </Chip>
+        <Chip tone="na">
+          แสดง <span className="num">{visibleSaved.length}</span> จาก{" "}
+          <span className="num">{totals.count}</span> แถว
+        </Chip>
+      </div>
+
+      {truncated ? (
+        <Alert variant="warn">
+          เดือนนี้มีสัญญามากกว่าที่แสดงได้ในหน้าเดียว — ใช้ตัวกรองสาขา/เขตเพื่อดูส่วนที่เหลือ
+        </Alert>
+      ) : null}
+      {banner ? <Alert variant={banner.variant}>{banner.text}</Alert> : null}
+
+      {/* ---------- ตาราง ---------- */}
+      <div className="overflow-x-auto rounded-[var(--radius-card)] border border-border bg-surface">
+        <datalist id="branch-list">
+          {master.branches.map((b) => (
+            <option key={b.id} value={b.name} />
+          ))}
+        </datalist>
+        <table className="w-full min-w-[1900px] border-collapse text-[13px]">
+          <caption className="sr-only">ตารางเปิดงานของ {monthLabel(month)}</caption>
+          <thead>
+            <tr>
+              <th scope="col" className={cx(TH, "w-[44px] text-center")}>ลำดับ</th>
+              <th scope="col" className={cx(TH, "w-[130px]")}>เลขที่สัญญา</th>
+              <th scope="col" className={cx(TH, "w-[300px]")}>รายชื่อ</th>
+              <th scope="col" className={cx(TH, "w-[110px]")}>ประเภทงาน</th>
+              <th scope="col" className={cx(TH, "w-[140px]")}>ผู้ขาย</th>
+              <th scope="col" className={cx(TH, "w-[130px]")}>สาขา</th>
+              <th scope="col" className={cx(TH, "w-[70px]")}>เขต</th>
+              <th scope="col" className={cx(TH, "w-[90px]")}>ทีม</th>
+              <th scope="col" className={cx(TH, "w-[170px]")}>ประเภท</th>
+              <th scope="col" className={cx(TH, "w-[130px]")}>เริ่มสัญญา</th>
+              <th scope="col" className={cx(TH, "w-[130px]")}>สิ้นสุด</th>
+              <th scope="col" className={cx(TH, "w-[120px] text-right")}>มูลค่า 1 ปี</th>
+              <th scope="col" className={cx(TH, "w-[120px] text-right")}>มูลค่า 3 ปี</th>
+              <th scope="col" className={cx(TH, "w-[64px] text-center")}>Tier</th>
+              <th scope="col" className={cx(TH, "w-[110px] text-center")}>ไฟล์แนบ</th>
+              <th scope="col" className={cx(TH, "w-[170px] text-center")}>สถานะ</th>
+              <th scope="col" className={cx(TH, "w-[56px]")}>
+                <span className="sr-only">ลบ</span>
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {/* ===== แถวที่บันทึกแล้ว ===== */}
+            {visibleSaved.map((v, idx) => {
+              const s = v.s;
+              const tier = tierFor(s.valueTotal, s.termYears, master.tierRules);
+              const hasPdf = v.hasPdf;
+              const spCount = s.files.filter((f) => f.kind === "site_plan").length;
+              return (
+                <tr key={s.contractId}>
+                  <td className={cx(TD, "num text-center text-fg-muted")}>{idx + 1}</td>
+                  <td className={cx(TD, "num")}>{s.contractNo}</td>
+                  <td className={TD}>
+                    <div className="flex items-center gap-2">
+                      <span className="min-w-0 flex-1 break-words">{s.customerName}</span>
+                      {s.auditCount !== null ? (
+                        <button
+                          type="button"
+                          onClick={() => setHistoryFor(s)}
+                          title="ดูประวัติการแก้ไขของสัญญานี้ (เฉพาะ host)"
+                          aria-label={`ดูประวัติการแก้ไข ${s.contractNo}`}
+                          className="flex-none cursor-pointer whitespace-nowrap rounded-full bg-surface-3 px-2 py-0.5 text-[11.5px] text-fg-muted hover:text-fg focus-visible:outline-2 focus-visible:outline-accent"
+                        >
+                          ⟲ ประวัติ (<span className="num">{s.auditCount}</span>)
+                        </button>
+                      ) : null}
+                    </div>
+                  </td>
+                  <td className={TD}>
+                    <Chip tone={s.saleType === "renew" ? "na" : "ok"}>
+                      {s.saleType === "renew" ? "Renew" : "New"}
+                    </Chip>
+                  </td>
+                  <td className={TD}>
+                    {s.saleName || <span className="text-danger">ยังไม่ใส่</span>}
+                  </td>
+                  <td className={TD}>{v.branch?.name ?? "—"}</td>
+                  <td className={TD}>{v.branch?.zoneName.replace("เขต ", "") ?? "—"}</td>
+                  <td className={TD}>
+                    {s.teamIds.map((id) => teamCode.get(id)).filter(Boolean).join(", ") || "—"}
+                  </td>
+                  <td className={TD}>
+                    {(s.customerTypeCode && typeLabel.get(s.customerTypeCode)) || "—"}
+                  </td>
+                  <td className={cx(TD, "num")}>{s.startDate}</td>
+                  <td className={cx(TD, "num")}>{s.endDate || "—"}</td>
+                  <td className={cx(TD, "num text-right")}>
+                    {s.termYears === 1 ? formatMoney(s.valueTotal) : ""}
+                  </td>
+                  <td className={cx(TD, "num text-right")}>
+                    {s.termYears === 3 ? formatMoney(s.valueTotal) : ""}
+                  </td>
+                  <td className={cx(TD, "text-center")}>
+                    {tier ? (
+                      <TierBadge tier={tier.tier} years={s.termYears} />
+                    ) : (
+                      <Chip tone="na">—</Chip>
+                    )}
+                  </td>
+                  <td className={cx(TD, "text-center")}>
+                    <FileChip
+                      attached={hasPdf}
+                      extra={spCount}
+                      onClick={() => setFileTarget({ kind: "saved", contractId: s.contractId })}
+                    />
+                  </td>
+                  <td className={cx(TD, "text-center")}>
+                    {v.filterable.missing ? (
+                      <Chip tone="miss">ขาด ผู้ขาย</Chip>
+                    ) : v.warn ? (
+                      <Chip tone="pend">{v.warn}</Chip>
+                    ) : (
+                      <Chip tone="ok">ครบ</Chip>
+                    )}
+                  </td>
+                  <td className={cx(TD, "text-center")}>
+                    <button
+                      type="button"
+                      onClick={() => void removeSaved(s)}
+                      aria-label={`ลบสัญญา ${s.contractNo}`}
+                      title="ลบสัญญา (ได้เฉพาะที่ยังไม่มีผลบริการ)"
+                      className="cursor-pointer rounded px-1.5 py-0.5 text-danger hover:bg-danger-soft focus-visible:outline-2 focus-visible:outline-accent"
+                    >
+                      ✕
+                    </button>
+                  </td>
+                </tr>
+              );
+            })}
+
+            {/* ===== แถวร่าง (กำลังกรอก) ===== */}
+            {drafts.map((d, i) => {
+              const c = draftChecks[i]!;
+              const branch = resolveBranch(d.branchText, master.branches);
+              const tier = tierFor(c.valueTotal, c.termYears, master.tierRules);
+              const warn = c.termYears ? endDateWarning(d.startDate, d.endDate, c.termYears) : null;
+              const err = (f: keyof typeof c.errors) => showErrors && Boolean(c.errors[f]);
+              const branchBad =
+                d.branchText.trim() !== "" && !branch ? true : showErrors && !!c.errors.branch;
+              const rowNo = visibleSaved.length + i + 1;
+              return (
+                <DraftTableRow
+                  key={d.key}
+                  rowNo={rowNo}
+                  d={d}
+                  c={c}
+                  branchName={branch?.zoneName.replace("เขต ", "") ?? ""}
+                  branchBad={branchBad}
+                  err={err}
+                  tier={tier}
+                  warn={warn}
+                  showErrors={showErrors}
+                  master={master}
+                  onPatch={(patch) => patchDraft(d.key, patch)}
+                  onFile={() => setFileTarget({ kind: "draft", key: d.key })}
+                  onRemove={() => removeDraft(d.key)}
+                />
+              );
+            })}
+
+            {visibleSaved.length === 0 && drafts.length === 0 ? (
+              <tr>
+                <td colSpan={17} className="px-4 py-10 text-center text-[13px] text-fg-muted">
+                  {saved.length === 0 ? (
+                    <>
+                      ยังไม่มีงานที่เปิดใน <b>{monthLabel(month)}</b> — กด <b>+ เพิ่มแถว</b>{" "}
+                      เพื่อเริ่มบันทึกงานใหม่
+                    </>
+                  ) : (
+                    <>ไม่พบแถวที่ตรงกับตัวกรอง — ลองกด ✕ ล้างตัวกรอง</>
+                  )}
+                </td>
+              </tr>
+            ) : null}
+          </tbody>
+        </table>
+
+        <div className="flex flex-wrap items-center gap-3 border-t border-border bg-surface px-3 py-2">
+          <Button size="sm" onClick={() => setDrafts((r) => [...r, createDraft()])}>
+            + เพิ่มแถว
+          </Button>
+          <span className="flex-1" />
+          <span className="text-[12px] text-fg-muted">
+            บันทึกได้ <b className="num">{readyCount}</b> จาก <b className="num">{drafts.length}</b>{" "}
+            แถว · แถวขอบแดงขาดข้อมูลจำเป็น · ยังไม่แนบไฟล์ = เตือน แต่บันทึกต่อได้
+          </span>
+          <Button
+            variant="primary"
+            size="sm"
+            loading={saving}
+            disabled={drafts.length === 0}
+            onClick={() => void saveAll()}
+          >
+            บันทึกเข้าทะเบียน
+          </Button>
+        </div>
+      </div>
+
+      <p className="m-0 text-[11.5px] text-fg-muted">
+        ทีม: <b>A–O</b> ทีมบริการประจำ · <b>Z</b> ทีมติดตั้งงานใหม่ · ช่อง เขต / Tier / วันสิ้นสุด
+        ระบบคำนวณให้ (ไม่ต้องกรอก)
+      </p>
+
+      {/* ---------- กล่องโต้ตอบ ---------- */}
+      {draftForDialog ? (
+        <FileDialog
+          mode="draft"
+          supabase={supabase}
+          title="ไฟล์แนบ · แถวที่กำลังกรอก"
+          subtitle={draftForDialog.contractNo || "ยังไม่ใส่เลขที่สัญญา"}
+          pending={draftForDialog.pendingPdf}
+          onPick={(file) => patchDraft(draftForDialog.key, { pendingPdf: file })}
+          onClose={() => setFileTarget(null)}
+        />
+      ) : null}
+      {savedForDialog ? (
+        <FileDialog
+          mode="saved"
+          supabase={supabase}
+          title={`ไฟล์แนบ · ${savedForDialog.contractNo}`}
+          subtitle={savedForDialog.customerName}
+          contractId={savedForDialog.contractId}
+          files={savedForDialog.files}
+          onChanged={() => router.refresh()}
+          onClose={() => setFileTarget(null)}
+        />
+      ) : null}
+      {historyFor ? (
+        <HistoryDialog
+          supabase={supabase}
+          contractId={historyFor.contractId}
+          contractNo={historyFor.contractNo}
+          onClose={() => setHistoryFor(null)}
+        />
+      ) : null}
+
+      <Toast message={toast} onClose={() => setToast("")} />
+    </div>
+  );
+}
+
+/** ปุ่มไฟล์แนบ: แนบแล้ว = "[ไอคอน] PDF ✓" (ข้อความคงที่ — เจ้าของตัดสิน) · ยังไม่แนบ = เตือนสีเหลือง */
+function FileChip({
+  attached,
+  extra,
+  onClick,
+}: {
+  attached: boolean;
+  extra: number;
+  onClick: () => void;
+}) {
+  return (
+    <Chip tone={attached ? "ok" : "pend"} onClick={onClick}>
+      <PdfIcon />
+      {attached ? "PDF ✓" : "แนบ"}
+      {extra > 0 ? <span className="num">· SP {extra}</span> : null}
+    </Chip>
+  );
+}
+
+type DraftErr = (f: "contractNo" | "customerName" | "saleName" | "branch" | "startDate" | "endDate" | "value") => boolean;
+
+function DraftTableRow({
+  rowNo,
+  d,
+  c,
+  branchName,
+  branchBad,
+  err,
+  tier,
+  warn,
+  showErrors,
+  master,
+  onPatch,
+  onFile,
+  onRemove,
+}: {
+  rowNo: number;
+  d: DraftRow;
+  c: ReturnType<typeof checkDraft>;
+  branchName: string;
+  branchBad: boolean;
+  err: DraftErr;
+  tier: ReturnType<typeof tierFor>;
+  warn: string | null;
+  showErrors: boolean;
+  master: MasterData;
+  onPatch: (patch: Partial<DraftRow>) => void;
+  onFile: () => void;
+  onRemove: () => void;
+}) {
+  const hasErrors = !canSave(c);
+  const termLocked1 = d.value3y.trim() !== "";
+  const termLocked3 = d.value1y.trim() !== "";
+  const groups = useMemo(() => {
+    const map = new Map<string, CustomerTypeOption[]>();
+    for (const t of master.customerTypes) {
+      map.set(t.groupLabel, [...(map.get(t.groupLabel) ?? []), t]);
+    }
+    return [...map.entries()];
+  }, [master.customerTypes]);
+
+  const money = (value: string, term: TermYears) => {
+    const lock = term === 1 ? termLocked1 : termLocked3;
+    return (
+      <input
+        inputMode="decimal"
+        disabled={lock}
+        aria-label={`มูลค่าสัญญา ${term} ปี`}
+        value={value}
+        placeholder={lock ? "" : "ยังไม่ใส่"}
+        onChange={(e) =>
+          onPatch(term === 1 ? { value1y: e.target.value } : { value3y: e.target.value })
+        }
+        onBlur={() => {
+          const raw = value.replace(/[,\s]/g, "");
+          if (/^\d+(\.\d{1,2})?$/.test(raw) && Number(raw) > 0) {
+            const f = formatMoney(Number(raw));
+            onPatch(term === 1 ? { value1y: f } : { value3y: f });
+          }
+        }}
+        className={cx(INPUT, "num text-right", border(!lock && err("value")))}
+      />
+    );
+  };
+
+  return (
+    <>
+      <tr className={cx(showErrors && hasErrors && "bg-danger-soft", warn && !hasErrors && "bg-warn-soft")}>
+        <td className={cx(TD, "num text-center text-fg-muted")}>{rowNo}</td>
+        <td className={TD}>
+          <input
+            aria-label="เลขที่สัญญา"
+            value={d.contractNo}
+            autoComplete="off"
+            title={c.errors.contractNo ?? ""}
+            onChange={(e) => onPatch({ contractNo: normalizeContractNo(e.target.value) })}
+            className={cx(INPUT, "num", border(err("contractNo") || (d.contractNo !== "" && Boolean(c.errors.contractNo))))}
+          />
+        </td>
+        <td className={TD}>
+          <input
+            aria-label="ชื่อลูกค้า"
+            value={d.customerName}
+            autoComplete="off"
+            onChange={(e) => onPatch({ customerName: e.target.value })}
+            className={cx(INPUT, border(err("customerName")))}
+          />
+        </td>
+        <td className={TD}>
+          <div role="group" aria-label="ประเภทงาน" className="inline-flex overflow-hidden rounded-md border border-border-strong text-[12px]">
+            {(["new", "renew"] as const).map((t) => (
+              <button
+                key={t}
+                type="button"
+                aria-pressed={d.saleType === t}
+                onClick={() => onPatch({ saleType: t })}
+                className={cx(
+                  "cursor-pointer px-2 py-1 focus-visible:outline-2 focus-visible:outline-accent",
+                  d.saleType === t ? "bg-accent text-accent-fg" : "bg-surface text-fg-muted hover:bg-surface-2",
+                )}
+              >
+                {t === "new" ? "New" : "Renew"}
+              </button>
+            ))}
+          </div>
+        </td>
+        <td className={TD}>
+          <input
+            aria-label="ผู้ขาย"
+            value={d.saleName}
+            autoComplete="off"
+            placeholder="ยังไม่ใส่"
+            onChange={(e) => onPatch({ saleName: e.target.value })}
+            className={cx(INPUT, border(err("saleName")))}
+          />
+        </td>
+        <td className={TD}>
+          <input
+            aria-label="สาขา"
+            list="branch-list"
+            value={d.branchText}
+            autoComplete="off"
+            placeholder="พิมพ์ชื่อสาขา…"
+            title={branchBad ? "ไม่พบสาขานี้ในรายการ — เลือกจากที่ระบบเดาให้" : ""}
+            onFocus={(e) => e.currentTarget.select()}
+            onChange={(e) => onPatch({ branchText: e.target.value })}
+            className={cx(INPUT, border(branchBad))}
+          />
+        </td>
+        <td className={cx(TD, "text-center")}>
+          {branchName ? (
+            <Chip tone="na">{branchName}</Chip>
+          ) : (
+            <span className="text-fg-faint">—</span>
+          )}
+        </td>
+        <td className={TD}>
+          <TeamPicker
+            teams={master.teams}
+            value={d.teamIds}
+            label="ทีมที่ดูแล"
+            onChange={(ids) => onPatch({ teamIds: ids })}
+          />
+        </td>
+        <td className={TD}>
+          <select
+            aria-label="ประเภทลูกค้า"
+            value={d.customerTypeCode}
+            onChange={(e) => onPatch({ customerTypeCode: e.target.value })}
+            className={cx(INPUT, "border-border-strong")}
+          >
+            <option value="">— เลือก —</option>
+            {groups.map(([label, items]) => (
+              <optgroup key={label} label={label}>
+                {items.map((t) => (
+                  <option key={t.code} value={t.code}>
+                    {t.label}
+                  </option>
+                ))}
+              </optgroup>
+            ))}
+          </select>
+        </td>
+        <td className={TD}>
+          <input
+            type="date"
+            aria-label="วันเริ่มสัญญา"
+            value={d.startDate}
+            onChange={(e) => onPatch({ startDate: e.target.value })}
+            className={cx(INPUT, "num", border(err("startDate")))}
+          />
+        </td>
+        <td className={TD}>
+          <input
+            type="date"
+            aria-label="วันสิ้นสุดสัญญา"
+            value={d.endDate}
+            title={warn ?? "ระบบเติมให้ = วันเริ่ม + ระยะสัญญา − 1 วัน แก้ได้"}
+            onChange={(e) => onPatch({ endDate: e.target.value, endTouched: true })}
+            className={cx(INPUT, "num", err("endDate") ? "border-danger" : warn ? "border-warn" : "border-border-strong")}
+          />
+        </td>
+        <td className={TD}>{money(d.value1y, 1)}</td>
+        <td className={TD}>{money(d.value3y, 3)}</td>
+        <td className={cx(TD, "text-center")}>
+          {tier && c.termYears ? (
+            <TierBadge tier={tier.tier} years={c.termYears} />
+          ) : (
+            <Chip tone="na">—</Chip>
+          )}
+        </td>
+        <td className={cx(TD, "text-center")}>
+          <FileChip attached={d.pendingPdf !== null} extra={0} onClick={onFile} />
+        </td>
+        <td className={cx(TD, "text-center")}>
+          {hasErrors ? (
+            <Chip tone="miss">{showErrors || missingLabel(c) ? missingLabel(c) : "ยังไม่ครบ"}</Chip>
+          ) : warn ? (
+            <Chip tone="pend">{warn}</Chip>
+          ) : (
+            <Chip tone="ok">ครบ</Chip>
+          )}
+        </td>
+        <td className={cx(TD, "text-center")}>
+          <button
+            type="button"
+            onClick={onRemove}
+            aria-label={`เอาแถวที่ ${rowNo} ออก`}
+            title="เอาแถวนี้ออก (ยังไม่บันทึก)"
+            className="cursor-pointer rounded px-1.5 py-0.5 text-fg-muted hover:bg-surface-3 focus-visible:outline-2 focus-visible:outline-accent"
+          >
+            ✕
+          </button>
+        </td>
+      </tr>
+      {d.saveError ? (
+        <tr className="bg-danger-soft">
+          <td />
+          <td colSpan={16} className="px-2 py-1 text-[12.5px] text-danger" role="alert">
+            บันทึกแถวนี้ไม่สำเร็จ: {d.saveError}
+          </td>
+        </tr>
+      ) : null}
+    </>
+  );
+}
