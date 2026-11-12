@@ -14,14 +14,13 @@
  *   * สถานะจุด AG ส่งเฉพาะจุดที่เปลี่ยน (active / pending_removal / removed)
  *   * ป้ายจุดส่งเฉพาะจุดที่เปลี่ยน
  *   * เวลาส่ง HH:MM
- *   * `deferRemoval` (ตัวสำรอง): ถ้าฐานข้อมูลปฏิเสธผลตรวจของจุดที่ถอดในครั้งเดียวกัน (SV001) → ส่ง 2 ครั้ง
- *     ครั้งแรกยังไม่เปลี่ยนเป็น "ถอดแล้ว" ครั้งที่สองเปลี่ยนสถานะ (visit_id เดิม = แก้การเข้าเดิม)
+ *   * ถอดกล่อง AG + ผลตรวจส่งครั้งเดียวได้ (M13 แก้ SV001) · กล่อง AG ใหม่ (S) ส่ง `installs` ใน works (M13)
  */
 import { parseStationNumbers } from "@/lib/service/stationNumbers";
 
 import { resolveBait, resolveEaten, resolvePowder } from "./bait";
 import { parseSingleNumber } from "./validate";
-import type { AgPointState, FormState, StationRow, StationType } from "./types";
+import type { AgPointState, FormState, StationRow, StationType, WorkRow } from "./types";
 import { isInUse } from "./types";
 
 export interface CheckPayload {
@@ -43,7 +42,15 @@ export interface SavePayload {
   start_time: string;
   end_time: string;
   team_ids: string[];
-  works: { id: string; kind: string; station_type: StationType; station_nos: number[]; detail: string | null }[];
+  works: {
+    id: string;
+    kind: string;
+    station_type: StationType;
+    station_nos: number[];
+    detail: string | null;
+    /** เฉพาะ "ฝังใหม่ AG": ข้อมูลติดตั้งรายกล่อง (เหยื่อที่ใส่ + ป้ายจุด · ไม่ใช่ผลตรวจ ไม่นับ F) */
+    installs?: { station_no: number; bait_added_g: number | null; point_label: string | null }[];
+  }[];
   checks: (CheckPayload | { station_id: string; checked: false })[];
   station_labels: { station_id: string; point_label: string }[];
   station_statuses: { station_id: string; status: "active" | "pending_removal" | "removed" }[];
@@ -62,10 +69,7 @@ export function buildPayload(
   form: FormState,
   contractId: string,
   stations: readonly StationRow[],
-  options: { includeRemoval?: boolean } = {},
 ): BuildResult {
-  const includeRemoval = options.includeRemoval ?? true;
-
   const idByKey = new Map<string, string>();
   for (const s of stations) {
     if (s.no !== null && isInUse(s.status)) idByKey.set(stationKey(s.type, s.no), s.id);
@@ -135,7 +139,7 @@ export function buildPayload(
     const trimmed = p.label.trim();
     if (trimmed !== p.labelDb.trim()) labels.push({ station_id: p.stationId, point_label: trimmed });
 
-    const status = agStatusToSend(p, includeRemoval);
+    const status = agStatusToSend(p);
     if (status) statuses.push({ station_id: p.stationId, status });
 
     if (form.skipAllAg) continue; // ฐานข้อมูลใส่แถว "ไม่ได้ตรวจ" ให้ทุกจุดเอง
@@ -165,13 +169,15 @@ export function buildPayload(
     if (!parsed.ok) return { ok: false, error: parsed.error };
     if (parsed.numbers.length === 0) return { ok: false, error: "งานซ่อมมีแถวที่ยังไม่ได้พิมพ์เลขสถานี" };
     const detail = w.detail.trim();
-    works.push({
+    const item: SavePayload["works"][number] = {
       id: w.id,
       kind: w.kind,
       station_type: w.type,
       station_nos: parsed.numbers,
       detail: detail === "" ? null : detail,
-    });
+    };
+    if (w.kind === "added" && w.type === "AG") item.installs = installsOf(w, parsed.numbers);
+    works.push(item);
   }
   // ไม่ใช่ฝังใหม่ ก่อน ฝังใหม่ (sort เสถียร — คงลำดับเดิมในกลุ่ม)
   works.sort((a, b) => Number(a.kind === "added") - Number(b.kind === "added"));
@@ -195,39 +201,21 @@ export function buildPayload(
   };
 }
 
-/**
- * ข้อมูลกล่อง AG ใหม่ (S) ที่ผู้ใช้กรอก (เหยื่อที่ใส่ + ป้ายจุด) เตรียมไว้พร้อมส่ง — ยังไม่ต่อเข้า payload
- * จนกว่า BE (M13) กำหนดชื่อ field และเปิด `SEND_NEW_AG_DETAILS` ใน featureFlags.ts
- * อ้างด้วยเลขสถานี (ฐานข้อมูลสร้าง station id ฝั่งเซิร์ฟเวอร์) · ไม่มี % กิน (เพิ่งใส่เหยื่อ)
- */
-export function newAgDetails(form: FormState): { station_no: number; bait_added_g: number | null; point_label: string | null }[] {
-  const out: { station_no: number; bait_added_g: number | null; point_label: string | null }[] = [];
-  for (const w of form.works) {
-    if (w.type !== "AG" || w.kind !== "added") continue;
-    const nums = parseStationNumbers(w.noText);
-    if (!nums.ok) continue;
-    const bait = resolveBait(w.baitSelect ?? "", w.baitCustom ?? "");
-    const label = (w.label ?? "").trim();
-    for (const n of nums.numbers) {
-      out.push({ station_no: n, bait_added_g: bait.status === "ok" ? bait.grams : null, point_label: label === "" ? null : label });
-    }
-  }
-  return out;
+/** ข้อมูลติดตั้งของกล่อง AG ที่ติดใหม่ (ทุกเลขในแถวใช้เหยื่อ/ป้ายเดียวกัน) — ไม่มี % กิน */
+function installsOf(w: WorkRow, numbers: readonly number[]) {
+  const bait = resolveBait(w.baitSelect ?? "", w.baitCustom ?? "");
+  const label = (w.label ?? "").trim();
+  return numbers.map((n) => ({
+    station_no: n,
+    bait_added_g: bait.status === "ok" ? bait.grams : null,
+    point_label: label === "" ? null : label,
+  }));
 }
 
 /** สถานะที่ต้องส่ง (null = ไม่เปลี่ยน/ไม่ส่ง) */
-function agStatusToSend(
-  p: AgPointState,
-  includeRemoval: boolean,
-): "active" | "pending_removal" | "removed" | null {
+function agStatusToSend(p: AgPointState): "active" | "pending_removal" | "removed" | null {
   if (p.statusChoice === "locked") return null;
   const next = AG_STATUS_MAP[p.statusChoice];
   if (next === p.statusDb) return null;
-  if (next === "removed" && !includeRemoval) return null;
   return next;
-}
-
-/** สถานะ "ถอดแล้ว" ที่ผู้ใช้เลือกไว้ในครั้งนี้ (ใช้ตัดสินว่าต้องทำ 2 ขั้นตอนสำรองไหม) */
-export function hasPendingRemoval(form: FormState): boolean {
-  return form.ag.some((p) => agStatusToSend(p, true) === "removed");
 }

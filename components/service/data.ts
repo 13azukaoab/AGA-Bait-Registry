@@ -173,7 +173,14 @@ export async function loadContractList(
   return { items, truncated: (data ?? []).length >= CONTRACT_LIMIT, error: null };
 }
 
-type StationDb = { id: string; type: StationType; station_no: number | null; status: StationStatus; point_label: string | null };
+type StationDb = {
+  id: string;
+  type: StationType;
+  station_no: number | null;
+  status: StationStatus;
+  point_label: string | null;
+  install_bait_g: number | null;
+};
 
 const toStation = (s: StationDb): StationRow => ({
   id: s.id,
@@ -181,9 +188,10 @@ const toStation = (s: StationDb): StationRow => ({
   no: s.station_no,
   status: s.status,
   pointLabel: s.point_label ?? "",
+  installBaitG: s.install_bait_g,
 });
 
-const STATION_COLUMNS = "id, type, station_no, status, point_label";
+const STATION_COLUMNS = "id, type, station_no, status, point_label, install_bait_g";
 
 export async function loadStations(
   supabase: SupabaseClient,

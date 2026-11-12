@@ -8,8 +8,7 @@
  *     แล้วโหลดสถานีใหม่ (2) `save_service_visit` ครั้งเดียว (ผลตรวจ · ทีม · งานซ่อม · ป้าย/สถานะ AG)
  *     — 2 ขั้นไม่ atomic: ถ้าขั้น 2 ล้ม สัญญาถือว่าตั้งสถานีแล้ว ฟอร์มที่กรอกไว้ยังอยู่ กดบันทึกซ้ำได้
  *   * `visit_id` สร้างตอนเปิดฟอร์ม (formState.ts) → กดบันทึกซ้ำ/เน็ตสะดุดแล้วกดใหม่ = แก้ครั้งเดิม ไม่เกิดรายการซ้ำ
- *   * ถอดกล่อง AG พร้อมผลตรวจในการเข้าใหม่ครั้งเดียว: ปกติบันทึกครั้งเดียว (BE แก้ M13) · ตัวสำรอง 2 ขั้นไม่ atomic
- *     อยู่หลังสวิตช์ `DEFER_AG_REMOVAL` ใน featureFlags.ts (ปิดไว้)
+ *   * ถอดกล่อง AG พร้อมผลตรวจ และกล่อง AG ใหม่ (S) พร้อมเหยื่อ/ป้าย ส่งใน `save_service_visit` ครั้งเดียว (M13)
  *   * ตรวจฟอร์มก่อนบันทึก (validate.ts) · หลังกด "บันทึก" ครั้งแรกช่องที่ขาด/ผิดขึ้นกรอบแดง อัปเดตสดตามที่แก้ ·
  *     รายการ "บันทึกไม่ได้ — ยังขาด" กดแล้วเลื่อนไปที่ช่อง
  *   * F1–F10 ไม่ให้กรอก (แสดงจากฐานข้อมูล) · ข้อมูลทุกอย่างมาจากฐานข้อมูล ไม่มีตัวเลขสมมติ
@@ -21,9 +20,8 @@ import { Alert, Button, Chip, TierBadge } from "@/components/ui";
 import { cx } from "@/components/ui/cx";
 
 import { AgSection } from "./AgSection";
-import { buildPayload, hasPendingRemoval } from "./buildPayload";
+import { buildPayload } from "./buildPayload";
 import { ConfirmDialog } from "./ConfirmDialog";
-import { DEFER_AG_REMOVAL } from "./featureFlags";
 import { loadStations } from "./data";
 import { FindingsSection } from "./FindingsSection";
 import { deleteServiceVisit, initializeStations, saveServiceVisit } from "./rpc";
@@ -179,32 +177,17 @@ export function ServiceForm({
 
       // สถานีที่ใช้ได้ตอนจับคู่เลข = ที่ใช้งานอยู่ + ที่มีผลตรวจในการเข้านี้อยู่แล้ว
       const lookup = stations.filter((s) => isInUse(s.status) || savedCheckIds.has(s.id));
-      const deferRemoval = DEFER_AG_REMOVAL && hasPendingRemoval(effForm);
-
-      const first = buildPayload(effForm, item.contractId, lookup, { includeRemoval: !deferRemoval });
-      if (!first.ok) {
-        setErrorMsg(first.error);
+      const built = buildPayload(effForm, item.contractId, lookup);
+      if (!built.ok) {
+        setErrorMsg(built.error);
         if (initialized) onSaved({ created: false, initialized: true, stay: true });
         return;
       }
-      const r1 = await saveServiceVisit(supabase, first.payload);
-      if (!r1.ok) {
-        setErrorMsg(r1.error.message);
+      const saved = await saveServiceVisit(supabase, built.payload);
+      if (!saved.ok) {
+        setErrorMsg(saved.error.message);
         if (initialized) onSaved({ created: false, initialized: true, stay: true });
         return;
-      }
-      if (deferRemoval) {
-        const second = buildPayload(effForm, item.contractId, lookup, { includeRemoval: true });
-        if (second.ok) {
-          const r2 = await saveServiceVisit(supabase, second.payload);
-          if (!r2.ok) {
-            setErrorMsg(
-              `บันทึกผลตรวจแล้ว แต่เปลี่ยนสถานะ “ถอดแล้ว” ไม่สำเร็จ: ${r2.error.message} (กดบันทึกอีกครั้งเพื่อลองใหม่)`,
-            );
-            onSaved({ created: !form.isExisting, initialized, stay: true });
-            return;
-          }
-        }
       }
       onSaved({ created: !form.isExisting, initialized });
     } finally {

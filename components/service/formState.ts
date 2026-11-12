@@ -134,8 +134,17 @@ export function formFromVisit(detail: ContractDetail, visit: LoadedVisit): FormS
     .map((t) => ({ key: rowKey("t"), type: t, noText: formatStationNumbers(timberNos[t]) }));
 
   // ---------- AG: ที่ยังใช้งาน + ที่มีผลตรวจในการเข้านี้แล้ว ----------
+  // กล่อง AG ที่ติดใหม่ในการเข้านี้ (งาน "ฝังใหม่" AG) ไม่ใช่จุดตรวจ — แสดงเป็นกล่องใหม่ (S) แทน
+  const installedNos = new Set(
+    visit.works.filter((w) => w.kind === "added" && w.stationType === "AG").flatMap((w) => w.stationNos),
+  );
   const ag: AgPointState[] = detail.stations
-    .filter((s) => s.type === "AG" && (isInUse(s.status) || checkByStation.has(s.id)))
+    .filter(
+      (s) =>
+        s.type === "AG" &&
+        !(s.no !== null && installedNos.has(s.no) && !checkByStation.has(s.id)) &&
+        (isInUse(s.status) || checkByStation.has(s.id)),
+    )
     .map((s) => {
       const point = agPointFromStation(s);
       const c = checkByStation.get(s.id);
@@ -154,13 +163,24 @@ export function formFromVisit(detail: ContractDetail, visit: LoadedVisit): FormS
     })
     .sort(byNo);
 
-  const works: WorkRow[] = visit.works.map((w) => ({
-    id: w.id,
-    kind: w.kind,
-    type: w.stationType,
-    noText: formatStationNumbers(w.stationNos),
-    detail: w.detail,
-  }));
+  const works: WorkRow[] = visit.works.map((w) => {
+    const row: WorkRow = {
+      id: w.id,
+      kind: w.kind,
+      type: w.stationType,
+      noText: formatStationNumbers(w.stationNos),
+      detail: w.detail,
+    };
+    if (w.kind === "added" && w.stationType === "AG") {
+      // ข้อมูลติดตั้งเดิม (เหยื่อที่ใส่ + ป้ายจุด) จากสถานีที่งานนี้สร้าง — ใช้ค่าของเลขแรกเป็นตัวแทนของแถว
+      const first = detail.stations.find((s) => s.type === "AG" && s.no === w.stationNos[0] && isInUse(s.status));
+      const bait = baitToSelect(first?.installBaitG ?? null);
+      row.baitSelect = bait.select;
+      row.baitCustom = bait.custom;
+      row.label = first?.pointLabel ?? "";
+    }
+    return row;
+  });
 
   return {
     visitId: visit.id,

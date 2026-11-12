@@ -15,6 +15,7 @@ const st = (id: string, type: StationRow["type"], no: number, status: StationRow
   no,
   status,
   pointLabel: "",
+  installBaitG: null,
 });
 
 describe("bait", () => {

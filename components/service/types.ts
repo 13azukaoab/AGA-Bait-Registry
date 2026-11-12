@@ -68,6 +68,8 @@ export interface StationRow {
   no: number | null;
   status: StationStatus;
   pointLabel: string;
+  /** เหยื่อที่ใส่ตอนติดตั้ง (เฉพาะ AG ที่ติดใหม่ · ไม่ใช่ผลตรวจ) */
+  installBaitG: number | null;
 }
 
 export interface CheckRow {

@@ -8,8 +8,7 @@
  *     "ไม่ได้ตรวจจุดนี้" ไม่นับเป็นรอบ F
  *   * ป้ายกำกับจุด (ไม่บังคับ) ผูกกับจุดข้ามรอบ แก้ได้ทุกเดือนแม้ไม่ได้ตรวจ
  *   * สถานะจุด: ติดตามต่อ / รอถอด / ถอดแล้ว — จุดที่ถอด/กำจัดแล้วเปลี่ยนไม่ได้
- *   * "ติดกล่องใหม่ (S)": กรอก "เหยื่อที่ใส่" + "ป้ายจุด" (ไม่มี % กิน · ไม่นับเป็นรอบตรวจ → ครั้งถัดไปเป็น F1 SPEC §7.5)
- *     · ตอนนี้ส่งเข้า RPC แค่เลขกล่อง (รอ BE M13) — สวิตช์ `SEND_NEW_AG_DETAILS` ใน featureFlags.ts
+ *   * "ติดกล่องใหม่ (S)": กรอก "เหยื่อที่ใส่" + "ป้ายจุด" (ไม่มี % กิน · ไม่นับเป็นรอบตรวจ → ครั้งถัดไปเป็น F1 SPEC §7.5) · ส่งเป็น `installs` ใน works (M13)
  *   * ชิป: ใต้ดิน/ติดตาม = ฟ้า · ถอดแล้ว = เขียว · ไม่ได้ตรวจ = ส้ม · แดงใช้เฉพาะขาด/ผิด
  */
 import { useState } from "react";
@@ -19,7 +18,6 @@ import { cx } from "@/components/ui/cx";
 
 import { BaitField } from "./BaitField";
 import { EATEN_OPTIONS } from "./bait";
-import { SEND_NEW_AG_DETAILS } from "./featureFlags";
 import { newId, nextFollowUp, statusLabel } from "./formState";
 import { nextAgNumber } from "./stationIndex";
 import {
@@ -300,11 +298,6 @@ export function AgSection({
                   />
                 </div>
               </div>
-              {!SEND_NEW_AG_DETAILS ? (
-                <p className="m-0 mt-1.5 text-[11.5px] text-warn">
-                  ชั่วคราว: ตอนนี้ระบบบันทึกเฉพาะเลขกล่องที่ติดใหม่ — เหยื่อและป้ายจุดจะบันทึกได้เมื่อฐานข้อมูลอัปเดต (กำลังทำ)
-                </p>
-              ) : null}
               {issue.no ? <p className={cx(ERROR_TEXT, "mt-1")}>{issue.no}</p> : null}
             </div>
           );

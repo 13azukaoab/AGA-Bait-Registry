@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { buildPayload, hasPendingRemoval } from "./buildPayload";
+import { buildPayload } from "./buildPayload";
 import { emptySetup } from "./setup";
 import type { AgPointState, FindingRow, FormState, StationRow, WorkRow } from "./types";
 
@@ -10,6 +10,7 @@ const st = (id: string, type: StationRow["type"], no: number, status: StationRow
   no,
   status,
   pointLabel: "",
+  installBaitG: null,
 });
 
 const STATIONS: StationRow[] = [
@@ -77,8 +78,8 @@ const work = (over: Partial<WorkRow>): WorkRow => ({
   ...over,
 });
 
-function ok(form: FormState, includeRemoval = true) {
-  const r = buildPayload(form, "c1", STATIONS, { includeRemoval });
+function ok(form: FormState) {
+  const r = buildPayload(form, "c1", STATIONS);
   if (!r.ok) throw new Error(r.error);
   return r.payload;
 }
@@ -187,11 +188,10 @@ describe("buildPayload — กล่อง AG", () => {
     expect(p.station_labels).toEqual([{ station_id: "ag1", point_label: "ห้องนอน" }]);
   });
 
-  it("ถอดกล่อง: includeRemoval=false ไม่ส่งสถานะ removed (ตัวสำรอง 2 ขั้น)", () => {
-    const form = baseForm({ ag: [agPoint({ statusChoice: "removed" })] });
-    expect(hasPendingRemoval(form)).toBe(true);
-    expect(ok(form, false).station_statuses).toEqual([]);
-    expect(ok(form, true).station_statuses).toEqual([{ station_id: "ag1", status: "removed" }]);
+  it("ถอดกล่อง + ผลตรวจ ส่งครั้งเดียว (M13)", () => {
+    const p = ok(baseForm({ ag: [agPoint({ statusChoice: "removed" })] }));
+    expect(p.station_statuses).toEqual([{ station_id: "ag1", status: "removed" }]);
+    expect(p.checks).toHaveLength(1);
   });
 
   it("สถานะ locked (eliminated) ไม่ส่ง", () => {
@@ -235,15 +235,28 @@ describe("buildPayload — งานซ่อม", () => {
   });
 });
 
-describe("newAgDetails — กล่อง AG ใหม่ (S) เตรียมไว้ ยังไม่ส่งเข้า RPC", () => {
-  it("ไม่รวมเข้า payload ตอนนี้ แต่เตรียมเหยื่อ+ป้ายตามเลขกล่อง", async () => {
-    const { newAgDetails } = await import("./buildPayload");
-    const form = baseForm({
-      works: [work({ id: "s1", kind: "added", type: "AG", noText: "3", baitSelect: "100", label: " ห้องนอน " })],
+describe("กล่อง AG ใหม่ (S) — installs", () => {
+  it("ส่ง installs ใน work ฝังใหม่ AG (เหยื่อ + ป้าย · ไม่มี % กิน) และไม่สร้างแถวผลตรวจ", () => {
+    const p = ok(baseForm({ works: [work({ id: "s1", kind: "added", type: "AG", noText: "3", baitSelect: "100", label: " ห้องนอน " })] }));
+    expect(p.works[0]).toEqual({
+      id: "s1",
+      kind: "added",
+      station_type: "AG",
+      station_nos: [3],
+      detail: null,
+      installs: [{ station_no: 3, bait_added_g: 100, point_label: "ห้องนอน" }],
     });
-    expect(newAgDetails(form)).toEqual([{ station_no: 3, bait_added_g: 100, point_label: "ห้องนอน" }]);
-    const p = ok(form);
-    expect(JSON.stringify(p)).not.toContain("point_label\":\"ห้องนอน");
-    expect(p.works[0]).toMatchObject({ kind: "added", station_type: "AG", station_nos: [3] });
+    expect(p.checks).toEqual([]);
+  });
+  it("หลายเลขในแถวเดียวใช้เหยื่อ/ป้ายเดียวกัน · ไม่กรอก = null", () => {
+    const p = ok(baseForm({ works: [work({ kind: "added", type: "AG", noText: "3-4" })] }));
+    expect(p.works[0]?.installs).toEqual([
+      { station_no: 3, bait_added_g: null, point_label: null },
+      { station_no: 4, bait_added_g: null, point_label: null },
+    ]);
+  });
+  it("งานอื่น (ฝังใหม่ IG, ซ่อม) ไม่ส่ง installs (ฐานข้อมูลปฏิเสธ 22023)", () => {
+    const p = ok(baseForm({ works: [work({ kind: "added", type: "IG", noText: "7" }), work({ id: "w2" })] }));
+    expect(p.works.every((w) => !("installs" in w))).toBe(true);
   });
 });
