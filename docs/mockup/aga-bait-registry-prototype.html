@@ -1431,7 +1431,7 @@ function agLabelHtml(ctx,p,key,dis){
 }
 function agPointHtml(ctx,m,p,bad){
   var isS=(p.kind==='S'), off=(ctx==='sv'&&m.skip&&!isS), key='data-ctx="'+ctx+'" data-k="'+p.k+'"', dis=off?' disabled':'';
-  var chip=p.st==='pend'?'<span class="chip pend">รอถอด</span>':(p.st==='rm'?'<span class="chip done">ถอดกล่อง</span>':'<span class="chip info">กำลังติดตาม</span>');
+  var chip=p.st==='pend'?'<span class="chip pend">รอถอด</span>':(p.st==='rm'?'<span class="chip ok">ถอดกล่อง</span>':'<span class="chip info">กำลังติดตาม</span>');
   var fno=isS?'ติดตั้งใหม่ (S)':'ติดตามผล F'+(p.last+1);
   var h='<div class="pt'+(off?' off':'')+'"><div class="top"><span class="sttype">AG</span><b>จุดที่ '+p.no+'</b>'+agLabelHtml(ctx,p,key,dis)+chip+
     '<span class="fno">'+fno+' <span class="auto-tag">อัตโนมัติ</span></span>'+
