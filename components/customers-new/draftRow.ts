@@ -13,7 +13,7 @@ import type { TermYears } from "@/lib/rules";
 
 import { resolveBranch, type BranchOption } from "./branchMatch";
 import { normalizeContractNo } from "./contractNo";
-import { endDateWarning, isPlausibleDate, parseMoney } from "./rowCalc";
+import { autoEndDate, endDateWarning, isPlausibleDate, parseMoney } from "./rowCalc";
 import type { DraftRow } from "./types";
 
 export type DraftField =
@@ -88,6 +88,19 @@ export function termFromValues(value1y: string, value3y: string): TermYears | nu
   const has3 = value3y.trim() !== "";
   if (has1 === has3) return null;
   return has1 ? 1 : 3;
+}
+
+/**
+ * แก้ช่องของแถว + คำนวณวันสิ้นสุดอัตโนมัติ (วันเริ่ม + ระยะ − 1 วัน) จนกว่าผู้ใช้แก้วันสิ้นสุดเอง
+ * ใช้ทั้งแถวร่างและแถวที่กำลังแก้ · ล้างข้อความผิดพลาดของการบันทึกรอบก่อน
+ */
+export function applyDraftPatch(row: DraftRow, patch: Partial<DraftRow>): DraftRow {
+  const next = { ...row, ...patch, saveError: null };
+  if (!next.endTouched) {
+    const term = termFromValues(next.value1y, next.value3y);
+    next.endDate = term ? (autoEndDate(next.startDate, term) ?? "") : "";
+  }
+  return next;
 }
 
 export function checkDraft(

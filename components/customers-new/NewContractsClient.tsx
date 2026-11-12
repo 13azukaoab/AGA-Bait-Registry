@@ -5,8 +5,12 @@
  * ตาม mockup FINAL `docs/mockup/admin-add-customer.html`
  *
  * Logic summary:
- *   * แถวมี 2 ชนิด: "บันทึกแล้ว" (มาจากฐานข้อมูล ตามเดือนที่เลือก · อ่านอย่างเดียว + แนบไฟล์/ลบ/ดูประวัติ)
- *     และ "ร่าง" (แถวที่กำลังกรอก ยังไม่บันทึก) — ร่างแสดงเสมอ ไม่ถูกตัวกรองซ่อน กันงานที่พิมพ์ค้างหาย
+ *   * แถวมี 3 แบบ: "บันทึกแล้ว" (มาจากฐานข้อมูล ตามเดือนที่เลือก · อ่านอย่างเดียว + แนบไฟล์/แก้/ลบ/ดูประวัติ)
+ *     · "กำลังแก้" (กดปุ่ม แก้ ที่แถวบันทึกแล้ว → แถวเดิมกลายเป็นช่องกรอก ดู `editRow.ts`) · และ "ร่าง"
+ *     (แถวที่กำลังกรอก ยังไม่บันทึก) — ร่างแสดงเสมอ ไม่ถูกตัวกรองซ่อน กันงานที่พิมพ์ค้างหาย
+ *   * แก้แถว (รอบ 1.3): บันทึก = RPC `save_job_opening` โหมดแก้ (ส่ง `p_contract_id`) ทีละแถว · ล็อกสาขา/ชื่อลูกค้า/
+ *     ประเภทลูกค้า · สัญญา closed/cancelled ปิดปุ่มแก้ · แก้แล้ว trigger ลง audit_log เอง → router.refresh() ให้ตัวนับ
+ *     "ประวัติ (n)" อัปเดต · ยกเลิก = ทิ้งแถวที่แก้ ค่ากลับเป็นของเดิมในฐานข้อมูล
  *   * ช่องคำนวณ (เขต/Tier/วันสิ้นสุด) เรียก `rowCalc.ts` → `lib/rules` · เกณฑ์ Tier มาจาก `tier_rules` ที่ server ส่งมา
  *   * ตัวกรอง เดือน = เปลี่ยน `?month=` (server โหลดใหม่) · เขต/สาขา/สถานะ/ค้นหา = กรองฝั่ง client
  *     เฉพาะแถวที่บันทึกแล้วของเดือนที่เลือก
@@ -28,13 +32,21 @@ import { resolveBranch } from "./branchMatch";
 import { checkContractNos, normalizeContractNo } from "./contractNo";
 import {
   SERVICE_TIME_SLOTS,
+  applyDraftPatch,
   canSave,
   checkDraft,
   createDraft,
   missingLabel,
-  termFromValues,
 } from "./draftRow";
 import { buildDeleteConfirmText, contractDeleteBlockReason } from "./deleteRules";
+import {
+  EDIT_LOCK_REASONS,
+  checkRenewalPickForEdit,
+  contractEditBlockReason,
+  draftFromSaved,
+  isEditUnchanged,
+  monthOfDate,
+} from "./editRow";
 import { applyFilters, type FilterableRow, type StatusFilter } from "./filters";
 import { DuplicateCustomerDialog } from "./DuplicateCustomerDialog";
 import type { DuplicateChoice, DuplicateCustomerMatch } from "./duplicateCustomer";
@@ -47,7 +59,7 @@ import { RenewalDialog } from "./RenewalDialog";
 import { deleteContract, findLinkedRenewals, saveDraft, type SaveResult } from "./save";
 import { describeTypeMismatch } from "./saveRules";
 import { TeamPicker } from "./TeamPicker";
-import { autoEndDate, endDateWarning, formatMoney, tierFor } from "./rowCalc";
+import { endDateWarning, formatMoney, tierFor } from "./rowCalc";
 import type {
   CustomerTypeOption,
   DraftRow,
@@ -72,6 +84,11 @@ const TD = "border-b border-border px-1.5 py-1 align-middle";
 
 const border = (bad: boolean) => (bad ? "border-danger" : "border-border-strong");
 
+/** แถวที่กำลังแก้: `draft` = ค่าที่กำลังพิมพ์ · `original` = ค่าตอนกดแก้ (ไว้เทียบว่าแก้อะไรหรือยัง) */
+type EditState = { draft: DraftRow; original: DraftRow };
+
+type RenewalTarget = { kind: "draft"; key: string } | { kind: "edit"; contractId: string };
+
 type FileTarget =
   | { kind: "saved"; contractId: string }
   | { kind: "draft"; key: string }
@@ -95,8 +112,12 @@ export function NewContractsClient({ role, month, monthChoices, master, saved, t
   );
   const [fileTarget, setFileTarget] = useState<FileTarget>(null);
   const [historyFor, setHistoryFor] = useState<SavedContract | null>(null);
-  /** key ของแถวร่างที่กำลังเลือกลูกค้าเดิม (Renew) */
-  const [renewalFor, setRenewalFor] = useState<string | null>(null);
+  /** แถว (ร่าง หรือแถวที่กำลังแก้) ที่กำลังเลือกลูกค้าเดิม (Renew) */
+  const [renewalFor, setRenewalFor] = useState<RenewalTarget | null>(null);
+  /** แถวที่บันทึกแล้วซึ่งกำลังแก้ — key = contractId */
+  const [edits, setEdits] = useState<Record<string, EditState>>({});
+  /** contractId ของแถวที่กำลังส่งบันทึก (กันกดซ้ำ) */
+  const [savingEditId, setSavingEditId] = useState<string | null>(null);
   const [showErrors, setShowErrors] = useState(false);
   /** กล่องถามชื่อลูกค้าซ้ำ (AG001) — `resolve` ส่งคำตอบกลับให้ลูปบันทึกที่รออยู่ */
   const [dupPrompt, setDupPrompt] = useState<{
@@ -113,14 +134,28 @@ export function NewContractsClient({ role, month, monthChoices, master, saved, t
   );
   const teamCode = useMemo(() => new Map(master.teams.map((t) => [t.id, t.code])), [master]);
 
-  // ---------- ตรวจร่างทั้งตาราง (เลขที่สัญญาซ้ำ = เทียบกับแถวที่บันทึกแล้วในเดือนด้วย) ----------
-  const draftChecks = useMemo(() => {
-    const all = [...saved.map((s) => s.contractNo), ...drafts.map((d) => d.contractNo)];
+  // ---------- ตรวจร่าง + แถวที่กำลังแก้ ทั้งตาราง ----------
+  // เลขที่สัญญาซ้ำ = เทียบกับแถวที่บันทึกแล้วในเดือนด้วย · แถวที่กำลังแก้ใช้เลขที่ "ที่กำลังพิมพ์" แทนเลขเดิม
+  // (ไม่งั้นแก้เลขที่แล้วชนกับเลขเดิมของตัวเอง)
+  const editedSaved = useMemo(() => saved.filter((s) => edits[s.contractId]), [saved, edits]);
+  const { draftChecks, editChecks } = useMemo(() => {
+    const fixedNos = saved.filter((s) => !edits[s.contractId]).map((s) => s.contractNo);
+    const editNos = editedSaved.map((s) => edits[s.contractId]!.draft.contractNo);
+    const all = [...fixedNos, ...editNos, ...drafts.map((d) => d.contractNo)];
     const noErrors = checkContractNos(all);
-    return drafts.map((d, i) =>
-      checkDraft(d, master.branches, noErrors.get(saved.length + i)),
+    const editMap = new Map(
+      editedSaved.map((s, i) => [
+        s.contractId,
+        checkDraft(edits[s.contractId]!.draft, master.branches, noErrors.get(fixedNos.length + i)),
+      ]),
     );
-  }, [drafts, saved, master.branches]);
+    return {
+      draftChecks: drafts.map((d, i) =>
+        checkDraft(d, master.branches, noErrors.get(fixedNos.length + editNos.length + i)),
+      ),
+      editChecks: editMap,
+    };
+  }, [drafts, saved, edits, editedSaved, master.branches]);
 
   // ---------- แถวที่บันทึกแล้ว: คำนวณเพื่อกรอง/แสดง ----------
   const savedView = useMemo(
@@ -181,19 +216,67 @@ export function NewContractsClient({ role, month, monthChoices, master, saved, t
 
   // ---------- แก้ร่าง ----------
   const patchDraft = useCallback((key: string, patch: Partial<DraftRow>) => {
-    setDrafts((rows) =>
-      rows.map((r) => {
-        if (r.key !== key) return r;
-        const next = { ...r, ...patch, saveError: null };
-        // วันสิ้นสุดอัตโนมัติ: ตามวันเริ่ม + ระยะ จนกว่าผู้ใช้แก้วันสิ้นสุดเอง
-        if (!next.endTouched) {
-          const term = termFromValues(next.value1y, next.value3y);
-          next.endDate = term ? (autoEndDate(next.startDate, term) ?? "") : "";
-        }
-        return next;
-      }),
-    );
+    // วันสิ้นสุดอัตโนมัติ (ตามวันเริ่ม + ระยะ จนกว่าผู้ใช้แก้เอง) คำนวณใน applyDraftPatch
+    setDrafts((rows) => rows.map((r) => (r.key === key ? applyDraftPatch(r, patch) : r)));
   }, []);
+
+  // ---------- แก้แถวที่บันทึกแล้ว ----------
+  const startEdit = (s: SavedContract) => {
+    setBanner(null);
+    setEdits((all) => {
+      if (all[s.contractId]) return all;
+      const draft = draftFromSaved(s, master);
+      return { ...all, [s.contractId]: { draft, original: draft } };
+    });
+  };
+
+  /** ยกเลิก = ทิ้งค่าที่แก้ ตารางกลับไปแสดงค่าเดิมจากฐานข้อมูล */
+  const cancelEdit = (contractId: string) =>
+    setEdits((all) => {
+      const rest = { ...all };
+      delete rest[contractId];
+      return rest;
+    });
+
+  const patchEdit = useCallback((contractId: string, patch: Partial<DraftRow>) => {
+    setEdits((all) => {
+      const cur = all[contractId];
+      return cur ? { ...all, [contractId]: { ...cur, draft: applyDraftPatch(cur.draft, patch) } } : all;
+    });
+  }, []);
+
+  const setEditError = (contractId: string, message: string) =>
+    setEdits((all) => {
+      const cur = all[contractId];
+      return cur ? { ...all, [contractId]: { ...cur, draft: { ...cur.draft, saveError: message } } } : all;
+    });
+
+  async function saveEdit(s: SavedContract) {
+    const edit = edits[s.contractId];
+    const check = editChecks.get(s.contractId);
+    if (!edit || !check || savingEditId) return;
+    setBanner(null);
+    if (!canSave(check)) {
+      setEditError(s.contractId, `ข้อมูลไม่ครบ ตรวจช่องที่ขึ้นขอบแดง (${missingLabel(check)})`);
+      return;
+    }
+    setSavingEditId(s.contractId);
+    const res = await saveDraft(supabase, edit.draft, check, { contractId: s.contractId });
+    setSavingEditId(null);
+    if (!res.ok) {
+      setEditError(s.contractId, res.error);
+      return;
+    }
+    cancelEdit(s.contractId);
+    const no = edit.draft.contractNo.trim();
+    const movedTo = monthOfDate(edit.draft.startDate);
+    setToast(
+      movedTo === month
+        ? `แก้สัญญา ${no} แล้ว`
+        : `แก้สัญญา ${no} แล้ว — วันเริ่มย้ายไปเดือน ${monthLabel(movedTo)} (ดูได้ที่เดือนนั้น)`,
+    );
+    router.refresh();
+  }
 
   const removeDraft = (key: string) => setDrafts((rows) => rows.filter((r) => r.key !== key));
 
@@ -499,7 +582,7 @@ export function NewContractsClient({ role, month, monthChoices, master, saved, t
             <option key={b.id} value={b.name} />
           ))}
         </datalist>
-        <table className="w-full min-w-[2560px] border-collapse text-[13px]">
+        <table className="w-full min-w-[2620px] border-collapse text-[13px]">
           <caption className="sr-only">ตารางเปิดงานของ {monthLabel(month)}</caption>
           <thead>
             <tr>
@@ -526,8 +609,8 @@ export function NewContractsClient({ role, month, monthChoices, master, saved, t
               <th scope="col" className={cx(TH, "w-[200px]")}>หมายเหตุ</th>
               <th scope="col" className={cx(TH, "w-[110px] text-center")}>ไฟล์แนบ</th>
               <th scope="col" className={cx(TH, "w-[170px] text-center")}>สถานะ</th>
-              <th scope="col" className={cx(TH, "w-[56px]")}>
-                <span className="sr-only">ลบ</span>
+              <th scope="col" className={cx(TH, "w-[116px]")}>
+                <span className="sr-only">แก้ / ลบ</span>
               </th>
             </tr>
           </thead>
@@ -538,6 +621,45 @@ export function NewContractsClient({ role, month, monthChoices, master, saved, t
               const tier = tierFor(s.valueTotal, s.termYears, master.tierRules);
               const hasPdf = v.hasPdf;
               const spCount = s.files.filter((f) => f.kind === "site_plan").length;
+
+              // ----- แถวที่กำลังแก้: ใช้ช่องกรอก/ตัวตรวจ/Tier ชุดเดียวกับแถวร่าง (ล็อกสาขา/ชื่อ/ประเภทลูกค้า) -----
+              const edit = edits[s.contractId];
+              const editCheck = editChecks.get(s.contractId);
+              if (edit && editCheck) {
+                const ed = edit.draft;
+                const editWarn = editCheck.termYears
+                  ? endDateWarning(ed.startDate, ed.endDate, editCheck.termYears)
+                  : null;
+                return (
+                  <DraftTableRow
+                    key={s.contractId}
+                    mode="edit"
+                    rowNo={idx + 1}
+                    d={ed}
+                    c={editCheck}
+                    branchName={v.branch?.zoneName.replace("เขต ", "") ?? ""}
+                    branchBad={false}
+                    err={(f) => Boolean(editCheck.errors[f])}
+                    tier={tierFor(editCheck.valueTotal, editCheck.termYears, master.tierRules)}
+                    warn={editWarn}
+                    showErrors
+                    master={master}
+                    fileAttached={hasPdf}
+                    fileExtra={spCount}
+                    editing={{
+                      saving: savingEditId === s.contractId,
+                      unchanged: isEditUnchanged(edit.original, ed),
+                      onSave: () => void saveEdit(s),
+                      onCancel: () => cancelEdit(s.contractId),
+                    }}
+                    onPatch={(patch) => patchEdit(s.contractId, patch)}
+                    onFile={() => setFileTarget({ kind: "saved", contractId: s.contractId })}
+                    onRenewal={() => setRenewalFor({ kind: "edit", contractId: s.contractId })}
+                    onRemove={() => cancelEdit(s.contractId)}
+                  />
+                );
+              }
+              const editBlocked = contractEditBlockReason(s.status);
               return (
                 <tr key={s.contractId}>
                   <td className={cx(TD, "num text-center text-fg-muted")}>{idx + 1}</td>
@@ -648,7 +770,17 @@ export function NewContractsClient({ role, month, monthChoices, master, saved, t
                       <Chip tone="ok">ครบ</Chip>
                     )}
                   </td>
-                  <td className={cx(TD, "text-center")}>
+                  <td className={cx(TD, "whitespace-nowrap text-center")}>
+                    <button
+                      type="button"
+                      onClick={() => startEdit(s)}
+                      disabled={editBlocked !== null}
+                      aria-label={`แก้สัญญา ${s.contractNo}`}
+                      title={editBlocked ?? "แก้สัญญานี้ (สาขาและชื่อลูกค้าแก้ไม่ได้)"}
+                      className="mr-1 cursor-pointer rounded px-1.5 py-0.5 text-[12px] text-accent hover:bg-accent-soft focus-visible:outline-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
+                    >
+                      แก้
+                    </button>
                     <button
                       type="button"
                       onClick={() => void removeSaved(s)}
@@ -689,7 +821,7 @@ export function NewContractsClient({ role, month, monthChoices, master, saved, t
                   master={master}
                   onPatch={(patch) => patchDraft(d.key, patch)}
                   onFile={() => setFileTarget({ kind: "draft", key: d.key })}
-                  onRenewal={() => setRenewalFor(d.key)}
+                  onRenewal={() => setRenewalFor({ kind: "draft", key: d.key })}
                   onRemove={() => removeDraft(d.key)}
                 />
               );
@@ -778,13 +910,26 @@ export function NewContractsClient({ role, month, monthChoices, master, saved, t
           branchNameOf={(id) => branchById.get(id)?.name ?? ""}
           onClose={() => setRenewalFor(null)}
           onPick={(link: RenewalLink) => {
-            // ลูกค้าเดิม: ใช้ชื่อ/สาขาของลูกค้านั้น (ไม่สร้างลูกค้าใหม่ตอนบันทึก)
-            patchDraft(renewalFor, {
-              renewal: link,
-              customerName: link.customerName,
-              branchText: branchById.get(link.branchId)?.name ?? "",
-            });
+            const target = renewalFor;
             setRenewalFor(null);
+            if (target.kind === "draft") {
+              // ลูกค้าเดิม: ใช้ชื่อ/สาขาของลูกค้านั้น (ไม่สร้างลูกค้าใหม่ตอนบันทึก)
+              patchDraft(target.key, {
+                renewal: link,
+                customerName: link.customerName,
+                branchText: branchById.get(link.branchId)?.name ?? "",
+              });
+              return;
+            }
+            // แก้แถวที่บันทึกแล้ว: ลูกค้า/สาขาล็อกอยู่ — ผูกได้เฉพาะสัญญาเก่าของลูกค้าคนเดียวกัน
+            const s = saved.find((x) => x.contractId === target.contractId);
+            if (!s) return;
+            const verdict = checkRenewalPickForEdit(link, s);
+            if (!verdict.ok) {
+              setEditError(target.contractId, verdict.error);
+              return;
+            }
+            patchEdit(target.contractId, { renewal: link });
           }}
         />
       ) : null}
@@ -834,7 +979,20 @@ type DraftErr = (
     | "value",
 ) => boolean;
 
+/** ปุ่ม บันทึก/ยกเลิก ของแถวที่กำลังแก้ (มีเฉพาะ mode="edit") */
+type EditingControls = {
+  saving: boolean;
+  /** ยังไม่ได้แก้อะไร — ปิดปุ่มบันทึก (ไม่ส่งคำสั่งเปล่าที่จะลงประวัติโดยไม่มีอะไรเปลี่ยน) */
+  unchanged: boolean;
+  onSave: () => void;
+  onCancel: () => void;
+};
+
 function DraftTableRow({
+  mode = "draft",
+  fileAttached,
+  fileExtra = 0,
+  editing,
   rowNo,
   d,
   c,
@@ -850,6 +1008,12 @@ function DraftTableRow({
   onRenewal,
   onRemove,
 }: {
+  /** draft = แถวใหม่ที่กำลังกรอก · edit = แถวที่บันทึกแล้วที่กำลังแก้ (ล็อกสาขา/ชื่อลูกค้า/ประเภทลูกค้า) */
+  mode?: "draft" | "edit";
+  /** แถวที่กำลังแก้ใช้ไฟล์ที่แนบไว้จริงในฐานข้อมูลแทนไฟล์รออัปโหลด */
+  fileAttached?: boolean;
+  fileExtra?: number;
+  editing?: EditingControls;
   rowNo: number;
   d: DraftRow;
   c: ReturnType<typeof checkDraft>;
@@ -866,6 +1030,7 @@ function DraftTableRow({
   onRemove: () => void;
 }) {
   const hasErrors = !canSave(c);
+  const isEdit = mode === "edit";
   const termLocked1 = d.value3y.trim() !== "";
   const termLocked3 = d.value1y.trim() !== "";
   const groups = useMemo(() => {
@@ -902,7 +1067,13 @@ function DraftTableRow({
 
   return (
     <>
-      <tr className={cx(showErrors && hasErrors && "bg-danger-soft", warn && !hasErrors && "bg-warn-soft")}>
+      <tr
+        className={cx(
+          isEdit && "bg-accent-soft",
+          showErrors && hasErrors && "bg-danger-soft",
+          warn && !hasErrors && "bg-warn-soft",
+        )}
+      >
         <td className={cx(TD, "num text-center text-fg-muted")}>{rowNo}</td>
         <td className={TD}>
           <input
@@ -919,10 +1090,20 @@ function DraftTableRow({
             aria-label="ชื่อลูกค้า"
             value={d.customerName}
             autoComplete="off"
-            readOnly={d.renewal !== null}
-            title={d.renewal ? "ลูกค้าเดิมตามสัญญาที่ผูกไว้ — แก้ชื่อไม่ได้" : ""}
+            readOnly={isEdit || d.renewal !== null}
+            title={
+              isEdit
+                ? EDIT_LOCK_REASONS.customerName
+                : d.renewal
+                  ? "ลูกค้าเดิมตามสัญญาที่ผูกไว้ — แก้ชื่อไม่ได้"
+                  : ""
+            }
             onChange={(e) => onPatch({ customerName: e.target.value })}
-            className={cx(INPUT, border(err("customerName")), d.renewal && "bg-surface-2")}
+            className={cx(
+              INPUT,
+              border(err("customerName")),
+              (isEdit || d.renewal) && "bg-surface-2 text-fg-muted",
+            )}
           />
         </td>
         <td className={cx(TD, "text-center")}>
@@ -1007,17 +1188,19 @@ function DraftTableRow({
             value={d.branchText}
             autoComplete="off"
             placeholder="พิมพ์ชื่อสาขา…"
-            readOnly={d.renewal !== null}
+            readOnly={isEdit || d.renewal !== null}
             title={
-              d.renewal
-                ? "สาขาของลูกค้าเดิม — แก้ไม่ได้"
-                : branchBad
-                  ? "ไม่พบสาขานี้ในรายการ — เลือกจากที่ระบบเดาให้"
-                  : ""
+              isEdit
+                ? EDIT_LOCK_REASONS.branch
+                : d.renewal
+                  ? "สาขาของลูกค้าเดิม — แก้ไม่ได้"
+                  : branchBad
+                    ? "ไม่พบสาขานี้ในรายการ — เลือกจากที่ระบบเดาให้"
+                    : ""
             }
             onFocus={(e) => e.currentTarget.select()}
             onChange={(e) => onPatch({ branchText: e.target.value })}
-            className={cx(INPUT, border(branchBad), d.renewal && "bg-surface-2")}
+            className={cx(INPUT, border(branchBad), (isEdit || d.renewal) && "bg-surface-2 text-fg-muted")}
           />
         </td>
         <td className={cx(TD, "text-center")}>
@@ -1080,6 +1263,8 @@ function DraftTableRow({
           <select
             aria-label="ประเภทลูกค้า"
             value={d.customerTypeCode}
+            disabled={isEdit}
+            title={isEdit ? EDIT_LOCK_REASONS.customerType : ""}
             onChange={(e) => onPatch({ customerTypeCode: e.target.value })}
             className={cx(INPUT, "border-border-strong")}
           >
@@ -1134,7 +1319,11 @@ function DraftTableRow({
           />
         </td>
         <td className={cx(TD, "text-center")}>
-          <FileChip attached={d.pendingPdf !== null} extra={0} onClick={onFile} />
+          <FileChip
+            attached={fileAttached ?? d.pendingPdf !== null}
+            extra={fileExtra}
+            onClick={onFile}
+          />
         </td>
         <td className={cx(TD, "text-center")}>
           {hasErrors ? (
@@ -1148,22 +1337,47 @@ function DraftTableRow({
           )}
         </td>
         <td className={cx(TD, "text-center")}>
-          <button
-            type="button"
-            onClick={onRemove}
-            aria-label={`เอาแถวที่ ${rowNo} ออก`}
-            title="เอาแถวนี้ออก (ยังไม่บันทึก)"
-            className="cursor-pointer rounded px-1.5 py-0.5 text-fg-muted hover:bg-surface-3 focus-visible:outline-2 focus-visible:outline-accent"
-          >
-            ✕
-          </button>
+          {editing ? (
+            <div className="flex flex-col gap-1">
+              <Button
+                size="sm"
+                variant="primary"
+                loading={editing.saving}
+                disabled={editing.unchanged}
+                title={editing.unchanged ? "ยังไม่ได้แก้อะไร" : "บันทึกการแก้ไขสัญญานี้"}
+                aria-label={`บันทึกการแก้ไขสัญญา ${d.contractNo}`}
+                onClick={editing.onSave}
+              >
+                บันทึก
+              </Button>
+              <Button
+                size="sm"
+                disabled={editing.saving}
+                title="ยกเลิกการแก้ — คืนค่าเดิม"
+                aria-label={`ยกเลิกการแก้สัญญา ${d.contractNo}`}
+                onClick={editing.onCancel}
+              >
+                ยกเลิก
+              </Button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={onRemove}
+              aria-label={`เอาแถวที่ ${rowNo} ออก`}
+              title="เอาแถวนี้ออก (ยังไม่บันทึก)"
+              className="cursor-pointer rounded px-1.5 py-0.5 text-fg-muted hover:bg-surface-3 focus-visible:outline-2 focus-visible:outline-accent"
+            >
+              ✕
+            </button>
+          )}
         </td>
       </tr>
       {d.saveError ? (
         <tr className="bg-danger-soft">
           <td />
           <td colSpan={23} className="px-2 py-1 text-[12.5px] text-danger" role="alert">
-            บันทึกแถวนี้ไม่สำเร็จ: {d.saveError}
+            {isEdit ? "แก้สัญญานี้ไม่สำเร็จ" : "บันทึกแถวนี้ไม่สำเร็จ"}: {d.saveError}
           </td>
         </tr>
       ) : null}

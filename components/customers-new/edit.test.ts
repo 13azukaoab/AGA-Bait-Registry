@@ -1,0 +1,283 @@
+/**
+ * เทสรอบ 1.3 ของหน้า /customers/new — แก้แถวที่บันทึกแล้ว
+ * ใช้ Supabase client ปลอม (ไม่แตะฐานข้อมูลจริง) · ของจริงทดสอบกับ DB local ตามรายงานของ sub session
+ */
+import { describe, expect, it } from "vitest";
+
+import type { BranchOption } from "./branchMatch";
+import { applyDraftPatch, canSave, checkDraft } from "./draftRow";
+import {
+  EDIT_LOCK_REASONS,
+  checkRenewalPickForEdit,
+  contractEditBlockReason,
+  draftFromSaved,
+  isEditUnchanged,
+  monthOfDate,
+} from "./editRow";
+import { saveDraft } from "./save";
+import { buildSaveParams } from "./savePayload";
+import { tierFor } from "./rowCalc";
+import type { SavedContract } from "./types";
+
+const branches: BranchOption[] = [{ id: "b1", name: "นครปฐม", zoneId: "z1", zoneName: "เขต 1" }];
+const master = { branches };
+const rules = [
+  { tier: "S", minAnnual: 0 },
+  { tier: "M", minAnnual: 30000 },
+  { tier: "L", minAnnual: 100000 },
+  { tier: "XL", minAnnual: 150000 },
+] as const;
+
+function saved(over: Partial<SavedContract> = {}): SavedContract {
+  return {
+    contractId: "c1",
+    customerId: "u1",
+    contractNo: "CT26-0000001",
+    customerName: "บจก. ตัวอย่าง",
+    customerTypeCode: "B",
+    branchId: "b1",
+    saleType: "new",
+    status: "active",
+    sellerName: "พนักงานขาย",
+    sellerRole: "sale",
+    isUrgent: false,
+    renewedFrom: null,
+    mailReceivedDate: "2026-10-01",
+    firstServiceDate: "2026-10-10",
+    firstServiceTime: "09:30",
+    note: "หมายเหตุ",
+    startDate: "2026-10-01",
+    endDate: "2027-09-30",
+    termYears: 1,
+    valueTotal: 99510,
+    teamIds: ["t2", "t1"],
+    files: [],
+    auditCount: 1,
+    auditCountFailed: false,
+    ...over,
+  };
+}
+
+describe("draftFromSaved — สัญญาที่บันทึกแล้ว → แถวสำหรับแก้", () => {
+  it("คัดลอกทุกช่องตามที่เห็นในตาราง · มูลค่า 1 ปีลงช่อง 1 ปี", () => {
+    const d = draftFromSaved(saved(), master);
+    expect(d).toMatchObject({
+      contractNo: "CT26-0000001",
+      customerName: "บจก. ตัวอย่าง",
+      branchText: "นครปฐม",
+      customerTypeCode: "B",
+      saleName: "พนักงานขาย",
+      sellerRole: "sale",
+      mailReceivedDate: "2026-10-01",
+      firstServiceDate: "2026-10-10",
+      firstServiceTime: "09:30",
+      note: "หมายเหตุ",
+      value1y: "99,510.00",
+      value3y: "",
+      teamIds: ["t2", "t1"],
+      saveError: null,
+      pendingPdf: null,
+    });
+  });
+  it("มูลค่า 3 ปีลงช่อง 3 ปี · ตำแหน่ง AM คงไว้", () => {
+    const d = draftFromSaved(saved({ termYears: 3, valueTotal: 300000, sellerRole: "am" }), master);
+    expect(d).toMatchObject({ value1y: "", value3y: "300,000.00", sellerRole: "am" });
+  });
+  it("ไม่แชร์อาร์เรย์ทีมกับต้นฉบับ (แก้ร่างแล้วต้นฉบับไม่เปลี่ยน)", () => {
+    const s = saved();
+    const d = draftFromSaved(s, master);
+    d.teamIds.push("t9");
+    expect(s.teamIds).toEqual(["t2", "t1"]);
+  });
+  it("Renew: ผูกสัญญาเก่าเป็นลูกค้าเดียวกับสัญญานี้ · เลขสัญญาเก่าอ่านไม่ได้ = ว่างแต่ยังผูก", () => {
+    const d = draftFromSaved(
+      saved({ saleType: "renew", renewedFrom: { contractId: "old", contractNo: null } }),
+      master,
+    );
+    expect(d.renewal).toMatchObject({ contractId: "old", contractNo: "", customerId: "u1" });
+  });
+  it("วันสิ้นสุดตรงสูตร → คำนวณใหม่ตามวันเริ่ม (endTouched=false) · ต่างจากสูตร → คงค่าเดิม", () => {
+    expect(draftFromSaved(saved(), master).endTouched).toBe(false);
+    expect(draftFromSaved(saved({ endDate: "2027-12-31" }), master).endTouched).toBe(true);
+    expect(draftFromSaved(saved({ endDate: "" }), master).endTouched).toBe(false);
+  });
+  it("แถวที่โหลดมาผ่านตัวตรวจแบบเดียวกับแถวใหม่", () => {
+    const c = checkDraft(draftFromSaved(saved(), master), branches, undefined);
+    expect(canSave(c)).toBe(true);
+    expect(c.branch?.id).toBe("b1");
+    expect(c.termYears).toBe(1);
+    expect(c.valueTotal).toBe(99510);
+  });
+  it("สัญญาเก่าที่ไม่มีผู้ขาย: ตัวตรวจบังคับใส่ผู้ขายก่อนบันทึก (เหมือนแถวใหม่)", () => {
+    const d = draftFromSaved(saved({ sellerName: "" }), master);
+    expect(checkDraft(d, branches, undefined).errors.saleName).toBeTruthy();
+  });
+});
+
+describe("แก้แล้ว Tier / วันสิ้นสุดคำนวณใหม่", () => {
+  it("เปลี่ยนมูลค่า → Tier เปลี่ยน (เกณฑ์จาก tier_rules ที่ส่งเข้ามา)", () => {
+    const d0 = draftFromSaved(saved(), master);
+    const before = checkDraft(d0, branches, undefined);
+    expect(tierFor(before.valueTotal, before.termYears, [...rules])?.label).toBe("M1");
+    const d1 = applyDraftPatch(d0, { value1y: "160,000.00" });
+    const after = checkDraft(d1, branches, undefined);
+    expect(tierFor(after.valueTotal, after.termYears, [...rules])?.label).toBe("XL1");
+  });
+  it("เปลี่ยนวันเริ่ม/ระยะ → วันสิ้นสุดตามสูตรใหม่ (เมื่อไม่ได้ตั้งเอง)", () => {
+    const d0 = draftFromSaved(saved(), master);
+    const d1 = applyDraftPatch(d0, { startDate: "2026-11-15" });
+    expect(d1.endDate).toBe("2027-11-14");
+    const d3 = applyDraftPatch(d1, { value1y: "", value3y: "300,000.00" });
+    expect(d3.endDate).toBe("2029-11-14");
+  });
+  it("วันสิ้นสุดที่ตั้งเอง ไม่ถูกเขียนทับ", () => {
+    const d0 = draftFromSaved(saved({ endDate: "2027-12-31" }), master);
+    expect(applyDraftPatch(d0, { startDate: "2026-11-15" }).endDate).toBe("2027-12-31");
+  });
+  it("แก้แล้วล้างข้อความผิดพลาดของรอบก่อน", () => {
+    const d0 = { ...draftFromSaved(saved(), master), saveError: "เก่า" };
+    expect(applyDraftPatch(d0, { note: "x" }).saveError).toBeNull();
+  });
+});
+
+describe("isEditUnchanged", () => {
+  it("ยังไม่แก้ = ไม่เปลี่ยน · ลำดับทีม/ช่องว่างท้ายข้อความไม่นับ", () => {
+    const o = draftFromSaved(saved(), master);
+    expect(isEditUnchanged(o, o)).toBe(true);
+    expect(isEditUnchanged(o, { ...o, teamIds: ["t1", "t2"], note: "หมายเหตุ  " })).toBe(true);
+  });
+  it("แก้ช่องใดช่องหนึ่ง = เปลี่ยน", () => {
+    const o = draftFromSaved(saved(), master);
+    expect(isEditUnchanged(o, { ...o, contractNo: "CT26-0000002" })).toBe(false);
+    expect(isEditUnchanged(o, { ...o, isUrgent: true })).toBe(false);
+    expect(isEditUnchanged(o, { ...o, teamIds: ["t1"] })).toBe(false);
+    expect(isEditUnchanged(o, { ...o, value1y: "1.00" })).toBe(false);
+    expect(isEditUnchanged(o, { ...o, saleType: "renew" })).toBe(false);
+  });
+});
+
+describe("contractEditBlockReason — สัญญาปิด/ยกเลิกแก้ไม่ได้", () => {
+  it("closed / cancelled มีเหตุผล · active / expired_pending_collection แก้ได้", () => {
+    expect(contractEditBlockReason("closed")).toMatch(/ปิดแล้ว/);
+    expect(contractEditBlockReason("cancelled")).toMatch(/ยกเลิก/);
+    expect(contractEditBlockReason("active")).toBeNull();
+    expect(contractEditBlockReason("expired_pending_collection")).toBeNull();
+  });
+  it("ข้อความล็อกสาขาบอกวิธีแก้ (ลบแล้วเปิดใหม่)", () => {
+    expect(EDIT_LOCK_REASONS.branch).toMatch(/ลบ.*เปิดงานใหม่/);
+  });
+});
+
+describe("checkRenewalPickForEdit", () => {
+  const me = { contractId: "c1", customerId: "u1", customerName: "ก" };
+  const link = (over: object) => ({
+    contractId: "old",
+    contractNo: "CT25-0000009",
+    customerId: "u1",
+    customerName: "ก",
+    branchId: "b1",
+    ...over,
+  });
+  it("ลูกค้าเดียวกัน = ผ่าน", () => {
+    expect(checkRenewalPickForEdit(link({}), me)).toEqual({ ok: true });
+  });
+  it("คนละลูกค้า = ไม่ผ่าน บอกชื่อทั้งสองฝั่ง", () => {
+    const r = checkRenewalPickForEdit(link({ customerId: "u2", customerName: "ข" }), me);
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.error).toMatch(/ลูกค้าคนเดียวกัน.*"ก".*"ข"/);
+  });
+  it("ผูกตัวเอง = ไม่ผ่าน", () => {
+    expect(checkRenewalPickForEdit(link({ contractId: "c1" }), me).ok).toBe(false);
+  });
+});
+
+describe("monthOfDate", () => {
+  it("YYYY-MM-DD → YYYY-MM", () => {
+    expect(monthOfDate("2026-11-15")).toBe("2026-11");
+  });
+});
+
+describe("buildSaveParams โหมดแก้", () => {
+  const values = { branchId: "b1", termYears: 1, valueTotal: 99510, endDate: "2027-09-30" };
+  it("ส่ง p_contract_id · ไม่ส่ง p_customer_id จาก Renew (ลูกค้าคงเดิม)", () => {
+    const d = draftFromSaved(
+      saved({ saleType: "renew", renewedFrom: { contractId: "old", contractNo: "X" } }),
+      master,
+    );
+    const p = buildSaveParams(d, values, { contractId: "c1" });
+    expect(p.p_contract_id).toBe("c1");
+    expect("p_customer_id" in p).toBe(false);
+    expect(p.p_renewed_from_contract_id).toBe("old");
+    expect(p.p_branch_id).toBe("b1");
+  });
+  it("แถวใหม่ยังส่ง p_customer_id ของ Renew เหมือนเดิม", () => {
+    const d = draftFromSaved(
+      saved({ saleType: "renew", renewedFrom: { contractId: "old", contractNo: "X" } }),
+      master,
+    );
+    expect(buildSaveParams(d, values).p_customer_id).toBe("u1");
+  });
+  it("ล้าง Renew (เปลี่ยนเป็น New) → renewed_from เป็น null", () => {
+    const d = applyDraftPatch(
+      draftFromSaved(saved({ saleType: "renew", renewedFrom: { contractId: "old", contractNo: "X" } }), master),
+      { saleType: "new", renewal: null },
+    );
+    expect(buildSaveParams(d, values, { contractId: "c1" }).p_renewed_from_contract_id).toBeNull();
+  });
+});
+
+describe("saveDraft โหมดแก้ (client ปลอม)", () => {
+  function client(reply: { data?: unknown; error?: { code?: string; message?: string } | null }) {
+    const calls: { fn: string; args: Record<string, unknown> }[] = [];
+    return {
+      calls,
+      supabase: {
+        rpc: async (fn: string, args: Record<string, unknown>) => {
+          calls.push({ fn, args });
+          return { data: null, error: null, ...reply };
+        },
+      } as never,
+    };
+  }
+  const d = draftFromSaved(saved(), master);
+  const check = checkDraft(d, branches, undefined);
+
+  it("สำเร็จ: เรียก save_job_opening พร้อม p_contract_id แล้วคืน contractId เดิม", async () => {
+    const c = client({
+      data: [{ contract_id: "c1", customer_id: "u1", reused_customer: true, existing_customer_type: "B" }],
+    });
+    const res = await saveDraft(c.supabase, d, check, { contractId: "c1" });
+    expect(c.calls).toHaveLength(1);
+    expect(c.calls[0]).toMatchObject({ fn: "save_job_opening", args: { p_contract_id: "c1" } });
+    expect(res).toMatchObject({ ok: true, contractId: "c1", customerTypeMismatch: null });
+  });
+  it("ประเภทลูกค้าไม่เปลี่ยน (ล็อก) → ไม่ขึ้นเตือนประเภทไม่ตรง", async () => {
+    const c = client({
+      data: [{ contract_id: "c1", customer_id: "u1", reused_customer: true, existing_customer_type: "B" }],
+    });
+    const res = await saveDraft(c.supabase, d, check, { contractId: "c1" });
+    expect(res.ok && res.customerTypeMismatch).toBeNull();
+  });
+  it("เลขสัญญาซ้ำ (23505) / นอกขอบเขต (42501) / AG006 / AG004 → ข้อความไทย", async () => {
+    const run = async (code: string) =>
+      saveDraft(client({ error: { code, message: "x" } }).supabase, d, check, { contractId: "c1" });
+    const dup = await run("23505");
+    expect(!dup.ok && dup.error).toMatch(/เลขที่สัญญา/);
+    const scope = await run("42501");
+    expect(!scope.ok && scope.error).toMatch(/ไม่มีสิทธิ์/);
+    const branch = await run("AG006");
+    expect(!branch.ok && branch.error).toMatch(/สาขา/);
+    const gone = await run("AG004");
+    expect(!gone.ok && gone.error).toMatch(/ไม่พบสัญญา/);
+  });
+  it("Renew คนละลูกค้า (P0001) → ข้อความไทย", async () => {
+    const r = await saveDraft(
+      client({ error: { code: "P0001", message: "a renewal must link to a contract of the same customer" } })
+        .supabase,
+      d,
+      check,
+      { contractId: "c1" },
+    );
+    expect(!r.ok && r.error).toMatch(/ลูกค้าคนเดียวกัน/);
+  });
+});

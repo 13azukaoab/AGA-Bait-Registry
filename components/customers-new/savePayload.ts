@@ -5,7 +5,8 @@
  * Logic summary:
  *   * `contractId` ว่าง = เปิดงานใหม่ · มีค่า = แก้สัญญาเดิม (RPC แก้ได้เฉพาะสัญญา + ทีม · ไม่แก้ชื่อลูกค้า
  *     และเปลี่ยนสาขาไม่ได้ → AG006)
- *   * ลูกค้า: Renew ที่ผูกสัญญาเก่า → `p_customer_id` = ลูกค้าของสัญญานั้น + `p_renewed_from_contract_id`
+ *   * โหมดแก้ (`contractId`): ไม่ส่ง `p_customer_id` เองจาก Renew — ลูกค้าคงเดิมตามสัญญา
+ *   * ลูกค้า (เปิดงานใหม่): Renew ที่ผูกสัญญาเก่า → `p_customer_id` = ลูกค้าของสัญญานั้น + `p_renewed_from_contract_id`
  *     · ผู้ใช้เลือก "ใช้รายเดิม" จากกล่อง AG001 → `p_customer_id` ที่เลือก (ชนะ Renew)
  *     · ผู้ใช้เลือก "คนละราย" → `p_confirm_new_customer: true`
  *   * ตำแหน่งผู้ขาย: Sale → `p_sale_name` · AM → `p_am_name` (ไม่มีคอลัมน์ตำแหน่ง)
@@ -87,7 +88,11 @@ export function buildSaveParams(
     p_confirm_new_customer: options.confirmNewCustomer === true,
   };
 
-  const customerId = options.customerId ?? renewal?.customerId ?? null;
+  // โหมดแก้: ลูกค้าคงเดิม (RPC ใช้ลูกค้าของสัญญาเอง) — ห้ามส่ง customer_id จาก Renew มิฉะนั้นการเลือก
+  // สัญญาเก่าของคนอื่นจะย้ายสัญญาไปลูกค้าอื่นเงียบๆ · ถ้าคนละลูกค้า trigger M9 จะปฏิเสธ (P0001)
+  const customerId = options.contractId
+    ? (options.customerId ?? null)
+    : (options.customerId ?? renewal?.customerId ?? null);
   if (customerId) params.p_customer_id = customerId;
   if (options.contractId) params.p_contract_id = options.contractId;
   return params;
