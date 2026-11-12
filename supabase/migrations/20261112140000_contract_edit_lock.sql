@@ -21,6 +21,9 @@
 --         (แก้ contract_teams ตรงผ่าน REST ไม่ขยับ — หน้าจอใช้ RPC เท่านั้น)
 --       - คืน `updated_at` ใหม่ ให้หน้าจอเก็บไว้ใช้ตอนแก้ครั้งต่อไป
 --   * ห้ามย้ายสถานีข้ามสัญญาด้วย UPDATE ตรง (ทุกตำแหน่ง · 42501) — ย้ายได้ผ่านฟังก์ชันระบบตอน Renew เท่านั้น
+--   * ไฟล์แนบของสัญญายกเลิก: เฉพาะ host (contract_files_writable + trigger บนตาราง · AG007)
+--   * stations_initialized_at เปลี่ยนอย่างเดียว (ตั้งสถานีเดือนแรก) ไม่ขยับ updated_at → ไม่มี AG008 ปลอม
+--   * trigger function audit_trigger() / set_follow_up_no() ถอนสิทธิ์ EXECUTE จากผู้ใช้ (ไม่จำเป็น)
 --   * signature ของ save_job_opening เปลี่ยน (เพิ่มพารามิเตอร์ + คอลัมน์ผลลัพธ์) → DROP แล้วสร้างใหม่ + ให้สิทธิ์ใหม่
 --     (CREATE OR REPLACE จะได้ function ซ้อน 2 ตัวแทน) · โหมดสร้างใหม่เรียกแบบเดิมได้ (ค่าเริ่มต้น NULL)
 --   * error code ใหม่ให้หน้าจอแปล: `AG007` สัญญาปิด/ยกเลิกแล้ว แก้ได้เฉพาะ Host · `AG008` มีคนแก้สัญญานี้ไปก่อนแล้ว
@@ -35,7 +38,14 @@ LANGUAGE plpgsql
 SET search_path = public
 AS $$
 BEGIN
-  NEW.updated_at := clock_timestamp();
+  -- ตั้งสถานีเดือนแรก (initialize_contract_stations) แก้แค่ stations_initialized_at — ไม่ใช่การแก้สัญญา
+  -- → ไม่ขยับ updated_at (ไม่งั้น admin ที่เปิดหน้าเปิดงานค้างไว้จะได้ AG008 ปลอม)
+  IF (to_jsonb(NEW) - 'stations_initialized_at' - 'updated_at')
+     = (to_jsonb(OLD) - 'stations_initialized_at' - 'updated_at') THEN
+    NEW.updated_at := OLD.updated_at;
+  ELSE
+    NEW.updated_at := clock_timestamp();
+  END IF;
   RETURN NEW;
 END;
 $$;
@@ -87,6 +97,51 @@ $$;
 CREATE TRIGGER contract_teams_closed_guard
   BEFORE INSERT OR UPDATE OR DELETE ON public.contract_teams
   FOR EACH ROW EXECUTE FUNCTION public.contract_teams_closed_guard();
+
+-- =====================================================================
+-- 2.0 ไฟล์แนบของสัญญายกเลิก: เฉพาะ host (DECISIONS 3.11 · ผลตรวจของศูนย์กลาง)
+--     `contract_files_writable` (20261111090300 — ขึ้น cloud แล้ว) กันแค่ closed → แทนที่ด้วยเนื้อใหม่
+--     (closed ยังล็อกทุกคนเหมือนเดิมที่ trigger contract_files_guard · cancelled เขียนได้เฉพาะ host)
+--     + trigger บนตาราง contract_files กัน admin เพิ่ม/แก้/ลบไฟล์ของสัญญายกเลิก (AG007)
+-- =====================================================================
+CREATE OR REPLACE FUNCTION public.contract_files_writable(p_contract_id uuid)
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT coalesce(
+    (SELECT c.status <> 'closed'
+            AND (c.status <> 'cancelled' OR public.is_host())
+            AND (public.is_host()
+                 OR (public.current_app_role() = 'admin' AND public.contract_in_scope(c.id)))
+       FROM public.contracts c
+      WHERE c.id = p_contract_id),
+    false
+  );
+$$;
+
+CREATE FUNCTION public.contract_files_cancelled_guard()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY INVOKER
+SET search_path = public
+AS $$
+BEGIN
+  IF current_user = 'authenticated' AND NOT public.is_host()
+     AND EXISTS (SELECT 1 FROM public.contracts c
+                  WHERE c.id = CASE WHEN TG_OP = 'DELETE' THEN OLD.contract_id ELSE NEW.contract_id END
+                    AND c.status = 'cancelled') THEN
+    RAISE EXCEPTION 'files of a cancelled contract can be changed by host only' USING ERRCODE = 'AG007';
+  END IF;
+  RETURN CASE WHEN TG_OP = 'DELETE' THEN OLD ELSE NEW END;
+END;
+$$;
+
+CREATE TRIGGER contract_files_cancelled_guard
+  BEFORE INSERT OR UPDATE OR DELETE ON public.contract_files
+  FOR EACH ROW EXECUTE FUNCTION public.contract_files_cancelled_guard();
 
 -- =====================================================================
 -- 2.1 ห้ามย้ายสถานีข้ามสัญญาด้วย UPDATE ตรง (ผลตรวจของศูนย์กลาง 12 พ.ย. 2026)
@@ -326,3 +381,9 @@ REVOKE ALL ON FUNCTION public.contracts_set_updated_at()    FROM PUBLIC, anon, a
 REVOKE ALL ON FUNCTION public.contracts_closed_guard()      FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.contract_teams_closed_guard() FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.stations_contract_move_guard() FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.contract_files_cancelled_guard() FROM PUBLIC, anon, authenticated;
+
+-- trigger function ไม่ต้องให้ใคร EXECUTE (trigger ทำงานได้เอง) — Supabase security advisor ทักบน cloud
+-- (CREATE OR REPLACE ภายหลังคงสิทธิ์นี้ไว้)
+REVOKE ALL ON FUNCTION public.audit_trigger()    FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.set_follow_up_no() FROM PUBLIC, anon, authenticated;

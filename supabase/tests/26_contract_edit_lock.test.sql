@@ -2,7 +2,7 @@
 -- Role simulation: seed as postgres, then SET LOCAL ROLE authenticated/anon and set
 -- request.jwt.claim.sub (what auth.uid() reads). RESET ROLE to inspect as superuser.
 BEGIN;
-SELECT plan(24);
+SELECT plan(31);
 
 -- ---------- โครงสร้าง ----------
 SELECT has_trigger('public', 'contracts', 'contracts_set_updated_at', 'contracts.updated_at is maintained by a trigger');
@@ -110,6 +110,38 @@ SELECT lives_ok($$INSERT INTO contract_teams (contract_id, team_id)
 RESET ROLE;
 
 SELECT has_trigger('public', 'stations', 'stations_contract_move_guard', 'direct station moves between contracts are blocked');
+-- ---------- ผลตรวจรอบ 2 ของศูนย์กลาง ----------
+-- ไฟล์แนบของสัญญายกเลิก: admin ไม่ได้ · host ได้
+SET LOCAL ROLE authenticated;
+SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a2', true);
+SELECT is(public.contract_files_writable('00000000-0000-0000-0000-0000000000d3'), false,
+  'admin cannot write files of a cancelled contract (storage)');
+SELECT throws_ok($$INSERT INTO contract_files (contract_id, kind, storage_path, file_name, mime_type, size_bytes)
+                   VALUES ('00000000-0000-0000-0000-0000000000d3', 'contract_pdf',
+                           '00000000-0000-0000-0000-0000000000d3/x.pdf', 'x.pdf', 'application/pdf', 10)$$,
+  'AG007', NULL, 'admin cannot add a file row to a cancelled contract');
+SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a1', true);
+SELECT is(public.contract_files_writable('00000000-0000-0000-0000-0000000000d3'), true,
+  'host can still write files of a cancelled contract');
+
+-- ตั้งสถานีเดือนแรกไม่ขยับ updated_at (ไม่มี AG008 ปลอม)
+INSERT INTO _v SELECT 'init0', updated_at FROM contracts WHERE id = '00000000-0000-0000-0000-0000000000d2';
+SELECT lives_ok($$SELECT public.initialize_contract_stations('00000000-0000-0000-0000-0000000000d2', '{1,2}')$$,
+  'host sets up stations of a contract');
+RESET ROLE;
+SELECT ok((SELECT stations_initialized_at IS NOT NULL FROM contracts WHERE id = '00000000-0000-0000-0000-0000000000d2')
+          AND (SELECT updated_at FROM contracts WHERE id = '00000000-0000-0000-0000-0000000000d2')
+              = (SELECT ts FROM _v WHERE k = 'init0'),
+  'setting up stations does not move the contract''s updated_at');
+
+-- trigger function ไม่ให้ผู้ใช้ EXECUTE
+SELECT ok(NOT has_function_privilege('authenticated', 'public.audit_trigger()', 'EXECUTE')
+          AND NOT has_function_privilege('anon', 'public.audit_trigger()', 'EXECUTE'),
+  'audit_trigger() is not executable by users');
+SELECT ok(NOT has_function_privilege('authenticated', 'public.set_follow_up_no()', 'EXECUTE')
+          AND NOT has_function_privilege('anon', 'public.set_follow_up_no()', 'EXECUTE'),
+  'set_follow_up_no() is not executable by users');
+
 SELECT is((SELECT value_total FROM contracts WHERE id = '00000000-0000-0000-0000-0000000000d2'), 49000.00::numeric,
   'host edit saved');
 SELECT ok((SELECT count(*) FROM audit_log WHERE table_name = 'contracts' AND action = 'update'
