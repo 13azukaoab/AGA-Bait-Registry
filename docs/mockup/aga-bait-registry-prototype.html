@@ -377,7 +377,7 @@ tfoot td{padding:10px 12px;font-weight:700;background:var(--surface-2);border-to
 #s-registry thead th.sortable[aria-sort="descending"]::after{content:"▼";opacity:1;color:var(--accent-strong)}
 #s-registry thead th.sortable[aria-sort="ascending"],#s-registry thead th.sortable[aria-sort="descending"]{color:var(--accent-strong)}
 .fgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:14px}
-.fgrid.f4{grid-template-columns:minmax(0,.85fr) minmax(0,1.25fr) minmax(0,1fr) minmax(0,1fr);gap:10px;margin-bottom:10px}
+.fgrid.f4{grid-template-columns:minmax(0,1.3fr) minmax(0,1.25fr) minmax(0,1fr) minmax(0,1fr);gap:10px;margin-bottom:10px}
 .fgrid.f4 .field select,.fgrid.f4 .field input{padding:10px 8px;font-size:13px}
 .fgrid.f2{grid-template-columns:repeat(2,minmax(0,1fr))}
 .fgrid.f2 .field:only-child{grid-column:1/-1}
@@ -385,6 +385,10 @@ tfoot td{padding:10px 12px;font-weight:700;background:var(--surface-2);border-to
 .fgrid .field label{font-size:12px}
 .fgrid .field select,.fgrid .field input{width:100%;min-width:0;padding:10px 12px;font-size:14px}
 .fgrid .field .sub{font-size:11px;color:var(--fg-faint)}
+.teamchk{display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center;min-height:44px;padding:6px 10px;border:1px solid var(--border-strong);border-radius:8px;background:var(--surface)}
+.tchk{display:inline-flex;align-items:center;gap:6px;font-size:13.5px;color:var(--fg);cursor:pointer;white-space:nowrap}
+.tchk input{width:16px;height:16px;margin:0;accent-color:var(--accent)}
+.fgrid .field label .opt{color:var(--fg-faint)}
 .wtbox{display:flex;align-items:center;gap:4px;min-height:44px;padding:10px 12px;font-size:14px;border:1px dashed var(--border);border-radius:8px;background:var(--surface-2);color:var(--fg)}
 .rpNote.need{border-color:var(--warn);background:var(--warn-soft)}
 .wtbox b{font-size:16px}
@@ -1431,7 +1435,7 @@ function agLabelHtml(ctx,p,key,dis){
 }
 function agPointHtml(ctx,m,p,bad){
   var isS=(p.kind==='S'), off=(ctx==='sv'&&m.skip&&!isS), key='data-ctx="'+ctx+'" data-k="'+p.k+'"', dis=off?' disabled':'';
-  var chip=p.st==='pend'?'<span class="chip pend">รอถอด</span>':(p.st==='rm'?'<span class="chip ok">ถอดกล่อง</span>':'<span class="chip info">กำลังติดตาม</span>');
+  var chip=p.st==='pend'?'<span class="chip pend">รอถอด</span>':(p.st==='rm'?'<span class="chip ok">ถอดกล่อง</span>':'<span class="chip miss">กำลังติดตาม</span>');
   var fno=isS?'ติดตั้งใหม่ (S)':'ติดตามผล F'+(p.last+1);
   var h='<div class="pt'+(off?' off':'')+'"><div class="top"><span class="sttype">AG</span><b>จุดที่ '+p.no+'</b>'+agLabelHtml(ctx,p,key,dis)+chip+
     '<span class="fno">'+fno+' <span class="auto-tag">อัตโนมัติ</span></span>'+
@@ -1506,11 +1510,12 @@ function fheadHtml(c,posHtml){
     '<span class="chip '+(agN?'pend':'na')+' num"><span class="sttype">AG</span> '+agN+(agN?' ค้างติดตาม':'')+'</span></div></div>';
 }
 function fieldsHtml(ctx,c,extra){
-  var teams=TEAMS.map(function(t){return '<option value="'+t+'"'+(t===c.team?' selected':'')+'>ทีม '+t+'</option>'}).join('');
+  var cur=c.visitTeams||[c.team];
+  var teams=TEAMS.map(function(t){return '<label class="tchk"><input type="checkbox" value="'+t+'"'+(cur.indexOf(t)>=0?' checked':'')+'> ทีม '+t+'</label>'}).join('');
   /* ลำดับกรอก: ทีม → วันที่ → เวลาเข้า → เวลาออก อยู่แถวเดียวกัน · เวลาทำงานจริง (คำนวณเอง) ขึ้นแถวใหม่ */
   return '<div class="fgrid f4">'+
     /* id ใช้ "VisitTeam" — ห้ามซ้ำกับตัวกรองทีมฝั่งซ้าย (id+'Team') ไม่งั้นตอนบันทึกจะอ่านค่าจากตัวกรองแทน */
-    '<div class="field"><label for="'+ctx+'VisitTeam">ทีมที่เข้า</label><select id="'+ctx+'VisitTeam" title="เติมจากครั้งก่อน (ทีม '+c.team+') — แก้ได้">'+teams+'</select><span class="sub">เติมจากครั้งก่อน</span></div>'+
+    '<div class="field"><label id="'+ctx+'VisitTeamLbl">ทีมที่เข้า</label><div class="teamchk" id="'+ctx+'VisitTeam" role="group" aria-labelledby="'+ctx+'VisitTeamLbl">'+teams+'</div><span class="sub">เลือกได้หลายทีม · เติมจากครั้งก่อน</span></div>'+
     '<div class="field"><label for="'+ctx+'Date">วันที่เข้า</label><input type="date" id="'+ctx+'Date" value="'+TODAY_ISO+'"></div>'+
     /* เวลาเข้า/ออก → ระบบคำนวณชั่วโมงทำงานจริงของวันนั้น (สรุปต่อลูกค้า/ต่อทีมดูที่หน้าสรุป) */
     /* เวลา 24 ชั่วโมง (HH:MM) พิมพ์เลขล้วน เช่น 1445 → 14:45 ไม่มี AM/PM */
@@ -1545,8 +1550,12 @@ function wtCalc(ctx){
   if(ctx==='sv') svRefreshMsg(); else bxRefreshMsg();
 }
 /* ตรวจเวลา: ต้องกรอกทั้งคู่ และเวลาออกต้องหลังเวลาเข้า */
+/* ทีมที่เข้า: เลือกได้หลายทีม (checkbox) · ต้องเลือกอย่างน้อย 1 ทีม · c.team = ทีมแรกที่เลือก (ใช้กับตัวกรอง) */
+function teamsOf(ctx){return [].map.call($(ctx+'VisitTeam').querySelectorAll('input:checked'),function(i){return i.value})}
+function teamSave(c,ctx){var t=teamsOf(ctx); c.visitTeams=t; c.team=t[0]}
 function wtMissing(ctx){
   var a=$(ctx+'TimeIn').value, b=$(ctx+'TimeOut').value, out=[];
+  if(!teamsOf(ctx).length) out.push('ทีมที่เข้า (เลือกอย่างน้อย 1 ทีม)');
   if(!a) out.push('เวลาเข้า');
   if(!b) out.push('เวลาออก');
   if(a&&b){
@@ -1798,7 +1807,7 @@ function svSave(){
   SV.tried=true; AGM.sv.tried=true; agRender('sv');
   if(svMissing().length) return;
   var c=custById(SV.id);
-  agCommit('sv'); c.done=true; c.team=$('svVisitTeam').value;
+  agCommit('sv'); c.done=true; teamSave(c,'sv');
   toast('บันทึกผล “'+c.name+'” แล้ว');
   var next=svNextUndone(c.id);
   pkSelect(PK.sv,next?next.id:null,true);
@@ -1851,7 +1860,7 @@ function bxSave(){
   AGM.bx.tried=true; agRender('bx');
   if(bxMissing().length) return;
   var c=custById(BX.id);
-  agCommit('bx'); c.team=$('bxVisitTeam').value;
+  agCommit('bx'); teamSave(c,'bx');
   toast('บันทึกงานกล่องของ “'+c.name+'” แล้ว');
   pkRender(PK.bx); pkRender(PK.sv); bxRenderForm();
 }
