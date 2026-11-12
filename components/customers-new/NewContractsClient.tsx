@@ -393,7 +393,8 @@ export function NewContractsClient({ role, month, monthChoices, master, saved, t
       {banner ? <Alert variant={banner.variant}>{banner.text}</Alert> : null}
 
       {/* ---------- ตาราง ---------- */}
-      <div className="overflow-x-auto rounded-[var(--radius-card)] border border-border bg-surface">
+      {/* relative: ให้ sr-only (absolute) ในตารางถูกกักในกล่องเลื่อน ไม่ดันหน้าให้เลื่อนแนวนอน */}
+      <div className="relative overflow-x-auto rounded-[var(--radius-card)] border border-border bg-surface">
         <datalist id="branch-list">
           {master.branches.map((b) => (
             <option key={b.id} value={b.name} />
