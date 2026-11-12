@@ -15,6 +15,8 @@
 --   * 3.12 กันเขียนทับ: `save_job_opening` โหมดแก้ **ต้องส่ง** `p_expected_updated_at` (เวลาแก้ล่าสุดที่หน้าจอเห็น)
 --       - ไม่ส่ง → 22004 · ไม่ตรงกับในฐาน → `AG008` "มีคนแก้สัญญานี้ไปก่อนแล้ว" (ไม่ทับงานคนแรก)
 --       - UPDATE ใส่เงื่อนไข updated_at ซ้ำอีกชั้น กันมีคนแก้แทรกระหว่างอ่านกับเขียน
+--       - เทียบที่ความละเอียด **มิลลิวินาที** ทั้ง 2 จุด: ฐานข้อมูลเก็บไมโครวินาที แต่ Date ของ JavaScript
+--         ตัดเหลือมิลลิวินาที → ถ้าเทียบตรงๆ หน้าจอจะได้ AG008 ทุกครั้งที่แก้
 --       - การแก้ทีมผ่าน RPC นับรวม: โหมดแก้ UPDATE แถวสัญญาทุกครั้ง updated_at จึงขยับเสมอ
 --         (แก้ contract_teams ตรงผ่าน REST ไม่ขยับ — หน้าจอใช้ RPC เท่านั้น)
 --       - คืน `updated_at` ใหม่ ให้หน้าจอเก็บไว้ใช้ตอนแก้ครั้งต่อไป
@@ -195,7 +197,7 @@ BEGIN
     IF p_expected_updated_at IS NULL THEN
       RAISE EXCEPTION 'p_expected_updated_at is required when editing' USING ERRCODE = '22004';
     END IF;
-    IF v_updated_at IS DISTINCT FROM p_expected_updated_at THEN
+    IF date_trunc('milliseconds', v_updated_at) IS DISTINCT FROM date_trunc('milliseconds', p_expected_updated_at) THEN
       RAISE EXCEPTION 'this contract was changed by someone else' USING ERRCODE = 'AG008';
     END IF;
   END IF;
@@ -273,12 +275,13 @@ BEGIN
       first_service_time       = p_first_service_time,
       note                     = nullif(btrim(p_note), '')
     WHERE c.id = p_contract_id
-      AND c.updated_at = p_expected_updated_at   -- มีคนแก้ระหว่างอ่านกับเขียน = 0 แถว
+      AND date_trunc('milliseconds', c.updated_at) = date_trunc('milliseconds', p_expected_updated_at)
+          -- มีคนแก้ระหว่างอ่านกับเขียน = 0 แถว
     RETURNING c.id INTO v_contract_id;
     -- 0 แถว: มีคนแก้ไปก่อน (AG008) หรือ RLS ไม่ให้แก้ (ไม่ error แค่ 0 แถว → แปลงเป็น 42501)
     IF v_contract_id IS NULL THEN
-      IF (SELECT c.updated_at FROM contracts c WHERE c.id = p_contract_id)
-         IS DISTINCT FROM p_expected_updated_at THEN
+      IF (SELECT date_trunc('milliseconds', c.updated_at) FROM contracts c WHERE c.id = p_contract_id)
+         IS DISTINCT FROM date_trunc('milliseconds', p_expected_updated_at) THEN
         RAISE EXCEPTION 'this contract was changed by someone else' USING ERRCODE = 'AG008';
       END IF;
       RAISE EXCEPTION 'not allowed to update this contract' USING ERRCODE = '42501';

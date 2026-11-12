@@ -2,7 +2,7 @@
 -- Role simulation: seed as postgres, then SET LOCAL ROLE authenticated/anon and set
 -- request.jwt.claim.sub (what auth.uid() reads). RESET ROLE to inspect as superuser.
 BEGIN;
-SELECT plan(23);
+SELECT plan(24);
 
 -- ---------- โครงสร้าง ----------
 SELECT has_trigger('public', 'contracts', 'contracts_set_updated_at', 'contracts.updated_at is maintained by a trigger');
@@ -75,6 +75,9 @@ SELECT lives_ok($$INSERT INTO _v SELECT 'active2', updated_at FROM pg_temp.edit(
   'admin edits with the current last-seen time');
 SELECT ok((SELECT ts FROM _v WHERE k = 'active2') > (SELECT ts FROM _v WHERE k = 'active1'),
   'the RPC returns the new updated_at for the next edit');
+SELECT lives_ok($$SELECT * FROM pg_temp.edit('00000000-0000-0000-0000-0000000000d1', 'L-ACTIVE', 51500,
+                    date_trunc('milliseconds', (SELECT ts FROM _v WHERE k = 'active2')))$$,
+  'a last-seen time cut to milliseconds (JavaScript Date) is still accepted');
 SELECT throws_ok($$SELECT * FROM pg_temp.edit('00000000-0000-0000-0000-0000000000d1', 'L-ACTIVE', 52000,
                      (SELECT ts FROM _v WHERE k = 'active1'))$$,
   'AG008', NULL, 'a second edit with the old time is refused (no silent overwrite)');
