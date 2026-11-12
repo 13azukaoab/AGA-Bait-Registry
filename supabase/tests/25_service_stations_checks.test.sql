@@ -4,7 +4,7 @@
 -- Role simulation: seed as postgres, then SET LOCAL ROLE authenticated/anon and set
 -- request.jwt.claim.sub (what auth.uid() reads). RESET ROLE to inspect as superuser.
 BEGIN;
-SELECT plan(51);
+SELECT plan(58);
 
 -- =====================================================================
 -- โครงสร้าง + สิทธิ์
@@ -148,6 +148,8 @@ SELECT lives_ok($$INSERT INTO stations (contract_id, type, station_no) VALUES ('
   'recorder reuses the number of a lost station');
 SELECT throws_ok($$INSERT INTO stations (contract_id, type, station_no) VALUES ('00000000-0000-0000-0000-0000000000d3', 'IG', 2)$$,
   '23505', NULL, 'a number already in use on the contract is refused');
+SELECT throws_ok($$INSERT INTO stations (contract_id, type) VALUES ('00000000-0000-0000-0000-0000000000d3', 'IG')$$,
+  '42501', NULL, 'recorder cannot add a station without a number');
 SELECT throws_ok($$INSERT INTO stations (contract_id, type, station_no, status) VALUES ('00000000-0000-0000-0000-0000000000d3', 'IG', 9, 'removed')$$,
   '42501', NULL, 'recorder cannot add a station that is not active');
 SELECT throws_ok($$INSERT INTO stations (contract_id, type, station_no) VALUES ('00000000-0000-0000-0000-0000000000d4', 'IG', 1)$$,
@@ -218,6 +220,30 @@ SELECT set_eq(
   'the station not chosen stays on the old contract (goes to the collection list)');
 SELECT ok((SELECT stations_initialized_at IS NOT NULL FROM contracts WHERE id = '00000000-0000-0000-0000-0000000000d2'),
   'the new contract is marked as set up');
+
+-- ลบสัญญา Renew ที่เปิดผิด → สถานีที่ย้ายเข้ามา (IG ไม่มีผลตรวจ) ต้องคืนกลับสัญญาเดิม ไม่หาย
+SET LOCAL ROLE authenticated;
+SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a1', true);
+SELECT is(public.initialize_contract_stations('00000000-0000-0000-0000-0000000000d5', '{}', '{}',
+            ARRAY['00000000-0000-0000-0000-0000000000e3']::uuid[]),
+  1, 'host moves IG-3 into a second renewal');
+SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a2', true);
+SELECT lives_ok($$SELECT public.delete_job_opening('00000000-0000-0000-0000-0000000000d5')$$,
+  'admin deletes the mistaken renewal (no service results)');
+RESET ROLE;
+SELECT is((SELECT contract_id FROM stations WHERE id = '00000000-0000-0000-0000-0000000000e3'),
+  '00000000-0000-0000-0000-0000000000d1'::uuid,
+  'the moved station returns to the old contract instead of being deleted');
+SELECT is((SELECT count(*)::int FROM station_transfers WHERE to_contract_id = '00000000-0000-0000-0000-0000000000d5'), 0,
+  'transfer records of the deleted renewal are removed');
+
+-- ฟังก์ชันภายในเรียกจากภายนอกไม่ได้
+SELECT ok(NOT has_function_privilege('authenticated', 'public.compute_follow_up_no(uuid, uuid, uuid)', 'EXECUTE')
+          AND NOT has_function_privilege('anon', 'public.compute_follow_up_no(uuid, uuid, uuid)', 'EXECUTE'),
+  'compute_follow_up_no is internal');
+SELECT ok(NOT has_function_privilege('authenticated', 'public.renumber_station_follow_ups(uuid)', 'EXECUTE')
+          AND NOT has_function_privilege('anon', 'public.renumber_station_follow_ups(uuid)', 'EXECUTE'),
+  'renumber_station_follow_ups is internal');
 
 SELECT * FROM finish();
 ROLLBACK;

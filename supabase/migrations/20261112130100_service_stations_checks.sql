@@ -9,7 +9,7 @@
 --       - `point_label` ป้ายจุด (AG · จำข้ามเดือนเพราะอยู่ที่สถานี)
 --       - `contracts.stations_initialized_at` แยก "ยังไม่ระบุจำนวนสถานี" ออกจาก "ระบุแล้วว่า IC = 0"
 --   * หัวหน้างาน (recorder) เขียน stations ได้ในขอบเขตหน่วยงาน (ค่าเริ่มต้นทางเทคนิคที่เจ้าของรับ):
---       เพิ่มสถานีใหม่ (ต้องเป็น active) · แก้ได้แค่ `status`, `removed_at`, `collected_at`, `point_label` ·
+--       เพิ่มสถานีใหม่ (ต้องเป็น active และมีเลขสถานี) · แก้ได้แค่ `status`, `removed_at`, `collected_at`, `point_label` ·
 --       ลบไม่ได้ (ไม่มี policy) · trigger `stations_recorder_guard` กันแก้ช่องอื่น (42501)
 --       ฟังก์ชันระบบที่เป็น SECURITY DEFINER (เช่นย้ายสถานีตอน Renew) ไม่ติดด่านนี้ เพราะทำในนามเจ้าของตาราง
 --   * station_checks (เจ้าของเลือก ก1 เก็บวัสดุรายสถานี · ข1 เก็บแถว "ไม่ได้ตรวจ")
@@ -29,7 +29,7 @@
 --         (`renewed_from_contract_id`) มาสัญญาใหม่ ตามที่หัวหน้างานติ๊กเลือก (เจ้าของเลือกหน้ากรอกผลบริการ)
 --       - **ย้ายแถวสถานี ไม่สร้างใหม่** → F ของกล่อง AG นับต่อ · ผลบริการของสัญญาเก่าไม่ถูกย้าย
 --         เปิดดูได้เสมอ · บันทึกถาวรใน `station_transfers` · สถานีที่ไม่ได้เลือกค้างที่สัญญาเก่า
---         (เข้ารายการรอเก็บสถานี §7.8)
+--         (เข้ารายการรอเก็บสถานี §7.8) · ลบสัญญา Renew ภายหลัง → สถานีที่ย้ายเข้ามาคืนกลับสัญญาเดิมเอง
 --       - error: SV007 ตั้งสถานีไปแล้ว · SV008 สถานีย้ายไม่ได้ (ไม่ใช่ของสัญญาเก่าที่ผูก / ไม่ได้ใช้งาน) ·
 --         SV009 เลขสถานีไม่ถูกต้องหรือซ้ำ · AG004 ไม่พบสัญญา · 42501 ไม่มีสิทธิ์
 
@@ -72,6 +72,9 @@ BEGIN
   IF TG_OP = 'INSERT' THEN
     IF NEW.status <> 'active' OR NEW.removed_at IS NOT NULL OR NEW.collected_at IS NOT NULL THEN
       RAISE EXCEPTION 'a new station must start active' USING ERRCODE = '42501';
+    END IF;
+    IF NEW.station_no IS NULL THEN
+      RAISE EXCEPTION 'a new station needs a station number' USING ERRCODE = '42501';
     END IF;
   ELSIF NEW.contract_id  IS DISTINCT FROM OLD.contract_id
      OR NEW.type         IS DISTINCT FROM OLD.type
@@ -391,6 +394,33 @@ BEGIN
 END;
 $$;
 
+-- ลบสัญญา Renew → สถานีที่ย้ายเข้ามา **คืนกลับสัญญาเดิม** (ไม่ให้หายไปพร้อมสัญญาแบบ CASCADE)
+-- กรณีจริง: บันทึกผลบริการครั้งแรก (ย้ายสถานี) → ลบผลบริการนั้น → admin ลบสัญญา Renew ที่เปิดผิด
+-- สถานี IG/IC ที่ยังฝังอยู่หน้างานต้องไม่หายจากทั้ง 2 สัญญา · ทำเป็น trigger บน contracts จึงครอบทั้ง
+-- delete_job_opening() และการลบตรงของ host · เลขชนกับสถานีที่สัญญาเดิมเพิ่มภายหลัง = unique index ปฏิเสธการลบ
+CREATE FUNCTION public.contracts_return_transferred_stations()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  UPDATE public.stations s
+     SET contract_id = t.from_contract_id, updated_at = now()
+    FROM public.station_transfers t
+   WHERE t.to_contract_id = OLD.id
+     AND t.station_id = s.id
+     AND s.contract_id = OLD.id;
+
+  DELETE FROM public.station_transfers t WHERE t.to_contract_id = OLD.id;
+  RETURN OLD;
+END;
+$$;
+
+CREATE TRIGGER contracts_return_transferred_stations
+  BEFORE DELETE ON public.contracts
+  FOR EACH ROW EXECUTE FUNCTION public.contracts_return_transferred_stations();
+
 -- =====================================================================
 -- 6. สิทธิ์ (ตาราง/function ใหม่ต้องกำหนดในไฟล์นี้ — CLAUDE.md)
 -- =====================================================================
@@ -405,6 +435,7 @@ REVOKE ALL ON FUNCTION public.compute_follow_up_no(uuid, uuid, uuid)     FROM PU
 REVOKE ALL ON FUNCTION public.renumber_station_follow_ups(uuid)          FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.station_checks_renumber()                  FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.visits_renumber()                          FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.contracts_return_transferred_stations()    FROM PUBLIC, anon, authenticated;
 
 REVOKE ALL ON FUNCTION public.initialize_contract_stations(uuid, int[], int[], uuid[]) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.initialize_contract_stations(uuid, int[], int[], uuid[]) FROM anon;
