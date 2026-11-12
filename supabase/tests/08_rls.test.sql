@@ -38,9 +38,9 @@ INSERT INTO contracts (id, customer_id, contract_no, start_date, term_years, val
 INSERT INTO stations (id, contract_id, code, type) VALUES
   ('00000000-0000-0000-0000-0000000000e1', '00000000-0000-0000-0000-0000000000d1', 'S-01', 'IG'),
   ('00000000-0000-0000-0000-0000000000e2', '00000000-0000-0000-0000-0000000000d2', 'S-01', 'IG');
-INSERT INTO visits (id, contract_id, visit_date, visit_type, note) VALUES
-  ('00000000-0000-0000-0000-0000000000f1', '00000000-0000-0000-0000-0000000000d1', '2026-02-01', 'routine', 'orig'),
-  ('00000000-0000-0000-0000-0000000000f2', '00000000-0000-0000-0000-0000000000d2', '2026-02-01', 'routine', 'orig');
+INSERT INTO visits (id, contract_id, visit_date, visit_type, note, start_time, end_time) VALUES
+  ('00000000-0000-0000-0000-0000000000f1', '00000000-0000-0000-0000-0000000000d1', '2026-02-01', 'routine', 'orig', '09:00', '10:00'),
+  ('00000000-0000-0000-0000-0000000000f2', '00000000-0000-0000-0000-0000000000d2', '2026-02-01', 'routine', 'orig', '09:00', '10:00');
 INSERT INTO station_checks (id, visit_id, station_id) VALUES
   ('00000000-0000-0000-0000-000000000a01', '00000000-0000-0000-0000-0000000000f1', '00000000-0000-0000-0000-0000000000e1'),
   ('00000000-0000-0000-0000-000000000a02', '00000000-0000-0000-0000-0000000000f2', '00000000-0000-0000-0000-0000000000e2');
@@ -80,10 +80,10 @@ SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a3
 
 SELECT is((SELECT count(*)::int FROM customers), 2, 'recorder reads customers of all branches');
 SELECT lives_ok(
-  $$INSERT INTO visits (id, contract_id, visit_date, visit_type) VALUES ('00000000-0000-0000-0000-0000000000f3', '00000000-0000-0000-0000-0000000000d1', '2026-03-01', 'routine')$$,
+  $$INSERT INTO visits (id, contract_id, visit_date, visit_type, start_time, end_time) VALUES ('00000000-0000-0000-0000-0000000000f3', '00000000-0000-0000-0000-0000000000d1', '2026-03-01', 'routine', '09:00', '10:00')$$,
   'recorder can insert visit for central contract');
 SELECT throws_ok(
-  $$INSERT INTO visits (contract_id, visit_date, visit_type) VALUES ('00000000-0000-0000-0000-0000000000d2', '2026-03-01', 'routine')$$,
+  $$INSERT INTO visits (contract_id, visit_date, visit_type, start_time, end_time) VALUES ('00000000-0000-0000-0000-0000000000d2', '2026-03-01', 'routine', '09:00', '10:00')$$,
   '42501', NULL, 'recorder REJECTED inserting visit for province contract');
 UPDATE visits SET note = 'edited' WHERE id = '00000000-0000-0000-0000-0000000000f1';
 UPDATE visits SET note = 'hacked' WHERE id = '00000000-0000-0000-0000-0000000000f2';
@@ -134,7 +134,7 @@ SELECT throws_ok(
   $$INSERT INTO stations (contract_id, type) VALUES ('00000000-0000-0000-0000-0000000000d2', 'IG')$$,
   '42501', NULL, 'admin REJECTED inserting station for province contract');
 SELECT throws_ok(
-  $$INSERT INTO visits (contract_id, visit_date, visit_type) VALUES ('00000000-0000-0000-0000-0000000000d1', '2026-03-05', 'routine')$$,
+  $$INSERT INTO visits (contract_id, visit_date, visit_type, start_time, end_time) VALUES ('00000000-0000-0000-0000-0000000000d1', '2026-03-05', 'routine', '09:00', '10:00')$$,
   '42501', NULL, 'admin cannot insert visits (recorder-only)');
 UPDATE profiles SET role = 'host' WHERE user_id = '00000000-0000-0000-0000-0000000000a2';
 UPDATE profiles SET division_scope = '{central,province}' WHERE user_id = '00000000-0000-0000-0000-0000000000a2';
@@ -152,7 +152,7 @@ SELECT lives_ok(
   $$INSERT INTO customers (id, branch_id, name) SELECT '00000000-0000-0000-0000-0000000000c4', province_id, 'Host Prov' FROM _b$$,
   'host can insert customer in province branch');
 SELECT lives_ok(
-  $$INSERT INTO visits (contract_id, visit_date, visit_type) VALUES ('00000000-0000-0000-0000-0000000000d2', '2026-03-09', 'routine')$$,
+  $$INSERT INTO visits (contract_id, visit_date, visit_type, start_time, end_time) VALUES ('00000000-0000-0000-0000-0000000000d2', '2026-03-09', 'routine', '09:00', '10:00')$$,
   'host can insert visit for province contract');
 SELECT lives_ok(
   $$UPDATE profiles SET division_scope = '{central,province}' WHERE user_id = '00000000-0000-0000-0000-0000000000a2'$$,

@@ -234,8 +234,8 @@ SELECT ok(public.customer_name_key(U&'a\200Bb\00A0c') = 'ab c',
 -- ลบ
 -- =====================================================================
 -- T-1 มีผลบริการ · T-2 ถูกยกเลิก
-INSERT INTO visits (contract_id, visit_date, visit_type)
-  VALUES ((SELECT t1_contract FROM _c), '2026-02-10', 'routine');
+INSERT INTO visits (contract_id, visit_date, visit_type, start_time, end_time)
+  VALUES ((SELECT t1_contract FROM _c), '2026-02-10', 'routine', '09:00', '10:00');
 UPDATE contracts SET status = 'cancelled', cancelled_at = now() WHERE contract_no = 'T-2';
 
 SET LOCAL ROLE authenticated;

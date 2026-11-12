@@ -15,8 +15,8 @@ SELECT id, 'T6-001', '2026-01-15', 1, 50000 FROM public.customers WHERE name = '
 INSERT INTO public.stations (contract_id, code, type)
 SELECT c.id, s.code, 'IG' FROM public.contracts c, (VALUES ('A'), ('B'), ('C')) s(code)
 WHERE c.contract_no = 'T6-001';
-INSERT INTO public.visits (contract_id, visit_date, visit_type)
-SELECT c.id, v.d::date, 'routine'
+INSERT INTO public.visits (contract_id, visit_date, visit_type, start_time, end_time)
+SELECT c.id, v.d::date, 'routine', '09:00'::time, '10:00'::time
 FROM public.contracts c, (VALUES ('2026-01-20'), ('2026-03-10'), ('2026-05-12'), ('2026-06-01')) v(d)
 WHERE c.contract_no = 'T6-001';
 
