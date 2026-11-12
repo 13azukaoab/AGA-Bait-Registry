@@ -1687,25 +1687,25 @@ function rpRowHtml(type){
      • เปลี่ยนฝา / อื่นๆ = เลขสถานีเดิม ไม่เปลี่ยนจำนวน
      "สถานีหาย" และ "อื่นๆ" ต้องระบุรายละเอียด (เช่น สถานีหาย แต่รอบนี้อุปกรณ์ไม่พอซ่อม) */
   return '<tr><td><select class="rpType" onchange="rpApply(this.closest(\'tr\'));svRecalc()" aria-label="ประเภทงาน">'+rpTypeOptions(type||'เปลี่ยนฝาสถานี')+'</select></td>'+
-    '<td><div class="rpQtyWrap"><label class="rpql">จำนวนที่ฝัง <input type="number" class="rpQty num" min="1" max="500" value="1" inputmode="numeric" aria-label="จำนวนสถานีที่ฝังเพิ่ม"> สถานี</label><div class="rpNums"></div></div>'+
-    '<div class="stcell rpStWrap" hidden><select class="rpKind" onchange="rpCount(this.closest(\'tr\'));svRecalc()" aria-label="ชนิดสถานี" hidden><option>IG</option><option>IC</option></select><input class="rpSt" placeholder="เช่น 3, 5, 8-12" style="min-width:150px" oninput="rpCount(this.closest(\'tr\'))" aria-label="หมายเลขสถานี (ใส่ได้หลายเลข คั่นด้วยจุลภาค หรือช่วงด้วยขีด)"><span class="vchk"></span></div></td>'+
+    '<td>'+
+    '<div class="stcell rpStWrap"><select class="rpKind" onchange="rpCount(this.closest(\'tr\'));svRecalc()" aria-label="ชนิดสถานี" hidden><option>IG</option><option>IC</option></select><input class="rpSt" placeholder="เช่น 3, 5, 8-12" style="min-width:150px" oninput="rpCount(this.closest(\'tr\'))" aria-label="หมายเลขสถานี (ใส่ได้หลายเลข คั่นด้วยจุลภาค หรือช่วงด้วยขีด)"><span class="vchk"></span></div></td>'+
     '<td class="rpCnt num" style="color:var(--fg-muted)">1 สถานี <span class="auto-tag">อัตโนมัติ</span></td>'+
     '<td><input class="rpNote" placeholder="ไม่บังคับ" style="min-width:220px;width:100%" aria-label="รายละเอียดงานซ่อม"></td>'+
     '<td class="c"><button type="button" class="btn danger sm" data-act="delRow">ลบ</button></td></tr>';
 }
 /* งานซ่อม: ช่องเลขสถานีใส่ได้หลายเลขในช่องเดียว — คั่นด้วย , หรือเว้นวรรค · ช่วงใช้ขีด เช่น "3, 5, 8-12" = 7 สถานี
    ระบบนับจำนวนให้เอง (เลขซ้ำนับครั้งเดียว) และตรวจว่าทุกเลขมีจริง (1 ถึง max) */
-function parseStList(v,max){
-  var nums={}, bad=[];
+function parseStList(v,max,min){
+  var nums={}, bad=[], lo=min||1;
   v.split(/[,\s;、]+/).forEach(function(t){
     if(!t) return;
     var m=t.match(/^(\d+)(?:[-–](\d+))?$/);
     if(!m){bad.push(t); return}
     var a=parseInt(m[1],10), b=m[2]?parseInt(m[2],10):a;
-    if(b<a||a<1||b>max||b-a>500){bad.push(t); return}
+    if(b<a||a<lo||b>max||b-a>500){bad.push(t); return}
     for(var i=a;i<=b;i++) nums[i]=1;
   });
-  return {count:Object.keys(nums).length, bad:bad};
+  return {count:Object.keys(nums).length, bad:bad, nums:Object.keys(nums).map(Number)};
 }
 /* จำนวนสถานี IG/IC ปัจจุบันของลูกค้าที่เลือก (ลูกค้าใหม่ = ค่าที่หัวหน้างานพิมพ์ในแถบเหลือง) */
 function svCounts(){
@@ -1726,55 +1726,59 @@ function rpKindOf(tr){
   if(t==='ฝังสถานีใหม่ (IC)') return 'IC';
   return rpIsRemove(tr)?tr.querySelector('.rpKind').value:null;
 }
+/* ฝังใหม่: เลขสถานีต้องต่อจากเลขเดิมของชนิดนั้น (ต่ำสุด = จำนวนเดิม + 1) · ซ่อม/หาย/ถอน: ต้องเป็นเลขที่มีอยู่จริง */
+function rpMin(tr){
+  if(!rpIsAdd(tr)) return 1;
+  var n=svCounts(); return (rpKindOf(tr)==='IG'?n.ig:n.ic)+1;
+}
 function rpMax(tr){
-  var k=rpKindOf(tr); if(!k||rpIsAdd(tr)) return stationMax;
+  var k=rpKindOf(tr); if(rpIsAdd(tr)) return 9999; if(!k) return stationMax;
   var n=svCounts(), m=(k==='IG'?n.ig:n.ic);
   return m||(custById(SV.id).fresh?9999:0);
 }
-function rpQtyVal(tr){var n=parseInt(tr.querySelector('.rpQty').value,10); return (n>=1&&n<=500)?n:0}
 function rpNeedsNote(tr){var t=tr.querySelector('.rpType'); return !!t&&(t.value==='อื่นๆ'||t.value==='สถานีหาย')}
 /* นับจำนวนสถานีของแถว + ตรวจเลขสถานี (โหมดพิมพ์เลข) · คืนจำนวน */
 function rpCount(tr){
   var cnt=tr.querySelector('.rpCnt'), c=0;
-  if(rpIsAdd(tr)) c=rpQtyVal(tr);
+  var v=tr.querySelector('.rpSt').value.trim(), chk=tr.querySelector('.vchk');
+  if(!v){chk.className='vchk'; chk.textContent=''}
   else {
-    var v=tr.querySelector('.rpSt').value.trim(), chk=tr.querySelector('.vchk');
-    if(!v){chk.className='vchk'; chk.textContent=''}
-    else {
-      var r=parseStList(v,rpMax(tr)); c=r.count;
-      chk.className='vchk '+(r.bad.length?'bad':'ok');
-      chk.textContent=r.bad.length?'✗ ไม่พบ/รูปแบบผิด: '+r.bad.join(', '):'✓';
-    }
+    var add=rpIsAdd(tr), r=parseStList(v,rpMax(tr),rpMin(tr)); c=r.count;
+    chk.className='vchk '+(r.bad.length?'bad':'ok');
+    chk.textContent=r.bad.length?(add?'✗ ต้องเป็นเลขใหม่ต่อจากเดิม (เริ่มที่ '+rpMin(tr)+'): ':'✗ ไม่พบ/รูปแบบผิด: ')+r.bad.join(', '):'✓';
   }
   cnt.firstChild.nodeValue=c+' สถานี ';
   return c;
 }
 /* ปรับช่องของแถวตามประเภทงาน */
 function rpApply(tr){
-  var add=rpIsAdd(tr), t=tr.querySelector('.rpType').value, n=tr.querySelector('.rpNote');
-  tr.querySelector('.rpQtyWrap').hidden=!add;
-  tr.querySelector('.rpStWrap').hidden=add;
+  var add=rpIsAdd(tr), t=tr.querySelector('.rpType').value, n=tr.querySelector('.rpNote'), st=tr.querySelector('.rpSt');
   tr.querySelector('.rpKind').hidden=!rpIsRemove(tr);
+  st.placeholder=add?'เช่น '+rpMin(tr)+'-'+(rpMin(tr)+4)+' (เลขใหม่ต่อจากเดิม)':'เช่น 3, 5, 8-12';
   n.placeholder=t==='สถานีหาย'?'ระบุ เช่น สถานีหาย อุปกรณ์ไม่พอซ่อมรอบนี้':t==='อื่นๆ'?'ระบุว่าเกิดอะไรขึ้น (จำเป็น)':'ไม่บังคับ';
   n.classList.toggle('need',rpNeedsNote(tr));
   rpCount(tr);
 }
 function rpRowBad(tr){
   if(rpNeedsNote(tr)&&!tr.querySelector('.rpNote').value.trim()) return true;
-  if(rpIsAdd(tr)) return rpQtyVal(tr)<1;
   return !tr.querySelector('.rpSt').value.trim()||!!tr.querySelector('.vchk.bad');
 }
 /* การเปลี่ยนแปลงจำนวนสถานีของลูกค้าจากงานซ่อมทั้งหมดในฟอร์มนี้ + แสดงเลขสถานีที่ระบบให้ตอนฝังใหม่ */
 function rpDeltas(){
-  var n=svCounts(), next={IG:n.ig, IC:n.ic}, d={ig:0, ic:0};
+  var n=svCounts(), d={ig:0, ic:0}, used={IG:{}, IC:{}};
   svRows('rp').forEach(function(tr){
     var k=rpKindOf(tr); if(!k) return;
-    var c=rpCount(tr), lo=k.toLowerCase();
+    var c=rpCount(tr), lo=k.toLowerCase(), chk=tr.querySelector('.vchk');
     if(rpIsAdd(tr)){
-      var from=next[k]+1;
-      tr.querySelector('.rpNums').textContent=c?'ระบบให้เลข '+k+'-'+from+(c>1?' ถึง '+k+'-'+(from+c-1):''):'';
-      next[k]+=c; d[lo]+=c;
-    } else if(!tr.querySelector('.vchk.bad')) d[lo]-=c;
+      /* เลขใหม่ห้ามซ้ำกับแถวอื่นในฟอร์มเดียวกัน */
+      var v=tr.querySelector('.rpSt').value.trim();
+      if(v&&!chk.classList.contains('bad')){
+        var dup=parseStList(v,9999,rpMin(tr)).nums.filter(function(x){return used[k][x]});
+        if(dup.length){chk.className='vchk bad'; chk.textContent='✗ เลขซ้ำกับแถวอื่น: '+dup.join(', ')}
+        else parseStList(v,9999,rpMin(tr)).nums.forEach(function(x){used[k][x]=1});
+      }
+      if(!chk.classList.contains('bad')) d[lo]+=c;
+    } else if(!chk.classList.contains('bad')) d[lo]-=c;
   });
   return d;
 }
@@ -1815,7 +1819,7 @@ function svRenderForm(){
       [['tm','พบปลวก',''],['wd','เปลี่ยนไม้',''],['rp','งานซ่อม / ฝังเพิ่ม','(เปลี่ยนฝา, หาย, ถอนออก, ฝังเพิ่ม)'],['ag','กล่อง AG','']].map(function(s){return '<button type="button" class="fbtn" data-act="sec" data-sec="'+s[0]+'" aria-pressed="false"><span class="fl">'+s[1]+(s[2]?'<small>'+s[2]+'</small>':'')+'</span> <span class="n" id="svN_'+s[0]+'">0</span></button>'}).join('')+'</div>'+
     tableSec('svSecTm','svTmBody','พบปลวก','<th>หมายเลขสถานี</th><th>ชนิดปลวก</th><th>เหยื่อ / เคมีผง</th>','addTm','+ เพิ่มจุดที่พบปลวก','ตั้งต้นว่าจุดอื่นปกติ — เพิ่มเฉพาะจุดที่พบ: พิมพ์เลขสถานี (ระบบตรวจว่ามีจริง) แล้วเลือกชนิดปลวก · <b>ใต้ดิน</b> = ใส่เหยื่อ · <b>สวน</b> = เคมีผง กรอกจำนวนจุด แปลงกรัมอัตโนมัติ 0.3 ก./จุด','svTmChips')+
     tableSec('svSecWd','svWdBody','เปลี่ยนไม้ล่อ','<th>หมายเลขสถานี</th><th>ชนิด</th><th>จำนวนไม้</th>','addWd','+ เพิ่มสถานีที่เปลี่ยนไม้','จำนวนไม้เติมอัตโนมัติตามชนิด (IG = 2 ชิ้น · IC = 1 ชิ้น)','svWdChips')+
-    tableSec('svSecRp','svRpBody','งานซ่อม และ ฝังเพิ่มสถานี','<th>ประเภทงาน</th><th>หมายเลขสถานี / จำนวนที่ฝัง</th><th>จำนวน</th><th>รายละเอียด</th>','addRp','+ เพิ่มงานซ่อม','<b>ฝังสถานีใหม่</b> พิมพ์แค่จำนวน ระบบให้เลขสถานีต่อจากเดิมและเพิ่มจำนวนสถานีของลูกค้าให้เอง · <b>สถานีหาย / ถอนออก</b> เลือก IG/IC แล้วใส่เลขสถานีเดิมได้หลายเลขในแถวเดียว (เช่น <b>3, 5, 8-12</b> = 7 สถานี) ระบบหักออกจากจำนวนที่ใช้งาน · ถ้าสถานีหายแต่รอบนี้ซ่อมไม่ได้ (เช่น อุปกรณ์ไม่พอ) เขียนเหตุผลในช่องรายละเอียด · “อื่นๆ” ต้องระบุว่าเกิดอะไรขึ้น','svRpChips','<button type="button" class="btn sm" data-act="addRpNew">+ ฝังสถานีเพิ่ม</button>')+
+    tableSec('svSecRp','svRpBody','งานซ่อม และ ฝังเพิ่มสถานี','<th>ประเภทงาน</th><th>หมายเลขสถานี / จำนวนที่ฝัง</th><th>จำนวน</th><th>รายละเอียด</th>','addRp','+ เพิ่มงานซ่อม','<b>ฝังสถานีใหม่</b> พิมพ์หมายเลขสถานีใหม่ที่ฝัง ต่อจากเลขเดิม (เช่น <b>81-85</b> หรือ <b>81, 82, 90</b>) ระบบนับจำนวนและเพิ่มสถานีของลูกค้าให้เอง · <b>สถานีหาย / ถอนออก</b> เลือก IG/IC แล้วใส่เลขสถานีเดิมได้หลายเลขในแถวเดียว (เช่น <b>3, 5, 8-12</b> = 7 สถานี) ระบบหักออกจากจำนวนที่ใช้งาน · ถ้าสถานีหายแต่รอบนี้ซ่อมไม่ได้ (เช่น อุปกรณ์ไม่พอ) เขียนเหตุผลในช่องรายละเอียด · “อื่นๆ” ต้องระบุว่าเกิดอะไรขึ้น','svRpChips','<button type="button" class="btn sm" data-act="addRpNew">+ ฝังสถานีเพิ่ม</button>')+
     '<div class="agsec" id="svSecAg" hidden><div id="svAgBox"></div></div>'+
   '</div>'+
   '<div class="savebar"><div class="savemsg" id="svMsg" role="alert" hidden></div>'+
@@ -1937,9 +1941,7 @@ function svMarkMissing(){
     svRows(k).forEach(function(tr){var i=tr.querySelector('input'); markInvalid(i,!i.value.trim()||!!tr.querySelector('.vchk.bad'))});
   });
   svRows('rp').forEach(function(tr){
-    var add=rpIsAdd(tr);
-    markInvalid(tr.querySelector('.rpQty'),add&&rpQtyVal(tr)<1);
-    markInvalid(tr.querySelector('.rpSt'),!add&&(!tr.querySelector('.rpSt').value.trim()||!!tr.querySelector('.vchk.bad')));
+    markInvalid(tr.querySelector('.rpSt'),!tr.querySelector('.rpSt').value.trim()||!!tr.querySelector('.vchk.bad'));
     markInvalid(tr.querySelector('.rpNote'),rpNeedsNote(tr)&&!tr.querySelector('.rpNote').value.trim());
   });
 }
