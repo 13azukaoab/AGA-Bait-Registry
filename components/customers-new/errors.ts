@@ -6,6 +6,8 @@
  *   * 42501 / "row-level security" / "permission denied" → ไม่มีสิทธิ์
  *   * 23505 unique → เลขที่สัญญาซ้ำ (หรือไฟล์ซ้ำ) · 23503 FK → ลบไม่ได้เพราะมีผลบริการ
  *   * P0001 = กฎของ trigger (เช่น สัญญาปิดแล้วไฟล์ล็อก · ต้องแนบ PDF ก่อนเพิ่ม Site plan)
+ *   * AG001–AG006 = error ของ RPC บันทึก/ลบสัญญา (ชื่อลูกค้าซ้ำ · ลูกค้าไม่อยู่สาขา · ลบไม่ได้ · ไม่พบ ·
+ *     สัญญาปิด · เปลี่ยนสาขาไม่ได้) — AG001 หน้าจอส่วนใหญ่จับก่อนแล้วขึ้นกล่องถาม ข้อความนี้เป็นตัวสำรอง
  *   * ไม่รู้จัก = ข้อความทั่วไป (ไม่โชว์ข้อความดิบของฐานข้อมูลให้ผู้ใช้)
  */
 
@@ -18,10 +20,24 @@ export interface DbErrorLike {
 
 export type ErrorContext = "save" | "file" | "delete";
 
+/** error code ของ RPC `save_job_opening` / `delete_job_opening` (ดูหัว migration 20261112110000) */
+const RPC_ERRORS: Record<string, string> = {
+  AG001: "มีลูกค้าชื่อนี้ในสาขานี้อยู่แล้ว — เลือกว่าใช้ลูกค้ารายเดิม หรือเป็นคนละราย",
+  AG002: "ลูกค้าที่เลือกไม่อยู่ในสาขานี้ (หรือไม่พบแล้ว) เลือกลูกค้าใหม่",
+  AG003: "ลบไม่ได้ เพราะสัญญานี้มีผลบริการหรือผลตรวจสถานีแล้ว (ให้ใช้สถานะยกเลิกแทน)",
+  AG004: "ไม่พบสัญญานี้ (อาจถูกลบไปแล้ว หรือไม่มีสิทธิ์ดู) รีเฟรชหน้า",
+  AG005: "ลบไม่ได้ — สัญญาปิดแล้วหรือยกเลิกแล้ว เก็บไว้เป็นประวัติ",
+  AG006: "เปลี่ยนสาขาของสัญญาที่บันทึกแล้วไม่ได้",
+};
+
 export function describeDbError(error: DbErrorLike, context: ErrorContext = "save"): string {
   const code = error.code ?? "";
   const msg = (error.message ?? "").toLowerCase();
   const status = String(error.statusCode ?? "");
+
+  // รหัสของ RPC บันทึก/ลบสัญญา (AG001–AG006) — ตรวจก่อน เพราะ PostgREST ตอบ HTTP 400
+  const rpcMessage = RPC_ERRORS[code];
+  if (rpcMessage) return rpcMessage;
 
   if (
     code === "42501" ||
@@ -31,8 +47,11 @@ export function describeDbError(error: DbErrorLike, context: ErrorContext = "sav
     msg.includes("violates row-level") ||
     msg.includes("unauthorized")
   ) {
-    return context === "file"
-      ? "ไม่มีสิทธิ์จัดการไฟล์ของสัญญานี้ (สัญญาอาจอยู่นอกขอบเขตของบัญชี หรือสัญญาถูกปิดแล้ว)"
+    if (context === "file") {
+      return "ไม่มีสิทธิ์จัดการไฟล์ของสัญญานี้ (สัญญาอาจอยู่นอกขอบเขตของบัญชี หรือสัญญาถูกปิดแล้ว)";
+    }
+    return context === "delete"
+      ? "ไม่มีสิทธิ์ลบสัญญานี้ — สาขานี้อยู่นอกขอบเขตของบัญชีคุณ"
       : "ไม่มีสิทธิ์บันทึกข้อมูลนี้ — สาขานี้อยู่นอกขอบเขตของบัญชีคุณ";
   }
   if (code === "23505" || msg.includes("duplicate") || status === "409") {

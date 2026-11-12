@@ -1,5 +1,6 @@
 /**
- * กฎ/ข้อความของการลบสัญญาและงานล้างข้อมูลที่ล้มเหลว (pure function — เทสได้ ไม่แตะ DB)
+ * กฎ/ข้อความของการลบสัญญาและการลบไฟล์ที่เพิ่งอัปโหลด (pure function — เทสได้ ไม่แตะ DB)
+ * (ตรวจจริงว่าลบสัญญาได้ไหมทำที่ RPC `delete_job_opening` — ที่นี่เหลือเฉพาะใช้ปิดปุ่ม/ข้อความยืนยัน)
  *
  * Logic summary:
  *   * สัญญา `closed` / `cancelled` ลบไม่ได้จากหน้านี้ — ปิดแล้ว = ไฟล์ถูกล็อกด้วย trigger,
@@ -47,13 +48,7 @@ export function removalShortfall(requested: number, removed: number | null | und
   return Math.max(0, requested - (removed ?? 0));
 }
 
-/** ข้อความเมื่อลบไฟล์ใน Storage ไม่ครบ */
+/** ข้อความเมื่อลบไฟล์ใน Storage ไม่ครบ (ใช้กับไฟล์ที่เพิ่งอัปโหลดแล้วต้องย้อน) */
 export function describeShortfall(requested: number, removed: number): string {
   return `ลบไฟล์แนบได้ ${removed} จาก ${requested} ไฟล์ (ที่เหลือถูกปฏิเสธสิทธิ์หรือลบไม่สำเร็จ) — แจ้งผู้ดูแลระบบ`;
-}
-
-/** รายการข้อมูลที่ค้างหลัง rollback ล้ม → ข้อความต่อท้าย error เดิม (ว่าง = ไม่มีอะไรค้าง) */
-export function describeLeftovers(items: string[]): string {
-  if (items.length === 0) return "";
-  return ` · ⚠ มีข้อมูลค้างบางส่วนในระบบที่ลบคืนไม่สำเร็จ: ${items.join(", ")} — แจ้งผู้ดูแลระบบให้ตรวจ ห้ามกดบันทึกซ้ำจนกว่าจะตรวจ`;
 }

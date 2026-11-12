@@ -10,8 +10,10 @@
  *   * ช่องคำนวณ (เขต/Tier/วันสิ้นสุด) เรียก `rowCalc.ts` → `lib/rules` · เกณฑ์ Tier มาจาก `tier_rules` ที่ server ส่งมา
  *   * ตัวกรอง เดือน = เปลี่ยน `?month=` (server โหลดใหม่) · เขต/สาขา/สถานะ/ค้นหา = กรองฝั่ง client
  *     เฉพาะแถวที่บันทึกแล้วของเดือนที่เลือก
- *   * บันทึก = ทีละแถวด้วย Supabase client ของผู้ใช้จริง (RLS ตัดสินสิทธิ์) แถวที่ผ่านถูกเอาออกจากร่าง
- *     แถวที่ไม่ผ่านค้างไว้พร้อมข้อความผิดพลาด
+ *   * บันทึก = ทีละแถวด้วย RPC `save_job_opening` (1 แถว = 1 transaction · RLS ตัดสินสิทธิ์) แถวที่ผ่านถูกเอาออกจากร่าง
+ *     แถวที่ไม่ผ่านค้างไว้พร้อมข้อความผิดพลาด · ชื่อลูกค้าซ้ำในสาขา (AG001) → กล่อง "ใช้รายเดิม / คนละราย"
+ *     แล้วส่งซ้ำตามที่เลือก (ดู `save.ts`, `DuplicateCustomerDialog.tsx`)
+ *   * ลบ = RPC `delete_job_opening` · ไฟล์ใน Storage DB ลงคิวให้ cron ลบ (ไม่ลบจากหน้านี้)
  *   * ช่องที่ schema ยังไม่มี 6 ช่อง ซ่อนด้วย `SHOW_PENDING_SCHEMA_COLUMNS` (config.ts)
  */
 import { useRouter } from "next/navigation";
@@ -34,13 +36,15 @@ import {
 } from "./draftRow";
 import { buildDeleteConfirmText, contractDeleteBlockReason } from "./deleteRules";
 import { applyFilters, type FilterableRow, type StatusFilter } from "./filters";
+import { DuplicateCustomerDialog } from "./DuplicateCustomerDialog";
+import type { DuplicateChoice, DuplicateCustomerMatch } from "./duplicateCustomer";
 import { FileDialog } from "./FileDialog";
 import { uploadAfterSave } from "./uploadAfterSave";
 import { HistoryDialog } from "./HistoryDialog";
 import { monthLabel } from "./months";
 import { PdfIcon } from "./PdfIcon";
 import { RenewalDialog } from "./RenewalDialog";
-import { deleteContract, findLinkedRenewals, saveDraft } from "./save";
+import { deleteContract, findLinkedRenewals, saveDraft, type SaveResult } from "./save";
 import { describeTypeMismatch } from "./saveRules";
 import { TeamPicker } from "./TeamPicker";
 import { autoEndDate, endDateWarning, formatMoney, tierFor } from "./rowCalc";
@@ -94,6 +98,13 @@ export function NewContractsClient({ role, month, monthChoices, master, saved, t
   /** key ของแถวร่างที่กำลังเลือกลูกค้าเดิม (Renew) */
   const [renewalFor, setRenewalFor] = useState<string | null>(null);
   const [showErrors, setShowErrors] = useState(false);
+  /** กล่องถามชื่อลูกค้าซ้ำ (AG001) — `resolve` ส่งคำตอบกลับให้ลูปบันทึกที่รออยู่ */
+  const [dupPrompt, setDupPrompt] = useState<{
+    contractNo: string;
+    customerName: string;
+    matches: DuplicateCustomerMatch[];
+    resolve: (choice: DuplicateChoice) => void;
+  } | null>(null);
 
   const branchById = useMemo(() => new Map(master.branches.map((b) => [b.id, b])), [master]);
   const typeLabel = useMemo(
@@ -187,6 +198,39 @@ export function NewContractsClient({ role, month, monthChoices, master, saved, t
   const removeDraft = (key: string) => setDrafts((rows) => rows.filter((r) => r.key !== key));
 
   // ---------- บันทึก ----------
+  /** ถามผู้ใช้ว่าลูกค้าชื่อซ้ำเป็นรายเดิมหรือคนละราย (รอจนกว่าจะเลือก) */
+  const askDuplicate = (d: DraftRow, matches: DuplicateCustomerMatch[]) =>
+    new Promise<DuplicateChoice>((resolve) =>
+      setDupPrompt({
+        contractNo: d.contractNo.trim(),
+        customerName: d.customerName.trim(),
+        matches,
+        resolve: (choice) => {
+          setDupPrompt(null);
+          resolve(choice);
+        },
+      }),
+    );
+
+  /** บันทึก 1 แถว · ชื่อซ้ำ (AG001) → ถามผู้ใช้ แล้วส่งซ้ำตามที่เลือก */
+  async function saveRow(d: DraftRow, c: (typeof draftChecks)[number]): Promise<SaveResult> {
+    const first = await saveDraft(supabase, d, c);
+    if (first.ok || !first.duplicates) return first;
+    const choice = await askDuplicate(d, first.duplicates);
+    if (choice.kind === "cancel") {
+      return {
+        ok: false,
+        error: "ยกเลิกแล้ว — พบลูกค้าชื่อซ้ำในสาขา ยังไม่ได้เลือกว่าเป็นรายเดิมหรือคนละราย กดบันทึกใหม่เพื่อเลือก",
+      };
+    }
+    return saveDraft(
+      supabase,
+      d,
+      c,
+      choice.kind === "existing" ? { customerId: choice.customerId } : { confirmNewCustomer: true },
+    );
+  }
+
   async function saveAll() {
     setShowErrors(true);
     setBanner(null);
@@ -209,7 +253,7 @@ export function NewContractsClient({ role, month, monthChoices, master, saved, t
     const typeWarnings: string[] = [];
 
     for (const { d, c } of ready) {
-      const res = await saveDraft(supabase, d, c);
+      const res = await saveRow(d, c);
       if (!res.ok) {
         failedMessages.set(d.key, res.error);
         continue;
@@ -276,7 +320,7 @@ export function NewContractsClient({ role, month, monthChoices, master, saved, t
     if (!window.confirm(buildDeleteConfirmText(s.contractNo, s.customerName, linked.contractNos))) {
       return;
     }
-    const res = await deleteContract(supabase, s.contractId, s.customerId);
+    const res = await deleteContract(supabase, s.contractId);
     if (!res.ok) {
       setBanner({ variant: "danger", text: res.error });
       return;
@@ -717,6 +761,15 @@ export function NewContractsClient({ role, month, monthChoices, master, saved, t
           locked={savedForDialog.status === "closed"}
           onChanged={() => router.refresh()}
           onClose={() => setFileTarget(null)}
+        />
+      ) : null}
+      {dupPrompt ? (
+        <DuplicateCustomerDialog
+          customerName={dupPrompt.customerName}
+          contractNo={dupPrompt.contractNo}
+          matches={dupPrompt.matches}
+          typeLabel={(code) => typeLabel.get(code) ?? code}
+          onChoose={dupPrompt.resolve}
         />
       ) : null}
       {renewalFor ? (
