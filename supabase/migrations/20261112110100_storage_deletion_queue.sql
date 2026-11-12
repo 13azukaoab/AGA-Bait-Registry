@@ -8,6 +8,8 @@
 --       - trigger AFTER DELETE บน contract_files → ลง path ในคิว (ครอบทั้งลบไฟล์ตรงๆ และลบตามสัญญา)
 --       - trigger AFTER UPDATE OF storage_path → ลง path เก่า (เปลี่ยน PDF สัญญา)
 --       - อยู่ใน transaction เดียวกับการลบ: ลบสำเร็จ = ลงคิวแน่ · ลบไม่สำเร็จ/ถูก RLS ปฏิเสธ = ไม่ลงคิว
+--       - path เดิมที่เคยปิดงานแล้วถูกใช้ซ้ำแล้วลบอีก → เปิดงานใหม่ (ล้าง done_at / attempts / last_error)
+--         (path มี token สุ่มอยู่แล้ว แต่ทำไว้กันพลาด — ไม่งั้น object รอบสองจะค้างตลอดไป)
 --   * งานลบจริงทำฝั่ง server (`app/api/cron/storage-cleanup` · service role · ด่าน CRON_SECRET):
 --     ตรวจซ้ำว่าไม่มีแถวใช้ path แล้ว → remove → ตรวจว่า object หายจริง → ปิดงาน /
 --     นับ attempts + เก็บ error (ลองได้ไม่เกิน 5 ครั้ง ที่เหลือค้างให้ host เห็น) · ลบเฉพาะ path ในคิว
@@ -53,11 +55,13 @@ BEGIN
   IF TG_OP = 'DELETE' THEN
     INSERT INTO public.storage_deletion_queue (bucket, path)
     VALUES ('contract-files', OLD.storage_path)
-    ON CONFLICT (bucket, path) DO NOTHING;
+    ON CONFLICT (bucket, path) DO UPDATE
+      SET done_at = NULL, attempts = 0, last_error = NULL, enqueued_at = now();
   ELSIF TG_OP = 'UPDATE' AND NEW.storage_path IS DISTINCT FROM OLD.storage_path THEN
     INSERT INTO public.storage_deletion_queue (bucket, path)
     VALUES ('contract-files', OLD.storage_path)
-    ON CONFLICT (bucket, path) DO NOTHING;
+    ON CONFLICT (bucket, path) DO UPDATE
+      SET done_at = NULL, attempts = 0, last_error = NULL, enqueued_at = now();
   END IF;
   RETURN NULL; -- AFTER trigger
 END;

@@ -14,7 +14,9 @@
 --       - **SECURITY INVOKER**: ทุกคำสั่งข้างในวิ่งผ่าน RLS ของผู้เรียก (admin ได้เฉพาะสาขาในขอบเขต ·
 --         recorder ทำไม่ได้) ไม่ใช้ service role
 --       - p_contract_id NULL = เปิดงานใหม่ · มีค่า = แก้สัญญาเดิม (แก้ได้แค่สัญญา + ทีม + เปลี่ยนไปใช้
---         ลูกค้ารายอื่นในสาขาเดียวกัน · **ไม่แก้ชื่อลูกค้า** เพราะลูกค้า 1 คนมีหลายสัญญา)
+--         ลูกค้ารายอื่นในสาขาเดียวกัน · **ไม่แก้ชื่อลูกค้า** เพราะลูกค้า 1 คนมีหลายสัญญา ·
+--         p_branch_id ต้องเท่ากับสาขาของลูกค้าเดิม ไม่งั้น AG006 — กันย้ายสัญญาข้ามสาขา)
+--       - ล้มเร็ว: ผู้ที่ไม่ใช่ host และสาขาอยู่นอก division_scope → 42501 ก่อนทำอะไร
 --       - ลูกค้า: p_customer_id (เลือกรายเดิม / Renew) → ต้องอยู่สาขาเดียวกัน (AG002) ·
 --         ไม่เลือก → ล็อก (สาขา + name_key) ด้วย pg_advisory_xact_lock ก่อนค้น → กันกดพร้อมกันได้
 --         ลูกค้าซ้ำ (คนที่ 2 รอคนแรก commit แล้วจะเห็นลูกค้าที่เพิ่งสร้าง) · เจอชื่อตรงในสาขาและ
@@ -33,6 +35,7 @@
 --       AG003 ลบไม่ได้ มีผลบริการแล้ว (ให้ใช้สถานะยกเลิก)
 --       AG004 ไม่พบสัญญา (ถูกลบไปแล้ว หรือไม่มีสิทธิ์)
 --       AG005 ลบไม่ได้ สัญญาปิด/ยกเลิกแล้ว
+--       AG006 แก้แถว: เปลี่ยนสาขาของสัญญาที่บันทึกแล้วไม่ได้ (p_branch_id ต้องเป็นสาขาของลูกค้าเดิม)
 --       เดิม: 42501 ไม่มีสิทธิ์/นอกขอบเขต · 23505 เลขสัญญาซ้ำ · 23503 ทีม/ลูกค้าอ้างอิงไม่มีอยู่ ·
 --             23514 ข้อมูลไม่ผ่านเงื่อนไข · P0001 Renew ผูกคนละลูกค้า
 --   * audit: trigger audit เดิมของ customers / contracts / contract_teams ทำงานทุกคำสั่งข้างใน
@@ -50,8 +53,10 @@ PARALLEL SAFE
 SET search_path = pg_catalog
 AS $$
   SELECT lower(btrim(regexp_replace(
-           translate(coalesce(p_name, ''), E'​‌‍⁠﻿', ''),
-           E'[[:space:]   ]+', ' ', 'g')));
+           -- ลบ zero-width space / non-joiner / joiner / word joiner / BOM
+           translate(coalesce(p_name, ''), U&'\200B\200C\200D\2060\FEFF', ''),
+           -- ช่องว่างทุกชนิด + NBSP / figure space / narrow NBSP = รวมเป็นช่องเดียว
+           '[[:space:]' || U&'\00A0\2007\202F' || ']+', ' ', 'g')));
 $$;
 
 ALTER TABLE public.customers
@@ -100,6 +105,7 @@ DECLARE
   v_customer_id   uuid;
   v_customer_type text;
   v_old_customer  uuid;
+  v_old_branch    uuid;
   v_reused        boolean := false;
   v_contract_id   uuid;
   v_key           text;
@@ -107,11 +113,23 @@ DECLARE
   v_team_ids      uuid[] := ARRAY(SELECT DISTINCT t FROM unnest(coalesce(p_team_ids, '{}')) t
                                    WHERE t IS NOT NULL);
 BEGIN
-  -- ---------- โหมดแก้: สัญญาต้องมีอยู่และมองเห็น ----------
+  -- ---------- ล้มเร็ว: admin นอกขอบเขตหน่วยงาน (RLS ปฏิเสธอยู่แล้ว นี่แค่ไม่ต้องทำงานเปล่า) ----------
+  --   host ข้ามได้: policy ของ host ไม่ขึ้นกับ division_scope
+  IF NOT is_host() AND NOT branch_in_scope(p_branch_id) THEN
+    RAISE EXCEPTION 'branch is outside your division' USING ERRCODE = '42501';
+  END IF;
+
+  -- ---------- โหมดแก้: สัญญาต้องมีอยู่และมองเห็น · ห้ามย้ายสาขา ----------
   IF p_contract_id IS NOT NULL THEN
-    SELECT c.customer_id INTO v_old_customer FROM contracts c WHERE c.id = p_contract_id;
+    SELECT c.customer_id, cu.branch_id INTO v_old_customer, v_old_branch
+      FROM contracts c JOIN customers cu ON cu.id = c.customer_id
+     WHERE c.id = p_contract_id;
     IF NOT FOUND THEN
       RAISE EXCEPTION 'contract not found' USING ERRCODE = 'AG004';
+    END IF;
+    -- สาขาของสัญญา = สาขาของลูกค้าเดิม · เปลี่ยนสาขาผ่านหน้าเปิดงานไม่ได้ (กันย้ายสัญญาข้ามสาขา)
+    IF p_branch_id IS DISTINCT FROM v_old_branch THEN
+      RAISE EXCEPTION 'the branch of a saved contract cannot be changed' USING ERRCODE = 'AG006';
     END IF;
   END IF;
 

@@ -3,7 +3,7 @@
 -- Role simulation: seed as postgres, then SET LOCAL ROLE authenticated/anon and set
 -- request.jwt.claim.sub (what auth.uid() reads). RESET ROLE to inspect as superuser.
 BEGIN;
-SELECT plan(18);
+SELECT plan(20);
 
 -- ---------- โครงสร้าง + สิทธิ์ ----------
 SELECT has_table('public', 'storage_deletion_queue', 'storage_deletion_queue exists');
@@ -100,6 +100,25 @@ SELECT is((SELECT count(*)::int FROM storage_deletion_queue
 SELECT is((SELECT count(*)::int FROM storage_deletion_queue WHERE done_at IS NULL AND attempts = 0
             AND bucket = 'contract-files'), 3,
   'new queue rows start pending (bucket set, no attempts)');
+
+-- path เดิมที่ปิดงานแล้ว ถูกใช้ซ้ำแล้วลบอีก → ต้องกลับเข้าคิว (ไม่งั้น object รอบสองค้าง)
+UPDATE storage_deletion_queue SET done_at = now(), attempts = 2, last_error = 'old'
+ WHERE path = '00000000-0000-0000-0000-0000000000d1/one.pdf';
+INSERT INTO contract_files (id, contract_id, kind, storage_path, file_name, mime_type, size_bytes) VALUES
+  ('00000000-0000-0000-0000-0000000000f9', '00000000-0000-0000-0000-0000000000d1', 'contract_pdf',
+   '00000000-0000-0000-0000-0000000000d1/one.pdf', 'one.pdf', 'application/pdf', 100);
+SET LOCAL ROLE authenticated;
+SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a2', true);
+DELETE FROM contract_files WHERE id = '00000000-0000-0000-0000-0000000000f9';
+RESET ROLE;
+SELECT results_eq(
+  $$SELECT done_at IS NULL, attempts, last_error FROM storage_deletion_queue
+     WHERE path = '00000000-0000-0000-0000-0000000000d1/one.pdf'$$,
+  $$VALUES (true, 0, NULL::text)$$,
+  'a finished path that is deleted again is re-opened in the queue');
+SELECT is((SELECT count(*)::int FROM storage_deletion_queue
+            WHERE path = '00000000-0000-0000-0000-0000000000d1/one.pdf'), 1,
+  're-queueing keeps one row per path');
 
 SELECT * FROM finish();
 ROLLBACK;

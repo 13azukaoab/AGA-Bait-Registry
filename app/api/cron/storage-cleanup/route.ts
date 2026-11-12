@@ -13,6 +13,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 //   * ใช้ service role (ข้าม RLS) เฉพาะในไฟล์ฝั่ง server นี้ · ไม่ส่งค่าคีย์หรือ path ไฟล์กลับในคำตอบ
 
 export const dynamic = "force-dynamic";
+// รอบละไม่เกิน 100 ไฟล์ (lib/storage/cleanup.ts) — ให้เวลาพอสำหรับลบ + ตรวจซ้ำทีละไฟล์
+export const maxDuration = 60;
 
 export async function GET(request: Request) {
   if (

@@ -3,16 +3,16 @@
 -- Role simulation: seed as postgres, then SET LOCAL ROLE authenticated/anon and set
 -- request.jwt.claim.sub (what auth.uid() reads). RESET ROLE to inspect as superuser.
 BEGIN;
-SELECT plan(47);
+SELECT plan(51);
 
 -- =====================================================================
 -- โครงสร้าง + สิทธิ์
 -- =====================================================================
 SELECT has_column('public', 'customers', 'name_key', 'customers.name_key exists');
-SELECT is(public.customer_name_key(E'  คุณ  สมชาย​  '), 'คุณ สมชาย',
+SELECT is(public.customer_name_key(U&'  คุณ  สมชาย\200B  '), 'คุณ สมชาย',
   'name_key: trims, collapses spaces, drops zero-width space');
 SELECT is(public.customer_name_key('ABC   Co.'), 'abc co.', 'name_key: lower-cases latin letters');
-SELECT is(public.customer_name_key(E'บริษัท เอ'), 'บริษัท เอ', 'name_key: NBSP counts as a space');
+SELECT is(public.customer_name_key(U&'บริษัท\00A0เอ'), 'บริษัท เอ', 'name_key: NBSP counts as a space');
 SELECT is(public.customer_name_key('คุณสมชาย'), 'คุณสมชาย', 'name_key: does not strip title prefixes');
 SELECT has_index('public', 'customers', 'customers_branch_name_key_idx', 'index on (branch_id, name_key)');
 
@@ -44,11 +44,14 @@ SELECT ok(bool_and(p.prosrc LIKE '%pg_advisory_xact_lock%'),
 INSERT INTO auth.users (id, instance_id, aud, role, email) VALUES
   ('00000000-0000-0000-0000-0000000000a1', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'host@test.local'),
   ('00000000-0000-0000-0000-0000000000a2', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'admin@test.local'),
-  ('00000000-0000-0000-0000-0000000000a3', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'rec@test.local');
+  ('00000000-0000-0000-0000-0000000000a3', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'rec@test.local'),
+  ('00000000-0000-0000-0000-0000000000a4', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'host2@test.local');
 INSERT INTO profiles (user_id, display_name, username, role, division_scope) VALUES
   ('00000000-0000-0000-0000-0000000000a1', 'host',     'user_a1', 'host',     '{central,province}'),
   ('00000000-0000-0000-0000-0000000000a2', 'admin',    'user_a2', 'admin',    '{central}'),
-  ('00000000-0000-0000-0000-0000000000a3', 'recorder', 'user_a3', 'recorder', '{central}');
+  ('00000000-0000-0000-0000-0000000000a3', 'recorder', 'user_a3', 'recorder', '{central}'),
+  -- host ที่ division_scope มีแค่ส่วนกลาง: สิทธิ์ host ไม่ขึ้นกับขอบเขต ด่านล้มเร็วต้องไม่บล็อก
+  ('00000000-0000-0000-0000-0000000000a4', 'host2',    'user_a4', 'host',     '{central}');
 
 CREATE TEMP TABLE _s AS
   SELECT (SELECT id FROM branches WHERE division = 'central'  ORDER BY name LIMIT 1) AS central_id,
@@ -200,6 +203,32 @@ $$, '42501', NULL, 'recorder cannot open a job');
 RESET ROLE;
 SELECT is((SELECT value_total FROM contracts WHERE contract_no = 'T-1'), 55000.00::numeric,
   'value unchanged after the refused recorder edit');
+
+-- โหมดแก้: ห้ามย้ายสัญญาไปสาขาอื่น (host ข้ามด่านขอบเขตได้ จึงไปถึงด่านนี้)
+SET LOCAL ROLE authenticated;
+SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a1', true);
+SELECT throws_ok($$
+  SELECT * FROM public.save_job_opening(
+    p_contract_id := (SELECT t1_contract FROM _c),
+    p_branch_id := (SELECT province_id FROM _s), p_customer_name := 'x',
+    p_customer_type := 'house', p_contract_no := 'T-1', p_start_date := '2026-01-15',
+    p_end_date := '2027-01-14', p_term_years := 1, p_value_total := 55000, p_sale_type := 'new',
+    p_customer_id := '00000000-0000-0000-0000-0000000000c9')
+$$, 'AG006', NULL, 'edit cannot move a contract to another branch (AG006)');
+
+-- host ที่ขอบเขตมีแค่ส่วนกลาง ยังเปิดงานต่างจังหวัดได้ (สิทธิ์ host ไม่ขึ้นกับ division_scope)
+SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a4', true);
+SELECT lives_ok($$
+  SELECT * FROM public.save_job_opening(
+    p_branch_id := (SELECT province_id FROM _s), p_customer_name := 'ลูกค้า host ต่างจังหวัด',
+    p_customer_type := 'house', p_contract_no := 'T-HOST', p_start_date := '2026-02-01',
+    p_end_date := '2027-01-31', p_term_years := 1, p_value_total := 50000, p_sale_type := 'new')
+$$, 'host is not blocked by the fast scope check');
+RESET ROLE;
+SELECT is((SELECT c.customer_id FROM contracts c WHERE c.contract_no = 'T-1'),
+  (SELECT t1_customer FROM _c), 'the refused branch move left the contract with its customer');
+SELECT ok(public.customer_name_key(U&'a\200Bb\00A0c') = 'ab c',
+  'name_key handles escaped invisible characters (zero-width removed, NBSP to space)');
 
 -- =====================================================================
 -- ลบ
