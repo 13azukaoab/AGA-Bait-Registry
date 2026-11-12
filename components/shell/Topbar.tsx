@@ -10,7 +10,12 @@ import { ROLE_LABELS, ROLES, type MonthOption, type Role } from "./types";
 type TopbarProps = {
   /** id ของเมนูซ้าย ใช้กับ aria-controls ของปุ่ม ☰ */
   navId: string;
+  /** จอเล็ก: ลิ้นชักเปิดอยู่หรือไม่ */
   navOpen: boolean;
+  /** อยู่โหมดจอกว้าง (≥861px) หรือไม่ — กำหนดความหมายของปุ่ม ☰ */
+  wide: boolean;
+  /** จอกว้าง: เมนูย่ออยู่หรือไม่ */
+  mini: boolean;
   onToggleNav: () => void;
   months: readonly MonthOption[];
   month: string;
@@ -33,6 +38,8 @@ export const Topbar = forwardRef<HTMLButtonElement, TopbarProps>(function Topbar
   {
     navId,
     navOpen,
+    wide,
+    mini,
     onToggleNav,
     months,
     month,
@@ -43,6 +50,15 @@ export const Topbar = forwardRef<HTMLButtonElement, TopbarProps>(function Topbar
   },
   toggleRef,
 ) {
+  // จอกว้าง: ปุ่มสลับ ย่อ/ขยาย (aria-pressed) · จอเล็ก: ปุ่มเปิด/ปิดลิ้นชัก (aria-expanded)
+  const toggleLabel = wide
+    ? mini
+      ? "ขยายเมนู (ตอนนี้ย่อไว้ ชี้ที่แถบเมนูเพื่อดูชั่วคราว)"
+      : "ย่อเมนูให้เนื้อหากว้างขึ้น"
+    : navOpen
+      ? "ปิดเมนู"
+      : "เปิดเมนู";
+
   return (
     <header className="sticky top-0 z-20 flex min-h-[var(--topbar-h)] flex-wrap items-center gap-x-3 gap-y-2 border-b border-border bg-surface px-[18px] py-[9px] max-[600px]:gap-x-2 max-[600px]:px-3 max-[600px]:py-2">
       <div className="flex min-w-0 flex-1 items-center gap-3 max-[600px]:gap-2">
@@ -50,10 +66,12 @@ export const Topbar = forwardRef<HTMLButtonElement, TopbarProps>(function Topbar
           ref={toggleRef}
           type="button"
           onClick={onToggleNav}
-          aria-label={navOpen ? "ปิดเมนู" : "เปิดเมนู"}
-          aria-expanded={navOpen}
+          aria-label={toggleLabel}
+          title={wide ? toggleLabel : undefined}
+          aria-pressed={wide ? mini : undefined}
+          aria-expanded={wide ? undefined : navOpen}
           aria-controls={navId}
-          className="inline-flex h-[34px] w-9 shrink-0 cursor-pointer items-center justify-center rounded-lg border border-border bg-surface-2 text-lg leading-none text-fg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent min-[861px]:hidden"
+          className="inline-flex h-[34px] w-9 shrink-0 cursor-pointer items-center justify-center rounded-lg border border-border bg-surface-2 text-lg leading-none text-fg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
         >
           <span aria-hidden="true">☰</span>
         </button>
@@ -66,7 +84,7 @@ export const Topbar = forwardRef<HTMLButtonElement, TopbarProps>(function Topbar
             aria-label="Advance Group Asia (AGA)"
             className={cx(
               styles.logo,
-              "h-[38px] w-[76px] shrink-0 max-[600px]:h-8 max-[600px]:w-16",
+              "-my-[5px] h-12 w-[94px] shrink-0 max-[600px]:-my-1 max-[600px]:h-10 max-[600px]:w-[78px]",
             )}
           />
           <span className="min-w-0 border-l border-border pl-3 max-[600px]:pl-[9px] max-[420px]:hidden">
