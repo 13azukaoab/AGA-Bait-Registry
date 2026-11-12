@@ -176,18 +176,11 @@ export async function loadMonthContracts(
   if (error) return { rows: [], truncated: false, error: error.message };
 
   const raw = (data ?? []) as unknown as ContractRowDb[];
-  const counts = role === "host" ? await loadAuditCounts(supabase, raw.map((r) => r.id)) : null;
+  const audit = role === "host" ? await loadAuditCounts(supabase, raw.map((r) => r.id)) : null;
 
-  // เลขที่สัญญาเก่าของแถว Renew (สัญญาเก่าอาจอยู่คนละเดือน จึงอ่านแยก)
+  // เลขที่สัญญาเก่าของแถว Renew (สัญญาเก่าอาจอยู่คนละเดือน จึงอ่านแยก) · อ่านไม่ได้ = null (หน้าจอแสดง "โหลดไม่ได้")
   const oldIds = [...new Set(raw.map((r) => r.renewed_from_contract_id).filter((v): v is string => !!v))];
-  const oldNo = new Map<string, string>();
-  for (let i = 0; i < oldIds.length; i += 80) {
-    const { data: olds } = await supabase
-      .from("contracts")
-      .select("id, contract_no")
-      .in("id", oldIds.slice(i, i + 80));
-    for (const o of (olds ?? []) as { id: string; contract_no: string }[]) oldNo.set(o.id, o.contract_no);
-  }
+  const oldNo = await loadContractNos(supabase, oldIds);
 
   const rows: SavedContract[] = raw
     .filter((r) => r.customers)
@@ -204,7 +197,7 @@ export async function loadMonthContracts(
       sellerRole: r.sale_name?.trim() || !r.am_name?.trim() ? "sale" : "am",
       isUrgent: r.is_urgent,
       renewedFrom: r.renewed_from_contract_id
-        ? { contractId: r.renewed_from_contract_id, contractNo: oldNo.get(r.renewed_from_contract_id) ?? "—" }
+        ? { contractId: r.renewed_from_contract_id, contractNo: oldNo.get(r.renewed_from_contract_id) ?? null }
         : null,
       mailReceivedDate: r.mail_received_date ?? "",
       firstServiceDate: r.first_service_date ?? "",
@@ -218,25 +211,52 @@ export async function loadMonthContracts(
       files: (r.contract_files ?? [])
         .map(toFileRow)
         .sort((a, b) => a.kind.localeCompare(b.kind) || a.version - b.version),
-      auditCount: counts ? (counts.get(r.id) ?? 0) : null,
+      // นับไม่ได้ (query ล้ม) = null + auditCountFailed → หน้าจอแสดง "โหลดไม่ได้" ไม่ใช่ 0
+      auditCount: audit && !audit.failedIds.has(r.id) ? (audit.counts.get(r.id) ?? 0) : null,
+      auditCountFailed: audit ? audit.failedIds.has(r.id) : false,
     }));
 
   return { rows, truncated: raw.length >= MONTH_ROW_LIMIT, error: null };
 }
 
-/** นับแถว audit_log ต่อสัญญา (host เท่านั้น) — แบ่งชุดกัน URL ยาวเกิน */
-async function loadAuditCounts(
+/** อ่านเลขที่สัญญาตาม id (แบ่งชุด) — ชุดที่ query ล้มจะไม่มี id ในผลลัพธ์ (ผู้เรียกแสดง "โหลดไม่ได้") */
+export async function loadContractNos(
+  supabase: SupabaseClient,
+  ids: string[],
+): Promise<Map<string, string>> {
+  const result = new Map<string, string>();
+  for (let i = 0; i < ids.length; i += 80) {
+    const { data, error } = await supabase
+      .from("contracts")
+      .select("id, contract_no")
+      .in("id", ids.slice(i, i + 80));
+    if (error) continue;
+    for (const o of (data ?? []) as { id: string; contract_no: string }[]) result.set(o.id, o.contract_no);
+  }
+  return result;
+}
+
+/**
+ * นับแถว audit_log ต่อสัญญา (host เท่านั้น) — แบ่งชุดกัน URL ยาวเกิน
+ * ชุดที่ query ล้ม → เก็บ id ไว้ใน `failedIds` (ไม่ปล่อยให้กลายเป็น 0 เงียบๆ)
+ */
+export async function loadAuditCounts(
   supabase: SupabaseClient,
   contractIds: string[],
-): Promise<Map<string, number>> {
+): Promise<{ counts: Map<string, number>; failedIds: Set<string> }> {
   const counts = new Map<string, number>();
+  const failedIds = new Set<string>();
   const CHUNK = 80;
   for (let i = 0; i < contractIds.length; i += CHUNK) {
     const ids = contractIds.slice(i, i + CHUNK);
-    const { data } = await supabase.from("audit_log").select("contract_id").in("contract_id", ids);
+    const { data, error } = await supabase.from("audit_log").select("contract_id").in("contract_id", ids);
+    if (error) {
+      for (const id of ids) failedIds.add(id);
+      continue;
+    }
     for (const r of (data ?? []) as { contract_id: string | null }[]) {
       if (r.contract_id) counts.set(r.contract_id, (counts.get(r.contract_id) ?? 0) + 1);
     }
   }
-  return counts;
+  return { counts, failedIds };
 }

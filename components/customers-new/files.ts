@@ -6,7 +6,7 @@
  *   * path = `<contract_id>/<โทเคน>-<ชื่อปลอดภัย>` (ดู `buildStoragePath`) · ชื่อเดิมเก็บใน file_name
  *   * contract_pdf: 1 แถวต่อสัญญา — แนบใหม่ = UPDATE แถวเดิมแล้วลบ object เก่า
  *   * site_plan: เพิ่มเป็นเวอร์ชันใหม่ ต้องมีเหตุผล · version/is_current ฐานข้อมูลนับให้เอง (trigger)
- *   * ลำดับกันข้อมูลค้าง: อัปโหลด object ก่อน → เขียนแถว · แถวเขียนไม่สำเร็จ = ลบ object ที่เพิ่งอัปโหลด
+ *   * ลำดับกันข้อมูลค้าง (ลบ object ไม่สำเร็จ = แจ้งเตือนผู้ใช้ ไม่กลืนเงียบ): อัปโหลด object ก่อน → เขียนแถว · แถวเขียนไม่สำเร็จ = ลบ object ที่เพิ่งอัปโหลด
  *     · ลบ = ลบแถวก่อน → ลบ object (แถวลบไม่ผ่านเช่นสัญญาปิดแล้ว = object ยังอยู่ ไม่เหลือแถวลอย)
  *   * รูปภาพ 5–10 MB บีบก่อน (`compress.ts`) · PDF > 5 MB ปฏิเสธ (ไม่มีตัวบีบ PDF) · > 10 MB ปฏิเสธ ·
  *     บีบแล้วยังเกิน 5 MB ไม่รับ
@@ -14,6 +14,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { compressFile } from "./compress";
+import { describeShortfall, removalShortfall } from "./deleteRules";
 import { describeDbError } from "./errors";
 import {
   buildStoragePath,
@@ -28,7 +29,8 @@ export const CONTRACT_FILES_BUCKET = "contract-files";
 /** อายุ signed URL (วินาที) — เปิดดูทันที ไม่เก็บลิงก์ไว้ */
 const SIGNED_URL_SECONDS = 60;
 
-export type OpResult = { ok: true } | { ok: false; error: string };
+/** `warning` = งานหลักสำเร็จ แต่มีเรื่องที่ผู้ใช้ต้องรู้ (เช่น ไฟล์เก่าใน Storage ลบไม่สำเร็จ) */
+export type OpResult = { ok: true; warning?: string } | { ok: false; error: string };
 
 /** ตรวจชนิด/ขนาดไฟล์ + บีบถ้า 5–10 MB · error = ข้อความไทย */
 export async function prepareFile(
@@ -66,9 +68,33 @@ async function uploadObject(
   return { path };
 }
 
-async function removeObject(supabase: SupabaseClient, path: string): Promise<void> {
-  // ลบ object ไม่สำเร็จไม่ทำให้ข้อมูลหลักผิด — ปล่อยผ่าน (ไฟล์ค้างไม่มีแถวอ้างอิง ไม่เปิดให้ใครเห็น)
-  await supabase.storage.from(CONTRACT_FILES_BUCKET).remove([path]);
+/**
+ * ลบ object ใน Storage แล้วตรวจผลจริง — ห้ามกลืน error
+ * (Storage ที่ถูก RLS ปฏิเสธจะไม่ error แต่คืนรายการว่าง/ไม่ครบ จึงเทียบจำนวนกับที่ขอลบ)
+ */
+export async function removeObjects(
+  supabase: SupabaseClient,
+  paths: string[],
+): Promise<{ ok: true } | { ok: false; error: string; removed: number }> {
+  if (paths.length === 0) return { ok: true };
+  const { data, error } = await supabase.storage.from(CONTRACT_FILES_BUCKET).remove(paths);
+  if (error) return { ok: false, error: describeDbError(error as never, "file"), removed: 0 };
+  const removed = data?.length ?? 0;
+  if (removalShortfall(paths.length, removed) > 0) {
+    return { ok: false, error: describeShortfall(paths.length, removed), removed };
+  }
+  return { ok: true };
+}
+
+/** ลบ object เดี่ยว · คืนข้อความเตือน (null = ลบสำเร็จ) — ไม่ทำให้งานหลักล้ม แต่ต้องบอกผู้ใช้ */
+async function removeObject(supabase: SupabaseClient, path: string): Promise<string | null> {
+  const res = await removeObjects(supabase, [path]);
+  return res.ok ? null : res.error;
+}
+
+/** ต่อข้อความเตือนไฟล์ค้างท้าย error เดิม (ไฟล์ที่เพิ่งอัปโหลดแล้วต้องย้อน) */
+function withOrphanNote(error: string, orphan: string | null): string {
+  return orphan ? `${error} · ไฟล์ที่อัปโหลดไว้ลบคืนไม่สำเร็จ (${orphan})` : error;
 }
 
 const FILE_META = (pending: PendingFile) => ({
@@ -93,8 +119,8 @@ export async function putContractPdf(
       .from("contract_files")
       .insert({ contract_id: contractId, kind: "contract_pdf", storage_path: up.path, ...FILE_META(pending) });
     if (error) {
-      await removeObject(supabase, up.path);
-      return { ok: false, error: describeDbError(error, "file") };
+      const orphan = await removeObject(supabase, up.path);
+      return { ok: false, error: withOrphanNote(describeDbError(error, "file"), orphan) };
     }
     return { ok: true };
   }
@@ -104,11 +130,13 @@ export async function putContractPdf(
     .update({ storage_path: up.path, ...FILE_META(pending) })
     .eq("id", existing.id);
   if (error) {
-    await removeObject(supabase, up.path);
-    return { ok: false, error: describeDbError(error, "file") };
+    const orphan = await removeObject(supabase, up.path);
+    return { ok: false, error: withOrphanNote(describeDbError(error, "file"), orphan) };
   }
-  await removeObject(supabase, existing.storagePath);
-  return { ok: true };
+  const oldLeft = await removeObject(supabase, existing.storagePath);
+  return oldLeft
+    ? { ok: true, warning: `เปลี่ยนไฟล์แล้ว แต่ไฟล์เก่าใน Storage ลบไม่สำเร็จ (${oldLeft})` }
+    : { ok: true };
 }
 
 /** เพิ่ม Site plan เวอร์ชันใหม่ (ต้องมีเหตุผล · ต้องมี PDF สัญญาแล้ว — trigger ตรวจ) */
@@ -129,8 +157,8 @@ export async function addSitePlan(
     ...FILE_META(pending),
   });
   if (error) {
-    await removeObject(supabase, up.path);
-    return { ok: false, error: describeDbError(error, "file") };
+    const orphan = await removeObject(supabase, up.path);
+    return { ok: false, error: withOrphanNote(describeDbError(error, "file"), orphan) };
   }
   return { ok: true };
 }
@@ -142,8 +170,10 @@ export async function deleteContractFile(
 ): Promise<OpResult> {
   const { error } = await supabase.from("contract_files").delete().eq("id", file.id);
   if (error) return { ok: false, error: describeDbError(error, "file") };
-  await removeObject(supabase, file.storagePath);
-  return { ok: true };
+  const left = await removeObject(supabase, file.storagePath);
+  return left
+    ? { ok: true, warning: `ลบรายการแล้ว แต่ตัวไฟล์ใน Storage ยังค้าง (${left})` }
+    : { ok: true };
 }
 
 /** เปิดไฟล์ด้วย signed URL (แท็บใหม่) */
