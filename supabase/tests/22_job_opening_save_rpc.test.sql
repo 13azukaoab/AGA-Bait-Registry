@@ -171,7 +171,8 @@ SELECT lives_ok($$
     p_branch_id := (SELECT central_id FROM _s), p_customer_name := 'ignored in edit',
     p_customer_type := 'house', p_contract_no := 'T-1', p_start_date := '2026-01-15',
     p_end_date := '2027-01-14', p_term_years := 1, p_value_total := 55000, p_sale_type := 'new',
-    p_team_ids := (SELECT team_ids[2:3] FROM _s))
+    p_team_ids := (SELECT team_ids[2:3] FROM _s),
+    p_expected_updated_at := (SELECT updated_at FROM contracts WHERE id = (SELECT t1_contract FROM _c)))
 $$, 'admin edits a saved contract');
 
 RESET ROLE;
@@ -192,7 +193,8 @@ SELECT throws_ok($$
     p_contract_id := (SELECT t1_contract FROM _c),
     p_branch_id := (SELECT central_id FROM _s), p_customer_name := 'x',
     p_customer_type := 'house', p_contract_no := 'T-1', p_start_date := '2026-01-15',
-    p_end_date := '2027-01-14', p_term_years := 1, p_value_total := 1, p_sale_type := 'new')
+    p_end_date := '2027-01-14', p_term_years := 1, p_value_total := 1, p_sale_type := 'new',
+    p_expected_updated_at := (SELECT updated_at FROM contracts WHERE id = (SELECT t1_contract FROM _c)))
 $$, '42501', NULL, 'recorder cannot edit a contract (silent RLS no-op becomes 42501)');
 SELECT throws_ok($$
   SELECT * FROM public.save_job_opening(
