@@ -768,7 +768,7 @@ tfoot td{padding:10px 12px;font-weight:700;background:var(--surface-2);border-to
           <button type="button" class="segbtn" role="tab" aria-selected="false" id="wtViewCust" onclick="wtView('cust')">รายลูกค้า</button>
         </div>
         <div class="tablewrap" id="wtTable"></div>
-        <div class="note"><span class="ic">ℹ</span><span>เวลาทำงานจริง = เวลาออก − เวลาเข้า ของแต่ละครั้งที่เข้า · ตัวเลขในตารางนี้เป็น <b>ข้อมูลตัวอย่าง (สมมติ)</b> เพื่อดูหน้าตา</span></div>
+        <div class="note"><span class="ic">ℹ</span><span>เวลาทำงานจริง = เวลาออก − เวลาเข้า ของแต่ละครั้งที่เข้า · <b>ถ้าเข้าพร้อมหลายทีม นับเวลาเต็มให้ทุกทีม</b> (ยอด “รวมทุกทีม” จึงมากกว่าเวลาจริงของงานได้) · ตัวเลขในตารางนี้เป็น <b>ข้อมูลตัวอย่าง (สมมติ)</b> เพื่อดูหน้าตา</span></div>
       </div>
     </section>
 
@@ -1651,7 +1651,9 @@ function wtSampleRows(){
   return CUSTOMERS.map(function(c){
     var visits=1+(c.id%7===0?1:0), mins=0;
     for(var i=0;i<visits;i++) mins+=Math.round((35+(c.ig+c.ic)*2.4+((c.id*7+i*11)%6)*5)/5)*5;
-    return {c:c,visits:visits,mins:mins};
+    /* ตัวอย่างสมมติ: ลูกค้าบางราย (id หาร 5 ลงตัว) เข้าพร้อม 2 ทีม */
+    var teams=(c.id%5===0)?[c.team,c.team==='A'?'B':'A']:[c.team];
+    return {c:c,visits:visits,mins:mins,teams:teams};
   });
 }
 function wtView(v){
@@ -1672,7 +1674,7 @@ function matTab(t){
 function wtSumRender(){
   if(!$('wtTable')) return;
   var br=$('matBranch').value, tm=$('matTeam').value;
-  var rows=wtSampleRows().filter(function(r){return (!br||r.c.branch===br)&&(!tm||r.c.team===tm)});
+  var rows=wtSampleRows().filter(function(r){return (!br||r.c.branch===br)&&(!tm||r.teams.indexOf(tm)>=0)});
   var tv=0,tm_=0; rows.forEach(function(r){tv+=r.visits; tm_+=r.mins});
   $('wtStats').innerHTML=
     '<div class="stat"><div class="lab">เวลาทำงานจริงรวม</div><div class="val num">'+Math.floor(tm_/60)+' <span style="font-size:14px;color:var(--fg-muted)">ชม. '+(tm_%60)+' นาที</span></div><div class="sub">'+rows.length+' ราย</div></div>'+
@@ -1681,14 +1683,15 @@ function wtSumRender(){
   var html;
   if(!rows.length){ $('wtTable').innerHTML='<div class="empty" style="padding:28px 20px">ไม่มีข้อมูลตามตัวกรองนี้ — ลองเปลี่ยนสาขา/ทีม</div>'; return; }
   if(WT_VIEW==='team'){
-    var g={}; rows.forEach(function(r){var k=r.c.team, o=g[k]||(g[k]={custs:0,visits:0,mins:0}); o.custs++; o.visits+=r.visits; o.mins+=r.mins});
+    /* เข้าพร้อมหลายทีม: นับเวลาเต็มให้ทุกทีมที่เข้า (เจ้าของตัดสิน 12 พ.ย. 2026) */
+    var g={}, tsum=0; rows.forEach(function(r){r.teams.forEach(function(k){if(tm&&k!==tm) return; var o=g[k]||(g[k]={custs:0,visits:0,mins:0}); o.custs++; o.visits+=r.visits; o.mins+=r.mins; tsum+=r.mins})});
     html='<table><thead><tr><th>ทีม</th><th class="r">ลูกค้า (ราย)</th><th class="r">เข้า (ครั้ง)</th><th class="r">เวลารวม (ชม.:นาที)</th><th class="r">เฉลี่ย/ครั้ง</th></tr></thead><tbody>'+
       Object.keys(g).sort().map(function(k){var o=g[k]; return '<tr><td><b>ทีม '+esc(k)+'</b></td><td class="r num">'+o.custs+'</td><td class="r num">'+o.visits+'</td><td class="r num">'+wtFmt(o.mins)+'</td><td class="r num" style="color:var(--fg-muted)">'+wtFmt(Math.round(o.mins/o.visits))+'</td></tr>'}).join('')+
-      '</tbody><tfoot><tr><td>รวม</td><td class="r num">'+rows.length+'</td><td class="r num">'+tv+'</td><td class="r num">'+wtFmt(tm_)+'</td><td class="r num">'+wtFmt(Math.round(tm_/tv))+'</td></tr></tfoot></table>';
+      '</tbody><tfoot><tr><td>รวมทุกทีม</td><td class="r num">'+rows.length+'</td><td class="r num">'+tv+'</td><td class="r num">'+wtFmt(tsum)+'</td><td class="r num">'+wtFmt(Math.round(tsum/Math.max(1,Object.keys(g).reduce(function(a,k){return a+g[k].visits},0))))+'</td></tr></tfoot></table>';
   } else {
     rows.sort(function(a,b){return b.mins-a.mins});
     html='<table><thead><tr><th>ลูกค้า</th><th>เลขที่สัญญา</th><th>สาขา</th><th>ทีม</th><th class="r">เข้า (ครั้ง)</th><th class="r">เวลารวม (ชม.:นาที)</th><th class="r">เฉลี่ย/ครั้ง</th></tr></thead><tbody>'+
-      rows.map(function(r){return '<tr><td><b>'+esc(r.c.name)+'</b></td><td class="num" style="color:var(--fg-muted)">'+esc(r.c.ct)+'</td><td>'+esc(r.c.branch)+'</td><td>ทีม '+esc(r.c.team)+'</td><td class="r num">'+r.visits+'</td><td class="r num">'+wtFmt(r.mins)+'</td><td class="r num" style="color:var(--fg-muted)">'+wtFmt(Math.round(r.mins/r.visits))+'</td></tr>'}).join('')+
+      rows.map(function(r){return '<tr><td><b>'+esc(r.c.name)+'</b></td><td class="num" style="color:var(--fg-muted)">'+esc(r.c.ct)+'</td><td>'+esc(r.c.branch)+'</td><td>ทีม '+esc(r.teams.join(' + '))+'</td><td class="r num">'+r.visits+'</td><td class="r num">'+wtFmt(r.mins)+'</td><td class="r num" style="color:var(--fg-muted)">'+wtFmt(Math.round(r.mins/r.visits))+'</td></tr>'}).join('')+
       '</tbody><tfoot><tr><td colspan="4">รวม '+rows.length+' ราย</td><td class="r num">'+tv+'</td><td class="r num">'+wtFmt(tm_)+'</td><td class="r num">'+wtFmt(Math.round(tm_/tv))+'</td></tr></tfoot></table>';
   }
   $('wtTable').innerHTML=html;
@@ -1922,7 +1925,7 @@ function svRecalc(){
     if(tr.querySelector('.tmType').value==='ปลวกสวน'){garden++; pts+=parseFloat(tr.querySelector('.powin').value)||0}
     else {under++; bait+=parseInt(tr.querySelector('.baitsel').value,10)||0}
   });
-  $('svTmChips').innerHTML='<span class="chip ok num">ปกติ '+Math.max(0,tot-tm.length)+' จุด</span><span class="chip miss">ปลวกใต้ดิน '+under+' จุด</span><span class="chip pend">ปลวกสวน '+garden+' จุด</span>'+
+  $('svTmChips').innerHTML='<span class="chip ok num">ปกติ '+Math.max(0,tot-tm.length)+' จุด</span><span class="chip info">ปลวกใต้ดิน '+under+' จุด</span><span class="chip pend">ปลวกสวน '+garden+' จุด</span>'+
     '<span class="chip na num">เหยื่อรวม '+bait+' ก.</span><span class="chip na num">เคมีผง '+pts+' จุด ('+Math.round(pts*0.3*100)/100+' ก.)</span>';
   var wd=svRows('wd'), ig=0, ic=0;
   [].forEach.call(wd,function(tr){if(tr.querySelector('.wdType').value==='IG') ig++; else ic++});
