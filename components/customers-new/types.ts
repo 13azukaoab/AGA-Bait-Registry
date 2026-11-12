@@ -10,6 +10,9 @@ import type { ContractFileKind } from "./fileRules";
 
 export type SaleType = "new" | "renew";
 
+/** สถานะสัญญา (enum contract_status) — `closed` = สัญญาปิดแล้ว ไฟล์แนบถูกล็อก */
+export type ContractStatus = "active" | "expired_pending_collection" | "closed" | "cancelled";
+
 /** ตำแหน่งของผู้ขาย — ตัวบอกว่าเก็บชื่อลง `sale_name` (Sale) หรือ `am_name` (AM) */
 export type SellerRole = "sale" | "am";
 
@@ -66,6 +69,7 @@ export interface SavedContract {
   customerTypeCode: string | null;
   branchId: string;
   saleType: SaleType;
+  status: ContractStatus;
   /** ชื่อผู้ขาย (sale_name หรือ am_name ตามตำแหน่ง) */
   sellerName: string;
   sellerRole: SellerRole;

@@ -555,7 +555,13 @@ export function NewContractsClient({ role, month, monthChoices, master, saved, t
                     />
                   </td>
                   <td className={cx(TD, "text-center")}>
-                    {v.filterable.missing ? (
+                    {s.status === "closed" ? (
+                      <Chip tone="na" className="whitespace-nowrap">
+                        🔒 ปิดสัญญาแล้ว
+                      </Chip>
+                    ) : s.status === "cancelled" ? (
+                      <Chip tone="na">ยกเลิก</Chip>
+                    ) : v.filterable.missing ? (
                       <Chip tone="miss">ขาด ผู้ขาย</Chip>
                     ) : v.warn ? (
                       <Chip tone="pend">{v.warn}</Chip>

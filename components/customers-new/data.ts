@@ -16,7 +16,7 @@ import type { UserRole } from "@/lib/db/types";
 import type { BranchOption } from "./branchMatch";
 import type { ContractFileKind } from "./fileRules";
 import { monthRange } from "./months";
-import type { ContractFileRow, MasterData, SaleType, SavedContract } from "./types";
+import type { ContractFileRow, ContractStatus, MasterData, SaleType, SavedContract } from "./types";
 
 /** ขอบบนของจำนวนสัญญาต่อเดือนที่ดึง (ไฟล์จริง ~133/เดือน) */
 export const MONTH_ROW_LIMIT = 1000;
@@ -134,6 +134,7 @@ type ContractRowDb = {
   term_years: number;
   value_total: number | string;
   sale_type: SaleType | null;
+  status: ContractStatus;
   sale_name: string | null;
   am_name: string | null;
   is_urgent: boolean;
@@ -161,7 +162,7 @@ export async function loadMonthContracts(
   const { data, error } = await supabase
     .from("contracts")
     .select(
-      `id, customer_id, contract_no, start_date, end_date, term_years, value_total, sale_type, sale_name, am_name,
+      `id, customer_id, contract_no, start_date, end_date, term_years, value_total, sale_type, status, sale_name, am_name,
        is_urgent, renewed_from_contract_id, mail_received_date, first_service_date, first_service_time, note,
        customers ( name, customer_type, branch_id ),
        contract_teams ( team_id ),
@@ -198,6 +199,7 @@ export async function loadMonthContracts(
       customerTypeCode: r.customers?.customer_type ?? null,
       branchId: r.customers?.branch_id ?? "",
       saleType: r.sale_type ?? "new",
+      status: r.status,
       sellerName: r.sale_name?.trim() ? r.sale_name : (r.am_name ?? ""),
       sellerRole: r.sale_name?.trim() || !r.am_name?.trim() ? "sale" : "am",
       isUrgent: r.is_urgent,
