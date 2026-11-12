@@ -204,7 +204,7 @@ export function FileDialog(props: Props) {
             />
           </label>
           <p className="m-0 text-[11.5px] text-fg-muted">
-            ไม่เกิน 5 MB รับเลย · 5–10 MB ระบบบีบให้ · เกิน 10 MB ไม่รับ
+            PDF ต้องไม่เกิน 5 MB — ถ้าใหญ่กว่าให้สแกนใหม่ (แนะนำ 150–200 dpi ขาวดำ ดูคู่มือสแกนและแนบไฟล์สัญญา)
           </p>
         </section>
 

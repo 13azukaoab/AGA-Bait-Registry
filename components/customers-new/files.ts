@@ -8,7 +8,8 @@
  *   * site_plan: เพิ่มเป็นเวอร์ชันใหม่ ต้องมีเหตุผล · version/is_current ฐานข้อมูลนับให้เอง (trigger)
  *   * ลำดับกันข้อมูลค้าง: อัปโหลด object ก่อน → เขียนแถว · แถวเขียนไม่สำเร็จ = ลบ object ที่เพิ่งอัปโหลด
  *     · ลบ = ลบแถวก่อน → ลบ object (แถวลบไม่ผ่านเช่นสัญญาปิดแล้ว = object ยังอยู่ ไม่เหลือแถวลอย)
- *   * ไฟล์ 5–10 MB บีบก่อน (`compress.ts`) · > 10 MB ปฏิเสธ · บีบแล้วยังเกิน 5 MB ไม่รับ
+ *   * รูปภาพ 5–10 MB บีบก่อน (`compress.ts`) · PDF > 5 MB ปฏิเสธ (ไม่มีตัวบีบ PDF) · > 10 MB ปฏิเสธ ·
+ *     บีบแล้วยังเกิน 5 MB ไม่รับ
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
 
@@ -38,15 +39,10 @@ export async function prepareFile(
   if (!check.ok) return { ok: false, error: check.error ?? "ไฟล์ไม่ผ่านเงื่อนไข" };
   if (check.verdict === "ok") return { ok: true, pending: { file, wasCompressed: false } };
 
+  // ถึงตรงนี้เฉพาะรูปภาพ 5–10 MB (PDF ถูกปฏิเสธที่ checkFile แล้ว)
   const compressed = await compressFile(file);
   if (!compressed) {
-    return {
-      ok: false,
-      error:
-        file.type === "application/pdf"
-          ? "ไฟล์ PDF ใหญ่กว่า 5 MB และระบบยังบีบ PDF ในเครื่องไม่ได้ กรุณาสแกนใหม่ให้เล็กกว่า 5 MB"
-          : "บีบแล้วไฟล์ยังเกิน 5 MB กรุณาสแกนใหม่ให้เล็กลง",
-    };
+    return { ok: false, error: "บีบแล้วไฟล์ยังเกิน 5 MB กรุณาสแกนใหม่ให้เล็กลง" };
   }
   const after = checkCompressed(compressed.file.size);
   if (!after.ok) return { ok: false, error: after.error ?? "บีบแล้วไฟล์ยังใหญ่เกินไป" };

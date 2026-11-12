@@ -1,12 +1,12 @@
 /**
- * บีบไฟล์ 5–10 MB ในแอปก่อนอัปโหลด (SPEC §6.6 A3)
+ * บีบรูปภาพ 5–10 MB ในแอปก่อนอัปโหลด (SPEC §6.6 A3 — เฉพาะ Site plan ที่เป็น PNG/JPG)
  *
  * Logic summary:
  *   * รูปภาพ (PNG/JPG) → วาดลง canvas แล้วบันทึกเป็น JPEG ลดคุณภาพทีละขั้น + ย่อด้านยาวถ้ายังไม่พอ
  *     จนได้ ≤ 5 MB (PNG ที่มีความโปร่งใสจะถูกวางบนพื้นขาว)
- *   * PDF → **ยังบีบในเบราว์เซอร์ไม่ได้** (ต้องใช้ไลบรารีบีบ PDF ซึ่งยังไม่อยู่ใน dependencies
- *     และ SPEC §6.6 ระบุว่าต้องเป็นตัวบีบฝั่ง server) จึงคืน null = "บีบไม่ได้" แล้วหน้าจอแจ้งให้ผู้ใช้
- *     สแกนใหม่ให้ ≤ 5 MB · เมื่อมีตัวบีบ PDF แล้ว แก้ที่ `compressPdf` ที่เดียว
+ *   * **PDF ไม่บีบ — เจ้าของตัดสินแล้ว (12 พ.ย. 2026):** PDF ใหญ่เกิน 5 MB ให้ผู้ใช้สแกนใหม่ให้ ≤ 5 MB
+ *     (แนะนำ 150–200 dpi ขาวดำ · ดู docs/คู่มือสแกนและแนบไฟล์สัญญา.md) จึงไม่มีตัวบีบ PDF และไม่เพิ่ม
+ *     dependency · การปฏิเสธ PDF อยู่ที่ `checkFile` (fileRules.ts) ก่อนถึงไฟล์นี้
  *   * ฟังก์ชันนี้ใช้ DOM (canvas) → เรียกได้เฉพาะใน client component
  */
 import { STORED_MAX_BYTES } from "./fileRules";
@@ -14,12 +14,6 @@ import { STORED_MAX_BYTES } from "./fileRules";
 export interface CompressResult {
   file: File;
   wasCompressed: true;
-}
-
-/** จุดต่อไลบรารีบีบ PDF ในอนาคต — ตอนนี้ยังไม่รองรับ */
-async function compressPdf(_file: File): Promise<File | null> {
-  void _file;
-  return null;
 }
 
 function loadImage(file: File): Promise<HTMLImageElement> {
@@ -66,11 +60,11 @@ async function compressImage(file: File): Promise<File | null> {
   return null;
 }
 
-/** บีบไฟล์ให้ ≤ 5 MB · null = บีบไม่สำเร็จ (ให้แจ้งผู้ใช้สแกนใหม่) */
+/** บีบรูปภาพให้ ≤ 5 MB · null = บีบไม่สำเร็จ (ให้แจ้งผู้ใช้สแกนใหม่) · PDF ไม่รับเข้ามาบีบ */
 export async function compressFile(file: File): Promise<CompressResult | null> {
+  if (file.type === "application/pdf") return null;
   try {
-    const out =
-      file.type === "application/pdf" ? await compressPdf(file) : await compressImage(file);
+    const out = await compressImage(file);
     return out && out.size <= STORED_MAX_BYTES ? { file: out, wasCompressed: true } : null;
   } catch {
     return null;

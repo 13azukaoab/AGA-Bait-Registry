@@ -22,6 +22,10 @@ export const ALLOWED_MIME: Record<ContractFileKind, readonly string[]> = {
   site_plan: ["application/pdf", "image/png", "image/jpeg"],
 };
 
+/** ข้อความปฏิเสธ PDF ใหญ่เกิน 5 MB (เจ้าของตัดสิน 12 พ.ย. 2026 — ไม่มีตัวบีบ PDF ให้สแกนใหม่) */
+export const PDF_TOO_LARGE_MESSAGE =
+  "ไฟล์ PDF ใหญ่เกิน 5 MB กรุณาสแกนใหม่ให้ไม่เกิน 5 MB (แนะนำ 150–200 dpi ขาวดำ) ดูวิธีในคู่มือสแกนและแนบไฟล์สัญญา";
+
 export type SizeVerdict = "ok" | "compress" | "too_large";
 
 export function classifySize(bytes: number): SizeVerdict {
@@ -52,6 +56,10 @@ export function checkFile(
   }
   if (file.size <= 0) return { ok: false, error: "ไฟล์ว่างเปล่า" };
   const verdict = classifySize(file.size);
+  // PDF ไม่บีบ: เกิน 5 MB = ปฏิเสธเลย (รูปภาพ 5–10 MB ยังบีบได้)
+  if (file.type === "application/pdf" && verdict !== "ok") {
+    return { ok: false, verdict, error: PDF_TOO_LARGE_MESSAGE };
+  }
   if (verdict === "too_large") {
     return { ok: false, verdict, error: "ไฟล์ขนาดใหญ่เกินไป (เกิน 10 MB) กรุณาสแกนใหม่ให้เล็กลง" };
   }

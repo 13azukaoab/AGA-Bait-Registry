@@ -11,6 +11,7 @@ import {
   classifySize,
   isValidReason,
   MB,
+  PDF_TOO_LARGE_MESSAGE,
   safeFileName,
 } from "./fileRules";
 import { applyFilters, monthOptions, type FilterableRow, type RowFilters } from "./filters";
@@ -108,6 +109,8 @@ describe("rowCalc", () => {
   });
 });
 
+const r5 = (size: number) => checkFile("contract_pdf", { type: "application/pdf", size }).ok;
+
 describe("fileRules", () => {
   it("แบ่งตามขนาด 5 / 10 MB", () => {
     expect(classifySize(5 * MB)).toBe("ok");
@@ -120,10 +123,18 @@ describe("fileRules", () => {
     expect(checkFile("site_plan", { type: "image/png", size: 100 }).ok).toBe(true);
     expect(checkFile("site_plan", { type: "text/plain", size: 100 }).ok).toBe(false);
     expect(checkFile("contract_pdf", { type: "application/pdf", size: 0 }).ok).toBe(false);
-    const big = checkFile("contract_pdf", { type: "application/pdf", size: 11 * MB });
-    expect(big.ok).toBe(false);
-    expect(big.error).toMatch(/ใหญ่เกินไป/);
-    expect(checkFile("contract_pdf", { type: "application/pdf", size: 7 * MB }).verdict).toBe("compress");
+    // รูปภาพ: 5–10 MB บีบได้ · เกิน 10 MB ปฏิเสธ
+    const bigImg = checkFile("site_plan", { type: "image/png", size: 11 * MB });
+    expect(bigImg.ok).toBe(false);
+    expect(bigImg.error).toMatch(/ใหญ่เกินไป/);
+    expect(checkFile("site_plan", { type: "image/png", size: 7 * MB }).verdict).toBe("compress");
+    // PDF: เกิน 5 MB ปฏิเสธเลยด้วยข้อความที่แนะนำให้สแกนใหม่ (เจ้าของตัดสิน — ไม่บีบ PDF)
+    for (const size of [5 * MB + 1, 7 * MB, 11 * MB]) {
+      const r = checkFile("contract_pdf", { type: "application/pdf", size });
+      expect(r.ok).toBe(false);
+      expect(r.error).toBe(PDF_TOO_LARGE_MESSAGE);
+    }
+    expect(r5(5 * MB)).toBe(true);
   });
   it("บีบแล้วต้อง ≤ 5 MB", () => {
     expect(checkCompressed(4 * MB).ok).toBe(true);
