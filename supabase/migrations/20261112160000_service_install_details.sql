@@ -17,6 +17,9 @@
 --   * แก้/ลบ: ย้อนงานฝังใหม่ = ลบสถานี (ข้อมูลติดตั้งหายไปด้วย) · งานเดิมที่เลขไม่เปลี่ยนแต่แก้ installs → อัปเดต
 --     ผ่านฟังก์ชันภายใน `service_work_set_installs` (ด่าน aga.service_visit เดียวกับ 20261112150000)
 --   * ผู้ใช้แก้ `install_bait_g` ตรงไม่ได้ (ยกเว้น host) — trigger `stations_install_bait_guard` (42501)
+--   * บั๊ก SV001 (ศูนย์กลางเพิ่มเข้า M13): กรอกผลตรวจจุด AG + เลือก "ถอดแล้ว" ในการเข้าเดียวกัน เดิมเปลี่ยนสถานะ
+--     ก่อนตรวจผล → SV001 · แก้: ตรวจ/บันทึกผลตามสถานะเดิมก่อน แล้วค่อยเปลี่ยนสถานะท้ายฟังก์ชัน ·
+--     จุดที่กำลังถอดไม่บังคับมีแถวผล (D10) เหมือนเดิม
 --   * `save_service_visit` แทนที่ทั้งตัว (CREATE OR REPLACE · signature เดิม · สิทธิ์เดิมคงอยู่) —
 --     เนื้อเดิมจาก 20261112150000 แก้เฉพาะวงงานซ่อม
 
@@ -138,6 +141,7 @@ DECLARE
   v_effects     jsonb;
   v_missing     int;
   v_created     uuid[];
+  v_removing    uuid[];
   v_checks      jsonb := coalesce(p -> 'checks', '[]'::jsonb);
   c             record;
   w             record;
@@ -272,17 +276,16 @@ BEGIN
    WHERE s.id = x.station_id AND s.contract_id = v_contract
      AND s.point_label IS DISTINCT FROM nullif(btrim(x.point_label), '');
 
-  -- ---------- สถานะจุด AG (ติดตามต่อ / รอถอด / ถอดแล้ว) ----------
-  UPDATE stations s
-     SET status     = x.status,
-         removed_at = CASE WHEN x.status = 'removed' THEN coalesce(s.removed_at, now()) END,
-         updated_at = now()
-    FROM jsonb_to_recordset(coalesce(p -> 'station_statuses', '[]'))
-         AS x(station_id uuid, status public.station_status)
-   WHERE s.id = x.station_id AND s.contract_id = v_contract AND s.type = 'AG'
-     AND x.status IN ('active', 'pending_removal', 'removed')
-     AND s.status IN ('active', 'pending_removal')   -- ไม่ปลุกกล่องที่ถอด/กำจัดแล้ว
-     AND s.status IS DISTINCT FROM x.status;
+  -- M13 (บั๊ก SV001): จุด AG ที่ payload สั่ง "ถอดแล้ว" ในการเข้านี้ — ตรวจผลตามสถานะเดิมก่อน
+  -- แล้วค่อยเปลี่ยนสถานะท้ายฟังก์ชัน (ถอดกล่อง = ผลตรวจครั้งสุดท้ายของจุดนั้น · mockup FINAL)
+  -- จุดที่กำลังถอดไม่บังคับต้องมีแถวผล (D10) และไม่เติมแถว "ไม่ได้ตรวจ" ให้ (เหมือนเดิมก่อนแก้)
+  v_removing := ARRAY(
+    SELECT s.id
+      FROM jsonb_to_recordset(coalesce(p -> 'station_statuses', '[]'))
+           AS x(station_id uuid, status public.station_status)
+      JOIN stations s ON s.id = x.station_id
+     WHERE x.status = 'removed' AND s.contract_id = v_contract AND s.type = 'AG'
+       AND s.status IN ('active', 'pending_removal'));
 
   -- ---------- สถานีที่ฝังใหม่ในการเข้านี้ (S) ----------
   -- SPEC §7.5: การติดตั้ง = S · F1 คือการติดตามครั้งแรก "หลัง" ติดตั้ง → สถานีที่ฝังในการเข้านี้
@@ -311,6 +314,7 @@ BEGIN
        WHERE s.contract_id = v_contract AND s.type = 'AG'
          AND s.status IN ('active', 'eliminated', 'pending_removal')
          AND NOT (s.id = ANY (v_created))
+         AND NOT (s.id = ANY (v_removing))
          AND NOT EXISTS (SELECT 1 FROM jsonb_to_recordset(v_checks) AS c0(station_id uuid)
                           WHERE c0.station_id = s.id)), '[]'::jsonb);
   END IF;
@@ -320,6 +324,7 @@ BEGIN
    WHERE s.contract_id = v_contract AND s.type = 'AG'
      AND s.status IN ('active', 'eliminated', 'pending_removal')
      AND NOT (s.id = ANY (v_created))
+     AND NOT (s.id = ANY (v_removing))
      AND NOT EXISTS (SELECT 1 FROM jsonb_to_recordset(v_checks) AS c0(station_id uuid)
                       WHERE c0.station_id = s.id);
   IF v_missing > 0 THEN
@@ -350,6 +355,18 @@ BEGIN
         IS DISTINCT FROM
         (EXCLUDED.checked, EXCLUDED.termite_group, EXCLUDED.termite_caste, EXCLUDED.bait_added_g,
          EXCLUDED.bait_eaten_pct, EXCLUDED.powder_points, EXCLUDED.timber_replaced, EXCLUDED.note);
+
+  -- ---------- สถานะจุด AG (ติดตามต่อ / รอถอด / ถอดแล้ว) — หลังบันทึกผลตรวจ (M13 บั๊ก SV001) ----------
+  UPDATE stations s
+     SET status     = x.status,
+         removed_at = CASE WHEN x.status = 'removed' THEN coalesce(s.removed_at, now()) END,
+         updated_at = now()
+    FROM jsonb_to_recordset(coalesce(p -> 'station_statuses', '[]'))
+         AS x(station_id uuid, status public.station_status)
+   WHERE s.id = x.station_id AND s.contract_id = v_contract AND s.type = 'AG'
+     AND x.status IN ('active', 'pending_removal', 'removed')
+     AND s.status IN ('active', 'pending_removal')   -- ไม่ปลุกกล่องที่ถอด/กำจัดแล้ว
+     AND s.status IS DISTINCT FROM x.status;
 
   PERFORM set_config('aga.service_visit', '', true);
   RETURN jsonb_build_object('visit_id', v_visit_id, 'contract_id', v_contract, 'edited', v_is_edit);

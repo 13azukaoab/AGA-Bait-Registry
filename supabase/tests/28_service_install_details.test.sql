@@ -2,7 +2,7 @@
 -- Role simulation: seed as postgres, then SET LOCAL ROLE authenticated and set
 -- request.jwt.claim.sub (what auth.uid() reads). RESET ROLE to inspect as superuser.
 BEGIN;
-SELECT plan(30);
+SELECT plan(35);
 
 -- =====================================================================
 -- โครงสร้าง + สิทธิ์
@@ -162,6 +162,29 @@ SELECT lives_ok($$SELECT public.delete_service_visit('00000000-0000-0000-0000-00
 RESET ROLE;
 SELECT is((SELECT count(*)::int FROM stations WHERE contract_id = '00000000-0000-0000-0000-0000000000d1'
              AND type = 'AG' AND station_no IN (3, 4)), 0, 'deleting the visit removes the added boxes and their install data');
+
+-- =====================================================================
+-- บั๊ก SV001 (ศูนย์กลางเพิ่มเข้า M13): ผลตรวจจุด AG + "ถอดแล้ว" ในการเข้าเดียวกัน
+-- =====================================================================
+SET LOCAL ROLE authenticated;
+SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a3', true);
+SELECT lives_ok($$SELECT public.save_service_visit(pg_temp.payload('00000000-0000-0000-0000-0000000000f3', '2026-03-10',
+                   '{"checks": [{"station_id": "00000000-0000-0000-0000-0000000000e8", "bait_added_g": 50, "bait_eaten_pct": 50}]}'))$$,
+  'visit 3 checks AG-1');
+SELECT lives_ok($$SELECT public.save_service_visit(pg_temp.payload('00000000-0000-0000-0000-0000000000f4', '2026-03-20',
+                   '{"checks": [{"station_id": "00000000-0000-0000-0000-0000000000e8", "bait_eaten_pct": 100}],
+                     "station_statuses": [{"station_id": "00000000-0000-0000-0000-0000000000e8", "status": "removed"}]}'))$$,
+  'result + "removed" for the same AG box in one visit saves (no SV001)');
+SELECT lives_ok($$SELECT public.save_service_visit(pg_temp.payload('00000000-0000-0000-0000-0000000000f4', '2026-03-20',
+                   '{"checks": [{"station_id": "00000000-0000-0000-0000-0000000000e8", "bait_eaten_pct": 100}],
+                     "station_statuses": [{"station_id": "00000000-0000-0000-0000-0000000000e8", "status": "removed"}]}'))$$,
+  'saving that visit again (retry/edit) still works after the box is removed');
+RESET ROLE;
+SELECT is((SELECT status::text FROM stations WHERE id = '00000000-0000-0000-0000-0000000000e8'), 'removed',
+  'AG-1 is removed after the save');
+SELECT is((SELECT follow_up_no FROM station_checks WHERE visit_id = '00000000-0000-0000-0000-0000000000f4'
+             AND station_id = '00000000-0000-0000-0000-0000000000e8'), 2,
+  'the last result before removal counts as the next F (F2)');
 
 SELECT * FROM finish();
 ROLLBACK;
