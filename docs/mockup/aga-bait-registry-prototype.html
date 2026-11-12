@@ -590,7 +590,7 @@ tfoot td{padding:10px 12px;font-weight:700;background:var(--surface-2);border-to
     <div class="group">ทะเบียนและสรุป</div>
     <a href="aga-bait-registry-prototype.html#registry" data-nav="registry" data-roles="host admin recorder"><span class="ic">▤</span> ทะเบียนลูกค้า/สัญญา</a>
     <a href="admin-add-customer.html" data-nav="new" data-roles="host admin"><span class="ic">＋</span> เปิดงานเข้าทะเบียนบริการ</a>
-    <a href="aga-bait-registry-prototype.html#material" data-nav="material" data-roles="host admin recorder"><span class="ic">▥</span> สรุปยอดใช้อุปกรณ์รายเดือน</a>
+    <a href="aga-bait-registry-prototype.html#material" data-nav="material" data-roles="host admin recorder"><span class="ic">▥</span> สรุปงานบริการรายเดือน</a>
     <a href="aga-bait-registry-prototype.html#summary" data-nav="summary" data-roles="host admin recorder viewer"><span class="ic">▦</span> Dashboard สรุปมูลค่าทั้งหมด</a>
     <div class="group">ดูแลระบบ</div>
     <a href="month-closure.html" data-nav="closure" data-roles="host recorder"><span class="ic">🔒</span> ส่งข้อมูล และสรุปงานประจำเดือน</a>
@@ -675,8 +675,8 @@ tfoot td{padding:10px 12px;font-weight:700;background:var(--surface-2);border-to
 
     <!-- ========== สรุปวัสดุ (internal: host/admin/recorder) ========== -->
     <section id="s-material" hidden>
-      <div class="page-head"><h1>สรุปวัสดุ</h1>
-        <p>สรุปการใช้วัสดุ 3 ชนิดในพื้นที่ แยกสาขา/ช่วงเวลา — สำหรับวางแผนสต็อก/ต้นทุน <span class="chip pend">🔒 internal เท่านั้น</span></p></div>
+      <div class="page-head"><h1>สรุปงานบริการรายเดือน</h1>
+        <p>สรุปการใช้วัสดุ 3 ชนิด และเวลาทำงานรายทีม แยกสาขา/ช่วงเวลา — สำหรับวางแผนสต็อก/ต้นทุน/กำลังคน <span class="chip pend">🔒 internal เท่านั้น</span></p></div>
       <div class="seg" role="tablist" aria-label="หัวข้อสรุป">
         <button type="button" class="segbtn on" role="tab" aria-selected="true" id="matTabMat" onclick="matTab('mat')">วัสดุ</button>
         <button type="button" class="segbtn" role="tab" aria-selected="false" id="matTabTime" onclick="matTab('time')">เวลาทำงาน</button>
@@ -1642,7 +1642,7 @@ function wtMissing(ctx){
   return out;
 }
 
-/* ---------- สรุปเวลาทำงาน (หน้าสรุปยอดใช้อุปกรณ์ → แท็บ "เวลาทำงาน") ----------
+/* ---------- สรุปเวลาทำงาน (หน้าสรุปงานบริการรายเดือน → แท็บ "เวลาทำงาน") ----------
    ข้อมูลเป็นตัวอย่างสมมติ: เวลาต่อครั้งสร้างจากขนาดลูกค้า (จำนวนสถานี) + ค่าแกว่งคงที่ตาม id
    ของจริง = รวม (เวลาจบ − เวลาเข้า) ของ visits ในช่วงเวลาที่เลือก จัดกลุ่มตามลูกค้า/ทีม */
 var WT_VIEW='team';
@@ -2430,7 +2430,7 @@ function exportMaterialXL(){
     return [xlTxt(s.querySelector('.lab')), xlTxt(s.querySelector('.val'))]; }));
   xlRows(wb,'สรุปวัสดุ',cards);
   xlTable(wb,'แยกสาขา',document.querySelector('#s-material table'));
-  XLSX.writeFile(wb,'AGA-สรุปยอดใช้อุปกรณ์รายเดือน.xlsx');
+  XLSX.writeFile(wb,'AGA-สรุปงานบริการรายเดือน.xlsx');
 }
 function exportSummaryXL(){
   if(!xlReady()) return;

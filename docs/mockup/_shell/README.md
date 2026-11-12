@@ -17,7 +17,7 @@
 | collect | รอเก็บสถานี (หมดสัญญา) | ลูกค้ารอเก็บสถานี | host recorder |
 | registry | ทะเบียนลูกค้า/สัญญา | ทะเบียนลูกค้า/สัญญา (คงเดิม) | host admin recorder |
 | new | เปิดงาน (admin) | เปิดงานเข้าทะเบียนบริการ | host admin |
-| material | สรุปวัสดุ | สรุปยอดใช้อุปกรณ์รายเดือน | host admin recorder |
+| material | สรุปวัสดุ | สรุปงานบริการรายเดือน | host admin recorder |
 | summary | สรุปตัวเลข | Dashboard สรุปมูลค่าทั้งหมด | host admin recorder viewer |
 | closure | ปิดเดือน | ส่งข้อมูล และสรุปงานประจำเดือน | host recorder |
 | port | port สาขาต่างจังหวัด | ลงข้อมูล Port ต่างจังหวัด | host |
