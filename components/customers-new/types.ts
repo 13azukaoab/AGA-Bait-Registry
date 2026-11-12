@@ -74,7 +74,8 @@ export interface SavedContract {
   sellerName: string;
   sellerRole: SellerRole;
   isUrgent: boolean;
-  renewedFrom: { contractId: string; contractNo: string } | null;
+  /** contractNo = null เมื่ออ่านเลขที่สัญญาเก่าไม่ได้ (query ล้ม/ไม่มีสิทธิ์ดู) — แสดง "โหลดไม่ได้" */
+  renewedFrom: { contractId: string; contractNo: string | null } | null;
   mailReceivedDate: string;
   /** วันที่นัดบริการครั้งแรก — ว่าง = "รอนัดบริการ" */
   firstServiceDate: string;
@@ -89,6 +90,8 @@ export interface SavedContract {
   files: ContractFileRow[];
   /** จำนวนครั้งที่แก้ใน audit_log — มีค่าเฉพาะ host (role อื่นอ่าน audit ไม่ได้) */
   auditCount: number | null;
+  /** host แต่นับ audit ไม่ได้ (query ล้ม) — แสดง "โหลดไม่ได้" แทนตัวเลข */
+  auditCountFailed: boolean;
 }
 
 /** แถวที่กำลังกรอก (ยังไม่บันทึก) — ค่าช่องทั้งหมดเป็นข้อความตามที่ผู้ใช้พิมพ์ */

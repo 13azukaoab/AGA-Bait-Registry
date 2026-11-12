@@ -45,6 +45,8 @@ type Props = {
       files: ContractFileRow[];
       /** เรียกหลังไฟล์เปลี่ยน เพื่อให้หน้าโหลดข้อมูลใหม่ */
       onChanged: () => void;
+      /** สัญญาปิดแล้ว — ไฟล์ถูกล็อก (trigger ใน DB) ปิดปุ่มแนบ/เปลี่ยน/ลบ เหลือเปิดดูอย่างเดียว */
+      locked?: boolean;
     }
 );
 
@@ -56,29 +58,43 @@ export function FileDialog(props: Props) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
+  const [warning, setWarning] = useState<string | null>(null);
   const [reason, setReason] = useState("");
   const [files, setFiles] = useState<ContractFileRow[]>(
     props.mode === "saved" ? props.files : [],
   );
 
   const pdf = files.find((f) => f.kind === "contract_pdf") ?? null;
+  const locked = props.mode === "saved" && props.locked === true;
   const sitePlans = files.filter((f) => f.kind === "site_plan");
 
   async function refresh(contractId: string) {
     const res = await fetchContractFiles(supabase, contractId);
-    if (!res.error) setFiles(res.files);
+    if (res.error) {
+      // รายการในกล่องอาจไม่ตรงความจริง — บอกผู้ใช้ ไม่ปล่อยให้เห็นรายการเก่าเงียบๆ
+      setError("ทำรายการแล้ว แต่โหลดรายการไฟล์ล่าสุดไม่สำเร็จ ปิดกล่องแล้วรีเฟรชหน้า");
+    } else {
+      setFiles(res.files);
+    }
     if (props.mode === "saved") props.onChanged();
   }
 
   /** รันงานไฟล์พร้อมสถานะ busy/error รวมที่เดียว */
-  async function run(job: () => Promise<{ ok: boolean; error?: string }>, done: string) {
+  async function run(
+    job: () => Promise<{ ok: boolean; error?: string; warning?: string }>,
+    done: string,
+  ) {
     setBusy(true);
     setError(null);
     setInfo(null);
+    setWarning(null);
     const res = await job();
     setBusy(false);
     if (!res.ok) setError(res.error ?? "ทำรายการไม่สำเร็จ");
-    else setInfo(done);
+    else {
+      setInfo(done);
+      setWarning(res.warning ?? null);
+    }
     return res.ok;
   }
 
@@ -158,6 +174,10 @@ export function FileDialog(props: Props) {
       <div className="flex flex-col gap-4 text-[13px]">
         {error ? <Alert variant="danger">{error}</Alert> : null}
         {info ? <Alert variant="ok">{info}</Alert> : null}
+        {warning ? <Alert variant="warn">{warning}</Alert> : null}
+        {locked ? (
+          <Alert variant="warn">สัญญานี้ปิดแล้ว ไฟล์ถูกล็อก เปิดดูได้อย่างเดียว</Alert>
+        ) : null}
 
         <section aria-labelledby="fd-pdf" className="flex flex-col gap-2">
           <h3 id="fd-pdf" className="m-0 text-[13px] font-semibold">
@@ -179,7 +199,7 @@ export function FileDialog(props: Props) {
               <p className="m-0 text-fg-muted">ยังไม่ได้เลือกไฟล์ — แนบทีหลังได้ ไม่บล็อกการบันทึกแถว</p>
             )
           ) : pdf ? (
-            <FileLine file={pdf} onView={view} onRemove={remove} busy={busy} />
+            <FileLine file={pdf} onView={view} onRemove={remove} busy={busy} locked={locked} />
           ) : (
             <p className="m-0 text-fg-muted">ยังไม่ได้แนบไฟล์สัญญา</p>
           )}
@@ -196,7 +216,7 @@ export function FileDialog(props: Props) {
               type="file"
               accept="application/pdf"
               className="sr-only"
-              disabled={busy}
+              disabled={busy || locked}
               onChange={(e) => {
                 void pickPdf(e.target.files?.[0]);
                 e.target.value = "";
@@ -204,7 +224,7 @@ export function FileDialog(props: Props) {
             />
           </label>
           <p className="m-0 text-[11.5px] text-fg-muted">
-            PDF ต้องไม่เกิน 5 MB — ถ้าใหญ่กว่าให้สแกนใหม่ (แนะนำ 150–200 dpi ขาวดำ ดูคู่มือสแกนและแนบไฟล์สัญญา)
+            PDF ต้องไม่เกิน 5 MB — ถ้าใหญ่กว่าให้สแกนใหม่ที่ 150–200 dpi แบบขาวดำหรือเทา
           </p>
         </section>
 
@@ -220,7 +240,7 @@ export function FileDialog(props: Props) {
               <ul className="m-0 flex list-none flex-col gap-2 p-0">
                 {sitePlans.map((f) => (
                   <li key={f.id} className="rounded-lg border border-border px-3 py-2">
-                    <FileLine file={f} onView={view} onRemove={remove} busy={busy} />
+                    <FileLine file={f} onView={view} onRemove={remove} busy={busy} locked={locked} />
                   </li>
                 ))}
               </ul>
@@ -233,7 +253,7 @@ export function FileDialog(props: Props) {
                 onChange={(e) => setReason(e.target.value)}
                 maxLength={120}
                 placeholder="เช่น แก้ตอนติดตั้ง — เพิ่มจุด AG หน้าโถง"
-                disabled={!pdf || busy}
+                disabled={!pdf || busy || locked}
                 className="w-full rounded-lg border border-border-strong bg-surface px-2.5 py-1.5 text-[13px] text-fg placeholder:text-fg-faint disabled:opacity-60 focus-visible:outline-2 focus-visible:outline-accent"
               />
             </label>
@@ -243,7 +263,7 @@ export function FileDialog(props: Props) {
                 type="file"
                 accept="application/pdf,image/png,image/jpeg"
                 className="sr-only"
-                disabled={!pdf || busy || reason.trim() === ""}
+                disabled={!pdf || busy || locked || reason.trim() === ""}
                 onChange={(e) => {
                   void pickSitePlan(e.target.files?.[0]);
                   e.target.value = "";
@@ -273,11 +293,13 @@ function FileLine({
   onView,
   onRemove,
   busy,
+  locked,
 }: {
   file: ContractFileRow;
   onView: (f: ContractFileRow) => void;
   onRemove: (f: ContractFileRow) => void;
   busy: boolean;
+  locked: boolean;
 }) {
   return (
     <div className="flex flex-col gap-1">
@@ -297,7 +319,13 @@ function FileLine({
         <Button size="sm" onClick={() => onView(file)} disabled={busy}>
           เปิดดู
         </Button>
-        <Button size="sm" variant="danger" onClick={() => onRemove(file)} disabled={busy}>
+        <Button
+          size="sm"
+          variant="danger"
+          onClick={() => onRemove(file)}
+          disabled={busy || locked}
+          title={locked ? "สัญญาปิดแล้ว ไฟล์ถูกล็อก" : undefined}
+        >
           ลบ
         </Button>
       </div>

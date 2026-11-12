@@ -32,6 +32,7 @@ import {
   missingLabel,
   termFromValues,
 } from "./draftRow";
+import { buildDeleteConfirmText, contractDeleteBlockReason } from "./deleteRules";
 import { applyFilters, type FilterableRow, type StatusFilter } from "./filters";
 import { FileDialog } from "./FileDialog";
 import { uploadAfterSave } from "./uploadAfterSave";
@@ -39,7 +40,8 @@ import { HistoryDialog } from "./HistoryDialog";
 import { monthLabel } from "./months";
 import { PdfIcon } from "./PdfIcon";
 import { RenewalDialog } from "./RenewalDialog";
-import { deleteContract, saveDraft } from "./save";
+import { deleteContract, findLinkedRenewals, saveDraft } from "./save";
+import { describeTypeMismatch } from "./saveRules";
 import { TeamPicker } from "./TeamPicker";
 import { autoEndDate, endDateWarning, formatMoney, tierFor } from "./rowCalc";
 import type {
@@ -204,6 +206,7 @@ export function NewContractsClient({ role, month, monthChoices, master, saved, t
     const failedMessages = new Map<string, string>();
     const doneKeys = new Set<string>();
     let fileWarn = 0;
+    const typeWarnings: string[] = [];
 
     for (const { d, c } of ready) {
       const res = await saveDraft(supabase, d, c);
@@ -213,6 +216,13 @@ export function NewContractsClient({ role, month, monthChoices, master, saved, t
       }
       okCount += 1;
       doneKeys.add(d.key);
+      if (res.customerTypeMismatch) {
+        typeWarnings.push(
+          describeTypeMismatch(d.contractNo.trim(), d.customerName.trim(), res.customerTypeMismatch, (code) =>
+            typeLabel.get(code) ?? code,
+          ),
+        );
+      }
       if (d.pendingPdf) {
         const up = await uploadAfterSave(supabase, res.contractId, d.pendingPdf);
         if (!up.ok) fileWarn += 1;
@@ -232,12 +242,13 @@ export function NewContractsClient({ role, month, monthChoices, master, saved, t
       setToast(`บันทึกเข้าทะเบียนแล้ว ${okCount} แถว`);
       router.refresh();
     }
-    if (failed > 0 || skipped > 0 || fileWarn > 0) {
+    if (failed > 0 || skipped > 0 || fileWarn > 0 || typeWarnings.length > 0) {
       const parts = [
         okCount > 0 ? `บันทึกสำเร็จ ${okCount} แถว` : null,
         failed > 0 ? `ไม่สำเร็จ ${failed} แถว (ดูข้อความใต้แถว)` : null,
         skipped > 0 ? `ข้าม ${skipped} แถวที่ข้อมูลไม่ครบ` : null,
         fileWarn > 0 ? `แนบไฟล์ไม่สำเร็จ ${fileWarn} แถว — แนบใหม่ได้จากปุ่มไฟล์แนบ` : null,
+        ...typeWarnings,
       ].filter(Boolean);
       setBanner({ variant: okCount > 0 ? "warn" : "danger", text: parts.join(" · ") });
     } else {
@@ -247,14 +258,24 @@ export function NewContractsClient({ role, month, monthChoices, master, saved, t
   }
 
   async function removeSaved(s: SavedContract) {
-    if (
-      !window.confirm(
-        `ลบสัญญา ${s.contractNo} (${s.customerName}) ?\nลบได้เฉพาะสัญญาที่ยังไม่มีผลบริการ · ไฟล์แนบจะถูกลบด้วย · เอากลับคืนไม่ได้`,
-      )
-    ) {
+    setBanner(null);
+    const blocked = contractDeleteBlockReason(s.status);
+    if (blocked) {
+      setBanner({ variant: "warn", text: `สัญญา ${s.contractNo}: ${blocked}` });
       return;
     }
-    setBanner(null);
+    // สัญญา Renew ที่ผูกสัญญานี้อยู่ (อาจอยู่คนละเดือน) — ลบแล้วการผูกจะหาย ต้องเตือนก่อน
+    const linked = await findLinkedRenewals(supabase, s.contractId);
+    if (linked.error) {
+      setBanner({
+        variant: "danger",
+        text: `ตรวจสัญญา Renew ที่ผูกอยู่ไม่ได้ จึงยังไม่ลบ: ${linked.error}`,
+      });
+      return;
+    }
+    if (!window.confirm(buildDeleteConfirmText(s.contractNo, s.customerName, linked.contractNos))) {
+      return;
+    }
     const res = await deleteContract(supabase, s.contractId, s.customerId);
     if (!res.ok) {
       setBanner({ variant: "danger", text: res.error });
@@ -480,7 +501,14 @@ export function NewContractsClient({ role, month, monthChoices, master, saved, t
                   <td className={TD}>
                     <div className="flex items-center gap-2">
                       <span className="min-w-0 flex-1 break-words">{s.customerName}</span>
-                      {s.auditCount !== null ? (
+                      {s.auditCountFailed ? (
+                        <span
+                          title="นับจำนวนครั้งที่แก้ไขไม่สำเร็จ ลองรีเฟรชหน้า"
+                          className="flex-none whitespace-nowrap rounded-full bg-surface-3 px-2 py-0.5 text-[11.5px] text-danger"
+                        >
+                          ⟲ ประวัติ (โหลดไม่ได้)
+                        </span>
+                      ) : s.auditCount !== null ? (
                         <button
                           type="button"
                           onClick={() => setHistoryFor(s)}
@@ -504,7 +532,12 @@ export function NewContractsClient({ role, month, monthChoices, master, saved, t
                   <td className={TD}>
                     {s.renewedFrom ? (
                       <Chip tone="ok">
-                        🔗 <span className="num">{s.renewedFrom.contractNo}</span>
+                        🔗{" "}
+                        {s.renewedFrom.contractNo !== null ? (
+                          <span className="num">{s.renewedFrom.contractNo}</span>
+                        ) : (
+                          <span title="อ่านเลขที่สัญญาเก่าไม่ได้ ลองรีเฟรชหน้า">โหลดไม่ได้</span>
+                        )}
                       </Chip>
                     ) : s.saleType === "renew" ? (
                       <Chip tone="miss">⚠ ยังไม่ผูก</Chip>
@@ -575,9 +608,10 @@ export function NewContractsClient({ role, month, monthChoices, master, saved, t
                     <button
                       type="button"
                       onClick={() => void removeSaved(s)}
+                      disabled={contractDeleteBlockReason(s.status) !== null}
                       aria-label={`ลบสัญญา ${s.contractNo}`}
-                      title="ลบสัญญา (ได้เฉพาะที่ยังไม่มีผลบริการ)"
-                      className="cursor-pointer rounded px-1.5 py-0.5 text-danger hover:bg-danger-soft focus-visible:outline-2 focus-visible:outline-accent"
+                      title={contractDeleteBlockReason(s.status) ?? "ลบสัญญา (ได้เฉพาะที่ยังไม่มีผลบริการ)"}
+                      className="cursor-pointer rounded px-1.5 py-0.5 text-danger hover:bg-danger-soft focus-visible:outline-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
                     >
                       ✕
                     </button>
@@ -680,6 +714,7 @@ export function NewContractsClient({ role, month, monthChoices, master, saved, t
           subtitle={savedForDialog.customerName}
           contractId={savedForDialog.contractId}
           files={savedForDialog.files}
+          locked={savedForDialog.status === "closed"}
           onChanged={() => router.refresh()}
           onClose={() => setFileTarget(null)}
         />
