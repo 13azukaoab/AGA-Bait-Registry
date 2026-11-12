@@ -2,7 +2,7 @@
 -- Role simulation: seed as postgres, then SET LOCAL ROLE authenticated/anon and set
 -- request.jwt.claim.sub (what auth.uid() reads). RESET ROLE to inspect as superuser.
 BEGIN;
-SELECT plan(56);
+SELECT plan(68);
 
 -- =====================================================================
 -- โครงสร้าง + สิทธิ์
@@ -10,6 +10,8 @@ SELECT plan(56);
 SELECT has_table('public', 'station_works', 'station_works exists');
 SELECT is((SELECT relrowsecurity FROM pg_class WHERE oid = 'public.station_works'::regclass), true, 'RLS on station_works');
 SELECT table_privs_are('public', 'station_works', 'anon', ARRAY[]::text[], 'anon has no privilege on station_works');
+SELECT table_privs_are('public', 'station_works', 'authenticated', ARRAY['SELECT'],
+  'users can only read station_works (writes go through the RPC)');
 SELECT has_trigger('public', 'station_works', 'audit_station_works', 'station_works changes are audited');
 SELECT isnt_definer('public', 'save_service_visit', ARRAY['jsonb'], 'save_service_visit is SECURITY INVOKER');
 SELECT isnt_definer('public', 'delete_service_visit', ARRAY['uuid'], 'delete_service_visit is SECURITY INVOKER');
@@ -117,6 +119,33 @@ SELECT results_eq(
       FROM v_service_materials WHERE visit_id = '00000000-0000-0000-0000-0000000000f1'$$,
   $$VALUES (100, 50, 3, 0.9::numeric, 2)$$,
   'materials: outside 100 g · inside 50 g · powder 3 points = 0.9 g · timber IG 2 pieces');
+
+-- ---------- ผลตรวจรอบ 2 ของศูนย์กลาง: ปลอม effects / เรียกฟังก์ชันภายในตรง ----------
+SET LOCAL ROLE authenticated;
+SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a3', true);
+SELECT throws_ok($$INSERT INTO station_works (visit_id, kind, station_type, station_nos, effects)
+                   VALUES ('00000000-0000-0000-0000-0000000000f1', 'added', 'IG', '{1}',
+                           '{"created": ["00000000-0000-0000-0000-0000000000e3"]}')$$,
+  '42501', NULL, 'recorder cannot write a work row with forged effects');
+SELECT throws_ok($$SELECT public.service_work_undo('00000000-0000-0000-0000-00000000a003')$$,
+  '42501', NULL, 'recorder cannot call service_work_undo directly');
+SELECT throws_ok($$SELECT public.service_work_undo('00000000-0000-0000-0000-00000000dead')$$,
+  '42501', NULL, 'calling service_work_undo with an unknown id is refused too (no probing)');
+SELECT throws_ok($$SELECT public.service_work_apply('00000000-0000-0000-0000-0000000000f1', NULL, 'withdrawn', 'IG', '{3}', NULL)$$,
+  '42501', NULL, 'recorder cannot call service_work_apply directly');
+
+-- โหมดแก้: ช่องไม่บังคับที่ไม่ได้ส่ง คงค่าเดิม · ช่องบังคับต้องส่งครบ
+SELECT lives_ok($$SELECT public.save_service_visit((SELECT j || '{"note": "จดไว้"}' FROM _p))$$, 'save with a note');
+SELECT lives_ok($$SELECT public.save_service_visit((SELECT j FROM _p))$$, 'save again without the note key');
+SELECT throws_ok($$SELECT public.save_service_visit((SELECT j - 'start_time' FROM _p))$$,
+  '22004', NULL, 'a required field missing from the payload is refused');
+SELECT throws_ok($$SELECT public.save_service_visit((SELECT j || jsonb_build_object('checks',
+                     (SELECT jsonb_agg(jsonb_build_object('station_id', '00000000-0000-0000-0000-0000000000e1'))
+                        FROM generate_series(1, 2001))) FROM _p))$$,
+  '22023', NULL, 'an oversized payload is refused');
+RESET ROLE;
+SELECT is((SELECT note FROM visits WHERE id = '00000000-0000-0000-0000-0000000000f1'), 'จดไว้',
+  'a note not sent on edit is kept (not wiped to NULL)');
 
 -- =====================================================================
 -- ด่านตรวจ
@@ -248,6 +277,18 @@ SELECT is((SELECT count(*)::int FROM station_checks sc JOIN stations s ON s.id =
 SELECT is((SELECT sc.follow_up_no FROM station_checks sc JOIN stations s ON s.id = sc.station_id
             WHERE sc.visit_id = '00000000-0000-0000-0000-0000000000f6' AND s.type = 'AG' AND s.station_no = 3), 1,
   'the first follow-up after installing is F1');
+
+-- สถานะจุด AG: ไม่ปลุกกล่องที่ถอดแล้ว
+UPDATE stations SET status = 'removed', removed_at = now() WHERE id = '00000000-0000-0000-0000-0000000000e9';
+SET LOCAL ROLE authenticated;
+SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a3', true);
+SELECT lives_ok($$SELECT public.save_service_visit(pg_temp.payload('00000000-0000-0000-0000-0000000000f7',
+                    '00000000-0000-0000-0000-0000000000d1', '2026-05-10', ARRAY[(SELECT a FROM _t)],
+                    '{"skip_all_ag": true, "station_statuses": [{"station_id": "00000000-0000-0000-0000-0000000000e9", "status": "active"}]}'))$$,
+  'save that tries to set a removed AG box back to active');
+RESET ROLE;
+SELECT is((SELECT status::text FROM stations WHERE id = '00000000-0000-0000-0000-0000000000e9'), 'removed',
+  'a removed AG box is not woken up by station_statuses');
 
 SET LOCAL ROLE anon;
 SELECT throws_ok($$SELECT public.save_service_visit('{}'::jsonb)$$, '42501', NULL, 'anon is refused at the GRANT gate');
