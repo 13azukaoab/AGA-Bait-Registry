@@ -2,7 +2,7 @@
 -- Role simulation: seed as postgres, then SET LOCAL ROLE authenticated and set
 -- request.jwt.claim.sub (what auth.uid() reads). RESET ROLE to inspect as superuser.
 BEGIN;
-SELECT plan(35);
+SELECT plan(43);
 
 -- =====================================================================
 -- โครงสร้าง + สิทธิ์
@@ -185,6 +185,63 @@ SELECT is((SELECT status::text FROM stations WHERE id = '00000000-0000-0000-0000
 SELECT is((SELECT follow_up_no FROM station_checks WHERE visit_id = '00000000-0000-0000-0000-0000000000f4'
              AND station_id = '00000000-0000-0000-0000-0000000000e8'), 2,
   'the last result before removal counts as the next F (F2)');
+
+-- =====================================================================
+-- บั๊กลำดับย้อนงานซ่อม (ศูนย์กลางเพิ่มเข้า M13): "หาย IG-4" + "ฝังใหม่ IG-4, 6" ในการเข้าเดียวกัน
+-- =====================================================================
+INSERT INTO contracts (id, customer_id, contract_no, start_date, term_years, value_total, stations_initialized_at) VALUES
+  ('00000000-0000-0000-0000-0000000000d2', '00000000-0000-0000-0000-0000000000c1', 'S-2', '2026-01-15', 1, 50000, now());
+INSERT INTO stations (id, contract_id, type, station_no) VALUES
+  ('00000000-0000-0000-0000-0000000000b1', '00000000-0000-0000-0000-0000000000d2', 'IG', 1),
+  ('00000000-0000-0000-0000-0000000000b2', '00000000-0000-0000-0000-0000000000d2', 'IG', 2),
+  ('00000000-0000-0000-0000-0000000000b3', '00000000-0000-0000-0000-0000000000d2', 'IG', 3),
+  ('00000000-0000-0000-0000-0000000000b4', '00000000-0000-0000-0000-0000000000d2', 'IG', 4),
+  ('00000000-0000-0000-0000-0000000000b5', '00000000-0000-0000-0000-0000000000d2', 'IG', 5);
+-- "ฝังใหม่" ส่งมาก่อน "หาย" ในรายการ (ลำดับที่หน้าจอส่งต้องไม่มีผล)
+CREATE TEMP TABLE _r AS SELECT pg_temp.payload('00000000-0000-0000-0000-0000000000f9', '2026-04-10', jsonb_build_object(
+  'contract_id', '00000000-0000-0000-0000-0000000000d2',
+  'works', jsonb_build_array(
+    jsonb_build_object('id', '00000000-0000-0000-0000-00000000b001', 'kind', 'added', 'station_type', 'IG',
+                       'station_nos', jsonb_build_array(4, 6)),
+    jsonb_build_object('id', '00000000-0000-0000-0000-00000000b002', 'kind', 'lost', 'station_type', 'IG',
+                       'station_nos', jsonb_build_array(4), 'detail', 'หาย')))) AS j;
+GRANT SELECT ON _r TO PUBLIC;
+
+SET LOCAL ROLE authenticated;
+SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a3', true);
+SELECT lives_ok($$SELECT public.save_service_visit((SELECT j FROM _r))$$,
+  'lost IG-4 + added IG-4, 6 in one visit saves (added listed first)');
+RESET ROLE;
+SELECT results_eq(
+  $$SELECT station_no, (id = '00000000-0000-0000-0000-0000000000b4') AS original FROM stations
+     WHERE contract_id = '00000000-0000-0000-0000-0000000000d2' AND status = 'active' ORDER BY station_no$$,
+  $$VALUES (1, false), (2, false), (3, false), (4, false), (5, false), (6, false)$$,
+  'IG in use: 1-6 with a new IG-4 · the original IG-4 is lost');
+
+SET LOCAL ROLE authenticated;
+SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a3', true);
+SELECT throws_ok($$SELECT public.save_service_visit((SELECT j #- '{works,1}' FROM _r))$$,
+  'SV002', NULL, 'removing only the "lost" row while the new IG-4 stays is refused (SV002, not 23505)');
+SELECT lives_ok($$SELECT public.save_service_visit((SELECT jsonb_set(j, '{works}', '[]') FROM _r))$$,
+  'edit: removing both works undoes them (no 23505)');
+RESET ROLE;
+SELECT results_eq(
+  $$SELECT station_no, status::text FROM stations WHERE contract_id = '00000000-0000-0000-0000-0000000000d2' ORDER BY station_no$$,
+  $$VALUES (1, 'active'), (2, 'active'), (3, 'active'), (4, 'active'), (5, 'active')$$,
+  'after the edit: IG 1-5 as before, original IG-4 back in use, no IG-6');
+
+SET LOCAL ROLE authenticated;
+SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a3', true);
+SELECT lives_ok($$SELECT public.save_service_visit((SELECT j FROM _r))$$, 'save both works again');
+SELECT lives_ok($$SELECT public.delete_service_visit('00000000-0000-0000-0000-0000000000f9')$$,
+  'deleting the visit undoes both works (no 23505)');
+RESET ROLE;
+SELECT results_eq(
+  $$SELECT id::text, station_no, status::text FROM stations WHERE contract_id = '00000000-0000-0000-0000-0000000000d2' ORDER BY station_no$$,
+  $$VALUES ('00000000-0000-0000-0000-0000000000b1', 1, 'active'), ('00000000-0000-0000-0000-0000000000b2', 2, 'active'),
+           ('00000000-0000-0000-0000-0000000000b3', 3, 'active'), ('00000000-0000-0000-0000-0000000000b4', 4, 'active'),
+           ('00000000-0000-0000-0000-0000000000b5', 5, 'active')$$,
+  'after delete: the original IG 1-5 only, all active');
 
 SELECT * FROM finish();
 ROLLBACK;

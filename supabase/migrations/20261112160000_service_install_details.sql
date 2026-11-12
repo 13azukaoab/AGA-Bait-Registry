@@ -20,6 +20,10 @@
 --   * บั๊ก SV001 (ศูนย์กลางเพิ่มเข้า M13): กรอกผลตรวจจุด AG + เลือก "ถอดแล้ว" ในการเข้าเดียวกัน เดิมเปลี่ยนสถานะ
 --     ก่อนตรวจผล → SV001 · แก้: ตรวจ/บันทึกผลตามสถานะเดิมก่อน แล้วค่อยเปลี่ยนสถานะท้ายฟังก์ชัน ·
 --     จุดที่กำลังถอดไม่บังคับมีแถวผล (D10) เหมือนเดิม
+--   * บั๊กลำดับย้อนงานซ่อม (ศูนย์กลางเพิ่มเข้า M13): "สถานีหาย IG-4" + "ฝังใหม่ IG-4" ในการเข้าเดียวกัน
+--     (ใช้เลขเดิมได้ DECISIONS 2.20) · ลบการเข้า/เอางานออก แล้วย้อน lost ก่อน → คืน IG-4 ชนเลขใหม่ (23505) ·
+--     แก้: ย้อนงาน "ฝังใหม่" ก่อนเสมอ (ทั้ง save และ delete) · ตอน apply ทำ หาย/ถอน ก่อน "ฝังใหม่" ·
+--     ถ้ายังชน (เช่น เอาเฉพาะ "หาย" ออกแต่คง "ฝังใหม่" เลขเดิม) → SV002 แทน 23505
 --   * `save_service_visit` แทนที่ทั้งตัว (CREATE OR REPLACE · signature เดิม · สิทธิ์เดิมคงอยู่) —
 --     เนื้อเดิมจาก 20261112150000 แก้เฉพาะวงงานซ่อม
 
@@ -247,8 +251,14 @@ BEGIN
                   AS x(id uuid, kind public.station_work_kind, station_type public.station_type, station_nos int[])
           WHERE x.id = sw.id AND x.kind = sw.kind AND x.station_type = sw.station_type
             AND ARRAY(SELECT DISTINCT n FROM unnest(x.station_nos) n ORDER BY n) = sw.station_nos)
+     ORDER BY (sw.kind = 'added') DESC, sw.created_at DESC, sw.id   -- M13: ย้อนกลับด้านของลำดับ apply
   LOOP
-    PERFORM service_work_undo(w.id);
+    BEGIN
+      PERFORM service_work_undo(w.id);
+    EXCEPTION WHEN unique_violation THEN
+      -- คืนสถานีเดิมแล้วชนเลขที่ฝังใหม่ (DECISIONS 2.20) ซึ่งยังอยู่ในการเข้านี้ → บอกเป็นภาษาของระบบ
+      RAISE EXCEPTION 'restoring this station clashes with a station number now in use' USING ERRCODE = 'SV002';
+    END;
   END LOOP;
 
   -- ---------- งานซ่อม: ใหม่ → ทำผลกับสถานี · เดิม → แก้รายละเอียดอย่างเดียว ----------
@@ -259,6 +269,7 @@ BEGIN
            AS x(id uuid, kind public.station_work_kind, station_type public.station_type,
                 station_nos int[], detail text, installs jsonb)
       LEFT JOIN station_works sw ON sw.id = x.id AND sw.visit_id = v_visit_id
+     ORDER BY (x.kind = 'added')   -- M13: คืนเลข (หาย/ถอน) ก่อน แล้วค่อยฝังใหม่ — ใช้เลขเดิมได้ (DECISIONS 2.20)
   LOOP
     v_work_id := coalesce(w.id, gen_random_uuid());
     IF w.existing THEN
@@ -370,6 +381,54 @@ BEGIN
 
   PERFORM set_config('aga.service_visit', '', true);
   RETURN jsonb_build_object('visit_id', v_visit_id, 'contract_id', v_contract, 'edited', v_is_edit);
+END;
+$$;
+
+-- =====================================================================
+-- 3b. delete_service_visit: ย้อนงานซ่อมตามลำดับ (เนื้อเดิมจาก 20261112150000 · signature/สิทธิ์เดิม)
+-- =====================================================================
+CREATE OR REPLACE FUNCTION public.delete_service_visit(p_visit_id uuid)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY INVOKER
+SET search_path = public
+AS $$
+DECLARE
+  v_contract uuid;
+  w          record;
+  v_deleted  uuid;
+BEGIN
+  IF NOT (is_host() OR current_app_role() = 'recorder') THEN
+    RAISE EXCEPTION 'not allowed to delete this visit' USING ERRCODE = '42501';
+  END IF;
+
+  SELECT vi.contract_id INTO v_contract FROM visits vi WHERE vi.id = p_visit_id;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'visit not found' USING ERRCODE = 'AG004';
+  END IF;
+  IF NOT (is_host() OR contract_in_scope(v_contract)) THEN
+    RAISE EXCEPTION 'not allowed to delete this visit' USING ERRCODE = '42501';
+  END IF;
+
+  PERFORM pg_advisory_xact_lock(hashtextextended('public.save_service_visit:' || v_contract::text, 0));
+  PERFORM set_config('aga.service_visit', p_visit_id::text, true);
+
+  -- M13: ย้อนกลับด้านของลำดับ apply — ลบสถานีที่ฝังใหม่ก่อน แล้วค่อยคืนสถานีที่หาย/ถอน
+  FOR w IN SELECT sw.id FROM station_works sw WHERE sw.visit_id = p_visit_id
+            ORDER BY (sw.kind = 'added') DESC, sw.created_at DESC, sw.id LOOP
+    BEGIN
+      PERFORM service_work_undo(w.id);
+    EXCEPTION WHEN unique_violation THEN
+      -- คืนสถานีเดิมแล้วชนเลขที่ฝังใหม่ (DECISIONS 2.20) ซึ่งยังอยู่ในการเข้านี้ → บอกเป็นภาษาของระบบ
+      RAISE EXCEPTION 'restoring this station clashes with a station number now in use' USING ERRCODE = 'SV002';
+    END;
+  END LOOP;
+
+  DELETE FROM visits vi WHERE vi.id = p_visit_id RETURNING vi.id INTO v_deleted;
+  IF v_deleted IS NULL THEN
+    RAISE EXCEPTION 'not allowed to delete this visit' USING ERRCODE = '42501';
+  END IF;
+  PERFORM set_config('aga.service_visit', '', true);
 END;
 $$;
 
