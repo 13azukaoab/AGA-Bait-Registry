@@ -21,6 +21,8 @@
 --         ผลตรวจที่ค่าเท่าเดิมไม่ถูก UPDATE (ไม่ลง audit)
 --       - กันลืมกล่อง (D10): กล่อง AG ที่ยังใช้งานทุกจุดต้องมีแถวผล (ตรวจแล้ว หรือ checked = false) หรือส่ง
 --         `skip_all_ag` = true (ระบบใส่แถว "ไม่ได้ตรวจ" ให้ทุกจุด) ไม่งั้น SV004
+--       - สถานีที่ฝังใหม่ในการเข้านี้ (S) ไม่มีผลตรวจในการเข้าเดียวกัน (ส่งมา = SV001) และไม่นับใน D10 →
+--         กล่อง AG ใหม่ได้ F1 ในการติดตามครั้งแรกหลังติดตั้ง (SPEC §7.5)
 --       - งานซ่อมที่ถูกเอาออก/เปลี่ยน → ย้อนผลกับสถานี (ลบสถานีที่ฝังใหม่ · คืนสถานะเดิม) ได้เฉพาะเมื่อ
 --         การเข้าครั้งอื่นยังไม่ใช้สถานีนั้น ไม่งั้น SV005
 --   * `delete_service_visit(p_visit_id)` — ย้อนผลงานซ่อมทั้งหมดของการเข้านั้น (กติกา SV005 เดียวกัน) แล้วลบ
@@ -187,6 +189,8 @@ BEGIN
     RETURN;
   END IF;
   v_contract := w.contract_id;
+  -- เรียกตรงผ่าน /rpc ได้ → ล็อกต่อสัญญาเหมือน save/delete (ใน save ล็อกซ้ำได้ ไม่ติดตัวเอง)
+  PERFORM pg_advisory_xact_lock(hashtextextended('public.save_service_visit:' || v_contract::text, 0));
   IF NOT (is_host() OR (current_app_role() = 'recorder' AND contract_in_scope(v_contract))) THEN
     RAISE EXCEPTION 'not allowed to change this visit' USING ERRCODE = '42501';
   END IF;
@@ -247,6 +251,7 @@ DECLARE
   v_prev        jsonb;
   v_effects     jsonb;
   v_missing     int;
+  v_created     uuid[];
   v_checks      jsonb := coalesce(p -> 'checks', '[]'::jsonb);
   c             record;
   w             record;
@@ -402,11 +407,19 @@ BEGIN
      AND x.status IN ('active', 'pending_removal', 'removed')
      AND s.status IS DISTINCT FROM x.status;
 
+  -- ---------- สถานีที่ฝังใหม่ในการเข้านี้ (S) ----------
+  -- SPEC §7.5: การติดตั้ง = S · F1 คือการติดตามครั้งแรก "หลัง" ติดตั้ง → สถานีที่ฝังในการเข้านี้
+  -- ไม่ต้องมี/ห้ามมีผลตรวจในการเข้าเดียวกัน และไม่นับในกันลืมกล่อง (D10)
+  v_created := ARRAY(SELECT jsonb_array_elements_text(sw.effects -> 'created')::uuid
+                       FROM station_works sw
+                      WHERE sw.visit_id = v_visit_id AND sw.kind = 'added');
+
   -- ---------- ผลตรวจ ----------
   -- สถานีต้องเป็นของสัญญานี้ และใช้งานอยู่ (หรือมีผลในการเข้านี้อยู่แล้ว — แก้ผลเดิมได้)
   IF EXISTS (SELECT 1 FROM jsonb_to_recordset(v_checks) AS c0(station_id uuid)
               LEFT JOIN stations s ON s.id = c0.station_id AND s.contract_id = v_contract
              WHERE s.id IS NULL
+                OR s.id = ANY (v_created)
                 OR (s.status NOT IN ('active', 'eliminated', 'pending_removal')
                     AND NOT EXISTS (SELECT 1 FROM station_checks sc
                                      WHERE sc.visit_id = v_visit_id AND sc.station_id = s.id))) THEN
@@ -420,6 +433,7 @@ BEGIN
         FROM stations s
        WHERE s.contract_id = v_contract AND s.type = 'AG'
          AND s.status IN ('active', 'eliminated', 'pending_removal')
+         AND NOT (s.id = ANY (v_created))
          AND NOT EXISTS (SELECT 1 FROM jsonb_to_recordset(v_checks) AS c0(station_id uuid)
                           WHERE c0.station_id = s.id)), '[]'::jsonb);
   END IF;
@@ -428,6 +442,7 @@ BEGIN
   SELECT count(*) INTO v_missing FROM stations s
    WHERE s.contract_id = v_contract AND s.type = 'AG'
      AND s.status IN ('active', 'eliminated', 'pending_removal')
+     AND NOT (s.id = ANY (v_created))
      AND NOT EXISTS (SELECT 1 FROM jsonb_to_recordset(v_checks) AS c0(station_id uuid)
                       WHERE c0.station_id = s.id);
   IF v_missing > 0 THEN

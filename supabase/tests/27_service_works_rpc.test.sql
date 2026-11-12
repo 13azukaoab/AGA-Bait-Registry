@@ -2,7 +2,7 @@
 -- Role simulation: seed as postgres, then SET LOCAL ROLE authenticated/anon and set
 -- request.jwt.claim.sub (what auth.uid() reads). RESET ROLE to inspect as superuser.
 BEGIN;
-SELECT plan(52);
+SELECT plan(56);
 
 -- =====================================================================
 -- โครงสร้าง + สิทธิ์
@@ -225,6 +225,29 @@ SELECT is((SELECT count(*)::int FROM stations WHERE contract_id = '00000000-0000
              AND type = 'IG' AND station_no IN (6, 7)), 0, 'stations added by visit 1 are gone');
 SELECT is((SELECT count(*)::int FROM visits WHERE contract_id = '00000000-0000-0000-0000-0000000000d1'), 0,
   'both visits deleted');
+
+-- ติดกล่อง AG ใหม่ (S) แล้วติดตามครั้งแรก = F1 (SPEC §7.5)
+SET LOCAL ROLE authenticated;
+SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a3', true);
+SELECT lives_ok($$SELECT public.save_service_visit(pg_temp.payload('00000000-0000-0000-0000-0000000000f5',
+                    '00000000-0000-0000-0000-0000000000d1', '2026-03-10', ARRAY[(SELECT a FROM _t)],
+                    jsonb_build_object('skip_all_ag', true, 'works', jsonb_build_array(
+                      jsonb_build_object('kind', 'added', 'station_type', 'AG', 'station_nos', jsonb_build_array(3))))))$$,
+  'install AG-3 (S) without a result row for it');
+SELECT lives_ok($$SELECT public.save_service_visit(pg_temp.payload('00000000-0000-0000-0000-0000000000f6',
+                    '00000000-0000-0000-0000-0000000000d1', '2026-04-10', ARRAY[(SELECT a FROM _t)],
+                    jsonb_build_object('skip_all_ag', true, 'checks', jsonb_build_array(
+                      jsonb_build_object('station_id', (SELECT id FROM stations WHERE contract_id = '00000000-0000-0000-0000-0000000000d1'
+                                                         AND type = 'AG' AND station_no = 3),
+                                         'bait_added_g', 50)))))$$,
+  'first follow-up of AG-3');
+RESET ROLE;
+SELECT is((SELECT count(*)::int FROM station_checks sc JOIN stations s ON s.id = sc.station_id
+            WHERE sc.visit_id = '00000000-0000-0000-0000-0000000000f5' AND s.type = 'AG' AND s.station_no = 3), 0,
+  'the install visit has no result row for the new box (not even "not checked")');
+SELECT is((SELECT sc.follow_up_no FROM station_checks sc JOIN stations s ON s.id = sc.station_id
+            WHERE sc.visit_id = '00000000-0000-0000-0000-0000000000f6' AND s.type = 'AG' AND s.station_no = 3), 1,
+  'the first follow-up after installing is F1');
 
 SET LOCAL ROLE anon;
 SELECT throws_ok($$SELECT public.save_service_visit('{}'::jsonb)$$, '42501', NULL, 'anon is refused at the GRANT gate');
