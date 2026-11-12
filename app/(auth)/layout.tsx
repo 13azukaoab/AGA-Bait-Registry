@@ -21,7 +21,7 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
           <div className="w-full max-w-[380px] rounded-card border border-border bg-surface p-6 shadow-sm">
             <div className="mb-5 flex flex-col items-center gap-2 text-center">
               <div
-                className={`${styles.logo} h-10 w-[160px]`}
+                className={`${styles.logo} h-[89px] w-[176px]`}
                 role="img"
                 aria-label="Advance Group Asia (AGA)"
               />

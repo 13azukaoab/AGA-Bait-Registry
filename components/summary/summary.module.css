@@ -1,7 +1,7 @@
-/* โลโก้ AGA ของหน้า public — ใช้ไฟล์ภาพเดียวกับ components/shell (ไม่คัดลอกซ้ำ)
+/* โลโก้ AGA เต็มชุด (280×144 ≈1.94:1) ของหน้า public —ใช้ไฟล์ภาพเดียวกับ components/shell (ไม่คัดลอกซ้ำ)
    สว่าง = สีเดิม · มืด = ฟิลเตอร์ทำเป็นสีขาว (เหมือน Topbar ของหน้าหลังบ้าน) */
 .logo {
-  background: url("../shell/aga-logo.png") center / contain no-repeat;
+  background: url("../shell/aga-logo-full.png") center / contain no-repeat;
   filter: none;
 }
 :global(:root[data-theme="dark"]) .logo {
