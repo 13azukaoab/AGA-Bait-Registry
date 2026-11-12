@@ -71,6 +71,13 @@ migration ใหม่ 2 ไฟล์ + pgTAP เขียนเทสก่อ�
 - `AG001` → HTTP 400 · `details` = JSON string รายชื่อที่ตรง `[{ customer_id, name, customer_type, latest_contract_no }]`
 - `supabase.rpc('delete_job_opening', { p_contract_id })`
 
+### แก้ตามผลตรวจของศูนย์กลาง (12 พ.ย. 2026 · commit 7048600)
+- คิวลบไฟล์: path เดิมที่ปิดงานแล้ว ถูกใช้ซ้ำแล้วลบอีก → เปิดงานใหม่ในคิว (ไม่ค้าง)
+- โหมดแก้: `p_branch_id` ต้องเท่ากับสาขาของลูกค้าเดิม ไม่งั้น `AG006` (ห้ามย้ายสัญญาข้ามสาขา) — หน้าจอต้องแปล `AG006` ด้วย
+- ล้มเร็ว `42501` เมื่อผู้ที่ไม่ใช่ host บันทึกนอก `division_scope` (host ไม่ถูกบล็อก)
+- อักขระมองไม่เห็นใน `customer_name_key` เขียนเป็น `U&'B…'` · route `maxDuration = 60`
+- ไม่ได้เพิ่ม `import "server-only"` — แพ็กเกจไม่มีในโปรเจกต์ (ไม่ติดตั้งเพิ่มตามที่สั่ง) · `createAdminClient()` โยน error ถ้าถูกเรียกใน browser แทน
+
 ### ยังค้าง
 - ขึ้น cloud (ศูนย์กลางจัดลำดับ — ต้องก่อนหน้าจอที่เรียก RPC)
 - หมวด 3: cron ตัวที่ 2 (เสนอ `30 23 * * *` = 06:30 ไทย) + `SUPABASE_SERVICE_ROLE_KEY`, `CRON_SECRET` ใน env ของ Vercel + เช็กโควตา cron
