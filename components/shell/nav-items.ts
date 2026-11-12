@@ -48,7 +48,7 @@ export const NAV_GROUPS: readonly NavGroup[] = [
       // ยังไม่มีหน้า — เส้นทางที่เสนอ
       { key: "new", label: "เปิดงานเข้าทะเบียนบริการ", href: "/customers/new", icon: "＋", roles: ["host", "admin"] },
       // ยังไม่มีหน้า — เส้นทางที่เสนอ
-      { key: "material", label: "สรุปยอดใช้อุปกรณ์รายเดือน", href: "/material", icon: "▥", roles: ["host", "admin", "recorder"] },
+      { key: "material", label: "สรุปงานบริการรายเดือน", href: "/material", icon: "▥", roles: ["host", "admin", "recorder"] },
       // หน้า public อยู่นอกกลุ่ม (app) จึงไม่มีโครงหน้านี้ครอบ — ลิงก์ยังใช้ได้
       { key: "summary", label: "Dashboard สรุปมูลค่าทั้งหมด", href: "/summary", icon: "▦", roles: ["host", "admin", "recorder", "viewer"] },
     ],
