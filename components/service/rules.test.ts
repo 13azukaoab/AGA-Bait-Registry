@@ -63,6 +63,11 @@ describe("errors", () => {
     expect(describeServiceError({ code: "42501" }).message).toContain("ไม่มีสิทธิ์");
     expect(describeServiceError({ message: "Failed to fetch" }).message).toContain("เชื่อมต่อ");
   });
+  it("23505 เลขสถานีชนกัน = ข้อความเฉพาะ (ยัง log เป็นบั๊ก)", () => {
+    const r = describeServiceError({ code: "23505", message: 'duplicate key value violates unique constraint "stations_in_use_no_key"' });
+    expect(r.message).toContain("เลขสถานีซ้ำ");
+    expect(r.isBug).toBe(true);
+  });
   it("ไม่รู้จัก = ข้อความทั่วไป", () => {
     expect(describeServiceError({ code: "XX999" }).message).toContain("บันทึกไม่สำเร็จ");
   });

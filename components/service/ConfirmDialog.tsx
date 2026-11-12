@@ -30,10 +30,13 @@ export function ConfirmDialog({
   onCancel: () => void;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
+  const cancelRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     const dlg = ref.current;
     if (dlg && !dlg.open) dlg.showModal();
+    // showModal() โฟกัสปุ่มแรกเอง — บังคับให้โฟกัสที่ปุ่มปลอดภัย (ยกเลิก/กลับไปกรอกต่อ) เสมอ
+    cancelRef.current?.focus();
   }, []);
 
   return (
@@ -59,7 +62,7 @@ export function ConfirmDialog({
         <Button variant={danger ? "primary" : "secondary"} onClick={onConfirm}>
           {confirmLabel}
         </Button>
-        <Button variant={danger ? "secondary" : "primary"} onClick={onCancel} autoFocus>
+        <Button ref={cancelRef} variant={danger ? "secondary" : "primary"} onClick={onCancel}>
           {cancelLabel}
         </Button>
       </div>

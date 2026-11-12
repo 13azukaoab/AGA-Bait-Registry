@@ -49,6 +49,10 @@ export function describeServiceError(error: DbErrorLike): ServiceError {
   const rpc = RPC_ERRORS[code];
   if (rpc) return { message: rpc, isBug: false };
 
+  // เลขสถานีชนกับสถานีที่ใช้งานอยู่ (unique stations_in_use_no_key) เช่น ย้อนงานซ่อมแล้วเลขซ้ำ
+  if (code === "23505" && msg.includes("stations_in_use_no_key")) {
+    return { message: "เลขสถานีซ้ำกับสถานีที่ยังใช้งานอยู่ — บันทึก/ลบรายการนี้ไม่ได้ ตรวจเลขสถานีของงานซ่อม/ฝังเพิ่มแล้วลองใหม่", isBug: true };
+  }
   if (BUG_CODES.has(code)) return { message: BUG_MESSAGE, isBug: true };
 
   if (
