@@ -410,6 +410,25 @@ tfoot td{padding:10px 12px;font-weight:700;background:var(--surface-2);border-to
 .fgrid .field label .opt{color:var(--fg-faint)}
 .invalid{outline:2px solid var(--danger);outline-offset:2px;border-radius:9px}
 .freshbox input.invalid,.rpql input.invalid{border-radius:8px}
+.rprow td{white-space:normal}
+.rpl1{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.rpl1 .rpType{flex:0 0 190px;width:190px;max-width:100%}
+.rpl1 .rpStWrap{flex:1 1 240px;flex-wrap:nowrap;min-width:0}
+.rpl1 .rpKind{flex:0 0 68px;width:68px}
+.rpl1 .rpSt{flex:1 1 auto;width:auto;min-width:110px}
+.rpl1 .rpCnt{color:var(--fg-muted);white-space:nowrap}
+.rpl1>.btn{margin-left:auto}
+.rpl2{margin-top:6px}
+.rpl2 .rpNote{width:100%}
+.missgo{font:inherit;color:inherit;background:none;border:0;padding:0;text-align:left;cursor:pointer;text-decoration:underline;text-underline-offset:2px}
+.missgo:hover{text-decoration-thickness:2px}
+.missgo:focus-visible{outline:2px solid var(--danger);outline-offset:2px;border-radius:4px}
+.lvdlg{position:fixed;inset:0;z-index:60;display:flex;align-items:center;justify-content:center;padding:16px;background:var(--scrim,rgba(10,20,30,.45))}
+.lvdlg[hidden]{display:none}
+.lvbox{width:min(420px,100%);background:var(--surface);color:var(--fg);border:1px solid var(--border);border-radius:12px;padding:18px 18px 14px;box-shadow:0 12px 32px var(--drawer-shadow,rgba(20,40,70,.25))}
+.lvbox b{font-size:16px}
+.lvbox p{margin:8px 0 16px;color:var(--fg-muted);font-size:13.5px;line-height:1.6}
+.lvact{display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap}
 .freshbox{display:flex;flex-wrap:wrap;align-items:center;gap:10px 18px;padding:12px 14px;margin-bottom:12px;border:1px solid var(--warn);border-radius:10px;background:var(--warn-soft)}
 .freshbox .ft{display:flex;flex-direction:column;gap:2px;flex:1 1 260px;font-size:12.5px;color:var(--fg-muted)}
 .freshbox .ft b{font-size:13.5px;color:var(--warn)}
@@ -455,13 +474,13 @@ tfoot td{padding:10px 12px;font-weight:700;background:var(--surface-2);border-to
 }
 @media (max-width:520px){.bigok{display:grid;grid-template-columns:30px 1fr;column-gap:14px;row-gap:6px;align-items:center}
   .bigok .state{grid-column:2;justify-self:start}}
-.fbtns{display:grid;grid-template-columns:repeat(auto-fit,minmax(135px,1fr));gap:8px;margin:12px 0 2px}
+.fbtns{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:12px 0 2px}
 .fbtn{display:flex;align-items:center;justify-content:center;gap:7px;min-height:50px;font:inherit;font-size:14px;
   font-weight:500;color:var(--fg);background:var(--surface);border:1px solid var(--border-strong);
   border-radius:10px;cursor:pointer;padding:6px 10px}
 .fbtn[aria-pressed="true"]{background:var(--accent-soft);border-color:var(--accent);color:var(--accent-strong);font-weight:600}
 .fbtn .fl{display:flex;flex-direction:column;align-items:center;line-height:1.25}
-.fbtn .fl small{font-size:11px;font-weight:400;color:var(--fg-muted)}
+.fbtn .fl small{font-size:10.5px;line-height:1.3;font-weight:400;color:var(--fg-muted)}
 .fbtn:disabled{opacity:.45;cursor:not-allowed}
 .fbtn .n{font-size:11px;font-weight:700;min-width:20px;padding:1px 6px;border-radius:999px;
   background:var(--surface-3);color:var(--fg-muted);text-align:center}
@@ -484,13 +503,13 @@ tfoot td{padding:10px 12px;font-weight:700;background:var(--surface-2);border-to
 .optbtn[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-fg)}
 .optbtn:disabled{cursor:not-allowed}
 .pt .mini select{padding:9px 10px;font-size:13.5px}
-.pskip{display:inline-flex;align-items:center;gap:6px;font:inherit;font-size:12.5px;font-weight:600;color:var(--danger);background:var(--danger-soft);border:1px solid var(--danger);border-radius:999px;padding:3px 12px 3px 9px;cursor:pointer;user-select:none}
-.pskip input{width:16px;height:16px;margin:0;accent-color:var(--danger);cursor:pointer}
+.pskip{display:inline-flex;align-items:center;gap:6px;font:inherit;font-size:12.5px;font-weight:600;color:var(--warn);background:var(--warn-soft);border:1px solid var(--warn);border-radius:999px;padding:3px 12px 3px 9px;cursor:pointer;user-select:none}
+.pskip input{width:16px;height:16px;margin:0;accent-color:var(--warn);cursor:pointer}
 .pskip:hover{filter:brightness(.97)}
-.pskip.on{background:var(--danger);color:var(--accent-fg)}
+.pskip.on{background:var(--warn);color:var(--accent-fg)}
 .pskip.on input{accent-color:var(--accent-fg)}
 .pskip:has(input:disabled){cursor:not-allowed;opacity:.7}
-.pskip:has(input:focus-visible){outline:2px solid var(--danger);outline-offset:2px}
+.pskip:has(input:focus-visible){outline:2px solid var(--warn);outline-offset:2px}
 .lblwrap{position:relative;display:inline-flex}
 .lblbtn{font:inherit;font-size:12.5px;display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:999px;cursor:pointer;
   color:var(--fg-muted);background:transparent;border:1px dashed var(--border-strong)}
@@ -646,8 +665,8 @@ tfoot td{padding:10px 12px;font-weight:700;background:var(--surface-2);border-to
          ซ้าย = ตัวกรอง + ค้นหาช่องเดียว + ความคืบหน้า + รายชื่อ · ขวา = ฟอร์มทีละราย (IG/IC + กล่อง AG ในฟอร์มเดียวกัน)
          ทั้งสองฝั่งสร้างด้วย JS (ท้ายไฟล์ หัวข้อ "หน้ากรอกผลบริการ + กล่อง AG นอกรอบ") -->
     <section id="s-service" hidden>
-      <div class="page-head"><h1>กรอกผลบริการรายเดือน (IG/IC)</h1>
-        <p>เลือกลูกค้าทางซ้าย แล้วกรอกทีละราย — ตั้งต้นว่าทุกจุดปกติ กรอกเฉพาะที่พบปลวก เปลี่ยนไม้ หรือมีงานซ่อม · งานกล่องเหยื่อ AG กรอกในฟอร์มเดียวกัน</p></div>
+      <div class="page-head"><h1>กรอกข้อมูลทำบริการประจำเดือน</h1>
+        <p>เลือกลูกค้าทางซ้าย แล้วกรอกทีละราย — ตั้งต้นว่าทุกจุดปกติ กรอกเฉพาะที่พบปลวก เปลี่ยนไม้ งานซ่อม/ฝังเพิ่ม · งานกล่องเหยื่อ AG กรอกในฟอร์มเดียวกัน</p></div>
       <div class="split entry" style="margin-top:16px">
         <div class="panel entry-left" id="svLeft"></div>
         <div class="panel formpanel" id="svForm"></div>
@@ -1263,13 +1282,21 @@ function termiteRow(sel){
   var garden=(sel.value==='ปลวกสวน'); bs.hidden=garden; pw.hidden=!garden;
   if(garden){ var pin=pw.querySelector('.powin'); if(pin) powCalc(pin); }
 }
-/* ตรวจเลขสถานีว่ามีจริงของลูกค้ารายนี้ (1 ถึง stationMax = IG+IC ของลูกค้าที่เลือก) → ✓/✗ กันพิมพ์ผิด · ช่องว่าง = ยังไม่ตรวจ */
+/* เลขสถานีนับแยกชนิด (เจ้าของตัดสิน 12 พ.ย. 2026): IG-1…IG-n และ IC-1…IC-n
+   ตรวจว่าเลขมีจริงตามจำนวนสถานีชนิดนั้นของลูกค้า → ✓/✗ กันพิมพ์ผิด · ช่องว่าง = ยังไม่ตรวจ
+   ลูกค้าใหม่ที่ยังไม่ระบุจำนวน = ยังตรวจไม่ได้ (ยอมทุกเลข) */
+function stKindMax(kind){
+  if(!SV) return 9999;
+  var n=svCounts(), m=(kind==='IC'?n.ic:n.ig);
+  return m||(custById(SV.id).fresh?9999:0);
+}
+function rowKind(tr){var k=tr.querySelector('.tmKind,.wdType'); return k?k.value:'IG'}
 function validSt(inp){
   var chk=inp.closest('.stcell').querySelector('.vchk'), v=inp.value.trim();
   if(!v){ chk.className='vchk'; chk.textContent=''; return; }
-  var n=parseInt(v,10), ok=(n>=1 && n<=stationMax);
+  var kind=rowKind(inp.closest('tr')), max=stKindMax(kind), n=parseInt(v,10), ok=(String(n)===v&&n>=1&&n<=max);
   chk.className='vchk '+(ok?'ok':'bad');
-  chk.textContent=ok?'✓':'✗ ไม่พบ';
+  chk.textContent=ok?'✓':'✗ ไม่มี '+kind+'-'+v;
 }
 /* เคมีผง: จำนวนจุด → กรัม อัตโนมัติ (มาตรฐาน 0.3 ก./จุด) */
 function powCalc(inp){
@@ -1456,7 +1483,7 @@ function agMissing(ctx){
     need[p.k]=true; bad.push(p); if(p.kind==='F') hasF=true;
   });
   var miss=[];
-  if(bad.length) miss.push('กล่อง AG ยังกรอกไม่ครบ: จุดที่ '+bad.map(function(p){return p.no}).join(', ')+(round&&hasF?' — หรือกด “ไม่ได้ตรวจจุดนี้” ที่จุดนั้น (ถ้าไม่ได้ตรวจทุกจุด ติ๊ก “รอบนี้ไม่ได้ตรวจกล่อง AG เลย” ด้านล่าง)':''));
+  if(bad.length) miss.push('กล่อง AG จุดที่ '+bad.map(function(p){return p.no}).join(', ')+' ยังไม่กรอก'+(round&&hasF?' (หรือติ๊ก “ไม่ได้ตรวจจุดนี้”)':''));
   return {missing:miss,need:need,filled:filled};
 }
 /* ป้ายกำกับจุด (ไม่บังคับ) — ปุ่มที่หัวการ์ดจุด กดแล้วเปิดกล่องเล็กให้พิมพ์/แก้ไข เช่น ห้องนอน, ห้องนั่งเล่น
@@ -1472,7 +1499,7 @@ function agLabelHtml(ctx,p,key,dis){
 }
 function agPointHtml(ctx,m,p,bad){
   var isS=(p.kind==='S'), off=(ctx==='sv'&&(m.skip||p.skip)&&!isS), key='data-ctx="'+ctx+'" data-k="'+p.k+'"', dis=off?' disabled':'';
-  var chip=p.st==='pend'?'<span class="chip pend">รอถอด</span>':(p.st==='rm'?'<span class="chip ok">ถอดกล่อง</span>':'<span class="chip miss">กำลังติดตาม</span>');
+  var chip=p.st==='pend'?'<span class="chip pend">รอถอด</span>':(p.st==='rm'?'<span class="chip ok">ถอดกล่อง</span>':'<span class="chip info">กำลังติดตาม</span>');
   var fno=isS?'ติดตั้งใหม่ (S)':'ติดตามผล F'+(p.last+1);
   var h='<div class="pt'+(off?' off':'')+'"><div class="top"><span class="sttype">AG</span><b>จุดที่ '+p.no+'</b>'+agLabelHtml(ctx,p,key,dis)+chip+
     '<span class="fno">'+fno+' <span class="auto-tag">อัตโนมัติ</span></span>'+
@@ -1493,7 +1520,7 @@ function agPointHtml(ctx,m,p,bad){
     '<option value=""'+(p.caste===''?' selected':'')+' disabled>— เลือก —</option>'+
     '<option value="ไม่พบปลวก"'+(p.caste==='ไม่พบปลวก'?' selected':'')+'>ไม่พบปลวก</option>'+
     CASTES.map(function(c){return '<option value="'+esc(c)+'"'+(p.caste===c?' selected':'')+'>'+esc(c)+'</option>'}).join('')+'</select></div>';
-  var sts=[['track','กำลังติดตาม'],['pend','รอถอด (พบปลวกตาย)'],['rm','ถอดกล่อง (จบปัญหา)']];
+  var sts=[['track','ติดตามต่อ'],['pend','รอถอด (ปลวกตาย)'],['rm','ถอดแล้ว (จบปัญหา)']];
   h+='<div class="mini"><label>สถานะจุดนี้</label><select data-ag="st" '+key+dis+'>'+
     sts.map(function(s){return '<option value="'+s[0]+'"'+(p.st===s[0]?' selected':'')+'>'+s[1]+'</option>'}).join('')+'</select></div>';
   return h+'</div></div>';
@@ -1573,6 +1600,8 @@ var WT_RE=/^([01]\d|2[0-3]):[0-5]\d$/;
 function wtFormat(inp){
   var d=inp.value.replace(/\D/g,'').slice(0,4);
   inp.value=d.length>2?d.slice(0,2)+':'+d.slice(2):d;
+  /* พิมพ์เวลาเข้าครบและถูกต้อง → เลื่อนไปช่องเวลาออกให้เอง */
+  if(/TimeIn$/.test(inp.id)&&WT_RE.test(inp.value)&&document.activeElement===inp){var o=$(inp.id.replace('TimeIn','TimeOut')); if(o){o.focus(); o.select()}}
 }
 /* คืน null = ยังกรอกไม่ครบ · -1 = รูปแบบผิดหรือเวลาออกไม่หลังเวลาเข้า · >0 = จำนวนนาที */
 function wtMinutes(ctx){
@@ -1602,7 +1631,7 @@ function teamsOf(ctx){return [].map.call($(ctx+'VisitTeam').querySelectorAll('in
 function teamSave(c,ctx){var t=teamsOf(ctx); c.visitTeams=t; c.team=t[0]}
 function wtMissing(ctx){
   var a=$(ctx+'TimeIn').value, b=$(ctx+'TimeOut').value, out=[];
-  if(!teamsOf(ctx).length) out.push('ทีมที่เข้า (เลือกอย่างน้อย 1 ทีม)');
+  if(!teamsOf(ctx).length) out.push('ทีมที่เข้า');
   if(!a) out.push('เวลาเข้า');
   if(!b) out.push('เวลาออก');
   if(a&&b){
@@ -1666,7 +1695,7 @@ function wtSumRender(){
 }
 var BAIT_OPTS='<option>0 ก.</option><option selected>50 ก.</option><option>100 ก.</option><option>150 ก.</option><option>200 ก.</option>';
 function tmRowHtml(){
-  return '<tr><td><div class="stcell"><input placeholder="เลขสถานี" inputmode="numeric" style="max-width:96px" oninput="validSt(this)" aria-label="หมายเลขสถานี"><span class="vchk"></span></div></td>'+
+  return '<tr><td><div class="stcell"><select class="tmKind" aria-label="ชนิดสถานี"><option>IG</option><option>IC</option></select><input placeholder="เลขสถานี" inputmode="numeric" style="max-width:80px" oninput="validSt(this)" aria-label="หมายเลขสถานี"><span class="vchk"></span></div></td>'+
     '<td><select class="tmType" onchange="termiteRow(this)" aria-label="ชนิดปลวก"><option selected>ปลวกใต้ดิน</option><option>ปลวกสวน</option></select></td>'+
     '<td class="baitcell"><select class="baitsel" aria-label="ปริมาณเหยื่อ">'+BAIT_OPTS+'</select><span class="powder powwrap" hidden><input class="powin num" value="0" oninput="powCalc(this)" aria-label="จำนวนจุดเคมีผง"> <span style="font-size:11px;color:var(--fg-muted)">จุด</span> <span class="powcalc">× 0.3 = 0 ก.</span></span></td>'+
     '<td class="c"><button type="button" class="btn danger sm" data-act="delRow">ลบ</button></td></tr>';
@@ -1688,12 +1717,12 @@ function rpRowHtml(type){
      • สถานีหาย / ถอนสถานีออก = เลือก IG/IC + เลขสถานีเดิม (หลายเลขได้) → หักออกจากจำนวนที่ใช้งาน
      • เปลี่ยนฝา / อื่นๆ = เลขสถานีเดิม ไม่เปลี่ยนจำนวน
      "สถานีหาย" และ "อื่นๆ" ต้องระบุรายละเอียด (เช่น สถานีหาย แต่รอบนี้อุปกรณ์ไม่พอซ่อม) */
-  return '<tr><td><select class="rpType" onchange="rpApply(this.closest(\'tr\'));svRecalc()" aria-label="ประเภทงาน">'+rpTypeOptions(type||'เปลี่ยนฝาสถานี')+'</select></td>'+
-    '<td>'+
-    '<div class="stcell rpStWrap"><select class="rpKind" onchange="rpCount(this.closest(\'tr\'));svRecalc()" aria-label="ชนิดสถานี" hidden><option>IG</option><option>IC</option></select><input class="rpSt" placeholder="เช่น 3, 5, 8-12" style="min-width:150px" oninput="rpCount(this.closest(\'tr\'))" aria-label="หมายเลขสถานี (ใส่ได้หลายเลข คั่นด้วยจุลภาค หรือช่วงด้วยขีด)"><span class="vchk"></span></div></td>'+
-    '<td class="rpCnt num" style="color:var(--fg-muted)">1 สถานี <span class="auto-tag">อัตโนมัติ</span></td>'+
-    '<td><input class="rpNote" placeholder="ไม่บังคับ" style="min-width:220px;width:100%" aria-label="รายละเอียดงานซ่อม"></td>'+
-    '<td class="c"><button type="button" class="btn danger sm" data-act="delRow">ลบ</button></td></tr>';
+  return '<tr class="rprow"><td colspan="4"><div class="rpl1">'+
+    '<select class="rpType" onchange="rpApply(this.closest(\'tr\'));svRecalc()" aria-label="ประเภทงาน">'+rpTypeOptions(type||'เปลี่ยนฝาสถานี')+'</select>'+
+    '<div class="stcell rpStWrap"><select class="rpKind" onchange="rpCount(this.closest(\'tr\'));svRecalc()" aria-label="ชนิดสถานี"><option>IG</option><option>IC</option></select><input class="rpSt" placeholder="เช่น 3, 5, 8-12" oninput="rpCount(this.closest(\'tr\'))" aria-label="หมายเลขสถานี (ใส่ได้หลายเลข คั่นด้วยจุลภาค หรือช่วงด้วยขีด)"><span class="vchk"></span></div>'+
+    '<span class="rpCnt num">1 สถานี <span class="auto-tag">อัตโนมัติ</span></span>'+
+    '<button type="button" class="btn danger sm" data-act="delRow">ลบ</button></div>'+
+    '<div class="rpl2"><input class="rpNote" placeholder="ไม่บังคับ" aria-label="รายละเอียดงานซ่อม"></div></td></tr>';
 }
 /* งานซ่อม: ช่องเลขสถานีใส่ได้หลายเลขในช่องเดียว — คั่นด้วย , หรือเว้นวรรค · ช่วงใช้ขีด เช่น "3, 5, 8-12" = 7 สถานี
    ระบบนับจำนวนให้เอง (เลขซ้ำนับครั้งเดียว) และตรวจว่าทุกเลขมีจริง (1 ถึง max) */
@@ -1718,6 +1747,7 @@ function svCounts(){
 function svFreshSync(){
   var n=svCounts(); stationMax=(n.ig+n.ic)||9999;
   [].forEach.call(svRows('rp'),function(tr){rpCount(tr)});
+  ['tm','wd'].forEach(function(k){svRows(k).forEach(function(tr){var i=tr.querySelector('.stcell input'); if(i) validSt(i)})});
   svRecalc();
 }
 function rpIsAdd(tr){return tr.querySelector('.rpType').value.indexOf('ฝังสถานีใหม่')===0}
@@ -1726,7 +1756,7 @@ function rpKindOf(tr){
   var t=tr.querySelector('.rpType').value;
   if(t==='ฝังสถานีใหม่ (IG)') return 'IG';
   if(t==='ฝังสถานีใหม่ (IC)') return 'IC';
-  return rpIsRemove(tr)?tr.querySelector('.rpKind').value:null;
+  return tr.querySelector('.rpKind').value;
 }
 /* ฝังใหม่: เลขสถานีต้องต่อจากเลขเดิมของชนิดนั้น (ต่ำสุด = จำนวนเดิม + 1) · ซ่อม/หาย/ถอน: ต้องเป็นเลขที่มีอยู่จริง */
 function rpMin(tr){
@@ -1734,9 +1764,7 @@ function rpMin(tr){
   var n=svCounts(); return (rpKindOf(tr)==='IG'?n.ig:n.ic)+1;
 }
 function rpMax(tr){
-  var k=rpKindOf(tr); if(rpIsAdd(tr)) return 9999; if(!k) return stationMax;
-  var n=svCounts(), m=(k==='IG'?n.ig:n.ic);
-  return m||(custById(SV.id).fresh?9999:0);
+  return rpIsAdd(tr)?9999:stKindMax(rpKindOf(tr));
 }
 function rpNeedsNote(tr){var t=tr.querySelector('.rpType'); return !!t&&(t.value==='อื่นๆ'||t.value==='สถานีหาย')}
 /* นับจำนวนสถานีของแถว + ตรวจเลขสถานี (โหมดพิมพ์เลข) · คืนจำนวน */
@@ -1755,7 +1783,7 @@ function rpCount(tr){
 /* ปรับช่องของแถวตามประเภทงาน */
 function rpApply(tr){
   var add=rpIsAdd(tr), t=tr.querySelector('.rpType').value, n=tr.querySelector('.rpNote'), st=tr.querySelector('.rpSt');
-  tr.querySelector('.rpKind').hidden=!rpIsRemove(tr);
+  tr.querySelector('.rpKind').hidden=add;
   st.placeholder=add?'เช่น '+rpMin(tr)+'-'+(rpMin(tr)+4)+' (เลขใหม่ต่อจากเดิม)':'เช่น 3, 5, 8-12';
   n.placeholder=t==='สถานีหาย'?'ระบุ เช่น สถานีหาย อุปกรณ์ไม่พอซ่อมรอบนี้':t==='อื่นๆ'?'ระบุว่าเกิดอะไรขึ้น (จำเป็น)':'ไม่บังคับ';
   n.classList.toggle('need',rpNeedsNote(tr));
@@ -1780,7 +1808,7 @@ function rpDeltas(){
         else parseStList(v,9999,rpMin(tr)).nums.forEach(function(x){used[k][x]=1});
       }
       if(!chk.classList.contains('bad')) d[lo]+=c;
-    } else if(!chk.classList.contains('bad')) d[lo]-=c;
+    } else if(rpIsRemove(tr)&&!chk.classList.contains('bad')) d[lo]-=c;
   });
   return d;
 }
@@ -1809,6 +1837,7 @@ function svRenderForm(){
   }
   var base2=pkBase(p), pos=base2.indexOf(c)+1;
   stationMax=c.fresh?9999:c.ig+c.ic;
+  FORM_DIRTY.sv=false;
   SV={id:c.id,normal:false,tried:false,open:{tm:false,wd:false,rp:false,ag:c.ag.length>0}};
   agInit('sv',c);
   var agN=c.ag.length;
@@ -1819,9 +1848,9 @@ function svRenderForm(){
     '<button type="button" class="bigok" id="svNormal" data-act="svNormal" aria-pressed="false"><span class="cbox" aria-hidden="true"><svg viewBox="0 0 20 20"><path d="M3 10.5l4.5 4.5L17 5"/></svg></span><span class="txt">IG / IC ปกติทั้งหมด<small>ไม่พบปลวก ไม่เปลี่ยนไม้ ไม่มีงานซ่อม · ไม่รวมกล่อง AG</small></span><span class="state"><span class="off">ยังไม่ได้กด</span><span class="on">กดแล้ว ✓</span></span></button>'+
     '<div class="fbtns" role="group" aria-label="สิ่งที่พบ">'+
       [['tm','พบปลวก',''],['wd','เปลี่ยนไม้',''],['rp','งานซ่อม / ฝังเพิ่ม','(เปลี่ยนฝา, หาย, ถอนออก, ฝังเพิ่ม)'],['ag','กล่อง AG','']].map(function(s){return '<button type="button" class="fbtn" data-act="sec" data-sec="'+s[0]+'" aria-pressed="false"><span class="fl">'+s[1]+(s[2]?'<small>'+s[2]+'</small>':'')+'</span> <span class="n" id="svN_'+s[0]+'">0</span></button>'}).join('')+'</div>'+
-    tableSec('svSecTm','svTmBody','พบปลวก','<th>หมายเลขสถานี</th><th>ชนิดปลวก</th><th>เหยื่อ / เคมีผง</th>','addTm','+ เพิ่มจุดที่พบปลวก','ตั้งต้นว่าจุดอื่นปกติ — เพิ่มเฉพาะจุดที่พบ: พิมพ์เลขสถานี (ระบบตรวจว่ามีจริง) แล้วเลือกชนิดปลวก · <b>ใต้ดิน</b> = ใส่เหยื่อ · <b>สวน</b> = เคมีผง กรอกจำนวนจุด แปลงกรัมอัตโนมัติ 0.3 ก./จุด','svTmChips')+
-    tableSec('svSecWd','svWdBody','เปลี่ยนไม้ล่อ','<th>หมายเลขสถานี</th><th>ชนิด</th><th>จำนวนไม้</th>','addWd','+ เพิ่มสถานีที่เปลี่ยนไม้','จำนวนไม้เติมอัตโนมัติตามชนิด (IG = 2 ชิ้น · IC = 1 ชิ้น)','svWdChips')+
-    tableSec('svSecRp','svRpBody','งานซ่อม และ ฝังเพิ่มสถานี','<th>ประเภทงาน</th><th>หมายเลขสถานี / จำนวนที่ฝัง</th><th>จำนวน</th><th>รายละเอียด</th>','addRp','+ เพิ่มงานซ่อม','<b>ฝังสถานีใหม่</b> พิมพ์หมายเลขสถานีใหม่ที่ฝัง ต่อจากเลขเดิม (เช่น <b>81-85</b> หรือ <b>81, 82, 90</b>) ระบบนับจำนวนและเพิ่มสถานีของลูกค้าให้เอง · <b>สถานีหาย / ถอนออก</b> เลือก IG/IC แล้วใส่เลขสถานีเดิมได้หลายเลขในแถวเดียว (เช่น <b>3, 5, 8-12</b> = 7 สถานี) ระบบหักออกจากจำนวนที่ใช้งาน · ถ้าสถานีหายแต่รอบนี้ซ่อมไม่ได้ (เช่น อุปกรณ์ไม่พอ) เขียนเหตุผลในช่องรายละเอียด · “อื่นๆ” ต้องระบุว่าเกิดอะไรขึ้น','svRpChips','<button type="button" class="btn sm" data-act="addRpNew">+ ฝังสถานีเพิ่ม</button>')+
+    tableSec('svSecTm','svTmBody','พบปลวก','<th>หมายเลขสถานี</th><th>ชนิดปลวก</th><th>เหยื่อ / เคมีผง</th>','addTm','+ เพิ่มจุดที่พบปลวก','ตั้งต้นว่าจุดอื่นปกติ — เพิ่มเฉพาะจุดที่พบ: เลือก IG/IC + พิมพ์เลขสถานี (ระบบตรวจว่ามีจริง) แล้วเลือกชนิดปลวก · <b>ใต้ดิน</b> = ใส่เหยื่อ · <b>สวน</b> = เคมีผง กรอกจำนวนจุด แปลงกรัมอัตโนมัติ 0.3 ก./จุด','svTmChips')+
+    tableSec('svSecWd','svWdBody','เปลี่ยนไม้ล่อ','<th>หมายเลขสถานี</th><th>ชนิด (IG/IC)</th><th>จำนวนไม้</th>','addWd','+ เพิ่มสถานีที่เปลี่ยนไม้','จำนวนไม้เติมอัตโนมัติตามชนิด (IG = 2 ชิ้น · IC = 1 ชิ้น)','svWdChips')+
+    tableSec('svSecRp','svRpBody','งานซ่อม และ ฝังเพิ่มสถานี','<th colspan="4">รายการ — ประเภทงาน · IG/IC · หมายเลขสถานี · รายละเอียด</th>','addRp','+ เพิ่มงานซ่อม','<b>ฝังสถานีใหม่</b> พิมพ์หมายเลขสถานีใหม่ที่ฝัง ต่อจากเลขเดิม (เช่น <b>81-85</b> หรือ <b>81, 82, 90</b>) ระบบนับจำนวนและเพิ่มสถานีของลูกค้าให้เอง · <b>สถานีหาย / ถอนออก</b> เลือก IG/IC แล้วใส่เลขสถานีเดิมได้หลายเลขในแถวเดียว (เช่น <b>3, 5, 8-12</b> = 7 สถานี) ระบบหักออกจากจำนวนที่ใช้งาน · ถ้าสถานีหายแต่รอบนี้ซ่อมไม่ได้ (เช่น อุปกรณ์ไม่พอ) เขียนเหตุผลในช่องรายละเอียด · “อื่นๆ” ต้องระบุว่าเกิดอะไรขึ้น','svRpChips','<button type="button" class="btn sm" data-act="addRpNew">+ ฝังสถานีเพิ่ม</button>')+
     '<div class="agsec" id="svSecAg" hidden><div id="svAgBox"></div></div>'+
   '</div>'+
   '<div class="savebar"><div class="savemsg" id="svMsg" role="alert" hidden></div>'+
@@ -1910,7 +1939,7 @@ function svMissing(){
   var miss=[];
   if(!$('svDate').value) miss.push('วันที่เข้า');
   miss=miss.concat(wtMissing('sv'));
-  if(custById(SV.id).fresh){var fn=svCounts(); if(fn.ig+fn.ic<1) miss.push('จำนวนสถานี IG / IC ของลูกค้าใหม่ (ระบุครั้งแรกครั้งเดียว)')}
+  if(custById(SV.id).fresh){var fn=svCounts(); if(fn.ig+fn.ic<1) miss.push('จำนวนสถานี IG / IC (ลูกค้าใหม่)')}
   /* เจ้าของตัดสิน 10 พ.ย. 2026: ไม่บังคับระบุผล IG/IC — บันทึกได้ทั้งแบบระบุและไม่ระบุ (บังคับเฉพาะกล่อง AG ที่ค้างติดตาม) */
   var names={tm:'พบปลวก',wd:'เปลี่ยนไม้',rp:'งานซ่อม/ฝังเพิ่ม'};
   ['tm','wd','rp'].forEach(function(k){
@@ -1921,7 +1950,7 @@ function svMissing(){
       var i=tr.querySelector('input'); if(!i.value.trim()||tr.querySelector('.vchk.bad')) bad++;
     });
     if(!rows.length) miss.push(names[k]+': ยังไม่มีรายการ');
-    else if(bad) miss.push(names[k]+': ข้อมูลไม่ครบ/ไม่ถูกต้อง (เลขสถานี จำนวน หรือรายละเอียดของ “สถานีหาย/อื่นๆ”) '+bad+' แถว');
+    else if(bad) miss.push(names[k]+': '+bad+' แถวยังไม่ครบ/ไม่ถูกต้อง');
   });
   return miss.concat(agMissing('sv').missing);
 }
@@ -1947,11 +1976,31 @@ function svMarkMissing(){
     markInvalid(tr.querySelector('.rpNote'),rpNeedsNote(tr)&&!tr.querySelector('.rpNote').value.trim());
   });
 }
+/* ข้อความ "บันทึกไม่ได้": แต่ละรายการเป็นปุ่ม กดแล้วเลื่อนไปที่ช่องนั้น */
+function missGo(m){
+  var map=[['วันที่เข้า','[id$=Date]'],['ทีมที่เข้า','.teambtn'],['เวลาเข้า/ออก','[id$=TimeIn]'],['เวลาเข้า','[id$=TimeIn]'],['เวลาออก','[id$=TimeOut]'],
+    ['จำนวนสถานี','#svFreshIG'],['พบปลวก','#svSecTm .invalid|#svSecTm'],['เปลี่ยนไม้','#svSecWd .invalid|#svSecWd'],['งานซ่อม','#svSecRp .invalid|#svSecRp'],['กล่อง AG','.mini.need|.agsec']];
+  for(var i=0;i<map.length;i++) if(m.indexOf(map[i][0])===0) return map[i][1];
+  return '';
+}
+function missHtml(miss){
+  return '<b>บันทึกไม่ได้ — ยังขาด <small>(กดเพื่อไปที่ช่อง)</small></b><ul>'+miss.map(function(m){
+    return '<li><button type="button" class="missgo" data-go="'+esc(missGo(m))+'">'+esc(m)+'</button></li>'}).join('')+'</ul>';
+}
+document.addEventListener('click',function(e){
+  var b=e.target.closest('.missgo'); if(!b||!b.dataset.go) return;
+  var form=b.closest('.formpanel'), el=null;
+  b.dataset.go.split('|').some(function(sel){el=form.querySelector(sel); return !!el});
+  if(!el) return;
+  el.scrollIntoView({behavior:'smooth',block:'center'});
+  var f=el.matches('input,select,button')?el:el.querySelector('input:not([type=hidden]),select,button');
+  if(f) setTimeout(function(){f.focus({preventScroll:true})},350);
+});
 function svRefreshMsg(){
   var msg=$('svMsg'); if(!msg||!SV||!SV.tried) return;
   svMarkMissing();
   var miss=svMissing();
-  if(miss.length){msg.hidden=false; msg.innerHTML='<b>บันทึกไม่ได้ — ยังขาด:</b><ul>'+miss.map(function(m){return '<li>'+esc(m)+'</li>'}).join('')+'</ul>'}
+  if(miss.length){msg.hidden=false; msg.innerHTML=missHtml(miss)}
   else msg.hidden=true;
 }
 function svNextUndone(fromId){
@@ -1976,13 +2025,47 @@ function svSkip(){
   if(!SV) return;
   var next=svNextUndone(SV.id);
   if(!next){toast('ไม่มีรายอื่นที่ยังไม่กรอก'); return}
-  pkSelect(PK.sv,next.id,true);
+  leaveGuard('sv',function(){pkSelect(PK.sv,next.id,true)});
 }
 function svPrev(){
   if(!SV) return;
   var base=pkBase(PK.sv), i=base.indexOf(custById(SV.id));
   if(i<=0){toast('เป็นรายแรกแล้ว'); return}
-  pkSelect(PK.sv,base[i-1].id,true);
+  leaveGuard('sv',function(){pkSelect(PK.sv,base[i-1].id,true)});
+}
+
+/* ---------- เตือนก่อนออกจากรายที่กรอกแล้วแต่ยังไม่บันทึก ----------
+   นับว่า "มีการกรอก" เมื่อผู้ใช้พิมพ์/เลือก/กดปุ่มในฟอร์ม (FORM_DIRTY) · ล้างทุกครั้งที่วาดฟอร์มใหม่ (เลือกราย/บันทึกแล้ว) */
+var FORM_DIRTY={sv:false,bx:false};
+function markDirty(e){
+  var f=e.target.closest&&e.target.closest('#svForm,#bxForm'); if(!f) return;
+  if(e.type==='click'&&!e.target.closest('[data-ag],[data-act=sec],[data-act=svNormal],[data-act^=add],[data-act=delRow]')) return;
+  FORM_DIRTY[f.id==='svForm'?'sv':'bx']=true;
+}
+document.addEventListener('input',markDirty,true);
+document.addEventListener('change',markDirty,true);
+document.addEventListener('click',markDirty,true);
+function leaveGuard(ctx,go){
+  if(!FORM_DIRTY[ctx]){go(); return}
+  var cur=ctx==='sv'?(SV&&custById(SV.id)):(BX&&custById(BX.id));
+  var box=$('leaveDlg');
+  if(!box){
+    document.body.insertAdjacentHTML('beforeend','<div class="lvdlg" id="leaveDlg" hidden><div class="lvbox" role="alertdialog" aria-modal="true" aria-labelledby="lvT" aria-describedby="lvD">'+
+      '<b id="lvT">ยังไม่ได้บันทึก</b><p id="lvD"></p><div class="lvact"><button type="button" class="btn" data-lv="leave">ออกโดยไม่บันทึก</button><button type="button" class="btn primary" data-lv="stay">กลับไปกรอกต่อ</button></div></div></div>');
+    box=$('leaveDlg');
+  }
+  $('lvD').textContent='ข้อมูลที่กรอกของ “'+(cur?cur.name:'รายนี้')+'” จะหายไป — จะออกจากรายนี้ไหม?';
+  box.hidden=false;
+  var stay=box.querySelector('[data-lv=stay]'); stay.focus();
+  function close(){box.hidden=true; box.removeEventListener('click',onClick); document.removeEventListener('keydown',onKey,true)}
+  function onClick(e){
+    var b=e.target.closest('[data-lv]');
+    if(b&&b.dataset.lv==='leave'){close(); FORM_DIRTY[ctx]=false; go()}
+    else if((b&&b.dataset.lv==='stay')||e.target===box) close();
+  }
+  function onKey(e){if(e.key==='Escape'){e.stopPropagation(); close()}}
+  box.addEventListener('click',onClick);
+  document.addEventListener('keydown',onKey,true);
 }
 
 /* ---------- ฟอร์มกล่องเหยื่อ AG นอกรอบ (ขวาของ #bait) ---------- */
@@ -1990,6 +2073,7 @@ var BX=null;
 function bxRenderForm(){
   var p=PK.bx, box=$('bxForm'), c=p.sel?custById(p.sel):null;
   if(!c){BX=null; box.innerHTML='<div class="empty" style="padding:56px 20px">เลือกลูกค้าทางซ้ายเพื่อกรอกงานกล่องเหยื่อ</div>'; return}
+  FORM_DIRTY.bx=false;
   BX={id:c.id};
   agInit('bx',c);
   var round='<div class="field"><label for="bxRound">ประเภทรอบ</label><select id="bxRound"><option value="follow_up">ติดตามผล</option><option value="problem">แก้ปัญหา</option></select><span class="sub">งานกล่องนอกรอบบริการประจำเดือน</span></div>';
@@ -2005,14 +2089,14 @@ function bxMissing(){
   if(!$('bxDate').value) miss.push('วันที่เข้า');
   miss=miss.concat(wtMissing('bx'));
   var ag=agMissing('bx');
-  if(!ag.missing.length&&ag.filled===0) miss.push('ยังไม่ได้กรอกผลกล่องใดเลย — กรอกผลของจุดที่ติดตาม หรือกด “+ ติดกล่องใหม่ (S)”');
+  if(!ag.missing.length&&ag.filled===0) miss.push('กล่อง AG ยังไม่ได้กรอกเลย');
   return miss.concat(ag.missing);
 }
 function bxRefreshMsg(){
   var msg=$('bxMsg'), m=AGM.bx; if(!msg||!BX||!m||!m.tried) return;
   markCommon('bx');
   var miss=bxMissing();
-  if(miss.length){msg.hidden=false; msg.innerHTML='<b>บันทึกไม่ได้ — ยังขาด:</b><ul>'+miss.map(function(x){return '<li>'+esc(x)+'</li>'}).join('')+'</ul>'}
+  if(miss.length){msg.hidden=false; msg.innerHTML=missHtml(miss)}
   else msg.hidden=true;
 }
 function bxSave(){
@@ -2055,7 +2139,7 @@ document.addEventListener('click',function(e){
   else if(act==='svSkip') svSkip();
   else if(act==='svPrev') svPrev();
   else if(act==='bxSave') bxSave();
-  else if(act==='bxCancel') bxRenderForm();
+  else if(act==='bxCancel') leaveGuard('bx',function(){bxRenderForm()});
 });
 document.addEventListener('change',function(e){
   var t=e.target.closest&&e.target.closest('[data-ag]'); if(!t) return;
@@ -2073,6 +2157,10 @@ document.addEventListener('change',function(e){
   if(t.dataset.ag==='caste') p.caste=t.value;
   else if(t.dataset.ag==='st') p.st=t.value;
   agRender(ctx,'[data-ag="'+t.dataset.ag+'"][data-k="'+p.k+'"]');
+});
+document.addEventListener('change',function(e){
+  var k=e.target.closest&&e.target.closest('.tmKind,.wdType'); if(!k) return;
+  var i=k.closest('tr').querySelector('.stcell input'); if(i) validSt(i);
 });
 /* ป้ายกำกับจุด AG: เก็บค่าทันทีที่พิมพ์ (ไม่วาดใหม่ เพื่อไม่ให้เสียโฟกัส) + อัปเดตหัวการ์ดของจุด */
 document.addEventListener('input',function(e){
@@ -2123,9 +2211,9 @@ function initEntryPages(){
       else if(e.target.id===p.id+'Team'){p.team=e.target.value; pkFiltersChanged(p)}
     });
     el.addEventListener('click',function(e){
-      var row=e.target.closest('.cust'); if(row){pkSelect(p,+row.dataset.id,true); return}
+      var row=e.target.closest('.cust'); if(row){if(+row.dataset.id!==p.sel) leaveGuard(p.id,function(){pkSelect(p,+row.dataset.id,true)}); return}
       var sg=e.target.closest('.sugg-btn');
-      if(sg){var c=custById(+sg.dataset.id); p.q=c.name; $(p.id+'Q').value=c.name; pkSelect(p,c.id,true); return}
+      if(sg){var c=custById(+sg.dataset.id); leaveGuard(p.id,function(){p.q=c.name; $(p.id+'Q').value=c.name; pkSelect(p,c.id,true)}); return}
       var v=e.target.closest('[data-view]'); if(v){p.view=v.dataset.view; pkRender(p)}
     });
     var items=pkView(p,pkBase(p));
