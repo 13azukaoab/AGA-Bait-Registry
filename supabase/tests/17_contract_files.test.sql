@@ -161,8 +161,10 @@ RESET ROLE;
 
 SET LOCAL ROLE authenticated;
 SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a3', true);
-SELECT is((SELECT count(*)::int FROM storage.objects WHERE bucket_id = 'contract-files'), 1,
-  'recorder can read objects in the bucket');
+-- 20261112110100: อ่าน object ได้เฉพาะเมื่อมีแถว contract_files อ้างอิง — object นี้ยังไม่มีแถว
+-- (กรณีมีแถวแล้วอ่านได้ ทดสอบใน 23_storage_deletion_queue.test.sql)
+SELECT is((SELECT count(*)::int FROM storage.objects WHERE bucket_id = 'contract-files'), 0,
+  'recorder cannot read an object that has no contract_files row');
 RESET ROLE;
 
 SET LOCAL ROLE anon;
