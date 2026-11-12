@@ -377,7 +377,11 @@ tfoot td{padding:10px 12px;font-weight:700;background:var(--surface-2);border-to
 #s-registry thead th.sortable[aria-sort="descending"]::after{content:"▼";opacity:1;color:var(--accent-strong)}
 #s-registry thead th.sortable[aria-sort="ascending"],#s-registry thead th.sortable[aria-sort="descending"]{color:var(--accent-strong)}
 .fgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:14px}
-@media (max-width:640px){.fgrid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.fgrid.f4{grid-template-columns:minmax(0,.85fr) minmax(0,1.25fr) minmax(0,1fr) minmax(0,1fr);gap:10px;margin-bottom:10px}
+.fgrid.f4 .field select,.fgrid.f4 .field input{padding:10px 8px;font-size:13px}
+.fgrid.f2{grid-template-columns:repeat(2,minmax(0,1fr))}
+.fgrid.f2 .field:only-child{grid-column:1/-1}
+@media (max-width:640px){.fgrid,.fgrid.f4{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .fgrid .field label{font-size:12px}
 .fgrid .field select,.fgrid .field input{width:100%;min-width:0;padding:10px 12px;font-size:14px}
 .fgrid .field .sub{font-size:11px;color:var(--fg-faint)}
@@ -1460,22 +1464,31 @@ function fheadHtml(c,posHtml){
 }
 function fieldsHtml(ctx,c,extra){
   var teams=TEAMS.map(function(t){return '<option value="'+t+'"'+(t===c.team?' selected':'')+'>ทีม '+t+'</option>'}).join('');
-  /* ลำดับกรอก: ทีม → วันที่ → เวลาเข้า → เวลาออก → เวลาทำงาน (คำนวณเอง) · แถวบน 3 ช่อง แถวล่าง 3 ช่อง */
-  return '<div class="fgrid">'+
+  /* ลำดับกรอก: ทีม → วันที่ → เวลาเข้า → เวลาออก อยู่แถวเดียวกัน · เวลาทำงานจริง (คำนวณเอง) ขึ้นแถวใหม่ */
+  return '<div class="fgrid f4">'+
     /* id ใช้ "VisitTeam" — ห้ามซ้ำกับตัวกรองทีมฝั่งซ้าย (id+'Team') ไม่งั้นตอนบันทึกจะอ่านค่าจากตัวกรองแทน */
-    '<div class="field"><label for="'+ctx+'VisitTeam">ทีมที่เข้า</label><select id="'+ctx+'VisitTeam">'+teams+'</select><span class="sub">เติมจากครั้งก่อน (ทีม '+c.team+') — แก้ได้</span></div>'+
+    '<div class="field"><label for="'+ctx+'VisitTeam">ทีมที่เข้า</label><select id="'+ctx+'VisitTeam" title="เติมจากครั้งก่อน (ทีม '+c.team+') — แก้ได้">'+teams+'</select><span class="sub">เติมจากครั้งก่อน</span></div>'+
     '<div class="field"><label for="'+ctx+'Date">วันที่เข้า</label><input type="date" id="'+ctx+'Date" value="'+TODAY_ISO+'"></div>'+
-    (extra||'')+'</div>'+
     /* เวลาเข้า/ออก → ระบบคำนวณชั่วโมงทำงานจริงของวันนั้น (สรุปต่อลูกค้า/ต่อทีมดูที่หน้าสรุป) */
-    '<div class="fgrid">'+
-    '<div class="field"><label for="'+ctx+'TimeIn">เวลาเข้า</label><input type="time" id="'+ctx+'TimeIn" oninput="wtCalc(\''+ctx+'\')"></div>'+
-    '<div class="field"><label for="'+ctx+'TimeOut">เวลาออก</label><input type="time" id="'+ctx+'TimeOut" oninput="wtCalc(\''+ctx+'\')"></div>'+
-    '<div class="field"><label>เวลาทำงานจริง</label><div class="wtbox" id="'+ctx+'WorkTime" aria-live="polite"><span class="wt-empty">กรอกเวลาเข้า–ออก</span></div></div></div>';
+    /* เวลา 24 ชั่วโมง (HH:MM) พิมพ์เลขล้วน เช่น 1445 → 14:45 ไม่มี AM/PM */
+    '<div class="field"><label for="'+ctx+'TimeIn">เวลาเข้า (24 ชม.)</label><input type="text" class="tinput num" inputmode="numeric" maxlength="5" autocomplete="off" placeholder="เช่น 09:30" id="'+ctx+'TimeIn" oninput="wtFormat(this);wtCalc(\''+ctx+'\')"></div>'+
+    '<div class="field"><label for="'+ctx+'TimeOut">เวลาออก (24 ชม.)</label><input type="text" class="tinput num" inputmode="numeric" maxlength="5" autocomplete="off" placeholder="เช่น 14:45" id="'+ctx+'TimeOut" oninput="wtFormat(this);wtCalc(\''+ctx+'\')"></div></div>'+
+    '<div class="fgrid f2">'+
+    '<div class="field"><label>เวลาทำงานจริง</label><div class="wtbox" id="'+ctx+'WorkTime" aria-live="polite"><span class="wt-empty">กรอกเวลาเข้า–ออก</span></div></div>'+
+    (extra||'')+'</div>';
 }
 /* คำนวณเวลาทำงานจริง (นาที) จากเวลาเข้า–เวลาจบ · คืน null ถ้ายังกรอกไม่ครบ/ไม่ถูกต้อง */
+var WT_RE=/^([01]\d|2[0-3]):[0-5]\d$/;
+/* พิมพ์เลขล้วนได้ → ใส่ : ให้เอง (1445 → 14:45) · เก็บได้สูงสุด 4 หลัก */
+function wtFormat(inp){
+  var d=inp.value.replace(/\D/g,'').slice(0,4);
+  inp.value=d.length>2?d.slice(0,2)+':'+d.slice(2):d;
+}
+/* คืน null = ยังกรอกไม่ครบ · -1 = รูปแบบผิดหรือเวลาออกไม่หลังเวลาเข้า · >0 = จำนวนนาที */
 function wtMinutes(ctx){
   var a=$(ctx+'TimeIn').value, b=$(ctx+'TimeOut').value;
   if(!a||!b) return null;
+  if(!WT_RE.test(a)||!WT_RE.test(b)) return -2;
   var m=(parseInt(b.slice(0,2),10)*60+parseInt(b.slice(3),10))-(parseInt(a.slice(0,2),10)*60+parseInt(a.slice(3),10));
   return m>0?m:-1;
 }
@@ -1483,6 +1496,7 @@ function wtCalc(ctx){
   var el=$(ctx+'WorkTime'); if(!el) return;
   var m=wtMinutes(ctx);
   if(m===null) el.innerHTML='<span class="wt-empty">กรอกเวลาเข้า–ออก</span>';
+  else if(m===-2) el.innerHTML='<span class="wt-bad">กรอกเวลาให้ครบรูปแบบ 24 ชม. เช่น 09:30</span>';
   else if(m<0) el.innerHTML='<span class="wt-bad">เวลาออกต้องหลังเวลาเข้า</span>';
   else el.innerHTML='<b class="num">'+Math.floor(m/60)+'</b> ชม. <b class="num">'+(m%60)+'</b> นาที';
   if(ctx==='sv') svRefreshMsg(); else bxRefreshMsg();
@@ -1492,7 +1506,11 @@ function wtMissing(ctx){
   var a=$(ctx+'TimeIn').value, b=$(ctx+'TimeOut').value, out=[];
   if(!a) out.push('เวลาเข้า');
   if(!b) out.push('เวลาออก');
-  if(a&&b&&wtMinutes(ctx)<0) out.push('เวลาออกต้องหลังเวลาเข้า');
+  if(a&&b){
+    var m=wtMinutes(ctx);
+    if(m===-2) out.push('เวลาเข้า/ออกต้องเป็นรูปแบบ 24 ชม. เช่น 09:30');
+    else if(m<0) out.push('เวลาออกต้องหลังเวลาเข้า');
+  }
   return out;
 }
 
