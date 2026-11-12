@@ -446,10 +446,21 @@ tfoot td{padding:10px 12px;font-weight:700;background:var(--surface-2);border-to
   background:var(--surface);border:1px solid var(--border-strong);border-radius:9px;cursor:pointer}
 .optbtn[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-fg)}
 .optbtn:disabled{cursor:not-allowed}
-.pt .mini select,.pt .mini input.lblin{padding:9px 10px;font-size:13.5px}
-.pt .mini .opt{color:var(--fg-faint)}
-.ptlabel{font-size:13px;font-weight:600;color:var(--accent-strong)}
-.ptlabel:not(:empty)::before{content:"· ";color:var(--fg-faint);font-weight:400}
+.pt .mini select{padding:9px 10px;font-size:13.5px}
+.lblwrap{position:relative;display:inline-flex}
+.lblbtn{font:inherit;font-size:12.5px;display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:999px;cursor:pointer;
+  color:var(--fg-muted);background:transparent;border:1px dashed var(--border-strong)}
+.lblbtn:hover{border-color:var(--accent);color:var(--accent-strong)}
+.lblbtn.has{font-weight:600;color:var(--accent-strong);background:var(--accent-soft);border:1px solid var(--accent-soft)}
+.lblbtn .ed{font-size:11px;opacity:.7}
+.lblbtn:focus-visible,.lblin:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.lblpop{position:absolute;top:calc(100% + 6px);left:0;z-index:30;width:290px;max-width:80vw;padding:12px;display:flex;flex-direction:column;gap:8px;
+  background:var(--surface);border:1px solid var(--border-strong);border-radius:10px;box-shadow:0 8px 24px var(--drawer-shadow,rgba(20,40,70,.18))}
+.lblpop[hidden]{display:none}
+.lblpop label{font-size:12px;color:var(--fg-muted)}
+.lblpop .opt{color:var(--fg-faint)}
+.lblin{font-family:inherit;font-size:13.5px;color:var(--fg);background:var(--surface);border:1px solid var(--border-strong);border-radius:7px;padding:9px 10px;width:100%}
+.lblact{display:flex;justify-content:flex-end;gap:8px}
 .pt.off{opacity:.5}
 .mini.need .optrow,.mini.need select{outline:2px solid var(--danger);outline-offset:2px;border-radius:9px}
 .mini.need>label{color:var(--danger)}
@@ -1400,15 +1411,24 @@ function agMissing(ctx){
   if(bad.length) miss.push('กล่อง AG ยังกรอกไม่ครบ: จุดที่ '+bad.map(function(p){return p.no}).join(', ')+(round&&hasF?' — หรือติ๊ก “รอบนี้ไม่ได้ตรวจกล่อง AG”':''));
   return {missing:miss,need:need,filled:filled};
 }
+/* ป้ายกำกับจุด (ไม่บังคับ) — ปุ่มที่หัวการ์ดจุด กดแล้วเปิดกล่องเล็กให้พิมพ์/แก้ไข เช่น ห้องนอน, ห้องนั่งเล่น
+   เก็บไว้กับจุดนั้นข้ามรอบ · ไม่กินที่ในฟอร์ม */
+function agLabelBtnHtml(label){
+  return label?esc(label)+' <span class="ed" aria-hidden="true">✎</span>':'<span class="plus" aria-hidden="true">+</span> ป้ายกำกับ';
+}
+function agLabelHtml(ctx,p,key,dis){
+  return '<span class="lblwrap"><button type="button" class="lblbtn'+(p.label?' has':'')+'" data-ag="lblopen" '+key+dis+' aria-haspopup="dialog" title="ป้ายกำกับจุด (ไม่บังคับ) — บอกตำแหน่ง เช่น ห้องนอน">'+agLabelBtnHtml(p.label)+'</button>'+
+    '<div class="lblpop" role="dialog" aria-label="ป้ายกำกับจุดที่ '+p.no+'" hidden><label for="lbl_'+ctx+p.k+'">ป้ายกำกับจุดที่ '+p.no+' <span class="opt">(ไม่บังคับ)</span></label>'+
+    '<input type="text" id="lbl_'+ctx+p.k+'" class="lblin" data-ag="label" '+key+' maxlength="40" autocomplete="off" placeholder="เช่น ห้องนอน, ห้องนั่งเล่น, หลังบ้าน" value="'+esc(p.label||'')+'">'+
+    '<div class="lblact"><button type="button" class="btn sm" data-ag="lblclear" '+key+'>ล้าง</button><button type="button" class="btn sm primary" data-ag="lblclose" '+key+'>เสร็จ</button></div></div></span>';
+}
 function agPointHtml(ctx,m,p,bad){
   var isS=(p.kind==='S'), off=(ctx==='sv'&&m.skip&&!isS), key='data-ctx="'+ctx+'" data-k="'+p.k+'"', dis=off?' disabled':'';
   var chip=p.st==='pend'?'<span class="chip pend">รอถอด</span>':(p.st==='rm'?'<span class="chip done">ถอดกล่อง</span>':'<span class="chip info">กำลังติดตาม</span>');
   var fno=isS?'ติดตั้งใหม่ (S)':'ติดตามผล F'+(p.last+1);
-  var h='<div class="pt'+(off?' off':'')+'"><div class="top"><span class="sttype">AG</span><b>จุดที่ '+p.no+'</b><span class="ptlabel" data-lbl="'+p.k+'">'+(p.label?esc(p.label):'')+'</span>'+chip+
+  var h='<div class="pt'+(off?' off':'')+'"><div class="top"><span class="sttype">AG</span><b>จุดที่ '+p.no+'</b>'+agLabelHtml(ctx,p,key,dis)+chip+
     '<span class="fno">'+fno+' <span class="auto-tag">อัตโนมัติ</span></span>'+
     (isS?'<button type="button" class="btn danger sm" data-ag="del" '+key+'>ลบจุด</button>':'')+'</div><div class="agfields">';
-  /* ป้ายกำกับจุด — ไม่บังคับ ไว้บอกตำแหน่ง เช่น ห้องนอน / ห้องนั่งเล่น (เก็บไว้กับจุดนั้นข้ามรอบ) */
-  h+='<div class="mini span2"><label for="lbl_'+ctx+p.k+'">ป้ายกำกับจุด <span class="opt">(ไม่บังคับ)</span></label><input type="text" id="lbl_'+ctx+p.k+'" class="lblin" data-ag="label" '+key+' maxlength="40" autocomplete="off" placeholder="เช่น ห้องนอน, ห้องนั่งเล่น, หลังบ้าน" value="'+esc(p.label||'')+'"'+dis+'></div>';
   h+='<div class="mini span2'+(bad&&p.bait===null?' need':'')+'"><label>ปริมาณเหยื่อที่ใช้</label><div class="optrow" role="group" aria-label="ปริมาณเหยื่อ จุดที่ '+p.no+'">'+
     BAITS.map(function(b){return '<button type="button" class="optbtn" data-ag="bait" data-v="'+b+'" '+key+' aria-pressed="'+(p.bait===b)+'"'+dis+'>'+b+' ก.</button>'}).join('')+'</div></div>';
   h+='<div class="mini'+(bad&&!p.caste?' need':'')+'"><label>สัดส่วนปลวกที่พบ</label><select data-ag="caste" '+key+dis+'>'+
@@ -1826,7 +1846,14 @@ document.addEventListener('click',function(e){
   if(ag&&ag.dataset.ag!=='skip'){
     var ctx=ag.dataset.ctx, m=AGM[ctx], a=ag.dataset.ag;
     if(!m) return;
-    if(a==='add') agAdd(ctx);
+    if(a==='lblopen'){
+      var wrap=ag.closest('.lblwrap'), pop=wrap.querySelector('.lblpop'), willOpen=pop.hidden;
+      agLblCloseAll(); pop.hidden=!willOpen;
+      if(willOpen) wrap.querySelector('input').focus();
+    }
+    else if(a==='lblclose') agLblCloseAll();
+    else if(a==='lblclear'){var w=ag.closest('.lblwrap'), inp=w.querySelector('input'); inp.value=''; inp.dispatchEvent(new Event('input',{bubbles:true})); inp.focus()}
+    else if(a==='add') agAdd(ctx);
     else if(a==='del'){m.pts=m.pts.filter(function(p){return p.k!==ag.dataset.k}); agRender(ctx)}
     else if(a==='bait'){var p=agPt(m,ag.dataset.k); p.bait=parseInt(ag.dataset.v,10); agRender(ctx,'.optbtn[data-k="'+p.k+'"][data-v="'+p.bait+'"]')}
     return;
@@ -1860,8 +1887,14 @@ document.addEventListener('input',function(e){
   var t=e.target; if(!t.dataset||t.dataset.ag!=='label') return;
   var m=AGM[t.dataset.ctx], p=m&&agPt(m,t.dataset.k); if(!p) return;
   p.label=t.value.trim();
-  var h=t.closest('.pt').querySelector('.ptlabel'); if(h) h.textContent=p.label;
+  var b=t.closest('.lblwrap').querySelector('.lblbtn'); b.innerHTML=agLabelBtnHtml(p.label); b.classList.toggle('has',!!p.label);
 });
+function agLblCloseAll(){[].forEach.call(document.querySelectorAll('.lblpop'),function(x){x.hidden=true})}
+/* ปิดกล่องป้ายกำกับ: กด Enter/Esc หรือคลิกนอกกล่อง */
+document.addEventListener('keydown',function(e){
+  if((e.key==='Enter'||e.key==='Escape')&&e.target.classList&&e.target.classList.contains('lblin')){e.preventDefault(); var b=e.target.closest('.lblwrap').querySelector('.lblbtn'); agLblCloseAll(); b.focus()}
+});
+document.addEventListener('click',function(e){if(!e.target.closest('.lblwrap')) agLblCloseAll()});
 /* กรอก/แก้ช่องในฟอร์มบริการ → อัปเดตสรุปตัวเลข (ทำหลัง inline handler เดิมของแถว) */
 document.addEventListener('input',function(e){if(e.target.closest&&e.target.closest('#svForm')) svRecalc()});
 document.addEventListener('change',function(e){if(e.target.closest&&e.target.closest('#svForm')&&!e.target.closest('[data-ag]')) svRecalc()});
