@@ -4,10 +4,12 @@
  * Logic summary (กฎครบอยู่ที่หัว migration 20261111090300_contract_files.sql):
  *   * bucket `contract-files` เป็น private — เปิดไฟล์ด้วย signed URL อายุสั้นเท่านั้น
  *   * path = `<contract_id>/<โทเคน>-<ชื่อปลอดภัย>` (ดู `buildStoragePath`) · ชื่อเดิมเก็บใน file_name
- *   * contract_pdf: 1 แถวต่อสัญญา — แนบใหม่ = UPDATE แถวเดิมแล้วลบ object เก่า
+ *   * contract_pdf: 1 แถวต่อสัญญา — แนบใหม่ = UPDATE แถวเดิม (object เก่า DB ลงคิวลบเอง ไม่ต้องลบฝั่ง client)
  *   * site_plan: เพิ่มเป็นเวอร์ชันใหม่ ต้องมีเหตุผล · version/is_current ฐานข้อมูลนับให้เอง (trigger)
- *   * ลำดับกันข้อมูลค้าง (ลบ object ไม่สำเร็จ = แจ้งเตือนผู้ใช้ ไม่กลืนเงียบ): อัปโหลด object ก่อน → เขียนแถว · แถวเขียนไม่สำเร็จ = ลบ object ที่เพิ่งอัปโหลด
- *     · ลบ = ลบแถวก่อน → ลบ object (แถวลบไม่ผ่านเช่นสัญญาปิดแล้ว = object ยังอยู่ ไม่เหลือแถวลอย)
+ *   * ฐานข้อมูลเป็นตัวตั้งเรื่องลบ object (migration 20261112110100): ลบแถว/เปลี่ยน path/ลบสัญญา → trigger ลง
+ *     `storage_deletion_queue` แล้ว cron ลบจริง · ฝั่ง client ลบเฉพาะ **ไฟล์ที่เพิ่งอัปโหลดแล้วเขียนแถวไม่สำเร็จ**
+ *     (policy ของ bucket ยอมให้ผู้อัปโหลดเห็น/ลบไฟล์ตัวเองที่อัปโหลดไม่เกิน 1 ชั่วโมง) — ลบไม่ได้ = แจ้งผู้ใช้ ไม่กลืนเงียบ
+ *   * ลำดับ: อัปโหลด object ก่อน → เขียนแถว · แถวเขียนไม่สำเร็จ = ลบ object ที่เพิ่งอัปโหลด
  *   * รูปภาพ 5–10 MB บีบก่อน (`compress.ts`) · PDF > 5 MB ปฏิเสธ (ไม่มีตัวบีบ PDF) · > 10 MB ปฏิเสธ ·
  *     บีบแล้วยังเกิน 5 MB ไม่รับ
  */
@@ -29,7 +31,7 @@ export const CONTRACT_FILES_BUCKET = "contract-files";
 /** อายุ signed URL (วินาที) — เปิดดูทันที ไม่เก็บลิงก์ไว้ */
 const SIGNED_URL_SECONDS = 60;
 
-/** `warning` = งานหลักสำเร็จ แต่มีเรื่องที่ผู้ใช้ต้องรู้ (เช่น ไฟล์เก่าใน Storage ลบไม่สำเร็จ) */
+/** `warning` = งานหลักสำเร็จ แต่มีเรื่องที่ผู้ใช้ต้องรู้ */
 export type OpResult = { ok: true; warning?: string } | { ok: false; error: string };
 
 /** ตรวจชนิด/ขนาดไฟล์ + บีบถ้า 5–10 MB · error = ข้อความไทย */
@@ -86,7 +88,7 @@ export async function removeObjects(
   return { ok: true };
 }
 
-/** ลบ object เดี่ยว · คืนข้อความเตือน (null = ลบสำเร็จ) — ไม่ทำให้งานหลักล้ม แต่ต้องบอกผู้ใช้ */
+/** ลบ object เดี่ยวที่เพิ่งอัปโหลด (ใช้เฉพาะตอนเขียนแถวไม่สำเร็จ) · คืนข้อความเตือน (null = ลบสำเร็จ) */
 async function removeObject(supabase: SupabaseClient, path: string): Promise<string | null> {
   const res = await removeObjects(supabase, [path]);
   return res.ok ? null : res.error;
@@ -133,10 +135,8 @@ export async function putContractPdf(
     const orphan = await removeObject(supabase, up.path);
     return { ok: false, error: withOrphanNote(describeDbError(error, "file"), orphan) };
   }
-  const oldLeft = await removeObject(supabase, existing.storagePath);
-  return oldLeft
-    ? { ok: true, warning: `เปลี่ยนไฟล์แล้ว แต่ไฟล์เก่าใน Storage ลบไม่สำเร็จ (${oldLeft})` }
-    : { ok: true };
+  // object เก่าไม่ต้องลบเอง — trigger ของ DB ลง storage_deletion_queue ตอน storage_path เปลี่ยน แล้ว cron ลบให้
+  return { ok: true };
 }
 
 /** เพิ่ม Site plan เวอร์ชันใหม่ (ต้องมีเหตุผล · ต้องมี PDF สัญญาแล้ว — trigger ตรวจ) */
@@ -163,17 +163,23 @@ export async function addSitePlan(
   return { ok: true };
 }
 
-/** ลบไฟล์แนบ 1 แถว + object ใน Storage */
+/**
+ * ลบไฟล์แนบ 1 แถว — ลบแค่แถว `contract_files` · object ใน Storage ถูกลงคิวโดย trigger ของ DB แล้ว cron ลบให้
+ * (`.select("id")` เพื่อรู้ว่าลบได้จริง — RLS ปฏิเสธแบบไม่ error จะได้ 0 แถว ห้ามบอกว่าลบแล้วทั้งที่ยังอยู่)
+ */
 export async function deleteContractFile(
   supabase: SupabaseClient,
-  file: { id: string; storagePath: string },
+  file: { id: string },
 ): Promise<OpResult> {
-  const { error } = await supabase.from("contract_files").delete().eq("id", file.id);
+  const { data, error } = await supabase.from("contract_files").delete().eq("id", file.id).select("id");
   if (error) return { ok: false, error: describeDbError(error, "file") };
-  const left = await removeObject(supabase, file.storagePath);
-  return left
-    ? { ok: true, warning: `ลบรายการแล้ว แต่ตัวไฟล์ใน Storage ยังค้าง (${left})` }
-    : { ok: true };
+  if ((data ?? []).length === 0) {
+    return {
+      ok: false,
+      error: "ลบไฟล์ไม่สำเร็จ (ไม่มีสิทธิ์ หรือสัญญาถูกปิดแล้ว หรือไฟล์ถูกลบไปแล้ว) รีเฟรชหน้า",
+    };
+  }
+  return { ok: true };
 }
 
 /** เปิดไฟล์ด้วย signed URL (แท็บใหม่) */

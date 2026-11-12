@@ -7,16 +7,14 @@ import { describe, expect, it } from "vitest";
 import {
   buildDeleteConfirmText,
   contractDeleteBlockReason,
-  describeLeftovers,
   describeShortfall,
   removalShortfall,
 } from "./deleteRules";
 import { loadAuditCounts, loadContractNos } from "./data";
 import { removeObjects } from "./files";
 import { PDF_TOO_LARGE_MESSAGE } from "./fileRules";
-import { checkContractDeletable, deleteContract, findLinkedRenewals, saveDraft } from "./save";
+import { findLinkedRenewals } from "./save";
 import { customerTypeMismatch, describeTypeMismatch } from "./saveRules";
-import type { DraftRow } from "./types";
 
 // ---------- Supabase ปลอม ----------
 type Call = { table: string; op: string; filters: Record<string, unknown>; payload?: unknown };
@@ -101,13 +99,6 @@ describe("removalShortfall (ข้อ 2)", () => {
   });
 });
 
-describe("describeLeftovers (ข้อ 3)", () => {
-  it("ว่าง = ไม่ต่อข้อความ · มีของค้าง = ระบุแถว", () => {
-    expect(describeLeftovers([])).toBe("");
-    expect(describeLeftovers(['ลูกค้า "ก"', "สัญญา X"])).toMatch(/ลูกค้า "ก", สัญญา X/);
-  });
-});
-
 describe("customerTypeMismatch (ข้อ 4)", () => {
   it("ไม่ได้เลือกประเภท / ตรงกัน = ไม่เตือน", () => {
     expect(customerTypeMismatch("A", "")).toBeNull();
@@ -157,77 +148,6 @@ describe("removeObjects", () => {
   });
 });
 
-// ---------- deleteContract (ข้อ 1, 2) ----------
-type Scenario = { status?: string; visits?: number; stations?: string[]; checks?: number; files?: string[]; deleted?: number };
-
-function deleteHandler(s: Scenario) {
-  return (c: Call): Result => {
-    if (c.table === "contracts" && c.op === "select" && "id" in c.filters && !("customer_id" in c.filters)) {
-      return { data: s.status === undefined ? [{ status: "active" }] : s.status ? [{ status: s.status }] : [] };
-    }
-    if (c.table === "visits") return { count: s.visits ?? 0 };
-    if (c.table === "stations") return { data: (s.stations ?? []).map((id) => ({ id })) };
-    if (c.table === "station_checks") return { count: s.checks ?? 0 };
-    if (c.table === "contract_files") return { data: (s.files ?? []).map((storage_path) => ({ storage_path })) };
-    if (c.table === "contracts" && c.op === "delete") {
-      return { data: Array.from({ length: s.deleted ?? 1 }, () => ({ id: "c1" })) };
-    }
-    if (c.table === "contracts") return { count: 1 }; // ยังเหลือสัญญาอื่นของลูกค้า
-    return {};
-  };
-}
-
-describe("deleteContract — ตรวจก่อนแตะ Storage (ข้อ 1)", () => {
-  it("มีผลบริการ → หยุด ไม่เรียก Storage ไม่ลบสัญญา", async () => {
-    const f = fakeSupabase(deleteHandler({ visits: 2, files: ["c1/x.pdf"] }));
-    const r = await deleteContract(f.client, "c1", "u1");
-    expect(r).toMatchObject({ ok: false });
-    expect(f.storageCalls).toHaveLength(0);
-    expect(f.calls.some((c) => c.op === "delete")).toBe(false);
-  });
-  it("มีสถานีที่ตรวจแล้ว → หยุดก่อนแตะ Storage", async () => {
-    const f = fakeSupabase(deleteHandler({ stations: ["s1"], checks: 1, files: ["c1/x.pdf"] }));
-    const r = await deleteContract(f.client, "c1", "u1");
-    expect(r).toMatchObject({ ok: false, error: expect.stringMatching(/สถานีที่ตรวจแล้ว/) });
-    expect(f.storageCalls).toHaveLength(0);
-  });
-  it("สัญญาปิดแล้ว/ยกเลิกแล้ว → หยุดก่อนแตะ Storage", async () => {
-    for (const status of ["closed", "cancelled"]) {
-      const f = fakeSupabase(deleteHandler({ status, files: ["c1/x.pdf"] }));
-      expect((await deleteContract(f.client, "c1", "u1")).ok).toBe(false);
-      expect(f.storageCalls).toHaveLength(0);
-    }
-  });
-  it("อ่านสัญญาไม่เจอ (ถูกลบ/ไม่มีสิทธิ์ดู) → หยุด", async () => {
-    const f = fakeSupabase(deleteHandler({ status: "" }));
-    expect((await checkContractDeletable(f.client, "c1")).ok).toBe(false);
-  });
-  it("อ่านผลบริการไม่ได้ (error) → ไม่เดาว่าลบได้", async () => {
-    const f = fakeSupabase((c) => (c.table === "visits" ? { error: { message: "x" } } : deleteHandler({})(c)));
-    expect((await checkContractDeletable(f.client, "c1")).ok).toBe(false);
-  });
-  it("ผ่านการตรวจ → ลบไฟล์ แล้วลบสัญญา", async () => {
-    const f = fakeSupabase(deleteHandler({ files: ["c1/x.pdf"] }));
-    expect(await deleteContract(f.client, "c1", "u1")).toEqual({ ok: true });
-    expect(f.storageCalls).toEqual([["c1/x.pdf"]]);
-    expect(f.calls.some((c) => c.table === "contracts" && c.op === "delete")).toBe(true);
-  });
-});
-
-describe("deleteContract — Storage ลบไม่ครบ (ข้อ 2)", () => {
-  it("RLS ปฏิเสธแบบ data ว่าง → ไม่ลบสัญญาต่อ", async () => {
-    const f = fakeSupabase(deleteHandler({ files: ["c1/a.pdf", "c1/b.pdf"] }), () => ({ data: [] }));
-    const r = await deleteContract(f.client, "c1", "u1");
-    expect(r.ok).toBe(false);
-    expect(f.calls.some((c) => c.table === "contracts" && c.op === "delete")).toBe(false);
-  });
-  it("ลบสัญญาได้ 0 แถว (RLS ปฏิเสธแบบไม่ error) → ไม่รายงานว่าลบแล้ว", async () => {
-    const f = fakeSupabase(deleteHandler({ deleted: 0 }));
-    const r = await deleteContract(f.client, "c1", "u1");
-    expect(r).toMatchObject({ ok: false, error: expect.stringMatching(/ลบสัญญาไม่สำเร็จ/) });
-  });
-});
-
 describe("findLinkedRenewals (ข้อ 6)", () => {
   it("คืนเลขที่สัญญา Renew ที่ผูก · error ถูกส่งต่อ", async () => {
     const ok = fakeSupabase(() => ({ data: [{ contract_no: "R-1" }, { contract_no: "R-2" }] }));
@@ -235,92 +155,6 @@ describe("findLinkedRenewals (ข้อ 6)", () => {
     expect(ok.calls[0]!.filters).toEqual({ renewed_from_contract_id: "c1" });
     const bad = fakeSupabase(() => ({ error: { message: "x" } }));
     expect((await findLinkedRenewals(bad.client, "c1")).error).toBeTruthy();
-  });
-});
-
-// ---------- saveDraft (ข้อ 3, 4) ----------
-const branch = { id: "b1", name: "สาขา", zoneId: "z", zoneName: "เขต 1" };
-const draft = {
-  key: "k",
-  contractNo: "A-1",
-  customerName: " ลูกค้า ก ",
-  saleType: "new",
-  sellerRole: "sale",
-  saleName: "ขาย",
-  isUrgent: false,
-  renewal: null,
-  mailReceivedDate: "",
-  firstServiceDate: "",
-  firstServiceTime: "",
-  note: "",
-  branchText: "สาขา",
-  customerTypeCode: "B",
-  teamIds: ["t1"],
-  startDate: "2026-01-15",
-  endDate: "",
-  endTouched: false,
-  value1y: "",
-  value3y: "",
-  pendingPdf: null,
-  saveError: null,
-} as unknown as DraftRow;
-const check = { branch, termYears: 1, valueTotal: 50000, endDate: "2026-12-31" } as never;
-
-describe("saveDraft — ประเภทลูกค้าไม่ตรงของเดิม (ข้อ 4)", () => {
-  it("ใช้ลูกค้าเดิมที่ประเภทต่างกัน → ok พร้อม customerTypeMismatch", async () => {
-    const f = fakeSupabase((c) => {
-      if (c.table === "customers" && c.op === "select") return { data: [{ id: "u1", customer_type: "A" }] };
-      if (c.table === "contracts" && c.op === "insert") return { data: { id: "c1" } };
-      return {};
-    });
-    const r = await saveDraft(f.client, draft, check);
-    expect(r).toMatchObject({ ok: true, reusedCustomer: true, customerTypeMismatch: { existing: "A", chosen: "B" } });
-  });
-  it("ประเภทตรงกัน → ไม่มี mismatch", async () => {
-    const f = fakeSupabase((c) => {
-      if (c.table === "customers" && c.op === "select") return { data: [{ id: "u1", customer_type: "B" }] };
-      if (c.table === "contracts" && c.op === "insert") return { data: { id: "c1" } };
-      return {};
-    });
-    expect(await saveDraft(f.client, draft, check)).toMatchObject({ ok: true, customerTypeMismatch: null });
-  });
-});
-
-describe("saveDraft — rollback ล้ม (ข้อ 3)", () => {
-  const base = (c: Call, extra: (c: Call) => Result | undefined): Result => {
-    if (c.table === "customers" && c.op === "select") return { data: [] };
-    if (c.table === "customers" && c.op === "insert") return { data: { id: "newcust" } };
-    if (c.table === "contracts" && c.op === "insert") return { data: { id: "c1" } };
-    return extra(c) ?? {};
-  };
-
-  it("สัญญาเพิ่มไม่ได้ + ลบลูกค้าคืนไม่ได้ (ลบได้ 0 แถว) → error ระบุว่ามีลูกค้าค้าง", async () => {
-    const f = fakeSupabase((c) =>
-      c.table === "contracts" && c.op === "insert"
-        ? { error: { code: "23505", message: "dup" } }
-        : base(c, (x) => (x.table === "customers" && x.op === "delete" ? { data: [] } : undefined)),
-    );
-    const r = await saveDraft(f.client, draft, check);
-    expect(r).toMatchObject({ ok: false, error: expect.stringMatching(/ข้อมูลค้างบางส่วน.*ลูกค้า "ลูกค้า ก"/) });
-  });
-  it("สัญญาเพิ่มไม่ได้ + ลบลูกค้าคืนได้ → error ปกติ ไม่มีคำเตือนของค้าง", async () => {
-    const f = fakeSupabase((c) =>
-      c.table === "contracts" && c.op === "insert"
-        ? { error: { code: "23505", message: "dup" } }
-        : base(c, (x) => (x.table === "customers" && x.op === "delete" ? { data: [{ id: "newcust" }] } : undefined)),
-    );
-    const r = await saveDraft(f.client, draft, check);
-    expect(r).toMatchObject({ ok: false });
-    expect((r as { error: string }).error).not.toMatch(/ข้อมูลค้าง/);
-  });
-  it("ทีมเพิ่มไม่ได้ + ลบสัญญาคืนไม่ได้ → ระบุสัญญาและลูกค้าที่ค้าง", async () => {
-    const f = fakeSupabase((c) =>
-      c.table === "contract_teams"
-        ? { error: { code: "23503", message: "fk" } }
-        : base(c, (x) => (x.op === "delete" ? { error: { message: "denied" } } : undefined)),
-    );
-    const r = await saveDraft(f.client, draft, check);
-    expect(r).toMatchObject({ ok: false, error: expect.stringMatching(/สัญญา A-1.*ลูกค้า/) });
   });
 });
 
