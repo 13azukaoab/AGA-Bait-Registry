@@ -1507,7 +1507,7 @@ function pkRender(p){
     list.innerHTML=searching?'':'<div class="empty">'+(svc?(p.view==='done'?'ยังไม่มีรายที่กรอกแล้ว':'ไม่มีรายที่ยังไม่กรอก — ครบแล้ว'):'ไม่มีลูกค้าที่มีกล่องค้างติดตามตามตัวกรองนี้')+'</div>';
   } else {
     list.innerHTML=items.map(function(c){
-      var tags=tierBadge(c.tier)+(c.makeupFor?'<span class="mkchip" title="บริการชดเชยของเดือนที่ตกบริการ">ชดเชย '+msMonthTh(c.makeupFor)+'</span>':'')+(c.ag.length?'<span class="agtag">AG '+c.ag.length+'</span>':'')+((svc&&c.done&&(searching||p.view!=='done'))?'<span class="chip ok">กรอกแล้ว</span>':'');
+      var tags=tierBadge(c.tier)+(c.makeupFor?'<span class="mkchip" title="รอบันทึกบริการชดเชยของเดือนที่ตกบริการ">รอชดเชย '+msMonthTh(c.makeupFor)+'</span>':'')+(c.ag.length?'<span class="agtag">AG '+c.ag.length+'</span>':'')+((svc&&c.done&&(searching||p.view!=='done'))?'<span class="chip ok">กรอกแล้ว</span>':'');
       return '<button type="button" class="cust'+(p.sel===c.id?' sel':'')+'" data-id="'+c.id+'"'+(p.sel===c.id?' aria-current="true"':'')+'>'+
         '<span class="main"><b>'+esc(c.name)+'</b><small>'+esc(c.ct)+' · ทีม '+c.team+(svc?' · '+(c.fresh?'รอระบุจำนวนสถานี':'IG '+c.ig+' / IC '+c.ic):'')+'</small>'+
         (c.mo?'<span class="mo '+c.mo+'">'+(c.mo==='new'?'New':'Renew')+' เดือนนี้</span>':'')+'</span><span class="tags">'+tags+'</span></button>';
@@ -1680,7 +1680,7 @@ function fheadHtml(c,posHtml,withContact){
     '<div class="sumchips" style="margin:0"><span class="chip na">สัญญา '+esc(c.ct)+'</span>'+
     (c.fresh?'<span class="chip pend">ยังไม่ระบุจำนวนสถานี</span>':'<span class="chip na num"><span class="sttype">IG</span> '+c.ig+'</span><span class="chip na num"><span class="sttype">IC</span> '+c.ic+'</span>')+
     '<span class="chip '+(agN?'pend':'na')+' num"><span class="sttype">AG</span> '+agN+(agN?' ค้างติดตาม':'')+'</span>'+
-    (c.makeupFor?'<span class="mkchip">บริการชดเชย '+msMonthTh(c.makeupFor)+' · ผูกกับเดือนที่ตกอัตโนมัติ</span>':'')+'</div>'+
+    (c.makeupFor?'<span class="mkchip">บันทึกบริการชดเชย '+msMonthTh(c.makeupFor)+' · กรอกผลของวันที่ไปจริง · ผูกกับเดือนที่ตกอัตโนมัติ</span>':'')+'</div>'+
     (withContact?'<div id="ctInfoBox">'+ctInfoHtml(c)+'</div>':'')+'</div>';
 }
 function fieldsHtml(ctx,c,extra,bxDate){
@@ -2616,9 +2616,10 @@ function exportSummaryXL(){
 
 /* ===== ตกบริการ: ชดเชย / ไม่ชดเชย (DECISIONS 2.41) · เก็บสถานี IG (2.42) · ข้อมูลติดต่อใน #service =====
    สรุป logic (ข้อมูลทั้งหมดในไฟล์นี้เป็นข้อมูลสมมติ — ของจริงอ่านจากตาราง missed_service_resolutions / stations)
-   • MS = เดือนที่ตกบริการ 1 แถว/เดือน/สัญญา · res ว่าง = รอตัดสิน · res.kind 'makeup' (เลือกวัน) หรือ 'waived' (เหตุผลบังคับ + ยืนยัน)
-   • สถานะที่โชว์ (ชุดเดียวกับ customer-detail): รอตัดสิน / ชดเชย → เดือน / ชดเชยแล้ว / ชดเชยไม่ได้ทำ / ไม่ชดเชย
-   • ชดเชยแล้ว = บันทึกแถว "ชดเชย …" ในหน้าลงข้อมูลบริการ (ผูกเดือนที่ตกอัตโนมัติ) · เดือนชดเชยผ่านไปไม่มีการเข้า = ชดเชยไม่ได้ทำ (กลับไปตัดสินใหม่)
+   • DECISIONS 2.45 (15 พ.ย. 2026): ไม่เลือกเดือนชดเชยล่วงหน้า · บันทึก "บริการชดเชย" ตอนไปทำจริงเท่านั้น
+   • MS = เดือนที่ตกบริการ 1 แถว/เดือน/สัญญา · res ว่าง = รอตัดสิน · res.kind 'done' (บันทึกบริการชดเชยแล้ว) หรือ 'waived' (เหตุผลบังคับ + ยืนยัน)
+   • สถานะเหลือ 3 แบบ (ชุดเดียวกับ customer-detail): รอตัดสิน / ชดเชยแล้ว / ไม่ชดเชย · สัญญายกเลิก (cancelled) ไม่มีปุ่ม
+   • หน้าลงข้อมูลบริการแสดงแถว "รอชดเชย <เดือนที่ตก>" ทุกเดือนจนกว่าจะปิดเรื่อง (รวมสัญญาที่จบแล้ว) → บันทึกแล้วผูกกับเดือนที่ตกอัตโนมัติ
    • สิทธิ์: host + recorder กดได้ · admin ดูอย่างเดียว (ปุ่มปิด) — ของจริงบังคับที่ RLS
    • CL = รอเก็บสถานีหลังหมดสัญญา: นับเฉพาะ IG · IC มอบให้ลูกค้า · ปิดสัญญาได้แม้ IG ยังไม่เก็บ · IG ที่เหลือคงอยู่จนกด "เก็บแล้ว"/"ไม่เก็บ"(เหตุผลบังคับ+ยืนยัน) */
 var MS_CUR='2026-10';
@@ -2628,24 +2629,19 @@ function msDateTh(d){return (+d.slice(8,10))+' '+MS_TH[+d.slice(5,7)-1]+' '+d.sl
 function msRole(){var s=document.getElementById('roleSel');return s?s.value:'host'}
 function msCan(){var r=msRole();return r==='host'||r==='recorder'}
 var MS=[
-  {n:1,id:'m1',br:'นครปฐม',name:'บจก. ไทยแพคโลจิสติกส์',ct:'CT24-0000066',end:'2026-12-31',missed:'2026-05',res:null},
-  {n:2,id:'m2',br:'นครปฐม',name:'โรงเรียนอนุบาลดอกไม้',ct:'CT25-0000298',end:'2026-12-31',missed:'2026-06',res:{kind:'makeup',date:'2026-10-30'}},
-  {n:3,id:'m3',br:'พุทธมณฑล',name:'ร้านอาหารครัวริมคลอง',ct:'CT26-0000151',end:'2026-12-31',missed:'2026-04',res:{kind:'makeup',date:'2026-09-15'}},
-  {n:4,id:'m4',br:'หัวหิน',name:'หจก. ทรัพย์เจริญ',ct:'CT26-0000203',end:'2026-12-31',missed:'2026-07',res:{kind:'makeup',date:'2027-01-01'}},
-  {n:5,id:'m5',br:'หัวหิน',name:'บจก. เมโทรแวร์เฮ้าส์',ct:'CT25-0000333',end:'2026-09-30',missed:'2026-03',res:{kind:'makeup',date:'2026-10-01'}}
+  {n:1,id:'m1',br:'พุทธมณฑล',name:'บจก. ไทยแพคโลจิสติกส์',ct:'CT24-0000066',end:'2026-12-31',missed:'2026-05',res:null},
+  {n:2,id:'m2',br:'พุทธมณฑล',name:'โรงเรียนอนุบาลดอกไม้',ct:'CT25-0000298',end:'2026-12-31',missed:'2026-06',res:null},
+  {n:3,id:'m3',br:'พุทธมณฑล',name:'ร้านอาหารครัวริมคลอง',ct:'CT26-0000151',end:'2026-12-31',missed:'2026-04',res:null},
+  {n:4,id:'m4',br:'พุทธมณฑล',name:'หจก. ทรัพย์เจริญ',ct:'CT26-0000203',end:'2026-12-31',missed:'2026-07',res:{kind:'done',date:'2026-09-15'}},
+  {n:5,id:'m5',br:'พุทธมณฑล',name:'บจก. เมโทรแวร์เฮ้าส์',ct:'CT25-0000333',end:'2026-09-30',missed:'2026-03',res:null},
+  {n:6,id:'m6',br:'พุทธมณฑล',name:'ร้านเสริมสวยบ้านดอกไม้',ct:'CT26-0000266',end:'2026-09-06',missed:'2026-08',res:null,cancelled:true}
 ];
-function msState(it){var r=it.res;if(!r)return {s:'pending'};if(r.kind==='waived')return {s:'waived'};if(r.done)return {s:'done'};var mm=r.date.slice(0,7);return {s:mm<MS_CUR?'failed':'makeup',mm:mm}}
-var MS_LAB={pending:['รอตัดสิน','miss'],makeup:['ชดเชย','pend'],done:['ชดเชยแล้ว','ok'],failed:['ชดเชยไม่ได้ทำ','miss'],waived:['ไม่ชดเชย','na']};
-function msText(st){return st.s==='makeup'?'ชดเชย → '+msMonthTh(st.mm):MS_LAB[st.s][0]}
-function msNextMonth1(m){var y=+m.slice(0,4),mo=+m.slice(5,7)+1;if(mo>12){mo=1;y++}return y+'-'+(mo<10?'0':'')+mo+'-01'}
-function msBounds(it){
-  var min=msNextMonth1(it.missed),cur1=MS_CUR+'-01';
-  if(msRole()!=='host'&&min<cur1)min=cur1;           /* หัวหน้างานย้อนก่อนเดือนนี้ไม่ได้ · host ได้ */
-  var def=msNextMonth1(it.end.slice(0,7));if(def<min)def=min;   /* ค่าเริ่มต้น = วันที่ 1 ของเดือนถัดจากสัญญาจบ */
-  return {min:min,def:def};
-}
+function msState(it){var r=it.res;if(!r)return {s:'pending'};return {s:r.kind==='waived'?'waived':'done'}}
+var MS_LAB={pending:['รอตัดสิน','miss'],done:['ชดเชยแล้ว','ok'],waived:['ไม่ชดเชย','na']};
+function msText(st){return MS_LAB[st.s][0]}
+function msOpen(it){return msState(it).s==='pending'&&!it.cancelled}   /* เรื่องที่ยังต้องปิด (ไม่นับสัญญายกเลิก) */
 function msFind(id){for(var i=0;i<MS.length;i++){if(MS[i].id===id)return MS[i]}return null}
-/* ---- หน้าต่าง (ใช้ร่วม ชดเชย / ไม่ชดเชย / เก็บสถานี) ---- */
+/* ---- หน้าต่าง (ใช้ร่วม ไม่ชดเชย / เก็บสถานี) ---- */
 var msOpener=null;
 function msDlgOpen(html,opener){msDlgClose(true);msOpener=opener||null;
   var o=document.createElement('div');o.className='lvdlg msdlg';o.id='msDlg';
@@ -2654,35 +2650,24 @@ function msDlgOpen(html,opener){msDlgClose(true);msOpener=opener||null;
 function msDlgClose(quiet){var o=document.getElementById('msDlg');if(o)o.remove();if(!quiet&&msOpener&&document.contains(msOpener))msOpener.focus()}
 function msErr(m){var e=document.getElementById('msErr');if(e){e.textContent=m;e.hidden=false}}
 document.addEventListener('keydown',function(e){if(e.key==='Escape'&&document.getElementById('msDlg'))msDlgClose()});
-/* ---- #todo: กล่อง "ตกบริการรอตัดสิน" ---- */
+/* ---- #todo: กล่อง "เรื่องตกบริการรอตัดสิน" (2.45: ปุ่ม บันทึกบริการชดเชย / ไม่ชดเชย) ---- */
 function msRenderTodo(){
   var host=$('msTodo');if(!host)return;
-  var can=msCan(),rows=MS.filter(function(it){var s=msState(it).s;return s==='pending'||s==='failed'||s==='makeup'});
-  rows.sort(function(a,b){var o={pending:0,failed:0,makeup:1};return o[msState(a).s]-o[msState(b).s]});
-  var need=rows.filter(function(it){return msState(it).s!=='makeup'}).length;
-  var stc=$('msStat');if(stc){stc.className='stat '+(need?'danger':'ok');stc.innerHTML='<div class="lab"><span class="dot" style="background:var(--'+(need?'danger':'ok')+')"></span> เรื่องตกบริการรอตัดสิน</div><div class="val num">'+need+'</div><div class="sub">ค้างจากเดือนก่อน · ชดเชยแล้วรอไปบริการ '+(rows.length-need)+' ราย</div>'}
-  var h='<div class="msbox'+(need?'':' empty-ok')+'"><h3><span class="dot" style="background:var(--'+(need?'danger':'ok')+')"></span> เรื่องตกบริการรอตัดสิน <span class="count badge-danger">'+need+'</span><span style="font-size:12.5px;font-weight:400;color:var(--fg-muted)">ค้างจากเดือนก่อน · ตัดสินว่าจะชดเชยหรือไม่ · ชดเชยแล้วรอไปบริการ '+(rows.length-need)+' ราย</span>'+(can?'':'<span style="margin-left:auto;font-size:12px;font-weight:400;color:var(--fg-muted)">ดูอย่างเดียว (admin)</span>')+'</h3>';
-  if(!rows.length)h+='<div class="msnote">ไม่มีเดือนที่ตกบริการค้างตัดสิน</div>';
+  var can=msCan(),rows=MS.filter(function(it){return msState(it).s==='pending'});
+  rows.sort(function(a,b){return (a.cancelled?1:0)-(b.cancelled?1:0)||(a.missed<b.missed?-1:1)});
+  var need=rows.filter(function(it){return !it.cancelled}).length;
+  var stc=$('msStat');if(stc){stc.className='stat '+(need?'danger':'ok');stc.innerHTML='<div class="lab"><span class="dot" style="background:var(--'+(need?'danger':'ok')+')"></span> เรื่องตกบริการรอตัดสิน</div><div class="val num">'+need+'</div><div class="sub">ค้างจากเดือนก่อน · บันทึกบริการชดเชย หรือ ไม่ชดเชย</div>'}
+  var h='<div class="msbox'+(need?'':' empty-ok')+'"><h3><span class="dot" style="background:var(--'+(need?'danger':'ok')+')"></span> เรื่องตกบริการรอตัดสิน <span class="count badge-danger">'+need+'</span><span style="font-size:12.5px;font-weight:400;color:var(--fg-muted)">ค้างจากเดือนก่อน · ไปบริการชดเชยแล้วกด "บันทึกบริการชดเชย" หรือลูกค้ายินยอมกด "ไม่ชดเชย"</span>'+(can?'':'<span style="margin-left:auto;font-size:12px;font-weight:400;color:var(--fg-muted)">ดูอย่างเดียว (admin)</span>')+'</h3>';
+  if(!rows.length)h+='<div class="msnote">ไม่มีเรื่องตกบริการค้างตัดสิน</div>';
   rows.forEach(function(it){
-    var st=msState(it),lab=MS_LAB[st.s],sub='',acts='',dis=can?'':' disabled title="admin ดูอย่างเดียว — หัวหน้างาน/host เท่านั้นที่ตัดสินได้"';
-    if(st.s==='pending')sub='ยังไม่ได้คุยกับลูกค้า';
-    else if(st.s==='failed')sub='เลือกชดเชย '+msMonthTh(st.mm)+' แต่ไม่มีการเข้า → ตัดสินใหม่';
-    else sub='นัด '+msDateTh(it.res.date)+(st.mm===MS_CUR?' · เดือนนี้':' · รอถึงเดือนนั้น');
-    var again=st.s==='makeup';
-    acts='<button class="btn sm" data-ms="waive" data-id="'+it.id+'"'+dis+'>'+(again?'เปลี่ยนเป็นไม่ชดเชย':'ไม่ชดเชย')+'</button>'+
-         '<button class="btn sm'+(again?'':' primary')+'" data-ms="makeup" data-id="'+it.id+'"'+dis+'>'+(again?'เปลี่ยนวัน':'ชดเชย')+'</button>'+
-         (again&&st.mm===MS_CUR?'<button class="btn sm primary" data-ms="go" data-id="'+it.id+'"'+dis+'>ไปกรอกบริการชดเชย →</button>':'');
+    var st=msState(it),lab=MS_LAB[st.s],dis=can?'':' disabled title="admin ดูอย่างเดียว — หัวหน้างาน/host เท่านั้นที่ตัดสินได้"',ended=it.end<MS_CUR+'-01';
+    var sub=it.cancelled?'สัญญายกเลิกแล้ว — ไม่ต้องชดเชย/ตัดสิน':'แสดงในหน้าลงข้อมูลบริการเป็นแถว "รอชดเชย '+msMonthTh(it.missed)+'"'+(ended?' · สัญญาจบแล้ว '+msDateTh(it.end):'');
+    var acts=it.cancelled?'':'<button class="btn sm" data-ms="waive" data-id="'+it.id+'"'+dis+'>ไม่ชดเชย</button>'+
+         '<button class="btn sm primary" data-ms="rec" data-id="'+it.id+'"'+dis+'>บันทึกบริการชดเชย</button>';
     h+='<div class="msrow"><div class="main"><b>'+esc(it.name)+'</b><small>สาขา'+esc(it.br)+' · '+esc(it.ct)+' · ตกบริการ '+msMonthTh(it.missed)+'</small></div>'+
-       '<div class="st"><span class="chip '+lab[1]+'">'+esc(msText(st))+'</span><small>'+esc(sub)+'</small></div><div class="acts">'+acts+'</div></div>';
+       '<div class="st"><span class="chip '+(it.cancelled?'na':lab[1])+'">'+(it.cancelled?'สัญญายกเลิก':esc(msText(st)))+'</span><small>'+esc(sub)+'</small></div><div class="acts">'+acts+'</div></div>';
   });
   host.innerHTML=h+'</div>';
-}
-function msOpenMakeup(it,opener){
-  var b=msBounds(it),val=it.res&&it.res.kind==='makeup'?it.res.date:b.def;
-  msDlgOpen('<h3 id="msT" style="margin:0 0 4px;font-size:16px">ชดเชย '+msMonthTh(it.missed)+'</h3><div class="lab">'+esc(it.name)+' · สัญญา '+esc(it.ct)+' · สิ้นสุด '+msDateTh(it.end)+'</div>'+
-    '<div class="field"><label for="msDate">วันที่ไปบริการชดเชย</label><input type="date" id="msDate" value="'+val+'" min="'+b.min+'"><span class="lab">ค่าเริ่มต้น = วันที่ 1 ของเดือนถัดจากสัญญาจบ ('+msDateTh(b.def)+') · เลือกวันในช่วงสัญญาได้ · ต้องหลังเดือนที่ตก'+(msRole()==='host'?'':' และไม่ย้อนก่อนเดือนนี้')+'</span></div>'+
-    '<p class="lab" style="margin:10px 0 0">เดือนนั้นลูกค้าจะขึ้นในหน้าลงข้อมูลบริการเป็นแถว "ชดเชย '+msMonthTh(it.missed)+'"</p><div class="err" id="msErr" role="alert" hidden></div>'+
-    '<div class="acts"><button class="btn" data-ms="close">ยกเลิก</button><button class="btn primary" data-ms="savemk" data-id="'+it.id+'">บันทึกชดเชย</button></div>',opener);
 }
 function msOpenWaive(it,opener){
   msDlgOpen('<h3 id="msT" style="margin:0 0 4px;font-size:16px">ไม่ชดเชย '+msMonthTh(it.missed)+'</h3><div class="lab">'+esc(it.name)+' · สัญญา '+esc(it.ct)+' · เดือนนี้ยังนับเป็นตกบริการในประวัติ แต่ปิดเรื่องไม่ต้องตามต่อ</div>'+
@@ -2721,8 +2706,8 @@ function clRender(){
       '<td class="c num">'+r.ig+'</td><td class="c num">'+r.got+'</td><td class="c num">'+r.skip+'</td><td class="c num" style="'+(rm>0?'color:var(--danger)':'')+'">'+rm+'</td>'+
       '<td class="c"><span class="chip na num" title="IC แบบปูน มอบให้ลูกค้า ไม่ต้องเก็บ">'+r.ic+' มอบลูกค้า</span></td><td class="r">'+acts+'</td></tr>';
   }).join(''):'<tr><td colspan="10" class="empty">ไม่มีลูกค้าตามตัวกรองนี้</td></tr>';
-  var hold=MS.filter(function(it){var st=msState(it);return st.s!=='waived'&&st.s!=='done'&&it.res&&it.res.kind==='makeup'&&it.res.date>it.end&&it.end<MS_CUR+'-01'});
-  $('clHold').innerHTML=hold.length?'<div class="note" style="margin-top:12px"><span class="ic">ℹ</span><span><b>ยังไม่ขึ้นรายการเก็บสถานี</b> (มีบริการชดเชยค้าง): '+hold.map(function(it){return esc(it.name)+' · ชดเชย '+msMonthTh(it.missed)+' → '+msDateTh(it.res.date)}).join(' · ')+' — จะขึ้นรายการหลังชดเชยเสร็จ หรือเปลี่ยนเป็นไม่ชดเชย</span></div>':'';
+  var hold=MS.filter(function(it){return msOpen(it)&&it.end<MS_CUR+'-01'});
+  $('clHold').innerHTML=hold.length?'<div class="note" style="margin-top:12px"><span class="ic">ℹ</span><span><b>ยังไม่ขึ้นรายการเก็บสถานี</b> (มีเรื่องรอชดเชย): '+hold.map(function(it){return esc(it.name)+' · รอชดเชย '+msMonthTh(it.missed)}).join(' · ')+' — จะขึ้นรายการหลังบันทึกบริการชดเชย หรือกดไม่ชดเชย</span></div>':'';
 }
 function clOpen(kind,r,opener){
   var rm=clRem(r),head='<div class="lab">'+esc(r.name)+' · สัญญา '+esc(r.ct)+' · IG คงเหลือ <b class="num">'+rm+'</b> สถานี · IC '+r.ic+' จุด มอบให้ลูกค้า (ไม่ต้องเก็บ)</div>';
@@ -2737,17 +2722,19 @@ function clN(r){var n=+($('clN').value);if(!(n>=1&&n<=clRem(r)&&n%1===0)){msErr(
 function svSyncMakeup(){
   for(var i=CUSTOMERS.length-1;i>=0;i--){if(CUSTOMERS[i].mkOf)CUSTOMERS.splice(i,1)}
   MS.forEach(function(it){
-    var r=it.res;if(!r||r.kind!=='makeup'||r.date.slice(0,7)!==MS_CUR)return;
+    var r=it.res;if(it.cancelled)return;
+    var doneNow=r&&r.kind==='done'&&r.date.slice(0,7)===MS_CUR;     /* บันทึกชดเชยเดือนนี้แล้ว → แถวยังอยู่ (กรอกแล้ว) จนจบเดือน */
+    if(r&&!doneNow)return;
     var base=null;CUSTOMERS.forEach(function(c){if(c.ct===it.ct&&!c.mkOf)base=c});if(!base)return;
-    var cl=Object.assign({},base,{id:1000+it.n,mkOf:base.id,makeupFor:it.missed,msId:it.id,done:!!r.done,ag:JSON.parse(JSON.stringify(base.ag)),agDate:base.agDate?Object.assign({},base.agDate):undefined,mo:null,fresh:false,editInfo:false});
+    var cl=Object.assign({},base,{id:1000+it.n,mkOf:base.id,makeupFor:it.missed,msId:it.id,done:!!doneNow,ag:JSON.parse(JSON.stringify(base.ag)),agDate:base.agDate?Object.assign({},base.agDate):undefined,mo:null,fresh:false,editInfo:false});
     CUSTOMERS.push(cl);
   });
   if(PK.sv.sel&&!custById(PK.sv.sel))PK.sv.sel=null;
   if($('svList')){pkRender(PK.sv);svRenderForm()}
 }
-function msOnMakeupSaved(c){var it=msFind(c.msId);if(it&&it.res){it.res.done=true;msRenderTodo()}}
+function msOnMakeupSaved(c){var it=msFind(c.msId);if(it&&!it.res){it.res={kind:'done',date:TODAY_ISO,by:msRole()};msRenderTodo();clRender();toast('บันทึกบริการชดเชย '+msMonthTh(it.missed)+' แล้ว · ปิดเรื่องตกบริการ (ลง audit_log)')}}
 function msGoMakeup(it){
-  var cl=null;CUSTOMERS.forEach(function(c){if(c.msId===it.id)cl=c});if(!cl){toast('ยังไม่มีแถวชดเชยในหน้าลงข้อมูลบริการ');return}
+  var cl=null;CUSTOMERS.forEach(function(c){if(c.msId===it.id)cl=c});if(!cl){toast('ไม่พบแถวรอชดเชยในหน้าลงข้อมูลบริการ');return}
   go('service');PK.sv.q='';if($('svQ'))$('svQ').value='';PK.sv.branch=cl.branch;if($('svBranch'))$('svBranch').value=cl.branch;PK.sv.team='';
   pkSelect(PK.sv,cl.id,true);
 }
@@ -2772,15 +2759,8 @@ document.addEventListener('click',function(e){
     if(e.target.closest('a,button'))return;var b=t.querySelector('.main b');if(b)location.href=custHref(b.textContent,[].indexOf.call(t.parentNode.children,t));return}
   var a=t.dataset.ms,id=t.dataset.id,it=id&&msFind(id);
   if(a==='close'){msDlgClose();return}
-  if(a==='makeup'&&it){if(msCan())msOpenMakeup(it,t);return}
-  if(a==='waive'&&it){if(msCan())msOpenWaive(it,t);return}
-  if(a==='go'&&it){msGoMakeup(it);return}
-  if(a==='savemk'&&it){
-    var d=$('msDate').value,b2=msBounds(it);
-    if(!d){msErr('กรุณาเลือกวันที่ไปบริการชดเชย');return}
-    if(d<b2.min){msErr('เลือกวันที่ตั้งแต่ '+msDateTh(b2.min)+' เป็นต้นไป (ต้องหลังเดือนที่ตก'+(msRole()==='host'?'':' และไม่ย้อนก่อนเดือนนี้')+')');return}
-    it.res={kind:'makeup',date:d,by:msRole()};msDlgClose(true);msRenderTodo();svSyncMakeup();clRender();
-    toast('บันทึกชดเชย '+msMonthTh(it.missed)+' → '+msDateTh(d)+' แล้ว (ลง audit_log)');return}
+  if(a==='waive'&&it){if(msCan()&&!it.cancelled)msOpenWaive(it,t);return}
+  if(a==='rec'&&it){if(msCan()&&!it.cancelled)msGoMakeup(it);return}
   if(a==='confirmw'&&it){
     var rs=$('msReason').value.trim();if(!rs){msErr('กรุณาพิมพ์เหตุผลที่ไม่ชดเชย');$('msReason').focus();return}
     $('msErr').hidden=true;$('msStep').innerHTML='<span class="lab" style="margin-right:auto">ปิดเรื่องเดือนนี้โดยไม่ชดเชย?</span><button class="btn" data-ms="backw" data-id="'+it.id+'">กลับไปแก้</button><button class="btn danger" data-ms="dow" data-id="'+it.id+'">ยืนยัน ไม่ชดเชย</button>';
@@ -2883,7 +2863,7 @@ var TM_VIEW='2026-10',tmAlerted=false;
 function tmNowMonth(){var p=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Bangkok',year:'numeric',month:'2-digit'}).format(new Date());return p.slice(0,7)}
 function tmMonthAlert(){
   var now=tmNowMonth();if(tmAlerted||TM_VIEW>=now)return;tmAlerted=true;
-  var pend=0;MS.forEach(function(it){var st=msState(it).s;if(st==='pending'||st==='failed')pend++});
+  var pend=MS.filter(msOpen).length;
   msDlgOpen('<h3 id="msT" style="margin:0 0 6px;font-size:16px;color:var(--warn)">⚠ ยังปิดงานเดือน '+msMonthTh(TM_VIEW)+' ไม่เสร็จ</h3>'+
     '<p style="margin:0 0 8px">ตอนนี้เข้าเดือน <b>'+msMonthTh(now)+'</b> แล้ว แต่เดือน <b>'+msMonthTh(TM_VIEW)+'</b> ยังไม่ได้ปิด หน้านี้จึงยังแสดงข้อมูลของเดือน '+msMonthTh(TM_VIEW)+'</p>'+
     '<ul style="margin:0 0 6px;padding-left:18px"><li>ยังไม่กรอกข้อมูล <b>18</b> ราย</li><li>ตกบริการรอตัดสิน <b>'+pend+'</b> ราย</li></ul>'+
