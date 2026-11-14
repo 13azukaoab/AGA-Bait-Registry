@@ -42,6 +42,8 @@ export interface FindingIssue {
 export interface WorkIssue {
   no?: string;
   detail?: string;
+  /** กล่อง AG ใหม่ (S) ที่ยังไม่ได้เลือกเหยื่อที่ใส่ — ใช้เฉพาะหน้า /bait (mockup บังคับ · /service ไม่บังคับ) */
+  bait?: string;
 }
 export interface AgIssue {
   bait?: string;

@@ -134,12 +134,17 @@ export async function loadContractCounts(
   };
 }
 
-/** รายชื่อสัญญาของสาขาที่เลือกในเดือนที่เลือก */
+/**
+ * รายชื่อสัญญาของสาขาที่เลือกในเดือนที่เลือก
+ * `includeAgOutsideMonth` (หน้า /bait): เพิ่มสัญญาที่ "ไม่อยู่ในช่วงบริการของเดือนนี้" แต่ยังมีกล่อง AG ใช้งานค้างอยู่
+ * (เช่น สัญญาหมดแล้วรอเก็บสถานี แต่กล่องยัง "รอถอด") — งานนอกรอบต้องเข้าถึงได้
+ */
 export async function loadContractList(
   supabase: SupabaseClient,
   month: string,
   branchIds: readonly string[],
   tierRules: readonly TierRule[],
+  options: { includeAgOutsideMonth?: boolean } = {},
 ): Promise<{ items: ContractListItem[]; truncated: boolean; error: string | null }> {
   if (branchIds.length === 0) return { items: [], truncated: false, error: null };
   const { from, toExclusive } = monthRange(month);
@@ -157,9 +162,9 @@ export async function loadContractList(
     .limit(CONTRACT_LIMIT);
   if (error) return { items: [], truncated: false, error: error.message };
 
-  const raw = ((data ?? []) as unknown as ContractDb[]).filter(
-    (c) => c.customers && serviceMonths(c.start_date, c.term_years).includes(month),
-  );
+  const withCustomer = ((data ?? []) as unknown as ContractDb[]).filter((c) => c.customers);
+  const coversMonth = (c: ContractDb) => serviceMonths(c.start_date, c.term_years).includes(month);
+  const raw = options.includeAgOutsideMonth ? withCustomer : withCustomer.filter(coversMonth);
   const ids = raw.map((c) => c.id);
 
   const visitCount = new Map<string, number>();
@@ -195,7 +200,8 @@ export async function loadContractList(
     }
   }
 
-  const items: ContractListItem[] = raw.map((c) => {
+  const kept = options.includeAgOutsideMonth ? raw.filter((c) => coversMonth(c) || (agCount.get(c.id) ?? 0) > 0) : raw;
+  const items: ContractListItem[] = kept.map((c) => {
     const years = (c.term_years === 3 ? 3 : 1) as 1 | 3;
     return {
       contractId: c.id,

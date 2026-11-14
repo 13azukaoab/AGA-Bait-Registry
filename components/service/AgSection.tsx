@@ -294,6 +294,7 @@ export function AgSection({
                   idPrefix={`new-${w.id}`}
                   select={w.baitSelect ?? ""}
                   custom={w.baitCustom ?? ""}
+                  error={issue.bait}
                   onChange={(v) =>
                     onChange({
                       works: form.works.map((x) => (x.id === w.id ? { ...x, baitSelect: v.select, baitCustom: v.custom } : x)),
