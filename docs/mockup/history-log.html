@@ -202,7 +202,7 @@ main{flex:1;min-width:0;padding:20px 24px 48px}
 .ms-p{position:absolute;left:0;top:calc(100% + 4px);z-index:25;min-width:100%;width:max-content;max-width:min(300px,86vw);max-height:280px;overflow-y:auto;background:var(--surface);border:1px solid var(--border-strong);border-radius:10px;box-shadow:var(--drawer-shadow);padding:6px}
 .ms-p[hidden]{display:none}
 .ms-p.r{left:auto;right:0}
-.ms-p label{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:6px;font-size:13px;color:var(--fg);cursor:pointer}
+.ms-p label{display:flex;align-items:center;gap:8px;padding:8px 8px;border-radius:6px;font-size:13px;color:var(--fg);cursor:pointer}
 .ms-p label:hover{background:var(--surface-2)}
 .field .ms-p input{width:16px;height:16px;min-width:0;padding:0;flex:none;accent-color:var(--accent)}
 .ms-p .ms-clr{display:block;width:100%;font-family:inherit;font-size:12px;text-align:left;border:0;border-bottom:1px solid var(--border);background:transparent;color:var(--accent-strong);padding:6px 8px 8px;margin-bottom:4px;cursor:pointer}
@@ -212,7 +212,18 @@ main{flex:1;min-width:0;padding:20px 24px 48px}
 .seg{display:inline-flex;background:var(--surface-2);border:1px solid var(--border);border-radius:10px;padding:3px;gap:3px}
 .seg button{font-family:inherit;font-size:12.5px;border:0;background:transparent;color:var(--fg-muted);padding:6px 12px;border-radius:7px;cursor:pointer}
 .seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-fg);font-weight:600}
-.chk{display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--fg);padding:7px 2px;cursor:pointer}
+.chk{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--fg);padding:9px 4px;min-height:40px;cursor:pointer}
+.chk input{width:18px;height:18px;flex:none;accent-color:var(--accent)}
+/* แถบ "ตัวกรองที่ใช้อยู่" — ชิปละ 1 ค่า กด ✕ เอาออกทีละตัว */
+.afbar{display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:10px 16px;border-bottom:1px solid var(--border);font-size:12px;color:var(--fg-muted)}
+.afbar[hidden]{display:none}
+.afc{display:inline-flex;align-items:center;gap:2px;font-size:12px;color:var(--accent-strong);background:var(--accent-soft);border:1px solid var(--accent);border-radius:999px;padding:0 0 0 10px;white-space:nowrap;max-width:100%}
+.afc span{overflow:hidden;text-overflow:ellipsis}
+.afc button{font-family:inherit;border:0;background:transparent;color:inherit;cursor:pointer;font-size:12px;min-width:28px;min-height:28px;border-radius:999px;display:inline-flex;align-items:center;justify-content:center}
+.afc button:hover{background:var(--surface)}
+.afc.cl{color:var(--fg);background:var(--warn-soft);border-color:var(--warn)}
+/* ปุ่มเปิดตัวกรอง — เฉพาะจอเล็ก */
+.ftogbar{display:none}
 .sumrow{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0 14px}
 .sumrow .chip{font-size:12.5px;padding:4px 12px}
 .tablewrap{position:relative;overflow-x:auto}
@@ -223,7 +234,18 @@ table.hl tbody tr.row:hover td{background:var(--surface-2)}
 table.hl td small,.sub{display:block;color:var(--fg-muted);font-size:11px}
 tr.detail>td{padding:0;background:var(--surface-2)}
 .dbox{padding:12px 16px 14px 44px;font-size:12.5px}
-.tg{font-family:inherit;border:0;background:transparent;color:var(--accent-strong);cursor:pointer;font-size:12px;padding:0 6px 0 0}
+.tg{font-family:inherit;border:0;background:transparent;color:var(--accent-strong);cursor:pointer;font-size:12px;padding:0;min-width:28px;min-height:28px;margin:-5px 2px -5px -6px;border-radius:6px;display:inline-flex;align-items:center;justify-content:center;vertical-align:middle}
+.tg:hover{background:var(--surface-3)}
+.tl .tg{padding:0 8px;margin:-4px 0}
+/* กดทั้งแถวเพื่อกาง/ซ่อนรายละเอียด (ปุ่ม ▸ ยังอยู่สำหรับคีย์บอร์ด) */
+table.hl tbody tr.row{cursor:pointer}
+/* หัวคอลัมน์กดเรียงได้ — กดซ้ำสลับ น้อย→มาก / มาก→น้อย · ลูกศรบอกคอลัมน์ที่เรียงอยู่ */
+table.hl thead th.so{padding:0}
+.sob{font:inherit;color:inherit;background:transparent;border:0;width:100%;min-height:36px;padding:9px 12px;text-align:left;cursor:pointer;display:flex;align-items:center;gap:5px;white-space:nowrap}
+.sob:hover{color:var(--fg);background:var(--surface-3)}
+.sob .ar{font-size:10px;opacity:.35}
+th[aria-sort="ascending"] .sob,th[aria-sort="descending"] .sob{color:var(--accent-strong)}
+th[aria-sort="ascending"] .ar,th[aria-sort="descending"] .ar{opacity:1}
 .act{display:inline-block;font-size:11px;font-weight:600;padding:1px 8px;border-radius:6px;margin-right:4px}
 .act.insert{background:var(--ok-soft);color:var(--ok)} .act.update{background:var(--accent-soft);color:var(--accent-strong)} .act.delete{background:var(--danger-soft);color:var(--danger)}
 .grp{display:inline-block;font-size:11px;padding:1px 8px;border-radius:6px;margin-right:4px;background:var(--surface-3);color:var(--fg-muted);border:1px solid var(--border-strong)}
@@ -268,6 +290,21 @@ table.hl tbody tr.row.closed td:first-child{box-shadow:inset 4px 0 0 var(--warn)
 .lock{max-width:520px;margin:40px auto;text-align:center;padding:30px}
 .hint{font-size:12px;color:var(--fg-muted);margin:0 0 10px}
 @media (max-width:860px){ main{padding:16px} .tools .field{flex:1 1 140px} }
+/* จอเล็ก (≤600px): ตัวกรองพับเก็บหลังปุ่ม "ตัวกรอง (n)" · ตาราง → ไทม์ไลน์อัตโนมัติ (ดู S.view ใน JS) · เป้ากดใหญ่ขึ้น */
+@media (max-width:600px){
+  .ftogbar{display:flex;align-items:center;gap:8px;padding:10px 16px;border-bottom:1px solid var(--border)}
+  .ftog{font-family:inherit;font-size:13.5px;font-weight:600;display:flex;align-items:center;justify-content:space-between;gap:8px;flex:1;min-height:44px;padding:8px 14px;border:1px solid var(--border-strong);border-radius:10px;background:var(--surface);color:var(--fg);cursor:pointer}
+  .ftog .n{font-size:12px;font-weight:600;padding:1px 9px;border-radius:999px;background:var(--accent);color:var(--accent-fg)}
+  .ftog .n[hidden]{display:none}
+  .ftog::after{content:"▾";color:var(--fg-muted);font-size:12px}
+  .ftog[aria-expanded="true"]::after{content:"▴"}
+  #ftools{display:none}
+  #ftools.open{display:flex}
+  .ms-b,.field select,.field input{min-height:44px}
+  .ms-b{max-width:none;width:100%}
+  .ms-p label{padding:11px 8px}
+  .afc button{min-width:36px;min-height:36px}
+}
 </style>
 </head>
 <body>
@@ -332,7 +369,8 @@ table.hl tbody tr.row.closed td:first-child{box-shadow:inset 4px 0 0 var(--warn)
           ระบบไม่ล็อกข้อมูล แต่ <b>ค่าที่ส่ง Dashboard ยังเป็นค่าเดิม จนกว่าจะสั่ง "คำนวณ snapshot ใหม่"</b> ที่หน้า <a href="month-closure.html">ส่งข้อมูล และสรุปงานประจำเดือน</a></small>
       </div></div>
       <section class="panel" aria-label="รายการประวัติ">
-        <div class="tools">
+        <div class="ftogbar"><button type="button" class="ftog" id="fTog" aria-expanded="false" aria-controls="ftools" onclick="hv.ftog()"><span>ตัวกรอง <span class="n" id="fTogN" hidden></span></span></button></div>
+        <div class="tools" id="ftools">
           <div class="field"><label for="fPeriod">ช่วงเวลา</label><select id="fPeriod" onchange="hv.upd()">
             <option value="1">วันนี้ (10 พ.ย.)</option><option value="3">3 วันล่าสุด</option><option value="7" selected>7 วันล่าสุด</option><option value="custom">กำหนดเอง…</option></select></div>
           <div class="field" id="fRange" hidden><label for="fFrom">ตั้งแต่วันที่</label><input id="fFrom" type="date" min="2026-10-01" max="2026-11-10" value="2026-11-04" onchange="hv.upd()"></div>
@@ -359,6 +397,7 @@ table.hl tbody tr.row.closed td:first-child{box-shadow:inset 4px 0 0 var(--warn)
           <button class="btn sm" type="button" onclick="hv.reset()" id="bReset" hidden>✕ ล้างตัวกรอง</button>
           <button class="btn sm" type="button" onclick="hv.export()" title="ส่งออกทุกรายการที่ตรงตัวกรอง (ไม่จำกัดจำนวนที่แสดง) เป็น .xlsx">↓ ส่งออก Excel</button>
         </div>
+        <div class="afbar" id="afbar" aria-label="ตัวกรองที่ใช้อยู่" hidden></div>
         <div id="list"></div>
         <div class="more" id="more"></div>
       </section>
@@ -450,7 +489,12 @@ function hmFor(s){
 
 
 var hv=(function(){
-  var S={mode:'chg',view:'table',shown:25}, PAGE=25, OPEN={}, SUBN={};
+  var S={mode:'chg',view:'table',shown:25,userView:false,sk:'time',sd:-1}, PAGE=25, OPEN={}, SUBN={};
+  /* จอเล็กเริ่มที่ไทม์ไลน์ (ตารางกว้าง 720px คอลัมน์ "การเปลี่ยนแปลง" หลุดขอบจอ) · ถ้าผู้ใช้กดเลือกมุมมองเองแล้ว ไม่สลับให้อีก */
+  var SMALL=window.matchMedia('(max-width:600px)');
+  function autoView(){if(!S.userView)S.view=SMALL.matches?'line':'table';}
+  autoView();
+  if(SMALL.addEventListener)SMALL.addEventListener('change',function(){autoView();render();});
   var $=function(id){return document.getElementById(id);};
   var esc=function(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');};
   var ACT={insert:'เพิ่ม',update:'แก้',delete:'ลบ'};
@@ -556,10 +600,31 @@ var hv=(function(){
   }
   function who(e){return esc(e.who)+'<small>'+esc(e.role)+'</small>';}
   function whereCell(e){return esc(e.br)+'<small>'+esc(e.ct)+(e.cn?' · '+esc(e.cn):'')+'</small>';}
+  /* เรียงตาราง: ค่าเริ่มต้น = เวลา ใหม่→เก่า · ไทม์ไลน์เรียงตามเวลาเสมอ (จัดกลุ่มรายวัน) · ของจริงเรียงที่ฐานข้อมูล (ORDER BY) ไม่ใช่ในเบราว์เซอร์ */
+  var SCOLS=[['time','เวลา'],['who','ใคร'],['br','สาขา · สัญญา'],['k','ข้อมูล'],['a','การเปลี่ยนแปลง']];
+  var AORD={insert:0,update:1,delete:2};
+  function skey(e,k){
+    if(k==='time')return e.d*10000+(+e.t.replace(':',''));
+    if(k==='a')return e.b?-1:AORD[e.a];
+    return String(e[k]||'');
+  }
+  function sortRows(rows){
+    var k=S.sk,d=S.sd;
+    return rows.slice().sort(function(a,b){
+      var x=skey(a,k),y=skey(b,k),c=(typeof x==='number')?x-y:x.localeCompare(y,'th');
+      return c*d || (skey(b,'time')-skey(a,'time'));
+    });
+  }
+  function thead(){
+    return '<thead><tr>'+SCOLS.map(function(c){
+      var on=S.sk===c[0], so=on?(S.sd>0?'ascending':'descending'):'none';
+      return '<th class="so" aria-sort="'+so+'"><button type="button" class="sob" onclick="hv.sort(\''+c[0]+'\')" title="กดเพื่อเรียงตาม'+c[1]+'">'+c[1]+
+        '<span class="ar" aria-hidden="true">'+(on?(S.sd>0?'▲':'▼'):'↕')+'</span></button></th>';}).join('')+'</tr></thead>';
+  }
   function table(rows){
-    return '<div class="tablewrap"><table class="hl"><thead><tr><th>เวลา</th><th>ใคร</th><th>สาขา · สัญญา</th><th>ข้อมูล</th><th>การเปลี่ยนแปลง</th></tr></thead><tbody>'+
+    return '<div class="tablewrap"><table class="hl">'+thead()+'<tbody>'+
       rows.map(function(e){var o=!!OPEN[e.id];
-        return '<tr class="row'+(e.closed?' closed':'')+'"><td style="white-space:nowrap"><button class="tg" type="button" aria-expanded="'+o+'" aria-label="'+(o?'ซ่อน':'ดู')+'รายละเอียด" onclick="hv.tog('+e.id+')">'+(o?'▾':'▸')+'</button>'+when(e)+'</td><td>'+who(e)+'</td><td>'+whereCell(e)+'</td><td>'+esc(e.k)+monthNote(e)+'</td><td>'+what(e)+'</td></tr>'+
+        return '<tr class="row'+(e.closed?' closed':'')+'" data-id="'+e.id+'"><td style="white-space:nowrap"><button class="tg" type="button" aria-expanded="'+o+'" aria-label="'+(o?'ซ่อน':'ดู')+'รายละเอียด" onclick="hv.tog('+e.id+')">'+(o?'▾':'▸')+'</button>'+when(e)+'</td><td>'+who(e)+'</td><td>'+whereCell(e)+'</td><td>'+esc(e.k)+monthNote(e)+'</td><td>'+what(e)+'</td></tr>'+
           (o?'<tr class="detail"><td colspan="5"><div class="dbox">'+detail(e)+'</div></td></tr>':''); }).join('')+'</tbody></table></div>';
   }
   function line(rows){
@@ -574,9 +639,31 @@ var hv=(function(){
     });
     return '<div class="tl">'+h+'</div>';
   }
+  /* แถบ "ตัวกรองที่ใช้อยู่": 1 ชิปต่อ 1 ค่า (ช่วงเวลา, ค่าที่ติ๊ก, คำค้น, แก้หลังปิด) · ✕ = เอาค่านั้นออก · นับจำนวนไปโชว์ที่ปุ่ม "ตัวกรอง (n)" บนจอเล็ก */
+  var FLAB={fMonth:'เดือนข้อมูล',fZone:'เขต',fBr:'สาขา',fWho:'ใคร',fKind:'ประเภท',fAct:'การกระทำ'};
+  function afRender(){
+    var c=[], per=$('fPeriod');
+    if(per.value!=='7'){var pt=per.value==='custom'?thDate($('fFrom').value)+' – '+thDate($('fTo').value):per.options[per.selectedIndex].text;c.push({f:'per',t:'ช่วงเวลา: '+pt});}
+    ['fMonth','fZone','fBr','fWho','fKind','fAct'].forEach(function(id){
+      MS[id].opts.forEach(function(o){if(MS[id].sel[o.v])c.push({f:id,v:o.v,t:(o.t.indexOf(FLAB[id])===0?'':FLAB[id]+': ')+o.t});});});
+    if($('fQ').value)c.push({f:'q',t:'ค้นหา: "'+$('fQ').value+'"'});
+    if($('fClosed').checked)c.push({f:'cl',t:'🔒 เฉพาะแก้หลังปิดเดือน',cl:1});
+    var bar=$('afbar'); bar.hidden=!c.length;
+    bar.innerHTML=c.length?'<span>กรองอยู่:</span>'+c.map(function(x){
+      return '<span class="afc'+(x.cl?' cl':'')+'"><span>'+esc(x.t)+'</span><button type="button" data-f="'+x.f+'" data-v="'+esc(x.v||'')+'" aria-label="เอาตัวกรอง '+esc(x.t)+' ออก">✕</button></span>';}).join(''):'';
+    var n=$('fTogN'); n.textContent=c.length; n.hidden=!c.length;
+  }
+  function thDate(v){if(!v)return '…';var p=v.split('-');return (+p[2])+' '+MTH[(+p[1])-1];}
+  function afRemove(f,v){
+    if(f==='per'){$('fPeriod').value='7';}
+    else if(f==='q'){$('fQ').value='';}
+    else if(f==='cl'){$('fClosed').checked=false;}
+    else{delete MS[f].sel[v]; msBuild(f,MS[f].opts); if(f==='fZone')brOpts();}
+    S.shown=PAGE; render();
+  }
   function render(){
     var all=filt(true), chg=all.filter(function(e){return !e.b;}), grpd=all.filter(function(e){return e.b;});
-    var rows=(S.mode==='all'?all:chg), cnt=function(a){return chg.filter(function(e){return e.a===a;}).length;};
+    var rows=(S.mode==='all'?all:chg); if(S.view==='table')rows=sortRows(rows); var cnt=function(a){return chg.filter(function(e){return e.a===a;}).length;};
     var batchN=grpd.reduce(function(s,e){return s+e.n;},0);
     var clN=chg.filter(function(e){return e.closed;}).length, clOn=$('fClosed').checked;
     $('sumrow').innerHTML=
@@ -593,14 +680,27 @@ var hv=(function(){
     var act=!!(msVal('fWho').length||msVal('fBr').length||msVal('fZone').length||msVal('fKind').length||msVal('fAct').length||msVal('fMonth').length||$('fQ').value||$('fClosed').checked||$('fPeriod').value!=='7');
     var cu=$('fPeriod').value==='custom'; $('fRange').hidden=!cu; $('fRange2').hidden=!cu;
     $('bReset').hidden=!act;
+    afRender();
   }
   return {
-    init:function(){fillSel();render();},
+    init:function(){
+      fillSel();render();
+      $('afbar').addEventListener('click',function(ev){var b=ev.target.closest('button[data-f]');if(b)afRemove(b.getAttribute('data-f'),b.getAttribute('data-v'));});
+      /* กดตรงไหนของแถวก็กาง/ซ่อนรายละเอียด — ยกเว้นกดลิงก์/ปุ่ม หรือกำลังลากเลือกข้อความ */
+      $('list').addEventListener('click',function(ev){
+        var tr=ev.target.closest('tr.row'); if(!tr||ev.target.closest('a,button'))return;
+        if(String(window.getSelection&&window.getSelection())!=='')return;
+        hv.tog(+tr.getAttribute('data-id'));});
+    },
+    ftog:function(){var t=$('ftools'),open=!t.classList.contains('open');t.classList.toggle('open',open);$('fTog').setAttribute('aria-expanded',String(open));},
     upd:function(){S.shown=PAGE;render();},
     /* ชิปสรุป "เฉพาะที่แก้หลังปิดเดือน" = สลับช่องติ๊กเดียวกับในแถบตัวกรอง (AND กับตัวกรองอื่น) */
     closedOnly:function(){$('fClosed').checked=!$('fClosed').checked;S.shown=PAGE;render();var b=document.querySelector('#sumrow .clchip');if(b)b.focus();},
     mode:function(m){S.mode=m;S.shown=PAGE;render();},
-    view:function(v){S.view=v;render();},
+    view:function(v){S.view=v;S.userView=true;render();},
+    /* คอลัมน์เดิม = สลับทิศ · คอลัมน์ใหม่: เวลาเริ่มใหม่→เก่า, คอลัมน์อื่นเริ่ม ก→ฮ */
+    sort:function(k){if(S.sk===k)S.sd=-S.sd;else{S.sk=k;S.sd=(k==='time')?-1:1;}S.shown=PAGE;render();
+      var b=document.querySelector('th[aria-sort]:not([aria-sort="none"]) .sob');if(b)b.focus();},
     more:function(){S.shown+=PAGE;render();},
     tog:function(id){OPEN[id]=!OPEN[id];render();},
     sub:function(id){SUBN[id]=(SUBN[id]||10)+20;render();},
