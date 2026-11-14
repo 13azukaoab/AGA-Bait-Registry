@@ -33,7 +33,7 @@
    ค่าเริ่มต้น = ตั้งแต่เริ่มสัญญาถึงเดือนปัจจุบัน · ชี้ตัวเลข/แท่งเห็นหมายเลขสถานี · ขยายเต็มจอ / คัดลอก / บันทึกเป็นรูป PNG
  ตกบริการ (2.41 ปรับ 2.45): ส่วน "เดือนที่ตกบริการ" บนสุดของแท็บประวัติทำบริการ · ไม่เลือกเดือนชดเชยล่วงหน้า
    สถานะ 3 แบบ: รอตัดสิน · ชดเชยแล้ว · ไม่ชดเชย — ปุ่ม 2 ปุ่ม: "บันทึกบริการชดเชย" (ฟอร์มลงข้อมูลบริการของวันที่ไปจริง) / "ไม่ชดเชย" (เหตุผลบังคับ + ยืนยัน)
-   สัญญาที่จบแล้วบันทึกชดเชยได้ (เพดาน 12 เดือนหลังสัญญาจบ · เลยแล้วปิดปุ่ม เหลือ ไม่ชดเชย) · สัญญายกเลิกไม่มีปุ่ม — คำ/สีต้องตรงกับหน้า #todo / #service
+   สัญญาที่จบแล้วบันทึกชดเชยได้ (เพดาน 12 เดือนหลังสัญญาจบ · เลยแล้วเฉพาะ host บันทึกชดเชยได้) · สัญญายกเลิกไม่มีปุ่ม — คำ/สีต้องตรงกับหน้า #todo / #service
  ตารางประวัติทำบริการ (2.44): 6 คอลัมน์ — วันที่+ประเภท · ทีม+เวลาเข้า–ออก/นาที · เหยื่อ IG/IC+AG · ไม้ล่อ+S · พบปลวก · หมายเหตุ (ซ้อน 2 บรรทัดในช่อง)
  แท็บสถานี เปิดที่มุมมอง "ต้องดู" = AG ที่ยังไม่จบ + IG/IC ที่พบปลวกเดือนนี้/เดือนก่อน + สถานีหาย/ถอนออก
 
@@ -1021,7 +1021,7 @@ function stationCounts(list){var r={IG:0,IC:0,AG:0,active:0,pending_removal:0,re
    ไม่มีการเลือกเดือนชดเชยล่วงหน้า — เรื่องคงเป็น "รอตัดสิน" จนกว่า
      • ชดเชยแล้ว = กด "บันทึกบริการชดเชย" ลงข้อมูลบริการของวันที่ไปจริง (เดือนไหนก็ได้) → ผูกกับเดือนที่ตกอัตโนมัติ (visit.makeupFor)
      • ไม่ชดเชย = เหตุผลบังคับ · หลักฐานไม่บังคับ · ยืนยันก่อนบันทึก
-   สัญญาที่จบแล้วบันทึกชดเชยได้ · เพดาน 12 เดือนหลังสัญญาจบ (เลยแล้วปิดปุ่มบันทึกชดเชย เหลือ ไม่ชดเชย) · สัญญายกเลิกไม่มีปุ่ม
+   สัญญาที่จบแล้วบันทึกชดเชยได้ · เพดาน 12 เดือนหลังสัญญาจบ (เลยแล้วเฉพาะ host บันทึกชดเชยได้ เหลือ ไม่ชดเชยสำหรับหัวหน้างาน) · สัญญายกเลิกไม่มีปุ่ม
    เดือนที่ตกยังนับ "ตกบริการ" ในประวัติเสมอ · สิทธิ์: หัวหน้างาน + host กดได้ · admin ดูอย่างเดียว (ของจริงบังคับที่ RLS) · ทุกการตัดสินลง audit_log
    ====================================================================== */
 var RS_LABEL={pending:['รอตัดสิน','miss'],done:['ชดเชยแล้ว','ok'],waived:['ไม่ชดเชย','na']};
@@ -1046,14 +1046,14 @@ function missedHtml(scs){
   var h='<div class="missbox"><div class="missbox-h">'+ic('alert')+'<b>เดือนที่ตกบริการ</b> <span class="lab">'+list.length+' เดือน · '+(pend?'รอตัดสิน '+pend+' เดือน':'ตัดสินครบแล้ว')+'</span>'+(canResolve()?'':'<span class="lab" style="margin-left:auto">ดูอย่างเดียว (admin)</span>')+'</div>';
   list.slice().reverse().forEach(function(x){
     var k=contractOf(x.c),st=resolState(k,x.m),lab=RS_LABEL[st.s],key=x.c+'|'+x.m,sub='',cancelled=k.status==='cancelled',late=TODAY>makeupCeiling(k);
-    if(st.s==='pending')sub=cancelled?'สัญญายกเลิก — ไม่มีการชดเชย':'ยังไม่ได้ชดเชย · ไปชดเชยได้ถึง '+fmt(makeupCeiling(k))+(late?' · เลยกำหนดแล้ว — บันทึกชดเชยไม่ได้ เหลือ "ไม่ชดเชย"':'');
+    if(st.s==='pending')sub=cancelled?'สัญญายกเลิก — ไม่มีการชดเชย':'ยังไม่ได้ชดเชย · ไปชดเชยได้ถึง '+fmt(makeupCeiling(k))+(late?(role==='host'?' · เลยกำหนดแล้ว — host บันทึกเป็นกรณีพิเศษได้':' · เลยกำหนดแล้ว — หัวหน้างานบันทึกชดเชยไม่ได้ ให้ host บันทึก หรือกด "ไม่ชดเชย"'):'');
     else if(st.s==='done')sub='ไปบริการชดเชยแล้ว '+fmt(st.v.date)+' · ทีม '+esc(st.v.team)+' · บันทึกโดย '+esc(st.v.by);
     else sub=esc(st.r.reason)+(st.r.file?' · แนบ '+esc(st.r.file):'')+' · โดย '+esc(st.r.by);
     var btn='';
     if(canResolve()&&st.s==='pending'&&!cancelled){
-      var blocked=late;
+      var blocked=late&&role!=='host';
       btn='<span class="miss-acts"><button class="btn sm" data-act="rs-open" data-kind="waive" data-k="'+esc(key)+'">ไม่ชดเชย</button>'+
-          '<button class="btn sm primary" data-act="rs-open" data-kind="makeup" data-k="'+esc(key)+'"'+(blocked?' disabled title="เลยเพดาน 12 เดือนหลังสัญญาจบ ('+fmt(makeupCeiling(k))+') — บันทึกชดเชยไม่ได้ ให้กด ไม่ชดเชย"':'')+'>บันทึกบริการชดเชย</button></span>';
+          '<button class="btn sm primary" data-act="rs-open" data-kind="makeup" data-k="'+esc(key)+'"'+(blocked?' disabled title="เลยเพดาน 12 เดือนหลังสัญญาจบ ('+fmt(makeupCeiling(k))+') — หัวหน้างานบันทึกชดเชยไม่ได้ ให้ host บันทึก หรือกด ไม่ชดเชย"':'')+'>บันทึกบริการชดเชย</button></span>';
     }
     h+='<div class="missrow"><b>'+monthTh(x.m)+'</b>'+(scs.length>1?'<span class="mono lab">'+esc(x.c)+'</span>':'<span></span>')+'<span class="miss-st">'+chip(lab[1],resolText(st))+' <span class="lab">'+sub+'</span></span>'+btn+'</div>';
   });
@@ -1067,8 +1067,8 @@ function rsOpen(kind,key,opener){
   var body,ms=serviceMonths(k.start,k.years);
   if(kind==='makeup'){
     var b=makeupBounds(k,m),teams=['A','B'].indexOf(ME_TEAM)<0?['A','B',ME_TEAM]:['A','B'];
-    body='<h3 id="rsT">บันทึกบริการชดเชย '+monthTh(m)+'</h3><p class="lab">สัญญา '+esc(k.no)+' · เดือนบริการ '+monthTh(ms[0])+' – '+monthTh(ms.slice(-1)[0])+(k.status==='active'?'':' · สัญญา'+esc(CT_LABEL[k.status][0])+' (ยังบันทึกชดเชยได้)')+'</p>'+
-      '<div class="field"><label for="rsDate">วันที่ไปบริการจริง</label><input type="date" id="rsDate" min="'+b.min+'" max="'+b.max+'"><span class="lab">ลงตอนไปบริการแล้วเท่านั้น (เดือนไหนก็ได้ ไม่เกินวันนี้) · ไปชดเชยได้ถึง '+fmt(b.ceil)+'</span></div>'+
+    body='<h3 id="rsT">บันทึกบริการชดเชย '+monthTh(m)+'</h3><p class="lab">สัญญา '+esc(k.no)+' · เดือนบริการ '+monthTh(ms[0])+' – '+monthTh(ms.slice(-1)[0])+(k.status==='active'?'':' · '+esc(CT_LABEL[k.status][0])+' (ยังบันทึกชดเชยได้)')+'</p>'+
+      '<div class="field"><label for="rsDate">วันที่ไปบริการจริง</label><input type="date" id="rsDate" min="'+b.min+'" max="'+b.max+'"><span class="lab">ลงตอนไปบริการแล้วเท่านั้น (เดือนไหนก็ได้ ไม่เกินวันนี้) · ไปชดเชยได้ถึง '+fmt(b.ceil)+'</span>'+(role==='host'&&TODAY>b.ceil?'<span class="lab" style="color:var(--warn)">เลยเพดานแล้ว — host บันทึกเป็นกรณีพิเศษ (ลง audit_log)</span>':'')+'</div>'+
       '<div class="rs-grid"><div class="field"><label for="rsTeam">ทีม</label><select id="rsTeam">'+teams.map(function(t){return '<option value="'+t+'"'+(t===ME_TEAM?' selected':'')+'>ทีม '+t+'</option>'}).join('')+'</select></div>'+
       '<div class="field"><label for="rsBaitIg">เหยื่อ IG/IC (ก.)</label><input type="number" id="rsBaitIg" min="0" step="1" value="0"></div>'+
       '<div class="field"><label for="rsIn">เวลาเข้า</label><input type="time" id="rsIn" value="09:00"></div>'+
@@ -1771,7 +1771,7 @@ var ACT={
     if(!d){rsErr('กรุณาเลือกวันที่ไปบริการจริง');return}
     if(d<b.min){rsErr('วันที่ต้องอยู่หลังเดือนที่ตก (ตั้งแต่ '+fmt(b.min)+')');return}
     if(d>b.max){rsErr('ลงได้เฉพาะวันที่ไปบริการแล้ว (ไม่เกิน '+fmt(b.max)+')');return}
-    if(d>b.ceil){rsErr('เลยเพดาน 12 เดือนหลังสัญญาจบ ('+fmt(b.ceil)+') — บันทึกชดเชยไม่ได้ ให้กด ไม่ชดเชย');return}
+    if(d>b.ceil&&role!=='host'){rsErr('เลยเพดาน 12 เดือนหลังสัญญาจบ ('+fmt(b.ceil)+') — ให้ host บันทึก หรือกด ไม่ชดเชย');return}
     if(!tin||!tout){rsErr('กรุณาใส่เวลาเข้า–ออก');return}
     var mi=+tin.slice(0,2)*60+ +tin.slice(3,5),mo=+tout.slice(0,2)*60+ +tout.slice(3,5);
     if(mo<=mi){rsErr('เวลาออกต้องหลังเวลาเข้า');return}
