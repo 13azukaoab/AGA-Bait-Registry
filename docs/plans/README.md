@@ -17,7 +17,7 @@
 | บันทึกหน้าเปิดงานเป็นก้อนเดียว + กันลูกค้าซ้ำ (M10) | ✅ | RPC `save_job_opening` · คิวลบไฟล์ | [2026-11-12-job-opening-save.md](2026-11-12-job-opening-save.md) |
 | schema หน้ากรอกผลบริการ (M11–M13) | ✅ | เวลาเข้า-ออก · หลายทีม · งานซ่อม · ผลตรวจรายสถานี · F | [2026-11-12-service-entry-schema.md](2026-11-12-service-entry-schema.md) |
 | กล่อง AG ข้ามการ Renew (X9) | ✅ ตัดสินแล้ว | เลือก ก: สัญญาที่ต่อแล้ว ลบการเข้าเก่าไม่ได้ (DECISIONS 2.27) | [2026-11-12-ag-across-renew.md](2026-11-12-ag-across-renew.md) |
-| **สำรองข้อมูลอัตโนมัติ + เฝ้าดูพื้นที่** | 🟡 | ทุกคืน 02:00 · Cloudflare R2 · repo ส่วนตัว · เข้ารหัส · เตือน ≥70% · ต้องเสร็จก่อน go-live | [2026-11-14-backup-and-usage-monitoring.md](2026-11-14-backup-and-usage-monitoring.md) |
+| **สำรองข้อมูลอัตโนมัติ + เฝ้าดูพื้นที่** | 🔄 หมวด 3 กำลังทำ (B1) · repo ส่วนตัวสร้างแล้ว | ทุกคืน 02:00 · Cloudflare R2 · repo ส่วนตัว · เข้ารหัส · เตือน ≥70% · ต้องเสร็จก่อน go-live | [2026-11-14-backup-and-usage-monitoring.md](2026-11-14-backup-and-usage-monitoring.md) |
 | โครงสร้างทำงานหลาย session (HQ + 5 หมวด) | ✅ ใช้อยู่ | ใครทำอะไร · กฎกันชน · รูปแบบรายงาน | [../superpowers/specs/2026-11-10-session-structure-design.md](../superpowers/specs/2026-11-10-session-structure-design.md) |
 | mockup หัวหน้างาน responsive บนคอม | ✅ | layout แบบ B | [../superpowers/specs/2026-11-02-recorder-responsive-pc-design.md](../superpowers/specs/2026-11-02-recorder-responsive-pc-design.md) |
 | แผนรอบแก้ไข 10 พ.ย. (ภาพรวม + เรื่องรอตัดสิน D1–D13) | ✅ ใช้อ้างอิง | | [../แผนงานแก้ไข.md](../แผนงานแก้ไข.md) |
