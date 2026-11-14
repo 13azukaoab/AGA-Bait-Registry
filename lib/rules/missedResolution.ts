@@ -68,8 +68,12 @@ export function needsDecision(status: MissedResolutionStatus): boolean {
 
 /** เดือนชดเชยเริ่มต้น = เดือนถัดจากเดือนบริการสุดท้าย (SPEC §7.2 — ไม่ใช้ end_date) */
 export function defaultMakeupMonth(contract: Contract): string {
-  const months = serviceMonths(contract.startDate, contract.termYears);
-  return listMonths(months[months.length - 1], 2)[1];
+  return listMonths(lastServiceMonth(contract), 2)[1] as string;
+}
+
+/** เดือนบริการสุดท้าย 'YYYY-MM' (เดือนเริ่ม + ปี×12 − 1 — กฎข้อ 5) */
+export function lastServiceMonth(contract: Contract): string {
+  return listMonths(monthOf(contract.startDate), contract.termYears * 12).at(-1) as string;
 }
 
 /** การตัดสินนี้ทำให้สัญญานับใน snapshot ของเดือนชดเชยไหม (ตาม policy) */

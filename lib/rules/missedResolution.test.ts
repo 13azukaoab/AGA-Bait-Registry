@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   defaultMakeupMonth,
+  lastServiceMonth,
   missedMonths,
   missedResolutionStatus,
   needsDecision,
@@ -140,5 +141,13 @@ describe("makeupCountsInSnapshot (กติกาเดียวที่รอ�
   it("ไม่ชดเชย ไม่นับทุก policy", () => {
     expect(makeupCountsInSnapshot(waived, [], "scheduled")).toBe(false);
     expect(makeupCountsInSnapshot(waived, [], "visited")).toBe(false);
+  });
+});
+
+describe("lastServiceMonth", () => {
+  it("เดือนบริการสุดท้าย = เดือนเริ่ม + ปี×12 − 1 (ไม่ใช้ end_date)", () => {
+    expect(lastServiceMonth(c)).toBe("2026-12");
+    expect(lastServiceMonth({ ...c, startDate: "2026-04-03" })).toBe("2027-03");
+    expect(lastServiceMonth({ ...c, termYears: 3 })).toBe("2028-12");
   });
 });

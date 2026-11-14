@@ -10,7 +10,7 @@ import type {
 import { annualValue, tierOf } from "./tier";
 import { serviceMonths } from "./serviceMonths";
 import { monthOf } from "./date";
-import { makeupCountsInSnapshot } from "./missedResolution";
+import { lastServiceMonth, makeupCountsInSnapshot } from "./missedResolution";
 
 /**
  * M18 (DECISIONS 2.41 ②): ข้อมูลเดือนชดเชย (ไม่บังคับ — ไม่ส่ง = ผลเหมือนเดิมทุกประการ)
@@ -43,10 +43,9 @@ export function buildBranchSnapshot(
 
   for (const c of contracts) {
     if (c.cancelledAt && monthOf(c.cancelledAt) <= month) continue;
-    const months = serviceMonths(c.startDate, c.termYears);
-    const inService = months.includes(month);
+    const inService = serviceMonths(c.startDate, c.termYears).includes(month);
     // เดือนชดเชยในช่วงสัญญานับอยู่แล้ว ไม่นับซ้ำ · หลังสัญญาจบนับเมื่อมีการตัดสินชดเชยเดือนนี้
-    const isAfterEnd = month > months[months.length - 1];
+    const isAfterEnd = month > lastServiceMonth(c);
     const countsAsMakeup =
       !inService &&
       isAfterEnd &&
