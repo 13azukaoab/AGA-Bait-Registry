@@ -22,6 +22,11 @@
 --     (function ใน public ถูกถอด EXECUTE จาก PUBLIC/anon ไปแล้ว — 20261111090500)
 --   * ชั้นป้องกันเพิ่ม: default_transaction_read_only = on (ทุก session ที่ล็อกอินด้วย role นี้
 --     เริ่มเป็น read-only) · CONNECTION LIMIT 3 · statement_timeout 15 นาที
+--   * ⚠ ตรวจจริงในเครื่อง (14 พ.ย. 2026): role นี้อ่าน pg_authid (hash SCRAM ของทุก role รวม postgres) ได้ด้วย
+--     เพราะ pg_read_all_data ถอดสิทธิ์รายตารางไม่ได้ → ตั้งรหัส postgres ให้ยาวสุ่ม · vault.decrypted_secrets ว่างตอนนี้
+--     (ถ้าอนาคตเก็บ secret ใน Vault ต้องทบทวนเรื่องนี้)
+--   * default_transaction_read_only ไม่ใช่กำแพงจริง (session สั่ง SET กลับได้) — กำแพงจริงคือ
+--     ไม่มีสิทธิ์เขียนตาราง + ไม่มี EXECUTE บน function ที่เขียนข้อมูล (เทส 33 ตรวจ SECURITY DEFINER ทุกตัว)
 --   * ความเสี่ยงที่ยอมรับ: role นี้อ่านข้อมูลลูกค้า + hash รหัสผ่านของ auth.users ได้ทั้งหมด
 --     → รหัสผ่านต้องอยู่ใน GitHub Secrets ของ repo ส่วนตัวเท่านั้น และไฟล์สำรองต้องเข้ารหัสก่อนออกจากเครื่องรัน
 --   * idempotent: รันซ้ำได้ ไม่ทำให้รหัส/สถานะ LOGIN ที่เจ้าของตั้งไว้หาย

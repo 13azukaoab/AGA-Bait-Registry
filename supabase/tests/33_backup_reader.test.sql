@@ -1,7 +1,7 @@
 -- B1: role backup_reader (20261114100000) — อ่านอย่างเดียว สำหรับงานสำรองข้อมูล
 -- seed ด้วย postgres แล้ว SET LOCAL ROLE backup_reader เพื่อทดสอบสิทธิ์จริง
 BEGIN;
-SELECT plan(22);
+SELECT plan(23);
 
 -- ---------- โครงสร้างของ role ----------
 SELECT ok(EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'backup_reader'), 'role backup_reader exists');
@@ -20,6 +20,12 @@ SELECT ok(NOT has_table_privilege('anon', 'public.customers', 'SELECT')
 SELECT ok(NOT pg_has_role('anon', 'backup_reader', 'MEMBER')
       AND NOT pg_has_role('authenticated', 'backup_reader', 'MEMBER'),
   'anon / authenticated ไม่ได้เป็นสมาชิก backup_reader');
+
+SELECT is(
+  (SELECT count(*)::int FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+    WHERE n.nspname = 'public' AND p.prosecdef
+      AND has_function_privilege('backup_reader', p.oid, 'EXECUTE')),
+  0, 'backup_reader ไม่มี EXECUTE บน SECURITY DEFINER function ใดใน public');
 
 -- ---------- seed ----------
 INSERT INTO auth.users (id, instance_id, aud, role, email) VALUES
