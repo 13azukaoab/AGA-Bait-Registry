@@ -427,10 +427,26 @@ tfoot td{padding:10px 12px;font-weight:700;background:var(--surface-2);border-to
 .missgo:hover{text-decoration-thickness:2px}
 .missgo:focus-visible{outline:2px solid var(--danger);outline-offset:2px;border-radius:4px}
 /* ตกบริการ (2.41) · เก็บสถานี IG (2.42) — การ์ด/แถว/หน้าต่างตัดสิน ใช้สีจาก token เดิม */
+.tmsec{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);margin-bottom:18px;overflow:hidden}
+.tmsec>h3{margin:0;padding:12px 16px;font-size:14px;font-weight:600;display:flex;align-items:center;gap:8px;flex-wrap:wrap;border-bottom:1px solid var(--border)}
+.tmsec>h3 small{font-size:12px;font-weight:400;color:var(--fg-muted)}
+.tmk{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;padding:14px 16px}
+.tmk>div{background:var(--surface-2);border-radius:var(--radius);padding:10px 12px}
+.tmk .lab{font-size:12px;color:var(--fg-muted)} .tmk .val{font-size:22px;font-weight:600}
+.tmk .sub{font-size:11.5px;color:var(--fg-faint)}
+.tmsec .tablewrap{border:0;border-top:1px solid var(--border);border-radius:0;box-shadow:none}
+.tmbar{height:6px;border-radius:999px;background:var(--surface-3);margin-top:5px;min-width:120px;overflow:hidden}
+.tmbar i{display:block;height:100%;background:var(--accent);border-radius:999px}
+.tmmiss{background:none;border:1px solid var(--danger);color:var(--danger);border-radius:999px;padding:3px 10px;font:inherit;font-size:12.5px;font-weight:600;cursor:pointer;min-height:28px}
+.tmmiss[aria-expanded="true"]{background:var(--danger-soft)}
+.tmmiss.zero{border-color:var(--border);color:var(--fg-muted);cursor:default}
+.tmdet td{background:var(--surface-2);white-space:normal}
+.tmdet ul{margin:0;padding-left:18px;display:flex;flex-wrap:wrap;gap:4px 24px}
+.tmdet li{font-size:12.5px}
 .msbox{border:1px solid var(--danger);background:var(--surface);border-radius:var(--radius);margin-bottom:18px;overflow:hidden}
 .msbox>h3{margin:0;padding:10px 14px;font-size:14px;font-weight:600;background:var(--danger-soft);display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .msbox>h3 .count{margin-left:0}
-.msrow{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1.6fr) auto;gap:8px 14px;align-items:center;padding:10px 14px;border-top:1px solid var(--border)}
+.msrow{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,1.25fr);gap:8px 14px;align-items:center;padding:10px 14px;border-top:1px solid var(--border)}
 .msrow:first-of-type{border-top:0}
 .msrow .main b{display:block;font-size:13.5px;font-weight:600}
 .msrow .main small,.msrow .st small{color:var(--fg-muted);font-size:11.5px;display:block;margin-top:2px}
@@ -676,6 +692,14 @@ tfoot td{padding:10px 12px;font-weight:700;background:var(--surface-2);border-to
         <div class="stat ok"><div class="lab"><span class="dot" style="background:var(--ok)"></span> เหยื่อที่ใช้เดือนนี้ (AG)</div><div class="val num" style="font-size:22px">8,750 ก.</div><div class="sub">เหยื่อ NEMESIS · ทุกสาขา</div></div>
         <div class="stat"><div class="lab"><span class="dot" style="background:var(--tier-l)"></span> ไม้ล่อที่เปลี่ยนเดือนนี้</div><div class="val num">1,240 ชิ้น</div><div class="sub">IG 520 จุด×2 + IC 200 จุด×1</div></div>
         <div class="stat"><div class="lab"><span class="dot" style="background:var(--tier-xl)"></span> กล่องเหยื่อในพื้นที่</div><div class="val num">86</div><div class="sub">ที่ยังไม่ถอด ณ ตอนนี้</div></div>
+      </div>
+      <div class="tmsec" id="tmSec">
+        <h3><span class="dot" style="background:var(--accent)"></span> สรุปรายทีม · ต.ค. 2026 <small>เวลาบริการ · ตกบริการ · ลูกค้าเพิ่ม (ข้อมูลสมมติ)</small></h3>
+        <div class="tmk" id="tmKpi"></div>
+        <div class="tablewrap"><table>
+          <thead><tr><th>ทีม</th><th>เวลาบริการ (รวม · เฉลี่ยต่อราย)</th><th class="c">เข้าบริการ</th><th class="c">ตกบริการ</th><th class="c">ลูกค้าใหม่</th><th class="c">ต่อสัญญา</th></tr></thead>
+          <tbody id="tmBody"></tbody>
+        </table></div>
       </div>
       <div id="msTodo"></div>
       <div class="cards">
@@ -2757,6 +2781,42 @@ svSyncMakeup();
 msRenderTodo();
 clRender();
 
+/* ===== #todo: สรุปรายทีม (เจ้าของขอ 14 พ.ย. 2026 · แบบ A ตาราง) =====
+   1 แถว = 1 ทีม: เวลาบริการรวม/เฉลี่ยต่อราย (จากเวลาเข้า–ออกที่กรอกในหน้าลงข้อมูลบริการ) ·
+   จำนวนที่เข้าบริการ · ตกบริการ (กดดูรายชื่อ) · ลูกค้าใหม่ · ต่อสัญญา (ลูกค้าเดิมเพิ่ม/ต่อสัญญา)
+   ข้อมูลในนี้เป็นข้อมูลสมมติ — ของจริงคำนวณจาก visits + contracts ของเดือนที่เลือก */
+var TM=[
+  {team:'ทีม A',min:3120,visits:65,newc:3,renew:1,miss:[{n:'ไทยแพคโลจิสติกส์',m:'พ.ค. 2026'},{n:'โรงเรียนอนุบาลดอกไม้',m:'มิ.ย. 2026'}]},
+  {team:'ทีม B',min:2880,visits:52,newc:2,renew:2,miss:[{n:'ร้านอาหารครัวริมคลอง',m:'เม.ย. 2026'}]},
+  {team:'ทีม C',min:2520,visits:61,newc:1,renew:0,miss:[{n:'หจก. ทรัพย์เจริญ',m:'ก.ค. 2026'},{n:'บจก. เมโทรแวร์เฮ้าส์',m:'มี.ค. 2026'}]},
+  {team:'ทีม D',min:1890,visits:28,newc:0,renew:1,miss:[]}
+];
+var tmOpen={};
+function tmHm(m){return Math.floor(m/60)+':'+('0'+(m%60)).slice(-2)}
+function tmRender(){
+  var body=$('tmBody');if(!body)return;
+  var tMin=0,tV=0,tNew=0,tRen=0,tMiss=0,max=0;
+  TM.forEach(function(t){tMin+=t.min;tV+=t.visits;tNew+=t.newc;tRen+=t.renew;tMiss+=t.miss.length;if(t.min>max)max=t.min});
+  $('tmKpi').innerHTML=
+    '<div><div class="lab">ลูกค้าใหม่เดือนนี้</div><div class="val num">'+tNew+'</div><div class="sub">ลูกค้าที่เพิ่งเข้าระบบ</div></div>'+
+    '<div><div class="lab">ต่อสัญญา / สัญญาใหม่ลูกค้าเดิม</div><div class="val num">'+tRen+'</div><div class="sub">ลูกค้าเดิม</div></div>'+
+    '<div><div class="lab">เพิ่มเข้ามาทั้งหมด</div><div class="val num">'+(tNew+tRen)+'</div><div class="sub">ใหม่ + ต่อสัญญา</div></div>'+
+    '<div><div class="lab">เวลาบริการรวม</div><div class="val num">'+Math.round(tMin/60)+' <span style="font-size:14px;color:var(--fg-muted)">ชม.</span></div><div class="sub">'+tV+' ครั้ง · เฉลี่ย '+tmHm(Math.round(tMin/tV))+' ชม.:นาที</div></div>'+
+    '<div><div class="lab">ตกบริการ (ทุกทีม)</div><div class="val num" style="color:var(--'+(tMiss?'danger':'ok')+')">'+tMiss+'</div><div class="sub">รายชื่ออยู่ในตารางด้านล่าง</div></div>';
+  var h='';
+  TM.forEach(function(t,i){
+    var n=t.miss.length,op=!!tmOpen[i]&&n>0,pct=max?Math.round(t.min*100/max):0;
+    h+='<tr><td><b>'+esc(t.team)+'</b></td>'+
+       '<td><span class="num">'+Math.floor(t.min/60)+' ชม. '+(t.min%60)+' นาที</span> <span style="color:var(--fg-muted)">· เฉลี่ย '+tmHm(Math.round(t.min/t.visits))+'</span><div class="tmbar" aria-hidden="true"><i style="width:'+pct+'%"></i></div></td>'+
+       '<td class="c num">'+t.visits+' ราย</td>'+
+       '<td class="c">'+(n?'<button type="button" class="tmmiss" data-tm="'+i+'" aria-expanded="'+op+'" aria-controls="tmDet'+i+'">'+n+' ราย '+(op?'▾':'▸')+'</button>':'<span class="tmmiss zero">0</span>')+'</td>'+
+       '<td class="c num">'+t.newc+'</td><td class="c num">'+t.renew+'</td></tr>';
+    if(op)h+='<tr class="tmdet" id="tmDet'+i+'"><td colspan="6"><ul>'+t.miss.map(function(x){return '<li><b>'+esc(x.n)+'</b> · ตกบริการ '+esc(x.m)+'</li>'}).join('')+'</ul></td></tr>';
+  });
+  body.innerHTML=h;
+}
+document.addEventListener('click',function(e){var b=e.target.closest&&e.target.closest('[data-tm]');if(!b)return;var i=b.getAttribute('data-tm');tmOpen[i]=!tmOpen[i];tmRender();var nb=document.querySelector('[data-tm="'+i+'"]');if(nb)nb.focus()});
+tmRender();
 function goHash(){ var h=location.hash.slice(1); if(SCREENS.indexOf(h)>=0) go(h); }
 initEntryPages();
 window.addEventListener('hashchange',goHash); goHash();
