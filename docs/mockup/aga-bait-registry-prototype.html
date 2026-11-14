@@ -671,6 +671,7 @@ tfoot td{padding:10px 12px;font-weight:700;background:var(--surface-2);border-to
         <div class="stat danger"><div class="lab"><span class="dot" style="background:var(--danger)"></span> ยังไม่กรอกข้อมูล</div><div class="val num">18</div><div class="sub">อาจบริการแล้วแต่ยังไม่กรอก</div></div>
         <div class="stat warn"><div class="lab"><span class="dot" style="background:var(--warn)"></span> สัญญาใกล้หมด (≤90 วัน)</div><div class="val num">7</div><div class="sub">ควรติดต่อต่อสัญญา</div></div>
         <div class="stat danger" id="msStat"></div>
+        <div class="stat warn" id="clStat"></div>
         <div class="stat accent"><div class="lab"><span class="dot" style="background:var(--accent)"></span> กล่องเหยื่อรอถอด</div><div class="val num">12</div><div class="sub">พบปลวกตายแล้ว · รอถอด</div></div>
         <div class="stat ok"><div class="lab"><span class="dot" style="background:var(--ok)"></span> เหยื่อที่ใช้เดือนนี้ (AG)</div><div class="val num" style="font-size:22px">8,750 ก.</div><div class="sub">เหยื่อ NEMESIS · ทุกสาขา</div></div>
         <div class="stat"><div class="lab"><span class="dot" style="background:var(--tier-l)"></span> ไม้ล่อที่เปลี่ยนเดือนนี้</div><div class="val num">1,240 ชิ้น</div><div class="sub">IG 520 จุด×2 + IC 200 จุด×1</div></div>
@@ -2641,6 +2642,7 @@ function clRender(){
   var rows=CL.filter(function(r){return (all||clRem(r)>0||!r.closed)&&(!q||norm(r.name).indexOf(q)>=0||norm(r.ct).indexOf(q)>=0)});
   var wait=CL.filter(function(r){return clRem(r)>0}),rem=0,got=0,skip=0,tot=0;
   CL.forEach(function(r){rem+=clRem(r);got+=r.got;skip+=r.skip;tot+=r.ig});
+  var tc=$('clStat');if(tc){tc.className='stat '+(wait.length?'warn':'ok');tc.innerHTML='<div class="lab"><span class="dot" style="background:var(--'+(wait.length?'warn':'ok')+')"></span> ลูกค้ารอเก็บสถานี</div><div class="val num">'+wait.length+'</div><div class="sub">IG เหลือ '+rem+' จุด · <a href="#collect" onclick="go(\'collect\');return false">ดูรายการ →</a></div>'}
   $('clStats').innerHTML=
     '<div class="stat accent"><div class="lab">ลูกค้ารอเก็บสถานี</div><div class="val num">'+wait.length+'</div><div class="sub">มี IG เหลือให้เก็บ (รวมที่ปิดสัญญาแล้ว)</div></div>'+
     '<div class="stat danger"><div class="lab">IG คงเหลือต้องเก็บ</div><div class="val num">'+rem+'</div><div class="sub">IC ไม่นับ — มอบให้ลูกค้า</div></div>'+
