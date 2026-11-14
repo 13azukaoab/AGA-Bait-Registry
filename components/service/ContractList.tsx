@@ -10,6 +10,7 @@ import { useMemo } from "react";
 import { Chip, TierBadge } from "@/components/ui";
 import { cx } from "@/components/ui/cx";
 
+import { MonthTagBadge } from "./MonthTagBadge";
 import { monthChoices, monthLabel } from "./months";
 import { searchContracts } from "./search";
 import { INPUT, LABEL } from "./styles";
@@ -51,12 +52,12 @@ export function ContractList({
   onSelect: (id: string) => void;
 }) {
   const zoneBranches = branches.filter((b) => b.zoneId === zoneId);
-  const done = items.filter((c) => c.visitCountInMonth > 0).length;
+  const done = items.filter((c) => c.routineCountInMonth > 0).length;
   const total = items.length;
   const pct = total ? Math.round((done * 100) / total) : 0;
 
   const search = useMemo(() => searchContracts(items, query), [items, query]);
-  const visible = search.searching ? search.items : items.filter((c) => (view === "done") === c.visitCountInMonth > 0);
+  const visible = search.searching ? search.items : items.filter((c) => (view === "done") === c.routineCountInMonth > 0);
 
   return (
     <div className="flex flex-col gap-2.5 rounded-xl border border-border bg-surface p-3 lg:sticky lg:top-3 lg:max-h-[calc(100vh-24px)]">
@@ -220,13 +221,14 @@ export function ContractList({
                 {c.contractNo}
                 {c.stationsInitialized ? "" : " · รอระบุจำนวนสถานี"}
               </small>
+              {c.monthTag ? <MonthTagBadge tag={c.monthTag} /> : null}
             </span>
             <span className="flex flex-none flex-wrap items-center justify-end gap-1">
               <TierBadge tier={c.tier} years={c.termYears} />
               {c.agCount > 0 ? (
                 <span className="rounded bg-warn-soft px-1.5 py-px text-[11px] font-semibold text-warn">AG {c.agCount}</span>
               ) : null}
-              {c.visitCountInMonth > 0 && (search.searching || view !== "done") ? <Chip tone="ok">กรอกแล้ว</Chip> : null}
+              {c.routineCountInMonth > 0 && (search.searching || view !== "done") ? <Chip tone="ok">กรอกแล้ว</Chip> : null}
             </span>
           </button>
         ))}

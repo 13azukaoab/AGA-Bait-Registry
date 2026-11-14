@@ -35,8 +35,8 @@ export const NAV_GROUPS: readonly NavGroup[] = [
     title: "งานประจำวัน",
     items: [
       { key: "todo", label: "สถานะทะเบียนบริการ", href: "/todo", icon: "◉", roles: ["host", "recorder"] },
-      { key: "service", label: "กรอกข้อมูลทำบริการประจำเดือน", href: "/service", icon: "✎", roles: ["host", "recorder"] },
-      { key: "bait", label: "ติดตามผล AG และติดกล่อง AG (ไม่พร้อมรอบบริการ)", href: "/bait", icon: "▣", roles: ["host", "recorder"] },
+      { key: "service", label: "ลงข้อมูลทำบริการประจำเดือน", href: "/service", icon: "✎", roles: ["host", "recorder"] },
+      { key: "bait", label: "กล่อง AG นอกรอบประจำเดือน", href: "/bait", icon: "▣", roles: ["host", "recorder"] },
       { key: "collect", label: "ลูกค้ารอเก็บสถานี", href: "/collection", icon: "⇲", roles: ["host", "recorder"] },
     ],
   },

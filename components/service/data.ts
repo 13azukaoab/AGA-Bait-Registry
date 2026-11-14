@@ -6,8 +6,9 @@
  *   * ฝั่ง server (page.tsx): master (เขต/สาขา/ทีม A–O+Z/เกณฑ์ Tier) + รายชื่อสัญญาของ "เดือนที่เลือก" ตามสาขา
  *       - รายชื่อ = สัญญา active / รอเก็บสถานี ที่ `serviceMonths` ครอบเดือนนั้น (ปิดแล้ว/ยกเลิก = ซ่อน — AG007)
  *       - Tier คำนวณด้วย `tierOf` + `tier_rules` (ห้าม hardcode)
- *       - "กรอกแล้ว" = มีการเข้าบริการ (visit) ในเดือนนั้นอย่างน้อย 1 ครั้ง (ทุกประเภท — ถ้าจะนับเฉพาะ routine
- *         ตาม SPEC §7.4 แจ้ง FE) · AG n = จำนวนกล่อง AG ที่ยังใช้งาน
+ *       - "กรอกแล้ว" = มีการเข้าแบบบริการประจำเดือน (`routine`) ในเดือนนั้นอย่างน้อย 1 ครั้ง (DECISIONS 2.23 · ตรงกฎตกบริการ
+ *         SPEC §7.4 — งานซ่อม/ติดตามผล/ติดกล่องนอกรอบไม่ทำให้ขึ้น "กรอกแล้ว") · AG n = จำนวนกล่อง AG ที่ยังใช้งาน
+ *       - ป้าย New/Renew เดือนนี้ = สัญญาเริ่มในเดือนที่เลือก (`start_date`) + `renewed_from_contract_id` (2.38 ค)
  *   * ฝั่ง client (เลือกรายแล้วโหลดรายละเอียด): สถานี · การเข้าในเดือน · ทีมจากการเข้าครั้งล่าสุด · ประวัติ F ของ AG ·
  *     สถานีสัญญาเก่า (Renew ที่ยังไม่ตั้งสถานี) · และรายละเอียดของการเข้าที่จะแก้
  *   * อ่านพลาด = คืน error ให้หน้าจอบอกชัด ไม่แสดงตัวเลขสมมติ
@@ -16,6 +17,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { annualValue, serviceMonths, tierOf, type TierRule } from "@/lib/rules";
 
+import { contractMonthTag } from "./contractTag";
 import { monthRange, serviceTeams } from "./months";
 import { trimDbTime } from "./timeInput";
 import type {
@@ -98,6 +100,40 @@ function chunks<T>(list: readonly T[], size: number): T[][] {
   return out;
 }
 
+/**
+ * ตัวเลขสดของสัญญาเดียว (AG n + จำนวน routine ของเดือน) — เรียกหลังบันทึก/ลบเพื่อรีเฟรชรายชื่อทันที
+ * (นับจากฐานข้อมูลจริง ไม่ใช้การบวก/ลบเอง เพราะการบันทึก 1 ครั้งเปลี่ยน AG ได้หลายจุด: ติดใหม่/ถอด)
+ */
+export async function loadContractCounts(
+  supabase: SupabaseClient,
+  contractId: string,
+  month: string,
+): Promise<{ agCount: number; routineCount: number; stationsInitialized: boolean } | null> {
+  const { from, toExclusive } = monthRange(month);
+  const [ag, routine, contract] = await Promise.all([
+    supabase
+      .from("stations")
+      .select("id", { count: "exact", head: true })
+      .eq("contract_id", contractId)
+      .eq("type", "AG")
+      .in("status", ["active", "eliminated", "pending_removal"]),
+    supabase
+      .from("visits")
+      .select("id", { count: "exact", head: true })
+      .eq("contract_id", contractId)
+      .eq("visit_type", "routine")
+      .gte("visit_date", from)
+      .lt("visit_date", toExclusive),
+    supabase.from("contracts").select("stations_initialized_at").eq("id", contractId).maybeSingle(),
+  ]);
+  if (ag.error || routine.error || contract.error || !contract.data) return null;
+  return {
+    agCount: ag.count ?? 0,
+    routineCount: routine.count ?? 0,
+    stationsInitialized: (contract.data as { stations_initialized_at: string | null }).stations_initialized_at !== null,
+  };
+}
+
 /** รายชื่อสัญญาของสาขาที่เลือกในเดือนที่เลือก */
 export async function loadContractList(
   supabase: SupabaseClient,
@@ -131,7 +167,13 @@ export async function loadContractList(
   const results = await Promise.all(
     chunks(ids, CHUNK).map(async (part) => {
       const [v, a] = await Promise.all([
-        supabase.from("visits").select("contract_id").in("contract_id", part).gte("visit_date", from).lt("visit_date", toExclusive),
+        supabase
+          .from("visits")
+          .select("contract_id")
+          .in("contract_id", part)
+          .eq("visit_type", "routine")
+          .gte("visit_date", from)
+          .lt("visit_date", toExclusive),
         supabase
           .from("stations")
           .select("contract_id")
@@ -167,7 +209,8 @@ export async function loadContractList(
       renewedFromContractId: c.renewed_from_contract_id,
       stationsInitialized: c.stations_initialized_at !== null,
       agCount: agCount.get(c.id) ?? 0,
-      visitCountInMonth: visitCount.get(c.id) ?? 0,
+      routineCountInMonth: visitCount.get(c.id) ?? 0,
+      monthTag: contractMonthTag(c.start_date, c.renewed_from_contract_id, month),
     };
   });
   return { items, truncated: (data ?? []).length >= CONTRACT_LIMIT, error: null };
@@ -180,6 +223,7 @@ type StationDb = {
   status: StationStatus;
   point_label: string | null;
   install_bait_g: number | null;
+  installed_at: string | null;
 };
 
 const toStation = (s: StationDb): StationRow => ({
@@ -189,9 +233,10 @@ const toStation = (s: StationDb): StationRow => ({
   status: s.status,
   pointLabel: s.point_label ?? "",
   installBaitG: s.install_bait_g,
+  installedAt: s.installed_at,
 });
 
-const STATION_COLUMNS = "id, type, station_no, status, point_label, install_bait_g";
+const STATION_COLUMNS = "id, type, station_no, status, point_label, install_bait_g, installed_at";
 
 export async function loadStations(
   supabase: SupabaseClient,
@@ -233,9 +278,11 @@ export async function loadContractDetail(
       .from("visits")
       .select("id, visit_date, visit_type, start_time, end_time")
       .eq("contract_id", item.contractId)
+      .neq("visit_type", "follow_up") // ติดตามผลนอกรอบอยู่ที่หน้า "กล่อง AG นอกรอบประจำเดือน" (/bait)
       .gte("visit_date", from)
       .lt("visit_date", toExclusive)
-      .order("visit_date", { ascending: true }),
+      .order("visit_date", { ascending: true })
+      .order("created_at", { ascending: true }),
     supabase
       .from("visits")
       .select("visit_date, visit_teams ( team_id )")
@@ -304,7 +351,7 @@ export async function loadVisit(
   supabase: SupabaseClient,
   visitId: string,
 ): Promise<{ visit: LoadedVisit | null; error: string | null }> {
-  const [v, teams, checks, works] = await Promise.all([
+  const [v, teams, checks, works, removals] = await Promise.all([
     supabase.from("visits").select("id, visit_date, visit_type, start_time, end_time").eq("id", visitId).maybeSingle(),
     supabase.from("visit_teams").select("team_id").eq("visit_id", visitId),
     supabase
@@ -315,8 +362,9 @@ export async function loadVisit(
       .eq("visit_id", visitId)
       .limit(2000),
     supabase.from("station_works").select("id, kind, station_type, station_nos, detail, created_at").eq("visit_id", visitId).order("created_at"),
+    supabase.from("station_ag_removals").select("station_id").eq("visit_id", visitId),
   ]);
-  const failed = [v, teams, checks, works].find((r) => r.error);
+  const failed = [v, teams, checks, works, removals].find((r) => r.error);
   if (failed?.error) return { visit: null, error: failed.error.message };
   if (!v.data) return { visit: null, error: "ไม่พบการเข้าบริการนี้ (อาจถูกลบไปแล้ว)" };
 
@@ -324,6 +372,7 @@ export async function loadVisit(
     visit: {
       ...toVisit(v.data as unknown as VisitDb),
       teamIds: ((teams.data ?? []) as { team_id: string }[]).map((t) => t.team_id),
+      removedStationIds: ((removals.data ?? []) as { station_id: string }[]).map((r) => r.station_id),
       checks: ((checks.data ?? []) as unknown as {
         station_id: string;
         checked: boolean;

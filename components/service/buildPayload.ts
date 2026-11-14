@@ -15,6 +15,7 @@
  *   * ป้ายจุดส่งเฉพาะจุดที่เปลี่ยน
  *   * เวลาส่ง HH:MM
  *   * ถอดกล่อง AG + ผลตรวจส่งครั้งเดียวได้ (M13 แก้ SV001) · กล่อง AG ใหม่ (S) ส่ง `installs` ใน works (M13)
+ *   * `visit_type` มาจาก `form.visitType` — ผู้เรียกกำหนดเอง (/service = routine · /bait = follow_up · แก้การเข้าเดิมคงชนิดเดิม)
  */
 import { parseStationNumbers } from "@/lib/service/stationNumbers";
 
@@ -143,6 +144,8 @@ export function buildPayload(
     if (status) statuses.push({ station_id: p.stationId, status });
 
     if (form.skipAllAg) continue; // ฐานข้อมูลใส่แถว "ไม่ได้ตรวจ" ให้ทุกจุดเอง
+    // ถอดไว้ในการเข้านี้โดยไม่มีผลตรวจ และยังเป็น "ถอดแล้ว": ไม่ส่งแถวผลตรวจ (ฐานข้อมูลไม่รับผลตรวจของกล่องที่ถอดแล้ว SV001)
+    if (p.removedNoCheck && p.statusChoice === "removed") continue;
     if (p.skip) {
       checks.push({ station_id: p.stationId, checked: false });
       continue;

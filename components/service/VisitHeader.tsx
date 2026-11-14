@@ -1,8 +1,12 @@
 "use client";
 
 /**
- * VisitHeader — ทีมที่เข้า · วันที่ · เวลาเข้า/ออก (24 ชม.) · ประเภทการเข้า · เวลาทำงานจริง (คำนวณเอง)
+ * VisitHeader — ทีมที่เข้า · วันที่ · เวลาเข้า/ออก (24 ชม.) · เวลาทำงานจริง (คำนวณเอง)
  * (SPEC v1.8 §8.1) พิมพ์เวลาเป็นเลขล้วนได้ (1445 → 14:45) · พิมพ์เวลาเข้าครบแล้วเลื่อนไปช่องเวลาออกให้เอง
+ *
+ * ไม่มีช่อง "ประเภทการเข้า" ให้เลือก (DECISIONS 2.38 ง): หน้าจริงตั้ง `visit_type` ให้เอง
+ * (/service = routine · /bait = follow_up) · แก้การเข้าเดิมที่เป็นประเภทอื่น (เช่น แก้ปัญหา) คงชนิดเดิม แสดงเป็นข้อความอ่านอย่างเดียว
+ * `dateLabel` ใช้ได้ (หน้า /bait เรียก "วันที่เข้าจริง (ตามใบงาน)")
  */
 import { useRef } from "react";
 
@@ -14,11 +18,11 @@ import { formatDuration, formatTimeInput, isValidTime, workTime } from "./timeIn
 import type { FormState, TeamOption, VisitType } from "./types";
 import type { FormIssues } from "./validate";
 
-const VISIT_TYPES: { value: VisitType; label: string }[] = [
-  { value: "routine", label: "บริการประจำเดือน" },
-  { value: "problem", label: "แก้ปัญหา" },
-  { value: "follow_up", label: "ติดตามผล" },
-];
+const VISIT_TYPE_LABEL: Record<VisitType, string> = {
+  routine: "บริการประจำเดือน",
+  problem: "แก้ปัญหา",
+  follow_up: "ติดตามผล",
+};
 
 export function VisitHeader({
   form,
@@ -26,6 +30,9 @@ export function VisitHeader({
   issues,
   showIssues,
   teamHint,
+  dateLabel = "วันที่เข้า",
+  dateHint,
+  showVisitTypeNote = true,
   onChange,
 }: {
   form: FormState;
@@ -34,6 +41,10 @@ export function VisitHeader({
   /** แสดงกรอบแดงหลังกด "บันทึก" ครั้งแรก */
   showIssues: boolean;
   teamHint: string;
+  dateLabel?: string;
+  dateHint?: string;
+  /** แสดงข้อความประเภทการเข้าเมื่อไม่ใช่ routine (หน้า /bait ซ่อน เพราะเป็น follow_up เสมอ) */
+  showVisitTypeNote?: boolean;
   onChange: (patch: Partial<FormState>) => void;
 }) {
   const timeOutRef = useRef<HTMLInputElement>(null);
@@ -58,7 +69,7 @@ export function VisitHeader({
 
       <div className="flex flex-col gap-1" data-field="date">
         <label htmlFor="sv-date" className={LABEL}>
-          วันที่เข้า
+          {dateLabel}
         </label>
         <input
           id="sv-date"
@@ -67,6 +78,7 @@ export function VisitHeader({
           onChange={(e) => onChange({ visitDate: e.target.value })}
           className={cx(INPUT, bad(issues.header.date))}
         />
+        {dateHint ? <span className="text-[11px] text-fg-muted">{dateHint}</span> : null}
       </div>
 
       <div className="flex flex-col gap-1" data-field="timeIn">
@@ -112,26 +124,13 @@ export function VisitHeader({
         />
       </div>
 
-      <div className="flex flex-col gap-1">
-        <label htmlFor="sv-type" className={LABEL}>
-          ประเภทการเข้า
-        </label>
-        <select
-          id="sv-type"
-          value={form.visitType}
-          onChange={(e) => onChange({ visitType: e.target.value as VisitType })}
-          className={INPUT}
-        >
-          {VISIT_TYPES.map((t) => (
-            <option key={t.value} value={t.value}>
-              {t.label}
-            </option>
-          ))}
-        </select>
-      </div>
-
       <div className="flex flex-col gap-1 sm:col-span-1 xl:col-span-2">
-        <span className={LABEL}>เวลาทำงานจริง (คำนวณเอง)</span>
+        <span className={LABEL}>
+          เวลาทำงานจริง (คำนวณเอง)
+          {showVisitTypeNote && form.visitType !== "routine" ? (
+            <> · ประเภทการเข้า: {VISIT_TYPE_LABEL[form.visitType]}</>
+          ) : null}
+        </span>
         <div
           aria-live="polite"
           className={cx(

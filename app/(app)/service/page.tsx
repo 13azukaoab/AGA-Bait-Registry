@@ -1,5 +1,5 @@
 /**
- * /service — กรอกข้อมูลทำบริการประจำเดือน (SPEC §8.1 หน้า 5 · mockup FINAL `docs/mockup/aga-bait-registry-prototype.html#service`)
+ * /service — ลงข้อมูลทำบริการประจำเดือน (SPEC §8.1 หน้า 5 · mockup FINAL `docs/mockup/aga-bait-registry-prototype.html#service`)
  *
  * Logic summary:
  *   * สิทธิ์เข้าหน้า = host, recorder (ด่านที่ middleware.ts จากตารางเมนู · ที่นี่เช็กซ้ำเป็นด่านสำรอง)

@@ -1,5 +1,5 @@
 /**
- * ชนิดข้อมูลของหน้า "กรอกข้อมูลทำบริการประจำเดือน" (/service · SPEC v1.8 §8.1)
+ * ชนิดข้อมูลของหน้า "ลงข้อมูลทำบริการประจำเดือน" (/service · SPEC v1.8 §8.1)
  *
  * Logic summary:
  *   * ฝั่งอ่าน (`data.ts`) แปลง snake_case ของฐานข้อมูลเป็น camelCase ที่เดียว
@@ -58,9 +58,14 @@ export interface ContractListItem {
   stationsInitialized: boolean;
   /** จำนวนกล่อง AG ที่ยังใช้งาน */
   agCount: number;
-  /** มีการเข้าบริการในเดือนที่เลือกแล้วหรือไม่ ("กรอกแล้ว") */
-  visitCountInMonth: number;
+  /** จำนวนการเข้าแบบบริการประจำเดือน (routine) ในเดือนที่เลือก — "กรอกแล้ว" นับเฉพาะ routine (DECISIONS 2.23) */
+  routineCountInMonth: number;
+  /** ป้าย New/Renew เดือนนี้ (null = สัญญาไม่ได้เริ่มในเดือนที่เลือก) — DECISIONS 2.38 ค */
+  monthTag: ContractMonthTag;
 }
+
+/** สัญญาเริ่มในเดือนที่เลือก: new = สัญญาใหม่ · renew = สัญญา Renew (มี renewed_from_contract_id) */
+export type ContractMonthTag = "new" | "renew" | null;
 
 export interface StationRow {
   id: string;
@@ -70,6 +75,8 @@ export interface StationRow {
   pointLabel: string;
   /** เหยื่อที่ใส่ตอนติดตั้ง (เฉพาะ AG ที่ติดใหม่ · ไม่ใช่ผลตรวจ) */
   installBaitG: number | null;
+  /** วันติดตั้งของสถานี 'YYYY-MM-DD' (null = ไม่มีข้อมูล เช่น สถานีที่นำเข้า) */
+  installedAt: string | null;
 }
 
 export interface CheckRow {
@@ -105,6 +112,8 @@ export interface LoadedVisit extends VisitSummary {
   teamIds: string[];
   checks: CheckRow[];
   works: WorkRowDb[];
+  /** กล่อง AG ที่การเข้านี้เป็นคนถอด (จากตาราง station_ag_removals) — เอาติ๊ก "ถอด" ออกได้ (DECISIONS 2.26) */
+  removedStationIds: string[];
 }
 
 /** รอบก่อนของกล่อง AG: เลข F ล่าสุดที่ตรวจจริงก่อนวันที่เข้า (ไว้แสดง "F ถัดไป") */
@@ -184,6 +193,10 @@ export interface AgPointState {
   caste: CasteChoice;
   /** F ที่เก็บไว้แล้วในฐานข้อมูล (แก้การเข้าเดิม) */
   savedFollowUpNo: number | null;
+  /** true = กล่องนี้การเข้าที่กำลังแก้เป็นคนถอด (DB: removed) → เปลี่ยนกลับเป็น ติดตามผล/รอถอด ได้ (2.26) */
+  removedHere: boolean;
+  /** true = ถอดในการเข้านี้ และการเข้านี้ไม่มีแถวผลตรวจของกล่องนี้ (ถอดโดยไม่ตรวจ) — ถ้ายังเป็น "ถอดแล้ว" ไม่ต้องกรอก/ไม่ส่งผลตรวจ */
+  removedNoCheck: boolean;
 }
 
 export interface SetupState {
