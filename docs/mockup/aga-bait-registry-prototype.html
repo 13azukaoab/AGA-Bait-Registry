@@ -531,6 +531,11 @@ tfoot td{padding:10px 12px;font-weight:700;background:var(--surface-2);border-to
 .pt.new .snote{font-size:12px;color:var(--fg-muted)}
 .snoin{font-family:inherit;font-size:13.5px;color:var(--fg);background:var(--surface);border:1px solid var(--border-strong);border-radius:7px;padding:7px 10px;width:90px}
 .snoin.need{outline:2px solid var(--danger);outline-offset:2px}
+.bxlog{margin-top:12px;padding-top:10px;border-top:1px solid var(--border);font-size:13px;color:var(--fg-muted)}
+.bxlog b{color:var(--fg)}
+.bxlog .lh{font-size:12px;margin-bottom:4px}
+.bxorder{margin-top:10px;font-size:13px;background:var(--warn-soft);color:var(--warn);border:1px solid var(--warn);border-radius:8px;padding:8px 12px}
+.bxorder[hidden]{display:none}
 .sthint{font-size:11px;color:var(--fg-muted);margin-top:4px;line-height:1.4}
 @media (max-width:640px){.pt.new .agfields{grid-template-columns:1fr}}
 .mini.need .optrow,.mini.need select,.mini.need .baitnum{outline:2px solid var(--danger);outline-offset:2px;border-radius:9px}
@@ -1341,6 +1346,7 @@ var CUSTOMERS=[];
   add('คุณวิรัช ตั้งมั่น (บ้านพัก)','CT26-0000088','s1','พุทธมณฑล','A',8,0,[],true);
   add('อพาร์ตเมนต์ศรีสุข','CT25-0000174','m3','พุทธมณฑล','B',22,10,[],true);
   add('บมจ. สยามพัฒนาเฮ้าส์','CT26-0000142','l1','พุทธมณฑล','A',80,40,[[1,2,'track','ห้องนอนใหญ่'],[2,5,'pend','ห้องนั่งเล่น'],[3,0,'track']]);
+  CUSTOMERS[CUSTOMERS.length-1].agDate={3:'2026-10-20'}; /* ข้อมูลสมมติ: จุด 3 ติดตั้ง 20/10/2026 ไว้ทดสอบเตือนลำดับวันที่ */
   add('โรงแรมบ้านสวนรีสอร์ท','CT25-0000311','m3','พุทธมณฑล','B',36,15,[[1,4,'track'],[2,5,'pend']]);
   add('บจก. เมืองทองคลังสินค้า','CT23-0000017','xl3','พุทธมณฑล','A',40,12,[[3,9,'track'],[7,9,'pend']]);
   add('อาคารชุดลุมพินีวิว','CT23-0000041','l3','พุทธมณฑล','B',24,6,[[1,1,'track']]);
@@ -1612,7 +1618,7 @@ function fheadHtml(c,posHtml){
     (c.fresh?'<span class="chip pend">ยังไม่ระบุจำนวนสถานี</span>':'<span class="chip na num"><span class="sttype">IG</span> '+c.ig+'</span><span class="chip na num"><span class="sttype">IC</span> '+c.ic+'</span>')+
     '<span class="chip '+(agN?'pend':'na')+' num"><span class="sttype">AG</span> '+agN+(agN?' ค้างติดตาม':'')+'</span></div></div>';
 }
-function fieldsHtml(ctx,c,extra){
+function fieldsHtml(ctx,c,extra,bxDate){
   /* ทีมที่เข้า: เติมจากการเข้าครั้งล่าสุดของลูกค้ารายนี้ (ไม่อ้างอิงทีมในเปิดงาน) · ลูกค้าใหม่ยังไม่เคยเข้า = ว่าง ต้องเลือกเอง */
   var cur=c.fresh?[]:(c.visitTeams||[c.team]);
   var teams=TEAMS.map(function(t){return '<label class="tchk"><input type="checkbox" value="'+t+'"'+(cur.indexOf(t)>=0?' checked':'')+'> ทีม '+t+'</label>'}).join('');
@@ -1623,7 +1629,8 @@ function fieldsHtml(ctx,c,extra){
       '<button type="button" class="teambtn" aria-haspopup="dialog"><span class="tv">'+teamText(cur)+'</span><span class="car" aria-hidden="true">▾</span></button>'+
       '<div class="teampop" role="dialog" aria-label="เลือกทีมที่เข้า" hidden><div class="tgrid">'+teams+'</div><div class="tfoot"><span>เลือกได้หลายทีม</span><button type="button" class="btn sm primary teamdone">เสร็จ</button></div></div></div>'+
       '<span class="sub">'+(c.fresh?'ลูกค้าใหม่ — เลือกทีมที่เข้าครั้งแรก':'เติมจากครั้งก่อน')+'</span></div>'+
-    '<div class="field"><label for="'+ctx+'Date">วันที่เข้า</label><input type="date" id="'+ctx+'Date" value="'+TODAY_ISO+'"></div>'+
+    (bxDate?'<div class="field"><label for="'+ctx+'Date">วันที่เข้าจริง (ตามใบงาน)</label><input type="date" id="'+ctx+'Date" value="'+bxDate.value+'"><span class="sub">วันที่บันทึกระบบใส่ให้เอง ('+esc(bxDate.stamp)+')</span></div>'
+      :'<div class="field"><label for="'+ctx+'Date">วันที่เข้า</label><input type="date" id="'+ctx+'Date" value="'+TODAY_ISO+'"></div>')+
     /* เวลาเข้า/ออก → ระบบคำนวณชั่วโมงทำงานจริงของวันนั้น (สรุปต่อลูกค้า/ต่อทีมดูที่หน้าสรุป) */
     /* เวลา 24 ชั่วโมง (HH:MM) พิมพ์เลขล้วน เช่น 1445 → 14:45 ไม่มี AM/PM */
     '<div class="field"><label for="'+ctx+'TimeIn">เวลาเข้า (24 ชม.)</label><input type="text" class="tinput num" inputmode="numeric" maxlength="5" autocomplete="off" placeholder="เช่น 09:30" id="'+ctx+'TimeIn" oninput="wtFormat(this);wtCalc(\''+ctx+'\')"></div>'+
@@ -2111,43 +2118,84 @@ function leaveGuard(ctx,go){
 
 /* ---------- ฟอร์มกล่องเหยื่อ AG นอกรอบ (ขวาของ #bait) ---------- */
 var BX=null;
-function bxRenderForm(){
+/* รายการที่กรอกแล้วในหน้านี้ แยกตามลูกค้า (ข้อมูลสมมติ ไม่เก็บถาวร) — recorder กรอกหลายวันที่เข้าจริงต่อเนื่องได้ */
+var BXLOG={};
+function fmtDmy(iso){var p=String(iso).split('-'); return p.length===3?p[2]+'/'+p[1]+'/'+p[0]:iso}
+function bxStamp(){return fmtDmy(TODAY_ISO)}
+/* วันติดตั้งของจุด (ISO) — ข้อมูลสมมติ: ลูกค้า c1 จุด 3 ติดตั้งเมื่อ 20/10/2026 · จุดที่ติดใหม่หน้านี้บันทึกวันที่เข้าจริงไว้ด้วย */
+function bxInstallDate(c,no){return (c.agDate&&c.agDate[no])||null}
+function bxRenderForm(again){
   var p=PK.bx, box=$('bxForm'), c=p.sel?custById(p.sel):null;
   if(!c){BX=null; box.innerHTML='<div class="empty" style="padding:56px 20px">เลือกลูกค้าทางซ้ายเพื่อกรอกงานกล่องเหยื่อ</div>'; return}
   FORM_DIRTY.bx=false;
   BX={id:c.id};
   agInit('bx',c);
-  var round='<div class="field"><label for="bxRound">ประเภทรอบ</label><select id="bxRound"><option value="follow_up">ติดตามผล</option><option value="problem">แก้ปัญหา</option></select><span class="sub">งานกล่องนอกรอบบริการประจำเดือน</span></div>';
-  box.innerHTML=fheadHtml(c,'งานกล่องนอกรอบบริการ')+'<div class="body">'+fieldsHtml('bx',c,round)+
-    '<div class="agsec" style="margin-top:0"><div id="bxAgBox"></div></div></div>'+
+  var log=BXLOG[c.id]||[], nth=log.length+1;
+  var logHtml=log.length?'<div class="bxlog"><div class="lh">กรอกแล้วของลูกค้ารายนี้ (หน้านี้)</div>'+log.map(function(e){return '<div><b class="num">'+esc(e.date)+'</b> '+esc(e.text)+'</div>'}).join('')+'</div>':'';
+  box.innerHTML=fheadHtml(c,'งานกล่องนอกรอบประจำเดือน'+(log.length?' · รายการที่ '+nth:''))+'<div class="body">'+fieldsHtml('bx',c,'',{value:again?'':TODAY_ISO,stamp:bxStamp()})+
+    '<div class="bxorder" id="bxOrder" role="alert" hidden></div>'+
+    '<div class="agsec" style="margin-top:0"><div id="bxAgBox"></div></div>'+logHtml+
+    '<div class="hint" style="margin-top:10px">วันที่เข้าพร้อมรอบบริการประจำเดือน ให้กรอกที่หน้า "ลงข้อมูลทำบริการประจำเดือน" · กรอกเรียงจากวันที่เก่าไปใหม่</div></div>'+
     '<div class="savebar"><div class="savemsg" id="bxMsg" role="alert" hidden></div>'+
     '<button type="button" class="btn primary" data-act="bxSave">บันทึกงานกล่อง</button>'+
+    '<button type="button" class="btn" data-act="bxSaveMore">บันทึกแล้วเพิ่มอีกวัน</button>'+
     '<button type="button" class="btn" data-act="bxCancel">ยกเลิก</button></div>';
   agRender('bx');
+  if(again) $('bxDate').focus();
+}
+/* เตือนลำดับ: วันที่เข้าอยู่ก่อนวันติดตั้งของจุดที่กรอกผลติดตาม (F) → ต้องกรอกการติดตั้งก่อน หรือแก้วันที่ */
+function bxOrderIssues(){
+  var c=BX&&custById(BX.id), d=$('bxDate')&&$('bxDate').value, m=AGM.bx, out=[];
+  if(!c||!d||!m) return out;
+  m.pts.forEach(function(p){
+    if(p.kind!=='F'||!agTouched(p)) return;
+    var inst=bxInstallDate(c,p.no);
+    if(inst&&d<inst) out.push('จุดที่ '+p.no+' ติดตั้งเมื่อ '+fmtDmy(inst)+' — วันที่เข้านี้อยู่ก่อนหน้านั้น กรอกการติดตั้งก่อน หรือแก้วันที่');
+  });
+  return out;
+}
+function bxRefreshOrder(){
+  var el=$('bxOrder'); if(!el) return;
+  var o=bxOrderIssues();
+  el.hidden=!o.length; el.innerHTML=o.map(esc).join('<br>');
 }
 function bxMissing(){
   var miss=[];
-  if(!$('bxDate').value) miss.push('วันที่เข้า');
+  if(!$('bxDate').value) miss.push('วันที่เข้าจริง');
   miss=miss.concat(wtMissing('bx'));
   var ag=agMissing('bx');
   if(!ag.missing.length&&ag.filled===0) miss.push('กล่อง AG ยังไม่ได้กรอกเลย');
-  return miss.concat(ag.missing);
+  return miss.concat(bxOrderIssues(),ag.missing);
 }
 function bxRefreshMsg(){
+  bxRefreshOrder();
   var msg=$('bxMsg'), m=AGM.bx; if(!msg||!BX||!m||!m.tried) return;
   markCommon('bx');
   var miss=bxMissing();
   if(miss.length){msg.hidden=false; msg.innerHTML=missHtml(miss)}
   else msg.hidden=true;
 }
-function bxSave(){
+/* สรุปสิ่งที่กรอกในรายการนี้ (ก่อน agCommit เพราะ commit จะนับรอบ F เพิ่ม) */
+function bxSummary(){
+  var m=AGM.bx, s=[], f=[];
+  m.pts.forEach(function(p){
+    if(!agComplete(p)) return;
+    if(p.kind==='S') s.push(p.no);
+    else if(agTouched(p)) f.push('F'+(p.last+1)+' จุดที่ '+p.no);
+  });
+  var t=[]; if(s.length) t.push('ติดกล่องใหม่ (S) จุดที่ '+s.join(', ')); if(f.length) t.push('ติดตามผล '+f.join(', '));
+  return t.join(' · ');
+}
+function bxSave(more){
   if(!BX) return;
   AGM.bx.tried=true; agRender('bx');
   if(bxMissing().length) return;
-  var c=custById(BX.id);
+  var c=custById(BX.id), date=$('bxDate').value, sum=bxSummary();
+  AGM.bx.pts.forEach(function(p){if(p.kind==='S'&&agComplete(p)){c.agDate=c.agDate||{}; c.agDate[p.no]=date}});
   agCommit('bx'); teamSave(c,'bx');
-  toast('บันทึกงานกล่องของ “'+c.name+'” แล้ว');
-  pkRender(PK.bx); pkRender(PK.sv); bxRenderForm();
+  (BXLOG[c.id]=BXLOG[c.id]||[]).push({date:fmtDmy(date),text:sum});
+  toast('บันทึกงานกล่องของ “'+c.name+'” วันที่ '+fmtDmy(date)+' แล้ว'+(more?' · กรอกวันถัดไปได้เลย':''));
+  pkRender(PK.bx); pkRender(PK.sv); bxRenderForm(!!more);
 }
 
 /* ---------- ผูกเหตุการณ์ (delegation) + เริ่มต้น ---------- */
@@ -2179,7 +2227,8 @@ document.addEventListener('click',function(e){
   else if(act==='svSave') svSave();
   else if(act==='svSkip') svSkip();
   else if(act==='svPrev') svPrev();
-  else if(act==='bxSave') bxSave();
+  else if(act==='bxSave') bxSave(false);
+  else if(act==='bxSaveMore') bxSave(true);
   else if(act==='bxCancel') leaveGuard('bx',function(){bxRenderForm()});
 });
 document.addEventListener('change',function(e){
@@ -2244,6 +2293,7 @@ document.addEventListener('change',function(e){
   var ctx=g.id.slice(0,2); if(ctx==='sv') svRefreshMsg(); else bxRefreshMsg();
 });
 document.addEventListener('keydown',function(e){if(e.key==='Escape') teamPopCloseAll()});
+document.addEventListener('change',function(e){if(e.target&&e.target.id==='bxDate') bxRefreshMsg()});
 /* กรอก/แก้ช่องในฟอร์มบริการ → อัปเดตสรุปตัวเลข (ทำหลัง inline handler เดิมของแถว) */
 document.addEventListener('input',function(e){if(e.target.closest&&e.target.closest('#svForm')) svRecalc(); else if(e.target.closest&&e.target.closest('#bxForm')) bxRefreshMsg()});
 document.addEventListener('change',function(e){if(e.target.closest&&e.target.closest('#svForm')&&!e.target.closest('[data-ag]')) svRecalc()});
