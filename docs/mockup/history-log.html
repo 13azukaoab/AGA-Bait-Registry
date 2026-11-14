@@ -191,6 +191,7 @@ main{flex:1;min-width:0;padding:20px 24px 48px}
 /* ===== หน้าประวัติย้อนหลัง ===== */
 .tools{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;padding:12px 16px;border-bottom:1px solid var(--border)}
 .field{display:flex;flex-direction:column;gap:3px}
+.field[hidden]{display:none}
 .field label{font-size:11px;color:var(--fg-muted)}
 .field select,.field input{font-family:inherit;font-size:13px;color:var(--fg);background:var(--surface);border:1px solid var(--border-strong);border-radius:8px;padding:7px 10px;min-width:120px}
 .field input[type=search]{min-width:200px}
@@ -319,7 +320,9 @@ table.hl tbody tr.row.closed td:first-child{box-shadow:inset 4px 0 0 var(--warn)
       <section class="panel" aria-label="รายการประวัติ">
         <div class="tools">
           <div class="field"><label for="fPeriod">ช่วงเวลา</label><select id="fPeriod" onchange="hv.upd()">
-            <option value="1">วันนี้ (10 พ.ย.)</option><option value="3">3 วันล่าสุด</option><option value="7" selected>7 วันล่าสุด</option></select></div>
+            <option value="1">วันนี้ (10 พ.ย.)</option><option value="3">3 วันล่าสุด</option><option value="7" selected>7 วันล่าสุด</option><option value="custom">กำหนดเอง…</option></select></div>
+          <div class="field" id="fRange" hidden><label for="fFrom">ตั้งแต่วันที่</label><input id="fFrom" type="date" min="2026-10-01" max="2026-11-10" value="2026-11-04" onchange="hv.upd()"></div>
+          <div class="field" id="fRange2" hidden><label for="fTo">ถึงวันที่</label><input id="fTo" type="date" min="2026-10-01" max="2026-11-10" value="2026-11-10" onchange="hv.upd()"></div>
           <div class="field"><label for="fMonth">เดือนของข้อมูล</label><select id="fMonth" onchange="hv.upd()">
             <option value="">ทุกเดือน</option><option value="2026-10">ต.ค. 2026 (ปิดแล้ว)</option><option value="2026-11">พ.ย. 2026 (เดือนปัจจุบัน)</option></select></div>
           <div class="field"><label for="fWho">ใคร</label><select id="fWho" onchange="hv.upd()"></select></div>
@@ -444,11 +447,19 @@ var hv=(function(){
     $('fBr').innerHTML='<option value="">ทุกสาขา</option>'+uniq(function(e){return e.br;}).map(function(v){return '<option>'+esc(v)+'</option>';}).join('');
     $('fKind').innerHTML='<option value="">ทุกประเภทข้อมูล</option>'+uniq(function(e){return e.k;}).map(function(v){return '<option>'+esc(v)+'</option>';}).join('');
   }
+  /* ช่วงวันที่กำหนดเอง → เลขวันของ พ.ย. 2026 (1 พ.ย. = 1 · 31 ต.ค. = 0) · ถ้าวันเริ่มเลยวันสิ้นสุด สลับให้เอง · ข้อมูลเดโมมีแค่ 4–10 พ.ย. */
+  function dayNo(v){var p=v.split('-');return Math.round((Date.UTC(+p[0],+p[1]-1,+p[2])-Date.UTC(2026,9,31))/864e5);}
+  function rangeDays(){
+    var f=$('fFrom').value,t=$('fTo').value, a=f?dayNo(f):-99, b=t?dayNo(t):99;
+    if(a>b){var x=a;a=b;b=x;}
+    return [a,b];
+  }
   function filt(includeBatch){
-    var days=+$('fPeriod').value, minD=10-(days-1), mk=$('fMonth').value, who=$('fWho').value, br=$('fBr').value, k=$('fKind').value, a=$('fAct').value;
+    var per=$('fPeriod').value, minD, maxD=99, mk=$('fMonth').value, who=$('fWho').value, br=$('fBr').value, k=$('fKind').value, a=$('fAct').value;
+    if(per==='custom'){var r=rangeDays();minD=r[0];maxD=r[1];}else minD=10-(+per-1);
     var q=$('fQ').value.toLowerCase().replace(/\s+/g,''), co=$('fClosed').checked;
     return HM_ALL.filter(function(e){
-      if(e.d<minD) return false; if(mk&&e.mk!==mk) return false; if(who&&e.who!==who) return false; if(br&&e.br!==br) return false;
+      if(e.d<minD||e.d>maxD) return false; if(mk&&e.mk!==mk) return false; if(who&&e.who!==who) return false; if(br&&e.br!==br) return false;
       if(k&&e.k!==k) return false; if(a&&e.a!==a) return false; if(co&&!e.closed) return false;
       if(!includeBatch&&e.b) return false;
       if(q){var hay=(e.ct+e.cn+e.x+e.who+e.br+e.k).toLowerCase().replace(/\s+/g,''); if(hay.indexOf(q)<0) return false;}
@@ -517,6 +528,7 @@ var hv=(function(){
       (shown.length<rows.length?'<button class="btn sm" type="button" onclick="hv.more()">โหลดเพิ่ม (+'+Math.min(PAGE,rows.length-shown.length)+')</button>':'');
     [['mChg',S.mode==='chg'],['mAll',S.mode==='all'],['vTable',S.view==='table'],['vLine',S.view==='line']].forEach(function(p){$(p[0]).setAttribute('aria-pressed',p[1]?'true':'false');});
     var act=!!($('fWho').value||$('fBr').value||$('fKind').value||$('fAct').value||$('fMonth').value||$('fQ').value||$('fClosed').checked||$('fPeriod').value!=='7');
+    var cu=$('fPeriod').value==='custom'; $('fRange').hidden=!cu; $('fRange2').hidden=!cu;
     $('bReset').hidden=!act;
   }
   return {
@@ -529,7 +541,7 @@ var hv=(function(){
     more:function(){S.shown+=PAGE;render();},
     tog:function(id){OPEN[id]=!OPEN[id];render();},
     sub:function(id){SUBN[id]=(SUBN[id]||10)+20;render();},
-    reset:function(){$('fPeriod').value='7';$('fMonth').value='';$('fWho').value='';$('fBr').value='';$('fKind').value='';$('fAct').value='';$('fQ').value='';$('fClosed').checked=false;S.shown=PAGE;render();},
+    reset:function(){$('fPeriod').value='7';$('fFrom').value='2026-11-04';$('fTo').value='2026-11-10';$('fMonth').value='';$('fWho').value='';$('fBr').value='';$('fKind').value='';$('fAct').value='';$('fQ').value='';$('fClosed').checked=false;S.shown=PAGE;render();},
     /* ส่งออก: ทุกรายการที่ตรงตัวกรองและตามโหมดที่เลือก · กลุ่มกรอกปกติ = 1 แถว (คอลัมน์ "จำนวนรายการ") */
     export:function(){
       if(typeof XLSX==='undefined'){alert('ต้องมีอินเทอร์เน็ตเพื่อโหลดไลบรารีส่งออก Excel (SheetJS) — ลองใหม่เมื่อออนไลน์');return;}
