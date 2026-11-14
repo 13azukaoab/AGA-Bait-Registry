@@ -10,6 +10,7 @@
 --       save_service_visit / delete_service_visit (service_work_undo)
 --       หมายเหตุ: RPC ทั้งสองปฏิเสธ admin อยู่แล้ว (เฉพาะ host/recorder) → สำหรับ admin คือ "กันหมด" (เหมือนข้อ 2.28)
 --     - host แก้ตรงได้ตามเดิม (current_app_role = host ไม่เข้าเงื่อนไข) · ฟังก์ชันระบบ SECURITY DEFINER ไม่ติดด่าน
+--   INSERT (ตรวจ security M17): admin เพิ่มสถานีที่เกิดมาเป็น lost / withdrawn ไม่ได้ (ปิดทาง DELETE สถานีใช้งาน แล้ว INSERT เลขเดิมเป็น lost)
 --   ยังแก้ได้ตามเดิม: point_label · collected_at · active ↔ pending_removal · code / station_no / installed_at ของ admin
 --   * ไม่แตะ save_service_visit / delete_service_visit → advisory lock / F / ด่าน aga.service_visit /
 --     REVOKE anon / audit_log / signature RPC / SV010 คงเดิม · ไม่ทำข้อเล็ก 5 ข้อจาก M16 (เจ้าของสั่ง "ไว้ก่อน")
@@ -34,8 +35,8 @@ BEGIN
   -- admin เพิ่มสถานีที่ "ถอด/กำจัดแล้ว" หรือมี removed_at ตั้งแต่เกิดไม่ได้ (ทางเลี่ยงข้อ 1 · ตรวจ security M16)
   -- recorder ถูกบังคับให้เริ่ม active อยู่แล้ว (stations_recorder_guard)
   IF TG_OP = 'INSERT' THEN
-    IF v_role = 'admin' AND (NEW.status IN ('removed', 'eliminated') OR NEW.removed_at IS NOT NULL) THEN
-      RAISE EXCEPTION 'a new station cannot start removed or eliminated' USING ERRCODE = '42501';
+    IF v_role = 'admin' AND (NEW.status IN ('removed', 'eliminated', 'lost', 'withdrawn') OR NEW.removed_at IS NOT NULL) THEN
+      RAISE EXCEPTION 'a new station cannot start removed, eliminated, lost or withdrawn' USING ERRCODE = '42501';
     END IF;
     RETURN NEW;
   END IF;

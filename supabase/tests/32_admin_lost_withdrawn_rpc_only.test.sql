@@ -4,7 +4,7 @@
 --   "ทางที่ถูก" ของสถานี lost/withdrawn จึงยืนยันด้วย recorder (RPC) และ host (ตรง)
 -- ทุกกรณีที่โดนกันมีคู่ควบคุม (แถวเดียวกัน admin แก้ point_label ได้) → พิสูจน์ว่า trigger ทำงานจริง ไม่ใช่ RLS ซ่อนแถว
 BEGIN;
-SELECT plan(27);
+SELECT plan(31);
 
 INSERT INTO auth.users (id, instance_id, aud, role, email) VALUES
   ('00000000-0000-0000-0000-0000000000a1', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'host@test.local'),
@@ -54,19 +54,19 @@ SELECT throws_ok($$UPDATE stations SET status = 'lost' WHERE id = '00000000-0000
 SELECT throws_ok($$UPDATE stations SET status = 'withdrawn' WHERE id = '00000000-0000-0000-0000-0000000000b1'$$,
   '42501', NULL, 'admin cannot mark a station withdrawn directly');
 SELECT throws_ok($$UPDATE stations SET status = 'withdrawn', removed_at = now() WHERE id = '00000000-0000-0000-0000-0000000000b1'$$,
-  '42501', NULL, 'admin cannot mark a station withdrawn directly (with removed_at)');
+  '42501', NULL, 'admin cannot set removed_at while marking withdrawn (also rule 0b: removed_at is system-set)');
 SELECT throws_ok($$UPDATE stations SET status = 'active' WHERE id = '00000000-0000-0000-0000-0000000000b3'$$,
   '42501', NULL, 'admin cannot bring a lost station back directly');
 SELECT throws_ok($$UPDATE stations SET status = 'pending_removal' WHERE id = '00000000-0000-0000-0000-0000000000b3'$$,
   '42501', NULL, 'admin cannot move a lost station to pending_removal directly');
 SELECT throws_ok($$UPDATE stations SET status = 'withdrawn' WHERE id = '00000000-0000-0000-0000-0000000000b3'$$,
   '42501', NULL, 'admin cannot switch lost → withdrawn directly');
-SELECT throws_ok($$UPDATE stations SET status = 'active', removed_at = NULL WHERE id = '00000000-0000-0000-0000-0000000000b4'$$,
-  '42501', NULL, 'admin cannot bring a withdrawn station back directly');
+SELECT throws_ok($$UPDATE stations SET status = 'active' WHERE id = '00000000-0000-0000-0000-0000000000b4'$$,
+  '42501', NULL, 'admin cannot bring a withdrawn station back directly (status only)');
 SELECT throws_ok($$UPDATE stations SET status = 'lost' WHERE id = '00000000-0000-0000-0000-0000000000b4'$$,
   '42501', NULL, 'admin cannot switch withdrawn → lost directly');
 SELECT throws_ok($$UPDATE stations SET removed_at = now() WHERE id = '00000000-0000-0000-0000-0000000000b4'$$,
-  '42501', NULL, 'admin cannot change removed_at of a withdrawn station directly');
+  '42501', NULL, 'admin cannot change removed_at of a withdrawn station directly (rule 0b: removed_at is system-set)');
 -- งานอื่นของ admin ยังทำได้
 SELECT lives_ok($$UPDATE stations SET collected_at = now() WHERE id = '00000000-0000-0000-0000-0000000000b3'$$,
   'admin can still set collected_at of a lost station');
@@ -76,6 +76,16 @@ SELECT lives_ok($$UPDATE stations SET status = 'active' WHERE id = '00000000-000
   'and back (pending_removal → active)');
 SELECT lives_ok($$UPDATE stations SET code = 'IG-02', installed_at = '2026-01-15' WHERE id = '00000000-0000-0000-0000-0000000000b2'$$,
   'admin can still change code / install date of a station in use');
+-- INSERT: สถานีที่เกิดมาเป็น lost / withdrawn ตรงไม่ได้ (ทางเลี่ยงที่ตรวจ security เจอ) · คู่ควบคุม: INSERT active ได้
+SELECT lives_ok($$INSERT INTO stations (contract_id, type, station_no) VALUES ('00000000-0000-0000-0000-0000000000d1', 'IG', 20)$$,
+  'control: admin can still add an active station');
+SELECT throws_ok($$INSERT INTO stations (contract_id, type, station_no, status) VALUES ('00000000-0000-0000-0000-0000000000d1', 'IG', 21, 'lost')$$,
+  '42501', NULL, 'admin cannot add a station that is already lost');
+SELECT throws_ok($$INSERT INTO stations (contract_id, type, station_no, status) VALUES ('00000000-0000-0000-0000-0000000000d1', 'IG', 22, 'withdrawn')$$,
+  '42501', NULL, 'admin cannot add a station that is already withdrawn');
+SELECT throws_ok($$INSERT INTO stations (contract_id, type, station_no, status) VALUES ('00000000-0000-0000-0000-0000000000d1', 'IG', 23, 'withdrawn')
+                   ON CONFLICT DO NOTHING$$,
+  '42501', NULL, 'admin cannot add a withdrawn station with ON CONFLICT either');
 RESET ROLE;
 SELECT is(pg_temp.st('00000000-0000-0000-0000-0000000000b1'), 'active', 'IG-1 stays active after the refused admin updates');
 SELECT is(pg_temp.st('00000000-0000-0000-0000-0000000000b3'), 'lost', 'IG-3 stays lost');
@@ -99,7 +109,7 @@ SELECT is(pg_temp.st('00000000-0000-0000-0000-0000000000b1'), 'active', 'IG-1 is
 SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a2', true);
 SELECT throws_ok($$SELECT public.save_service_visit(pg_temp.payload('00000000-0000-0000-0000-0000000000f2', '2026-02-21', '[]',
   '{"works": [{"id": "00000000-0000-0000-0000-000000000f21", "kind": "lost", "station_type": "IG", "station_nos": [1], "detail": "หาย"}]}'))$$,
-  NULL, NULL, 'admin cannot mark lost through the RPC either (role rejected)');
+  '42501', 'not allowed to record service', 'admin cannot mark lost through the RPC either (role rejected)');
 SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a1', true);
 SELECT lives_ok($$UPDATE stations SET status = 'lost' WHERE id = '00000000-0000-0000-0000-0000000000b1'$$,
   'host can still mark a station lost directly');
