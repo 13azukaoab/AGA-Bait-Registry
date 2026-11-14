@@ -386,15 +386,16 @@ var MONTHS=[
    c:{status:"progress"},p:{status:"progress"}},
  {key:"OCT.26",label:"ต.ค. 2026",
    c:{status:"open",history:[]},
-   p:{status:"open",unupd:["ตาก","เชียงใหม่","ภูเก็ต","อุดรธานี","ตรัง"],history:[]}},
+   p:{status:"open",unupd:["อุดรธานี"],history:[]}},
  {key:"SEP.26",label:"ก.ย. 2026",
    c:{status:"closed",snap:{full:22,contracts:2466,missed:7},closedAt:"05/10/2026 09:12",closedBy:"สมชาย (OM/PM)",sync:"ok",syncAt:"05/10/2026 09:13",
-      history:[{t:"05/10/2026 09:12",ev:"ปิดเดือน (ส่วนกลาง)",by:"สมชาย (OM/PM)",note:"ตกบริการ 7 ราย · ส่ง Dashboard สำเร็จ"}]},
+      history:[{t:"20/10/2026 14:05",ev:"คำนวณ snapshot ใหม่ (ส่วนกลาง)",by:"นท (หัวหน้างาน)",note:"แก้หลังปิด 3 รายการ · ส่ง Dashboard สำเร็จ"},
+               {t:"05/10/2026 09:12",ev:"ปิดเดือน (ส่วนกลาง)",by:"สมชาย (OM/PM)",note:"ตกบริการ 7 ราย · ส่ง Dashboard สำเร็จ"}]},
    p:{status:"closed",unupd:[],carried:[],closedAt:"05/10/2026 09:30",closedBy:"สมชาย (OM/PM)",sync:"ok",syncAt:"05/10/2026 09:31",
       history:[{t:"05/10/2026 09:30",ev:"ปิดเดือน (ต่างจังหวัด)",by:"สมชาย (OM/PM)",note:"อัปเดตครบ 19/19 สาขา · ส่ง Dashboard สำเร็จ"}]}}
 ];
 var LEGACY="JAN.25 – AUG.26 · 20 เดือน";
-var LAST_SYNC="05/10/2026 09:31"; /* เวลาส่ง Dashboard สำเร็จครั้งล่าสุด (ทุกเดือน ทุกส่วน) — อัปเดตทุกครั้งที่ส่งสำเร็จ */
+var LAST_SYNC="06/11/2026 06:08"; /* เวลาส่ง Dashboard สำเร็จครั้งล่าสุด (ทุกเดือน ทุกส่วน) — อัปเดตทุกครั้งที่ส่งสำเร็จ */
 var SC={c:{name:"ส่วนกลาง",n:24},p:{name:"ต่างจังหวัด",n:PROV_N}};
 var sel="OCT.26", scopeSel=null, step=1, showAllBr=false, showAllProv=false, missBr="all", showAllMiss=false, ack=false, typed="", closing=null, errMsg="";
 

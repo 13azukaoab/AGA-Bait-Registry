@@ -406,7 +406,8 @@ function add(ts,trg,res,by,sec,o){o=o||{};o.id=++uid;o.ts=ts;o.trg=trg;o.res=res
   add(at(3,9,41),"retry","ok",HOST,3.9,{commit:"7be05d3",files:"dashboard_data.json, index.html",months:"OCT.26",rows:"22 เดือน × 43 สาขา",note:"ส่งใหม่หลัง Auto Sync 06:22 ล้มเหลว"});
   add(at(23,10,2),"retry","ok",HOST,4.4,{commit:"1c8e9a4",files:"dashboard_data.json, index.html",months:"SEP.26",rows:"21 เดือน × 43 สาขา",note:"ส่งใหม่หลังเปลี่ยน token ใหม่ที่ Vercel"});
   add(at(17,14,5),"resync",  "ok",REC,5.1,{commit:"d40b7f2",files:"dashboard_data.json, index.html",months:"SEP.26 (คำนวณ snapshot ใหม่ · แก้หลังปิด 3 รายการ)",rows:"21 เดือน × 43 สาขา"});
-  add(at(32,9,13),"close","ok",HOST,4.7,{commit:"e19a6c0",files:"dashboard_data.json, index.html",months:"SEP.26 (ปิดเดือน)",rows:"21 เดือน × 43 สาขา"});
+  add(at(32,9,13),"close","ok",HOST,4.7,{commit:"e19a6c0",files:"dashboard_data.json, index.html",months:"SEP.26 (ปิดเดือน ส่วนกลาง)",rows:"21 เดือน × 43 สาขา"});
+  add(at(32,9,31),"close","ok",HOST,4.5,{commit:"b72d4f8",files:"dashboard_data.json, index.html",months:"SEP.26 (ปิดเดือน ต่างจังหวัด)",rows:"21 เดือน × 43 สาขา"});
   add(at(9,16,30),"export","ok",HOST,0.4,{note:"ดาวน์โหลด dashboard_data.json (ไม่ได้ส่ง Dashboard)",files:"dashboard_data.json",rows:"22 เดือน × 43 สาขา"});
 })();
 LOGS.sort(function(a,b){return b.ts-a.ts});
