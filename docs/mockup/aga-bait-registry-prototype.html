@@ -426,6 +426,33 @@ tfoot td{padding:10px 12px;font-weight:700;background:var(--surface-2);border-to
 .missgo{font:inherit;color:inherit;background:none;border:0;padding:0;text-align:left;cursor:pointer;text-decoration:underline;text-underline-offset:2px}
 .missgo:hover{text-decoration-thickness:2px}
 .missgo:focus-visible{outline:2px solid var(--danger);outline-offset:2px;border-radius:4px}
+/* ตกบริการ (2.41) · เก็บสถานี IG (2.42) — การ์ด/แถว/หน้าต่างตัดสิน ใช้สีจาก token เดิม */
+.msbox{border:1px solid var(--danger);background:var(--surface);border-radius:var(--radius);margin-bottom:18px;overflow:hidden}
+.msbox>h3{margin:0;padding:10px 14px;font-size:14px;font-weight:600;background:var(--danger-soft);display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.msbox>h3 .count{margin-left:0}
+.msrow{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1.6fr) auto;gap:8px 14px;align-items:center;padding:10px 14px;border-top:1px solid var(--border)}
+.msrow:first-of-type{border-top:0}
+.msrow .main b{display:block;font-size:13.5px;font-weight:600}
+.msrow .main small,.msrow .st small{color:var(--fg-muted);font-size:11.5px;display:block;margin-top:2px}
+.msrow .acts{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.msnote{padding:9px 14px;border-top:1px solid var(--border);font-size:12px;color:var(--fg-muted)}
+@media (max-width:860px){.msrow{grid-template-columns:1fr}.msrow .acts{justify-content:flex-start}}
+.msbox.empty-ok{border-color:var(--border)}
+.msbox.empty-ok>h3{background:var(--surface-2)}
+.msdlg textarea{width:100%;min-width:0;font-family:inherit;font-size:13px;color:var(--fg);background:var(--surface);border:1px solid var(--border-strong);border-radius:8px;padding:6px 10px;min-height:70px;resize:vertical}
+.msdlg .field{margin:10px 0 0}.msdlg .field input{width:100%;min-width:0}
+.msdlg .lab,.msdlg .hint2{font-size:11.5px;color:var(--fg-muted)}
+.msdlg .err{color:var(--danger);font-size:12px;margin-top:6px}
+.msdlg .acts{display:flex;gap:8px;justify-content:flex-end;align-items:center;flex-wrap:wrap;margin-top:14px}
+.mkchip{display:inline-block;font-size:11px;font-weight:600;padding:1px 8px;border-radius:999px;background:var(--warn-soft);color:var(--warn);white-space:nowrap}
+.ctinfo{display:flex;flex-wrap:wrap;gap:4px 14px;align-items:center;margin-top:9px;font-size:12.5px}
+.ctinfo .k{color:var(--fg-muted)}
+.ctinfo .pen{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border:1px solid var(--border-strong);border-radius:50%;background:var(--accent-soft);color:var(--accent-strong);font-size:12px;cursor:pointer;padding:0}
+.ctedit{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-top:9px}
+.ctedit .field input{width:100%;min-width:0}
+.ctedit .acts{grid-column:1/-1;display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
+.ctedit .err{grid-column:1/-1;color:var(--danger);font-size:12px}
+@media (max-width:860px){.ctinfo .pen{width:32px;height:32px}}
 .lvdlg{position:fixed;inset:0;z-index:60;display:flex;align-items:center;justify-content:center;padding:16px;background:var(--scrim,rgba(10,20,30,.45))}
 .lvdlg[hidden]{display:none}
 .lvbox{width:min(420px,100%);background:var(--surface);color:var(--fg);border:1px solid var(--border);border-radius:12px;padding:18px 18px 14px;box-shadow:0 12px 32px var(--drawer-shadow,rgba(20,40,70,.25))}
@@ -621,7 +648,7 @@ tfoot td{padding:10px 12px;font-weight:700;background:var(--surface-2);border-to
   <main>
     <!-- ========== 1. TODO ========== -->
     <section id="s-todo">
-      <div class="page-head"><h1>หน้า "ต้องทำ"</h1>
+      <div class="page-head"><h1>สถานะทะเบียนบริการ</h1>
         <p>งานค้างของสาขาในเดือนนี้ — ลูกค้าที่ยังไม่มีข้อมูลรอบประจำเดือน (ยังไม่กรอก) สัญญาใกล้หมด และกล่องเหยื่อรอถอด</p></div>
       <div class="toolbar">
         <div class="field"><label>เขต</label><select><option>เขต 1</option><option>ทุกเขต</option></select></div>
@@ -643,36 +670,38 @@ tfoot td{padding:10px 12px;font-weight:700;background:var(--surface-2);border-to
       <div class="stats">
         <div class="stat danger"><div class="lab"><span class="dot" style="background:var(--danger)"></span> ยังไม่กรอกข้อมูล</div><div class="val num">18</div><div class="sub">อาจบริการแล้วแต่ยังไม่กรอก</div></div>
         <div class="stat warn"><div class="lab"><span class="dot" style="background:var(--warn)"></span> สัญญาใกล้หมด (≤90 วัน)</div><div class="val num">7</div><div class="sub">ควรติดต่อต่อสัญญา</div></div>
-        <div class="stat accent"><div class="lab"><span class="dot" style="background:var(--accent)"></span> กล่องเหยื่อรอถอด</div><div class="val num">12</div><div class="sub">พบปลวกตาย</div></div>
+        <div class="stat accent"><div class="lab"><span class="dot" style="background:var(--accent)"></span> กล่องเหยื่อรอถอด</div><div class="val num">12</div><div class="sub">พบปลวกตายแล้ว · รอถอด</div></div>
         <div class="stat ok"><div class="lab"><span class="dot" style="background:var(--ok)"></span> เหยื่อที่ใช้เดือนนี้ (AG)</div><div class="val num" style="font-size:22px">8,750 ก.</div><div class="sub">เหยื่อ NEMESIS · ทุกสาขา</div></div>
         <div class="stat"><div class="lab"><span class="dot" style="background:var(--tier-l)"></span> ไม้ล่อที่เปลี่ยนเดือนนี้</div><div class="val num">1,240 ชิ้น</div><div class="sub">IG 520 จุด×2 + IC 200 จุด×1</div></div>
         <div class="stat"><div class="lab"><span class="dot" style="background:var(--tier-xl)"></span> กล่องเหยื่อในพื้นที่</div><div class="val num">86</div><div class="sub">ที่ยังไม่ถอด ณ ตอนนี้</div></div>
       </div>
+      <div id="msTodo"></div>
       <div class="cards">
         <div class="card">
           <h3><span class="dot" style="background:var(--danger)"></span> ยังไม่มีข้อมูล (ยังไม่กรอก) <span class="count badge-danger">18</span></h3>
           <div class="rowlist">
-            <div class="r" onclick="go('service')"><div class="main"><b>บมจ. สยามพัฒนาเฮ้าส์</b><small>ทีม A · 120 สถานี IG/IC · CT26-0000142</small></div><div class="meta"><b>ครบ 15 วัน</b>ยังไม่กรอก</div></div>
-            <div class="r" onclick="go('service')"><div class="main"><b>คุณวิรัช ตั้งมั่น (บ้านพัก)</b><small>ทีม A · 8 สถานี · CT26-0000088</small></div><div class="meta"><b>ครบ 15 วัน</b>ยังไม่กรอก</div></div>
-            <div class="r" onclick="go('service')"><div class="main"><b>โรงแรมบ้านสวนรีสอร์ท</b><small>ทีม B · 45 สถานี · CT25-0000311</small></div><div class="meta"><b>ครบ 15 วัน</b>ยังไม่กรอก</div></div>
+            <div class="r" data-cust-link tabindex="0" role="link"><div class="main"><b>บมจ. สยามพัฒนาเฮ้าส์</b><small>ทีม A · 120 สถานี IG/IC · CT26-0000142</small></div><div class="meta"><b>ครบ 15 วัน</b>ยังไม่กรอก</div></div>
+            <div class="r" data-cust-link tabindex="0" role="link"><div class="main"><b>คุณวิรัช ตั้งมั่น (บ้านพัก)</b><small>ทีม A · 8 สถานี · CT26-0000088</small></div><div class="meta"><b>ครบ 15 วัน</b>ยังไม่กรอก</div></div>
+            <div class="r" data-cust-link tabindex="0" role="link"><div class="main"><b>โรงแรมบ้านสวนรีสอร์ท</b><small>ทีม B · 45 สถานี · CT25-0000311</small></div><div class="meta"><b>ครบ 15 วัน</b>ยังไม่กรอก</div></div>
           </div>
           <div style="padding:10px 16px;border-top:1px solid var(--border)"><a class="btn ghost sm" onclick="go('service')">เปิดหน้ากรอกผลบริการ →</a></div>
         </div>
         <div class="card">
           <h3><span class="dot" style="background:var(--warn)"></span> สัญญาใกล้หมด (≤90 วัน) <span class="count badge-warn">7</span></h3>
           <div class="rowlist">
-            <div class="r"><div class="main"><b>บจก. เมืองทองคลังสินค้า</b><small>XL3 · มูลค่า 450,000 · CT23-0000017</small></div><div class="meta"><b>29 วัน</b>หมด 13 พ.ย. 69</div></div>
-            <div class="r"><div class="main"><b>อาคารชุดลุมพินีวิว</b><small>L3 · มูลค่า 180,000 · CT23-0000041</small></div><div class="meta"><b>41 วัน</b>หมด 25 พ.ย. 69</div></div>
-            <div class="r"><div class="main"><b>คุณสมหญิง รุ่งเรือง</b><small>S1 · มูลค่า 24,000 · CT26-0000009</small></div><div class="meta"><b>52 วัน</b>หมด 6 ธ.ค. 69</div></div>
+            <div class="r" data-cust-link tabindex="0" role="link"><div class="main"><b>บจก. เมืองทองคลังสินค้า</b><small>XL3 · มูลค่า 450,000 · CT23-0000017</small></div><div class="meta"><b>29 วัน</b>หมด 13 พ.ย. 69</div></div>
+            <div class="r" data-cust-link tabindex="0" role="link"><div class="main"><b>อาคารชุดลุมพินีวิว</b><small>L3 · มูลค่า 180,000 · CT23-0000041</small></div><div class="meta"><b>41 วัน</b>หมด 25 พ.ย. 69</div></div>
+            <div class="r" data-cust-link tabindex="0" role="link"><div class="main"><b>คุณสมหญิง รุ่งเรือง</b><small>S1 · มูลค่า 24,000 · CT26-0000009</small></div><div class="meta"><b>52 วัน</b>หมด 6 ธ.ค. 69</div></div>
           </div>
         </div>
         <div class="card">
           <h3><span class="dot" style="background:var(--accent)"></span> กล่องเหยื่อรอถอด <span class="count badge-accent">12</span></h3>
           <div class="rowlist">
-            <div class="r" onclick="go('bait')"><div class="main"><b>AG จุดที่ 4 · บมจ. สยามพัฒนาเฮ้าส์</b><small>พบปลวกตาย · ถอดรอบถัดไป</small></div><div class="meta"><b>รอถอด</b>ตั้งแต่ ก.ย.</div></div>
-            <div class="r" onclick="go('bait')"><div class="main"><b>AG จุดที่ 2 · โรงแรมบ้านสวนรีสอร์ท</b><small>พบปลวกตาย · ถอดรอบถัดไป</small></div><div class="meta"><b>รอถอด</b>ตั้งแต่ ก.ย.</div></div>
-            <div class="r" onclick="go('bait')"><div class="main"><b>AG จุดที่ 7 · บจก. เมืองทองคลังสินค้า</b><small>พบปลวกตาย · ถอดรอบถัดไป</small></div><div class="meta"><b>รอถอด</b>ตั้งแต่ ต.ค.</div></div>
+            <div class="r" onclick="go('bait')"><div class="main"><b>AG จุดที่ 4 · บมจ. สยามพัฒนาเฮ้าส์</b><small>พบปลวกตาย · รอถอด</small></div><div class="meta"><b>รอถอด</b>ตั้งแต่ ก.ย.</div></div>
+            <div class="r" onclick="go('bait')"><div class="main"><b>AG จุดที่ 2 · โรงแรมบ้านสวนรีสอร์ท</b><small>พบปลวกตาย · รอถอด</small></div><div class="meta"><b>รอถอด</b>ตั้งแต่ ก.ย.</div></div>
+            <div class="r" onclick="go('bait')"><div class="main"><b>AG จุดที่ 7 · บจก. เมืองทองคลังสินค้า</b><small>พบปลวกตาย · รอถอด</small></div><div class="meta"><b>รอถอด</b>ตั้งแต่ ต.ค.</div></div>
           </div>
+          <div style="padding:10px 16px;border-top:1px solid var(--border)"><a class="btn ghost sm" onclick="go('bait')">ดูกล่องติดตามผลทั้งหมด →</a></div>
         </div>
       </div>
     </section>
@@ -802,62 +831,22 @@ tfoot td{padding:10px 12px;font-weight:700;background:var(--surface-2);border-to
 
     <!-- ========== COLLECT STATIONS (expired contracts) ========== -->
     <section id="s-collect" hidden>
-      <div class="page-head"><h1>รอเก็บสถานี (ลูกค้าหมดสัญญา)</h1>
-        <p>สัญญาหมดแล้วแต่ยัง <b>ไม่ถือว่าจบ</b> จนกว่าจะเก็บสถานี IG/IC คืนบริษัทครบ — ติดตามสถานะการเก็บที่นี่ แล้วจึงปิดสัญญาจริง</p></div>
+      <div class="page-head"><h1>ลูกค้ารอเก็บสถานี</h1>
+        <p>สัญญาหมดแล้ว — เก็บสถานี <b>IG</b> คืนบริษัท · <b>IC (แบบปูน) มอบให้ลูกค้า</b> ไม่ต้องเก็บ · ปิดสัญญาได้ทันทีแม้ IG ยังไม่เก็บ แต่ IG ที่เหลือยังอยู่ในรายการนี้จนกด "เก็บแล้ว" หรือ "ไม่เก็บ"</p></div>
       <div class="toolbar">
         <div class="field"><label>เขต</label><select><option>เขต 1</option><option>ทุกเขต</option></select></div>
         <div class="field"><label>สาขา</label><select><option>พุทธมณฑล</option><option>ทุกสาขา</option></select></div>
         <div class="field"><label>ทีม</label><select><option>ทุกทีม</option><option>A</option><option>B</option><option>C</option><option>D</option><option>E</option><option>F</option><option>G</option><option>H</option><option>I</option><option>J</option><option>K</option><option>L</option><option>M</option><option>N</option><option>O</option><option>Z</option></select></div>
-        <div class="field"><label>สถานะ</label><select><option>ยังเก็บไม่ครบ</option><option>ทั้งหมด</option></select></div>
-        <div class="field" style="flex:1;min-width:180px"><label>ค้นหาลูกค้า</label><input placeholder="ชื่อลูกค้า / เลขที่สัญญา" style="width:100%"></div>
+        <div class="field"><label for="clStatus">สถานะ</label><select id="clStatus" onchange="clRender()"><option value="open">ยังเก็บไม่ครบ</option><option value="all">ทั้งหมด</option></select></div>
+        <div class="field" style="flex:1;min-width:180px"><label for="clQ">ค้นหาลูกค้า</label><input id="clQ" oninput="clRender()" placeholder="ชื่อลูกค้า / เลขที่สัญญา" style="width:100%"></div>
       </div>
-      <div class="stats">
-        <div class="stat accent"><div class="lab">ลูกค้ารอเก็บสถานี</div><div class="val num">6</div><div class="sub">หมดสัญญาแล้ว ยังไม่ปิด</div></div>
-        <div class="stat"><div class="lab">สถานีที่ต้องเก็บ (รวม)</div><div class="val num">214</div><div class="sub">IG/IC ค้างในพื้นที่</div></div>
-        <div class="stat ok"><div class="lab">เก็บคืนแล้ว</div><div class="val num">150</div><div class="sub">70%</div></div>
-        <div class="stat danger"><div class="lab">คงเหลือต้องเก็บ</div><div class="val num">64</div><div class="sub">ยังอยู่หน้างาน</div></div>
-      </div>
-      <div class="tablewrap">
-        <table>
-          <thead><tr>
-            <th>ลูกค้า</th><th>เลขที่สัญญา</th><th>สิ้นสุดสัญญา</th>
-            <th class="c">สถานีทั้งหมด</th><th class="c">เก็บแล้ว</th><th class="c">คงเหลือ</th><th class="c">สถานะ</th><th></th>
-          </tr></thead>
-          <tbody>
-            <tr><td><b>บจก. เมืองทองคลังสินค้า</b></td><td class="num">CT23-0000017</td><td class="num">13/11/69</td><td class="c num">52</td><td class="c num">40</td><td class="c num" style="color:var(--danger)">12</td><td class="c"><span class="chip pend">กำลังเก็บ</span></td><td class="r"><button class="btn sm primary">บันทึกการเก็บ</button></td></tr>
-            <tr><td><b>อาคารชุดลุมพินีวิว</b></td><td class="num">CT23-0000041</td><td class="num">25/09/69</td><td class="c num">30</td><td class="c num">30</td><td class="c num">0</td><td class="c"><span class="chip ok">เก็บครบ</span></td><td class="r"><button class="btn sm">ปิดสัญญา</button></td></tr>
-            <tr><td><b>คุณสมหญิง รุ่งเรือง</b></td><td class="num">CT26-0000009</td><td class="num">06/09/69</td><td class="c num">6</td><td class="c num">0</td><td class="c num" style="color:var(--danger)">6</td><td class="c"><span class="chip miss">รอเก็บ</span></td><td class="r"><button class="btn sm primary">บันทึกการเก็บ</button></td></tr>
-            <tr><td><b>ร้านกาแฟบ้านไร่</b></td><td class="num">CT25-0000120</td><td class="num">31/08/69</td><td class="c num">10</td><td class="c num">4</td><td class="c num" style="color:var(--danger)">6</td><td class="c"><span class="chip pend">กำลังเก็บ</span></td><td class="r"><button class="btn sm primary">บันทึกการเก็บ</button></td></tr>
-            <tr><td><b>หจก. รุ่งเรืองพาณิชย์</b></td><td class="num">CT25-0000077</td><td class="num">20/08/69</td><td class="c num">14</td><td class="c num">0</td><td class="c num" style="color:var(--danger)">14</td><td class="c"><span class="chip miss">รอเก็บ</span></td><td class="r"><button class="btn sm primary">บันทึกการเก็บ</button></td></tr>
-          </tbody>
-        </table>
-      </div>
-      <div class="panel" style="margin-top:16px">
-        <h3>บันทึกการเก็บสถานี — บจก. เมืองทองคลังสินค้า
-          <span style="flex:1"></span>
-          <span class="chip pend">กำลังเก็บ</span></h3>
-        <div class="body">
-          <div class="sumchips">
-            <span class="chip na num">ต้องเก็บ · IG 34 / IC 18</span>
-            <span class="chip ok num">เก็บแล้ว · IG 28 / IC 12</span>
-            <span class="chip miss num">คงเหลือ · IG 6 / IC 6</span>
-          </div>
-          <div class="pt" style="background:var(--surface)">
-            <div class="grid" style="grid-template-columns:repeat(4,1fr)">
-              <div class="mini"><label>จำนวน IG ที่เก็บได้ (รอบนี้)</label><input class="num" value="6"></div>
-              <div class="mini"><label>จำนวน IC ที่เก็บได้ (รอบนี้)</label><input class="num" value="6"></div>
-              <div class="mini"><label>วันที่เก็บ</label><input value="15/10/2026"></div>
-              <div class="mini"><label>ผู้เก็บ / หมายเหตุ</label><input placeholder="เช่น ทีม A"></div>
-            </div>
-          </div>
-          <div class="hint">บันทึกจำนวนที่เก็บคืน <b>แยก IG / IC</b> · เมื่อคงเหลือ IG+IC = 0 ปุ่ม "ปิดสัญญา" จะเปิดให้กด = หมดสัญญาจริง</div>
-          <div style="display:flex;gap:9px">
-            <button class="btn primary">บันทึกการเก็บ</button>
-            <button class="btn" disabled style="opacity:.5;cursor:not-allowed">ปิดสัญญา (เก็บครบ)</button>
-          </div>
-        </div>
-      </div>
-      <div class="note"><span class="ic">ℹ</span><span>หมดสัญญาแล้ว ระบบ <b>ไม่ลบลูกค้าออกอัตโนมัติ</b> — ต้องเก็บสถานี IG/IC คืนครบก่อน จึงกดปิดสัญญา (หมดสัญญาจริง) · สถานะนี้เห็น <b>เฉพาะภายใน</b> (Admin / Recorder / Host) ไม่ส่งเข้า Dashboard สาธารณะ (viewer)</span></div>
+      <div class="stats" id="clStats"></div>
+      <div class="tablewrap"><table>
+        <thead><tr><th>ลูกค้า</th><th>เลขที่สัญญา</th><th>สิ้นสุดสัญญา</th><th class="c">สัญญา</th><th class="c">IG ทั้งหมด</th><th class="c">เก็บแล้ว</th><th class="c">ไม่เก็บ</th><th class="c">คงเหลือ</th><th class="c">IC</th><th></th></tr></thead>
+        <tbody id="clBody"></tbody>
+      </table></div>
+      <div id="clHold"></div>
+      <div class="note"><span class="ic">ℹ</span><span>หมดสัญญาแล้วระบบ <b>ไม่ลบลูกค้าออกอัตโนมัติ</b> · เก็บคืนเฉพาะ <b>IG</b> (IC มอบให้ลูกค้า · กล่อง AG ที่ค้างไม่ต้องเก็บและไม่ขวางการปิดสัญญา) · IG ที่ "ไม่เก็บ" ต้องมีเหตุผล และนับเป็น "IG ที่ทิ้งไว้สะสม" เพื่อดูต้นทุน · สถานะนี้เห็น <b>เฉพาะภายใน</b> (Admin / Recorder / Host) ไม่ส่งเข้า Dashboard สาธารณะ (viewer)</span></div>
     </section>
 
     <!-- ========== 4. REGISTRY ========== -->
@@ -1411,7 +1400,7 @@ var PK={
   sv:{id:'sv',kind:'service',branch:'พุทธมณฑล',team:'',q:'',view:'todo',sel:null},
   bx:{id:'bx',kind:'bait',branch:'',team:'',q:'',view:'ag',sel:null}
 };
-function pkBase(p){return CUSTOMERS.filter(function(c){return (!p.branch||c.branch===p.branch)&&(!p.team||c.team===p.team)})}
+function pkBase(p){return CUSTOMERS.filter(function(c){return (!p.branch||c.branch===p.branch)&&(!p.team||c.team===p.team)&&!(p.kind==='bait'&&c.mkOf)})}   /* แถวชดเชย (mkOf) มีเฉพาะหน้าลงข้อมูลบริการ */
 function pkView(p,base){
   return base.filter(function(c){
     if(p.kind==='service') return p.view==='done'?c.done:!c.done;
@@ -1452,7 +1441,7 @@ function pkRender(p){
     list.innerHTML=searching?'':'<div class="empty">'+(svc?(p.view==='done'?'ยังไม่มีรายที่กรอกแล้ว':'ไม่มีรายที่ยังไม่กรอก — ครบแล้ว'):'ไม่มีลูกค้าที่มีกล่องค้างติดตามตามตัวกรองนี้')+'</div>';
   } else {
     list.innerHTML=items.map(function(c){
-      var tags=tierBadge(c.tier)+(c.ag.length?'<span class="agtag">AG '+c.ag.length+'</span>':'')+((svc&&c.done&&(searching||p.view!=='done'))?'<span class="chip ok">กรอกแล้ว</span>':'');
+      var tags=tierBadge(c.tier)+(c.makeupFor?'<span class="mkchip" title="บริการชดเชยของเดือนที่ตกบริการ">ชดเชย '+msMonthTh(c.makeupFor)+'</span>':'')+(c.ag.length?'<span class="agtag">AG '+c.ag.length+'</span>':'')+((svc&&c.done&&(searching||p.view!=='done'))?'<span class="chip ok">กรอกแล้ว</span>':'');
       return '<button type="button" class="cust'+(p.sel===c.id?' sel':'')+'" data-id="'+c.id+'"'+(p.sel===c.id?' aria-current="true"':'')+'>'+
         '<span class="main"><b>'+esc(c.name)+'</b><small>'+esc(c.ct)+' · ทีม '+c.team+(svc?' · '+(c.fresh?'รอระบุจำนวนสถานี':'IG '+c.ig+' / IC '+c.ic):'')+'</small>'+
         (c.mo?'<span class="mo '+c.mo+'">'+(c.mo==='new'?'New':'Renew')+' เดือนนี้</span>':'')+'</span><span class="tags">'+tags+'</span></button>';
@@ -1617,13 +1606,16 @@ function agCommit(ctx){
 /* ---------- ฟอร์มกรอกผลบริการ (ขวาของ #service) ---------- */
 var SV=null;
 var stationMax=120;
-function fheadHtml(c,posHtml){
+function fheadHtml(c,posHtml,withContact){
   var agN=c.ag.length;
+  /* withContact = หน้าลงข้อมูลบริการเท่านั้น (หน้ากล่อง AG final แล้ว ไม่เพิ่ม) */
   return '<div class="fhead"><div class="pos">'+posHtml+'</div><div class="nm"><b>'+esc(c.name)+'</b>'+tierBadge(c.tier)+
     '<a class="rowlk" href="'+custHref(c.name,c.id)+'" title="ดูรายละเอียดลูกค้า (หน้าดูอย่างเดียว)" aria-label="ดูรายละเอียดลูกค้า '+esc(c.name)+'">ดูรายละเอียดลูกค้า ↗</a> '+HD.btn(c.ct,c.name)+'</div>'+
     '<div class="sumchips" style="margin:0"><span class="chip na">สัญญา '+esc(c.ct)+'</span>'+
     (c.fresh?'<span class="chip pend">ยังไม่ระบุจำนวนสถานี</span>':'<span class="chip na num"><span class="sttype">IG</span> '+c.ig+'</span><span class="chip na num"><span class="sttype">IC</span> '+c.ic+'</span>')+
-    '<span class="chip '+(agN?'pend':'na')+' num"><span class="sttype">AG</span> '+agN+(agN?' ค้างติดตาม':'')+'</span></div></div>';
+    '<span class="chip '+(agN?'pend':'na')+' num"><span class="sttype">AG</span> '+agN+(agN?' ค้างติดตาม':'')+'</span>'+
+    (c.makeupFor?'<span class="mkchip">บริการชดเชย '+msMonthTh(c.makeupFor)+' · ผูกกับเดือนที่ตกอัตโนมัติ</span>':'')+'</div>'+
+    (withContact?'<div id="ctInfoBox">'+ctInfoHtml(c)+'</div>':'')+'</div>';
 }
 function fieldsHtml(ctx,c,extra,bxDate){
   /* ทีมที่เข้า: เติมจากการเข้าครั้งล่าสุดของลูกค้ารายนี้ (ไม่อ้างอิงทีมในเปิดงาน) · ลูกค้าใหม่ยังไม่เคยเข้า = ว่าง ต้องเลือกเอง */
@@ -1897,7 +1889,7 @@ function svRenderForm(){
   agInit('sv',c);
   var agN=c.ag.length;
   var posHtml='รายที่ '+pos+' จาก '+base2.length+(c.done?' <span class="chip ok">กรอกแล้ว · บันทึกซ้ำเพื่อแก้ไข</span>':'');
-  box.innerHTML=fheadHtml(c,posHtml)+'<div class="body">'+
+  box.innerHTML=fheadHtml(c,posHtml,true)+'<div class="body">'+
     (c.fresh?freshHtml():'')+
     fieldsHtml('sv',c)+
     '<button type="button" class="bigok" id="svNormal" data-act="svNormal" aria-pressed="false"><span class="cbox" aria-hidden="true"><svg viewBox="0 0 20 20"><path d="M3 10.5l4.5 4.5L17 5"/></svg></span><span class="txt">IG / IC ปกติทั้งหมด<small>ไม่พบปลวก ไม่เปลี่ยนไม้ ไม่มีงานซ่อม · ไม่รวมกล่อง AG</small></span><span class="state"><span class="off">ยังไม่ได้กด</span><span class="on">กดแล้ว ✓</span></span></button>'+
@@ -2070,7 +2062,7 @@ function svSave(){
   var c=custById(SV.id);
   var cn=svCounts(), dl=rpDeltas();
   c.ig=cn.ig+dl.ig; c.ic=cn.ic+dl.ic; c.fresh=false; /* อัปเดตจำนวนสถานีของลูกค้า (ฝังเพิ่ม/หาย/ถอน) */
-  agCommit('sv'); c.done=true; teamSave(c,'sv');
+  agCommit('sv'); c.done=true; teamSave(c,'sv'); if(c.makeupFor) msOnMakeupSaved(c);
   toast('บันทึกผล “'+c.name+'” แล้ว');
   var next=svNextUndone(c.id);
   pkSelect(PK.sv,next?next.id:null,true);
@@ -2094,6 +2086,7 @@ function svPrev(){
 var FORM_DIRTY={sv:false,bx:false};
 function markDirty(e){
   var f=e.target.closest&&e.target.closest('#svForm,#bxForm'); if(!f) return;
+  if(e.target.closest('#ctInfoBox')) return;   /* แก้ข้อมูลติดต่อไม่นับเป็นการกรอกผลบริการ */
   if(e.type==='click'&&!e.target.closest('[data-ag],[data-act=sec],[data-act=svNormal],[data-act^=add],[data-act=delRow]')) return;
   FORM_DIRTY[f.id==='svForm'?'sv':'bx']=true;
 }
@@ -2337,6 +2330,7 @@ function applyNavRole(role){
 }
 function setRole(r){
   var viewerOnly=(r==='viewer');
+  try{msRenderTodo();clRender();var _c=PK.sv.sel&&custById(PK.sv.sel);if(_c)ctRefresh(_c)}catch(e){}
   applyNavRole(r); HD.sync(r);
   document.querySelectorAll('[data-internal]').forEach(function(e){ e.hidden=viewerOnly; });
   if(viewerOnly) go('summary');
@@ -2553,6 +2547,211 @@ function exportSummaryXL(){
   var t=S.querySelector('table'); if(t) xlTable(wb,'16 ฟิลด์ต่อสาขา',t);
   XLSX.writeFile(wb,'AGA-Dashboard-สรุปมูลค่า-SEP.26.xlsx');
 }
+
+/* ===== ตกบริการ: ชดเชย / ไม่ชดเชย (DECISIONS 2.41) · เก็บสถานี IG (2.42) · ข้อมูลติดต่อใน #service =====
+   สรุป logic (ข้อมูลทั้งหมดในไฟล์นี้เป็นข้อมูลสมมติ — ของจริงอ่านจากตาราง missed_service_resolutions / stations)
+   • MS = เดือนที่ตกบริการ 1 แถว/เดือน/สัญญา · res ว่าง = รอตัดสิน · res.kind 'makeup' (เลือกวัน) หรือ 'waived' (เหตุผลบังคับ + ยืนยัน)
+   • สถานะที่โชว์ (ชุดเดียวกับ customer-detail): รอตัดสิน / ชดเชย → เดือน / ชดเชยแล้ว / ชดเชยไม่ได้ทำ / ไม่ชดเชย
+   • ชดเชยแล้ว = บันทึกแถว "ชดเชย …" ในหน้าลงข้อมูลบริการ (ผูกเดือนที่ตกอัตโนมัติ) · เดือนชดเชยผ่านไปไม่มีการเข้า = ชดเชยไม่ได้ทำ (กลับไปตัดสินใหม่)
+   • สิทธิ์: host + recorder กดได้ · admin ดูอย่างเดียว (ปุ่มปิด) — ของจริงบังคับที่ RLS
+   • CL = รอเก็บสถานีหลังหมดสัญญา: นับเฉพาะ IG · IC มอบให้ลูกค้า · ปิดสัญญาได้แม้ IG ยังไม่เก็บ · IG ที่เหลือคงอยู่จนกด "เก็บแล้ว"/"ไม่เก็บ"(เหตุผลบังคับ+ยืนยัน) */
+var MS_CUR='2026-10';
+var MS_TH=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+function msMonthTh(m){return MS_TH[+m.slice(5,7)-1]+' '+m.slice(0,4)}
+function msDateTh(d){return (+d.slice(8,10))+' '+MS_TH[+d.slice(5,7)-1]+' '+d.slice(0,4)}
+function msRole(){var s=document.getElementById('roleSel');return s?s.value:'host'}
+function msCan(){var r=msRole();return r==='host'||r==='recorder'}
+var MS=[
+  {n:1,id:'m1',name:'บจก. ไทยแพคโลจิสติกส์',ct:'CT24-0000066',end:'2026-12-31',missed:'2026-05',res:null},
+  {n:2,id:'m2',name:'โรงเรียนอนุบาลดอกไม้',ct:'CT25-0000298',end:'2026-12-31',missed:'2026-06',res:{kind:'makeup',date:'2026-10-30'}},
+  {n:3,id:'m3',name:'ร้านอาหารครัวริมคลอง',ct:'CT26-0000151',end:'2026-12-31',missed:'2026-04',res:{kind:'makeup',date:'2026-09-15'}},
+  {n:4,id:'m4',name:'หจก. ทรัพย์เจริญ',ct:'CT26-0000203',end:'2026-12-31',missed:'2026-07',res:{kind:'makeup',date:'2027-01-01'}},
+  {n:5,id:'m5',name:'บจก. เมโทรแวร์เฮ้าส์',ct:'CT25-0000333',end:'2026-09-30',missed:'2026-03',res:{kind:'makeup',date:'2026-10-01'}}
+];
+function msState(it){var r=it.res;if(!r)return {s:'pending'};if(r.kind==='waived')return {s:'waived'};if(r.done)return {s:'done'};var mm=r.date.slice(0,7);return {s:mm<MS_CUR?'failed':'makeup',mm:mm}}
+var MS_LAB={pending:['รอตัดสิน','miss'],makeup:['ชดเชย','pend'],done:['ชดเชยแล้ว','ok'],failed:['ชดเชยไม่ได้ทำ','miss'],waived:['ไม่ชดเชย','na']};
+function msText(st){return st.s==='makeup'?'ชดเชย → '+msMonthTh(st.mm):MS_LAB[st.s][0]}
+function msNextMonth1(m){var y=+m.slice(0,4),mo=+m.slice(5,7)+1;if(mo>12){mo=1;y++}return y+'-'+(mo<10?'0':'')+mo+'-01'}
+function msBounds(it){
+  var min=msNextMonth1(it.missed),cur1=MS_CUR+'-01';
+  if(msRole()!=='host'&&min<cur1)min=cur1;           /* หัวหน้างานย้อนก่อนเดือนนี้ไม่ได้ · host ได้ */
+  var def=msNextMonth1(it.end.slice(0,7));if(def<min)def=min;   /* ค่าเริ่มต้น = วันที่ 1 ของเดือนถัดจากสัญญาจบ */
+  return {min:min,def:def};
+}
+function msFind(id){for(var i=0;i<MS.length;i++){if(MS[i].id===id)return MS[i]}return null}
+/* ---- หน้าต่าง (ใช้ร่วม ชดเชย / ไม่ชดเชย / เก็บสถานี) ---- */
+var msOpener=null;
+function msDlgOpen(html,opener){msDlgClose(true);msOpener=opener||null;
+  var o=document.createElement('div');o.className='lvdlg msdlg';o.id='msDlg';
+  o.innerHTML='<div class="lvbox" role="dialog" aria-modal="true" aria-labelledby="msT">'+html+'</div>';
+  document.body.appendChild(o);var f=o.querySelector('input,textarea');if(f)f.focus()}
+function msDlgClose(quiet){var o=document.getElementById('msDlg');if(o)o.remove();if(!quiet&&msOpener&&document.contains(msOpener))msOpener.focus()}
+function msErr(m){var e=document.getElementById('msErr');if(e){e.textContent=m;e.hidden=false}}
+document.addEventListener('keydown',function(e){if(e.key==='Escape'&&document.getElementById('msDlg'))msDlgClose()});
+/* ---- #todo: กล่อง "ตกบริการรอตัดสิน" ---- */
+function msRenderTodo(){
+  var host=$('msTodo');if(!host)return;
+  var can=msCan(),rows=MS.filter(function(it){var s=msState(it).s;return s==='pending'||s==='failed'||s==='makeup'});
+  rows.sort(function(a,b){var o={pending:0,failed:0,makeup:1};return o[msState(a).s]-o[msState(b).s]});
+  var need=rows.filter(function(it){return msState(it).s!=='makeup'}).length;
+  var h='<div class="msbox'+(need?'':' empty-ok')+'"><h3><span class="dot" style="background:var(--'+(need?'danger':'ok')+')"></span> ตกบริการรอตัดสิน <span class="count badge-danger">'+need+'</span><span style="font-size:12px;font-weight:400;color:var(--fg-muted)">ตัดสินว่าจะชดเชยหรือไม่ · ชดเชยแล้วรอไปบริการ '+(rows.length-need)+' ราย</span>'+(can?'':'<span style="margin-left:auto;font-size:12px;font-weight:400;color:var(--fg-muted)">ดูอย่างเดียว (admin)</span>')+'</h3>';
+  if(!rows.length)h+='<div class="msnote">ไม่มีเดือนที่ตกบริการค้างตัดสิน</div>';
+  rows.forEach(function(it){
+    var st=msState(it),lab=MS_LAB[st.s],sub='',acts='',dis=can?'':' disabled title="admin ดูอย่างเดียว — หัวหน้างาน/host เท่านั้นที่ตัดสินได้"';
+    if(st.s==='pending')sub='ยังไม่ได้คุยกับลูกค้า';
+    else if(st.s==='failed')sub='เลือกชดเชย '+msMonthTh(st.mm)+' แต่ไม่มีการเข้า → ตัดสินใหม่';
+    else sub='นัด '+msDateTh(it.res.date)+(st.mm===MS_CUR?' · เดือนนี้':' · รอถึงเดือนนั้น');
+    var again=st.s==='makeup';
+    acts='<button class="btn sm" data-ms="waive" data-id="'+it.id+'"'+dis+'>'+(again?'เปลี่ยนเป็นไม่ชดเชย':'ไม่ชดเชย')+'</button>'+
+         '<button class="btn sm'+(again?'':' primary')+'" data-ms="makeup" data-id="'+it.id+'"'+dis+'>'+(again?'เปลี่ยนวัน':'ชดเชย')+'</button>'+
+         (again&&st.mm===MS_CUR?'<button class="btn sm primary" data-ms="go" data-id="'+it.id+'"'+dis+'>ไปกรอกบริการชดเชย →</button>':'');
+    h+='<div class="msrow"><div class="main"><b>'+esc(it.name)+'</b><small>'+esc(it.ct)+' · ตกบริการ '+msMonthTh(it.missed)+'</small></div>'+
+       '<div class="st"><span class="chip '+lab[1]+'">'+esc(msText(st))+'</span><small>'+esc(sub)+'</small></div><div class="acts">'+acts+'</div></div>';
+  });
+  host.innerHTML=h+'</div>';
+}
+function msOpenMakeup(it,opener){
+  var b=msBounds(it),val=it.res&&it.res.kind==='makeup'?it.res.date:b.def;
+  msDlgOpen('<h3 id="msT" style="margin:0 0 4px;font-size:16px">ชดเชย '+msMonthTh(it.missed)+'</h3><div class="lab">'+esc(it.name)+' · สัญญา '+esc(it.ct)+' · สิ้นสุด '+msDateTh(it.end)+'</div>'+
+    '<div class="field"><label for="msDate">วันที่ไปบริการชดเชย</label><input type="date" id="msDate" value="'+val+'" min="'+b.min+'"><span class="lab">ค่าเริ่มต้น = วันที่ 1 ของเดือนถัดจากสัญญาจบ ('+msDateTh(b.def)+') · เลือกวันในช่วงสัญญาได้ · ต้องหลังเดือนที่ตก'+(msRole()==='host'?'':' และไม่ย้อนก่อนเดือนนี้')+'</span></div>'+
+    '<p class="lab" style="margin:10px 0 0">เดือนนั้นลูกค้าจะขึ้นในหน้าลงข้อมูลบริการเป็นแถว "ชดเชย '+msMonthTh(it.missed)+'"</p><div class="err" id="msErr" role="alert" hidden></div>'+
+    '<div class="acts"><button class="btn" data-ms="close">ยกเลิก</button><button class="btn primary" data-ms="savemk" data-id="'+it.id+'">บันทึกชดเชย</button></div>',opener);
+}
+function msOpenWaive(it,opener){
+  msDlgOpen('<h3 id="msT" style="margin:0 0 4px;font-size:16px">ไม่ชดเชย '+msMonthTh(it.missed)+'</h3><div class="lab">'+esc(it.name)+' · สัญญา '+esc(it.ct)+' · เดือนนี้ยังนับเป็นตกบริการในประวัติ แต่ปิดเรื่องไม่ต้องตามต่อ</div>'+
+    '<div class="field"><label for="msReason">เหตุผล (บังคับ)</label><textarea id="msReason" maxlength="300" placeholder="เช่น ลูกค้ายินยอม ปิดอาคารทั้งเดือน"></textarea></div>'+
+    '<div class="field"><label for="msFile">หลักฐาน (ไม่บังคับ)</label><input type="file" id="msFile" accept=".pdf,image/*"></div><div class="err" id="msErr" role="alert" hidden></div>'+
+    '<div class="acts" id="msStep"><button class="btn" data-ms="close">ยกเลิก</button><button class="btn primary" data-ms="confirmw" data-id="'+it.id+'">ไม่ชดเชย</button></div>',opener);
+}
+/* ---- #collect: รอเก็บสถานี (IG เท่านั้น) ---- */
+var CL=[
+  {id:'k1',name:'หจก. สยามการช่าง',ct:'CT24-0000190',end:'2026-10-12',closed:false,ig:34,got:28,skip:0,ic:18},
+  {id:'k2',name:'ตลาดสดบางแค',ct:'CT24-0000102',end:'2026-09-30',closed:false,ig:30,got:30,skip:0,ic:16},
+  {id:'k3',name:'ร้านเสริมสวยบ้านดอกไม้',ct:'CT26-0000266',end:'2026-09-06',closed:true,ig:4,got:0,skip:0,ic:0},
+  {id:'k4',name:'ร้านกาแฟบ้านไร่',ct:'CT25-0000120',end:'2026-08-31',closed:false,ig:6,got:4,skip:0,ic:4},
+  {id:'k5',name:'หจก. รุ่งเรืองพาณิชย์',ct:'CT25-0000077',end:'2026-08-20',closed:true,ig:10,got:0,skip:3,ic:4}
+];
+function clRem(r){return r.ig-r.got-r.skip}
+function clFind(id){for(var i=0;i<CL.length;i++){if(CL[i].id===id)return CL[i]}return null}
+function clRender(){
+  var body=$('clBody');if(!body)return;
+  var can=msCan(),q=norm(($('clQ')||{value:''}).value),all=($('clStatus')||{value:'open'}).value==='all';
+  var rows=CL.filter(function(r){return (all||clRem(r)>0||!r.closed)&&(!q||norm(r.name).indexOf(q)>=0||norm(r.ct).indexOf(q)>=0)});
+  var wait=CL.filter(function(r){return clRem(r)>0}),rem=0,got=0,skip=0,tot=0;
+  CL.forEach(function(r){rem+=clRem(r);got+=r.got;skip+=r.skip;tot+=r.ig});
+  $('clStats').innerHTML=
+    '<div class="stat accent"><div class="lab">ลูกค้ารอเก็บสถานี</div><div class="val num">'+wait.length+'</div><div class="sub">มี IG เหลือให้เก็บ (รวมที่ปิดสัญญาแล้ว)</div></div>'+
+    '<div class="stat danger"><div class="lab">IG คงเหลือต้องเก็บ</div><div class="val num">'+rem+'</div><div class="sub">IC ไม่นับ — มอบให้ลูกค้า</div></div>'+
+    '<div class="stat ok"><div class="lab">IG เก็บคืนแล้ว</div><div class="val num">'+got+'</div><div class="sub">'+(tot?Math.round(got*100/tot):0)+'% ของ IG ทั้งหมด '+tot+'</div></div>'+
+    '<div class="stat warn"><div class="lab">IG ที่ทิ้งไว้สะสม</div><div class="val num">'+skip+'</div><div class="sub">นับจากที่กด "ไม่เก็บ" · ใช้ดูต้นทุน</div></div>';
+  var dis=can?'':' disabled title="เฉพาะหัวหน้างาน/host"';
+  body.innerHTML=rows.length?rows.map(function(r){
+    var rm=clRem(r),chip=r.closed?'<span class="chip na">ปิดสัญญาแล้ว</span>':'<span class="chip pend">หมดสัญญา · ยังไม่ปิด</span>';
+    var acts=(rm>0?'<button class="btn sm primary" data-cl="got" data-id="'+r.id+'"'+dis+'>เก็บแล้ว</button> <button class="btn sm" data-cl="skip" data-id="'+r.id+'"'+dis+'>ไม่เก็บ</button> ':'')+
+             (r.closed?'':'<button class="btn sm" data-cl="close" data-id="'+r.id+'"'+dis+'>ปิดสัญญา</button>');
+    return '<tr><td><b>'+esc(r.name)+'</b><a class="rowlk" href="'+custHref(r.name,r.id.slice(1))+'" aria-label="ดูรายละเอียดลูกค้า '+esc(r.name)+'">↗</a></td><td class="num">'+esc(r.ct)+'</td><td class="num">'+msDateTh(r.end)+'</td><td class="c">'+chip+'</td>'+
+      '<td class="c num">'+r.ig+'</td><td class="c num">'+r.got+'</td><td class="c num">'+r.skip+'</td><td class="c num" style="'+(rm>0?'color:var(--danger)':'')+'">'+rm+'</td>'+
+      '<td class="c"><span class="chip na num" title="IC แบบปูน มอบให้ลูกค้า ไม่ต้องเก็บ">'+r.ic+' มอบลูกค้า</span></td><td class="r">'+acts+'</td></tr>';
+  }).join(''):'<tr><td colspan="10" class="empty">ไม่มีลูกค้าตามตัวกรองนี้</td></tr>';
+  var hold=MS.filter(function(it){var st=msState(it);return st.s!=='waived'&&st.s!=='done'&&it.res&&it.res.kind==='makeup'&&it.res.date>it.end&&it.end<MS_CUR+'-01'});
+  $('clHold').innerHTML=hold.length?'<div class="note" style="margin-top:12px"><span class="ic">ℹ</span><span><b>ยังไม่ขึ้นรายการเก็บสถานี</b> (มีบริการชดเชยค้าง): '+hold.map(function(it){return esc(it.name)+' · ชดเชย '+msMonthTh(it.missed)+' → '+msDateTh(it.res.date)}).join(' · ')+' — จะขึ้นรายการหลังชดเชยเสร็จ หรือเปลี่ยนเป็นไม่ชดเชย</span></div>':'';
+}
+function clOpen(kind,r,opener){
+  var rm=clRem(r),head='<div class="lab">'+esc(r.name)+' · สัญญา '+esc(r.ct)+' · IG คงเหลือ <b class="num">'+rm+'</b> สถานี · IC '+r.ic+' จุด มอบให้ลูกค้า (ไม่ต้องเก็บ)</div>';
+  var nField='<div class="field"><label for="clN">จำนวน IG</label><input type="number" id="clN" class="num" min="1" max="'+rm+'" value="'+rm+'" inputmode="numeric"></div>';
+  if(kind==='got')msDlgOpen('<h3 id="msT" style="margin:0 0 4px;font-size:16px">เก็บ IG คืนแล้ว</h3>'+head+nField+'<div class="field"><label for="clD">วันที่เก็บ</label><input type="date" id="clD" value="'+TODAY_ISO+'"></div><div class="err" id="msErr" role="alert" hidden></div>'+
+    '<div class="acts"><button class="btn" data-ms="close">ยกเลิก</button><button class="btn primary" data-cl="savegot" data-id="'+r.id+'">บันทึก เก็บแล้ว</button></div>',opener);
+  else msDlgOpen('<h3 id="msT" style="margin:0 0 4px;font-size:16px">ไม่เก็บ IG</h3>'+head+nField+'<div class="field"><label for="clR">เหตุผล (บังคับ)</label><textarea id="clR" maxlength="300" placeholder="เช่น ลูกค้าไม่สะดวกให้เข้าพื้นที่ / ฝังใต้พื้นคอนกรีต"></textarea></div><div class="err" id="msErr" role="alert" hidden></div>'+
+    '<div class="acts" id="msStep"><button class="btn" data-ms="close">ยกเลิก</button><button class="btn primary" data-cl="confirmskip" data-id="'+r.id+'">ไม่เก็บ</button></div>',opener);
+}
+function clN(r){var n=+($('clN').value);if(!(n>=1&&n<=clRem(r)&&n%1===0)){msErr('ใส่จำนวนตั้งแต่ 1 ถึง '+clRem(r)+' สถานี');return 0}return n}
+/* ---- #service: แถวชดเชย (โคลนจากลูกค้าเดิม — 1 ลูกค้ามี 2 แถวได้: ปกติ + ชดเชย) ---- */
+function svSyncMakeup(){
+  for(var i=CUSTOMERS.length-1;i>=0;i--){if(CUSTOMERS[i].mkOf)CUSTOMERS.splice(i,1)}
+  MS.forEach(function(it){
+    var r=it.res;if(!r||r.kind!=='makeup'||r.date.slice(0,7)!==MS_CUR)return;
+    var base=null;CUSTOMERS.forEach(function(c){if(c.ct===it.ct&&!c.mkOf)base=c});if(!base)return;
+    var cl=Object.assign({},base,{id:1000+it.n,mkOf:base.id,makeupFor:it.missed,msId:it.id,done:!!r.done,ag:[],mo:null,fresh:false,editInfo:false});delete cl.agDate;
+    CUSTOMERS.push(cl);
+  });
+  if(PK.sv.sel&&!custById(PK.sv.sel))PK.sv.sel=null;
+  if($('svList')){pkRender(PK.sv);svRenderForm()}
+}
+function msOnMakeupSaved(c){var it=msFind(c.msId);if(it&&it.res){it.res.done=true;msRenderTodo()}}
+function msGoMakeup(it){
+  var cl=null;CUSTOMERS.forEach(function(c){if(c.msId===it.id)cl=c});if(!cl){toast('ยังไม่มีแถวชดเชยในหน้าลงข้อมูลบริการ');return}
+  go('service');PK.sv.q='';if($('svQ'))$('svQ').value='';PK.sv.branch=cl.branch;if($('svBranch'))$('svBranch').value=cl.branch;PK.sv.team='';
+  pkSelect(PK.sv,cl.id,true);
+}
+/* ---- #service: ข้อมูลติดต่อ แก้ในหน้านี้ได้ (หัวหน้างาน/host) — แบบเดียวกับหน้ารายละเอียดลูกค้า ---- */
+function ctSeed(c){if(!c.info)c.info={contact:'คุณสมศักดิ์ (ผู้ดูแลอาคาร)',phone:'081-234-5678',note:'',audit:''};return c.info}
+function ctInfoHtml(c){
+  var i=ctSeed(c),can=msCan();
+  if(c.editInfo)return '<div class="ctedit" data-ct="'+c.id+'">'+
+    '<div class="field"><label for="ctC">ผู้ติดต่อ</label><input id="ctC" value="'+esc(i.contact)+'" maxlength="80" autocomplete="off"></div>'+
+    '<div class="field"><label for="ctP">เบอร์โทร</label><input id="ctP" type="tel" inputmode="tel" value="'+esc(i.phone)+'" maxlength="40" autocomplete="off"></div>'+
+    '<div class="field"><label for="ctN">หมายเหตุ</label><input id="ctN" value="'+esc(i.note)+'" maxlength="300" autocomplete="off" placeholder="เช่น สะดวกทุกวันจันทร์"></div>'+
+    '<div class="err" id="ctErr" role="alert" hidden></div><div class="acts"><button type="button" class="btn sm" data-ct-act="cancel" data-id="'+c.id+'">ยกเลิก</button><button type="button" class="btn sm primary" data-ct-act="save" data-id="'+c.id+'">บันทึกข้อมูลติดต่อ</button></div></div>';
+  return '<div class="ctinfo"><span><span class="k">ผู้ติดต่อ</span> '+esc(i.contact)+'</span><span><span class="k">โทร</span> '+esc(i.phone)+'</span><span><span class="k">หมายเหตุ</span> '+(i.note?esc(i.note):'—')+'</span>'+
+    (can?'<button type="button" class="pen" data-ct-act="edit" data-id="'+c.id+'" title="แก้ผู้ติดต่อ / เบอร์โทร / หมายเหตุ — ลูกค้าเปลี่ยนผู้ดูแลระหว่างทำบริการได้" aria-label="แก้ข้อมูลติดต่อ">✎</button>':'')+
+    (i.audit?'<span class="lab" style="font-size:11px">'+esc(i.audit)+' · audit_log</span>':'')+'</div>';
+}
+function ctRefresh(c){var b=$('ctInfoBox');if(b)b.innerHTML=ctInfoHtml(c)}
+/* ---- ตัวจัดการคลิกกลาง ---- */
+document.addEventListener('click',function(e){
+  var t=e.target.closest&&e.target.closest('[data-ms],[data-cl],[data-ct-act],[data-cust-link]');if(!t)return;
+  if(t.hasAttribute('data-cust-link')&&!t.dataset.ms&&!t.dataset.cl&&!t.dataset.ctAct){
+    if(e.target.closest('a,button'))return;var b=t.querySelector('.main b');if(b)location.href=custHref(b.textContent,[].indexOf.call(t.parentNode.children,t));return}
+  var a=t.dataset.ms,id=t.dataset.id,it=id&&msFind(id);
+  if(a==='close'){msDlgClose();return}
+  if(a==='makeup'&&it){if(msCan())msOpenMakeup(it,t);return}
+  if(a==='waive'&&it){if(msCan())msOpenWaive(it,t);return}
+  if(a==='go'&&it){msGoMakeup(it);return}
+  if(a==='savemk'&&it){
+    var d=$('msDate').value,b2=msBounds(it);
+    if(!d){msErr('กรุณาเลือกวันที่ไปบริการชดเชย');return}
+    if(d<b2.min){msErr('เลือกวันที่ตั้งแต่ '+msDateTh(b2.min)+' เป็นต้นไป (ต้องหลังเดือนที่ตก'+(msRole()==='host'?'':' และไม่ย้อนก่อนเดือนนี้')+')');return}
+    it.res={kind:'makeup',date:d,by:msRole()};msDlgClose(true);msRenderTodo();svSyncMakeup();clRender();
+    toast('บันทึกชดเชย '+msMonthTh(it.missed)+' → '+msDateTh(d)+' แล้ว (ลง audit_log)');return}
+  if(a==='confirmw'&&it){
+    var rs=$('msReason').value.trim();if(!rs){msErr('กรุณาพิมพ์เหตุผลที่ไม่ชดเชย');$('msReason').focus();return}
+    $('msErr').hidden=true;$('msStep').innerHTML='<span class="lab" style="margin-right:auto">ปิดเรื่องเดือนนี้โดยไม่ชดเชย?</span><button class="btn" data-ms="backw" data-id="'+it.id+'">กลับไปแก้</button><button class="btn danger" data-ms="dow" data-id="'+it.id+'">ยืนยัน ไม่ชดเชย</button>';
+    var bk=$('msStep').querySelector('.danger');if(bk)bk.focus();return}
+  if(a==='backw'&&it){$('msStep').innerHTML='<button class="btn" data-ms="close">ยกเลิก</button><button class="btn primary" data-ms="confirmw" data-id="'+it.id+'">ไม่ชดเชย</button>';$('msReason').focus();return}
+  if(a==='dow'&&it){
+    it.res={kind:'waived',reason:$('msReason').value.trim(),file:($('msFile').files[0]||{}).name||'',by:msRole()};msDlgClose(true);msRenderTodo();svSyncMakeup();clRender();
+    toast('บันทึก ไม่ชดเชย '+msMonthTh(it.missed)+' แล้ว (ลง audit_log)');return}
+  var cl=t.dataset.cl,r=id&&clFind(id);
+  if(cl==='got'&&r&&msCan()){clOpen('got',r,t);return}
+  if(cl==='skip'&&r&&msCan()){clOpen('skip',r,t);return}
+  if(cl==='savegot'&&r){var n=clN(r);if(!n)return;r.got+=n;msDlgClose(true);clRender();toast('บันทึกเก็บ IG คืน '+n+' สถานีแล้ว ('+r.name+')');return}
+  if(cl==='confirmskip'&&r){
+    var n2=clN(r);if(!n2)return;var rr=$('clR').value.trim();if(!rr){msErr('กรุณาพิมพ์เหตุผลที่ไม่เก็บ');$('clR').focus();return}
+    $('msErr').hidden=true;$('msStep').innerHTML='<span class="lab" style="margin-right:auto">ไม่เก็บ IG '+n2+' สถานีนี้อีก?</span><button class="btn" data-cl="backskip" data-id="'+r.id+'">กลับไปแก้</button><button class="btn danger" data-cl="doskip" data-id="'+r.id+'" data-n="'+n2+'">ยืนยัน ไม่เก็บ</button>';
+    var dk=$('msStep').querySelector('.danger');if(dk)dk.focus();return}
+  if(cl==='backskip'&&r){$('msStep').innerHTML='<button class="btn" data-ms="close">ยกเลิก</button><button class="btn primary" data-cl="confirmskip" data-id="'+r.id+'">ไม่เก็บ</button>';return}
+  if(cl==='doskip'&&r){var n3=+t.dataset.n;r.skip+=n3;msDlgClose(true);clRender();toast('บันทึก ไม่เก็บ IG '+n3+' สถานี แล้ว — นับเป็น "IG ที่ทิ้งไว้สะสม" (ลง audit_log)');return}
+  if(cl==='close'&&r&&msCan()){
+    var rm=clRem(r);msDlgOpen('<h3 id="msT" style="margin:0 0 4px;font-size:16px">ปิดสัญญา '+esc(r.ct)+'</h3><div class="lab">'+esc(r.name)+(rm>0?' · มี IG ยังไม่เก็บ '+rm+' สถานี — ปิดสัญญาได้ และ IG เหล่านี้ยังอยู่ในรายการรอเก็บจนกด "เก็บแล้ว" หรือ "ไม่เก็บ"':' · IG เก็บครบแล้ว')+'</div><div class="acts"><button class="btn" data-ms="close">ยกเลิก</button><button class="btn primary" data-cl="doclose" data-id="'+r.id+'">ยืนยัน ปิดสัญญา</button></div>',t);return}
+  if(cl==='doclose'&&r){r.closed=true;msDlgClose(true);clRender();toast('ปิดสัญญา '+r.ct+' แล้ว'+(clRem(r)>0?' · IG ที่เหลือ '+clRem(r)+' สถานียังอยู่ในรายการรอเก็บ':''));return}
+  var ca=t.dataset.ctAct,c=ca&&custById(+id);
+  if(ca==='edit'&&c){c.editInfo=true;ctRefresh(c);var f=$('ctC');if(f)f.focus();return}
+  if(ca==='cancel'&&c){c.editInfo=false;ctRefresh(c);return}
+  if(ca==='save'&&c){
+    var v1=$('ctC').value.trim(),v2=$('ctP').value.trim(),v3=$('ctN').value.trim(),er=$('ctErr'),msg='';
+    if(!v1)msg='กรุณากรอกชื่อผู้ติดต่อ';else if(!/^[0-9+()\-\s,/.]{8,40}$/.test(v2))msg='เบอร์โทรไม่ถูกต้อง — ใช้ตัวเลข เว้นวรรค - + ( ) ได้ อย่างน้อย 8 ตัว';
+    if(msg){er.textContent=msg;er.hidden=false;return}
+    var i=ctSeed(c),ch=i.contact!==v1||i.phone!==v2||i.note!==v3;
+    i.contact=v1;i.phone=v2;i.note=v3;if(ch)i.audit='แก้ไขล่าสุด '+msDateTh(TODAY_ISO)+' โดย '+(msRole()==='host'?'host':'หัวหน้างาน');
+    c.editInfo=false;ctRefresh(c);toast(ch?'บันทึกข้อมูลติดต่อแล้ว (ลง audit_log)':'ไม่มีการเปลี่ยนแปลง');return}
+});
+document.addEventListener('keydown',function(e){
+  var t=e.target;if(e.key==='Enter'&&t.matches&&t.matches('[data-cust-link]')){t.click();return}
+  if(e.key==='Escape'&&t.closest&&t.closest('.ctedit')){var b=t.closest('.ctedit').querySelector('[data-ct-act=cancel]');if(b)b.click()}
+});
+svSyncMakeup();
+msRenderTodo();
+clRender();
 
 function goHash(){ var h=location.hash.slice(1); if(SCREENS.indexOf(h)>=0) go(h); }
 initEntryPages();
