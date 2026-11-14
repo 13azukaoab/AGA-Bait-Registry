@@ -2856,7 +2856,7 @@ document.addEventListener('click',function(e){var nb3=e.target.closest&&e.target
 tmRender();
 /* ===== #todo: เตือนเมื่อเข้าเดือนใหม่แต่ยังปิดงานเดือนก่อนไม่เสร็จ (เจ้าของสั่ง 14 พ.ย. 2026) =====
    หน้านี้แสดง "เดือนที่ยังไม่ปิดเก่าสุด" (TM_VIEW) · ถ้าเดือนนั้นเก่ากว่าเดือนปัจจุบันตามวันที่จริง (เขตเวลาไทย)
-   → เปิดหน้าจอเตือนครั้งเดียวต่อการเปิดหน้าเว็บ · มีปุ่มไปหน้า "ส่งข้อมูล และสรุปงานประจำเดือน" (เฉพาะ host/หัวหน้างาน) */
+   → เปิดหน้าจอเตือนครั้งเดียวต่อการเปิดหน้าเว็บ · ปุ่ม "ไปกรอกข้อมูลต่อ" พาไปหน้ากรอกผลบริการ + ลิงก์ไปหน้า "ส่งข้อมูล และสรุปงานประจำเดือน" (เฉพาะ host/หัวหน้างาน · admin เห็นแค่ปุ่มรับทราบ) */
 var TM_VIEW='2026-10',tmAlerted=false;
 function tmNowMonth(){var p=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Bangkok',year:'numeric',month:'2-digit'}).format(new Date());return p.slice(0,7)}
 function tmMonthAlert(){
@@ -2866,7 +2866,7 @@ function tmMonthAlert(){
     '<p style="margin:0 0 8px">ตอนนี้เข้าเดือน <b>'+msMonthTh(now)+'</b> แล้ว แต่เดือน <b>'+msMonthTh(TM_VIEW)+'</b> ยังไม่ได้ปิด หน้านี้จึงยังแสดงข้อมูลของเดือน '+msMonthTh(TM_VIEW)+'</p>'+
     '<ul style="margin:0 0 6px;padding-left:18px"><li>ยังไม่กรอกข้อมูล <b>18</b> ราย</li><li>ตกบริการรอตัดสิน <b>'+pend+'</b> ราย</li></ul>'+
     '<p class="lab" style="margin:0">กรอกให้ครบแล้วปิดเดือน หน้านี้จะเลื่อนไปเดือนถัดไปเอง</p>'+
-    '<div class="acts"><button class="btn'+(msCan()?'':' primary')+'" data-ms="close">รับทราบ</button>'+(msCan()?'<button class="btn primary" onclick="location.href=\'month-closure.html\'">ไปหน้าปิดเดือน</button>':'')+'</div>',null);
+    '<div class="acts">'+(msCan()?'<a href="month-closure.html" style="margin-right:auto;font-size:12.5px">ไปหน้าปิดเดือน</a><button class="btn" data-ms="close">ไว้ทีหลัง</button><button class="btn primary" onclick="msDlgClose(true);go(\'service\')">ไปกรอกข้อมูลต่อ</button>':'<button class="btn primary" data-ms="close">รับทราบ</button>')+'</div>',null);
 }
 var _goOrig=go;go=function(s){_goOrig(s);if(s==='todo')setTimeout(tmMonthAlert,250)};
 function goHash(){ var h=location.hash.slice(1); if(SCREENS.indexOf(h)>=0) go(h); }
