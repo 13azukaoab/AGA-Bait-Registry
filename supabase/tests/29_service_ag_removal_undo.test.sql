@@ -100,7 +100,8 @@ SELECT is((SELECT prev_status::text FROM station_ag_removals WHERE station_id = 
   'active', 'retry does not overwrite the status before removal');
 
 -- การเข้าอื่น (V2) สั่ง AG-1 กลับมาใช้งาน → ไม่ได้ (ไม่ปลุกกล่องที่ถอดในการเข้าอื่น)
-SELECT lives_ok($$SELECT public.save_service_visit(pg_temp.payload('00000000-0000-0000-0000-0000000000f2', '2026-02-20',
+-- M15: V2 ลงวันก่อน V1 (2.25 ข: ถ้า V2 ลงวันหลัง จะลบ V1 ไม่ได้ — เทสใน 30)
+SELECT lives_ok($$SELECT public.save_service_visit(pg_temp.payload('00000000-0000-0000-0000-0000000000f2', '2026-01-10',
   '[{"station_id": "00000000-0000-0000-0000-0000000000e1", "status": "active"}]'))$$,
   'V2 saves while asking AG-1 (removed in V1) to be active');
 SELECT is(pg_temp.st('00000000-0000-0000-0000-0000000000e1'), 'removed', 'another visit cannot wake a box removed in V1');
@@ -156,7 +157,7 @@ SELECT is((SELECT prev_status::text FROM station_ag_removals WHERE visit_id = '0
 SELECT lives_ok($$SELECT public.delete_service_visit('00000000-0000-0000-0000-0000000000f3')$$, 'delete V3');
 SELECT is(pg_temp.st('00000000-0000-0000-0000-0000000000e1'), 'pending_removal', 'AG-1 back to pending_removal');
 -- คืน AG-1 เป็น active ผ่านการเข้าปกติ (V2 แก้) เพื่อใช้ในข้อถัดไป
-SELECT lives_ok($$SELECT public.save_service_visit(pg_temp.payload('00000000-0000-0000-0000-0000000000f2', '2026-02-20',
+SELECT lives_ok($$SELECT public.save_service_visit(pg_temp.payload('00000000-0000-0000-0000-0000000000f2', '2026-01-10',
   '[{"station_id": "00000000-0000-0000-0000-0000000000e1", "status": "active"}]'))$$,
   'V2 sets AG-1 back to active (normal status change)');
 
@@ -177,11 +178,12 @@ SELECT is(pg_temp.st('00000000-0000-0000-0000-0000000000e3'), 'removed', 'a late
 SELECT is((SELECT removed_at FROM stations WHERE id = '00000000-0000-0000-0000-0000000000e3'), '2026-04-01 10:00+07'::timestamptz,
   'the host''s removal time is kept');
 
--- 3b. เลขเดิมถูกใช้กับกล่องใหม่ในการเข้าหลัง → ลบการเข้าที่ถอดไม่ได้ (SV002) ไม่ใช่ 23505
+-- 3b. เลขเดิมถูกใช้กับกล่องใหม่ (การเข้าที่ลงวันก่อน แต่บันทึกทีหลัง) → ลบการเข้าที่ถอดไม่ได้ (SV002) ไม่ใช่ 23505
+--     M15: ถ้าการเข้าที่ฝังใหม่ลงวันหลังกว่า จะได้ SV005 ก่อน (เทสใน 30) → ที่นี่ใช้วันก่อนเพื่อคงการทดสอบ SV002
 SELECT lives_ok($$SELECT public.save_service_visit(pg_temp.payload('00000000-0000-0000-0000-0000000000f5', '2026-05-20',
   '[{"station_id": "00000000-0000-0000-0000-0000000000e1", "status": "removed"}]'))$$,
   'V5 removes AG-1');
-SELECT lives_ok($$SELECT public.save_service_visit(pg_temp.payload('00000000-0000-0000-0000-0000000000f6', '2026-06-20', '[]',
+SELECT lives_ok($$SELECT public.save_service_visit(pg_temp.payload('00000000-0000-0000-0000-0000000000f6', '2026-05-10', '[]',
   '{"works": [{"id": "00000000-0000-0000-0000-00000000b001", "kind": "added", "station_type": "AG", "station_nos": [1]}]}'))$$,
   'V6 installs a new AG-1 (same number reused)');
 SELECT throws_ok($$SELECT public.delete_service_visit('00000000-0000-0000-0000-0000000000f5')$$,
