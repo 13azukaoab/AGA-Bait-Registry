@@ -711,7 +711,7 @@ tfoot td{padding:10px 12px;font-weight:700;background:var(--surface-2);border-to
         <h3><span class="dot" style="background:var(--accent)"></span> สรุปรายทีม · ต.ค. 2026 <small>เวลาบริการ · ตกบริการ · ลูกค้าเพิ่ม (ข้อมูลสมมติ)</small></h3>
         <div class="tmk" id="tmKpi"></div>
         <div class="tablewrap"><table>
-          <thead><tr><th>ทีม</th><th>เขต · สาขา</th><th>เวลาบริการ (รวม · เฉลี่ยต่อราย)</th><th class="c">เข้าบริการ (ทำแล้ว/ทั้งหมด)</th><th class="c">ตกบริการ (ต.ค.)</th><th class="c">ลูกค้าใหม่</th><th class="c">ต่อสัญญา</th></tr></thead>
+          <thead><tr><th>ทีม</th><th>เขต · สาขา</th><th>เวลาบริการ (รวม · เฉลี่ยต่อราย)</th><th class="c">เข้าบริการ (ทำแล้ว/ทั้งหมด)</th><th class="c">ตกบริการ (ต.ค.)</th><th class="c">New</th><th class="c">Renew</th></tr></thead>
           <tbody id="tmBody"></tbody>
         </table></div>
       </div>
@@ -2817,9 +2817,9 @@ function tmRender(){
   var tMin=0,tV=0,tNew=0,tRen=0,tMiss=0,max=0;
   TM.forEach(function(t){tMin+=t.min;tV+=t.visits;tNew+=t.newc;tRen+=t.renew;tMiss+=t.miss.length;if(t.min>max)max=t.min});
   $('tmKpi').innerHTML=
-    '<div><div class="lab">ลูกค้าใหม่เดือนนี้</div><div class="val num">'+tNew+'</div><div class="sub">ลูกค้าที่เพิ่งเข้าระบบ</div></div>'+
-    '<div><div class="lab">ต่อสัญญา / สัญญาใหม่ลูกค้าเดิม</div><div class="val num">'+tRen+'</div><div class="sub">ลูกค้าเดิม</div></div>'+
-    '<div><div class="lab">เพิ่มเข้ามาทั้งหมด</div><div class="val num">'+(tNew+tRen)+'</div><div class="sub">ใหม่ + ต่อสัญญา</div></div>'+
+    '<div><div class="lab">New</div><div class="val num">'+tNew+'</div><div class="sub">ลูกค้าใหม่ที่เพิ่งเข้าระบบเดือนนี้</div></div>'+
+    '<div><div class="lab">Renew</div><div class="val num">'+tRen+'</div><div class="sub">ลูกค้าเดิม ต่อสัญญา/ทำสัญญาใหม่</div></div>'+
+    '<div><div class="lab">เพิ่มเข้ามาทั้งหมด</div><div class="val num">'+(tNew+tRen)+'</div><div class="sub">New + Renew</div></div>'+
     '<div><div class="lab">เวลาบริการรวม</div><div class="val num">'+Math.round(tMin/60)+' <span style="font-size:14px;color:var(--fg-muted)">ชม.</span></div><div class="sub">'+tV+' ครั้ง · เฉลี่ย '+tmHm(Math.round(tMin/tV))+' ชม.:นาที</div></div>'+
     '<div><div class="lab">ตกบริการ (ทุกทีม)</div><div class="val num" style="color:var(--'+(tMiss?'danger':'ok')+')">'+tMiss+'</div><div class="sub">รายชื่ออยู่ในตารางด้านล่าง</div></div>';
   /* แสดงรายทีมเรียบๆ (เจ้าของสั่ง 14 พ.ย. 2026: ไม่ต้องมีแถวหัวเขต) · เรียงตามเขต แล้วตามสาขา */
