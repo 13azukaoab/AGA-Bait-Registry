@@ -2849,7 +2849,7 @@ function tmRender(){
          '<td><span class="num">'+Math.floor(t.min/60)+' ชม. '+(t.min%60)+' นาที</span> <span style="color:var(--fg-muted)">· เฉลี่ย '+tmHm(Math.round(t.min/t.visits))+'</span><div class="tmbar" aria-hidden="true"><i style="width:'+pct+'%"></i></div></td>'+
          '<td class="c"><span class="num"><b>'+t.visits+'</b>/'+t.plan+' ราย</span><div class="tmbar" style="min-width:80px" role="img" aria-label="ทำแล้ว '+dp+'%"><i style="width:'+dp+'%;background:var(--ok)"></i></div></td>'+
          '<td class="tmmcell">'+tmMissCell(i)+'</td>'+
-         '<td class="c num">'+t.newc+'</td><td class="c num">'+t.renew+'</td></tr>';
+         '<td class="c num">'+(t.newc||'<span class="tmdash">-</span>')+'</td><td class="c num">'+(t.renew||'<span class="tmdash">-</span>')+'</td></tr>';
       if(bo)t.brs.forEach(function(x){var p=Math.round(x.visits*100/x.plan);
         h+='<tr class="tmsub"><td></td><td>└ '+esc(x.br)+''+'</td><td class="num">'+Math.floor(x.min/60)+' ชม. '+(x.min%60)+' นาที</td>'+
            '<td class="c num">'+x.visits+'/'+x.plan+' ราย <span style="color:var(--fg-muted)">('+p+'%)</span></td><td class="tmmcell">'+tmMissCell(i,x.br)+'</td><td></td><td></td></tr>'});
