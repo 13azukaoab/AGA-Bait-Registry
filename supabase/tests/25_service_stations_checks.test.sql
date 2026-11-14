@@ -4,7 +4,7 @@
 -- Role simulation: seed as postgres, then SET LOCAL ROLE authenticated/anon and set
 -- request.jwt.claim.sub (what auth.uid() reads). RESET ROLE to inspect as superuser.
 BEGIN;
-SELECT plan(63);
+SELECT plan(64);
 
 -- =====================================================================
 -- โครงสร้าง + สิทธิ์
@@ -156,8 +156,11 @@ SELECT throws_ok($$INSERT INTO stations (contract_id, type, station_no, status) 
   '42501', NULL, 'recorder cannot add a station that is not active');
 SELECT throws_ok($$INSERT INTO stations (contract_id, type, station_no) VALUES ('00000000-0000-0000-0000-0000000000d4', 'IG', 1)$$,
   '42501', NULL, 'recorder cannot add stations outside their division');
-SELECT lives_ok($$UPDATE stations SET status = 'lost', point_label = 'หน้าบ้าน' WHERE id = '00000000-0000-0000-0000-0000000000e6'$$,
-  'recorder changes status and point label');
+-- M16 (DECISIONS 2.29): "หาย" ตั้งผ่านงานซ่อมใน save_service_visit เท่านั้น → ตรงๆ โดนกัน · ป้ายจุดยังแก้ได้
+SELECT throws_ok($$UPDATE stations SET status = 'lost', point_label = 'หน้าบ้าน' WHERE id = '00000000-0000-0000-0000-0000000000e6'$$,
+  '42501', NULL, 'recorder cannot mark a station lost directly (M16)');
+SELECT lives_ok($$UPDATE stations SET point_label = 'หน้าบ้าน' WHERE id = '00000000-0000-0000-0000-0000000000e6'$$,
+  'recorder changes the point label');
 SELECT throws_ok($$UPDATE stations SET station_no = 7 WHERE id = '00000000-0000-0000-0000-0000000000e7'$$,
   '42501', NULL, 'recorder cannot renumber a station');
 SELECT throws_ok($$UPDATE stations SET contract_id = '00000000-0000-0000-0000-0000000000d6' WHERE id = '00000000-0000-0000-0000-0000000000e7'$$,
@@ -166,8 +169,10 @@ DELETE FROM stations WHERE id = '00000000-0000-0000-0000-0000000000e7';
 RESET ROLE;
 SELECT is((SELECT count(*)::int FROM stations WHERE id = '00000000-0000-0000-0000-0000000000e7'), 1,
   'recorder cannot delete stations');
-SELECT is((SELECT status::text FROM stations WHERE id = '00000000-0000-0000-0000-0000000000e6'), 'lost',
-  'status change saved');
+SELECT is((SELECT status::text FROM stations WHERE id = '00000000-0000-0000-0000-0000000000e6'), 'active',
+  'refused status change did not save (M16)');
+-- คงข้อมูลสำหรับเทสถัดไปให้เหมือนเดิม (IG-2 หาย) — ตั้งในนามระบบ
+UPDATE stations SET status = 'lost' WHERE id = '00000000-0000-0000-0000-0000000000e6';
 
 -- =====================================================================
 -- ตั้งสถานีเดือนแรก / ย้ายตอน Renew
