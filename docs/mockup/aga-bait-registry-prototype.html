@@ -711,7 +711,7 @@ tfoot td{padding:10px 12px;font-weight:700;background:var(--surface-2);border-to
         <h3><span class="dot" style="background:var(--accent)"></span> สรุปรายทีม · ต.ค. 2026 <small>เวลาบริการ · ตกบริการ · ลูกค้าเพิ่ม (ข้อมูลสมมติ)</small></h3>
         <div class="tmk" id="tmKpi"></div>
         <div class="tablewrap"><table>
-          <thead><tr><th>ทีม</th><th>สาขา</th><th>เวลาบริการ (รวม · เฉลี่ยต่อราย)</th><th class="c">เข้าบริการ (ทำแล้ว/ทั้งหมด)</th><th class="c">ตกบริการ (ต.ค.)</th><th class="c">ลูกค้าใหม่</th><th class="c">ต่อสัญญา</th></tr></thead>
+          <thead><tr><th>ทีม</th><th>เขต · สาขา</th><th>เวลาบริการ (รวม · เฉลี่ยต่อราย)</th><th class="c">เข้าบริการ (ทำแล้ว/ทั้งหมด)</th><th class="c">ตกบริการ (ต.ค.)</th><th class="c">ลูกค้าใหม่</th><th class="c">ต่อสัญญา</th></tr></thead>
           <tbody id="tmBody"></tbody>
         </table></div>
       </div>
@@ -2822,7 +2822,7 @@ function tmRender(){
     '<div><div class="lab">เพิ่มเข้ามาทั้งหมด</div><div class="val num">'+(tNew+tRen)+'</div><div class="sub">ใหม่ + ต่อสัญญา</div></div>'+
     '<div><div class="lab">เวลาบริการรวม</div><div class="val num">'+Math.round(tMin/60)+' <span style="font-size:14px;color:var(--fg-muted)">ชม.</span></div><div class="sub">'+tV+' ครั้ง · เฉลี่ย '+tmHm(Math.round(tMin/tV))+' ชม.:นาที</div></div>'+
     '<div><div class="lab">ตกบริการ (ทุกทีม)</div><div class="val num" style="color:var(--'+(tMiss?'danger':'ok')+')">'+tMiss+'</div><div class="sub">รายชื่ออยู่ในตารางด้านล่าง</div></div>';
-  /* จัดกลุ่มตามเขต: แถวหัวเขต (ยอดรวมของเขต) แล้วตามด้วยทีมในเขตนั้น เรียงตามสาขา */
+  /* แสดงรายทีมเรียบๆ (เจ้าของสั่ง 14 พ.ย. 2026: ไม่ต้องมีแถวหัวเขต) · เรียงตามเขต แล้วตามสาขา */
   var zones=[],zmap={};
   TM.forEach(function(t,i){if(!zmap[t.zone]){zmap[t.zone]={name:t.zone,items:[]};zones.push(zmap[t.zone])}zmap[t.zone].items.push(i)});
   var h='';
@@ -2830,14 +2830,10 @@ function tmRender(){
     z.items.sort(function(x,y){return TM[x].br<TM[y].br?-1:TM[x].br>TM[y].br?1:0});
     var zm=0,zv=0,zp=0,zmi=0,zn=0,zr=0,brs={};
     z.items.forEach(function(i){var t=TM[i];zm+=t.min;zv+=t.visits;zp+=t.plan;zmi+=t.miss.length;zn+=t.newc;zr+=t.renew;(t.brs||[{br:t.br}]).forEach(function(x){if(!x.zone)brs[x.br]=1})});
-    h+='<tr class="tmzone"><td colspan="2">'+esc(z.name)+' <span class="zsub">· '+Object.keys(brs).length+' สาขา · '+z.items.length+' ทีม</span></td>'+
-       '<td class="num">'+Math.floor(zm/60)+' ชม. '+(zm%60)+' นาที <span class="zsub">· เฉลี่ย '+tmHm(Math.round(zm/zv))+'</span></td>'+
-       '<td class="c num">'+zv+'/'+zp+' ราย <span class="zsub">('+Math.round(zv*100/zp)+'%)</span></td>'+
-       '<td class="c num" style="color:var(--'+(zmi?'danger':'fg-muted')+')">'+zmi+'</td><td class="c num">'+zn+'</td><td class="c num">'+zr+'</td></tr>';
     z.items.forEach(function(i){
       var t=TM[i],n=t.miss.length,op=!!tmOpen[i]&&n>0,pct=max?Math.round(t.min*100/max):0,dp=Math.round(t.visits*100/t.plan);
-      var bo=!!tmBr[i]&&t.brs,bcell=t.brs?'<button type="button" class="tmbr" data-tmb="'+i+'" aria-expanded="'+!!bo+'">'+t.brs.length+' สาขา '+(bo?'▾':'▸')+'</button>':esc(t.br);
-      h+='<tr><td style="padding-left:22px"><b>'+esc(t.team)+'</b></td><td>'+bcell+'</td>'+
+      var bo=!!tmBr[i]&&t.brs,bcell=t.brs?'<button type="button" class="tmbr" data-tmb="'+i+'" aria-expanded="'+!!bo+'">'+t.brs.length+' สาขา '+(bo?'▾':'▸')+'</button>':esc(t.zone)+' · '+esc(t.br);
+      h+='<tr><td><b>'+esc(t.team)+'</b></td><td>'+bcell+'</td>'+
          '<td><span class="num">'+Math.floor(t.min/60)+' ชม. '+(t.min%60)+' นาที</span> <span style="color:var(--fg-muted)">· เฉลี่ย '+tmHm(Math.round(t.min/t.visits))+'</span><div class="tmbar" aria-hidden="true"><i style="width:'+pct+'%"></i></div></td>'+
          '<td class="c"><span class="num"><b>'+t.visits+'</b>/'+t.plan+' ราย</span><div class="tmbar" style="min-width:80px" role="img" aria-label="ทำแล้ว '+dp+'%"><i style="width:'+dp+'%;background:var(--ok)"></i></div></td>'+
          '<td class="c">'+(n?'<button type="button" class="tmmiss" data-tm="'+i+'" aria-expanded="'+op+'" aria-controls="tmDet'+i+'">'+n+' ราย '+(op?'▾':'▸')+'</button>':'<span class="tmmiss zero">0</span>')+'</td>'+
