@@ -11,6 +11,10 @@ import { isMissedService } from "./missedService";
  * และมีการเข้าชดเชยจริงในเดือนนั้น · ไม่ถูกยกเลิกก่อน/ในเดือนนั้น · นับต่อสัญญาไม่เกิน 1 ครั้งต่อเดือน
  * · Tier/มูลค่าเดิมของสัญญา
  *
+ * ⚠ สำหรับคนต่อ Dashboard Sync (ผลตรวจ M2): loader ต้องส่ง
+ *   (1) visits = การเข้า **ทั้งหมด** ของสัญญา พร้อม makeupForMonth (visits.makeup_for_month)
+ *   (2) Contract.stationsInitializedAt (contracts.stations_initialized_at) + cancelledAt + renewedFromContractId
+ *   ขาดข้อใด → เดือนชดเชยหลังสัญญาจบจะ "ไม่ถูกนับ" แบบเงียบๆ (ไม่ error)
  * visits (ไม่บังคับ — ไม่ส่ง = ผลเหมือนก่อน M18): การเข้าทั้งหมดของสัญญาเหล่านี้ ต้องมี makeupForMonth
  * และสัญญาต้องมี stationsInitializedAt (ไม่มี = ไม่นับเดือนชดเชย)
  * ('YYYY-MM' — ตัดจาก 'YYYY-MM-01' ของ DB) ใช้หาการเข้าชดเชย + ตรวจว่าเดือนที่ผูกยังตกจริง

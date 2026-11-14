@@ -38,7 +38,8 @@
 --   8. audit: trigger `audit_missed_service_resolutions` + เพิ่มกรณีในตัว `audit_trigger` (contract_id + month_key
 --      = เดือนที่ตก) · เนื้อ audit_trigger เดิมจาก 20261112150000 เพิ่มเฉพาะจุดที่ติดป้าย "M18"
 --   * advisory lock ต่อสัญญาเดียวกับ save_service_visit (การตัดสิน ↔ การผูกการเข้า ไม่ชนกัน)
---   * "ยกเลิก" = contracts.status = 'cancelled' หรือมี cancelled_at (ใช้เงื่อนไขเดียวกันทุกจุดในไฟล์นี้)
+--   * "ยกเลิก" = contracts.status = 'cancelled' ⇔ มี cancelled_at (L3 · บังคับด้วย CHECK + trigger ในข้อ 0b ·
+--     SQL ในไฟล์นี้เช็กทั้งคู่ · TS ใช้ cancelledAt — ตรงกันเสมอ)
 --   * error: MS001 เดือนที่ตกไม่ถูกต้อง · MS002 เดือนนั้นไม่ได้ตกบริการ · MS004 ไม่ชดเชยต้องมีเหตุผล
 --     · MS005 ชดเชยแล้ว (มีการเข้าผูกอยู่) · MS006 ผูกการเข้าไม่ได้ (ไม่ใช่ routine / ไม่อยู่หลังเดือนที่ตก)
 --     · MS007 ไฟล์หลักฐานไม่ถูกต้อง · MS008 เลยเพดานเวลาไปชดเชย (recorder) · MS009 สัญญายกเลิกแล้ว
@@ -89,6 +90,52 @@ AS $$
   SELECT EXISTS (SELECT 1 FROM contracts n
                   WHERE n.renewed_from_contract_id = p_contract_id AND n.id <> p_contract_id)
 $$;
+
+-- =====================================================================
+-- 0b. (L3) status = 'cancelled' ⇔ cancelled_at มีค่า — ให้ SQL (ดู status) กับ TS (ดู cancelledAt) ตรงกันเสมอ
+--   * trigger `contracts_cancelled_at_sync` (BEFORE INSERT / UPDATE OF status, cancelled_at):
+--       - เปลี่ยนเป็น cancelled โดยไม่ระบุวันที่ → เติม cancelled_at = now()
+--       - เปลี่ยนจาก cancelled กลับเป็นสถานะอื่น (Host แก้กดผิด — M12/3.11 ยังอนุญาต) โดยไม่แตะ cancelled_at → ล้างเป็น NULL
+--         (เลือก "ล้าง" แทน "ห้ามเปลี่ยนกลับ" เพราะขัดกับสิทธิ์ Host แก้สัญญายกเลิกตาม 3.11)
+--       - ตั้ง cancelled_at ให้สัญญาที่ไม่ได้ยกเลิก → ไม่แก้ให้ ปล่อยให้ CHECK ปฏิเสธ (23514) ไม่เดาค่า
+--   * CHECK `contracts_cancelled_status_matches_date` · ข้อมูลเดิมที่ขัด → migration ล้มพร้อมข้อความ (ไม่ backfill เดา)
+--     (HQ ตรวจ cloud แล้ว 15 พ.ย. 2026: contracts 0 แถว)
+-- =====================================================================
+DO $$
+DECLARE
+  v_bad int;
+BEGIN
+  SELECT count(*) INTO v_bad FROM public.contracts
+   WHERE (status = 'cancelled') <> (cancelled_at IS NOT NULL);
+  IF v_bad > 0 THEN
+    RAISE EXCEPTION 'M18/L3: % contract row(s) have status/cancelled_at out of sync (status=cancelled must have cancelled_at and vice versa). Fix the data by hand, then rerun this migration.', v_bad;
+  END IF;
+END;
+$$;
+
+CREATE FUNCTION public.contracts_cancelled_at_sync()
+RETURNS trigger
+LANGUAGE plpgsql
+SET search_path = public, pg_temp
+AS $$
+BEGIN
+  IF NEW.status = 'cancelled' AND NEW.cancelled_at IS NULL THEN
+    NEW.cancelled_at := now();
+  ELSIF TG_OP = 'UPDATE' AND NEW.status <> 'cancelled' AND OLD.status = 'cancelled'
+        AND NEW.cancelled_at IS NOT DISTINCT FROM OLD.cancelled_at THEN
+    NEW.cancelled_at := NULL;
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER contracts_cancelled_at_sync
+  BEFORE INSERT OR UPDATE OF status, cancelled_at ON public.contracts
+  FOR EACH ROW EXECUTE FUNCTION public.contracts_cancelled_at_sync();
+
+ALTER TABLE public.contracts
+  ADD CONSTRAINT contracts_cancelled_status_matches_date
+  CHECK ((status = 'cancelled') = (cancelled_at IS NOT NULL));
 
 -- =====================================================================
 -- 1. ตารางผลของเดือนที่ตก
@@ -766,6 +813,7 @@ CREATE TRIGGER audit_missed_service_resolutions
 -- 9. สิทธิ์ function (ทุกตัวในไฟล์นี้)
 -- =====================================================================
 REVOKE ALL ON FUNCTION public.visits_makeup_link_guard() FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.contracts_cancelled_at_sync() FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.visits_makeup_unlink_cleanup() FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.missed_evidence_enqueue_object_delete() FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.missed_makeup_deadline_months() FROM PUBLIC, anon;

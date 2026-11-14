@@ -8,7 +8,7 @@
 --   dr = สัญญาที่ลูกค้าต่อแล้ว (สัญญาใหม่ dn ใส่ระหว่างเทส — 2.47)
 --   da / db / dc = ชุดตาราง host×recorder × ภายใน/เลยเพดาน × waived/makeup × ปิด/ยกเลิก (da ภายใน · db เลย · dc ปิด)
 BEGIN;
-SELECT plan(148);
+SELECT plan(156);
 
 INSERT INTO auth.users (id, instance_id, aud, role, email) VALUES
   ('00000000-0000-0000-0000-0000000000a1', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'host@test.local'),
@@ -47,7 +47,8 @@ INSERT INTO contracts (id, customer_id, contract_no, start_date, term_years, val
   (pg_temp.id('da'), pg_temp.id('c1'), 'M-A', pg_temp.m(-18), 1, 24000,  pg_temp.m(-18), 'active', NULL),
   (pg_temp.id('db'), pg_temp.id('c1'), 'M-B', pg_temp.m(-30), 1, 24000,  pg_temp.m(-30), 'active', NULL),
   (pg_temp.id('dc'), pg_temp.id('c1'), 'M-C', pg_temp.m(-18), 1, 24000,  pg_temp.m(-18), 'closed', NULL),
-  (pg_temp.id('dd'), pg_temp.id('c1'), 'M-R', pg_temp.m(-18), 1, 24000,  pg_temp.m(-18), 'active', NULL);
+  (pg_temp.id('dd'), pg_temp.id('c1'), 'M-R', pg_temp.m(-18), 1, 24000,  pg_temp.m(-18), 'active', NULL),
+  (pg_temp.id('df'), pg_temp.id('c1'), 'M-F', pg_temp.m(-18), 1, 24000,  pg_temp.m(-18), 'active', NULL);
 -- d1: m(-15) มี routine (ไม่ตก) · เดือนอื่นตก
 INSERT INTO visits (id, contract_id, visit_date, visit_type, start_time, end_time) VALUES
   (pg_temp.id('e1'), pg_temp.id('d1'), pg_temp.m(-15) + 9, 'routine', '09:00', '10:00');
@@ -415,6 +416,32 @@ SELECT is((SELECT count(*)::int FROM audit_log WHERE table_name = 'missed_servic
             AND changed_by = '00000000-0000-0000-0000-0000000000a3'
             AND old_data ->> 'kind' = 'waived'), 1,
   'reopening is audited with the old waiver and who reopened it');
+
+-- =====================================================================
+-- L3: status = 'cancelled' ⇔ cancelled_at (trigger + CHECK)
+-- =====================================================================
+SELECT col_has_check('public', 'contracts', ARRAY['status', 'cancelled_at'],
+  'contracts has a CHECK tying status cancelled to cancelled_at');
+INSERT INTO contracts (id, customer_id, contract_no, start_date, term_years, value_total, status)
+VALUES (pg_temp.id('0e'), pg_temp.id('c1'), 'M-E', pg_temp.m(-18), 1, 24000, 'cancelled');
+SELECT ok((SELECT cancelled_at IS NOT NULL FROM contracts WHERE id = pg_temp.id('0e')),
+  'inserting a cancelled contract without a date fills cancelled_at');
+SELECT throws_ok($$INSERT INTO contracts (id, customer_id, contract_no, start_date, term_years, value_total, status, cancelled_at)
+                   VALUES (pg_temp.id('0f'), pg_temp.id('c1'), 'M-X', pg_temp.m(-18), 1, 24000, 'active', now())$$,
+  '23514', NULL, 'an active contract with cancelled_at is refused (no guessing)');
+SET LOCAL ROLE authenticated;
+SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a1', true);
+SELECT lives_ok($$UPDATE contracts SET status = 'cancelled' WHERE id = pg_temp.id('df')$$, 'host cancels a contract (M12 path)');
+RESET ROLE;
+SELECT ok((SELECT cancelled_at IS NOT NULL FROM contracts WHERE id = pg_temp.id('df')), 'cancelling fills cancelled_at');
+SET LOCAL ROLE authenticated;
+SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a1', true);
+SELECT lives_ok($$UPDATE contracts SET status = 'active' WHERE id = pg_temp.id('df')$$,
+  'host un-cancels a contract by mistake (3.11 still allowed)');
+RESET ROLE;
+SELECT ok((SELECT cancelled_at IS NULL FROM contracts WHERE id = pg_temp.id('df')), 'un-cancelling clears cancelled_at');
+SELECT throws_ok($$UPDATE contracts SET cancelled_at = now() WHERE id = pg_temp.id('df')$$,
+  '23514', NULL, 'setting cancelled_at alone on an active contract is refused');
 
 -- =====================================================================
 -- ไฟล์หลักฐาน (แก้ตามผลตรวจ security รอบแรก)
