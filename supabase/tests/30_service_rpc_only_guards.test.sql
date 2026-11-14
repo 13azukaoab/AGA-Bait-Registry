@@ -2,13 +2,16 @@
 -- Role simulation: seed as postgres, then SET LOCAL ROLE authenticated and set
 -- request.jwt.claim.sub (what auth.uid() reads). RESET ROLE to inspect as superuser.
 BEGIN;
-SELECT plan(68);
+SELECT plan(81);
 
 -- =====================================================================
 -- โครงสร้าง + สิทธิ์
 -- =====================================================================
 SELECT has_trigger('public', 'stations', 'stations_finished_status_guard', 'stations has the finished-status guard');
 SELECT has_trigger('public', 'visits', 'visits_delete_rpc_only', 'visits has the RPC-only delete guard');
+SELECT has_trigger('public', 'visits', 'visits_date_move_guard', 'visits has the date-move guard');
+SELECT has_trigger('public', 'visits', 'visits_insert_contract_lock', 'direct visit inserts take the contract lock');
+SELECT has_trigger('public', 'contracts', 'contracts_renew_contract_lock', 'renewals take the old contract lock');
 SELECT is_definer('public', 'service_ag_removal_guard', ARRAY['uuid', 'uuid[]'], 'guard helper is SECURITY DEFINER (gated)');
 SELECT ok(NOT has_function_privilege('anon', 'public.service_ag_removal_guard(uuid, uuid[])', 'EXECUTE'),
   'anon cannot call the guard helper');
@@ -47,7 +50,8 @@ INSERT INTO stations (id, contract_id, type, station_no, status) VALUES
   ('00000000-0000-0000-0000-0000000000e2', '00000000-0000-0000-0000-0000000000d1', 'AG', 2, 'active'),
   ('00000000-0000-0000-0000-0000000000e3', '00000000-0000-0000-0000-0000000000d1', 'AG', 3, 'eliminated'),
   ('00000000-0000-0000-0000-0000000000e4', '00000000-0000-0000-0000-0000000000d2', 'IG', 1, 'active'),
-  ('00000000-0000-0000-0000-0000000000e9', '00000000-0000-0000-0000-0000000000d3', 'AG', 1, 'active');
+  ('00000000-0000-0000-0000-0000000000e9', '00000000-0000-0000-0000-0000000000d3', 'AG', 1, 'active'),
+  ('00000000-0000-0000-0000-0000000000e5', '00000000-0000-0000-0000-0000000000d1', 'AG', 5, 'active');
 
 CREATE TEMP TABLE _t AS SELECT (SELECT id FROM teams WHERE code = 'A') AS a;
 GRANT SELECT ON _t TO PUBLIC;
@@ -233,6 +237,35 @@ SELECT throws_ok($$SELECT public.save_service_visit(pg_temp.payload('00000000-00
                {"station_id": "00000000-0000-0000-0000-0000000000e1", "checked": false}]}'))$$,
   '22023', NULL, 'duplicate station in checks is refused');
 SELECT ok(NOT EXISTS (SELECT 1 FROM visits WHERE id = '00000000-0000-0000-0000-0000000000f8'), 'nothing was saved');
+
+-- =====================================================================
+-- 4b. ทางเลี่ยงที่ตรวจ security เจอ: เลื่อนวันที่ข้ามการถอด · recorder ถอดกล่องตรง
+-- =====================================================================
+SELECT lives_ok($$SELECT public.save_service_visit(pg_temp.payload('00000000-0000-0000-0000-0000000000d1',
+  '00000000-0000-0000-0000-0000000000fc', '2026-09-20',
+  '[{"station_id": "00000000-0000-0000-0000-0000000000e1", "status": "removed"}]'))$$, 'V11 (Sep) removes AG-1');
+SELECT lives_ok($$SELECT public.save_service_visit(pg_temp.payload('00000000-0000-0000-0000-0000000000d1',
+  '00000000-0000-0000-0000-0000000000fd', '2026-10-20', '[]'))$$, 'V12 (Oct)');
+SELECT throws_ok($$SELECT public.save_service_visit(pg_temp.payload('00000000-0000-0000-0000-0000000000d1',
+  '00000000-0000-0000-0000-0000000000fc', '2026-11-01',
+  '[{"station_id": "00000000-0000-0000-0000-0000000000e1", "status": "removed"}]'))$$,
+  'SV005', NULL, 'step 1 of the two-step trick (move V11 after V12, keep the removal) is refused');
+SELECT throws_ok($$UPDATE visits SET visit_date = '2026-09-01' WHERE id = '00000000-0000-0000-0000-0000000000fd'$$,
+  'SV005', NULL, 'recorder cannot PATCH V12 before the removal directly');
+SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a1', true);
+SELECT throws_ok($$UPDATE visits SET visit_date = '2026-09-01' WHERE id = '00000000-0000-0000-0000-0000000000fd'$$,
+  'SV005', NULL, 'host cannot either');
+SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a3', true);
+SELECT lives_ok($$SELECT public.save_service_visit(pg_temp.payload('00000000-0000-0000-0000-0000000000d1',
+  '00000000-0000-0000-0000-0000000000fd', '2026-10-25', '[]'))$$,
+  'a date change that does not cross the removal still works');
+SELECT is((SELECT visit_date FROM visits WHERE id = '00000000-0000-0000-0000-0000000000fc'), '2026-09-20'::date,
+  'V11 keeps its date');
+SELECT is(pg_temp.st('00000000-0000-0000-0000-0000000000e1'), 'removed', 'AG-1 stays removed');
+SELECT throws_ok($$UPDATE stations SET status = 'removed', removed_at = now() WHERE id = '00000000-0000-0000-0000-0000000000e5'$$,
+  '42501', NULL, 'recorder cannot remove a box directly (would skip the removal record)');
+SELECT throws_ok($$UPDATE stations SET status = 'eliminated' WHERE id = '00000000-0000-0000-0000-0000000000e5'$$,
+  '42501', NULL, 'recorder cannot mark a station eliminated directly');
 
 -- =====================================================================
 -- 5. (X9 ค่าชั่วคราว) สัญญาที่ Renew แล้ว ลบการเข้า / เอาติ๊กถอดออกไม่ได้ (SV010)

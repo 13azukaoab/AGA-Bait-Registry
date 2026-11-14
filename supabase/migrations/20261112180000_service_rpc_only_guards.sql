@@ -30,6 +30,13 @@
 --   5. ค่าปลอดภัยชั่วคราวระหว่างรอเจ้าของเลือก X9 (docs/plans/2026-11-12-ag-across-renew.md):
 --      **สัญญาที่ถูก Renew แล้ว (มีสัญญาใหม่ `renewed_from_contract_id` ชี้มา) ลบการเข้าบริการไม่ได้** → SV010
 --      ทุกบทบาท (host ด้วย) · และเอาติ๊กถอดกล่อง AG ออกในสัญญานั้นไม่ได้ (SV010) · แก้ผลอื่นของการเข้าเก่ายังทำได้
+--   6. (ปิดทางเลี่ยงจากการตรวจ security ก่อนส่ง)
+--      - เลื่อนวันที่ของการเข้าข้ามการเข้าที่ถอดกล่อง AG (ผ่าน RPC หรือ PATCH visits ตรง) → SV005
+--        (กันการ "เลื่อนวันที่ก่อน แล้วค่อยลบ" เลี่ยงข้อ 3) · trigger `visits_date_move_guard`
+--      - recorder เปลี่ยนสถานี "เข้า" removed/eliminated ตรงผ่าน REST ไม่ได้ (ข้ามการจำค่าก่อนถอด M14) —
+--        ทำได้เฉพาะขั้นท้ายของ save_service_visit (ด่าน aga.service_visit เปิดอยู่)
+--      - เพิ่มการเข้าตรงผ่าน REST และสร้าง/ผูกสัญญา Renew ถือ advisory lock เดียวกับ RPC ของสัญญานั้น
+--        → ด่าน SV005/SV010 ไม่พลาดแถวที่เพิ่มพร้อมกัน
 --   * error ใหม่: SV010 (สัญญา Renew แล้ว) · SV005 ใช้ซ้ำกับความหมายเดิม "การเข้าครั้งอื่น/ครั้งหลังใช้ข้อมูลนี้แล้ว"
 --     ข้อความไม่บอกวันที่/id ของการเข้าอื่น
 --   * `save_service_visit` / `delete_service_visit` / `service_ag_removal_restore` แทนที่ทั้งตัว (CREATE OR REPLACE ·
@@ -47,11 +54,18 @@ SET search_path = public
 AS $$
 BEGIN
   -- ฟังก์ชันระบบแบบ SECURITY DEFINER (current_user = เจ้าของตาราง) ผ่าน · ตรวจเฉพาะ recorder ที่เรียกตรง
-  IF current_user = 'authenticated' AND public.current_app_role() = 'recorder'
-     AND OLD.status IN ('removed', 'eliminated')
-     AND (NEW.status IS DISTINCT FROM OLD.status OR NEW.removed_at IS DISTINCT FROM OLD.removed_at) THEN
-    RAISE EXCEPTION 'the status of a removed or eliminated station is changed through save_service_visit / delete_service_visit'
-      USING ERRCODE = '42501';
+  IF current_user = 'authenticated' AND public.current_app_role() = 'recorder' THEN
+    IF OLD.status IN ('removed', 'eliminated')
+       AND (NEW.status IS DISTINCT FROM OLD.status OR NEW.removed_at IS DISTINCT FROM OLD.removed_at) THEN
+      RAISE EXCEPTION 'the status of a removed or eliminated station is changed through save_service_visit / delete_service_visit'
+        USING ERRCODE = '42501';
+    END IF;
+    -- เปลี่ยน "เข้า" ถอด/กำจัด ตรงๆ ก็ไม่ได้ (ข้ามการจำค่าก่อนถอด M14) — ยกเว้นขั้นท้ายของ save_service_visit
+    -- (SECURITY INVOKER ทำงานในนามผู้ใช้ ระหว่างที่ด่าน aga.service_visit เปิดอยู่)
+    IF NEW.status IN ('removed', 'eliminated') AND NEW.status IS DISTINCT FROM OLD.status
+       AND coalesce(current_setting('aga.service_visit', true), '') = '' THEN
+      RAISE EXCEPTION 'stations are removed through save_service_visit' USING ERRCODE = '42501';
+    END IF;
   END IF;
   RETURN NEW;
 END;
@@ -84,6 +98,95 @@ CREATE TRIGGER visits_delete_rpc_only
   FOR EACH ROW EXECUTE FUNCTION public.visits_delete_rpc_only();
 
 -- =====================================================================
+-- 2b. (2.25 ข — ปิดทางเลี่ยงที่ตรวจ security เจอ) ย้ายวันที่ของการเข้าข้ามการถอดกล่อง AG ไม่ได้
+--     ทางเลี่ยงเดิม: เลื่อนวันที่ V1 (ถอดกล่อง) ไปหลัง V2 ก่อน แล้วค่อยลบ/เอาติ๊กออก (หรือ PATCH visits.visit_date
+--     ตรงผ่าน REST) → ด่าน SV005 ไม่เห็นครั้งหลัง · การสลับลำดับเองก็ทำให้ข้อมูลขัดกันอยู่แล้ว (การเข้าที่ถูกย้ายไป
+--     ก่อนการถอดไม่มีแถวผลของกล่องนั้น → D10) จึงกันที่ตัวการเปลี่ยนวันที่
+--     กติกา (คิดแบบเผื่อ ช่วงวันที่รวมปลายทั้งสองด้าน):
+--       - การเข้าที่ย้ายเป็นคนถอดกล่องที่ยังถอดอยู่ (คืนได้ตามกติกา M14) → ห้ามมีการเข้าอื่นในช่วงวันเดิม↔วันใหม่
+--       - การเข้าที่ย้ายไม่ได้ถอด → ห้ามข้ามการเข้าอื่นที่ถอดกล่องที่ยังถอดอยู่ (อยู่ในช่วงวันเดิม↔วันใหม่)
+--     ใช้กับผู้ใช้ทุกบทบาท (รวม host และการแก้ผ่าน save_service_visit) · service_role / ระบบไม่ติด
+--     ถือ advisory lock ต่อสัญญาเดียวกับ RPC (PATCH ตรงไม่ผ่าน RPC จึงต้องล็อกเอง · ซ้ำใน RPC ไม่เป็นไร)
+-- =====================================================================
+CREATE FUNCTION public.visits_date_move_guard()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY INVOKER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  v_lo date := least(OLD.visit_date, NEW.visit_date);
+  v_hi date := greatest(OLD.visit_date, NEW.visit_date);
+BEGIN
+  IF current_user <> 'authenticated' OR NEW.visit_date IS NOT DISTINCT FROM OLD.visit_date THEN
+    RETURN NEW;
+  END IF;
+  PERFORM pg_advisory_xact_lock(hashtextextended('public.save_service_visit:' || OLD.contract_id::text, 0));
+
+  IF (EXISTS (SELECT 1 FROM station_ag_removals ar JOIN stations s ON s.id = ar.station_id
+               WHERE ar.visit_id = OLD.id
+                 AND s.status = 'removed' AND s.removed_at IS NOT DISTINCT FROM ar.removed_at_set)
+      AND EXISTS (SELECT 1 FROM visits w
+                   WHERE w.contract_id = OLD.contract_id AND w.id <> OLD.id
+                     AND w.visit_date BETWEEN v_lo AND v_hi))
+     OR EXISTS (SELECT 1 FROM visits w
+                  JOIN station_ag_removals ar ON ar.visit_id = w.id
+                  JOIN stations s ON s.id = ar.station_id
+                 WHERE w.contract_id = OLD.contract_id AND w.id <> OLD.id
+                   AND w.visit_date BETWEEN v_lo AND v_hi
+                   AND s.status = 'removed' AND s.removed_at IS NOT DISTINCT FROM ar.removed_at_set) THEN
+    RAISE EXCEPTION 'this date change would move the visit past a visit that removed AG boxes; edit or delete the later visit first'
+      USING ERRCODE = 'SV005';
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER visits_date_move_guard
+  BEFORE UPDATE OF visit_date ON public.visits
+  FOR EACH ROW EXECUTE FUNCTION public.visits_date_move_guard();
+
+-- =====================================================================
+-- 2c. กันชนกันพร้อมกัน (ตรวจ security เจอ): เพิ่มการเข้าตรงผ่าน REST / สร้างสัญญา Renew ต้องรอ lock เดียวกับ
+--     RPC ของสัญญานั้น → ด่าน SV005 / SV010 ใน delete_service_visit ไม่พลาดแถวที่เพิ่มพร้อมกัน
+-- =====================================================================
+CREATE FUNCTION public.visits_insert_contract_lock()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY INVOKER
+SET search_path = public, pg_temp
+AS $$
+BEGIN
+  PERFORM pg_advisory_xact_lock(hashtextextended('public.save_service_visit:' || NEW.contract_id::text, 0));
+  RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER visits_insert_contract_lock
+  BEFORE INSERT ON public.visits
+  FOR EACH ROW EXECUTE FUNCTION public.visits_insert_contract_lock();
+
+CREATE FUNCTION public.contracts_renew_contract_lock()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY INVOKER
+SET search_path = public, pg_temp
+AS $$
+BEGIN
+  IF NEW.renewed_from_contract_id IS NOT NULL
+     AND (TG_OP = 'INSERT' OR NEW.renewed_from_contract_id IS DISTINCT FROM OLD.renewed_from_contract_id) THEN
+    PERFORM pg_advisory_xact_lock(
+      hashtextextended('public.save_service_visit:' || NEW.renewed_from_contract_id::text, 0));
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER contracts_renew_contract_lock
+  BEFORE INSERT OR UPDATE OF renewed_from_contract_id ON public.contracts
+  FOR EACH ROW EXECUTE FUNCTION public.contracts_renew_contract_lock();
+
+-- =====================================================================
 -- 3. ด่านก่อนคืนกล่อง AG (2.25 ข + X9 ชั่วคราว) — SECURITY DEFINER · ผ่าน service_work_gate
 -- =====================================================================
 -- p_station_ids = NULL → ทุกกล่องที่การเข้านี้ถอด · ไม่มีกล่องที่จะคืนจริง = ไม่ทำอะไร
@@ -91,7 +194,7 @@ CREATE FUNCTION public.service_ag_removal_guard(p_visit_id uuid, p_station_ids u
 RETURNS void
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = public, pg_temp
 AS $$
 DECLARE
   v_contract uuid := service_work_gate(p_visit_id);
@@ -547,6 +650,9 @@ $$;
 -- trigger function: ไม่มีใครเรียกตรงได้
 REVOKE ALL ON FUNCTION public.stations_finished_status_guard() FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.visits_delete_rpc_only()         FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.visits_date_move_guard()         FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.visits_insert_contract_lock()    FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.contracts_renew_contract_lock()  FROM PUBLIC, anon, authenticated;
 
 -- ฟังก์ชันภายใน: RPC (SECURITY INVOKER) เรียกในนามผู้ใช้จึงต้องมี EXECUTE · ทำงานได้เฉพาะในด่าน aga.service_visit
 REVOKE ALL ON FUNCTION public.service_ag_removal_guard(uuid, uuid[]) FROM PUBLIC, anon;
