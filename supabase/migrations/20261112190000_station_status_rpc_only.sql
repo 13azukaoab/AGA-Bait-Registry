@@ -26,6 +26,11 @@
 --      (code / station_no / installed_at ฯลฯ ตาม policy เดิม) · host แก้ตรงได้ทุกอย่าง (ออกแบบ M14)
 --   4. ยังไม่ตัดสิน: admin + lost/withdrawn → ตอนนี้ **ยังเปลี่ยนตรงได้** (ส่งตัวเลือกให้หมวด 2 · ห้ามเดา)
 --      ถ้าเลือก "กันเหมือน recorder" → เพิ่ม 'admin' ใน v_service_roles ของข้อ 2 (บรรทัดเดียว)
+--   5. (ปิดทางเลี่ยงจากการตรวจ security ก่อนส่ง)
+--      - admin INSERT สถานีที่เป็น removed / eliminated หรือมี removed_at ตั้งแต่ต้นไม่ได้ → 42501
+--        (trigger ครอบ INSERT ด้วย · recorder ถูกบังคับ active อยู่แล้วโดย stations_recorder_guard)
+--      - recorder / admin เปลี่ยน `removed_at` ตรงไม่ได้ทุกสถานะ (กันตั้งวันถอดล่วงหน้าแล้วค่อยถอดผ่าน RPC
+--        ซึ่งใช้ coalesce(removed_at, now())) — เปลี่ยนได้เฉพาะขั้นท้ายของ save_service_visit
 --   * ไม่แตะ save_service_visit / delete_service_visit → advisory lock / F / ด่าน aga.service_visit /
 --     REVOKE anon / audit_log / signature RPC / SV010 (X9 = ก) คงเดิมทั้งหมด
 --   * เทส: supabase/tests/31_station_status_rpc_only.test.sql
@@ -44,6 +49,26 @@ BEGIN
     RETURN NEW;
   END IF;
   v_role := public.current_app_role();
+
+  -- ---------- 0. เพิ่มสถานีใหม่ (INSERT) ----------
+  -- admin เพิ่มสถานีที่ "ถอด/กำจัดแล้ว" หรือมี removed_at ตั้งแต่เกิดไม่ได้ (ทางเลี่ยงข้อ 1 · ตรวจ security M16)
+  -- recorder ถูกบังคับให้เริ่ม active อยู่แล้ว (stations_recorder_guard)
+  IF TG_OP = 'INSERT' THEN
+    IF v_role = 'admin' AND (NEW.status IN ('removed', 'eliminated') OR NEW.removed_at IS NOT NULL) THEN
+      RAISE EXCEPTION 'a new station cannot start removed or eliminated' USING ERRCODE = '42501';
+    END IF;
+    RETURN NEW;
+  END IF;
+
+  -- ---------- 0b. removed_at (วันถอด) ระบบตั้งเองเท่านั้น: recorder + admin ----------
+  -- กันตั้ง removed_at ล่วงหน้าตอนกล่องยังใช้งานอยู่ แล้วค่อยถอดผ่าน RPC (ขั้นท้าย save_service_visit ใช้
+  -- coalesce(removed_at, now()) → วันถอดย้อนหลังปลอมได้ และ M14 จำค่านั้นเป็น removed_at_set)
+  -- เปลี่ยนได้เฉพาะขั้นท้ายของ save_service_visit (ด่าน aga.service_visit เปิด · admin เปิดไม่ได้)
+  IF v_role IN ('recorder', 'admin')
+     AND NEW.removed_at IS DISTINCT FROM OLD.removed_at
+     AND coalesce(current_setting('aga.service_visit', true), '') = '' THEN
+    RAISE EXCEPTION 'removed_at is set by the system through save_service_visit' USING ERRCODE = '42501';
+  END IF;
 
   -- ---------- 1. ถอดแล้ว / กำจัดแล้ว: recorder (M15) + admin (M16, 2.28) ----------
   IF v_role IN ('recorder', 'admin') THEN
@@ -77,6 +102,12 @@ BEGIN
   RETURN NEW;
 END;
 $$;
+
+-- เดิม BEFORE UPDATE (M15) → ครอบ INSERT ด้วย (ข้อ 0) · ชื่อ trigger เดิม
+DROP TRIGGER stations_finished_status_guard ON public.stations;
+CREATE TRIGGER stations_finished_status_guard
+  BEFORE INSERT OR UPDATE ON public.stations
+  FOR EACH ROW EXECUTE FUNCTION public.stations_finished_status_guard();
 
 -- แทนที่ด้วย OR REPLACE คงสิทธิ์เดิม — ย้ำอีกครั้งกันพลาด (trigger function: ไม่มีใครเรียกตรงได้)
 REVOKE ALL ON FUNCTION public.stations_finished_status_guard() FROM PUBLIC, anon, authenticated;

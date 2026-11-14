@@ -8,7 +8,7 @@
 -- Role simulation: seed as postgres, then SET LOCAL ROLE authenticated and set
 -- request.jwt.claim.sub (what auth.uid() reads). RESET ROLE to inspect as superuser.
 BEGIN;
-SELECT plan(65);
+SELECT plan(71);
 
 -- =====================================================================
 -- โครงสร้าง + สิทธิ์
@@ -118,6 +118,15 @@ SELECT lives_ok($$UPDATE stations SET station_no = 2 WHERE id = '00000000-0000-0
   'admin sets the number back');
 SELECT lives_ok($$INSERT INTO stations (contract_id, type, station_no) VALUES ('00000000-0000-0000-0000-0000000000d1', 'IC', 1)$$,
   'admin can still add a station');
+-- ทางเลี่ยงที่ตรวจ security เจอ: INSERT เป็นสถานะจบแล้ว · ตั้ง removed_at ล่วงหน้า
+SELECT throws_ok($$INSERT INTO stations (contract_id, type, station_no, status) VALUES ('00000000-0000-0000-0000-0000000000d1', 'AG', 9, 'eliminated')$$,
+  '42501', NULL, 'admin cannot add a station that is already eliminated');
+SELECT throws_ok($$INSERT INTO stations (contract_id, type, station_no, status, removed_at) VALUES ('00000000-0000-0000-0000-0000000000d1', 'AG', 9, 'removed', now())$$,
+  '42501', NULL, 'admin cannot add a station that is already removed');
+SELECT throws_ok($$INSERT INTO stations (contract_id, type, station_no, removed_at) VALUES ('00000000-0000-0000-0000-0000000000d1', 'AG', 9, now())$$,
+  '42501', NULL, 'admin cannot add a station with removed_at set');
+SELECT throws_ok($$UPDATE stations SET removed_at = '2025-01-01' WHERE id = '00000000-0000-0000-0000-0000000000e2'$$,
+  '42501', NULL, 'admin cannot pre-set removed_at of a box in use');
 RESET ROLE;
 SELECT is(pg_temp.st('00000000-0000-0000-0000-0000000000e1'), 'removed', 'AG-1 stays removed after the refused admin updates');
 SELECT ok((SELECT removed_at IS NOT NULL FROM stations WHERE id = '00000000-0000-0000-0000-0000000000e1'), 'AG-1 keeps its removed_at');
@@ -150,6 +159,10 @@ SELECT throws_ok($$UPDATE stations SET removed_at = now() WHERE id = '00000000-0
   '42501', NULL, 'recorder cannot set removed_at of a lost station directly');
 SELECT lives_ok($$UPDATE stations SET collected_at = now() WHERE id = '00000000-0000-0000-0000-0000000000b5'$$,
   'recorder can still set collected_at of a lost station');
+-- ตั้งวันถอดล่วงหน้าแล้วค่อยถอดผ่าน RPC (coalesce เก็บค่าปลอม) → กันที่ตัวการตั้ง removed_at
+SELECT throws_ok($$UPDATE stations SET removed_at = '2025-01-01' WHERE id = '00000000-0000-0000-0000-0000000000e2'$$,
+  '42501', NULL, 'recorder cannot pre-set removed_at of a box in use');
+SELECT ok((SELECT removed_at IS NULL FROM stations WHERE id = '00000000-0000-0000-0000-0000000000e2'), 'AG-2 removed_at stays empty');
 SELECT is(pg_temp.st('00000000-0000-0000-0000-0000000000b1'), 'active', 'IG-1 stays active after the refused updates');
 SELECT is(pg_temp.st('00000000-0000-0000-0000-0000000000b5'), 'lost', 'IG-5 stays lost');
 
@@ -212,8 +225,8 @@ SELECT lives_ok($$UPDATE stations SET status = 'lost' WHERE id = '00000000-0000-
 SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a2', true);
 SELECT lives_ok($$UPDATE stations SET status = 'active' WHERE id = '00000000-0000-0000-0000-0000000000b5'$$,
   'admin can still bring a lost station back directly (pending decision)');
-SELECT lives_ok($$UPDATE stations SET status = 'withdrawn', removed_at = now() WHERE id = '00000000-0000-0000-0000-0000000000b5'$$,
-  'admin can still mark a station withdrawn directly (pending decision)');
+SELECT lives_ok($$UPDATE stations SET status = 'withdrawn' WHERE id = '00000000-0000-0000-0000-0000000000b5'$$,
+  'admin can still mark a station withdrawn directly (pending decision · removed_at stays system-set)');
 
 -- =====================================================================
 -- 5. audit_log ยังเก็บการเปลี่ยนสถานะผ่าน RPC
