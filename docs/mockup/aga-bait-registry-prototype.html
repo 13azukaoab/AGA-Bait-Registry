@@ -2602,11 +2602,11 @@ function msDateTh(d){return (+d.slice(8,10))+' '+MS_TH[+d.slice(5,7)-1]+' '+d.sl
 function msRole(){var s=document.getElementById('roleSel');return s?s.value:'host'}
 function msCan(){var r=msRole();return r==='host'||r==='recorder'}
 var MS=[
-  {n:1,id:'m1',name:'บจก. ไทยแพคโลจิสติกส์',ct:'CT24-0000066',end:'2026-12-31',missed:'2026-05',res:null},
-  {n:2,id:'m2',name:'โรงเรียนอนุบาลดอกไม้',ct:'CT25-0000298',end:'2026-12-31',missed:'2026-06',res:{kind:'makeup',date:'2026-10-30'}},
-  {n:3,id:'m3',name:'ร้านอาหารครัวริมคลอง',ct:'CT26-0000151',end:'2026-12-31',missed:'2026-04',res:{kind:'makeup',date:'2026-09-15'}},
-  {n:4,id:'m4',name:'หจก. ทรัพย์เจริญ',ct:'CT26-0000203',end:'2026-12-31',missed:'2026-07',res:{kind:'makeup',date:'2027-01-01'}},
-  {n:5,id:'m5',name:'บจก. เมโทรแวร์เฮ้าส์',ct:'CT25-0000333',end:'2026-09-30',missed:'2026-03',res:{kind:'makeup',date:'2026-10-01'}}
+  {n:1,id:'m1',br:'นครปฐม',name:'บจก. ไทยแพคโลจิสติกส์',ct:'CT24-0000066',end:'2026-12-31',missed:'2026-05',res:null},
+  {n:2,id:'m2',br:'นครปฐม',name:'โรงเรียนอนุบาลดอกไม้',ct:'CT25-0000298',end:'2026-12-31',missed:'2026-06',res:{kind:'makeup',date:'2026-10-30'}},
+  {n:3,id:'m3',br:'พุทธมณฑล',name:'ร้านอาหารครัวริมคลอง',ct:'CT26-0000151',end:'2026-12-31',missed:'2026-04',res:{kind:'makeup',date:'2026-09-15'}},
+  {n:4,id:'m4',br:'หัวหิน',name:'หจก. ทรัพย์เจริญ',ct:'CT26-0000203',end:'2026-12-31',missed:'2026-07',res:{kind:'makeup',date:'2027-01-01'}},
+  {n:5,id:'m5',br:'หัวหิน',name:'บจก. เมโทรแวร์เฮ้าส์',ct:'CT25-0000333',end:'2026-09-30',missed:'2026-03',res:{kind:'makeup',date:'2026-10-01'}}
 ];
 function msState(it){var r=it.res;if(!r)return {s:'pending'};if(r.kind==='waived')return {s:'waived'};if(r.done)return {s:'done'};var mm=r.date.slice(0,7);return {s:mm<MS_CUR?'failed':'makeup',mm:mm}}
 var MS_LAB={pending:['รอตัดสิน','miss'],makeup:['ชดเชย','pend'],done:['ชดเชยแล้ว','ok'],failed:['ชดเชยไม่ได้ทำ','miss'],waived:['ไม่ชดเชย','na']};
@@ -2646,7 +2646,7 @@ function msRenderTodo(){
     acts='<button class="btn sm" data-ms="waive" data-id="'+it.id+'"'+dis+'>'+(again?'เปลี่ยนเป็นไม่ชดเชย':'ไม่ชดเชย')+'</button>'+
          '<button class="btn sm'+(again?'':' primary')+'" data-ms="makeup" data-id="'+it.id+'"'+dis+'>'+(again?'เปลี่ยนวัน':'ชดเชย')+'</button>'+
          (again&&st.mm===MS_CUR?'<button class="btn sm primary" data-ms="go" data-id="'+it.id+'"'+dis+'>ไปกรอกบริการชดเชย →</button>':'');
-    h+='<div class="msrow"><div class="main"><b>'+esc(it.name)+'</b><small>'+esc(it.ct)+' · ตกบริการ '+msMonthTh(it.missed)+'</small></div>'+
+    h+='<div class="msrow"><div class="main"><b>'+esc(it.name)+'</b><small>สาขา'+esc(it.br)+' · '+esc(it.ct)+' · ตกบริการ '+msMonthTh(it.missed)+'</small></div>'+
        '<div class="st"><span class="chip '+lab[1]+'">'+esc(msText(st))+'</span><small>'+esc(sub)+'</small></div><div class="acts">'+acts+'</div></div>';
   });
   host.innerHTML=h+'</div>';
