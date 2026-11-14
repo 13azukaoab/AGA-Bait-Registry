@@ -125,7 +125,10 @@ export function validateBait(
   // กล่องใหม่ (S): ต้องเลือกเหยื่อที่ใส่ (mockup #bait FINAL — ข้อมูลติดตั้ง)
   const newBoxes = form.works.filter((w) => w.type === "AG" && w.kind === "added");
   let newBoxBad = 0;
+  const savedWorkIds = new Set(ctx.savedWorks.map((sw) => sw.id));
   for (const w of newBoxes) {
+    // แถวที่บันทึกไว้แล้ว (แก้การเข้าเดิม) ไม่บังคับเหยื่อซ้ำ — ค่าเดิมอาจว่าง (ติดจาก /service) หรือกล่องถูกถอดไปแล้ว
+    if (savedWorkIds.has(w.id)) continue;
     const bait = resolveBait(w.baitSelect ?? "", w.baitCustom ?? "");
     if (bait.status === "ok") continue;
     newBoxBad += 1;

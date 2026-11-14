@@ -168,3 +168,21 @@ describe("summarizeBaitVisit", () => {
     expect(summarizeBaitVisit({ installedNos: [], followUps: [] })).toBe("ไม่ได้ตรวจกล่องใด");
   });
 });
+
+describe("validateBait — แก้การเข้าเดิมที่มีกล่องใหม่ (S) บันทึกไว้แล้ว", () => {
+  it("แถว S ที่บันทึกไว้แล้วไม่บังคับเลือกเหยื่อซ้ำ · แถวใหม่ยังบังคับ", () => {
+    const stations = [ag("a1", 1)];
+    const saved: WorkRow = { id: "w-old", kind: "added", type: "AG", noText: "7", detail: "", baitSelect: "", baitCustom: "", label: "" };
+    const fresh: WorkRow = { ...saved, id: "w-new", noText: "8" };
+    const v = validateBait(
+      { ...formWith(stations), works: [saved, fresh] },
+      {
+        stations,
+        savedWorks: [{ id: "w-old", kind: "added", stationType: "AG", stationNos: [7], detail: "" }],
+        savedCheckKeys: new Set<string>(),
+      },
+    );
+    expect(v.works["w-old"]?.bait).toBeUndefined();
+    expect(v.works["w-new"]?.bait).toBeTruthy();
+  });
+});

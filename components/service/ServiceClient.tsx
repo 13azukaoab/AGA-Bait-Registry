@@ -183,11 +183,16 @@ export function ServiceClient({
   const handleSaved = async (info: SavedInfo) => {
     if (!open) return;
     const current = open.itemId;
+    // กันชนตอนรอรีเฟรช: ถ้าผู้ใช้ไปเลือกรายอื่นระหว่างรอ ให้ยกเลิกการเปลี่ยนหน้าของครั้งนี้
+    const myReq = ++req.current;
+    if (!info.stay) setDirty(false);
     const updated = await refreshItem(current, info.initialized);
+    if (myReq !== req.current) return;
 
     if (info.stay) {
       // บันทึกหลักสำเร็จแต่ยังมีขั้นค้าง — อยู่หน้าเดิม ฟอร์มเป็นโหมดแก้การเข้านี้ (visit_id เดิม)
-      setOpen({ ...open, form: { ...open.form, isExisting: open.form.isExisting || info.created } });
+      // ใช้ state ล่าสุด (ไม่ใช่สำเนาตอนเริ่มบันทึก) เพื่อไม่ทับรายการสถานีที่เพิ่งตั้ง
+      setOpen((o) => (o ? { ...o, form: { ...o.form, isExisting: o.form.isExisting || info.created } } : o));
       return;
     }
     const name = updated.find((c) => c.contractId === current)?.customerName ?? "";
@@ -204,9 +209,11 @@ export function ServiceClient({
   const handleDeleted = async () => {
     if (!open) return;
     const current = open.itemId;
-    await refreshItem(current);
-    setToast("ลบการเข้าบริการแล้ว");
+    const myReq = ++req.current;
     setDirty(false);
+    await refreshItem(current);
+    if (myReq !== req.current) return;
+    setToast("ลบการเข้าบริการแล้ว");
     void select(current);
   };
 

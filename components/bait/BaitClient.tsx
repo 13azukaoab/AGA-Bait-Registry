@@ -155,7 +155,10 @@ export function BaitClient({
     const current = open.itemId;
     const teamIds = open.form.teamIds;
     const date = open.form.visitDate;
+    const myReq = ++req.current;
+    setDirty(false);
     await refreshItem(current);
+    if (myReq !== req.current) return;
     const item = itemsRef.current.find((c) => c.contractId === current);
     if (!item) return;
     setToast(
@@ -163,8 +166,6 @@ export function BaitClient({
         info.more ? " · กรอกวันถัดไปได้เลย" : ""
       }`,
     );
-    setDirty(false);
-    const myReq = ++req.current;
     setLoading(true);
     await openFresh(item, { dateEmpty: info.more, teamIds, myReq });
     if (myReq === req.current) setLoading(false);
@@ -173,12 +174,13 @@ export function BaitClient({
   const handleDeleted = async () => {
     if (!open) return;
     const current = open.itemId;
+    const myReq = ++req.current;
+    setDirty(false);
     await refreshItem(current);
+    if (myReq !== req.current) return;
     const item = itemsRef.current.find((c) => c.contractId === current);
     if (!item) return;
     setToast("ลบการเข้านอกรอบแล้ว");
-    setDirty(false);
-    const myReq = ++req.current;
     setLoading(true);
     await openFresh(item, { myReq });
     if (myReq === req.current) setLoading(false);
