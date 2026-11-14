@@ -445,6 +445,10 @@ tfoot td{padding:10px 12px;font-weight:700;background:var(--surface-2);border-to
 .tmbr{background:none;border:1px solid var(--border-strong);color:var(--accent);border-radius:999px;padding:3px 10px;font:inherit;font-size:12.5px;cursor:pointer;min-height:28px}
 .tmbr[aria-expanded="true"]{background:var(--accent-soft)}
 .tmsub td{background:var(--surface-2);font-size:12.5px;color:var(--fg-muted)}
+.tmnote{padding:6px 0;border-top:1px dashed var(--border)}.tmnote:first-child{border-top:0}
+.tmnote label{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:13px;margin-bottom:5px}
+.tmnrow{display:flex;gap:8px}.tmnrow input{flex:1;min-width:0;min-height:34px}
+.tmnote small{display:block;color:var(--fg-muted);font-size:11.5px;margin-top:3px}
 .tmdet td{background:var(--surface-2);white-space:normal}
 .tmdet ul{margin:0;padding-left:18px;display:flex;flex-wrap:wrap;gap:4px 24px}
 .tmdet li{font-size:12.5px}
@@ -702,7 +706,7 @@ tfoot td{padding:10px 12px;font-weight:700;background:var(--surface-2);border-to
         <h3><span class="dot" style="background:var(--accent)"></span> สรุปรายทีม · ต.ค. 2026 <small>เวลาบริการ · ตกบริการ · ลูกค้าเพิ่ม (ข้อมูลสมมติ)</small></h3>
         <div class="tmk" id="tmKpi"></div>
         <div class="tablewrap"><table>
-          <thead><tr><th>ทีม</th><th>สาขา</th><th>เวลาบริการ (รวม · เฉลี่ยต่อราย)</th><th class="c">เข้าบริการ (ทำแล้ว/ทั้งหมด)</th><th class="c">ตกบริการ</th><th class="c">ลูกค้าใหม่</th><th class="c">ต่อสัญญา</th></tr></thead>
+          <thead><tr><th>ทีม</th><th>สาขา</th><th>เวลาบริการ (รวม · เฉลี่ยต่อราย)</th><th class="c">เข้าบริการ (ทำแล้ว/ทั้งหมด)</th><th class="c">ตกบริการ (ต.ค.)</th><th class="c">ลูกค้าใหม่</th><th class="c">ต่อสัญญา</th></tr></thead>
           <tbody id="tmBody"></tbody>
         </table></div>
       </div>
@@ -2361,7 +2365,7 @@ function applyNavRole(role){
 }
 function setRole(r){
   var viewerOnly=(r==='viewer');
-  try{msRenderTodo();clRender();var _c=PK.sv.sel&&custById(PK.sv.sel);if(_c)ctRefresh(_c)}catch(e){}
+  try{msRenderTodo();clRender();tmRender();var _c=PK.sv.sel&&custById(PK.sv.sel);if(_c)ctRefresh(_c)}catch(e){}
   applyNavRole(r); HD.sync(r);
   document.querySelectorAll('[data-internal]').forEach(function(e){ e.hidden=viewerOnly; });
   if(viewerOnly) go('summary');
@@ -2792,13 +2796,13 @@ clRender();
    ข้อมูลในนี้เป็นข้อมูลสมมติ — ของจริงคำนวณจาก visits + contracts ของเดือนที่เลือก */
 var TM=[
   /* ชื่อเขต/สาขาอิง lib/dashboard/branches.ts (SPEC §4) เท่านั้น ห้ามตั้งชื่อเอง */
-  {team:'ทีม A',zone:'เขต 1',br:'นครปฐม',min:3120,visits:65,plan:72,newc:3,renew:1,miss:[{n:'ไทยแพคโลจิสติกส์',m:'พ.ค. 2026'},{n:'โรงเรียนอนุบาลดอกไม้',m:'มิ.ย. 2026'}]},
-  {team:'ทีม B',zone:'เขต 1',br:'พุทธมณฑล',min:2880,visits:52,plan:60,newc:2,renew:2,miss:[{n:'ร้านอาหารครัวริมคลอง',m:'เม.ย. 2026'}]},
-  {team:'ทีม C',zone:'เขต 1',br:'หัวหิน',min:2520,visits:61,plan:76,newc:1,renew:0,miss:[{n:'หจก. ทรัพย์เจริญ',m:'ก.ค. 2026'},{n:'บจก. เมโทรแวร์เฮ้าส์',m:'มี.ค. 2026'}]},
+  {team:'ทีม A',zone:'เขต 1',br:'นครปฐม',min:3120,visits:65,plan:72,newc:3,renew:1,miss:[{n:'ไทยแพคโลจิสติกส์',note:'ลูกค้าปิดโกดังตรวจสต็อกทั้งสัปดาห์ นัดใหม่ไม่ทัน'},{n:'โรงเรียนอนุบาลดอกไม้'}]},
+  {team:'ทีม B',zone:'เขต 1',br:'พุทธมณฑล',min:2880,visits:52,plan:60,newc:2,renew:2,miss:[{n:'ร้านอาหารครัวริมคลอง'}]},
+  {team:'ทีม C',zone:'เขต 1',br:'หัวหิน',min:2520,visits:61,plan:76,newc:1,renew:0,miss:[{n:'หจก. ทรัพย์เจริญ'},{n:'บจก. เมโทรแวร์เฮ้าส์'}]},
   {team:'ทีม D',zone:'เขต 2',br:'สาทร',min:1890,visits:28,plan:50,newc:0,renew:1,miss:[]},
-  {team:'ทีม E',zone:'เขต 2',br:'นนทบุรี',min:2160,visits:44,plan:48,newc:1,renew:0,miss:[{n:'ร้านกาแฟบ้านไร่',m:'ส.ค. 2026'}]},
+  {team:'ทีม E',zone:'เขต 2',br:'นนทบุรี',min:2160,visits:44,plan:48,newc:1,renew:0,miss:[{n:'ร้านกาแฟบ้านไร่'}]},
   /* ตัวอย่าง 1 ทีมวิ่งหลายสาขา (เขต 2 มี 4 สาขา + ข้ามไปช่วยปทุมธานี เขต 3) · ยอดทีม = ผลรวมทุกสาขา · นับไว้ใต้เขตบ้านของทีม (รอเจ้าของตัดสิน) */
-  {team:'ทีม F (ทีมกลาง)',zone:'เขต 2',br:'หลายสาขา',min:3300,visits:58,plan:70,newc:2,renew:1,miss:[{n:'โรงงานสยามฟู้ด',m:'ก.ย. 2026'}],
+  {team:'ทีม F (ทีมกลาง)',zone:'เขต 2',br:'หลายสาขา',min:3300,visits:58,plan:70,newc:2,renew:1,miss:[{n:'โรงงานสยามฟู้ด'}],
    brs:[{br:'สาทร',min:900,visits:16,plan:18},{br:'ปทุมวัน',min:780,visits:14,plan:16,miss:1},{br:'พระราม 4',min:600,visits:10,plan:14},{br:'นนทบุรี',min:540,visits:10,plan:12},{br:'ปทุมธานี',zone:'เขต 3',min:480,visits:8,plan:10}]}
 ];
 var tmOpen={},tmBr={};
@@ -2836,12 +2840,12 @@ function tmRender(){
       if(bo)t.brs.forEach(function(x){var p=Math.round(x.visits*100/x.plan);
         h+='<tr class="tmsub"><td></td><td>└ '+esc(x.br)+(x.zone?' <span class="zsub">· '+esc(x.zone)+' (ข้ามเขต)</span>':'')+'</td><td class="num">'+Math.floor(x.min/60)+' ชม. '+(x.min%60)+' นาที</td>'+
            '<td class="c num">'+x.visits+'/'+x.plan+' ราย <span style="color:var(--fg-muted)">('+p+'%)</span></td><td class="c num">'+(x.miss||0)+'</td><td></td><td></td></tr>'});
-      if(op)h+='<tr class="tmdet" id="tmDet'+i+'"><td colspan="7"><ul>'+t.miss.map(function(x){return '<li><b>'+esc(x.n)+'</b> · ตกบริการ '+esc(x.m)+'</li>'}).join('')+'</ul></td></tr>';
+      if(op)h+='<tr class="tmdet" id="tmDet'+i+'"><td colspan="7">'+t.miss.map(function(x,k){var id='tmN'+i+'_'+k;return '<div class="tmnote"><label for="'+id+'"><b>'+esc(x.n)+'</b> <span class="chip miss">ตกบริการ ต.ค. 2026</span></label>'+'<div class="tmnrow"><input id="'+id+'" maxlength="200" placeholder="หมายเหตุ: ตกบริการเพราะอะไร เช่น ลูกค้าปิดอาคาร / ติดต่อไม่ได้" value="'+esc(x.note||'')+'"'+(msCan()?'':' disabled')+'>'+'<button type="button" class="btn sm" data-tmsave="'+i+'_'+k+'"'+(msCan()?'':' disabled title="เฉพาะหัวหน้างาน/host"')+'>บันทึก</button></div>'+(x.by?'<small>บันทึกโดย '+esc(x.by)+'</small>':'')+'</div>'}).join('')+'</td></tr>';
     });
   });
   body.innerHTML=h;
 }
-document.addEventListener('click',function(e){var bb=e.target.closest&&e.target.closest('[data-tmb]');if(bb){var j=bb.getAttribute('data-tmb');tmBr[j]=!tmBr[j];tmRender();var nb2=document.querySelector('[data-tmb="'+j+'"]');if(nb2)nb2.focus();return}var b=e.target.closest&&e.target.closest('[data-tm]');if(!b)return;var i=b.getAttribute('data-tm');tmOpen[i]=!tmOpen[i];tmRender();var nb=document.querySelector('[data-tm="'+i+'"]');if(nb)nb.focus()});
+document.addEventListener('click',function(e){var sv=e.target.closest&&e.target.closest('[data-tmsave]');if(sv){var p=sv.getAttribute('data-tmsave').split('_'),x=TM[+p[0]].miss[+p[1]],inp=$('tmN'+p[0]+'_'+p[1]);x.note=inp.value.trim();x.by=({host:'Host',recorder:'หัวหน้างาน'}[msRole()]||msRole())+' · '+msDateTh(TODAY_ISO);tmRender();toast('บันทึกหมายเหตุตกบริการแล้ว');var n2=$('tmN'+p[0]+'_'+p[1]);if(n2)n2.focus();return}var bb=e.target.closest&&e.target.closest('[data-tmb]');if(bb){var j=bb.getAttribute('data-tmb');tmBr[j]=!tmBr[j];tmRender();var nb2=document.querySelector('[data-tmb="'+j+'"]');if(nb2)nb2.focus();return}var b=e.target.closest&&e.target.closest('[data-tm]');if(!b)return;var i=b.getAttribute('data-tm');tmOpen[i]=!tmOpen[i];tmRender();var nb=document.querySelector('[data-tm="'+i+'"]');if(nb)nb.focus()});
 tmRender();
 function goHash(){ var h=location.hash.slice(1); if(SCREENS.indexOf(h)>=0) go(h); }
 initEntryPages();
