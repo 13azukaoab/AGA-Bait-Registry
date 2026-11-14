@@ -439,6 +439,7 @@ tfoot td{padding:10px 12px;font-weight:700;background:var(--surface-2);border-to
 .tmbar i{display:block;height:100%;background:var(--accent);border-radius:999px}
 .tmmiss{background:none;border:1px solid var(--danger);color:var(--danger);border-radius:999px;padding:3px 10px;font:inherit;font-size:12.5px;font-weight:600;cursor:pointer;min-height:28px}
 .tmmiss[aria-expanded="true"]{background:var(--danger-soft)}
+.tmdash{color:var(--fg-faint)}
 .tmmiss.zero{border-color:var(--border);color:var(--fg-muted);cursor:default}
 .tmzone td{background:var(--surface-3);font-weight:600;font-size:12.5px;border-top:2px solid var(--border-strong)}
 .tmzone .zsub{font-weight:400;color:var(--fg-muted)}
@@ -2821,7 +2822,7 @@ function tmMissCell(i,br){
   var t=TM[i],out='',n=0;
   t.miss.forEach(function(x,k){if(br&&x.br!==br)return;n++;var has=!!(x.note&&x.note.trim());
     out+='<div class="tmmc"><span class="nm" title="'+esc(x.n)+(has?' — '+esc(x.note):'')+'">'+esc(x.n)+'</span><button type="button" class="tmnbtn'+(has?' has':'')+'" data-tmnote="'+i+'_'+k+'" aria-label="'+(has?'ดู/แก้':'เพิ่ม')+'หมายเหตุตกบริการ '+esc(x.n)+'" title="'+(has?esc(x.note):'เพิ่มหมายเหตุ')+'"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/>'+(has?'<path d="M8 9h8M8 12h5"/>':'<path d="M12 8v5M9.5 10.5h5"/>')+'</svg></button></div>'});
-  return n?out:'<span class="tmmiss zero">0</span>';
+  return n?out:'<span class="tmdash" aria-label="ไม่มีลูกค้าตกบริการ">-</span>';
 }
 function tmRender(){
   var body=$('tmBody');if(!body)return;
