@@ -11,7 +11,9 @@
   หน้าเข้าสู่ระบบ (SPEC §8 หน้า 1) — mockup แบบ A "การ์ดกลางจอ" (เจ้าของเลือก 6 พ.ย. 2026)
 
   สรุป logic (สำหรับทีมพัฒนา: นัท / Jane / Toon)
-  - ผู้ใช้ host / admin / recorder เท่านั้น เข้าด้วย username + รหัสผ่านที่ Host สร้างให้ (§5)
+  - ผู้ใช้ที่มีบัญชี (Admin / หัวหน้างาน / PM / OM — SPEC §5.1) เข้าด้วย username + รหัสผ่านที่ผู้ดูแลระบบ (PM / OM) สร้างให้
+    หน้าจอไม่แสดงคำว่า host/admin/recorder และไม่มีคำว่า "ตำแหน่ง" (DECISIONS 2.32) — ตำแหน่งแสดงที่แถบบนหลังเข้าระบบ
+  - บัญชีใหม่/ถูกรีเซ็ต (must_change_password=true) → ขั้นที่ 2 ตั้งรหัสผ่านใหม่ก่อนเข้า (DECISIONS 1.8) · กติการหัสใน mockup (≥8 ตัว, ไม่ซ้ำรหัสชั่วคราว) เป็นค่าสมมติ รอเจ้าของยืนยัน
   - ไม่มีหน้าสมัครเอง / ไม่มี "ลืมรหัสผ่านแบบรีเซ็ตเอง" → ให้ติดต่อ Host
   - viewer ไม่ต้อง login → ลิงก์ "ดูหน้าสรุป (ไม่ต้องเข้าสู่ระบบ)" ไปหน้า public (§8 หน้า 13)
   - ข้อความ error: "ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง" ใช้ข้อความเดียวกันทั้งกรณีผิด username/ผิดรหัส
@@ -21,7 +23,7 @@
   - สิทธิ์จริงบังคับที่ RLS — หน้านี้เป็นแค่ทางเข้า ไม่ได้เป็นด่านป้องกัน
 
   แผงสีเหลือง "เฉพาะ mockup" ท้ายหน้า = เครื่องมือเดโมสลับสถานะ (ของจริงไม่มี)
-  บัญชีเดโมที่เข้าได้: host / admin / recorder รหัส Demo#1234 · บัญชีปิด: somchai.old
+  บัญชีเดโม (ชื่อสมมติ): somying / wipa / somchai รหัส Demo#1234 · napa.new + Temp#1234 = ต้องเปลี่ยนรหัส · anucha = บัญชีปิด
 -->
 <style>
 /* Tokens: ชุดเดียวกับ prototype หลัก (สี Tier ไม่ได้ใช้ในหน้านี้) · ห้าม hardcode hex นอก :root */
@@ -163,12 +165,13 @@ footer{padding:8px 0 20px;text-align:center;font-size:12px;color:var(--fg-faint)
       <div class="brand">
         <div class="logo" role="img" aria-label="Advance Group Asia (AGA)"></div>
         <h1 id="ttl">ทะเบียนบริการ Bait</h1>
-        <p class="sub">เข้าสู่ระบบด้วยบัญชีที่ Host สร้างให้</p>
+        <p class="sub" id="sub">เข้าสู่ระบบด้วยบัญชีที่ผู้ดูแลระบบ (PM / OM) สร้างให้</p>
       </div>
 
       <!-- แถบแจ้งเตือน: ใช้ role=alert ให้ screen reader อ่านทันที -->
       <div id="alert" class="alert" role="alert" aria-live="assertive"></div>
 
+      <div id="stepLogin">
       <form id="f" novalidate>
         <div class="field">
           <label for="u">ชื่อผู้ใช้</label>
@@ -192,14 +195,38 @@ footer{padding:8px 0 20px;text-align:center;font-size:12px;color:var(--fg-faint)
         <button class="btn" id="go" type="submit"><span class="spin" aria-hidden="true"></span><span id="goTxt">เข้าสู่ระบบ</span></button>
       </form>
 
-      <p class="help">ลืมรหัสผ่านหรือยังไม่มีบัญชี? ติดต่อ <b>Host (QCS ส่วนกลาง Bait)</b> เพื่อรีเซ็ตหรือสร้างบัญชีให้</p>
+      <p class="help">ลืมรหัสผ่านหรือยังไม่มีบัญชี? ติดต่อ <b>ผู้ดูแลระบบ (PM / OM)</b> เพื่อรีเซ็ตหรือสร้างบัญชีให้</p>
 
       <div class="divider" role="separator"><span>หรือ</span></div>
 
-      <a class="public" id="pub" href="aga-bait-registry-prototype.html">
+      <a class="public" id="pub" href="aga-bait-registry-prototype.html#summary">
         <span aria-hidden="true">▦</span> ดูหน้าสรุป (ไม่ต้องเข้าสู่ระบบ)
       </a>
       <p class="public-note">เห็นเฉพาะตัวเลขสรุปรายสาขา/เขต — ไม่มีข้อมูลลูกค้า</p>
+      </div>
+
+      <!-- ขั้นที่ 2: บัญชีใหม่/ถูกรีเซ็ต ต้องตั้งรหัสผ่านใหม่ก่อนเข้า (DECISIONS 1.8) -->
+      <div id="stepPw" hidden>
+        <form id="fp" novalidate>
+          <div class="field">
+            <label for="np">รหัสผ่านใหม่</label>
+            <div class="inwrap has-eye">
+              <input id="np" type="password" autocomplete="new-password" placeholder="อย่างน้อย 8 ตัวอักษร" aria-describedby="nph">
+              <button class="eye" id="eye2" type="button" aria-label="แสดงรหัสผ่าน" aria-pressed="false" title="แสดง/ซ่อนรหัสผ่าน">👁</button>
+            </div>
+            <div class="hint bad" id="nph" hidden></div>
+          </div>
+          <div class="field">
+            <label for="cp">ยืนยันรหัสผ่านใหม่</label>
+            <div class="inwrap">
+              <input id="cp" type="password" autocomplete="new-password" placeholder="พิมพ์รหัสผ่านใหม่อีกครั้ง" aria-describedby="cph">
+            </div>
+            <div class="hint bad" id="cph" hidden></div>
+          </div>
+          <button class="btn" id="goPw" type="submit"><span class="spin" aria-hidden="true"></span><span id="goPwTxt">ตั้งรหัสผ่านและเข้าสู่ระบบ</span></button>
+        </form>
+        <p class="help">รหัสชั่วคราวที่ได้รับจะใช้ไม่ได้อีกหลังตั้งรหัสผ่านใหม่</p>
+      </div>
     </main>
   </div>
 
@@ -212,8 +239,10 @@ footer{padding:8px 0 20px;text-align:center;font-size:12px;color:var(--fg-faint)
       <button type="button" data-st="disabled">บัญชีถูกปิด</button>
       <button type="button" data-st="network">เครือข่ายขัดข้อง</button>
       <button type="button" data-st="ok">เข้าสำเร็จ</button>
+      <button type="button" data-st="must">ต้องเปลี่ยนรหัส</button>
     </div>
-    <div style="margin-top:7px">เข้าได้จริง: <code>host</code> / <code>admin</code> / <code>recorder</code> + <code>Demo#1234</code> · บัญชีปิด: <code>somchai.old</code></div>
+    <div style="margin-top:7px">เข้าได้ (ชื่อสมมติ รหัส <code>Demo#1234</code>): <code>somying</code> (Project Manager) · <code>wipa</code> (Admin) · <code>somchai</code> (หัวหน้างาน)<br>
+      บัญชีใหม่ต้องเปลี่ยนรหัส: <code>napa.new</code> + รหัสชั่วคราว <code>Temp#1234</code> · บัญชีปิด: <code>anucha</code></div>
   </div>
 
   <footer>© Advance Group Asia (AGA) · ระบบภายใน · เปิดใช้งานผ่านเบราว์เซอร์หรือติดตั้งเป็นแอป (PWA)</footer>
@@ -254,10 +283,12 @@ footer{padding:8px 0 20px;text-align:center;font-size:12px;color:var(--fg-faint)
 
   /* ---------- แถบแจ้งเตือน ---------- */
   var ALERTS={
-    wrong:{cls:'danger',ic:'⚠',t:'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง',s:'ตรวจสอบตัวพิมพ์เล็ก/ใหญ่แล้วลองอีกครั้ง หากยังเข้าไม่ได้ให้ติดต่อ Host'},
-    disabled:{cls:'warn',ic:'⛔',t:'บัญชีนี้ถูกปิดใช้งาน',s:'ติดต่อ Host (QCS ส่วนกลาง Bait) เพื่อขอเปิดใช้งานบัญชีอีกครั้ง'},
+    wrong:{cls:'danger',ic:'⚠',t:'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง',s:'ตรวจสอบตัวพิมพ์เล็ก/ใหญ่แล้วลองอีกครั้ง หากยังเข้าไม่ได้ให้ติดต่อผู้ดูแลระบบ (PM / OM)'},
+    disabled:{cls:'warn',ic:'⛔',t:'บัญชีนี้ถูกปิดใช้งาน',s:'ติดต่อผู้ดูแลระบบ (PM / OM) เพื่อขอเปิดใช้งานบัญชีอีกครั้ง'},
     network:{cls:'danger',ic:'⚠',t:'เชื่อมต่อเซิร์ฟเวอร์ไม่ได้',s:'ตรวจสอบอินเทอร์เน็ตแล้วลองอีกครั้ง'},
-    ok:{cls:'ok',ic:'✓',t:'เข้าสู่ระบบสำเร็จ',s:'กำลังพาเข้าสู่ระบบ … (ปุ่ม "เข้าสำเร็จ" ในแผงเดโมด้านล่างแสดงแค่ข้อความ ไม่เปลี่ยนหน้า)'}
+    ok:{cls:'ok',ic:'✓',t:'เข้าสู่ระบบสำเร็จ',s:'กำลังพาเข้าสู่ระบบ … (ปุ่ม "เข้าสำเร็จ" ในแผงเดโมด้านล่างแสดงแค่ข้อความ ไม่เปลี่ยนหน้า)'},
+    must:{cls:'warn',ic:'🔑',t:'บัญชีนี้ต้องตั้งรหัสผ่านใหม่ก่อนใช้งาน',s:'ตั้งรหัสผ่านที่จำง่ายสำหรับคุณ แล้วใช้รหัสนี้เข้าสู่ระบบครั้งต่อไป'},
+    pwdone:{cls:'ok',ic:'✓',t:'ตั้งรหัสผ่านใหม่แล้ว',s:'กำลังพาเข้าสู่ระบบ …'}
   };
   function showAlert(k){
     var a=ALERTS[k];
@@ -281,13 +312,56 @@ footer{padding:8px 0 20px;text-align:center;font-size:12px;color:var(--fg-faint)
   }
 
   /* ---------- จำลองการยืนยันตัวตน (ของจริงเรียก Supabase Auth) ---------- */
-  var OK_USERS={host:1,admin:1,recorder:1}, OK_PASS='Demo#1234', DISABLED={'somchai.old':1};
+  /* ชื่อสมมติ → หน้าแรกหลังเข้า (ตามตำแหน่ง): PM/หัวหน้างาน = สถานะทะเบียนบริการ · Admin (เปิดงาน) = เปิดงานเข้าทะเบียนบริการ */
+  var OK_USERS={somying:'aga-bait-registry-prototype.html#todo',somchai:'aga-bait-registry-prototype.html#todo',wipa:'admin-add-customer.html'};
+  var OK_PASS='Demo#1234', DISABLED={'anucha':1};
+  var MUST_USER='napa.new', MUST_PASS='Temp#1234'; /* บัญชีใหม่/ถูกรีเซ็ต: must_change_password = true */
   function fakeAuth(user,pass){
     var name=user.trim().toLowerCase();
+    if(name===MUST_USER && pass===MUST_PASS) return 'must';
     if(DISABLED[name] && pass===OK_PASS) return 'disabled'; /* ปิดบัญชี: บอกเมื่อรหัสถูกเท่านั้น */
     if(OK_USERS[name] && pass===OK_PASS) return 'ok';
     return 'wrong';
   }
+
+  /* ---------- ขั้นที่ 2: ตั้งรหัสผ่านใหม่ (ครั้งแรก/หลังถูกรีเซ็ต) ---------- */
+  var np=$('np'),cp=$('cp'),nph=$('nph'),cph=$('cph'),goPw=$('goPw');
+  function showPwStep(){
+    $('stepLogin').hidden=true; $('stepPw').hidden=false;
+    $('sub').textContent='ตั้งรหัสผ่านใหม่ก่อนเข้าใช้งานครั้งแรก';
+    showAlert('must'); np.focus();
+  }
+  function showLoginStep(){
+    $('stepPw').hidden=true; $('stepLogin').hidden=false;
+    $('sub').textContent='เข้าสู่ระบบด้วยบัญชีที่ผู้ดูแลระบบ (PM / OM) สร้างให้';
+    np.value='';cp.value='';fieldErr(np,nph,'');fieldErr(cp,cph,'');
+  }
+  $('eye2').addEventListener('click',function(){
+    var show=np.type==='password';
+    np.type=show?'text':'password'; cp.type=np.type;
+    this.setAttribute('aria-pressed',show);
+    this.setAttribute('aria-label',show?'ซ่อนรหัสผ่าน':'แสดงรหัสผ่าน');
+    this.textContent=show?'🙈':'👁'; np.focus();
+  });
+  $('fp').addEventListener('submit',function(e){
+    e.preventDefault(); if(busy) return;
+    fieldErr(np,nph,''); fieldErr(cp,cph,'');
+    var bad=false;
+    if(np.value.length<8){fieldErr(np,nph,'รหัสผ่านต้องยาวอย่างน้อย 8 ตัวอักษร');bad=true;}
+    else if(np.value===MUST_PASS){fieldErr(np,nph,'ต้องไม่ซ้ำกับรหัสชั่วคราว');bad=true;}
+    if(!bad && cp.value!==np.value){fieldErr(cp,cph,'รหัสผ่านสองช่องไม่ตรงกัน');bad=true;}
+    if(bad){(np.classList.contains('err')?np:cp).focus();return;}
+    busy=true; goPw.setAttribute('aria-busy','true'); $('goPwTxt').textContent='กำลังบันทึก…';
+    setTimeout(function(){
+      busy=false; goPw.setAttribute('aria-busy','false'); $('goPwTxt').textContent='ตั้งรหัสผ่านและเข้าสู่ระบบ';
+      showAlert('pwdone');
+      setTimeout(function(){ location.href='aga-bait-registry-prototype.html#todo'; },900);
+    },700);
+  });
+  [np,cp].forEach(function(el){el.addEventListener('input',function(){
+    el.classList.remove('err'); el.removeAttribute('aria-invalid');
+    (el===np?nph:cph).hidden=true;
+  });});
 
   f.addEventListener('submit',function(e){
     e.preventDefault(); if(busy) return;
@@ -303,10 +377,10 @@ footer{padding:8px 0 20px;text-align:center;font-size:12px;color:var(--fg-faint)
       showAlert(r);
       if(r==='wrong'){markBad(u);markBad(p);p.value='';p.focus();}
       if(r==='disabled'){markBad(u);p.value='';u.focus();}
-      /* เข้าสำเร็จจริง (กรอกฟอร์ม ไม่ใช่ปุ่มเดโม) → พาเข้าแอป: host/recorder → "สถานะทะเบียนบริการ" · admin ไม่มีเมนูนั้น → "เปิดงานเข้าทะเบียนบริการ"
-         (ตอน build จริง: ไปหน้าแรกตาม role จาก profiles + บังคับเปลี่ยนรหัสก่อนถ้า must_change_password) */
-      if(r==='ok'){ setTimeout(function(){
-        location.href = (u.value.trim().toLowerCase()==='admin') ? 'admin-add-customer.html' : 'aga-bait-registry-prototype.html#todo'; },900); }
+      if(r==='must'){ p.value=''; showPwStep(); }
+      /* เข้าสำเร็จจริง (กรอกฟอร์ม ไม่ใช่ปุ่มเดโม) → พาเข้าแอปตามตำแหน่ง: PM/หัวหน้างาน → "สถานะทะเบียนบริการ" · Admin ไม่มีเมนูนั้น → "เปิดงานเข้าทะเบียนบริการ"
+         (ตอน build จริง: ไปหน้าแรกตาม role จาก profiles · บัญชี must_change_password=true ไปขั้นตั้งรหัสใหม่ก่อน) */
+      if(r==='ok'){ var dest=OK_USERS[u.value.trim().toLowerCase()]; setTimeout(function(){ location.href=dest; },900); }
     },700);
   });
   [u,p].forEach(function(el){el.addEventListener('input',function(){
@@ -317,11 +391,12 @@ footer{padding:8px 0 20px;text-align:center;font-size:12px;color:var(--fg-faint)
   /* ---------- แผงเดโม ---------- */
   document.querySelectorAll('.mk button').forEach(function(b){
     b.addEventListener('click',function(){
-      var s=b.getAttribute('data-st'); clearAll();
+      var s=b.getAttribute('data-st'); clearAll(); showLoginStep();
       if(s==='normal'){u.value='';p.value='';return;}
       if(s==='wrong'){u.value='somsri.k';p.value='';markBad(u);markBad(p);}
-      if(s==='disabled'){u.value='somchai.old';p.value='';markBad(u);}
-      if(s==='ok'){u.value='recorder';}
+      if(s==='disabled'){u.value='anucha';p.value='';markBad(u);}
+      if(s==='ok'){u.value='somchai';}
+      if(s==='must'){u.value=MUST_USER; showPwStep(); return;}
       showAlert(s);
     });
   });
