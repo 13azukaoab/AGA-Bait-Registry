@@ -4,7 +4,7 @@
 -- วันที่ที่ขึ้นกับ "เดือนปัจจุบัน" (Asia/Bangkok) คำนวณผ่าน pg_temp.cm() → เทสไม่พังเมื่อเวลาผ่านไป
 --   d1 = สัญญาในอดีต (ม.ค.–ธ.ค. 2025) · d3 = สัญญาที่ยังไม่จบ (เริ่ม cm − 6 เดือน, 1 ปี) · d2 = ต่างจังหวัด
 BEGIN;
-SELECT plan(67);
+SELECT plan(75);
 
 INSERT INTO auth.users (id, instance_id, aud, role, email) VALUES
   ('00000000-0000-0000-0000-0000000000a1', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'host@test.local'),
@@ -145,7 +145,9 @@ SELECT throws_ok($$INSERT INTO missed_service_resolutions (contract_id, missed_m
   '42501', NULL, 'recorder cannot insert directly');
 SELECT throws_ok($$UPDATE missed_service_resolutions SET reason = 'hack'$$, '42501', NULL, 'recorder cannot update directly');
 -- ไฟล์หลักฐาน: อัปโหลดได้ในสัญญาที่อยู่ในขอบเขต
-SELECT lives_ok($$INSERT INTO storage.objects (bucket_id, name) VALUES ('missed-service-evidence', '00000000-0000-0000-0000-0000000000d1/r.pdf')$$,
+-- owner_id = ผู้อัปโหลด (Storage API ตั้งให้เอง · ในเทสใส่เอง)
+SELECT lives_ok($$INSERT INTO storage.objects (bucket_id, name, owner_id)
+                  VALUES ('missed-service-evidence', '00000000-0000-0000-0000-0000000000d1/r.pdf', '00000000-0000-0000-0000-0000000000a3')$$,
   'recorder uploads evidence for a contract in scope');
 SELECT throws_ok($$INSERT INTO storage.objects (bucket_id, name) VALUES ('missed-service-evidence', '00000000-0000-0000-0000-0000000000d2/r.pdf')$$,
   '42501', NULL, 'recorder cannot upload evidence for a contract out of scope');
@@ -222,6 +224,43 @@ SELECT lives_ok($$SELECT public.delete_service_visit('00000000-0000-0000-0000-00
   'a linked make-up visit can be deleted (status goes back to not-done)');
 SELECT is((SELECT count(*)::int FROM missed_service_resolutions WHERE missed_month = '2025-06-01'), 1,
   'the decision stays after its visit is deleted');
+RESET ROLE;
+
+-- =====================================================================
+-- แก้ตามผลตรวจ security (Opus)
+-- =====================================================================
+-- (1) เพดานเดือนชดเชย: ไม่เกิน 12 เดือนหลัง max(เดือนบริการสุดท้าย, เดือนปัจจุบัน) — ทุกบทบาท
+SET LOCAL ROLE authenticated;
+SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a1', true);
+SELECT throws_ok(pg_temp.rs('d1', '2025-07-01', 'makeup', (pg_temp.cm() + interval '13 months')::date),
+  'MS003', NULL, 'make-up month more than 12 months ahead is refused (Dashboard inflation guard)');
+SELECT lives_ok(pg_temp.rs('d1', '2025-07-01', 'makeup', (pg_temp.cm() + interval '12 months')::date),
+  'make-up month exactly 12 months ahead is allowed');
+-- (2) path ตัวพิมพ์ใหญ่ (storage_contract_id รับได้) ใช้เป็นหลักฐานได้
+RESET ROLE;
+INSERT INTO storage.objects (bucket_id, name, owner_id, created_at) VALUES
+  ('missed-service-evidence', '00000000-0000-0000-0000-0000000000D1/UP.pdf', NULL, now() - interval '2 hours'),
+  ('missed-service-evidence', '00000000-0000-0000-0000-0000000000d1/orphan.pdf', '00000000-0000-0000-0000-0000000000a1', now() - interval '2 hours');
+SET LOCAL ROLE authenticated;
+SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a3', true);
+SELECT lives_ok(pg_temp.rs('d1', '2025-05-01', 'waived', NULL, 'ยินยอม', '00000000-0000-0000-0000-0000000000D1/UP.pdf'),
+  'evidence in an upper-case contract folder is accepted');
+-- (3) อ่าน bucket: ต้องมีการตัดสินอ้างอิง (หรือเป็นไฟล์ของตัวเองที่เพิ่งอัปโหลด < 1 ชม.)
+SELECT is((SELECT count(*)::int FROM storage.objects WHERE bucket_id = 'missed-service-evidence'
+            AND name = '00000000-0000-0000-0000-0000000000D1/UP.pdf'), 1, 'referenced evidence is readable');
+SELECT is((SELECT count(*)::int FROM storage.objects WHERE bucket_id = 'missed-service-evidence'
+            AND name = '00000000-0000-0000-0000-0000000000d1/orphan.pdf'), 0, 'unreferenced evidence of others is not readable');
+SELECT is((SELECT count(*)::int FROM storage.objects WHERE bucket_id = 'missed-service-evidence'
+            AND name = '00000000-0000-0000-0000-0000000000d1/r.pdf'), 1, 'own fresh upload is readable (for clean-up)');
+-- (4) เปลี่ยนไฟล์หลักฐาน → ไฟล์เก่าลงคิวลบ · ใช้ไฟล์ที่อยู่ในคิวซ้ำไม่ได้
+RESET ROLE;
+SELECT is((SELECT count(*)::int FROM storage_deletion_queue WHERE bucket = 'missed-service-evidence'
+            AND path = '00000000-0000-0000-0000-0000000000d1/consent.pdf' AND done_at IS NULL), 1,
+  'replaced evidence is queued for deletion');
+SET LOCAL ROLE authenticated;
+SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a3', true);
+SELECT throws_ok(pg_temp.rs('d1', '2025-05-01', 'waived', NULL, 'ยินยอม', '00000000-0000-0000-0000-0000000000d1/consent.pdf'),
+  'MS007', NULL, 'evidence waiting for deletion cannot be reused');
 RESET ROLE;
 
 SELECT * FROM finish();

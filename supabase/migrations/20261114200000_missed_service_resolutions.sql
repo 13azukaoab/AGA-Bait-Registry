@@ -22,11 +22,15 @@
 --      · missed_month = วันที่ 1 · อยู่ในเดือนบริการ (เดือนเริ่ม + ปี×12 — กฎข้อ 5 ไม่ใช้ end_date) · ผ่านไปแล้ว
 --        · ยังไม่ถูกยกเลิก · และ "ตกจริง" (ไม่มี routine ที่ไม่ใช่ชดเชยในเดือนนั้น) → กันสร้างเดือนชดเชยปลอมดัน Dashboard
 --      · ชดเชย: เดือนชดเชย > เดือนที่ตก · recorder เลือกเดือนก่อนเดือนปัจจุบันไม่ได้ (host ได้) — ยกเว้นคงเดือนเดิม
+--        · ⚠ ค่าชั่วคราว (รอเจ้าของ): เดือนชดเชยไม่เกิน 12 เดือนหลัง max(เดือนบริการสุดท้าย, เดือนปัจจุบัน) ทุกบทบาท
+--          กันเลือกเดือนไกลๆ แล้วดันตัวเลข Dashboard (ผลตรวจ security)
 --      · มีการเข้าชดเชยผูกอยู่แล้ว → เปลี่ยนชนิด/เดือนชดเชยไม่ได้ (MS005 — เลิกผูกการเข้าก่อน)
 --      · หลักฐาน: path ต้องเป็น `<contract_id>/<ชื่อไฟล์>` ใน bucket `missed-service-evidence` และมีไฟล์อยู่จริง
 --   5. Storage bucket ใหม่ `missed-service-evidence` (private · 5 MB · PDF/PNG/JPG)
 --      อ่าน: host/admin/recorder · อัปโหลด: host หรือ recorder ในขอบเขตของสัญญา (โฟลเดอร์แรก = contract_id)
---      แก้/ลบไฟล์: ไม่มี policy (ไฟล์หลักฐานไม่ถูกเขียนทับ)
+--      อ่านได้เฉพาะไฟล์ที่มีการตัดสินอ้างอิง หรือไฟล์ที่ตัวเองเพิ่งอัปโหลด < 1 ชม. (แพทเทิร์นเดียวกับ contract-files
+--      ใน 20261112110100 — PDPA) · แก้/ลบไฟล์: ไม่มี policy ผู้ใช้ · เปลี่ยนไฟล์/ลบแถว → ไฟล์เก่าลง
+--      `storage_deletion_queue` (ใช้ไฟล์ที่รอลบซ้ำไม่ได้ — MS007)
 --   6. audit: trigger `audit_missed_service_resolutions` + เพิ่มกรณีในตัว `audit_trigger` (contract_id + month_key
 --      = เดือนที่ตก) · เนื้อ audit_trigger เดิมจาก 20261112150000 เพิ่มเฉพาะจุดที่ติดป้าย "M18"
 --   * advisory lock ต่อสัญญาเดียวกับ save_service_visit (การตัดสิน ↔ การผูกการเข้า ไม่ชนกัน)
@@ -145,11 +149,43 @@ ON CONFLICT (id) DO UPDATE
       file_size_limit    = EXCLUDED.file_size_limit,
       allowed_mime_types = EXCLUDED.allowed_mime_types;
 
+-- อ่าน: ต้องมีการตัดสินอ้างอิง path นี้ (subquery อ่านตาม RLS ของผู้ใช้) หรือเป็นไฟล์ของตัวเองที่เพิ่งอัปโหลด
+--       ไม่เกิน 1 ชม. (ให้แอปลบไฟล์ที่อัปโหลดแล้วบันทึกการตัดสินไม่สำเร็จได้ — เหมือน contract-files)
 CREATE POLICY missed_evidence_bucket_read ON storage.objects FOR SELECT TO authenticated
   USING (
     bucket_id = 'missed-service-evidence'
     AND public.current_app_role() IN ('host', 'admin', 'recorder')
+    AND (
+      EXISTS (SELECT 1 FROM public.missed_service_resolutions r WHERE r.evidence_path = storage.objects.name)
+      OR (storage.objects.owner_id = auth.uid()::text
+          AND storage.objects.created_at > now() - interval '1 hour')
+    )
   );
+
+-- ไฟล์หลักฐานเก่า (เปลี่ยนไฟล์ / ลบแถวตามสัญญา) → ลงคิวลบ ถ้าไม่มีแถวอื่นใช้ path นั้น
+CREATE FUNCTION public.missed_evidence_enqueue_object_delete()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+BEGIN
+  IF OLD.evidence_path IS NOT NULL
+     AND (TG_OP = 'DELETE' OR NEW.evidence_path IS DISTINCT FROM OLD.evidence_path)
+     AND NOT EXISTS (SELECT 1 FROM missed_service_resolutions r
+                      WHERE r.evidence_path = OLD.evidence_path AND r.id <> OLD.id) THEN
+    INSERT INTO storage_deletion_queue (bucket, path)
+    VALUES ('missed-service-evidence', OLD.evidence_path)
+    ON CONFLICT (bucket, path) DO UPDATE
+      SET done_at = NULL, attempts = 0, last_error = NULL, enqueued_at = now();
+  END IF;
+  RETURN NULL; -- AFTER trigger
+END;
+$$;
+
+CREATE TRIGGER missed_evidence_enqueue_object_delete
+  AFTER DELETE OR UPDATE OF evidence_path ON public.missed_service_resolutions
+  FOR EACH ROW EXECUTE FUNCTION public.missed_evidence_enqueue_object_delete();
 CREATE POLICY missed_evidence_bucket_insert ON storage.objects FOR INSERT TO authenticated
   WITH CHECK (
     bucket_id = 'missed-service-evidence'
@@ -206,18 +242,19 @@ BEGIN
   v_kind     := (p ->> 'kind')::public.missed_resolution_kind;
   v_mk_date  := nullif(p ->> 'makeup_date', '')::date;
 
-  PERFORM pg_advisory_xact_lock(hashtextextended('public.save_service_visit:' || v_contract::text, 0));
-
-  -- ---------- สัญญา + ขอบเขต ----------
-  SELECT date_trunc('month', c.start_date)::date, c.term_years, c.cancelled_at::date
-    INTO v_start_month, v_term, v_cancelled
-    FROM contracts c WHERE c.id = v_contract;
-  IF NOT FOUND THEN
+  -- ---------- สัญญา + ขอบเขต (ก่อนถือ lock — คนนอกขอบเขตไม่ได้ถือคิวของสาขาอื่น) ----------
+  IF NOT EXISTS (SELECT 1 FROM contracts c WHERE c.id = v_contract) THEN
     RAISE EXCEPTION 'contract not found' USING ERRCODE = 'AG004';
   END IF;
   IF NOT (v_is_host OR contract_in_scope(v_contract)) THEN
     RAISE EXCEPTION 'not allowed to resolve missed service for this contract' USING ERRCODE = '42501';
   END IF;
+
+  PERFORM pg_advisory_xact_lock(hashtextextended('public.save_service_visit:' || v_contract::text, 0));
+
+  SELECT date_trunc('month', c.start_date)::date, c.term_years, c.cancelled_at::date
+    INTO v_start_month, v_term, v_cancelled
+    FROM contracts c WHERE c.id = v_contract;
 
   -- ---------- เดือนที่ตก ----------
   IF v_missed <> date_trunc('month', v_missed)::date
@@ -254,6 +291,11 @@ BEGIN
        AND NOT (v_has_old AND v_old.kind = 'makeup' AND v_old.makeup_month = v_mk_month) THEN
       RAISE EXCEPTION 'the make-up month cannot be before the current month' USING ERRCODE = 'MS003';
     END IF;
+    -- ค่าชั่วคราว: ไม่เกิน 12 เดือนหลัง max(เดือนบริการสุดท้าย, เดือนปัจจุบัน)
+    IF v_mk_month > (greatest((v_start_month + make_interval(months => v_term * 12 - 1))::date, v_now_month)
+                     + interval '12 months')::date THEN
+      RAISE EXCEPTION 'the make-up month is too far ahead' USING ERRCODE = 'MS003';
+    END IF;
   ELSE
     IF v_reason IS NULL THEN
       RAISE EXCEPTION 'a reason is required when no make-up is given' USING ERRCODE = 'MS004';
@@ -277,9 +319,11 @@ BEGIN
   -- ---------- หลักฐาน ----------
   IF v_evidence IS NOT NULL THEN
     IF char_length(v_evidence) > 300
-       OR v_evidence !~ ('^' || v_contract::text || '/[^/]+$')
+       OR v_evidence !~* ('^' || v_contract::text || '/[^/]+$')
        OR NOT EXISTS (SELECT 1 FROM storage.objects o
-                       WHERE o.bucket_id = 'missed-service-evidence' AND o.name = v_evidence) THEN
+                       WHERE o.bucket_id = 'missed-service-evidence' AND o.name = v_evidence)
+       OR EXISTS (SELECT 1 FROM storage_deletion_queue q
+                   WHERE q.bucket = 'missed-service-evidence' AND q.path = v_evidence AND q.done_at IS NULL) THEN
       RAISE EXCEPTION 'evidence file not found for this contract' USING ERRCODE = 'MS007';
     END IF;
   END IF;
@@ -316,6 +360,7 @@ SET search_path = public, pg_temp
 AS $$
 DECLARE
   v_visit_id uuid;
+  v_contract uuid;
   v_month    date;
   v_result   jsonb;
 BEGIN
@@ -323,15 +368,22 @@ BEGIN
     RAISE EXCEPTION 'not allowed to record service' USING ERRCODE = '42501';
   END IF;
   IF p IS NULL OR jsonb_typeof(p) <> 'object' OR NOT (p ? 'makeup_for_month')
-     OR nullif(p ->> 'visit_id', '') IS NULL THEN
-    RAISE EXCEPTION 'visit_id and makeup_for_month are required' USING ERRCODE = '22004';
+     OR nullif(p ->> 'visit_id', '') IS NULL OR nullif(p ->> 'contract_id', '') IS NULL THEN
+    RAISE EXCEPTION 'visit_id, contract_id and makeup_for_month are required' USING ERRCODE = '22004';
   END IF;
   v_visit_id := (p ->> 'visit_id')::uuid;
+  v_contract := (p ->> 'contract_id')::uuid;
   v_month    := nullif(p ->> 'makeup_for_month', '')::date;
+  IF NOT (is_host() OR contract_in_scope(v_contract)) THEN
+    RAISE EXCEPTION 'not allowed to record service for this contract' USING ERRCODE = '42501';
+  END IF;
+
+  -- ถือคิวของสัญญาก่อนแตะแถว visits (ลำดับเดียวกับ save_service_visit — กัน deadlock)
+  PERFORM pg_advisory_xact_lock(hashtextextended('public.save_service_visit:' || v_contract::text, 0));
 
   -- เลิกผูก/เปลี่ยนผูกก่อนบันทึก (การเข้าที่ย้ายวันออกจากเดือนชดเชยจะไม่ติดด่านของการผูกเดิม)
   UPDATE visits vi SET makeup_for_month = NULL
-   WHERE vi.id = v_visit_id AND vi.makeup_for_month IS NOT NULL
+   WHERE vi.id = v_visit_id AND vi.contract_id = v_contract AND vi.makeup_for_month IS NOT NULL
      AND vi.makeup_for_month IS DISTINCT FROM v_month;
 
   v_result := save_service_visit(p - 'makeup_for_month');
@@ -431,6 +483,7 @@ CREATE TRIGGER audit_missed_service_resolutions
 -- 8. สิทธิ์ function (ทุกตัวในไฟล์นี้)
 -- =====================================================================
 REVOKE ALL ON FUNCTION public.visits_makeup_link_guard() FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.missed_evidence_enqueue_object_delete() FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.resolve_missed_service(jsonb) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.resolve_missed_service(jsonb) TO authenticated;
 REVOKE ALL ON FUNCTION public.save_makeup_service_visit(jsonb) FROM PUBLIC, anon;

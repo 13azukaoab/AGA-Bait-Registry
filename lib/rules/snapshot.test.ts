@@ -136,6 +136,15 @@ describe("buildBranchSnapshot + เดือนชดเชย", () => {
     expect(visited.cust).toBe(1);
   });
 
+  it("เดือนที่ตกมี routine ภายหลัง (ไม่ตกแล้ว) → การตัดสินเดิมไม่ทำให้นับเดือนชดเชย", () => {
+    const row = buildBranchSnapshot(branch, [c1], "2027-01", TIER_RULES, {
+      resolutions: [mk("2026-05", "2027-01")],
+      visits: [{ contractId: "c1", visitDate: "2026-05-20", visitType: "routine" }],
+      policy: "scheduled",
+    });
+    expect(row.cust).toBe(0);
+  });
+
   it("ไม่ส่ง policy → ใช้ค่าเริ่มต้นจุดเดียว (MAKEUP_SNAPSHOT_POLICY)", () => {
     const row = buildBranchSnapshot(branch, [c1], "2027-01", TIER_RULES, {
       resolutions: [mk("2026-05", "2027-01")],

@@ -11,10 +11,12 @@ import { annualValue, tierOf } from "./tier";
 import { serviceMonths } from "./serviceMonths";
 import { monthOf } from "./date";
 import { lastServiceMonth, makeupCountsInSnapshot } from "./missedResolution";
+import { isMissedService } from "./missedService";
 
 /**
  * M18 (DECISIONS 2.41 ②): ข้อมูลเดือนชดเชย (ไม่บังคับ — ไม่ส่ง = ผลเหมือนเดิมทุกประการ)
- * visits ใช้เฉพาะเมื่อ policy = "visited" (ต้องมีการเข้าที่ผูก makeupForMonth ของสัญญาเหล่านี้)
+ * visits = การเข้าทั้งหมดของสัญญาเหล่านี้ (ใช้ตรวจว่าเดือนที่ตกยังตกจริง + การเข้าที่ผูก makeupForMonth)
+ * ⚠ ตัวแปลงจาก DB: missed_month / makeup_month / makeup_for_month เก็บ 'YYYY-MM-01' → ต้องตัดเป็น 'YYYY-MM' ทุกช่อง
  */
 export interface SnapshotMakeupInput {
   resolutions: MissedServiceResolution[];
@@ -54,6 +56,8 @@ export function buildBranchSnapshot(
         (r) =>
           r.contractId === c.id &&
           r.makeupMonth === month &&
+          // เดือนที่ตกต้องยัง "ตกจริง" ตอนคำนวณ (มี routine ภายหลัง = การตัดสินเดิมไม่มีผล)
+          isMissedService(c, r.missedMonth, makeups.visits) &&
           makeupCountsInSnapshot(r, makeups.visits, makeups.policy),
       );
     if (!inService && !countsAsMakeup) continue;
