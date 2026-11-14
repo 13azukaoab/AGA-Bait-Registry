@@ -364,7 +364,7 @@ tfoot td{padding:10px 12px;font-weight:700;background:var(--surface-2);border-to
 .cust .main b{display:block;font-size:13.5px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .cust .main small{display:block;font-size:11.5px;color:var(--fg-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .cust .tags{display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex:none}
-.mo{display:inline-block;margin-top:3px;font-size:10.5px;font-weight:600;padding:0 7px;border-radius:5px;border:1px solid;background:transparent;white-space:nowrap}
+.mo{display:inline-block;margin-top:3px;font-size:11px;font-weight:600;padding:0 7px;border-radius:5px;border:1px solid;background:transparent;white-space:nowrap}
 .mo.new{color:var(--accent-strong);border-color:var(--accent)}
 .mo.renew{color:var(--ok);border-color:var(--ok)}
 .agtag{font-size:10.5px;font-weight:600;padding:1px 7px;border-radius:5px;background:var(--warn-soft);color:var(--warn)}
@@ -540,7 +540,7 @@ tfoot td{padding:10px 12px;font-weight:700;background:var(--surface-2);border-to
 .bxorder{margin-top:10px;font-size:13px;background:var(--warn-soft);color:var(--warn);border:1px solid var(--warn);border-radius:8px;padding:8px 12px}
 .bxorder[hidden]{display:none}
 .sthint{font-size:11px;color:var(--fg-muted);margin-top:4px;line-height:1.4}
-@media (max-width:640px){.pt.new .agfields{grid-template-columns:1fr}}
+@media (max-width:640px){.pt.new .agfields{grid-template-columns:1fr}.pt .btn.sm,.pt .lblbtn,.pt .snoin{min-height:40px}}
 .mini.need .optrow,.mini.need select,.mini.need .baitnum{outline:2px solid var(--danger);outline-offset:2px;border-radius:9px}
 .mini.need>label{color:var(--danger)}
 .skipchk{display:flex;gap:10px;align-items:flex-start;padding:11px 12px;border:1px dashed var(--border-strong);
@@ -1566,7 +1566,7 @@ function agPointHtml(ctx,m,p,bad){
   h+='<div class="mini"><label for="be_'+ctx+p.k+'">การกินเหยื่อ <span class="opt">(ไม่บังคับ)</span></label><select id="be_'+ctx+p.k+'" data-ag="eat" '+key+dis+'>'+
     '<option value=""'+(p.eat===''?' selected':'')+'>— เลือก —</option>'+
     [0,25,50,75,100].map(function(v){return '<option value="'+v+'"'+(p.eat===String(v)?' selected':'')+'>'+v+'%</option>'}).join('')+'</select></div>';
-  h+='<div class="mini'+(bad&&!p.caste?' need':'')+'"><label>สัดส่วนปลวกที่พบ</label><select data-ag="caste" '+key+dis+'>'+
+  h+='<div class="mini'+(bad&&!p.caste?' need':'')+'"><label for="ca_'+ctx+p.k+'">สัดส่วนปลวกที่พบ</label><select id="ca_'+ctx+p.k+'" data-ag="caste" '+key+dis+'>'+
     '<option value=""'+(p.caste===''?' selected':'')+' disabled>— เลือก —</option>'+
     '<option value="ไม่พบปลวก"'+(p.caste==='ไม่พบปลวก'?' selected':'')+'>ไม่พบปลวก</option>'+
     CASTES.map(function(c){return '<option value="'+esc(c)+'"'+(p.caste===c?' selected':'')+'>'+esc(c)+'</option>'}).join('')+'</select></div>';
