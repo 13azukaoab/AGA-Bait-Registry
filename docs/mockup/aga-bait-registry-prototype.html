@@ -1550,7 +1550,7 @@ function agNewHtml(ctx,m,p,bad){
 function agPointHtml(ctx,m,p,bad){
   if(p.kind==='S') return agNewHtml(ctx,m,p,bad);
   var off=(ctx==='sv'&&(m.skip||p.skip)), key='data-ctx="'+ctx+'" data-k="'+p.k+'"', dis=off?' disabled':'';
-  var chip=p.st==='pend'?'<span class="chip pend">รอถอด</span>':(p.st==='rm'?'<span class="chip ok">ถอดกล่อง</span>':'<span class="chip info">กำลังติดตาม</span>');
+  var chip=p.st==='pend'?'<span class="chip pend">รอถอด</span>':(p.st==='rm'?'<span class="chip ok">ถอดแล้ว</span>':'<span class="chip info">ติดตามผล</span>');
   var fno='ติดตามผล F'+(p.last+1);
   var h='<div class="pt'+(off?' off':'')+'"><div class="top"><span class="sttype">AG</span><b>จุดที่ '+p.no+'</b>'+agLabelHtml(ctx,p,key,dis)+chip+
     '<span class="fno">'+fno+' <span class="auto-tag">อัตโนมัติ</span></span>'+
@@ -1563,7 +1563,7 @@ function agPointHtml(ctx,m,p,bad){
     '<option value=""'+(p.caste===''?' selected':'')+' disabled>— เลือก —</option>'+
     '<option value="ไม่พบปลวก"'+(p.caste==='ไม่พบปลวก'?' selected':'')+'>ไม่พบปลวก</option>'+
     CASTES.map(function(c){return '<option value="'+esc(c)+'"'+(p.caste===c?' selected':'')+'>'+esc(c)+'</option>'}).join('')+'</select></div>';
-  var sts=[['track','ติดตามต่อ'],['pend','รอถอด (ปลวกตาย)'],['rm','ถอดแล้ว (จบปัญหา)']];
+  var sts=[['track','ติดตามผล'],['pend','รอถอด (ปลวกตาย)'],['rm','ถอดแล้ว (จบปัญหา)']];
   var sthint=p.st==='rm'?'<div class="sthint">ถอดแล้ว = ยืนยันว่าปลวกตายจริงและถอดกล่องออก · จบงานจุดนี้ เปลี่ยนสถานะอีกไม่ได้</div>':'';
   h+='<div class="mini"><label for="st_'+ctx+p.k+'">สถานะจุดนี้</label><select id="st_'+ctx+p.k+'" data-ag="st" '+key+dis+'>'+
     sts.map(function(s){return '<option value="'+s[0]+'"'+(p.st===s[0]?' selected':'')+'>'+s[1]+'</option>'}).join('')+'</select>'+sthint+'</div>';
