@@ -2,7 +2,7 @@
 --   2.28: admin เปลี่ยน status/removed_at ของกล่องที่ถอด/กำจัดแล้วตรงไม่ได้ (เหมือน recorder ใน M15)
 --   2.29: recorder เปลี่ยนเป็น/จาก lost (หาย) / withdrawn (ถอนออก) ตรงไม่ได้ — ผ่านงานซ่อมใน save_service_visit
 --         (ย้อนผ่าน save_service_visit / delete_service_visit) เท่านั้น → station_works.effects ตรงกับจริง
---   admin + lost/withdrawn: ยังไม่ตัดสิน (ส่งตัวเลือกให้หมวด 2) → เทสข้อ 4 บันทึกพฤติกรรมปัจจุบัน (ยังเปลี่ยนตรงได้)
+--   admin + lost/withdrawn: ตัดสินใน 2.30 / M17 → เทสข้อ 4 ปรับเป็นกัน (42501)
 -- ทุกกรณีที่ "โดนกัน" มีคู่ควบคุม (แถวเดียวกัน ผู้ใช้เดียวกัน แก้ point_label ได้) → พิสูจน์ว่า trigger ทำงานจริง
 -- ไม่ใช่ RLS ซ่อนแถวแล้ว UPDATE ได้ 0 แถวเงียบๆ
 -- Role simulation: seed as postgres, then SET LOCAL ROLE authenticated and set
@@ -219,14 +219,15 @@ SELECT lives_ok($$UPDATE stations SET status = 'lost' WHERE id = '00000000-0000-
   'host can still mark a station lost directly');
 
 -- =====================================================================
--- 4. admin + หาย/ถอนออก — ยังไม่ตัดสิน (ตัวเลือกส่งหมวด 2) · บันทึกพฤติกรรมปัจจุบัน: ยังเปลี่ยนตรงได้
---    ถ้าเลือก "กันเหมือน recorder" → เปลี่ยน 2 ข้อนี้เป็น throws_ok 42501
+-- 4. admin + หาย/ถอนออก — ตัดสินแล้ว 2.30 (M17, 20261112200000): กันเหมือน recorder → throws_ok 42501
+--    (เทสละเอียดอยู่ใน 32_admin_lost_withdrawn_rpc_only.test.sql)
 -- =====================================================================
 SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a2', true);
-SELECT lives_ok($$UPDATE stations SET status = 'active' WHERE id = '00000000-0000-0000-0000-0000000000b5'$$,
-  'admin can still bring a lost station back directly (pending decision)');
-SELECT lives_ok($$UPDATE stations SET status = 'withdrawn' WHERE id = '00000000-0000-0000-0000-0000000000b5'$$,
-  'admin can still mark a station withdrawn directly (pending decision · removed_at stays system-set)');
+-- (2.30 / M17: ตัดสินแล้ว — กันเหมือน recorder · เดิมเป็น lives_ok)
+SELECT throws_ok($$UPDATE stations SET status = 'active' WHERE id = '00000000-0000-0000-0000-0000000000b5'$$,
+  '42501', NULL, 'admin cannot bring a lost station back directly (2.30)');
+SELECT throws_ok($$UPDATE stations SET status = 'withdrawn' WHERE id = '00000000-0000-0000-0000-0000000000b5'$$,
+  '42501', NULL, 'admin cannot mark a station withdrawn directly (2.30)');
 
 -- =====================================================================
 -- 5. audit_log ยังเก็บการเปลี่ยนสถานะผ่าน RPC
