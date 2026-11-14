@@ -697,7 +697,7 @@ tfoot td{padding:10px 12px;font-weight:700;background:var(--surface-2);border-to
         <h3><span class="dot" style="background:var(--accent)"></span> สรุปรายทีม · ต.ค. 2026 <small>เวลาบริการ · ตกบริการ · ลูกค้าเพิ่ม (ข้อมูลสมมติ)</small></h3>
         <div class="tmk" id="tmKpi"></div>
         <div class="tablewrap"><table>
-          <thead><tr><th>ทีม</th><th>เวลาบริการ (รวม · เฉลี่ยต่อราย)</th><th class="c">เข้าบริการ</th><th class="c">ตกบริการ</th><th class="c">ลูกค้าใหม่</th><th class="c">ต่อสัญญา</th></tr></thead>
+          <thead><tr><th>ทีม</th><th>เขต · สาขา</th><th>เวลาบริการ (รวม · เฉลี่ยต่อราย)</th><th class="c">เข้าบริการ (ทำแล้ว/ทั้งหมด)</th><th class="c">ตกบริการ</th><th class="c">ลูกค้าใหม่</th><th class="c">ต่อสัญญา</th></tr></thead>
           <tbody id="tmBody"></tbody>
         </table></div>
       </div>
@@ -2786,10 +2786,10 @@ clRender();
    จำนวนที่เข้าบริการ · ตกบริการ (กดดูรายชื่อ) · ลูกค้าใหม่ · ต่อสัญญา (ลูกค้าเดิมเพิ่ม/ต่อสัญญา)
    ข้อมูลในนี้เป็นข้อมูลสมมติ — ของจริงคำนวณจาก visits + contracts ของเดือนที่เลือก */
 var TM=[
-  {team:'ทีม A',min:3120,visits:65,newc:3,renew:1,miss:[{n:'ไทยแพคโลจิสติกส์',m:'พ.ค. 2026'},{n:'โรงเรียนอนุบาลดอกไม้',m:'มิ.ย. 2026'}]},
-  {team:'ทีม B',min:2880,visits:52,newc:2,renew:2,miss:[{n:'ร้านอาหารครัวริมคลอง',m:'เม.ย. 2026'}]},
-  {team:'ทีม C',min:2520,visits:61,newc:1,renew:0,miss:[{n:'หจก. ทรัพย์เจริญ',m:'ก.ค. 2026'},{n:'บจก. เมโทรแวร์เฮ้าส์',m:'มี.ค. 2026'}]},
-  {team:'ทีม D',min:1890,visits:28,newc:0,renew:1,miss:[]}
+  {team:'ทีม A',zone:'เขต 1',br:'นครปฐม',min:3120,visits:65,plan:72,newc:3,renew:1,miss:[{n:'ไทยแพคโลจิสติกส์',m:'พ.ค. 2026'},{n:'โรงเรียนอนุบาลดอกไม้',m:'มิ.ย. 2026'}]},
+  {team:'ทีม B',zone:'เขต 1',br:'นครปฐม',min:2880,visits:52,plan:60,newc:2,renew:2,miss:[{n:'ร้านอาหารครัวริมคลอง',m:'เม.ย. 2026'}]},
+  {team:'ทีม C',zone:'เขต 1',br:'หัวหิน',min:2520,visits:61,plan:76,newc:1,renew:0,miss:[{n:'หจก. ทรัพย์เจริญ',m:'ก.ค. 2026'},{n:'บจก. เมโทรแวร์เฮ้าส์',m:'มี.ค. 2026'}]},
+  {team:'ทีม D',zone:'เขต 2',br:'พุทธมณฑล',min:1890,visits:28,plan:50,newc:0,renew:1,miss:[]}
 ];
 var tmOpen={};
 function tmHm(m){return Math.floor(m/60)+':'+('0'+(m%60)).slice(-2)}
@@ -2806,12 +2806,12 @@ function tmRender(){
   var h='';
   TM.forEach(function(t,i){
     var n=t.miss.length,op=!!tmOpen[i]&&n>0,pct=max?Math.round(t.min*100/max):0;
-    h+='<tr><td><b>'+esc(t.team)+'</b></td>'+
+    h+='<tr><td><b>'+esc(t.team)+'</b></td><td>'+esc(t.zone)+' · '+esc(t.br)+'</td>'+
        '<td><span class="num">'+Math.floor(t.min/60)+' ชม. '+(t.min%60)+' นาที</span> <span style="color:var(--fg-muted)">· เฉลี่ย '+tmHm(Math.round(t.min/t.visits))+'</span><div class="tmbar" aria-hidden="true"><i style="width:'+pct+'%"></i></div></td>'+
-       '<td class="c num">'+t.visits+' ราย</td>'+
+       '<td class="c"><span class="num"><b>'+t.visits+'</b>/'+t.plan+' ราย</span><div class="tmbar" style="min-width:80px" role="img" aria-label="ทำแล้ว '+Math.round(t.visits*100/t.plan)+'%"><i style="width:'+Math.round(t.visits*100/t.plan)+'%;background:var(--ok)"></i></div></td>'+
        '<td class="c">'+(n?'<button type="button" class="tmmiss" data-tm="'+i+'" aria-expanded="'+op+'" aria-controls="tmDet'+i+'">'+n+' ราย '+(op?'▾':'▸')+'</button>':'<span class="tmmiss zero">0</span>')+'</td>'+
        '<td class="c num">'+t.newc+'</td><td class="c num">'+t.renew+'</td></tr>';
-    if(op)h+='<tr class="tmdet" id="tmDet'+i+'"><td colspan="6"><ul>'+t.miss.map(function(x){return '<li><b>'+esc(x.n)+'</b> · ตกบริการ '+esc(x.m)+'</li>'}).join('')+'</ul></td></tr>';
+    if(op)h+='<tr class="tmdet" id="tmDet'+i+'"><td colspan="7"><ul>'+t.miss.map(function(x){return '<li><b>'+esc(x.n)+'</b> · ตกบริการ '+esc(x.m)+'</li>'}).join('')+'</ul></td></tr>';
   });
   body.innerHTML=h;
 }
