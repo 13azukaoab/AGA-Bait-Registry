@@ -16,7 +16,7 @@ import type { UserRole } from "@/lib/db/types";
 
 import type { BranchOption } from "./branchMatch";
 import type { ContractFileKind } from "./fileRules";
-import { monthRange } from "./months";
+import { monthRange } from "@/lib/service/months";
 import type { ContractFileRow, ContractStatus, MasterData, SaleType, SavedContract } from "./types";
 
 /** ขอบบนของจำนวนสัญญาต่อเดือนที่ดึง (ไฟล์จริง ~133/เดือน) */

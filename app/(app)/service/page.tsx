@@ -1,5 +1,5 @@
 /**
- * /service — กรอกข้อมูลทำบริการประจำเดือน (SPEC §8.1 หน้า 5 · mockup FINAL `docs/mockup/aga-bait-registry-prototype.html#service`)
+ * /service — ลงข้อมูลทำบริการประจำเดือน (SPEC §8.1 หน้า 5 · mockup FINAL `docs/mockup/aga-bait-registry-prototype.html#service`)
  *
  * Logic summary:
  *   * สิทธิ์เข้าหน้า = host, recorder (ด่านที่ middleware.ts จากตารางเมนู · ที่นี่เช็กซ้ำเป็นด่านสำรอง)
@@ -11,7 +11,7 @@
 import { redirect } from "next/navigation";
 
 import { loadContractList, loadServiceMaster } from "@/components/service/data";
-import { currentBangkokMonth, resolveMonth } from "@/components/service/months";
+import { currentBangkokMonth, resolveMonth } from "@/lib/service/months";
 import { ServiceClient } from "@/components/service/ServiceClient";
 import { Alert } from "@/components/ui";
 import { canAccessPath, homeForRole } from "@/lib/auth/access";

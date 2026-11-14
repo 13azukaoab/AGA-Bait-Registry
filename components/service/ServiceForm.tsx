@@ -209,7 +209,7 @@ export function ServiceForm({
   }
 
   const teamHint = loadedVisit ? "จากการบันทึกครั้งนี้" : detail.lastTeamIds.length ? "เติมจากครั้งก่อน" : "ยังไม่เคยเข้า — เลือกทีมเอง";
-  const agCount = effForm.ag.length;
+  const agCount = effForm.ag.filter((p) => p.statusChoice !== "removed").length;
 
   return (
     <div className="flex min-w-0 flex-col gap-3 rounded-xl border border-border bg-surface">
@@ -218,7 +218,7 @@ export function ServiceForm({
         <span className="text-[12px] text-fg-muted num">
           รายที่ {position.index} จาก {position.total}
         </span>
-        {item.visitCountInMonth > 0 ? <Chip tone="ok">กรอกแล้ว · บันทึกซ้ำเพื่อแก้ไข</Chip> : null}
+        {item.routineCountInMonth > 0 ? <Chip tone="ok">กรอกแล้ว · บันทึกซ้ำเพื่อแก้ไข</Chip> : null}
         <b className="text-[16px]">{item.customerName}</b>
         <TierBadge tier={item.tier} years={item.termYears} />
         <Chip tone="na">สัญญา {item.contractNo}</Chip>

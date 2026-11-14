@@ -11,6 +11,7 @@ const st = (id: string, type: StationRow["type"], no: number, status: StationRow
   status,
   pointLabel: "",
   installBaitG: null,
+  installedAt: null,
 });
 
 const STATIONS: StationRow[] = [
@@ -66,6 +67,8 @@ const agPoint = (over: Partial<AgPointState>): AgPointState => ({
   eaten: "",
   caste: "ทหาร",
   savedFollowUpNo: null,
+  removedHere: false,
+  removedNoCheck: false,
   ...over,
 });
 

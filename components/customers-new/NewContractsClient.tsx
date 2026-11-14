@@ -55,7 +55,7 @@ import type { DuplicateChoice, DuplicateCustomerMatch } from "./duplicateCustome
 import { FileDialog } from "./FileDialog";
 import { uploadAfterSave } from "./uploadAfterSave";
 import { HistoryDialog } from "./HistoryDialog";
-import { monthLabel } from "./months";
+import { monthLabel } from "@/lib/service/months";
 import { PdfIcon } from "./PdfIcon";
 import { RenewalDialog } from "./RenewalDialog";
 import { deleteContract, findLinkedRenewals, saveDraft, type SaveResult } from "./save";

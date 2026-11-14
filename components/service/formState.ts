@@ -7,6 +7,8 @@
  *   * แก้การเข้าเดิม: โหลดทีม/ผลตรวจ/งานซ่อมของการเข้านั้น — งานซ่อมคง id เดิม
  *       - จุดกล่อง AG = กล่องที่ยังใช้งาน + กล่องที่มีผลตรวจในการเข้านี้อยู่แล้ว (แม้ตอนนี้ถอดแล้ว) เพื่อไม่ให้บันทึกซ้ำ
  *         แล้วผลตรวจถูกลบ (ฐานข้อมูลลบผลตรวจที่ไม่ได้ส่งมา)
+ *       - กล่องที่การเข้านี้เป็นคนถอด (`removedStationIds`) = สถานะเลือกได้ (ค่าเริ่มต้น "ถอดแล้ว") เพื่อ "ยกเลิกการถอด"
+ *         เปลี่ยนกลับเป็น ติดตามผล/รอถอด ได้ (DECISIONS 2.26 · ฐานข้อมูลย้อนค่าให้ M14) แม้ไม่มีแถวผลตรวจในการเข้านี้
  *       - ผลตรวจ IG/IC → แถว "พบปลวก" (มีชนิดปลวก/เหยื่อ/เคมีผง) และ/หรือ "เปลี่ยนไม้"
  *   * เลข F ของ AG: บันทึกแล้ว = ค่าจากฐานข้อมูล · ยังไม่บันทึก = F ถัดไปโดยประมาณ (ระบบนับจริงตอนบันทึก)
  */
@@ -68,6 +70,8 @@ export function agPointFromStation(station: StationRow): AgPointState {
     eaten: "",
     caste: "",
     savedFollowUpNo: null,
+    removedHere: false,
+    removedNoCheck: false,
   };
 }
 
@@ -138,16 +142,22 @@ export function formFromVisit(detail: ContractDetail, visit: LoadedVisit): FormS
   const installedNos = new Set(
     visit.works.filter((w) => w.kind === "added" && w.stationType === "AG").flatMap((w) => w.stationNos),
   );
+  const removedHere = new Set(visit.removedStationIds);
   const ag: AgPointState[] = detail.stations
     .filter(
       (s) =>
         s.type === "AG" &&
         !(s.no !== null && installedNos.has(s.no) && !checkByStation.has(s.id)) &&
-        (isInUse(s.status) || checkByStation.has(s.id)),
+        (isInUse(s.status) || checkByStation.has(s.id) || (s.status === "removed" && removedHere.has(s.id))),
     )
     .map((s) => {
       const point = agPointFromStation(s);
       const c = checkByStation.get(s.id);
+      if (s.status === "removed" && removedHere.has(s.id)) {
+        point.statusChoice = "removed";
+        point.removedHere = true;
+        point.removedNoCheck = !c;
+      }
       if (c) {
         if (!c.checked) point.skip = true;
         else {
@@ -203,14 +213,18 @@ export function formFromVisit(detail: ContractDetail, visit: LoadedVisit): FormS
 /** ป้ายสถานะที่ผู้ใช้เลือกบนจุด AG แปลงจากสถานะในฐานข้อมูล (ใช้แสดงชิป) */
 export function statusLabel(choice: AgPointState["statusChoice"], db: AgPointState["statusDb"]): string {
   if (choice === "locked") {
-    if (db === "removed") return "ถอดแล้ว";
-    if (db === "eliminated") return "กำจัดแล้ว";
-    return "ไม่ใช้งาน";
+    // DECISIONS 2.34: ไม่ใช้คำว่า "กำจัดแล้ว" (ค่า eliminated เก่าในฐานข้อมูลแสดงเป็น "ไม่ใช้งาน")
+    return db === "removed" ? "ถอดแล้ว" : "ไม่ใช้งาน";
   }
   const map: Record<AgStatusChoice, string> = {
-    active: "กำลังติดตาม",
+    active: "ติดตามผล",
     pending_removal: "รอถอด",
     removed: "ถอดแล้ว",
   };
   return map[choice];
+}
+
+/** จุด AG ที่ฟอร์มไม่ต้องกรอกผล: ข้ามทั้งหมด / ไม่ได้ตรวจจุดนี้ / ถอดไว้ในการเข้านี้โดยไม่มีผลตรวจและยังเป็น "ถอดแล้ว" */
+export function isAgPointOff(p: AgPointState, skipAllAg: boolean): boolean {
+  return skipAllAg || p.skip || (p.removedNoCheck && p.statusChoice === "removed");
 }

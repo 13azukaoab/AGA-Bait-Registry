@@ -1,14 +1,15 @@
 "use client";
 
 /**
- * ServiceClient — หน้า "กรอกข้อมูลทำบริการประจำเดือน" (split ซ้ายรายชื่อ / ขวาฟอร์มทีละราย)
+ * ServiceClient — หน้า "ลงข้อมูลทำบริการประจำเดือน" (split ซ้ายรายชื่อ / ขวาฟอร์มทีละราย)
  *
  * Logic summary:
  *   * รายชื่อ + ตัวกรอง เขต/สาขา/เดือน มาจากเซิร์ฟเวอร์ (เปลี่ยนตัวกรอง = เปลี่ยน URL แล้วโหลดใหม่)
  *   * เลือกรายชื่อ → โหลดรายละเอียด (สถานี · การเข้าในเดือน · ทีมล่าสุด · ประวัติ F · สถานีสัญญาเก่า) ด้วย Supabase
  *     client ของผู้ใช้ (RLS ทำงาน) แล้วเปิดฟอร์ม
  *   * เดือนนั้นมีการเข้าแล้ว: เปิดแก้ "การเข้าครั้งแรกประเภทบริการประจำเดือน (routine) ของเดือน" ถ้าไม่มี routine ใช้ครั้งแรกของเดือน
- *     · เลือกครั้งอื่น หรือ "+ การเข้าใหม่" ได้จากแถบเลือกการเข้าในฟอร์ม
+ *     · เลือกครั้งอื่น หรือ "+ การเข้าใหม่" ได้จากแถบเลือกการเข้าในฟอร์ม (ไม่รวมการเข้า "ติดตามผล" นอกรอบ — อยู่หน้า /bait)
+ *   * "กรอกแล้ว" นับเฉพาะ routine (2.23) · หลังบันทึก/ลบ อ่านตัวเลข "AG n"/กรอกแล้ว ของรายนั้นจากฐานข้อมูลใหม่ทันที
  *   * เตือนก่อนออกจากรายที่ยังไม่บันทึก (ค่าเริ่มต้น = "กลับไปกรอกต่อ")
  *   * บันทึกสำเร็จ → ไปรายถัดไปที่ยังไม่กรอก (วนรอบรายชื่อ) · ไม่มีรายถัดไป = ข้อความ "กรอกครบทุกรายแล้ว"
  *   * ไม่มีข้อมูล = หน้าว่างที่บอกชัด (ไม่มีตัวเลขสมมติ)
@@ -21,9 +22,9 @@ import { createClient } from "@/lib/supabase/client";
 
 import { ConfirmDialog } from "./ConfirmDialog";
 import { ContractList, type ListView } from "./ContractList";
-import { loadContractDetail, loadVisit, type ServiceMaster } from "./data";
+import { loadContractCounts, loadContractDetail, loadVisit, type ServiceMaster } from "./data";
 import { formFromVisit, newVisitForm } from "./formState";
-import { monthLabel, todayBangkok } from "./months";
+import { monthLabel, todayBangkok } from "@/lib/service/months";
 import { searchContracts } from "./search";
 import { ServiceForm, type SavedInfo } from "./ServiceForm";
 import type { ContractDetail, ContractListItem, FormState, LoadedVisit } from "./types";
@@ -135,7 +136,7 @@ export function ServiceClient({
 
   // เปิดรายแรกที่ยังไม่กรอกเมื่อเข้าหน้า
   useEffect(() => {
-    const first = initialItems.find((c) => c.visitCountInMonth === 0) ?? initialItems[0];
+    const first = initialItems.find((c) => c.routineCountInMonth === 0) ?? initialItems[0];
     if (first) void select(first.contractId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -154,29 +155,44 @@ export function ServiceClient({
     const i = list.findIndex((c) => c.contractId === fromId);
     for (let step = 1; step < list.length; step += 1) {
       const c = list[(i + step) % list.length];
-      if (c && c.visitCountInMonth === 0) return c;
+      if (c && c.routineCountInMonth === 0) return c;
     }
     return null;
   };
 
-  const handleSaved = (info: SavedInfo) => {
-    if (!open) return;
-    const current = open.itemId;
+  /** อ่านตัวเลขสดของรายเดียวจากฐานข้อมูลแล้วอัปเดตรายชื่อ (AG n · กรอกแล้ว · ตั้งสถานีแล้ว) */
+  const refreshItem = async (contractId: string, initializedHint = false) => {
+    const fresh = await loadContractCounts(supabase, contractId, month);
     const updated = itemsRef.current.map((c) =>
-      c.contractId === current
-        ? {
-            ...c,
-            visitCountInMonth: c.visitCountInMonth + (info.created ? 1 : 0),
-            stationsInitialized: c.stationsInitialized || info.initialized,
-          }
-        : c,
+      c.contractId !== contractId
+        ? c
+        : fresh
+          ? {
+              ...c,
+              agCount: fresh.agCount,
+              routineCountInMonth: fresh.routineCount,
+              stationsInitialized: fresh.stationsInitialized,
+            }
+          : { ...c, stationsInitialized: c.stationsInitialized || initializedHint },
     );
     setItems(updated);
     itemsRef.current = updated;
+    return updated;
+  };
+
+  const handleSaved = async (info: SavedInfo) => {
+    if (!open) return;
+    const current = open.itemId;
+    // กันชนตอนรอรีเฟรช: ถ้าผู้ใช้ไปเลือกรายอื่นระหว่างรอ ให้ยกเลิกการเปลี่ยนหน้าของครั้งนี้
+    const myReq = ++req.current;
+    if (!info.stay) setDirty(false);
+    const updated = await refreshItem(current, info.initialized);
+    if (myReq !== req.current) return;
 
     if (info.stay) {
       // บันทึกหลักสำเร็จแต่ยังมีขั้นค้าง — อยู่หน้าเดิม ฟอร์มเป็นโหมดแก้การเข้านี้ (visit_id เดิม)
-      setOpen({ ...open, form: { ...open.form, isExisting: open.form.isExisting || info.created } });
+      // ใช้ state ล่าสุด (ไม่ใช่สำเนาตอนเริ่มบันทึก) เพื่อไม่ทับรายการสถานีที่เพิ่งตั้ง
+      setOpen((o) => (o ? { ...o, form: { ...o.form, isExisting: o.form.isExisting || info.created } } : o));
       return;
     }
     const name = updated.find((c) => c.contractId === current)?.customerName ?? "";
@@ -190,16 +206,14 @@ export function ServiceClient({
     }
   };
 
-  const handleDeleted = () => {
+  const handleDeleted = async () => {
     if (!open) return;
     const current = open.itemId;
-    const updated = itemsRef.current.map((c) =>
-      c.contractId === current ? { ...c, visitCountInMonth: Math.max(0, c.visitCountInMonth - 1) } : c,
-    );
-    setItems(updated);
-    itemsRef.current = updated;
-    setToast("ลบการเข้าบริการแล้ว");
+    const myReq = ++req.current;
     setDirty(false);
+    await refreshItem(current);
+    if (myReq !== req.current) return;
+    setToast("ลบการเข้าบริการแล้ว");
     void select(current);
   };
 
@@ -237,12 +251,12 @@ export function ServiceClient({
     guard(() => void select(next.contractId));
   };
 
-  const done = items.filter((c) => c.visitCountInMonth > 0).length;
+  const done = items.filter((c) => c.routineCountInMonth > 0).length;
 
   return (
     <div className="mx-auto flex max-w-[1500px] flex-col gap-3">
       <header>
-        <h1 className="m-0 text-[20px] font-semibold">กรอกข้อมูลทำบริการประจำเดือน</h1>
+        <h1 className="m-0 text-[20px] font-semibold">ลงข้อมูลทำบริการประจำเดือน</h1>
         <p className="m-0 mt-1 text-[13px] text-fg-muted">
           เลือกลูกค้าทางซ้าย แล้วกรอกทีละราย — ตั้งต้นว่าทุกจุดปกติ กรอกเฉพาะที่พบปลวก เปลี่ยนไม้ งานซ่อม/ฝังเพิ่ม ·
           งานกล่องเหยื่อ AG กรอกในฟอร์มเดียวกัน · เดือน {monthLabel(month)}
@@ -309,8 +323,8 @@ export function ServiceClient({
                 })
               }
               onDetail={(detail) => setOpen((o) => (o ? { ...o, detail } : o))}
-              onSaved={handleSaved}
-              onDeleted={handleDeleted}
+              onSaved={(info) => void handleSaved(info)}
+              onDeleted={() => void handleDeleted()}
               onPrev={goPrev}
               onSkip={goSkip}
             />

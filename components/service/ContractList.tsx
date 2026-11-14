@@ -4,18 +4,23 @@
  * ContractList — ฝั่งซ้ายของหน้ากรอกข้อมูลทำบริการ: ตัวกรอง เขต/สาขา/เดือน (แถวเดียว ไม่มีตัวกรองทีม) · ช่องค้นหาช่องเดียว
  * (ชื่อ หรือ เลขสัญญา · ไม่พบตรงตัว → "หมายถึงรายนี้ไหม") · แถบความคืบหน้า · สลับ ยังไม่กรอก/กรอกแล้ว · รายชื่อ
  * (ป้าย Tier, "AG n", "กรอกแล้ว") — แผงตรึงข้างจอบนจอใหญ่
+ *
+ * `variant="offround"` (หน้า /bait "กล่อง AG นอกรอบประจำเดือน"): ไม่มีแถบความคืบหน้า/ป้าย "กรอกแล้ว" ·
+ * สลับเป็น "มีกล่องค้างติดตาม / ทุกราย" (mockup #bait FINAL)
  */
 import { useMemo } from "react";
 
 import { Chip, TierBadge } from "@/components/ui";
 import { cx } from "@/components/ui/cx";
 
-import { monthChoices, monthLabel } from "./months";
+import { MonthTagBadge } from "./MonthTagBadge";
+import { monthChoices, monthLabel } from "@/lib/service/months";
 import { searchContracts } from "./search";
 import { INPUT, LABEL } from "./styles";
 import type { BranchOption, ContractListItem, ZoneOption } from "./types";
 
-export type ListView = "todo" | "done";
+export type ListView = "todo" | "done" | "ag" | "all";
+export type ListVariant = "round" | "offround";
 
 export function ContractList({
   zones,
@@ -29,6 +34,7 @@ export function ContractList({
   selectedId,
   query,
   view,
+  variant = "round",
   onFilter,
   onQuery,
   onView,
@@ -45,18 +51,31 @@ export function ContractList({
   selectedId: string | null;
   query: string;
   view: ListView;
+  variant?: ListVariant;
   onFilter: (next: { zoneId?: string; branchId?: string; month?: string }) => void;
   onQuery: (q: string) => void;
   onView: (v: ListView) => void;
   onSelect: (id: string) => void;
 }) {
   const zoneBranches = branches.filter((b) => b.zoneId === zoneId);
-  const done = items.filter((c) => c.visitCountInMonth > 0).length;
+  const done = items.filter((c) => c.routineCountInMonth > 0).length;
   const total = items.length;
   const pct = total ? Math.round((done * 100) / total) : 0;
 
   const search = useMemo(() => searchContracts(items, query), [items, query]);
-  const visible = search.searching ? search.items : items.filter((c) => (view === "done") === c.visitCountInMonth > 0);
+  const offround = variant === "offround";
+  const toggles: readonly (readonly [ListView, string])[] = offround
+    ? [
+        ["ag", "มีกล่องค้างติดตาม"],
+        ["all", "ทุกราย"],
+      ]
+    : [
+        ["todo", "ยังไม่กรอก"],
+        ["done", "กรอกแล้ว"],
+      ];
+  const visible = search.searching
+    ? search.items
+    : items.filter((c) => (offround ? view === "all" || c.agCount > 0 : (view === "done") === c.routineCountInMonth > 0));
 
   return (
     <div className="flex flex-col gap-2.5 rounded-xl border border-border bg-surface p-3 lg:sticky lg:top-3 lg:max-h-[calc(100vh-24px)]">
@@ -147,6 +166,7 @@ export function ContractList({
         </div>
       ) : null}
 
+      {offround ? null : (
       <div>
         <div className="flex items-center justify-between text-[12.5px]">
           <span>
@@ -165,14 +185,10 @@ export function ContractList({
           <div className="h-full bg-ok" style={{ width: `${pct}%` }} />
         </div>
       </div>
+      )}
 
       <div role="group" aria-label="กรองรายชื่อ" className="grid grid-cols-2 gap-1 rounded-lg bg-surface-3 p-1">
-        {(
-          [
-            ["todo", "ยังไม่กรอก"],
-            ["done", "กรอกแล้ว"],
-          ] as const
-        ).map(([v, label]) => (
+        {toggles.map(([v, label]) => (
           <button
             key={v}
             type="button"
@@ -197,9 +213,11 @@ export function ContractList({
           <p className="m-0 px-1 py-4 text-center text-[12.5px] text-fg-muted">
             {total === 0
               ? "ไม่มีสัญญาที่อยู่ในช่วงบริการของเดือนนี้ตามตัวกรองนี้ — ลองเปลี่ยนสาขา/เดือน"
-              : view === "done"
-                ? "ยังไม่มีรายที่กรอกแล้ว"
-                : "ไม่มีรายที่ยังไม่กรอก — ครบแล้ว"}
+              : offround
+                ? "ไม่มีลูกค้าที่มีกล่องค้างติดตามตามตัวกรองนี้"
+                : view === "done"
+                  ? "ยังไม่มีรายที่กรอกแล้ว"
+                  : "ไม่มีรายที่ยังไม่กรอก — ครบแล้ว"}
           </p>
         ) : null}
         {visible.map((c) => (
@@ -220,13 +238,16 @@ export function ContractList({
                 {c.contractNo}
                 {c.stationsInitialized ? "" : " · รอระบุจำนวนสถานี"}
               </small>
+              {c.monthTag ? <MonthTagBadge tag={c.monthTag} /> : null}
             </span>
             <span className="flex flex-none flex-wrap items-center justify-end gap-1">
               <TierBadge tier={c.tier} years={c.termYears} />
               {c.agCount > 0 ? (
                 <span className="rounded bg-warn-soft px-1.5 py-px text-[11px] font-semibold text-warn">AG {c.agCount}</span>
               ) : null}
-              {c.visitCountInMonth > 0 && (search.searching || view !== "done") ? <Chip tone="ok">กรอกแล้ว</Chip> : null}
+              {!offround && c.routineCountInMonth > 0 && (search.searching || view !== "done") ? (
+                <Chip tone="ok">กรอกแล้ว</Chip>
+              ) : null}
             </span>
           </button>
         ))}

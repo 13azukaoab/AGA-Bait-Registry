@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { baitToSelect, resolveBait, resolvePowder } from "./bait";
 import { describeServiceError } from "./errors";
-import { serviceTeams } from "./months";
+import { serviceTeams } from "@/lib/service/months";
 import { searchContracts } from "./search";
 import { buildInitPlan, emptySetup, parseCount } from "./setup";
 import { baselineIndex, describeNumbers, inUseIndex, nextAgNumber } from "./stationIndex";
@@ -16,6 +16,7 @@ const st = (id: string, type: StationRow["type"], no: number, status: StationRow
   status,
   pointLabel: "",
   installBaitG: null,
+  installedAt: null,
 });
 
 describe("bait", () => {
@@ -45,8 +46,8 @@ describe("bait", () => {
 });
 
 describe("errors", () => {
-  it("แปล SV001–SV009 / AG004 / AG007 เป็นไทย ไม่ใช่บั๊กหน้าจอ", () => {
-    for (const code of ["SV001", "SV002", "SV003", "SV004", "SV005", "SV006", "SV007", "SV008", "SV009", "AG004", "AG007"]) {
+  it("แปล SV001–SV010 / AG004 / AG007 เป็นไทย ไม่ใช่บั๊กหน้าจอ", () => {
+    for (const code of ["SV001", "SV002", "SV003", "SV004", "SV005", "SV006", "SV007", "SV008", "SV009", "SV010", "AG004", "AG007"]) {
       const r = describeServiceError({ code, message: "raw" });
       expect(r.isBug).toBe(false);
       expect(r.message).toMatch(/[ก-๙]/);
@@ -204,6 +205,8 @@ const agp = (over: Partial<AgPointState>): AgPointState => ({
   eaten: "",
   caste: "",
   savedFollowUpNo: null,
+  removedHere: false,
+  removedNoCheck: false,
   ...over,
 });
 const wk = (over: Partial<WorkRow>): WorkRow => ({ id: "w", kind: "cap_replaced", type: "IG", noText: "3", detail: "", ...over });

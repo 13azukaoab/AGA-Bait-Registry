@@ -14,6 +14,7 @@
 import { parseStationNumbers } from "@/lib/service/stationNumbers";
 
 import { BAIT_CUSTOM_HINT, resolveBait, resolvePowder } from "./bait";
+import { isAgPointOff } from "./formState";
 import type { InitPlan } from "./setup";
 import { baselineIndex, inUseIndex, type NumberIndex } from "./stationIndex";
 import { isValidTime, workTime } from "./timeInput";
@@ -41,6 +42,8 @@ export interface FindingIssue {
 export interface WorkIssue {
   no?: string;
   detail?: string;
+  /** กล่อง AG ใหม่ (S) ที่ยังไม่ได้เลือกเหยื่อที่ใส่ — ใช้เฉพาะหน้า /bait (mockup บังคับ · /service ไม่บังคับ) */
+  bait?: string;
 }
 export interface AgIssue {
   bait?: string;
@@ -246,7 +249,7 @@ export function validateForm(form: FormState, ctx: ValidationContext): FormIssue
   // ---------- กล่อง AG (กันลืมกล่อง D10) ----------
   const agMissingNos: number[] = [];
   for (const p of form.ag) {
-    if (form.skipAllAg || p.skip) continue;
+    if (isAgPointOff(p, form.skipAllAg)) continue;
     const issue: AgIssue = {};
     const bait = resolveBait(p.baitSelect, p.baitCustom);
     if (bait.status === "unset") issue.bait = "เลือกปริมาณเหยื่อ";
