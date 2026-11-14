@@ -5,8 +5,9 @@
 --   d1 จบแล้ว (เริ่ม m(-18) · เดือนสุดท้าย m(-7) · เพดาน m(5)) · d2 ต่างจังหวัด · d3 ยังไม่จบ (เริ่ม m(-6))
 --   d4 ยกเลิก · d5 ยังไม่ตั้งสถานี · d6 ปิดแล้ว · d7 เลยเพดาน (เดือนสุดท้าย m(-19) · เพดาน m(-7))
 --   d8 ตั้งสถานีช้า (m(-10)) — สัญญาเก่าที่นำเข้า
+--   da / db / dc = ชุดตาราง host×recorder × ภายใน/เลยเพดาน × waived/makeup × ปิด/ยกเลิก (da ภายใน · db เลย · dc ปิด)
 BEGIN;
-SELECT plan(101);
+SELECT plan(119);
 
 INSERT INTO auth.users (id, instance_id, aud, role, email) VALUES
   ('00000000-0000-0000-0000-0000000000a1', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'host@test.local'),
@@ -25,6 +26,9 @@ INSERT INTO customers (id, branch_id, name) VALUES
 CREATE FUNCTION pg_temp.m(n int) RETURNS date LANGUAGE sql STABLE AS
   $$ SELECT (date_trunc('month', (now() AT TIME ZONE 'Asia/Bangkok')) + make_interval(months => n))::date $$;
 GRANT EXECUTE ON FUNCTION pg_temp.m(int) TO PUBLIC;
+CREATE FUNCTION pg_temp.td() RETURNS date LANGUAGE sql STABLE AS
+  $$ SELECT (now() AT TIME ZONE 'Asia/Bangkok')::date $$;
+GRANT EXECUTE ON FUNCTION pg_temp.td() TO PUBLIC;
 CREATE FUNCTION pg_temp.id(p text) RETURNS uuid LANGUAGE sql IMMUTABLE AS
   $$ SELECT ('00000000-0000-0000-0000-0000000000' || p)::uuid $$;
 GRANT EXECUTE ON FUNCTION pg_temp.id(text) TO PUBLIC;
@@ -38,7 +42,10 @@ INSERT INTO contracts (id, customer_id, contract_no, start_date, term_years, val
   (pg_temp.id('d5'), pg_temp.id('c1'), 'M-5', pg_temp.m(-18), 1, 24000,  NULL,           'active', NULL),
   (pg_temp.id('d6'), pg_temp.id('c1'), 'M-6', pg_temp.m(-18), 1, 24000,  pg_temp.m(-18), 'closed', NULL),
   (pg_temp.id('d7'), pg_temp.id('c1'), 'M-7', pg_temp.m(-30), 1, 24000,  pg_temp.m(-30), 'active', NULL),
-  (pg_temp.id('d8'), pg_temp.id('c1'), 'M-8', pg_temp.m(-18), 1, 24000,  pg_temp.m(-10), 'active', NULL);
+  (pg_temp.id('d8'), pg_temp.id('c1'), 'M-8', pg_temp.m(-18), 1, 24000,  pg_temp.m(-10), 'active', NULL),
+  (pg_temp.id('da'), pg_temp.id('c1'), 'M-A', pg_temp.m(-18), 1, 24000,  pg_temp.m(-18), 'active', NULL),
+  (pg_temp.id('db'), pg_temp.id('c1'), 'M-B', pg_temp.m(-30), 1, 24000,  pg_temp.m(-30), 'active', NULL),
+  (pg_temp.id('dc'), pg_temp.id('c1'), 'M-C', pg_temp.m(-18), 1, 24000,  pg_temp.m(-18), 'closed', NULL);
 -- d1: m(-15) มี routine (ไม่ตก) · เดือนอื่นตก
 INSERT INTO visits (id, contract_id, visit_date, visit_type, start_time, end_time) VALUES
   (pg_temp.id('e1'), pg_temp.id('d1'), pg_temp.m(-15) + 9, 'routine', '09:00', '10:00');
@@ -112,7 +119,7 @@ SELECT ok(NOT has_function_privilege('authenticated', 'public.visits_makeup_link
           AND NOT has_function_privilege('authenticated', 'public.visits_makeup_unlink_cleanup()', 'EXECUTE'),
   'trigger functions are not callable by users');
 SELECT is((SELECT public FROM storage.buckets WHERE id = 'missed-service-evidence'), false, 'evidence bucket is private');
-SELECT is(public.missed_makeup_deadline_months(), 12, 'make-up deadline (temporary) is defined in one place = 12 months');
+SELECT is(public.missed_makeup_deadline_months(), 12, 'make-up deadline (owner-confirmed 2.45) is defined in one place = 12 months');
 
 SET LOCAL ROLE anon;
 SELECT throws_ok($$SELECT * FROM public.missed_service_resolutions$$, '42501', NULL, 'anon select is refused');
@@ -176,7 +183,7 @@ SELECT throws_ok($$INSERT INTO storage.objects (bucket_id, name) VALUES ('missed
 -- =====================================================================
 -- บันทึกบริการชดเชย (recorder) — สร้างแถว makeup ให้เอง · makeup_month = เดือนของการเข้า
 -- =====================================================================
-SELECT lives_ok(pg_temp.mk('f1', 'd1', pg_temp.m(0) + 2, pg_temp.m(-13)),
+SELECT lives_ok(pg_temp.mk('f1', 'd1', pg_temp.td(), pg_temp.m(-13)),
   'recorder records a make-up visit this month for a month missed before the contract ended');
 SELECT is(pg_temp.link('f1'), pg_temp.m(-13), 'visit is linked to the missed month');
 RESET ROLE;
@@ -189,27 +196,39 @@ SELECT is((SELECT count(*)::int FROM audit_log WHERE table_name = 'missed_servic
 SET LOCAL ROLE authenticated;
 SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a3', true);
 -- ด่านของการผูก
-SELECT throws_ok(pg_temp.mk('f2', 'd1', pg_temp.m(0) + 3, pg_temp.m(-12), 'problem'),
+SELECT throws_ok(pg_temp.mk('f2', 'd1', pg_temp.td(), pg_temp.m(-12), 'problem'),
   'MS006', NULL, 'a make-up visit must be routine');
 SELECT throws_ok(pg_temp.mk('f2', 'd3', pg_temp.m(-3) + 3, pg_temp.m(-3)),
   'MS006', NULL, 'a make-up visit must be after the missed month');
-SELECT throws_ok(pg_temp.mk('f2', 'd3', pg_temp.m(0) + 3, pg_temp.m(0)),
+SELECT throws_ok(pg_temp.mk('f2', 'd3', pg_temp.td(), pg_temp.m(0)),
   'MS001', NULL, 'the current month cannot be made up yet');
-SELECT throws_ok(pg_temp.mk('f2', 'd1', pg_temp.m(0) + 3, pg_temp.m(-6)),
+SELECT throws_ok(pg_temp.mk('f2', 'd1', pg_temp.td(), pg_temp.m(-6)),
   'MS001', NULL, 'a month outside the service months cannot be made up (rule 5)');
-SELECT throws_ok(pg_temp.mk('f2', 'd1', pg_temp.m(0) + 3, pg_temp.m(-15)),
+SELECT throws_ok(pg_temp.mk('f2', 'd1', pg_temp.td(), pg_temp.m(-15)),
   'MS002', NULL, 'a month with a routine visit cannot be made up');
-SELECT throws_ok(pg_temp.mk('f2', 'd1', pg_temp.m(0) + 3, pg_temp.m(-14)),
+SELECT throws_ok(pg_temp.mk('f2', 'd1', pg_temp.td(), pg_temp.m(-14)),
   'MS010', NULL, 'a waived month cannot be made up (host must cancel the waiver first)');
-SELECT throws_ok(pg_temp.mk('f2', 'd4', pg_temp.m(0) + 3, pg_temp.m(-14)),
+SELECT throws_ok(pg_temp.mk('f2', 'd4', pg_temp.td(), pg_temp.m(-14)),
   'MS009', NULL, 'a cancelled contract cannot be made up');
-SELECT throws_ok(pg_temp.mk('f2', 'd7', pg_temp.m(0) + 3, pg_temp.m(-25)),
+SELECT throws_ok(pg_temp.mk('f2', 'd7', pg_temp.td(), pg_temp.m(-25)),
   'MS008', NULL, 'recorder cannot make up after the deadline');
-SELECT throws_ok(pg_temp.mk('f2', 'd1', pg_temp.m(0) + 3, pg_temp.m(-13)),
+SELECT throws_ok(pg_temp.mk('f2', 'd1', pg_temp.td(), pg_temp.m(-13)),
   '23505', NULL, 'one missed month links to one visit only');
 SELECT ok(NOT EXISTS (SELECT 1 FROM visits WHERE id = pg_temp.id('f2')),
   'refused make-up saves leave no visit behind (one transaction)');
-SELECT lives_ok(pg_temp.mk('f2', 'd6', pg_temp.m(0) + 3, pg_temp.m(-12)), 'a closed contract can still be made up');
+SELECT lives_ok(pg_temp.mk('f2', 'd6', pg_temp.td(), pg_temp.m(-12)), 'a closed contract can still be made up');
+-- ผลตรวจ security รอบ 2: ทางเลี่ยง RPC · เกณฑ์เริ่มนับ · ลงวันที่ล่วงหน้า/ย้อนหลังเลี่ยงเพดาน
+SELECT throws_ok($$INSERT INTO visits (id, contract_id, visit_date, visit_type, start_time, end_time, makeup_for_month)
+                   VALUES (pg_temp.id('01'), pg_temp.id('d1'), pg_temp.td(), 'routine', '09:00', '10:00', pg_temp.m(-12))$$,
+  '42501', NULL, 'direct REST insert of a make-up visit is refused (RPC only)');
+SELECT throws_ok($$UPDATE visits SET contract_id = pg_temp.id('d1') WHERE id = pg_temp.id('f2')$$,
+  '42501', NULL, 'moving a linked visit to another contract directly is refused');
+SELECT throws_ok(pg_temp.mk('02', 'd8', pg_temp.td(), pg_temp.m(-17)),
+  'MS001', NULL, 'a month before the stations were set up cannot be made up (legacy import floor)');
+SELECT throws_ok(pg_temp.mk('03', 'd1', pg_temp.td() + 40, pg_temp.m(-12)),
+  'MS006', NULL, 'a make-up visit cannot be dated in the future');
+SELECT throws_ok(pg_temp.mk('04', 'd7', pg_temp.m(-8) + 3, pg_temp.m(-26)),
+  'MS008', NULL, 'back-dating the visit does not get around the deadline');
 -- ไม่ชดเชยเดือนที่ชดเชยแล้วไม่ได้
 SELECT throws_ok(pg_temp.rs('d1', pg_temp.m(-13), 'x'), 'MS005', NULL, 'a made-up month cannot be waived');
 
@@ -219,21 +238,21 @@ SELECT lives_ok(pg_temp.old('f5', 'd3', pg_temp.m(-1) + 10), 'the normal routine
 SELECT lives_ok(format('SELECT public.save_service_visit(%L::jsonb)', pg_temp.sv('f4', 'd3', pg_temp.m(-1) + 6) || '{"note": "แก้"}'),
   're-saving the make-up visit with the old RPC works');
 SELECT is(pg_temp.link('f4'), pg_temp.m(-3), 'and keeps its link');
-SELECT lives_ok(pg_temp.old('f4', 'd3', pg_temp.m(0) + 1), 'moving a linked visit to a later month with the old RPC works');
+SELECT lives_ok(pg_temp.old('f4', 'd3', pg_temp.td()), 'moving a linked visit to a later month with the old RPC works');
 SELECT is(pg_temp.res('d3', pg_temp.m(-3)), 'makeup|' || pg_temp.m(0)::text, 'the makeup month follows the visit');
 -- ทางเลี่ยงผ่าน PATCH ตรง (ด่านเดียวกัน)
 SELECT throws_ok($$UPDATE visits SET visit_date = pg_temp.m(-3) + 1 WHERE id = pg_temp.id('f4')$$,
   'MS006', NULL, 'moving a linked visit into (or before) the missed month is refused');
 SELECT throws_ok($$UPDATE visits SET visit_type = 'problem' WHERE id = pg_temp.id('f4')$$,
   'MS006', NULL, 'turning a linked visit into a non-routine visit is refused');
-SELECT throws_ok($$UPDATE visits SET makeup_for_month = pg_temp.m(0) WHERE id = pg_temp.id('f5')$$,
-  'MS001', NULL, 'direct PATCH is checked like the RPC');
+SELECT throws_ok($$UPDATE visits SET makeup_for_month = pg_temp.m(-2) WHERE id = pg_temp.id('f5')$$,
+  '42501', NULL, 'direct PATCH of makeup_for_month is refused (RPC only)');
 -- ย้ายไปชดเชยเดือนอื่น → แถวเดิมหาย (กลับรอตัดสิน) แถวใหม่เกิด
-SELECT lives_ok(pg_temp.mk('f4', 'd3', pg_temp.m(0) + 1, pg_temp.m(-4)), 'relink the make-up visit to another missed month');
+SELECT lives_ok(pg_temp.mk('f4', 'd3', pg_temp.td(), pg_temp.m(-4)), 'relink the make-up visit to another missed month');
 SELECT is(pg_temp.res('d3', pg_temp.m(-3)), NULL, 'the old month goes back to pending');
 SELECT is(pg_temp.res('d3', pg_temp.m(-4)), 'makeup|' || pg_temp.m(0)::text, 'the new month is made up');
 -- เลิกผูก → รอตัดสิน · ไม่ชดเชยได้
-SELECT lives_ok(pg_temp.mk('f4', 'd3', pg_temp.m(0) + 1, NULL), 'unlink through save_makeup_service_visit (null)');
+SELECT lives_ok(pg_temp.mk('f4', 'd3', pg_temp.td(), NULL), 'unlink through save_makeup_service_visit (null)');
 SELECT is(pg_temp.link('f4'), NULL::date, 'visit is no longer linked');
 SELECT is(pg_temp.res('d3', pg_temp.m(-4)), NULL, 'unlinking removes the makeup row (pending again)');
 SELECT lives_ok(pg_temp.rs('d3', pg_temp.m(-4), 'ยินยอม'), 'after unlinking, the month can be waived');
@@ -250,18 +269,39 @@ SELECT is((SELECT count(*)::int FROM audit_log WHERE table_name = 'missed_servic
 -- =====================================================================
 SET LOCAL ROLE authenticated;
 SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a1', true);
-SELECT lives_ok(pg_temp.mk('f7', 'd7', pg_temp.m(0) + 3, pg_temp.m(-25)), 'host may record a make-up after the deadline');
-SELECT throws_ok(pg_temp.mk('f8', 'd4', pg_temp.m(0) + 3, pg_temp.m(-14)), 'MS009', NULL, 'host cannot make up a cancelled contract either');
+SELECT lives_ok(pg_temp.mk('f7', 'd7', pg_temp.td(), pg_temp.m(-25)), 'host may record a make-up after the deadline');
+SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a3', true);
+SELECT lives_ok(format('SELECT public.save_service_visit(%L::jsonb)', pg_temp.sv('f7', 'd7', pg_temp.td()) || '{"note": "แก้"}'),
+  'recorder can still edit the note of a host-recorded make-up past the deadline');
+SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a1', true);
+SELECT throws_ok(pg_temp.mk('f8', 'd4', pg_temp.td(), pg_temp.m(-14)), 'MS009', NULL, 'host cannot make up a cancelled contract either');
+
+-- ตารางกติกาเพดาน (เจ้าของยืนยัน 2.45) — ส่วนที่ยังไม่ได้ทดสอบข้างบน
+--   ภายในเพดาน: recorder/host ทำได้ทั้งคู่ · เลยเพดาน: waived ได้ทุกบทบาท, makeup เฉพาะ host
+--   · สัญญาปิด: ได้ทั้งคู่ · สัญญายกเลิก: ห้ามทั้งคู่ทุกบทบาท
+SELECT lives_ok(pg_temp.rs('da', pg_temp.m(-14), 'ยินยอม'), 'host: waived within the deadline');
+SELECT lives_ok(pg_temp.mk('fa', 'da', pg_temp.td(), pg_temp.m(-13)), 'host: make-up within the deadline');
+SELECT lives_ok(pg_temp.rs('db', pg_temp.m(-24), 'ยินยอม'), 'host: waived past the deadline');
+SELECT lives_ok(pg_temp.rs('dc', pg_temp.m(-14), 'ยินยอม'), 'host: waived on a closed contract');
+SELECT lives_ok(pg_temp.mk('fc', 'dc', pg_temp.td(), pg_temp.m(-13)), 'host: make-up on a closed contract');
+SELECT throws_ok(pg_temp.rs('d4', pg_temp.m(-14), 'x'), 'MS009', NULL, 'host: waived on a cancelled contract is refused');
+SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a3', true);
+SELECT lives_ok(pg_temp.rs('db', pg_temp.m(-25), 'ยินยอม'), 'recorder: waived past the deadline still closes the case');
+SELECT throws_ok(pg_temp.mk('fb', 'db', pg_temp.td(), pg_temp.m(-26)), 'MS008', NULL,
+  'recorder: make-up past the deadline is refused with MS008');
 
 SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a2', true);
 SELECT ok((SELECT count(*) FROM missed_service_resolutions) > 0, 'admin can read outcomes');
 SELECT throws_ok(pg_temp.rs('d1', pg_temp.m(-12), 'x'), '42501', NULL, 'admin cannot waive');
 SELECT throws_ok($$INSERT INTO storage.objects (bucket_id, name) VALUES ('missed-service-evidence', '00000000-0000-0000-0000-0000000000d1/a.pdf')$$,
   '42501', NULL, 'admin cannot upload evidence');
-SELECT throws_ok(pg_temp.mk('f9', 'd1', pg_temp.m(0) + 3, pg_temp.m(-12)), '42501', NULL, 'admin cannot save a make-up visit');
+SELECT throws_ok(pg_temp.mk('f9', 'd1', pg_temp.td(), pg_temp.m(-12)), '42501', NULL, 'admin cannot save a make-up visit');
 
 SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a4', true);
 SELECT is((SELECT count(*)::int FROM missed_service_resolutions), 0, 'viewer sees no outcomes (PDPA)');
+SELECT throws_ok($$INSERT INTO visits (id, contract_id, visit_date, visit_type, start_time, end_time, makeup_for_month)
+                   VALUES (pg_temp.id('05'), pg_temp.id('d1'), pg_temp.td(), 'routine', '09:00', '10:00', pg_temp.m(-12))$$,
+  '42501', NULL, 'viewer cannot probe contract data through make-up error codes');
 SELECT throws_ok($$SELECT * FROM public.list_pending_missed_services()$$, '42501', NULL, 'viewer cannot list pending months');
 SELECT throws_ok(pg_temp.rs('d1', pg_temp.m(-12), 'x'), '42501', NULL, 'viewer cannot waive');
 
@@ -315,7 +355,18 @@ SELECT is((SELECT count(*)::int FROM storage.objects WHERE bucket_id = 'missed-s
             AND name = '00000000-0000-0000-0000-0000000000d1/orphan.pdf'), 0, 'unreferenced evidence of others is not readable');
 SELECT is((SELECT count(*)::int FROM storage.objects WHERE bucket_id = 'missed-service-evidence'
             AND name = '00000000-0000-0000-0000-0000000000d1/r.pdf'), 1, 'own fresh upload is readable (for clean-up)');
+SELECT lives_ok($$INSERT INTO storage.objects (bucket_id, name, owner_id)
+                  VALUES ('missed-service-evidence', '00000000-0000-0000-0000-0000000000d1/r2.pdf', '00000000-0000-0000-0000-0000000000a3')$$,
+  'recorder uploads another file');
+SELECT set_config('storage.allow_delete_query', 'true', true);  -- Storage API ตั้งค่านี้เอง
+DELETE FROM storage.objects WHERE bucket_id = 'missed-service-evidence'
+   AND name IN ('00000000-0000-0000-0000-0000000000d1/r2.pdf', '00000000-0000-0000-0000-0000000000D1/UP.pdf');
+SELECT set_config('storage.allow_delete_query', '', true);
 RESET ROLE;
+SELECT is((SELECT count(*)::int FROM storage.objects WHERE bucket_id = 'missed-service-evidence'
+            AND name = '00000000-0000-0000-0000-0000000000d1/r2.pdf'), 0, 'own fresh unreferenced upload can be deleted (clean-up)');
+SELECT is((SELECT count(*)::int FROM storage.objects WHERE bucket_id = 'missed-service-evidence'
+            AND name = '00000000-0000-0000-0000-0000000000D1/UP.pdf'), 1, 'referenced evidence cannot be deleted by users');
 SELECT is((SELECT count(*)::int FROM storage_deletion_queue WHERE bucket = 'missed-service-evidence'
             AND path = '00000000-0000-0000-0000-0000000000d1/consent.pdf' AND done_at IS NULL), 1,
   'replaced evidence is queued for deletion');

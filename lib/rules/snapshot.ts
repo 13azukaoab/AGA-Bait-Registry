@@ -2,7 +2,7 @@ import type { BranchRef, Contract, SnapshotRow, TierRule, Visit } from "./types"
 import { annualValue, tierOf } from "./tier";
 import { serviceMonths } from "./serviceMonths";
 import { monthOf } from "./date";
-import { lastServiceMonth } from "./missedResolution";
+import { lastServiceMonth, trackingStartMonth } from "./missedResolution";
 import { isMissedService } from "./missedService";
 
 /**
@@ -12,6 +12,7 @@ import { isMissedService } from "./missedService";
  * · Tier/มูลค่าเดิมของสัญญา
  *
  * visits (ไม่บังคับ — ไม่ส่ง = ผลเหมือนก่อน M18): การเข้าทั้งหมดของสัญญาเหล่านี้ ต้องมี makeupForMonth
+ * และสัญญาต้องมี stationsInitializedAt (ไม่มี = ไม่นับเดือนชดเชย)
  * ('YYYY-MM' — ตัดจาก 'YYYY-MM-01' ของ DB) ใช้หาการเข้าชดเชย + ตรวจว่าเดือนที่ผูกยังตกจริง
  */
 export function buildBranchSnapshot(
@@ -32,15 +33,19 @@ export function buildBranchSnapshot(
     if (c.cancelledAt && monthOf(c.cancelledAt) <= month) continue;
     const inService = serviceMonths(c.startDate, c.termYears).includes(month);
     // เดือนชดเชยในช่วงสัญญานับอยู่แล้ว ไม่นับซ้ำ · หลังสัญญาจบนับเมื่อมีการเข้าชดเชยจริงในเดือนนี้
+    // เดือนที่ผูกต้องไม่ก่อนเดือนเริ่มนับตกบริการ (ตั้งสถานี) — เกณฑ์เดียวกับ DB (กันสัญญาเก่าดันตัวเลข)
+    const trackFrom = trackingStartMonth(c);
     const countsAsMakeup =
       !inService &&
       !!visits &&
+      trackFrom !== null &&
       month > lastServiceMonth(c) &&
       visits.some(
         (v) =>
           v.contractId === c.id &&
           v.visitType === "routine" &&
           !!v.makeupForMonth &&
+          v.makeupForMonth >= trackFrom &&
           monthOf(v.visitDate) === month &&
           // เดือนที่ผูกต้องยัง "ตกจริง" (มี routine ปกติภายหลัง = การผูกนั้นไม่มีผล)
           isMissedService(c, v.makeupForMonth, visits),

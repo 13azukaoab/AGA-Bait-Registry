@@ -16,6 +16,10 @@
 --        · recorder ไปชดเชยเกินเพดานเวลาไม่ได้ (MS008 — host ทำได้) · ย้ายวันที่การเข้าที่ผูกอยู่ = ปรับ makeup_month ตาม
 --      · trigger AFTER `visits_makeup_unlink_cleanup`: เลิกผูก / ลบการเข้า → ลบแถว makeup (กลับเป็นรอตัดสิน)
 --      · 1 เดือนที่ตกผูกได้ 1 การเข้า (unique index → 23505)
+--      · เปลี่ยนการผูกได้เฉพาะผ่าน RPC (POST/PATCH ตรง → 42501) · ห้ามลงวันที่การเข้าชดเชยล่วงหน้า (MS006)
+--      · เดือนที่ตกต้องไม่ก่อนเดือนเริ่มนับ (ตั้งสถานี) — กันผูกเดือนของสัญญาเก่าที่ไม่มีประวัติแล้วดัน Dashboard (MS001)
+--      · ข้อจำกัดที่ยอมรับ: เพิ่ม routine ย้อนหลังในเดือนที่ชดเชยไปแล้ว → แถว makeup ค้าง แต่ lib/rules ไม่นับ
+--        (เดือนนั้นไม่ตกแล้ว) · admin ลบสัญญา (ที่ไม่มีการเข้า) → แถว waived ถูก CASCADE ลบตาม (audit + คิวลบไฟล์)
 --      · บันทึกผ่าน `save_makeup_service_visit(p jsonb)` = `save_service_visit` เดิม (ไม่แตะ signature/เนื้อ) + ผูก/เลิกผูก
 --        ใน transaction เดียว → หน้า /service, /bait เดิมไม่กระทบ
 --   3. สถานะ 3 แบบ (รอตัดสิน / ชดเชยแล้ว / ไม่ชดเชย) คำนวณใน `lib/rules/missedResolution.ts` · ไม่มี cron
@@ -25,7 +29,7 @@
 --      + recorder เห็นเฉพาะสัญญาในขอบเขต) → แถว "รอชดเชย <เดือน>" ในหน้า /service (รวมสัญญาที่จบแล้ว)
 --      · เกณฑ์ชั่วคราว (รอเจ้าของ): นับตกตั้งแต่เดือนที่ตั้งสถานีในระบบ (`missed_tracking_start_month`) กันสัญญาเก่าที่
 --        นำเข้าไม่มีประวัติการเข้าท่วมรายการ · ไม่รวมสัญญายกเลิก (ปิดเรื่องไม่ได้)
---   6. เพดานเวลาไปชดเชย (รอเจ้าของเลือก · ชั่วคราว 12 เดือนหลังเดือนบริการสุดท้าย) อยู่ที่
+--   6. เพดานเวลาไปชดเชย = 12 เดือนหลังเดือนบริการสุดท้าย (เจ้าของยืนยัน 14 พ.ย. 2026 (DECISIONS 2.45)) อยู่ที่
 --      `missed_makeup_deadline_months()` จุดเดียว · RPC อ่านคืน makeup_deadline_month + past_deadline ให้หน้าจอ
 --   7. Storage bucket `missed-service-evidence` (private · 5 MB · PDF/PNG/JPG) — หลักฐานของ "ไม่ชดเชย"
 --      อ่านได้เฉพาะไฟล์ที่มีแถวอ้างอิง หรือไฟล์ที่ตัวเองเพิ่งอัปโหลด < 1 ชม. (แพทเทิร์นเดียวกับ contract-files ใน
@@ -44,8 +48,9 @@
 -- =====================================================================
 -- 0. ค่ากลาง (จุดเดียว)
 -- =====================================================================
--- ⚠ ค่าชั่วคราว (รอเจ้าของเลือก — DECISIONS 2.45): ไปชดเชยได้ไม่เกิน N เดือนหลังเดือนบริการสุดท้าย
---   เลยแล้ว: recorder ต้องกด "ไม่ชดเชย" หรือให้ Host บันทึก
+-- เพดานเวลา — เจ้าของยืนยัน 14 พ.ย. 2026 (DECISIONS 2.45): ไปชดเชยได้ไม่เกิน 12 เดือนหลังเดือนบริการสุดท้าย
+--   ภายในเพดาน: recorder ไม่ชดเชย + บันทึกการเข้าชดเชยได้ · เลยเพดาน: recorder ไม่ชดเชยได้ (ปิดเรื่อง) แต่บันทึกการเข้า
+--   ชดเชยไม่ได้ (MS008) · host ทำได้ทั้งคู่ · สัญญายกเลิก: ห้ามทั้งคู่ทุกบทบาท (MS009)
 CREATE FUNCTION public.missed_makeup_deadline_months()
 RETURNS int
 LANGUAGE sql
@@ -58,7 +63,7 @@ AS $$ SELECT 12 $$;
 CREATE FUNCTION public.missed_tracking_start_month(p_start_date date, p_initialized_at timestamptz)
 RETURNS date
 LANGUAGE sql
-IMMUTABLE
+STABLE
 SET search_path = public, pg_temp
 AS $$
   SELECT CASE WHEN p_initialized_at IS NULL THEN NULL
@@ -116,6 +121,12 @@ COMMENT ON COLUMN public.visits.makeup_for_month IS
   'M18: this routine visit makes up the missed month (1st day). Not counted as the routine visit of its own month.';
 
 -- BEFORE: ตรวจ + สร้าง/ปรับแถว makeup (แถวแม่ต้องมีก่อน FK ตรวจตอนจบคำสั่ง)
+--   * ผู้ใช้เปลี่ยนการผูก (makeup_for_month / ย้ายสัญญาของการเข้าที่ผูกอยู่) ได้เฉพาะผ่าน save_makeup_service_visit
+--     (ด่าน GUC `aga.makeup_link` = id ของการเข้า · ตั้งใน RPC เท่านั้น — POST/PATCH ตรงผ่าน REST → 42501)
+--     กันสร้างการเข้าชดเชยที่ไม่มีทีม/ผลตรวจ (ข้ามด่านของ save_service_visit) และกัน viewer ใช้ error ไล่ดูข้อมูล
+--   * แก้การเข้าที่ผูกอยู่โดยไม่เปลี่ยนการผูก/ชนิด/เดือน (เช่น แก้หมายเหตุ) → ไม่ตรวจซ้ำ
+--   * ห้ามลงวันที่การเข้าชดเชยล่วงหน้า (หลังวันนี้ตามเวลาไทย) — นับใน Dashboard เฉพาะที่ไปจริง (2.45)
+--   * เพดานเวลาของ recorder เทียบกับ max(เดือนของการเข้า, เดือนปัจจุบัน) → ลงวันที่ย้อนหลังเลี่ยงเพดานไม่ได้
 CREATE FUNCTION public.visits_makeup_link_guard()
 RETURNS trigger
 LANGUAGE plpgsql
@@ -125,22 +136,51 @@ AS $$
 DECLARE
   v_missed      date := NEW.makeup_for_month;
   v_visit_month date := date_trunc('month', NEW.visit_date)::date;
+  v_today       date := (now() AT TIME ZONE 'Asia/Bangkok')::date;
   v_now_month   date := date_trunc('month', (now() AT TIME ZONE 'Asia/Bangkok'))::date;
+  v_link_change boolean;
+  v_start_date  date;
+  v_initialized timestamptz;
   v_start_month date;
   v_term        int;
   v_cancelled   boolean;
   v_last_month  date;
+  v_track_from  date;
   v_kind        public.missed_resolution_kind;
 BEGIN
+  IF TG_OP = 'INSERT' THEN
+    v_link_change := NEW.makeup_for_month IS NOT NULL;
+  ELSE
+    v_link_change := NEW.makeup_for_month IS DISTINCT FROM OLD.makeup_for_month
+                     OR (OLD.makeup_for_month IS NOT NULL AND NEW.contract_id IS DISTINCT FROM OLD.contract_id);
+  END IF;
+  -- ผู้ใช้ (มี auth.uid) เปลี่ยนการผูกได้เฉพาะผ่าน RPC · service_role / ระบบไม่ติด
+  IF v_link_change AND auth.uid() IS NOT NULL
+     AND coalesce(current_setting('aga.makeup_link', true), '') <> NEW.id::text THEN
+    RAISE EXCEPTION 'make-up links are changed through save_makeup_service_visit' USING ERRCODE = '42501';
+  END IF;
+
   IF v_missed IS NULL THEN
     RETURN NEW;
+  END IF;
+  -- แก้ช่องอื่นของการเข้าที่ผูกอยู่ (การผูก/สัญญา/ชนิด/เดือนเดิม) → ไม่ตรวจซ้ำ
+  IF TG_OP = 'UPDATE' AND NOT v_link_change
+     AND NEW.visit_type IS NOT DISTINCT FROM OLD.visit_type
+     AND date_trunc('month', NEW.visit_date) = date_trunc('month', OLD.visit_date)
+     AND NEW.visit_date <= v_today THEN
+    RETURN NEW;
+  END IF;
+  -- ผู้ใช้ต้องเป็น host หรือ recorder ในขอบเขตของสัญญา (ก่อนอ่านข้อมูลใดๆ)
+  IF auth.uid() IS NOT NULL
+     AND NOT (is_host() OR (current_app_role() = 'recorder' AND contract_in_scope(NEW.contract_id))) THEN
+    RAISE EXCEPTION 'not allowed to record service for this contract' USING ERRCODE = '42501';
   END IF;
   -- คิวเดียวกับ resolve_missed_service / save_service_visit ของสัญญานี้
   PERFORM pg_advisory_xact_lock(hashtextextended('public.save_service_visit:' || NEW.contract_id::text, 0));
 
-  SELECT date_trunc('month', c.start_date)::date, c.term_years,
+  SELECT c.start_date, c.stations_initialized_at, c.term_years,
          (c.status = 'cancelled' OR c.cancelled_at IS NOT NULL)
-    INTO v_start_month, v_term, v_cancelled
+    INTO v_start_date, v_initialized, v_term, v_cancelled
     FROM contracts c WHERE c.id = NEW.contract_id;
   IF NOT FOUND THEN
     RAISE EXCEPTION 'contract not found' USING ERRCODE = 'AG004';
@@ -148,11 +188,14 @@ BEGIN
   IF v_cancelled THEN
     RAISE EXCEPTION 'the contract is cancelled' USING ERRCODE = 'MS009';
   END IF;
-  v_last_month := (v_start_month + make_interval(months => v_term * 12 - 1))::date;
+  v_start_month := date_trunc('month', v_start_date)::date;
+  v_last_month  := (v_start_month + make_interval(months => v_term * 12 - 1))::date;
+  v_track_from  := missed_tracking_start_month(v_start_date, v_initialized);
 
-  -- เดือนที่ตก: เดือนบริการ (กฎข้อ 5) ที่ผ่านไปแล้ว และตกจริง
-  IF v_missed < v_start_month OR v_missed > v_last_month OR v_missed >= v_now_month THEN
-    RAISE EXCEPTION 'makeup_for_month must be a past service month of this contract' USING ERRCODE = 'MS001';
+  -- เดือนที่ตก: เดือนบริการ (กฎข้อ 5) ที่ผ่านไปแล้ว · ตั้งแต่เดือนเริ่มนับ (ตั้งสถานี) · และตกจริง
+  IF v_track_from IS NULL OR v_missed < v_track_from
+     OR v_missed < v_start_month OR v_missed > v_last_month OR v_missed >= v_now_month THEN
+    RAISE EXCEPTION 'makeup_for_month must be a past, tracked service month of this contract' USING ERRCODE = 'MS001';
   END IF;
   IF EXISTS (SELECT 1 FROM visits vi
               WHERE vi.contract_id = NEW.contract_id AND vi.id <> NEW.id
@@ -161,16 +204,20 @@ BEGIN
     RAISE EXCEPTION 'this month has a routine visit; it was not missed' USING ERRCODE = 'MS002';
   END IF;
 
-  -- การเข้าชดเชย: routine · อยู่หลังเดือนที่ตก
+  -- การเข้าชดเชย: routine · อยู่หลังเดือนที่ตก · ไม่ลงวันที่ล่วงหน้า
   IF NEW.visit_type <> 'routine' THEN
     RAISE EXCEPTION 'a make-up visit must be a routine visit' USING ERRCODE = 'MS006';
   END IF;
   IF v_visit_month <= v_missed THEN
     RAISE EXCEPTION 'a make-up visit must be after the missed month' USING ERRCODE = 'MS006';
   END IF;
-  -- เพดานเวลา (ค่าชั่วคราว): recorder เท่านั้นที่ติด · host บันทึกได้
+  IF NEW.visit_date > v_today THEN
+    RAISE EXCEPTION 'a make-up visit cannot be dated in the future' USING ERRCODE = 'MS006';
+  END IF;
+  -- เพดานเวลา (เจ้าของยืนยัน 14 พ.ย. 2026 (DECISIONS 2.45)): recorder เท่านั้นที่ติด · host บันทึกได้
   IF current_app_role() = 'recorder'
-     AND v_visit_month > (v_last_month + make_interval(months => missed_makeup_deadline_months()))::date THEN
+     AND greatest(v_visit_month, v_now_month)
+         > (v_last_month + make_interval(months => missed_makeup_deadline_months()))::date THEN
     RAISE EXCEPTION 'the make-up deadline has passed; mark it as waived or ask host' USING ERRCODE = 'MS008';
   END IF;
 
@@ -209,6 +256,8 @@ BEGIN
      AND (TG_OP = 'DELETE'
           OR NEW.makeup_for_month IS DISTINCT FROM OLD.makeup_for_month
           OR NEW.contract_id IS DISTINCT FROM OLD.contract_id) THEN
+    -- คิวของสัญญาเดิม (เลิกผูกผ่าน RPC ถืออยู่แล้ว · ซ้ำได้)
+    PERFORM pg_advisory_xact_lock(hashtextextended('public.save_service_visit:' || OLD.contract_id::text, 0));
     DELETE FROM missed_service_resolutions r
      WHERE r.contract_id = OLD.contract_id AND r.missed_month = OLD.makeup_for_month
        AND r.kind = 'makeup'
@@ -267,6 +316,17 @@ CREATE POLICY missed_evidence_bucket_insert ON storage.objects FOR INSERT TO aut
     AND (public.is_host()
          OR (public.current_app_role() = 'recorder'
              AND public.contract_in_scope(public.storage_contract_id(name))))
+  );
+
+-- ลบ: เฉพาะไฟล์ของตัวเองที่เพิ่งอัปโหลด < 1 ชม. และยังไม่มีแถวอ้างอิง (ลบไฟล์ที่อัปโหลดแล้วบันทึกไม่สำเร็จ — PDPA)
+--   ไฟล์ที่มีแถวอ้างอิงลบได้ทางคิวลบ (ระบบ) เท่านั้น · แก้ไฟล์ (UPDATE) ไม่มี policy = ไม่มีใครเขียนทับหลักฐานได้
+CREATE POLICY missed_evidence_bucket_delete ON storage.objects FOR DELETE TO authenticated
+  USING (
+    bucket_id = 'missed-service-evidence'
+    AND (public.is_host() OR public.current_app_role() = 'recorder')
+    AND storage.objects.owner_id = auth.uid()::text
+    AND storage.objects.created_at > now() - interval '1 hour'
+    AND NOT EXISTS (SELECT 1 FROM public.missed_service_resolutions r WHERE r.evidence_path = storage.objects.name)
   );
 
 -- ไฟล์หลักฐานเก่า (เปลี่ยนไฟล์ / ลบแถว) → ลงคิวลบ ถ้าไม่มีแถวอื่นใช้ path นั้น
@@ -446,6 +506,8 @@ BEGIN
 
   -- เลิกผูก / ย้ายไปชดเชยเดือนอื่น: เลิกผูกเดิมก่อน (trigger ลบแถว makeup เดิม → กลับเป็นรอตัดสิน)
   -- ผูกเดือนเดิมอยู่แล้ว: คงลิงก์ไว้ — ถ้าย้ายวันที่ trigger ปรับ makeup_month ตามเอง
+  -- เปิดด่านเปลี่ยนการผูกเฉพาะการเข้านี้ (transaction-local · ปิดก่อนจบ)
+  PERFORM set_config('aga.makeup_link', v_visit_id::text, true);
   UPDATE visits vi SET makeup_for_month = NULL
    WHERE vi.id = v_visit_id AND vi.contract_id = v_contract AND vi.makeup_for_month IS NOT NULL
      AND vi.makeup_for_month IS DISTINCT FROM v_month;
@@ -456,6 +518,7 @@ BEGIN
     UPDATE visits vi SET makeup_for_month = v_month
      WHERE vi.id = v_visit_id AND vi.contract_id = v_contract AND vi.makeup_for_month IS DISTINCT FROM v_month;
   END IF;
+  PERFORM set_config('aga.makeup_link', '', true);
 
   RETURN coalesce(v_result, '{}'::jsonb) || jsonb_build_object('makeup_for_month', v_month);
 END;

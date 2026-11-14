@@ -45,7 +45,13 @@ describe("buildBranchSnapshot", () => {
 
 // M18 / DECISIONS 2.45: นับลูกค้า + มูลค่า + Tier เดิม เฉพาะเดือนที่ไปบริการชดเชยจริง (หลังสัญญาจบ)
 describe("buildBranchSnapshot + การเข้าชดเชย", () => {
-  const c1: Contract = { id: "c1", startDate: "2026-01-01", termYears: 1, valueTotal: 150000 }; // XL1
+  const c1: Contract = {
+    id: "c1",
+    startDate: "2026-01-01",
+    termYears: 1,
+    valueTotal: 150000, // XL1
+    stationsInitializedAt: "2026-01-05",
+  };
   const mkVisit = (date: string, missedMonth: string, contractId = "c1"): Visit => ({
     contractId,
     visitDate: date,
@@ -114,5 +120,16 @@ describe("buildBranchSnapshot + การเข้าชดเชย", () => {
       mkVisit("2027-01-12", "2026-05"),
     ]);
     expect(row.cust).toBe(0);
+  });
+
+  it("เดือนที่ผูกอยู่ก่อนเดือนตั้งสถานี (สัญญาเก่าที่นำเข้า) → ไม่นับ (เกณฑ์เดียวกับ DB)", () => {
+    const late = { ...c1, stationsInitializedAt: "2026-06-02" };
+    expect(buildBranchSnapshot(branch, [late], "2027-01", TIER_RULES, [mkVisit("2027-01-12", "2026-05")]).cust).toBe(0);
+    expect(buildBranchSnapshot(branch, [late], "2027-01", TIER_RULES, [mkVisit("2027-01-12", "2026-07")]).cust).toBe(1);
+  });
+
+  it("ยังไม่ตั้งสถานี → การเข้าชดเชยไม่นับ", () => {
+    const noInit = { ...c1, stationsInitializedAt: undefined };
+    expect(buildBranchSnapshot(branch, [noInit], "2027-01", TIER_RULES, [mkVisit("2027-01-12", "2026-05")]).cust).toBe(0);
   });
 });
