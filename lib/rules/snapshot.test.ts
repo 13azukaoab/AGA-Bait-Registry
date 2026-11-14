@@ -132,4 +132,23 @@ describe("buildBranchSnapshot + การเข้าชดเชย", () => {
     const noInit = { ...c1, stationsInitializedAt: undefined };
     expect(buildBranchSnapshot(branch, [noInit], "2027-01", TIER_RULES, [mkVisit("2027-01-12", "2026-05")]).cust).toBe(0);
   });
+
+  it("ต่อสัญญาแล้ว: สัญญาใหม่ใช้งานในเดือนชดเชย → ไม่นับสัญญาเก่าซ้ำ (2.47)", () => {
+    const c2: Contract = { id: "c2", startDate: "2027-01-01", termYears: 1, valueTotal: 30000, renewedFromContractId: "c1" };
+    const row = buildBranchSnapshot(branch, [c1, c2], "2027-01", TIER_RULES, [mkVisit("2027-01-12", "2026-05")]);
+    expect(row.cust).toBe(1);
+    expect(row.value).toBe(30000);
+  });
+
+  it("ต่อสัญญาแต่สัญญาใหม่ยังไม่เริ่มในเดือนชดเชย → นับสัญญาเก่า", () => {
+    const c2: Contract = { id: "c2", startDate: "2027-03-01", termYears: 1, valueTotal: 30000, renewedFromContractId: "c1" };
+    const row = buildBranchSnapshot(branch, [c1, c2], "2027-01", TIER_RULES, [mkVisit("2027-01-12", "2026-05")]);
+    expect(row.cust).toBe(1);
+    expect(row.value).toBe(150000);
+  });
+
+  it("เดือนจาก DB แบบ 'YYYY-MM-01' นับได้เหมือนกัน", () => {
+    const row = buildBranchSnapshot(branch, [c1], "2027-01", TIER_RULES, [mkVisit("2027-01-12", "2026-05-01")]);
+    expect(row.cust).toBe(1);
+  });
 });

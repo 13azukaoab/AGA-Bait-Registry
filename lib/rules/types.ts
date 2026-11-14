@@ -16,7 +16,9 @@ export interface Contract {
   valueTotal: number; // มูลค่าสัญญาเต็ม
   cancelledAt?: string; // 'YYYY-MM-DD' | undefined
   /** M18: วันที่ตั้งสถานีในระบบ (contracts.stations_initialized_at) — ใช้เป็นจุดเริ่มนับตกบริการ */
-  stationsInitializedAt?: string; // 'YYYY-MM-DD' ตามเวลา Asia/Bangkok (ตัวแปลงต้องแปลง timestamptz เป็นวันที่ไทยก่อน)
+  stationsInitializedAt?: string; // 'YYYY-MM-DD' หรือ timestamptz (monthOf แปลงเป็นเวลาไทยให้)
+  /** M18 / 2.47: สัญญานี้ต่อมาจากสัญญาไหน (contracts.renewed_from_contract_id) */
+  renewedFromContractId?: string;
 }
 
 export interface Visit {
@@ -38,10 +40,11 @@ export interface MissedServiceResolution {
 }
 
 /**
- * สถานะที่หน้าจอแสดง 3 แบบ (DECISIONS 2.45 — ไม่เลือกเดือนชดเชยล่วงหน้า)
+ * สถานะที่หน้าจอแสดง 4 แบบ (DECISIONS 2.45 + 2.47)
  * pending = รอตัดสิน · made_up = ชดเชยแล้ว (มีการเข้าชดเชยที่ผูกไว้) · waived = ไม่ชดเชย
+ * · void_renewed = โมฆะ (ต่อสัญญาแล้ว — DECISIONS 2.47 · คำนวณเอง ไม่ต้องกด)
  */
-export type MissedResolutionStatus = "pending" | "made_up" | "waived";
+export type MissedResolutionStatus = "pending" | "made_up" | "waived" | "void_renewed";
 
 export interface BranchRef {
   area: string; // เช่น 'เขต 1'

@@ -6,15 +6,15 @@
  *   - เดือนที่ตกบริการ (isMissedService) เป็น "ประวัติจริงเสมอ" — การชดเชยไม่ลบการตก แค่มีสถานะกำกับ
  *   - ไม่มีการเลือกเดือนชดเชยล่วงหน้า (2.45): ชดเชยแล้ว = หัวหน้างานบันทึก "บริการชดเชย" ในวันที่ไปจริง
  *     → การเข้านั้นมี makeupForMonth = เดือนที่ตก (ฐานข้อมูลสร้างแถวการตัดสิน kind=makeup ให้เอง)
- *   - สถานะ 3 แบบ: รอตัดสิน / ชดเชยแล้ว / ไม่ชดเชย · "ชดเชยแล้ว" ยึดการเข้าที่ผูกไว้จริงเป็นหลัก
+ *   - สถานะ 4 แบบ: รอตัดสิน / ชดเชยแล้ว / ไม่ชดเชย / โมฆะ (ต่อสัญญาแล้ว — 2.47) · "ชดเชยแล้ว" ยึดการเข้าที่ผูกไว้จริง
  *     (แถว makeup ที่ไม่มีการเข้าผูก = รอตัดสิน)
- *   - เกณฑ์ชั่วคราว (รอเจ้าของ): นับเดือนที่ตกตั้งแต่เดือนที่ตั้งสถานีในระบบ (trackingStartMonth) —
+ *   - เจ้าของยืนยัน (DECISIONS 2.46): นับเดือนที่ตกตั้งแต่เดือนที่ตั้งสถานีในระบบ (trackingStartMonth) —
  *     สัญญาเก่าที่นำเข้าไม่มีประวัติการเข้า จะไม่ท่วมรายการ · เกณฑ์เดียวกับ SQL `missed_tracking_start()`
  *   - สัญญายกเลิก: ตัดสินไม่ได้ (2.45) จึงไม่แสดงในรายการ
  *   - เพดานเวลาไปชดเชยอยู่ที่ฐานข้อมูลจุดเดียว (`missed_makeup_deadline_months()`) — หน้าจออ่านจาก
  *     RPC list_pending_missed_services ไม่ต้องมีค่าซ้ำฝั่งนี้
  * ทุก month ในไฟล์นี้เป็น 'YYYY-MM' · เทียบด้วย string ได้เพราะรูปแบบคงที่
- * ⚠ ตัวแปลงจาก DB: missed_month / makeup_month / makeup_for_month เก็บ 'YYYY-MM-01' → ตัดเป็น 'YYYY-MM' ทุกช่อง
+ * ค่าเดือน/วันที่จาก DB ('YYYY-MM-01' · timestamptz) ส่งเข้ามาได้ตรงๆ — normalise ด้วย monthOf (เวลาไทย)
  */
 import type { Contract, MissedResolutionStatus, MissedServiceResolution, Visit } from "./types";
 import { serviceMonths } from "./serviceMonths";
@@ -22,12 +22,12 @@ import { isMissedService } from "./missedService";
 import { listMonths, monthOf } from "./date";
 
 /**
- * เดือนแรกที่นับตกบริการ (เกณฑ์ชั่วคราว — รอเจ้าของ) = เดือนที่ตั้งสถานีในระบบ แต่ไม่ก่อนเดือนเริ่มสัญญา
+ * เดือนแรกที่นับตกบริการ (เจ้าของยืนยัน — DECISIONS 2.46) = เดือนที่ตั้งสถานีในระบบ (เวลาไทย) แต่ไม่ก่อนเดือนเริ่มสัญญา
  * ยังไม่ตั้งสถานี → null (ยังไม่นับตก)
  */
 export function trackingStartMonth(contract: Contract): string | null {
   if (!contract.stationsInitializedAt) return null;
-  const init = monthOf(contract.stationsInitializedAt.slice(0, 10));
+  const init = monthOf(contract.stationsInitializedAt);
   const start = monthOf(contract.startDate);
   return init > start ? init : start;
 }
@@ -47,29 +47,41 @@ export function linkedMakeupVisit(
   missedMonth: string,
   visits: Visit[],
 ): Visit | undefined {
+  const missed = monthOf(missedMonth);
   return visits.find(
     (v) =>
       v.contractId === contractId &&
       v.visitType === "routine" &&
-      v.makeupForMonth === missedMonth &&
-      monthOf(v.visitDate) > missedMonth,
+      !!v.makeupForMonth &&
+      monthOf(v.makeupForMonth) === missed &&
+      monthOf(v.visitDate) > missed,
   );
 }
 
-/** สถานะการแก้ไขของ 1 เดือนที่ตก (3 แบบ) */
+/** ต่อสัญญาแล้ว = มีสัญญาอื่นที่ renewedFromContractId = สัญญานี้ (DECISIONS 2.47 — ตรงกับ SQL `contract_is_renewed`) */
+export function isRenewed(contract: Contract, contracts: Contract[]): boolean {
+  return contracts.some((o) => o.id !== contract.id && o.renewedFromContractId === contract.id);
+}
+
+/**
+ * สถานะการแก้ไขของ 1 เดือนที่ตก (4 แบบ)
+ * renewed = สัญญานี้ต่อแล้ว (isRenewed) → ที่ยังรอตัดสินกลายเป็นโมฆะ · ชดเชยแล้ว / ไม่ชดเชย คงไว้ (2.47)
+ */
 export function missedResolutionStatus(
   contract: Contract,
   missedMonth: string,
   resolution: MissedServiceResolution | undefined,
   visits: Visit[],
+  renewed = false,
 ): MissedResolutionStatus {
+  const missed = monthOf(missedMonth);
   const own =
-    resolution && resolution.contractId === contract.id && resolution.missedMonth === missedMonth
+    resolution && resolution.contractId === contract.id && monthOf(resolution.missedMonth) === missed
       ? resolution
       : undefined;
   if (own?.kind === "waived") return "waived";
-  if (linkedMakeupVisit(contract.id, missedMonth, visits)) return "made_up";
-  return "pending";
+  if (linkedMakeupVisit(contract.id, missed, visits)) return "made_up";
+  return renewed ? "void_renewed" : "pending";
 }
 
 /** อยู่ในรายการ "ต้องทำ" / แถว "รอชดเชย" ไหม */

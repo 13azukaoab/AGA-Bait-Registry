@@ -35,20 +35,28 @@ export function buildBranchSnapshot(
     // เดือนชดเชยในช่วงสัญญานับอยู่แล้ว ไม่นับซ้ำ · หลังสัญญาจบนับเมื่อมีการเข้าชดเชยจริงในเดือนนี้
     // เดือนที่ผูกต้องไม่ก่อนเดือนเริ่มนับตกบริการ (ตั้งสถานี) — เกณฑ์เดียวกับ DB (กันสัญญาเก่าดันตัวเลข)
     const trackFrom = trackingStartMonth(c);
+    // 2.47: สัญญาใหม่ (ต่อจากสัญญานี้) ใช้งานในเดือนนี้ → ลูกค้านับที่สัญญาใหม่แล้ว ไม่นับสัญญาเก่าซ้ำ
+    const renewalActive = contracts.some(
+      (o) =>
+        o.renewedFromContractId === c.id &&
+        !(o.cancelledAt && monthOf(o.cancelledAt) <= month) &&
+        serviceMonths(o.startDate, o.termYears).includes(month),
+    );
     const countsAsMakeup =
       !inService &&
       !!visits &&
       trackFrom !== null &&
+      !renewalActive &&
       month > lastServiceMonth(c) &&
       visits.some(
         (v) =>
           v.contractId === c.id &&
           v.visitType === "routine" &&
           !!v.makeupForMonth &&
-          v.makeupForMonth >= trackFrom &&
+          monthOf(v.makeupForMonth) >= trackFrom &&
           monthOf(v.visitDate) === month &&
           // เดือนที่ผูกต้องยัง "ตกจริง" (มี routine ปกติภายหลัง = การผูกนั้นไม่มีผล)
-          isMissedService(c, v.makeupForMonth, visits),
+          isMissedService(c, monthOf(v.makeupForMonth), visits),
       );
     if (!inService && !countsAsMakeup) continue;
 

@@ -5,9 +5,10 @@
 --   d1 จบแล้ว (เริ่ม m(-18) · เดือนสุดท้าย m(-7) · เพดาน m(5)) · d2 ต่างจังหวัด · d3 ยังไม่จบ (เริ่ม m(-6))
 --   d4 ยกเลิก · d5 ยังไม่ตั้งสถานี · d6 ปิดแล้ว · d7 เลยเพดาน (เดือนสุดท้าย m(-19) · เพดาน m(-7))
 --   d8 ตั้งสถานีช้า (m(-10)) — สัญญาเก่าที่นำเข้า
+--   dr = สัญญาที่ลูกค้าต่อแล้ว (สัญญาใหม่ dn ใส่ระหว่างเทส — 2.47)
 --   da / db / dc = ชุดตาราง host×recorder × ภายใน/เลยเพดาน × waived/makeup × ปิด/ยกเลิก (da ภายใน · db เลย · dc ปิด)
 BEGIN;
-SELECT plan(119);
+SELECT plan(148);
 
 INSERT INTO auth.users (id, instance_id, aud, role, email) VALUES
   ('00000000-0000-0000-0000-0000000000a1', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'host@test.local'),
@@ -45,7 +46,8 @@ INSERT INTO contracts (id, customer_id, contract_no, start_date, term_years, val
   (pg_temp.id('d8'), pg_temp.id('c1'), 'M-8', pg_temp.m(-18), 1, 24000,  pg_temp.m(-10), 'active', NULL),
   (pg_temp.id('da'), pg_temp.id('c1'), 'M-A', pg_temp.m(-18), 1, 24000,  pg_temp.m(-18), 'active', NULL),
   (pg_temp.id('db'), pg_temp.id('c1'), 'M-B', pg_temp.m(-30), 1, 24000,  pg_temp.m(-30), 'active', NULL),
-  (pg_temp.id('dc'), pg_temp.id('c1'), 'M-C', pg_temp.m(-18), 1, 24000,  pg_temp.m(-18), 'closed', NULL);
+  (pg_temp.id('dc'), pg_temp.id('c1'), 'M-C', pg_temp.m(-18), 1, 24000,  pg_temp.m(-18), 'closed', NULL),
+  (pg_temp.id('dd'), pg_temp.id('c1'), 'M-R', pg_temp.m(-18), 1, 24000,  pg_temp.m(-18), 'active', NULL);
 -- d1: m(-15) มี routine (ไม่ตก) · เดือนอื่นตก
 INSERT INTO visits (id, contract_id, visit_date, visit_type, start_time, end_time) VALUES
   (pg_temp.id('e1'), pg_temp.id('d1'), pg_temp.m(-15) + 9, 'routine', '09:00', '10:00');
@@ -113,7 +115,8 @@ SELECT ok(NOT has_table_privilege('authenticated', 'public.missed_service_resolu
   'authenticated has no direct write privilege (RPC / trigger only)');
 SELECT ok(NOT has_function_privilege('anon', 'public.resolve_missed_service(jsonb)', 'EXECUTE')
           AND NOT has_function_privilege('anon', 'public.save_makeup_service_visit(jsonb)', 'EXECUTE')
-          AND NOT has_function_privilege('anon', 'public.list_pending_missed_services(uuid, date)', 'EXECUTE'),
+          AND NOT has_function_privilege('anon', 'public.list_pending_missed_services(uuid, date)', 'EXECUTE')
+          AND NOT has_function_privilege('anon', 'public.reopen_missed_service(jsonb)', 'EXECUTE'),
   'anon cannot execute the M18 RPCs');
 SELECT ok(NOT has_function_privilege('authenticated', 'public.visits_makeup_link_guard()', 'EXECUTE')
           AND NOT has_function_privilege('authenticated', 'public.visits_makeup_unlink_cleanup()', 'EXECUTE'),
@@ -338,6 +341,80 @@ SELECT is(cardinality(pg_temp.pending('d2')), 12, 'admin sees contracts in every
 SELECT is((SELECT count(*)::int FROM public.list_pending_missed_services(
              (SELECT branch_id FROM customers WHERE id = pg_temp.id('c2')))), 12, 'p_branch_id filters by branch');
 RESET ROLE;
+
+-- =====================================================================
+-- L1: ไม่ชดเชยใช้เกณฑ์เริ่มนับเดียวกับรายการ (เดือนก่อนตั้งสถานี = MS001)
+-- =====================================================================
+SET LOCAL ROLE authenticated;
+SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a3', true);
+SELECT throws_ok(pg_temp.rs('d8', pg_temp.m(-17), 'x'), 'MS001', NULL,
+  'waiving a month before the stations were set up is refused (same floor as the list)');
+
+-- =====================================================================
+-- 2.47 สัญญาที่ลูกค้าต่อแล้ว (dd → สัญญาใหม่ de)
+-- =====================================================================
+-- ก่อนต่อสัญญา: ไม่ชดเชย m(-14) · ชดเชย m(-13)
+SELECT lives_ok(pg_temp.rs('dd', pg_temp.m(-14), 'ยินยอม'), 'before renewal: waive a month');
+SELECT lives_ok(pg_temp.mk('0a', 'dd', pg_temp.td(), pg_temp.m(-13)), 'before renewal: record a make-up');
+RESET ROLE;
+INSERT INTO contracts (id, customer_id, contract_no, start_date, term_years, value_total, stations_initialized_at,
+                       renewed_from_contract_id)
+VALUES (pg_temp.id('de'), pg_temp.id('c1'), 'M-R2', pg_temp.m(-6), 1, 24000, pg_temp.m(-6), pg_temp.id('dd'));
+SELECT ok(public.contract_is_renewed(pg_temp.id('dd')) AND NOT public.contract_is_renewed(pg_temp.id('de')),
+  'contract_is_renewed: the old contract is renewed, the new one is not');
+SELECT is(pg_temp.res('dd', pg_temp.m(-14)), 'waived|-', 'a waiver made before renewal is kept');
+SELECT is(pg_temp.res('dd', pg_temp.m(-13)), 'makeup|' || pg_temp.m(0)::text, 'a make-up made before renewal is kept');
+SET LOCAL ROLE authenticated;
+SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a3', true);
+SELECT is(pg_temp.pending('dd'), '{}'::date[], 'open missed months of a renewed contract are void (not listed)');
+SELECT throws_ok(pg_temp.mk('0b', 'dd', pg_temp.td(), pg_temp.m(-12)), 'MS011', NULL, 'recorder cannot make up a renewed contract');
+SELECT throws_ok(pg_temp.rs('dd', pg_temp.m(-12), 'x'), 'MS011', NULL, 'recorder cannot waive a renewed contract');
+SELECT throws_ok($$SELECT public.reopen_missed_service(jsonb_build_object('contract_id', pg_temp.id('dd'), 'missed_month', pg_temp.m(-14)))$$,
+  'MS011', NULL, 'recorder cannot reopen on a renewed contract');
+SELECT lives_ok(format('SELECT public.save_service_visit(%L::jsonb)', pg_temp.sv('0a', 'dd', pg_temp.td()) || '{"note": "แก้"}'),
+  'the kept make-up visit can still be edited (note)');
+SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a1', true);
+SELECT throws_ok(pg_temp.mk('0c', 'dd', pg_temp.td(), pg_temp.m(-12)), 'MS011', NULL, 'host cannot make up a renewed contract either');
+SELECT throws_ok(pg_temp.rs('dd', pg_temp.m(-12), 'x'), 'MS011', NULL, 'host cannot waive a renewed contract either');
+SELECT throws_ok($$SELECT public.reopen_missed_service(jsonb_build_object('contract_id', pg_temp.id('dd'), 'missed_month', pg_temp.m(-14)))$$,
+  'MS011', NULL, 'host cannot reopen on a renewed contract either');
+
+-- =====================================================================
+-- 2.46 เปิดเรื่องกลับ (ยกเลิก "ไม่ชดเชย") — role × สถานะสัญญา
+-- =====================================================================
+CREATE FUNCTION pg_temp.ro(p_contract text, p_missed date) RETURNS text LANGUAGE sql AS $$
+  SELECT format('SELECT public.reopen_missed_service(%L::jsonb)',
+                jsonb_build_object('contract_id', pg_temp.id(p_contract), 'missed_month', p_missed))
+$$;
+GRANT EXECUTE ON FUNCTION pg_temp.ro(text, date) TO PUBLIC;
+-- recorder
+SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a3', true);
+SELECT lives_ok(pg_temp.ro('d6', pg_temp.m(-14)), 'recorder reopens a waiver on a closed contract');
+SELECT lives_ok(pg_temp.ro('db', pg_temp.m(-25)), 'recorder reopens a waiver past the make-up deadline');
+SELECT throws_ok(pg_temp.ro('d2', pg_temp.m(-14)), '42501', NULL, 'recorder cannot reopen outside their scope');
+SELECT throws_ok(pg_temp.ro('d4', pg_temp.m(-14)), 'MS009', NULL, 'recorder cannot reopen on a cancelled contract');
+SELECT throws_ok(pg_temp.ro('d6', pg_temp.m(-12)), 'MS012', NULL, 'a made-up month cannot be reopened');
+SELECT throws_ok(pg_temp.ro('d6', pg_temp.m(-14)), 'MS012', NULL, 'reopening twice is refused');
+SELECT throws_ok($$SELECT public.reopen_missed_service('{"contract_id": "00000000-0000-0000-0000-0000000000d6"}')$$,
+  '22004', NULL, 'reopen needs contract_id and missed_month');
+SELECT ok(pg_temp.m(-14) = ANY (pg_temp.pending('d6')), 'the reopened month is pending again');
+SELECT lives_ok(pg_temp.mk('0d', 'd6', pg_temp.td(), pg_temp.m(-14)), 'a reopened month can now be made up');
+-- host
+SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a1', true);
+SELECT lives_ok(pg_temp.ro('da', pg_temp.m(-14)), 'host reopens a waiver on an active contract');
+SELECT lives_ok(pg_temp.ro('dc', pg_temp.m(-14)), 'host reopens a waiver on a closed contract');
+SELECT throws_ok(pg_temp.ro('d4', pg_temp.m(-14)), 'MS009', NULL, 'host cannot reopen on a cancelled contract');
+-- admin / viewer
+SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a2', true);
+SELECT throws_ok(pg_temp.ro('db', pg_temp.m(-24)), '42501', NULL, 'admin cannot reopen');
+SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a4', true);
+SELECT throws_ok(pg_temp.ro('db', pg_temp.m(-24)), '42501', NULL, 'viewer cannot reopen');
+RESET ROLE;
+SELECT is((SELECT count(*)::int FROM audit_log WHERE table_name = 'missed_service_resolutions' AND action = 'delete'
+            AND contract_id = pg_temp.id('d6') AND month_key = to_char(pg_temp.m(-14), 'YYYY-MM')
+            AND changed_by = '00000000-0000-0000-0000-0000000000a3'
+            AND old_data ->> 'kind' = 'waived'), 1,
+  'reopening is audited with the old waiver and who reopened it');
 
 -- =====================================================================
 -- ไฟล์หลักฐาน (แก้ตามผลตรวจ security รอบแรก)

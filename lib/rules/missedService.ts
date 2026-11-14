@@ -11,9 +11,10 @@ import { monthOf } from "./date";
  */
 export function isMissedService(
   contract: Contract,
-  month: string,
+  monthInput: string,
   visits: Visit[],
 ): boolean {
+  const month = monthOf(monthInput); // รับ 'YYYY-MM' หรือ 'YYYY-MM-01' จาก DB
   if (!serviceMonths(contract.startDate, contract.termYears).includes(month))
     return false;
   if (contract.cancelledAt && monthOf(contract.cancelledAt) <= month)

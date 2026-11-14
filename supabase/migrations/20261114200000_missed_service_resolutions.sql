@@ -27,7 +27,7 @@
 --      · เดือนที่ตกถูกต้อง + ตกจริง · สัญญายกเลิกห้าม (MS009) · สัญญาปิดแล้วทำได้ · ชดเชยแล้วเปลี่ยนไม่ได้ (MS005)
 --   5. อ่านรายการรอตัดสิน: `list_pending_missed_services(p_branch_id, p_month)` (SECURITY INVOKER — RLS ของผู้ใช้ทำงาน
 --      + recorder เห็นเฉพาะสัญญาในขอบเขต) → แถว "รอชดเชย <เดือน>" ในหน้า /service (รวมสัญญาที่จบแล้ว)
---      · เกณฑ์ชั่วคราว (รอเจ้าของ): นับตกตั้งแต่เดือนที่ตั้งสถานีในระบบ (`missed_tracking_start_month`) กันสัญญาเก่าที่
+--      · เจ้าของยืนยัน (DECISIONS 2.46): นับตกตั้งแต่เดือนที่ตั้งสถานีในระบบ (`missed_tracking_start_month`) กันสัญญาเก่าที่
 --        นำเข้าไม่มีประวัติการเข้าท่วมรายการ · ไม่รวมสัญญายกเลิก (ปิดเรื่องไม่ได้)
 --   6. เพดานเวลาไปชดเชย = 12 เดือนหลังเดือนบริการสุดท้าย (เจ้าของยืนยัน 14 พ.ย. 2026 (DECISIONS 2.45)) อยู่ที่
 --      `missed_makeup_deadline_months()` จุดเดียว · RPC อ่านคืน makeup_deadline_month + past_deadline ให้หน้าจอ
@@ -42,7 +42,13 @@
 --   * error: MS001 เดือนที่ตกไม่ถูกต้อง · MS002 เดือนนั้นไม่ได้ตกบริการ · MS004 ไม่ชดเชยต้องมีเหตุผล
 --     · MS005 ชดเชยแล้ว (มีการเข้าผูกอยู่) · MS006 ผูกการเข้าไม่ได้ (ไม่ใช่ routine / ไม่อยู่หลังเดือนที่ตก)
 --     · MS007 ไฟล์หลักฐานไม่ถูกต้อง · MS008 เลยเพดานเวลาไปชดเชย (recorder) · MS009 สัญญายกเลิกแล้ว
---     · MS010 เดือนนั้นตัดสินว่าไม่ชดเชยแล้ว · (MS003 เลิกใช้ — เดิมคือเดือนชดเชยที่เลือกล่วงหน้า)
+--     · MS010 เดือนนั้นตัดสินว่าไม่ชดเชยแล้ว · MS011 สัญญาต่อแล้ว (2.47) · MS012 ไม่มี "ไม่ชดเชย" ให้เปิดกลับ
+--     · (MS003 เลิกใช้ — เดิมคือเดือนชดเชยที่เลือกล่วงหน้า)
+--   * DECISIONS 2.47 สัญญาที่ลูกค้าต่อแล้ว (มีสัญญาอื่น renewed_from_contract_id = สัญญานี้ · `contract_is_renewed`):
+--     ตกบริการที่ยังรอตัดสิน = "โมฆะ (ต่อสัญญาแล้ว)" (คำนวณ ไม่มีแถว) · ไม่ขึ้นในรายการรอตัดสิน · บันทึกชดเชย /
+--     ไม่ชดเชย / เปิดเรื่องกลับไม่ได้ (MS011) · ที่ชดเชยแล้ว/ไม่ชดเชยแล้วก่อนต่อสัญญาคงไว้
+--   * DECISIONS 2.46 เปิดเรื่องกลับ: `reopen_missed_service` — host หรือ recorder ในขอบเขต ลบแถว waived → รอตัดสิน
+--     (audit_log เก็บแถวเดิม · ไฟล์หลักฐานลงคิวลบ) · สัญญายกเลิก (MS009) / ต่อแล้ว (MS011) ห้าม
 --   * snapshot เดือนที่ปิดแล้วคงค่าเดิม (กฎข้อ 7) — migration นี้ไม่แตะ monthly_branch_snapshots
 
 -- =====================================================================
@@ -58,7 +64,7 @@ IMMUTABLE
 SET search_path = public, pg_temp
 AS $$ SELECT 12 $$;
 
--- ⚠ เกณฑ์ชั่วคราว (รอเจ้าของ): เดือนแรกที่นับตกบริการ = เดือนที่ตั้งสถานีในระบบ (เวลาไทย) แต่ไม่ก่อนเดือนเริ่มสัญญา
+-- เจ้าของยืนยัน (DECISIONS 2.46): เดือนแรกที่นับตกบริการ = เดือนที่ตั้งสถานีในระบบ (เวลาไทย) แต่ไม่ก่อนเดือนเริ่มสัญญา
 --   ยังไม่ตั้งสถานี → NULL (ไม่นับ) · ตรงกับ trackingStartMonth() ใน lib/rules/missedResolution.ts
 CREATE FUNCTION public.missed_tracking_start_month(p_start_date date, p_initialized_at timestamptz)
 RETURNS date
@@ -70,6 +76,18 @@ AS $$
               ELSE greatest(date_trunc('month', p_start_date)::date,
                             date_trunc('month', (p_initialized_at AT TIME ZONE 'Asia/Bangkok'))::date)
          END
+$$;
+
+-- DECISIONS 2.47: สัญญานี้ลูกค้าต่อแล้ว = มีสัญญาอื่นที่ renewed_from_contract_id = สัญญานี้ (ตรงกับ isRenewed ใน lib/rules)
+--   SECURITY INVOKER: อ่านตาม RLS ของผู้เรียก (ผู้เรียกในไฟล์นี้เป็น DEFINER / host·admin·recorder ที่อ่าน contracts ได้)
+CREATE FUNCTION public.contract_is_renewed(p_contract_id uuid)
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SET search_path = public, pg_temp
+AS $$
+  SELECT EXISTS (SELECT 1 FROM contracts n
+                  WHERE n.renewed_from_contract_id = p_contract_id AND n.id <> p_contract_id)
 $$;
 
 -- =====================================================================
@@ -187,6 +205,10 @@ BEGIN
   END IF;
   IF v_cancelled THEN
     RAISE EXCEPTION 'the contract is cancelled' USING ERRCODE = 'MS009';
+  END IF;
+  -- 2.47: ลูกค้าต่อสัญญาแล้ว → ตกบริการที่ค้างเป็นโมฆะ บันทึกชดเชยไม่ได้
+  IF contract_is_renewed(NEW.contract_id) THEN
+    RAISE EXCEPTION 'the contract has been renewed; its open missed months are void' USING ERRCODE = 'MS011';
   END IF;
   v_start_month := date_trunc('month', v_start_date)::date;
   v_last_month  := (v_start_month + make_interval(months => v_term * 12 - 1))::date;
@@ -376,6 +398,7 @@ DECLARE
   v_start_month date;
   v_term        int;
   v_cancelled   boolean;
+  v_track_from  date;
   v_row         missed_service_resolutions%ROWTYPE;
 BEGIN
   -- สิทธิ์ก่อน (คนไม่มีสิทธิ์ไม่ได้ถือ lock / ลองว่ามี id จริงไหม)
@@ -404,15 +427,20 @@ BEGIN
   PERFORM pg_advisory_xact_lock(hashtextextended('public.save_service_visit:' || v_contract::text, 0));
 
   SELECT date_trunc('month', c.start_date)::date, c.term_years,
-         (c.status = 'cancelled' OR c.cancelled_at IS NOT NULL)
-    INTO v_start_month, v_term, v_cancelled
+         (c.status = 'cancelled' OR c.cancelled_at IS NOT NULL),
+         missed_tracking_start_month(c.start_date, c.stations_initialized_at)
+    INTO v_start_month, v_term, v_cancelled, v_track_from
     FROM contracts c WHERE c.id = v_contract;
   IF v_cancelled THEN
     RAISE EXCEPTION 'the contract is cancelled' USING ERRCODE = 'MS009';
   END IF;
+  IF contract_is_renewed(v_contract) THEN
+    RAISE EXCEPTION 'the contract has been renewed; its open missed months are void' USING ERRCODE = 'MS011';
+  END IF;
 
-  -- ---------- เดือนที่ตก ----------
+  -- ---------- เดือนที่ตก (ตั้งแต่เดือนเริ่มนับ = ตั้งสถานี · 2.46 — เกณฑ์เดียวกับรายการรอตัดสิน) ----------
   IF v_missed <> date_trunc('month', v_missed)::date
+     OR v_track_from IS NULL OR v_missed < v_track_from
      OR v_missed < v_start_month
      OR v_missed >= (v_start_month + make_interval(months => v_term * 12))::date
      OR v_missed >= v_now_month THEN
@@ -464,6 +492,64 @@ BEGIN
          decided_by    = EXCLUDED.decided_by,
          decided_at    = EXCLUDED.decided_at
   RETURNING * INTO v_row;
+
+  RETURN to_jsonb(v_row);
+END;
+$$;
+
+-- =====================================================================
+-- 5b. RPC: เปิดเรื่องกลับ (ยกเลิก "ไม่ชดเชย" → รอตัดสิน · DECISIONS 2.46)
+-- payload: { contract_id, missed_month 'YYYY-MM-01' } → คืนแถวที่ลบ
+--   host หรือ recorder ในขอบเขต · สัญญายกเลิก (MS009) / ต่อแล้ว (MS011) ห้าม · ไม่มีแถว waived → MS012
+--   audit_log เก็บแถวเดิม (trigger) · ไฟล์หลักฐานลงคิวลบ (trigger missed_evidence_enqueue_object_delete)
+-- =====================================================================
+CREATE FUNCTION public.reopen_missed_service(p jsonb)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  v_contract  uuid;
+  v_missed    date;
+  v_is_host   boolean := is_host();
+  v_cancelled boolean;
+  v_row       missed_service_resolutions%ROWTYPE;
+BEGIN
+  IF NOT (v_is_host OR current_app_role() = 'recorder') THEN
+    RAISE EXCEPTION 'not allowed to reopen missed service' USING ERRCODE = '42501';
+  END IF;
+  IF p IS NULL OR jsonb_typeof(p) <> 'object'
+     OR nullif(p ->> 'contract_id', '') IS NULL OR nullif(p ->> 'missed_month', '') IS NULL THEN
+    RAISE EXCEPTION 'contract_id and missed_month are required' USING ERRCODE = '22004';
+  END IF;
+  v_contract := (p ->> 'contract_id')::uuid;
+  v_missed   := (p ->> 'missed_month')::date;
+
+  IF NOT EXISTS (SELECT 1 FROM contracts c WHERE c.id = v_contract) THEN
+    RAISE EXCEPTION 'contract not found' USING ERRCODE = 'AG004';
+  END IF;
+  IF NOT (v_is_host OR contract_in_scope(v_contract)) THEN
+    RAISE EXCEPTION 'not allowed to reopen missed service for this contract' USING ERRCODE = '42501';
+  END IF;
+
+  PERFORM pg_advisory_xact_lock(hashtextextended('public.save_service_visit:' || v_contract::text, 0));
+
+  SELECT (c.status = 'cancelled' OR c.cancelled_at IS NOT NULL) INTO v_cancelled
+    FROM contracts c WHERE c.id = v_contract;
+  IF v_cancelled THEN
+    RAISE EXCEPTION 'the contract is cancelled' USING ERRCODE = 'MS009';
+  END IF;
+  IF contract_is_renewed(v_contract) THEN
+    RAISE EXCEPTION 'the contract has been renewed; its open missed months are void' USING ERRCODE = 'MS011';
+  END IF;
+
+  DELETE FROM missed_service_resolutions r
+   WHERE r.contract_id = v_contract AND r.missed_month = v_missed AND r.kind = 'waived'
+  RETURNING * INTO v_row;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'this month is not marked as waived' USING ERRCODE = 'MS012';
+  END IF;
 
   RETURN to_jsonb(v_row);
 END;
@@ -528,7 +614,7 @@ $$;
 -- 7. อ่านรายการ "รอตัดสิน" (แถว "รอชดเชย <เดือน>" ในหน้า /service · หน้า ต้องทำ)
 --   p_branch_id: NULL = ทุกสาขาที่มองเห็น · p_month: เดือนของหน้า (วันใดก็ได้ในเดือน · NULL = เดือนปัจจุบัน)
 --   คืนเดือนที่ตกก่อน min(p_month, เดือนปัจจุบัน) ที่ยังไม่ชดเชยและไม่ได้ตัดสินว่าไม่ชดเชย · รวมสัญญาที่จบ/ปิดแล้ว
---   · ไม่รวมสัญญายกเลิก · นับตั้งแต่ missed_tracking_start_month (เกณฑ์ชั่วคราว)
+--   · ไม่รวมสัญญายกเลิก / สัญญาที่ต่อแล้ว (2.47 — ที่ค้างเป็นโมฆะ) · นับตั้งแต่ missed_tracking_start_month (2.46)
 --   SECURITY INVOKER: RLS ของ contracts/customers/visits/missed_service_resolutions ทำงานตามผู้เรียก
 --   + recorder เห็นเฉพาะสัญญาในขอบเขต (contract_in_scope) · บทบาทอื่นนอกจาก host/admin/recorder → 42501
 -- =====================================================================
@@ -566,6 +652,7 @@ BEGIN
       FROM contracts ct
       JOIN customers cu ON cu.id = ct.customer_id
      WHERE ct.status <> 'cancelled' AND ct.cancelled_at IS NULL
+       AND NOT contract_is_renewed(ct.id)
        AND ct.stations_initialized_at IS NOT NULL
        AND (p_branch_id IS NULL OR cu.branch_id = p_branch_id)
        AND (v_role <> 'recorder' OR contract_in_scope(ct.id))
@@ -689,5 +776,9 @@ REVOKE ALL ON FUNCTION public.resolve_missed_service(jsonb) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.resolve_missed_service(jsonb) TO authenticated;
 REVOKE ALL ON FUNCTION public.save_makeup_service_visit(jsonb) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.save_makeup_service_visit(jsonb) TO authenticated;
+REVOKE ALL ON FUNCTION public.contract_is_renewed(uuid) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.contract_is_renewed(uuid) TO authenticated;
+REVOKE ALL ON FUNCTION public.reopen_missed_service(jsonb) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.reopen_missed_service(jsonb) TO authenticated;
 REVOKE ALL ON FUNCTION public.list_pending_missed_services(uuid, date) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.list_pending_missed_services(uuid, date) TO authenticated;

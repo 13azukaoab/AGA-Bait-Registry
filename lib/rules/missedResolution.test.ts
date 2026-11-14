@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
+  isRenewed,
   lastServiceMonth,
   linkedMakeupVisit,
   missedMonths,
@@ -45,7 +46,7 @@ describe("isMissedService + การเข้าชดเชย", () => {
   });
 });
 
-describe("trackingStartMonth (เกณฑ์ชั่วคราว: นับตกบริการตั้งแต่เดือนที่ตั้งสถานีในระบบ)", () => {
+describe("trackingStartMonth (DECISIONS 2.46: นับตกบริการตั้งแต่เดือนที่ตั้งสถานีในระบบ)", () => {
   it("= เดือนที่ตั้งสถานี · ยังไม่ตั้งสถานี = null", () => {
     expect(trackingStartMonth(c)).toBe("2026-01");
     expect(trackingStartMonth({ ...c, stationsInitializedAt: "2026-03-20" })).toBe("2026-03");
@@ -101,7 +102,7 @@ describe("linkedMakeupVisit", () => {
   });
 });
 
-describe("missedResolutionStatus (3 สถานะ — DECISIONS 2.45)", () => {
+describe("missedResolutionStatus (DECISIONS 2.45)", () => {
   it("ไม่มีการตัดสิน ไม่มีการเข้าชดเชย → pending (รอตัดสิน) · อยู่ในรายการต้องทำ", () => {
     const s = missedResolutionStatus(c, "2026-05", undefined, []);
     expect(s).toBe("pending");
@@ -142,5 +143,38 @@ describe("lastServiceMonth", () => {
     expect(lastServiceMonth(c)).toBe("2026-12");
     expect(lastServiceMonth({ ...c, startDate: "2026-04-03" })).toBe("2027-03");
     expect(lastServiceMonth({ ...c, termYears: 3 })).toBe("2028-12");
+  });
+});
+
+describe("ต่อสัญญาแล้ว → ตกบริการที่ค้างเป็นโมฆะ (DECISIONS 2.47)", () => {
+  const renewal: Contract = { id: "c2", startDate: "2027-01-01", termYears: 1, valueTotal: 24000, renewedFromContractId: "c1" };
+  it("isRenewed = มีสัญญาอื่นที่ renewedFromContractId = สัญญานี้", () => {
+    expect(isRenewed(c, [c, renewal])).toBe(true);
+    expect(isRenewed(renewal, [c, renewal])).toBe(false);
+    expect(isRenewed(c, [c])).toBe(false);
+  });
+  it("รอตัดสิน + ต่อสัญญาแล้ว → void_renewed (ไม่อยู่ในรายการต้องทำ)", () => {
+    const s = missedResolutionStatus(c, "2026-05", undefined, [], true);
+    expect(s).toBe("void_renewed");
+    expect(needsDecision(s)).toBe(false);
+  });
+  it("ชดเชยไปแล้วก่อนต่อสัญญา → คง made_up", () => {
+    expect(missedResolutionStatus(c, "2026-05", undefined, [routine("2026-09-12", "2026-05")], true)).toBe("made_up");
+  });
+  it("ไม่ชดเชยไปแล้วก่อนต่อสัญญา → คง waived", () => {
+    expect(missedResolutionStatus(c, "2026-05", waived, [], true)).toBe("waived");
+  });
+});
+
+describe("normalise เดือนจาก DB (L2)", () => {
+  it("makeupForMonth / missedMonth แบบ 'YYYY-MM-01' ใช้ได้", () => {
+    const v = [routine("2027-01-12", "2026-05-01")];
+    expect(linkedMakeupVisit("c1", "2026-05-01", v)).toBe(v[0]);
+    expect(missedResolutionStatus(c, "2026-05", { ...waived, missedMonth: "2026-05-01" }, [])).toBe("waived");
+    expect(missedResolutionStatus(c, "2026-05-01", undefined, v)).toBe("made_up");
+  });
+  it("stationsInitializedAt แบบ timestamptz → เดือนตามเวลาไทย", () => {
+    expect(trackingStartMonth({ ...c, stationsInitializedAt: "2026-03-31T18:00:00Z" })).toBe("2026-04");
+    expect(trackingStartMonth({ ...c, stationsInitializedAt: "2026-03-31T16:00:00+00:00" })).toBe("2026-03");
   });
 });
