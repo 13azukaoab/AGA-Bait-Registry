@@ -670,6 +670,7 @@ tfoot td{padding:10px 12px;font-weight:700;background:var(--surface-2);border-to
       <div class="stats">
         <div class="stat danger"><div class="lab"><span class="dot" style="background:var(--danger)"></span> ยังไม่กรอกข้อมูล</div><div class="val num">18</div><div class="sub">อาจบริการแล้วแต่ยังไม่กรอก</div></div>
         <div class="stat warn"><div class="lab"><span class="dot" style="background:var(--warn)"></span> สัญญาใกล้หมด (≤90 วัน)</div><div class="val num">7</div><div class="sub">ควรติดต่อต่อสัญญา</div></div>
+        <div class="stat danger" id="msStat"></div>
         <div class="stat accent"><div class="lab"><span class="dot" style="background:var(--accent)"></span> กล่องเหยื่อรอถอด</div><div class="val num">12</div><div class="sub">พบปลวกตายแล้ว · รอถอด</div></div>
         <div class="stat ok"><div class="lab"><span class="dot" style="background:var(--ok)"></span> เหยื่อที่ใช้เดือนนี้ (AG)</div><div class="val num" style="font-size:22px">8,750 ก.</div><div class="sub">เหยื่อ NEMESIS · ทุกสาขา</div></div>
         <div class="stat"><div class="lab"><span class="dot" style="background:var(--tier-l)"></span> ไม้ล่อที่เปลี่ยนเดือนนี้</div><div class="val num">1,240 ชิ้น</div><div class="sub">IG 520 จุด×2 + IC 200 จุด×1</div></div>
@@ -2594,6 +2595,7 @@ function msRenderTodo(){
   var can=msCan(),rows=MS.filter(function(it){var s=msState(it).s;return s==='pending'||s==='failed'||s==='makeup'});
   rows.sort(function(a,b){var o={pending:0,failed:0,makeup:1};return o[msState(a).s]-o[msState(b).s]});
   var need=rows.filter(function(it){return msState(it).s!=='makeup'}).length;
+  var stc=$('msStat');if(stc){stc.className='stat '+(need?'danger':'ok');stc.innerHTML='<div class="lab"><span class="dot" style="background:var(--'+(need?'danger':'ok')+')"></span> ตกบริการรอตัดสิน</div><div class="val num">'+need+'</div><div class="sub">ชดเชยแล้วรอไปบริการ '+(rows.length-need)+' ราย</div>'}
   var h='<div class="msbox'+(need?'':' empty-ok')+'"><h3><span class="dot" style="background:var(--'+(need?'danger':'ok')+')"></span> ตกบริการรอตัดสิน <span class="count badge-danger">'+need+'</span><span style="font-size:12px;font-weight:400;color:var(--fg-muted)">ตัดสินว่าจะชดเชยหรือไม่ · ชดเชยแล้วรอไปบริการ '+(rows.length-need)+' ราย</span>'+(can?'':'<span style="margin-left:auto;font-size:12px;font-weight:400;color:var(--fg-muted)">ดูอย่างเดียว (admin)</span>')+'</h3>';
   if(!rows.length)h+='<div class="msnote">ไม่มีเดือนที่ตกบริการค้างตัดสิน</div>';
   rows.forEach(function(it){
