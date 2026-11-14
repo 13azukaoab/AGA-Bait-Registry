@@ -364,6 +364,9 @@ tfoot td{padding:10px 12px;font-weight:700;background:var(--surface-2);border-to
 .cust .main b{display:block;font-size:13.5px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .cust .main small{display:block;font-size:11.5px;color:var(--fg-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .cust .tags{display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex:none}
+.mo{display:inline-block;margin-top:3px;font-size:10.5px;font-weight:600;padding:0 7px;border-radius:5px;border:1px solid;background:transparent;white-space:nowrap}
+.mo.new{color:var(--accent-strong);border-color:var(--accent)}
+.mo.renew{color:var(--ok);border-color:var(--ok)}
 .agtag{font-size:10.5px;font-weight:600;padding:1px 7px;border-radius:5px;background:var(--warn-soft);color:var(--warn)}
 .empty{padding:22px 14px;text-align:center;color:var(--fg-muted);font-size:13px}
 
@@ -1372,6 +1375,9 @@ var CUSTOMERS=[];
   add('หจก. รุ่งเรืองพาณิชย์','CT25-0000077','m1','นครปฐม','B',10,4,[[1,1,'track']]);
   add('รีสอร์ทหาดทรายทอง','CT26-0000305','l3','หัวหิน','A',30,10,[[1,3,'track']]);
   add('ร้านอาหารทะเลสดใหม่','CT26-0000312','s1','หัวหิน','B',6,2);
+  /* ลูกค้า New / Renew "เดือนนี้" (ข้อมูลสมมติ) — หน้าจริงคำนวณจากวันเริ่มสัญญา + ชนิดสัญญา */
+  var MO={'บ้านพักคุณมาลี ศรีสวัสดิ์':'new','คลินิกทันตกรรมยิ้มสดใส':'new','ร้านอาหารสวนครัวป้าแดง':'new','โรงแรมบ้านสวนรีสอร์ท':'renew','หจก. ทรัพย์เจริญ':'renew','บมจ. สยามพัฒนาเฮ้าส์':'renew'};
+  CUSTOMERS.forEach(function(c){if(MO[c.name]) c.mo=MO[c.name]});
 })();
 
 function $(id){return document.getElementById(id)}
@@ -1448,7 +1454,8 @@ function pkRender(p){
     list.innerHTML=items.map(function(c){
       var tags=tierBadge(c.tier)+(c.ag.length?'<span class="agtag">AG '+c.ag.length+'</span>':'')+((svc&&c.done&&(searching||p.view!=='done'))?'<span class="chip ok">กรอกแล้ว</span>':'');
       return '<button type="button" class="cust'+(p.sel===c.id?' sel':'')+'" data-id="'+c.id+'"'+(p.sel===c.id?' aria-current="true"':'')+'>'+
-        '<span class="main"><b>'+esc(c.name)+'</b><small>'+esc(c.ct)+' · ทีม '+c.team+(svc?' · '+(c.fresh?'รอระบุจำนวนสถานี':'IG '+c.ig+' / IC '+c.ic):'')+'</small></span><span class="tags">'+tags+'</span></button>';
+        '<span class="main"><b>'+esc(c.name)+'</b><small>'+esc(c.ct)+' · ทีม '+c.team+(svc?' · '+(c.fresh?'รอระบุจำนวนสถานี':'IG '+c.ig+' / IC '+c.ic):'')+'</small>'+
+        (c.mo?'<span class="mo '+c.mo+'">'+(c.mo==='new'?'New':'Renew')+' เดือนนี้</span>':'')+'</span><span class="tags">'+tags+'</span></button>';
     }).join('');
   }
   [].forEach.call(document.querySelectorAll('#'+p.id+'Left [data-view]'),function(b){b.setAttribute('aria-pressed',b.dataset.view===p.view?'true':'false')});
