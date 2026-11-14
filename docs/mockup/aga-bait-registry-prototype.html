@@ -445,6 +445,10 @@ tfoot td{padding:10px 12px;font-weight:700;background:var(--surface-2);border-to
 .tmbr{background:none;border:1px solid var(--border-strong);color:var(--accent);border-radius:999px;padding:3px 10px;font:inherit;font-size:12.5px;cursor:pointer;min-height:28px}
 .tmbr[aria-expanded="true"]{background:var(--accent-soft)}
 .tmsub td{background:var(--surface-2);font-size:12.5px;color:var(--fg-muted)}
+.tmmcell{min-width:210px;max-width:260px;padding:6px 12px}
+.tmmc{display:flex;align-items:center;gap:6px;justify-content:space-between}
+.tmmc .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12.5px;color:var(--danger);font-weight:600;text-align:left}
+.tmmc .tmnbtn{width:30px;height:30px}
 .tmnote{display:flex;align-items:center;gap:10px;padding:5px 0;border-top:1px dashed var(--border);font-size:13px}.tmnote:first-child{border-top:0}
 .tmnote b{white-space:nowrap}.tmntxt{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--fg-muted);font-size:12.5px}.tmntxt.none{color:var(--fg-faint);font-style:italic}
 .tmnbtn{flex:none;width:36px;height:36px;display:inline-flex;align-items:center;justify-content:center;border:1px solid var(--border-strong);border-radius:8px;background:var(--surface);color:var(--fg-muted);cursor:pointer}
@@ -711,7 +715,7 @@ tfoot td{padding:10px 12px;font-weight:700;background:var(--surface-2);border-to
         <h3><span class="dot" style="background:var(--accent)"></span> สรุปรายทีม · ต.ค. 2026 <small>เวลาบริการ · ตกบริการ · ลูกค้าเพิ่ม (ข้อมูลสมมติ)</small></h3>
         <div class="tmk" id="tmKpi"></div>
         <div class="tablewrap"><table>
-          <thead><tr><th>ทีม</th><th>เขต · สาขา</th><th>เวลาบริการ (รวม · เฉลี่ยต่อราย)</th><th class="c">เข้าบริการ (ทำแล้ว/ทั้งหมด)</th><th class="c">ตกบริการ (ต.ค.)</th><th class="c">New</th><th class="c">Renew</th></tr></thead>
+          <thead><tr><th>ทีม</th><th>เขต · สาขา</th><th>เวลาบริการ (รวม · เฉลี่ยต่อราย)</th><th class="c">เข้าบริการ (ทำแล้ว/ทั้งหมด)</th><th>ตกบริการ (ต.ค.) · หมายเหตุ</th><th class="c">New</th><th class="c">Renew</th></tr></thead>
           <tbody id="tmBody"></tbody>
         </table></div>
       </div>
@@ -2807,11 +2811,18 @@ var TM=[
   {team:'ทีม D',zone:'เขต 2',br:'สาทร',min:1890,visits:28,plan:50,newc:0,renew:1,miss:[]},
   {team:'ทีม E',zone:'เขต 2',br:'นนทบุรี',min:2160,visits:44,plan:48,newc:1,renew:0,miss:[{n:'ร้านกาแฟบ้านไร่'}]},
   /* ตัวอย่าง 1 ทีมวิ่งหลายสาขา (เขต 2 มี 4 สาขา + ข้ามไปช่วยปทุมธานี เขต 3) · ยอดทีม = ผลรวมทุกสาขา · นับไว้ใต้เขตบ้านของทีม (รอเจ้าของตัดสิน) */
-  {team:'ทีม F',zone:'เขต 2',br:'หลายสาขา',min:3300,visits:58,plan:70,newc:2,renew:1,miss:[{n:'โรงงานสยามฟู้ด'}],
+  {team:'ทีม F',zone:'เขต 2',br:'หลายสาขา',min:3300,visits:58,plan:70,newc:2,renew:1,miss:[{n:'โรงงานสยามฟู้ด',br:'ปทุมวัน'}],
    brs:[{br:'สาทร',min:900,visits:16,plan:18},{br:'ปทุมวัน',min:780,visits:14,plan:16,miss:1},{br:'พระราม 4',min:600,visits:10,plan:14},{br:'นนทบุรี',min:540,visits:10,plan:12},{br:'ปทุมธานี',zone:'เขต 3',min:480,visits:8,plan:10}]}
 ];
 var tmOpen={},tmBr={};
 function tmHm(m){return Math.floor(m/60)+':'+('0'+(m%60)).slice(-2)}
+/* ช่องตกบริการ: แสดงชื่อลูกค้าที่ตก + ไอคอนหมายเหตุในช่องเลย (ไม่ต้องกางรายการ) · br = กรองเฉพาะลูกค้าของสาขานั้น */
+function tmMissCell(i,br){
+  var t=TM[i],out='',n=0;
+  t.miss.forEach(function(x,k){if(br&&x.br!==br)return;n++;var has=!!(x.note&&x.note.trim());
+    out+='<div class="tmmc"><span class="nm" title="'+esc(x.n)+(has?' — '+esc(x.note):'')+'">'+esc(x.n)+'</span><button type="button" class="tmnbtn'+(has?' has':'')+'" data-tmnote="'+i+'_'+k+'" aria-label="'+(has?'ดู/แก้':'เพิ่ม')+'หมายเหตุตกบริการ '+esc(x.n)+'" title="'+(has?esc(x.note):'เพิ่มหมายเหตุ')+'"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/>'+(has?'<path d="M8 9h8M8 12h5"/>':'<path d="M12 8v5M9.5 10.5h5"/>')+'</svg></button></div>'});
+  return n?out:'<span class="tmmiss zero">0</span>';
+}
 function tmRender(){
   var body=$('tmBody');if(!body)return;
   var tMin=0,tV=0,tNew=0,tRen=0,tMiss=0,max=0;
@@ -2831,22 +2842,22 @@ function tmRender(){
     var zm=0,zv=0,zp=0,zmi=0,zn=0,zr=0,brs={};
     z.items.forEach(function(i){var t=TM[i];zm+=t.min;zv+=t.visits;zp+=t.plan;zmi+=t.miss.length;zn+=t.newc;zr+=t.renew;(t.brs||[{br:t.br}]).forEach(function(x){if(!x.zone)brs[x.br]=1})});
     z.items.forEach(function(i){
-      var t=TM[i],n=t.miss.length,op=!!tmOpen[i]&&n>0,pct=max?Math.round(t.min*100/max):0,dp=Math.round(t.visits*100/t.plan);
+      var t=TM[i],pct=max?Math.round(t.min*100/max):0,dp=Math.round(t.visits*100/t.plan);
       var bo=!!tmBr[i]&&t.brs,bcell=t.brs?'<button type="button" class="tmbr" data-tmb="'+i+'" aria-expanded="'+!!bo+'">'+t.brs.length+' สาขา '+(bo?'▾':'▸')+'</button>':esc(t.zone)+' · '+esc(t.br);
       h+='<tr><td><b>'+esc(t.team)+'</b></td><td>'+bcell+'</td>'+
          '<td><span class="num">'+Math.floor(t.min/60)+' ชม. '+(t.min%60)+' นาที</span> <span style="color:var(--fg-muted)">· เฉลี่ย '+tmHm(Math.round(t.min/t.visits))+'</span><div class="tmbar" aria-hidden="true"><i style="width:'+pct+'%"></i></div></td>'+
          '<td class="c"><span class="num"><b>'+t.visits+'</b>/'+t.plan+' ราย</span><div class="tmbar" style="min-width:80px" role="img" aria-label="ทำแล้ว '+dp+'%"><i style="width:'+dp+'%;background:var(--ok)"></i></div></td>'+
-         '<td class="c">'+(n?'<button type="button" class="tmmiss" data-tm="'+i+'" aria-expanded="'+op+'" aria-controls="tmDet'+i+'">'+n+' ราย '+(op?'▾':'▸')+'</button>':'<span class="tmmiss zero">0</span>')+'</td>'+
+         '<td class="tmmcell">'+tmMissCell(i)+'</td>'+
          '<td class="c num">'+t.newc+'</td><td class="c num">'+t.renew+'</td></tr>';
       if(bo)t.brs.forEach(function(x){var p=Math.round(x.visits*100/x.plan);
         h+='<tr class="tmsub"><td></td><td>└ '+esc(x.br)+''+'</td><td class="num">'+Math.floor(x.min/60)+' ชม. '+(x.min%60)+' นาที</td>'+
-           '<td class="c num">'+x.visits+'/'+x.plan+' ราย <span style="color:var(--fg-muted)">('+p+'%)</span></td><td class="c num">'+(x.miss||0)+'</td><td></td><td></td></tr>'});
-      if(op)h+='<tr class="tmdet" id="tmDet'+i+'"><td colspan="7">'+t.miss.map(function(x,k){var has=!!(x.note&&x.note.trim());return '<div class="tmnote"><b>'+esc(x.n)+'</b><span class="tmntxt'+(has?'':' none')+'" title="'+esc(x.note||'')+'">'+(has?esc(x.note):'ยังไม่มีหมายเหตุ')+'</span>'+'<button type="button" class="tmnbtn'+(has?' has':'')+'" data-tmnote="'+i+'_'+k+'" aria-label="'+(has?'ดู/แก้':'เพิ่ม')+'หมายเหตุตกบริการ '+esc(x.n)+'" title="'+(has?'ดู/แก้หมายเหตุ':'เพิ่มหมายเหตุ')+'">'+'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/>'+(has?'<path d="M8 9h8M8 12h5"/>':'<path d="M12 8v5M9.5 10.5h5"/>')+'</svg></button></div>'}).join('')+'</td></tr>';
+           '<td class="c num">'+x.visits+'/'+x.plan+' ราย <span style="color:var(--fg-muted)">('+p+'%)</span></td><td class="tmmcell">'+tmMissCell(i,x.br)+'</td><td></td><td></td></tr>'});
+
     });
   });
   body.innerHTML=h;
 }
-document.addEventListener('click',function(e){var nb3=e.target.closest&&e.target.closest('[data-tmnote]');if(nb3){var q=nb3.getAttribute('data-tmnote').split('_'),xx=TM[+q[0]].miss[+q[1]],cn=msCan();msDlgOpen('<h3 id="msT" style="margin:0 0 4px;font-size:16px">หมายเหตุตกบริการ</h3><div class="lab">'+esc(xx.n)+' · '+esc(TM[+q[0]].team)+' · ต.ค. 2026</div>'+'<div class="field"><label for="tmNote">ตกบริการเพราะอะไร</label><textarea id="tmNote" maxlength="200" placeholder="เช่น ลูกค้าปิดอาคาร / ติดต่อไม่ได้"'+(cn?'':' disabled')+'>'+esc(xx.note||'')+'</textarea>'+(xx.by?'<span class="lab">บันทึกล่าสุดโดย '+esc(xx.by)+'</span>':'')+'</div>'+'<div class="acts"><button class="btn" data-ms="close">'+(cn?'ยกเลิก':'ปิด')+'</button>'+(cn?'<button class="btn primary" data-tmsave="'+q[0]+'_'+q[1]+'">บันทึก</button>':'')+'</div>',nb3);return}var sv=e.target.closest&&e.target.closest('[data-tmsave]');if(sv){var p=sv.getAttribute('data-tmsave').split('_'),x=TM[+p[0]].miss[+p[1]],inp=$('tmNote');x.note=inp.value.trim();msDlgClose(true);x.by=({host:'Host',recorder:'หัวหน้างาน'}[msRole()]||msRole())+' · '+msDateTh(TODAY_ISO);tmRender();toast('บันทึกหมายเหตุตกบริการแล้ว');var n2=document.querySelector('[data-tmnote="'+p[0]+'_'+p[1]+'"]');if(n2)n2.focus();return}var bb=e.target.closest&&e.target.closest('[data-tmb]');if(bb){var j=bb.getAttribute('data-tmb');tmBr[j]=!tmBr[j];tmRender();var nb2=document.querySelector('[data-tmb="'+j+'"]');if(nb2)nb2.focus();return}var b=e.target.closest&&e.target.closest('[data-tm]');if(!b)return;var i=b.getAttribute('data-tm');tmOpen[i]=!tmOpen[i];tmRender();var nb=document.querySelector('[data-tm="'+i+'"]');if(nb)nb.focus()});
+document.addEventListener('click',function(e){var nb3=e.target.closest&&e.target.closest('[data-tmnote]');if(nb3){var q=nb3.getAttribute('data-tmnote').split('_'),xx=TM[+q[0]].miss[+q[1]],cn=msCan();msDlgOpen('<h3 id="msT" style="margin:0 0 4px;font-size:16px">หมายเหตุตกบริการ</h3><div class="lab">'+esc(xx.n)+' · '+esc(TM[+q[0]].team)+' · ต.ค. 2026</div>'+'<div class="field"><label for="tmNote">ตกบริการเพราะอะไร</label><textarea id="tmNote" maxlength="200" placeholder="เช่น ลูกค้าปิดอาคาร / ติดต่อไม่ได้"'+(cn?'':' disabled')+'>'+esc(xx.note||'')+'</textarea>'+(xx.by?'<span class="lab">บันทึกล่าสุดโดย '+esc(xx.by)+'</span>':'')+'</div>'+'<div class="acts"><button class="btn" data-ms="close">'+(cn?'ยกเลิก':'ปิด')+'</button>'+(cn?'<button class="btn primary" data-tmsave="'+q[0]+'_'+q[1]+'">บันทึก</button>':'')+'</div>',nb3);return}var sv=e.target.closest&&e.target.closest('[data-tmsave]');if(sv){var p=sv.getAttribute('data-tmsave').split('_'),x=TM[+p[0]].miss[+p[1]],inp=$('tmNote');x.note=inp.value.trim();msDlgClose(true);x.by=({host:'Host',recorder:'หัวหน้างาน'}[msRole()]||msRole())+' · '+msDateTh(TODAY_ISO);tmRender();toast('บันทึกหมายเหตุตกบริการแล้ว');var n2=document.querySelector('[data-tmnote="'+p[0]+'_'+p[1]+'"]');if(n2)n2.focus();return}var bb=e.target.closest&&e.target.closest('[data-tmb]');if(bb){var j=bb.getAttribute('data-tmb');tmBr[j]=!tmBr[j];tmRender();var nb2=document.querySelector('[data-tmb="'+j+'"]');if(nb2)nb2.focus();return}});
 tmRender();
 function goHash(){ var h=location.hash.slice(1); if(SCREENS.indexOf(h)>=0) go(h); }
 initEntryPages();
