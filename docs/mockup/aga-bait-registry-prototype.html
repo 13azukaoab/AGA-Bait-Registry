@@ -502,6 +502,9 @@ tfoot td{padding:10px 12px;font-weight:700;background:var(--surface-2);border-to
 .msrow .acts{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
 .msnote{padding:9px 14px;border-top:1px solid var(--border);font-size:12px;color:var(--fg-muted)}
 @media (max-width:860px){.msrow{grid-template-columns:1fr}.msrow .acts{justify-content:flex-start}}
+.msclosed{border-top:1px solid var(--border);background:var(--surface-2)}
+.msclbtn{display:block;width:100%;text-align:left;background:none;border:0;padding:10px 14px;min-height:40px;font:inherit;font-size:12.5px;color:var(--fg-muted);cursor:pointer}
+.msclbtn:hover{color:var(--accent)}
 .msbox.empty-ok{border-color:var(--border)}
 .msbox.empty-ok>h3{background:var(--surface-2)}
 .msdlg textarea{width:100%;min-width:0;font-family:inherit;font-size:13px;color:var(--fg);background:var(--surface);border:1px solid var(--border-strong);border-radius:8px;padding:6px 10px;min-height:70px;resize:vertical}
@@ -2619,7 +2622,9 @@ function exportSummaryXL(){
    สรุป logic (ข้อมูลทั้งหมดในไฟล์นี้เป็นข้อมูลสมมติ — ของจริงอ่านจากตาราง missed_service_resolutions / stations)
    • DECISIONS 2.45 (15 พ.ย. 2026): ไม่เลือกเดือนชดเชยล่วงหน้า · บันทึก "บริการชดเชย" ตอนไปทำจริงเท่านั้น
    • MS = เดือนที่ตกบริการ 1 แถว/เดือน/สัญญา · res ว่าง = รอตัดสิน · res.kind 'done' (บันทึกบริการชดเชยแล้ว) หรือ 'waived' (เหตุผลบังคับ + ยืนยัน)
-   • สถานะเหลือ 3 แบบ (ชุดเดียวกับ customer-detail): รอตัดสิน / ชดเชยแล้ว / ไม่ชดเชย · สัญญายกเลิก (cancelled) ไม่มีปุ่ม
+   • สถานะ 4 แบบ (ชุดเดียวกับ customer-detail): รอตัดสิน / ชดเชยแล้ว / ไม่ชดเชย / โมฆะ (ต่อสัญญาแล้ว) · สัญญายกเลิก (cancelled) ไม่มีปุ่ม
+   • 2.47: สัญญาที่ต่อแล้ว (renewed) → เรื่องที่ค้าง = โมฆะ อัตโนมัติ ไม่มีปุ่ม/เหตุผล · ไม่ขึ้นใน #todo · ไม่มีแถวรอชดเชยใน #service (ที่ชดเชยไปแล้วก่อนต่อคงไว้)
+   • 2.46: "ไม่ชดเชย" เปิดเรื่องกลับได้ (หัวหน้างาน + Host · กล่องยืนยัน · ลง audit) → กลับเป็นรอตัดสิน — ปุ่มอยู่ในส่วน "เรื่องที่ปิดแล้ว" ท้ายกล่องใน #todo
    • หน้าลงข้อมูลบริการแสดงแถว "รอชดเชย <เดือนที่ตก>" ทุกเดือนจนกว่าจะปิดเรื่อง (รวมสัญญาที่จบแล้ว) → บันทึกแล้วผูกกับเดือนที่ตกอัตโนมัติ
    • สิทธิ์: host + recorder กดได้ · admin ดูอย่างเดียว (ปุ่มปิด) — ของจริงบังคับที่ RLS
    • CL = รอเก็บสถานีหลังหมดสัญญา: นับเฉพาะ IG · IC มอบให้ลูกค้า · ปิดสัญญาได้แม้ IG ยังไม่เก็บ · IG ที่เหลือคงอยู่จนกด "เก็บแล้ว"/"ไม่เก็บ"(เหตุผลบังคับ+ยืนยัน) */
@@ -2636,14 +2641,17 @@ var MS=[
   {n:4,id:'m4',br:'พุทธมณฑล',name:'หจก. ทรัพย์เจริญ',ct:'CT26-0000203',end:'2026-12-31',missed:'2026-07',res:{kind:'done',date:'2026-09-15'}},
   {n:5,id:'m5',br:'พุทธมณฑล',name:'บจก. เมโทรแวร์เฮ้าส์',ct:'CT25-0000333',end:'2026-09-30',missed:'2026-03',res:null},
   {n:6,id:'m6',br:'พุทธมณฑล',name:'ร้านเสริมสวยบ้านดอกไม้',ct:'CT26-0000266',end:'2026-09-06',missed:'2026-08',res:null,cancelled:true},
-  {n:7,id:'m7',br:'นครปฐม',name:'หจก. สยามการช่าง',ct:'CT24-0000190',end:'2025-07-31',missed:'2025-06',res:null}   /* ตัวอย่างเลยเพดาน 12 เดือนหลังสัญญาจบ */
+  {n:7,id:'m7',br:'นครปฐม',name:'หจก. สยามการช่าง',ct:'CT24-0000190',end:'2025-07-31',missed:'2025-06',res:null},   /* ตัวอย่างเลยเพดาน 12 เดือนหลังสัญญาจบ */
+  {n:8,id:'m8',br:'พุทธมณฑล',name:'หจก. ทรัพย์เจริญ',ct:'CT26-0000203',end:'2026-12-31',missed:'2026-08',res:null,renewed:true},   /* 2.47 ตัวอย่างต่อสัญญาแล้ว → โมฆะ (ไม่นับใน #todo) */
+  {n:9,id:'m9',br:'พุทธมณฑล',name:'อาคารชุดลุมพินีวิว',ct:'CT23-0000041',end:'2026-12-31',missed:'2026-02',res:{kind:'waived',reason:'ลูกค้ายินยอม ปิดปรับปรุงอาคารทั้งเดือน',by:'recorder'}}   /* 2.46 ตัวอย่างไม่ชดเชย → เปิดเรื่องกลับได้ */
 ];
 /* เพดานชดเชย (DECISIONS 2.45 · 12 เดือนหลังสัญญาจบ): เลยแล้ว หัวหน้างานบันทึกบริการชดเชยไม่ได้ · Host บันทึกได้ (อนุญาตกรณีพิเศษ) · "ไม่ชดเชย" กดได้ตามปกติ */
 var MS_CAP_MONTHS=12;
 function msCapMonth(it){var y=+it.end.slice(0,4),m=+it.end.slice(5,7)+MS_CAP_MONTHS;y+=Math.floor((m-1)/12);m=(m-1)%12+1;return y+'-'+(m<10?'0':'')+m}
 function msOverCap(it){return !it.cancelled&&MS_CUR>msCapMonth(it)}
-function msState(it){var r=it.res;if(!r)return {s:'pending'};return {s:r.kind==='waived'?'waived':'done'}}
-var MS_LAB={pending:['รอตัดสิน','miss'],done:['ชดเชยแล้ว','ok'],waived:['ไม่ชดเชย','na']};
+function msState(it){var r=it.res;if(r&&r.kind==='done')return {s:'done'};if(it.renewed)return {s:'void'};if(!r)return {s:'pending'};return {s:'waived'}}   /* ชดเชยก่อนต่อสัญญาคงไว้ · ที่เหลือของสัญญาที่ต่อแล้ว = โมฆะ */
+var MS_LAB={pending:['รอตัดสิน','miss'],done:['ชดเชยแล้ว','ok'],waived:['ไม่ชดเชย','na'],void:['โมฆะ (ต่อสัญญาแล้ว)','done']};
+var msShowClosed=false;
 function msText(st){return MS_LAB[st.s][0]}
 function msOpen(it){return msState(it).s==='pending'&&!it.cancelled}   /* เรื่องที่ยังต้องปิด (ไม่นับสัญญายกเลิก) */
 function msFind(id){for(var i=0;i<MS.length;i++){if(MS[i].id===id)return MS[i]}return null}
@@ -2677,6 +2685,18 @@ function msRenderTodo(){
     h+='<div class="msrow"><div class="main"><b>'+esc(it.name)+'</b><small>สาขา'+esc(it.br)+' · '+esc(it.ct)+' · ตกบริการ '+msMonthTh(it.missed)+'</small></div>'+
        '<div class="st"><span class="chip '+(it.cancelled?'na':lab[1])+'">'+(it.cancelled?'สัญญายกเลิก':esc(msText(st)))+'</span>'+(over?' <span class="chip na">เลยเพดาน</span>':'')+'<small>'+esc(sub)+'</small></div><div class="acts">'+acts+'</div></div>';
   });
+  /* ส่วน "เรื่องที่ปิดแล้ว" (พับไว้) · ไม่ชดเชย มีปุ่มเปิดเรื่องกลับ · โมฆะ/ชดเชยแล้ว ดูอย่างเดียว */
+  var closed=MS.filter(function(it){var x=msState(it).s;return x==='waived'||x==='void'||x==='done'});
+  if(closed.length){
+    h+='<div class="msclosed"><button type="button" class="msclbtn" data-ms="toggleclosed" aria-expanded="'+msShowClosed+'">เรื่องที่ปิดแล้ว '+closed.length+' ราย (ไม่ชดเชย · ชดเชยแล้ว · โมฆะ) '+(msShowClosed?'▾':'▸')+'</button>';
+    if(msShowClosed)closed.forEach(function(it){
+      var st=msState(it),lab=MS_LAB[st.s],sub=st.s==='waived'?'เหตุผล: '+(it.res.reason||'-'):st.s==='void'?'ต่อสัญญาแล้ว — เรื่องค้างของสัญญาเก่าเป็นโมฆะอัตโนมัติ':'บันทึกบริการชดเชย '+msDateTh(it.res.date);
+      h+='<div class="msrow"><div class="main"><b>'+esc(it.name)+'</b><small>สาขา'+esc(it.br)+' · '+esc(it.ct)+' · ตกบริการ '+msMonthTh(it.missed)+'</small></div>'+
+         '<div class="st"><span class="chip '+lab[1]+'">'+esc(lab[0])+'</span><small>'+esc(sub)+'</small></div>'+
+         '<div class="acts">'+(st.s==='waived'?'<button class="btn sm" data-ms="reopen" data-id="'+it.id+'"'+(can?'':' disabled title="admin ดูอย่างเดียว"')+'>เปิดเรื่องกลับ</button>':'')+'</div></div>';
+    });
+    h+='</div>';
+  }
   host.innerHTML=h+'</div>';
 }
 function msOpenWaive(it,opener){
@@ -2732,7 +2752,7 @@ function clN(r){var n=+($('clN').value);if(!(n>=1&&n<=clRem(r)&&n%1===0)){msErr(
 function svSyncMakeup(){
   for(var i=CUSTOMERS.length-1;i>=0;i--){if(CUSTOMERS[i].mkOf)CUSTOMERS.splice(i,1)}
   MS.forEach(function(it){
-    var r=it.res;if(it.cancelled)return;
+    var r=it.res;if(it.cancelled||msState(it).s==='void')return;   /* 2.47 ต่อสัญญาแล้ว = โมฆะ ไม่มีแถวรอชดเชย */
     var doneNow=r&&r.kind==='done'&&r.date.slice(0,7)===MS_CUR;     /* บันทึกชดเชยเดือนนี้แล้ว → แถวยังอยู่ (กรอกแล้ว) จนจบเดือน */
     if(r&&!doneNow)return;
     var base=null;CUSTOMERS.forEach(function(c){if(c.ct===it.ct&&!c.mkOf)base=c});if(!base)return;
@@ -2769,8 +2789,14 @@ document.addEventListener('click',function(e){
     if(e.target.closest('a,button'))return;var b=t.querySelector('.main b');if(b)location.href=custHref(b.textContent,[].indexOf.call(t.parentNode.children,t));return}
   var a=t.dataset.ms,id=t.dataset.id,it=id&&msFind(id);
   if(a==='close'){msDlgClose();return}
+  if(a==='toggleclosed'){msShowClosed=!msShowClosed;msRenderTodo();var tb=document.querySelector('[data-ms="toggleclosed"]');if(tb)tb.focus();return}
+  if(a==='reopen'&&it&&msCan()&&msState(it).s==='waived'){
+    msDlgOpen('<h3 id="msT" style="margin:0 0 4px;font-size:16px">เปิดเรื่องกลับ — ตกบริการ '+msMonthTh(it.missed)+'</h3><div class="lab">'+esc(it.name)+' · สัญญา '+esc(it.ct)+'</div>'+
+      '<p style="margin:8px 0 0">เรื่องนี้ปิดไว้เป็น "ไม่ชดเชย" (เหตุผล: '+esc(it.res.reason||'-')+') · เปิดกลับแล้วจะเป็น <b>รอตัดสิน</b> และขึ้นแถว "รอชดเชย" ในหน้าลงข้อมูลบริการอีกครั้ง · บันทึกลง audit_log</p>'+
+      '<div class="acts"><button class="btn" data-ms="close">ยกเลิก</button><button class="btn primary" data-ms="doreopen" data-id="'+it.id+'">ยืนยัน เปิดเรื่องกลับ</button></div>',t);return}
+  if(a==='doreopen'&&it){it.res=null;msDlgClose(true);msRenderTodo();svSyncMakeup();clRender();toast('เปิดเรื่องกลับแล้ว — '+it.name+' ตกบริการ '+msMonthTh(it.missed)+' กลับเป็นรอตัดสิน (ลง audit_log)');return}
   if(a==='waive'&&it){if(msCan()&&!it.cancelled)msOpenWaive(it,t);return}
-  if(a==='rec'&&it){if(msCan()&&!it.cancelled&&(!msOverCap(it)||msRole()==='host'))msGoMakeup(it);return}
+  if(a==='rec'&&it){if(msCan()&&!it.cancelled&&msState(it).s==='pending'&&(!msOverCap(it)||msRole()==='host'))msGoMakeup(it);return}
   if(a==='confirmw'&&it){
     var rs=$('msReason').value.trim();if(!rs){msErr('กรุณาพิมพ์เหตุผลที่ไม่ชดเชย');$('msReason').focus();return}
     $('msErr').hidden=true;$('msStep').innerHTML='<span class="lab" style="margin-right:auto">ปิดเรื่องเดือนนี้โดยไม่ชดเชย?</span><button class="btn" data-ms="backw" data-id="'+it.id+'">กลับไปแก้</button><button class="btn danger" data-ms="dow" data-id="'+it.id+'">ยืนยัน ไม่ชดเชย</button>';
