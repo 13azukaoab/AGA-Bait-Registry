@@ -1680,7 +1680,7 @@ function fheadHtml(c,posHtml,withContact){
     '<div class="sumchips" style="margin:0"><span class="chip na">สัญญา '+esc(c.ct)+'</span>'+
     (c.fresh?'<span class="chip pend">ยังไม่ระบุจำนวนสถานี</span>':'<span class="chip na num"><span class="sttype">IG</span> '+c.ig+'</span><span class="chip na num"><span class="sttype">IC</span> '+c.ic+'</span>')+
     '<span class="chip '+(agN?'pend':'na')+' num"><span class="sttype">AG</span> '+agN+(agN?' ค้างติดตาม':'')+'</span>'+
-    (c.makeupFor?'<span class="mkchip">บันทึกบริการชดเชย '+msMonthTh(c.makeupFor)+' · กรอกผลของวันที่ไปจริง · ผูกกับเดือนที่ตกอัตโนมัติ</span>':'')+'</div>'+
+    (c.makeupFor?'<span class="mkchip" style="white-space:normal;max-width:100%;border-radius:10px">บันทึกบริการชดเชย '+msMonthTh(c.makeupFor)+' · กรอกผลของวันที่ไปจริง · ผูกกับเดือนที่ตกอัตโนมัติ</span>':'')+'</div>'+
     (withContact?'<div id="ctInfoBox">'+ctInfoHtml(c)+'</div>':'')+'</div>';
 }
 function fieldsHtml(ctx,c,extra,bxDate){
@@ -2870,7 +2870,7 @@ function tmMonthAlert(){
     '<p class="lab" style="margin:0">กรอกให้ครบแล้วปิดเดือน หน้านี้จะเลื่อนไปเดือนถัดไปเอง</p>'+
     '<div class="acts">'+(msCan()?'<a href="month-closure.html" style="margin-right:auto;font-size:12.5px">ไปหน้าปิดเดือน</a><button class="btn" data-ms="close">ไว้ทีหลัง</button><button class="btn primary" onclick="msDlgClose(true);go(\'service\')">ไปกรอกข้อมูลต่อ</button>':'<button class="btn primary" data-ms="close">รับทราบ</button>')+'</div>',null);
 }
-var _goOrig=go;go=function(s){_goOrig(s);if(s==='todo')setTimeout(tmMonthAlert,250)};
+var _goOrig=go;go=function(s){_goOrig(s);if(s==='todo')setTimeout(function(){if(!$('s-todo').hidden)tmMonthAlert()},250)};
 function goHash(){ var h=location.hash.slice(1); if(SCREENS.indexOf(h)>=0) go(h); }
 initEntryPages();
 window.addEventListener('hashchange',goHash); goHash();
