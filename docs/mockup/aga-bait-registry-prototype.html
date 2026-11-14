@@ -2807,7 +2807,7 @@ var TM=[
   {team:'ทีม D',zone:'เขต 2',br:'สาทร',min:1890,visits:28,plan:50,newc:0,renew:1,miss:[]},
   {team:'ทีม E',zone:'เขต 2',br:'นนทบุรี',min:2160,visits:44,plan:48,newc:1,renew:0,miss:[{n:'ร้านกาแฟบ้านไร่'}]},
   /* ตัวอย่าง 1 ทีมวิ่งหลายสาขา (เขต 2 มี 4 สาขา + ข้ามไปช่วยปทุมธานี เขต 3) · ยอดทีม = ผลรวมทุกสาขา · นับไว้ใต้เขตบ้านของทีม (รอเจ้าของตัดสิน) */
-  {team:'ทีม F (ทีมกลาง)',zone:'เขต 2',br:'หลายสาขา',min:3300,visits:58,plan:70,newc:2,renew:1,miss:[{n:'โรงงานสยามฟู้ด'}],
+  {team:'ทีม F',zone:'เขต 2',br:'หลายสาขา',min:3300,visits:58,plan:70,newc:2,renew:1,miss:[{n:'โรงงานสยามฟู้ด'}],
    brs:[{br:'สาทร',min:900,visits:16,plan:18},{br:'ปทุมวัน',min:780,visits:14,plan:16,miss:1},{br:'พระราม 4',min:600,visits:10,plan:14},{br:'นนทบุรี',min:540,visits:10,plan:12},{br:'ปทุมธานี',zone:'เขต 3',min:480,visits:8,plan:10}]}
 ];
 var tmOpen={},tmBr={};
@@ -2839,7 +2839,7 @@ function tmRender(){
          '<td class="c">'+(n?'<button type="button" class="tmmiss" data-tm="'+i+'" aria-expanded="'+op+'" aria-controls="tmDet'+i+'">'+n+' ราย '+(op?'▾':'▸')+'</button>':'<span class="tmmiss zero">0</span>')+'</td>'+
          '<td class="c num">'+t.newc+'</td><td class="c num">'+t.renew+'</td></tr>';
       if(bo)t.brs.forEach(function(x){var p=Math.round(x.visits*100/x.plan);
-        h+='<tr class="tmsub"><td></td><td>└ '+esc(x.br)+(x.zone?' <span class="zsub">· '+esc(x.zone)+' (ข้ามเขต)</span>':'')+'</td><td class="num">'+Math.floor(x.min/60)+' ชม. '+(x.min%60)+' นาที</td>'+
+        h+='<tr class="tmsub"><td></td><td>└ '+esc(x.br)+''+'</td><td class="num">'+Math.floor(x.min/60)+' ชม. '+(x.min%60)+' นาที</td>'+
            '<td class="c num">'+x.visits+'/'+x.plan+' ราย <span style="color:var(--fg-muted)">('+p+'%)</span></td><td class="c num">'+(x.miss||0)+'</td><td></td><td></td></tr>'});
       if(op)h+='<tr class="tmdet" id="tmDet'+i+'"><td colspan="7">'+t.miss.map(function(x,k){var has=!!(x.note&&x.note.trim());return '<div class="tmnote"><b>'+esc(x.n)+'</b><span class="tmntxt'+(has?'':' none')+'" title="'+esc(x.note||'')+'">'+(has?esc(x.note):'ยังไม่มีหมายเหตุ')+'</span>'+'<button type="button" class="tmnbtn'+(has?' has':'')+'" data-tmnote="'+i+'_'+k+'" aria-label="'+(has?'ดู/แก้':'เพิ่ม')+'หมายเหตุตกบริการ '+esc(x.n)+'" title="'+(has?'ดู/แก้หมายเหตุ':'เพิ่มหมายเหตุ')+'">'+'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/>'+(has?'<path d="M8 9h8M8 12h5"/>':'<path d="M12 8v5M9.5 10.5h5"/>')+'</svg></button></div>'}).join('')+'</td></tr>';
     });
