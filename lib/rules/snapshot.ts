@@ -1,40 +1,25 @@
-import type {
-  BranchRef,
-  Contract,
-  MakeupSnapshotPolicy,
-  MissedServiceResolution,
-  SnapshotRow,
-  TierRule,
-  Visit,
-} from "./types";
+import type { BranchRef, Contract, SnapshotRow, TierRule, Visit } from "./types";
 import { annualValue, tierOf } from "./tier";
 import { serviceMonths } from "./serviceMonths";
 import { monthOf } from "./date";
-import { lastServiceMonth, makeupCountsInSnapshot } from "./missedResolution";
+import { lastServiceMonth } from "./missedResolution";
 import { isMissedService } from "./missedService";
 
 /**
- * M18 (DECISIONS 2.41 ②): ข้อมูลเดือนชดเชย (ไม่บังคับ — ไม่ส่ง = ผลเหมือนเดิมทุกประการ)
- * visits = การเข้าทั้งหมดของสัญญาเหล่านี้ (ใช้ตรวจว่าเดือนที่ตกยังตกจริง + การเข้าที่ผูก makeupForMonth)
- * ⚠ ตัวแปลงจาก DB: missed_month / makeup_month / makeup_for_month เก็บ 'YYYY-MM-01' → ต้องตัดเป็น 'YYYY-MM' ทุกช่อง
- */
-export interface SnapshotMakeupInput {
-  resolutions: MissedServiceResolution[];
-  visits: Visit[];
-  policy?: MakeupSnapshotPolicy;
-}
-
-/**
  * สร้างแถว snapshot รูปแบบ Dashboard (SPEC §7.6, §9.1) สำหรับ 1 สาขา × 1 เดือน
- * นับสัญญาเมื่อ: month อยู่ในเดือนบริการ หรือ (M18) month เป็นเดือนชดเชยหลังสัญญาจบ
- * · ไม่ถูกยกเลิกก่อน/ในเดือนนั้น · นับต่อสัญญาไม่เกิน 1 ครั้งต่อเดือน · Tier/มูลค่าเดิมของสัญญา
+ * นับสัญญาเมื่อ: month อยู่ในเดือนบริการ หรือ (M18 · DECISIONS 2.45) month อยู่หลังสัญญาจบ
+ * และมีการเข้าชดเชยจริงในเดือนนั้น · ไม่ถูกยกเลิกก่อน/ในเดือนนั้น · นับต่อสัญญาไม่เกิน 1 ครั้งต่อเดือน
+ * · Tier/มูลค่าเดิมของสัญญา
+ *
+ * visits (ไม่บังคับ — ไม่ส่ง = ผลเหมือนก่อน M18): การเข้าทั้งหมดของสัญญาเหล่านี้ ต้องมี makeupForMonth
+ * ('YYYY-MM' — ตัดจาก 'YYYY-MM-01' ของ DB) ใช้หาการเข้าชดเชย + ตรวจว่าเดือนที่ผูกยังตกจริง
  */
 export function buildBranchSnapshot(
   branch: BranchRef,
   contracts: Contract[],
   month: string,
   rules: TierRule[],
-  makeups?: SnapshotMakeupInput,
+  visits?: Visit[],
 ): SnapshotRow {
   const row: SnapshotRow = {
     area: branch.area,
@@ -46,19 +31,19 @@ export function buildBranchSnapshot(
   for (const c of contracts) {
     if (c.cancelledAt && monthOf(c.cancelledAt) <= month) continue;
     const inService = serviceMonths(c.startDate, c.termYears).includes(month);
-    // เดือนชดเชยในช่วงสัญญานับอยู่แล้ว ไม่นับซ้ำ · หลังสัญญาจบนับเมื่อมีการตัดสินชดเชยเดือนนี้
-    const isAfterEnd = month > lastServiceMonth(c);
+    // เดือนชดเชยในช่วงสัญญานับอยู่แล้ว ไม่นับซ้ำ · หลังสัญญาจบนับเมื่อมีการเข้าชดเชยจริงในเดือนนี้
     const countsAsMakeup =
       !inService &&
-      isAfterEnd &&
-      !!makeups &&
-      makeups.resolutions.some(
-        (r) =>
-          r.contractId === c.id &&
-          r.makeupMonth === month &&
-          // เดือนที่ตกต้องยัง "ตกจริง" ตอนคำนวณ (มี routine ภายหลัง = การตัดสินเดิมไม่มีผล)
-          isMissedService(c, r.missedMonth, makeups.visits) &&
-          makeupCountsInSnapshot(r, makeups.visits, makeups.policy),
+      !!visits &&
+      month > lastServiceMonth(c) &&
+      visits.some(
+        (v) =>
+          v.contractId === c.id &&
+          v.visitType === "routine" &&
+          !!v.makeupForMonth &&
+          monthOf(v.visitDate) === month &&
+          // เดือนที่ผูกต้องยัง "ตกจริง" (มี routine ปกติภายหลัง = การผูกนั้นไม่มีผล)
+          isMissedService(c, v.makeupForMonth, visits),
       );
     if (!inService && !countsAsMakeup) continue;
 

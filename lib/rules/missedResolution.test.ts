@@ -1,17 +1,23 @@
 import { describe, it, expect } from "vitest";
 import {
-  defaultMakeupMonth,
   lastServiceMonth,
+  linkedMakeupVisit,
   missedMonths,
   missedResolutionStatus,
   needsDecision,
-  makeupCountsInSnapshot,
+  trackingStartMonth,
 } from "./missedResolution";
 import { isMissedService } from "./missedService";
 import type { Contract, MissedServiceResolution, Visit } from "./types";
 
-// สัญญา 1/1–31/12/2026 บริการเดือนละครั้ง (ตัวอย่างจาก DECISIONS 2.41)
-const c: Contract = { id: "c1", startDate: "2026-01-01", termYears: 1, valueTotal: 24000 };
+// สัญญา 1/1–31/12/2026 บริการเดือนละครั้ง ตั้งสถานีในระบบ ม.ค. 2026 (ตัวอย่างจาก DECISIONS 2.41)
+const c: Contract = {
+  id: "c1",
+  startDate: "2026-01-01",
+  termYears: 1,
+  valueTotal: 24000,
+  stationsInitializedAt: "2026-01-05",
+};
 
 const routine = (date: string, makeupForMonth?: string): Visit => ({
   contractId: "c1",
@@ -20,7 +26,7 @@ const routine = (date: string, makeupForMonth?: string): Visit => ({
   ...(makeupForMonth ? { makeupForMonth } : {}),
 });
 
-const makeup = (missedMonth: string, makeupMonth: string): MissedServiceResolution => ({
+const madeUp = (missedMonth: string, makeupMonth: string): MissedServiceResolution => ({
   contractId: "c1",
   missedMonth,
   kind: "makeup",
@@ -36,6 +42,17 @@ describe("isMissedService + การเข้าชดเชย", () => {
   it("มิ.ย. มี 2 ครั้ง (ปกติ + ชดเชย) → มิ.ย. ไม่ตก", () => {
     const v = [routine("2026-06-03"), routine("2026-06-20", "2026-05")];
     expect(isMissedService(c, "2026-06", v)).toBe(false);
+  });
+});
+
+describe("trackingStartMonth (เกณฑ์ชั่วคราว: นับตกบริการตั้งแต่เดือนที่ตั้งสถานีในระบบ)", () => {
+  it("= เดือนที่ตั้งสถานี · ยังไม่ตั้งสถานี = null", () => {
+    expect(trackingStartMonth(c)).toBe("2026-01");
+    expect(trackingStartMonth({ ...c, stationsInitializedAt: "2026-03-20" })).toBe("2026-03");
+    expect(trackingStartMonth({ ...c, stationsInitializedAt: undefined })).toBeNull();
+  });
+  it("ตั้งสถานีก่อนเดือนเริ่มสัญญา → ใช้เดือนเริ่มสัญญา", () => {
+    expect(trackingStartMonth({ ...c, stationsInitializedAt: "2025-12-28" })).toBe("2026-01");
   });
 });
 
@@ -57,90 +74,66 @@ describe("missedMonths", () => {
     );
     expect(missedMonths(c, v, "2027-03")).toEqual(["2026-05"]);
   });
+  it("ไม่นับเดือนก่อนตั้งสถานีในระบบ (สัญญาเก่าที่นำเข้าไม่มีประวัติการเข้า)", () => {
+    const late = { ...c, stationsInitializedAt: "2026-04-02" };
+    const v = ["04", "06"].map((m) => routine(`2026-${m}-10`));
+    expect(missedMonths(late, v, "2026-07")).toEqual(["2026-05"]);
+  });
+  it("ยังไม่ตั้งสถานี → ไม่มีเดือนที่ตก", () => {
+    expect(missedMonths({ ...c, stationsInitializedAt: undefined }, [], "2026-07")).toEqual([]);
+  });
+  it("สัญญายกเลิก → ไม่มีเดือนที่ตก (ปิดเรื่องไม่ได้ จึงไม่แสดง)", () => {
+    expect(missedMonths({ ...c, cancelledAt: "2026-09-01" }, [], "2026-07")).toEqual([]);
+  });
 });
 
-describe("missedResolutionStatus (5 สถานะ)", () => {
-  it("ไม่มีการตัดสิน → pending (รอตัดสิน)", () => {
-    expect(missedResolutionStatus(c, "2026-05", undefined, [], "2026-07")).toBe("pending");
+describe("linkedMakeupVisit", () => {
+  it("หาการเข้า routine ของสัญญาเดียวกันที่ผูกกับเดือนที่ตก และอยู่หลังเดือนที่ตก", () => {
+    const v = routine("2027-01-12", "2026-05");
+    expect(linkedMakeupVisit("c1", "2026-05", [routine("2027-01-03"), v])).toBe(v);
+  });
+  it("สัญญาอื่น / ไม่ใช่ routine / ไม่หลังเดือนที่ตก → ไม่นับ", () => {
+    expect(linkedMakeupVisit("c1", "2026-05", [{ ...routine("2027-01-12", "2026-05"), contractId: "x" }])).toBeUndefined();
+    expect(
+      linkedMakeupVisit("c1", "2026-05", [{ ...routine("2027-01-12", "2026-05"), visitType: "problem" }]),
+    ).toBeUndefined();
+    expect(linkedMakeupVisit("c1", "2026-05", [routine("2026-05-20", "2026-05")])).toBeUndefined();
+  });
+});
+
+describe("missedResolutionStatus (3 สถานะ — DECISIONS 2.45)", () => {
+  it("ไม่มีการตัดสิน ไม่มีการเข้าชดเชย → pending (รอตัดสิน) · อยู่ในรายการต้องทำ", () => {
+    const s = missedResolutionStatus(c, "2026-05", undefined, []);
+    expect(s).toBe("pending");
+    expect(needsDecision(s)).toBe(true);
   });
   it("ไม่ชดเชย → waived · ไม่ค้างในรายการต้องทำ", () => {
-    const s = missedResolutionStatus(c, "2026-05", waived, [], "2026-07");
+    const s = missedResolutionStatus(c, "2026-05", waived, []);
     expect(s).toBe("waived");
     expect(needsDecision(s)).toBe(false);
   });
-  it("ชดเชย ม.ค. 2027 ยังไม่ถึง → makeup_scheduled (ชดเชย → เดือน)", () => {
-    const s = missedResolutionStatus(c, "2026-05", makeup("2026-05", "2027-01"), [], "2026-11");
-    expect(s).toBe("makeup_scheduled");
-    expect(needsDecision(s)).toBe(false);
-  });
-  it("อยู่ในเดือนชดเชยแล้ว แต่ยังไม่ไป → ยัง makeup_scheduled (รอสิ้นเดือน)", () => {
-    expect(missedResolutionStatus(c, "2026-05", makeup("2026-05", "2027-01"), [], "2027-01")).toBe(
-      "makeup_scheduled",
-    );
-  });
-  it("มีการเข้าที่ผูกไว้ → made_up (ชดเชยแล้ว)", () => {
+  it("มีการเข้าชดเชยที่ผูกไว้ (เดือนไหนก็ได้หลังเดือนที่ตก) → made_up (ชดเชยแล้ว)", () => {
     const v = [routine("2027-01-12", "2026-05")];
-    const s = missedResolutionStatus(c, "2026-05", makeup("2026-05", "2027-01"), v, "2027-01");
+    const s = missedResolutionStatus(c, "2026-05", madeUp("2026-05", "2027-01"), v);
     expect(s).toBe("made_up");
     expect(needsDecision(s)).toBe(false);
   });
-  it("ชดเชย ม.ค. 2027 ไม่มีการเข้า → สิ้น ม.ค. = makeup_not_done และกลับไปรอตัดสิน", () => {
-    const s = missedResolutionStatus(c, "2026-05", makeup("2026-05", "2027-01"), [], "2027-02");
-    expect(s).toBe("makeup_not_done");
-    expect(needsDecision(s)).toBe(true);
-  });
-  it("ตก พ.ค. ชดเชย มิ.ย. แต่ มิ.ย. มีครั้งเดียวที่ไม่ได้ผูก → makeup_not_done", () => {
-    const v = [routine("2026-06-10")];
-    expect(missedResolutionStatus(c, "2026-05", makeup("2026-05", "2026-06"), v, "2026-07")).toBe(
-      "makeup_not_done",
+  it("ชดเชยแล้วนับจากการเข้าจริง แม้หน้าจอยังไม่ได้โหลดแถวการตัดสิน", () => {
+    expect(missedResolutionStatus(c, "2026-05", undefined, [routine("2026-09-12", "2026-05")])).toBe(
+      "made_up",
     );
+  });
+  it("แถว makeup ค้างแต่ไม่มีการเข้าที่ผูก (เลิกผูก/ลบการเข้าแล้ว) → กลับเป็น pending", () => {
+    expect(missedResolutionStatus(c, "2026-05", madeUp("2026-05", "2027-01"), [])).toBe("pending");
   });
   it("ตก พ.ค. ชดเชย มิ.ย. มี 2 ครั้ง (ผูก 1) → made_up และ มิ.ย. ไม่ตก", () => {
     const v = [routine("2026-06-03"), routine("2026-06-20", "2026-05")];
-    expect(missedResolutionStatus(c, "2026-05", makeup("2026-05", "2026-06"), v, "2026-07")).toBe(
-      "made_up",
-    );
+    expect(missedResolutionStatus(c, "2026-05", undefined, v)).toBe("made_up");
     expect(isMissedService(c, "2026-06", v)).toBe(false);
   });
-  it("การเข้าที่ผูกไว้แต่อยู่คนละเดือนกับเดือนชดเชย ไม่นับว่าชดเชยแล้ว", () => {
-    const v = [routine("2027-02-05", "2026-05")];
-    expect(missedResolutionStatus(c, "2026-05", makeup("2026-05", "2027-01"), v, "2027-03")).toBe(
-      "makeup_not_done",
-    );
-  });
-  it("การเข้าที่ผูกไว้ต้องเป็นของสัญญาเดียวกัน", () => {
-    const v: Visit[] = [{ ...routine("2027-01-12", "2026-05"), contractId: "other" }];
-    expect(missedResolutionStatus(c, "2026-05", makeup("2026-05", "2027-01"), v, "2027-02")).toBe(
-      "makeup_not_done",
-    );
-  });
-  it("pending ต้องอยู่ในรายการต้องทำ", () => {
-    expect(needsDecision("pending")).toBe(true);
-  });
-});
-
-describe("defaultMakeupMonth", () => {
-  it("ค่าเริ่มต้น = เดือนถัดจากเดือนบริการสุดท้าย (ไม่ใช้ end_date)", () => {
-    expect(defaultMakeupMonth(c)).toBe("2027-01");
-    expect(defaultMakeupMonth({ ...c, startDate: "2026-04-03" })).toBe("2027-04");
-    expect(defaultMakeupMonth({ ...c, termYears: 3 })).toBe("2029-01");
-  });
-});
-
-describe("makeupCountsInSnapshot (กติกาเดียวที่รอเจ้าของยืนยัน)", () => {
-  const r = makeup("2026-05", "2027-01");
-  it("policy scheduled: เลือกชดเชยไว้ = นับ แม้ไม่มีการเข้า", () => {
-    expect(makeupCountsInSnapshot(r, [], "scheduled")).toBe(true);
-  });
-  it("policy visited: ไม่มีการเข้าที่ผูกไว้ = ไม่นับ", () => {
-    expect(makeupCountsInSnapshot(r, [], "visited")).toBe(false);
-  });
-  it("policy visited: มีการเข้าที่ผูกไว้ในเดือนชดเชย = นับ", () => {
-    expect(makeupCountsInSnapshot(r, [routine("2027-01-12", "2026-05")], "visited")).toBe(true);
-  });
-  it("ไม่ชดเชย ไม่นับทุก policy", () => {
-    expect(makeupCountsInSnapshot(waived, [], "scheduled")).toBe(false);
-    expect(makeupCountsInSnapshot(waived, [], "visited")).toBe(false);
+  it("การตัดสินของเดือน/สัญญาอื่นไม่มีผล", () => {
+    expect(missedResolutionStatus(c, "2026-05", { ...waived, missedMonth: "2026-06" }, [])).toBe("pending");
+    expect(missedResolutionStatus(c, "2026-05", { ...waived, contractId: "x" }, [])).toBe("pending");
   });
 });
 

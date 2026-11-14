@@ -1,45 +1,74 @@
--- M18: จัดการตกบริการ ชดเชย / ไม่ชดเชย (เจ้าของตอบครบ 14 พ.ย. 2026 — DECISIONS 2.41
---      · แบบ docs/plans/2026-11-14-missed-service-resolution.md)
+-- M18: จัดการตกบริการ ชดเชย / ไม่ชดเชย (DECISIONS 2.41 + **2.45** · แบบ docs/plans/2026-11-14-missed-service-resolution.md
+--      ข้อ 0 มีผลเหนือข้ออื่น — ไม่เลือกเดือนชดเชยล่วงหน้า)
 --
 -- Logic summary:
---   1. ตาราง `missed_service_resolutions` — 1 แถว = การตัดสินของ 1 เดือนที่ตกบริการของ 1 สัญญา
---      · ไม่มีแถว = รอตัดสิน · แก้การตัดสิน = UPDATE แถวเดิม (ประวัติอยู่ใน audit_log)
---      · kind = 'makeup' (ชดเชย → makeup_month · makeup_date ไม่บังคับ แต่ต้องอยู่ในเดือนนั้น)
---        / 'waived' (ไม่ชดเชย · reason บังคับ) · evidence_path = ไฟล์หลักฐาน (ไม่บังคับ — 2.41 ④)
---      · ระดับที่ใช้คิดทุกกติกา = เดือน (`makeup_month`) · `makeup_date` เก็บวันที่ที่หน้าจอเลือกจากปฏิทิน
---      · ผู้ใช้เขียนตรงไม่ได้ (ไม่มี GRANT INSERT/UPDATE/DELETE) — บันทึกผ่าน RPC `resolve_missed_service` เท่านั้น
---        อ่าน: host / admin / recorder (ทุกสาขา เหมือนตารางบริการอื่น) · anon/viewer ไม่เห็น (PDPA)
---   2. `visits.makeup_for_month` — การเข้านี้เป็น "ชดเชยของเดือนที่ตก" (FK ไปที่การตัดสิน)
---      · ไม่นับเป็น routine ของเดือนตัวเอง (เดือนชดเชยในช่วงสัญญาต้องมี 2 ครั้ง: ปกติ + ชดเชย)
---      · trigger `visits_makeup_link_guard` ตรวจทุกทาง (RPC หรือ PATCH ตรง): ต้องเป็น routine · การตัดสินเป็น makeup
---        · วันที่เข้าอยู่ในเดือนชดเชย · 1 เดือนที่ตกผูกได้ 1 การเข้า (unique index)
---      · บันทึกการเข้าชดเชยผ่าน `save_makeup_service_visit(p jsonb)` = `save_service_visit` เดิม (ไม่แตะ signature
---        /เนื้อ) + ผูก/เลิกผูกใน transaction เดียว → หน้า /service, /bait เดิมไม่กระทบ
---   3. สถานะ 5 แบบ (รอตัดสิน / ชดเชย → เดือน / ชดเชยแล้ว / ชดเชยไม่ได้ทำ / ไม่ชดเชย) คำนวณใน
---      `lib/rules/missedResolution.ts` จาก ตารางนี้ + การเข้าที่ผูก + เดือนปัจจุบัน (Asia/Bangkok) ไม่มี cron
---   4. ด่านใน `resolve_missed_service`
---      · host หรือ recorder ในขอบเขตสาขาของสัญญา (admin อ่านอย่างเดียว · 2.41 ①)
---      · missed_month = วันที่ 1 · อยู่ในเดือนบริการ (เดือนเริ่ม + ปี×12 — กฎข้อ 5 ไม่ใช้ end_date) · ผ่านไปแล้ว
---        · ยังไม่ถูกยกเลิก · และ "ตกจริง" (ไม่มี routine ที่ไม่ใช่ชดเชยในเดือนนั้น) → กันสร้างเดือนชดเชยปลอมดัน Dashboard
---      · ชดเชย: เดือนชดเชย > เดือนที่ตก · recorder เลือกเดือนก่อนเดือนปัจจุบันไม่ได้ (host ได้) — ยกเว้นคงเดือนเดิม
---        · ⚠ ค่าชั่วคราว (รอเจ้าของ): เดือนชดเชยไม่เกิน 12 เดือนหลัง max(เดือนบริการสุดท้าย, เดือนปัจจุบัน) ทุกบทบาท
---          กันเลือกเดือนไกลๆ แล้วดันตัวเลข Dashboard (ผลตรวจ security)
---      · มีการเข้าชดเชยผูกอยู่แล้ว → เปลี่ยนชนิด/เดือนชดเชยไม่ได้ (MS005 — เลิกผูกการเข้าก่อน)
---      · หลักฐาน: path ต้องเป็น `<contract_id>/<ชื่อไฟล์>` ใน bucket `missed-service-evidence` และมีไฟล์อยู่จริง
---   5. Storage bucket ใหม่ `missed-service-evidence` (private · 5 MB · PDF/PNG/JPG)
---      อ่าน: host/admin/recorder · อัปโหลด: host หรือ recorder ในขอบเขตของสัญญา (โฟลเดอร์แรก = contract_id)
---      อ่านได้เฉพาะไฟล์ที่มีการตัดสินอ้างอิง หรือไฟล์ที่ตัวเองเพิ่งอัปโหลด < 1 ชม. (แพทเทิร์นเดียวกับ contract-files
---      ใน 20261112110100 — PDPA) · แก้/ลบไฟล์: ไม่มี policy ผู้ใช้ · เปลี่ยนไฟล์/ลบแถว → ไฟล์เก่าลง
+--   1. ตาราง `missed_service_resolutions` — 1 แถว = ผลของ 1 เดือนที่ตกบริการของ 1 สัญญา · ไม่มีแถว = รอตัดสิน
+--      · kind = 'waived' (ไม่ชดเชย · reason บังคับ · evidence_path ไม่บังคับ) — บันทึกผ่าน RPC `resolve_missed_service`
+--      · kind = 'makeup' (ชดเชยแล้ว) — **ผู้ใช้ไม่สร้างเอง** ระบบสร้าง/แก้/ลบตามการเข้าชดเชยที่ผูกไว้
+--        (`makeup_month` = เดือนของการเข้านั้นเสมอ) → "ชดเชยแล้ว" ยึดการเข้าจริงเป็นหลัก
+--      · ผู้ใช้เขียนตรงไม่ได้ (ไม่มี GRANT INSERT/UPDATE/DELETE) · อ่าน: host / admin / recorder · anon/viewer ไม่เห็น
+--      · แก้การตัดสิน = UPDATE แถวเดิม (ประวัติอยู่ใน audit_log)
+--   2. `visits.makeup_for_month` — การเข้านี้เป็น "บริการชดเชยของเดือนที่ตก" (FK ไปที่แถวผล)
+--      · ไม่นับเป็น routine ของเดือนตัวเอง (ชดเชยในช่วงสัญญา → เดือนนั้นต้องมี 2 ครั้ง: ปกติ + ชดเชย)
+--      · trigger BEFORE `visits_makeup_link_guard` (ทุกทาง: RPC หรือ PATCH ตรง) ตรวจแล้วสร้าง/ปรับแถว makeup ให้:
+--        สัญญาไม่ถูกยกเลิก (MS009) · เดือนที่ตก = เดือนบริการที่ผ่านไปแล้ว (MS001) และตกจริง (MS002)
+--        · การเข้าเป็น routine และอยู่หลังเดือนที่ตก (MS006) · เดือนนั้นยังไม่ถูกตัดสินว่าไม่ชดเชย (MS010)
+--        · recorder ไปชดเชยเกินเพดานเวลาไม่ได้ (MS008 — host ทำได้) · ย้ายวันที่การเข้าที่ผูกอยู่ = ปรับ makeup_month ตาม
+--      · trigger AFTER `visits_makeup_unlink_cleanup`: เลิกผูก / ลบการเข้า → ลบแถว makeup (กลับเป็นรอตัดสิน)
+--      · 1 เดือนที่ตกผูกได้ 1 การเข้า (unique index → 23505)
+--      · บันทึกผ่าน `save_makeup_service_visit(p jsonb)` = `save_service_visit` เดิม (ไม่แตะ signature/เนื้อ) + ผูก/เลิกผูก
+--        ใน transaction เดียว → หน้า /service, /bait เดิมไม่กระทบ
+--   3. สถานะ 3 แบบ (รอตัดสิน / ชดเชยแล้ว / ไม่ชดเชย) คำนวณใน `lib/rules/missedResolution.ts` · ไม่มี cron
+--   4. `resolve_missed_service` = ไม่ชดเชยเท่านั้น: host หรือ recorder ในขอบเขต (admin อ่านอย่างเดียว)
+--      · เดือนที่ตกถูกต้อง + ตกจริง · สัญญายกเลิกห้าม (MS009) · สัญญาปิดแล้วทำได้ · ชดเชยแล้วเปลี่ยนไม่ได้ (MS005)
+--   5. อ่านรายการรอตัดสิน: `list_pending_missed_services(p_branch_id, p_month)` (SECURITY INVOKER — RLS ของผู้ใช้ทำงาน
+--      + recorder เห็นเฉพาะสัญญาในขอบเขต) → แถว "รอชดเชย <เดือน>" ในหน้า /service (รวมสัญญาที่จบแล้ว)
+--      · เกณฑ์ชั่วคราว (รอเจ้าของ): นับตกตั้งแต่เดือนที่ตั้งสถานีในระบบ (`missed_tracking_start_month`) กันสัญญาเก่าที่
+--        นำเข้าไม่มีประวัติการเข้าท่วมรายการ · ไม่รวมสัญญายกเลิก (ปิดเรื่องไม่ได้)
+--   6. เพดานเวลาไปชดเชย (รอเจ้าของเลือก · ชั่วคราว 12 เดือนหลังเดือนบริการสุดท้าย) อยู่ที่
+--      `missed_makeup_deadline_months()` จุดเดียว · RPC อ่านคืน makeup_deadline_month + past_deadline ให้หน้าจอ
+--   7. Storage bucket `missed-service-evidence` (private · 5 MB · PDF/PNG/JPG) — หลักฐานของ "ไม่ชดเชย"
+--      อ่านได้เฉพาะไฟล์ที่มีแถวอ้างอิง หรือไฟล์ที่ตัวเองเพิ่งอัปโหลด < 1 ชม. (แพทเทิร์นเดียวกับ contract-files ใน
+--      20261112110100 — PDPA) · อัปโหลด: host หรือ recorder ในขอบเขต · เปลี่ยนไฟล์/ลบแถว → ไฟล์เก่าลง
 --      `storage_deletion_queue` (ใช้ไฟล์ที่รอลบซ้ำไม่ได้ — MS007)
---   6. audit: trigger `audit_missed_service_resolutions` + เพิ่มกรณีในตัว `audit_trigger` (contract_id + month_key
+--   8. audit: trigger `audit_missed_service_resolutions` + เพิ่มกรณีในตัว `audit_trigger` (contract_id + month_key
 --      = เดือนที่ตก) · เนื้อ audit_trigger เดิมจาก 20261112150000 เพิ่มเฉพาะจุดที่ติดป้าย "M18"
 --   * advisory lock ต่อสัญญาเดียวกับ save_service_visit (การตัดสิน ↔ การผูกการเข้า ไม่ชนกัน)
---   * error ใหม่: MS001 เดือนที่ตกไม่ถูกต้อง · MS002 เดือนนั้นไม่ได้ตกบริการ · MS003 เดือน/วันชดเชยไม่ถูกต้อง
---     · MS004 ไม่ชดเชยต้องมีเหตุผล · MS005 มีการเข้าชดเชยผูกอยู่ · MS006 ผูกการเข้าไม่ได้ · MS007 ไฟล์หลักฐานไม่ถูกต้อง
+--   * "ยกเลิก" = contracts.status = 'cancelled' หรือมี cancelled_at (ใช้เงื่อนไขเดียวกันทุกจุดในไฟล์นี้)
+--   * error: MS001 เดือนที่ตกไม่ถูกต้อง · MS002 เดือนนั้นไม่ได้ตกบริการ · MS004 ไม่ชดเชยต้องมีเหตุผล
+--     · MS005 ชดเชยแล้ว (มีการเข้าผูกอยู่) · MS006 ผูกการเข้าไม่ได้ (ไม่ใช่ routine / ไม่อยู่หลังเดือนที่ตก)
+--     · MS007 ไฟล์หลักฐานไม่ถูกต้อง · MS008 เลยเพดานเวลาไปชดเชย (recorder) · MS009 สัญญายกเลิกแล้ว
+--     · MS010 เดือนนั้นตัดสินว่าไม่ชดเชยแล้ว · (MS003 เลิกใช้ — เดิมคือเดือนชดเชยที่เลือกล่วงหน้า)
 --   * snapshot เดือนที่ปิดแล้วคงค่าเดิม (กฎข้อ 7) — migration นี้ไม่แตะ monthly_branch_snapshots
 
 -- =====================================================================
--- 1. ตารางการตัดสิน
+-- 0. ค่ากลาง (จุดเดียว)
+-- =====================================================================
+-- ⚠ ค่าชั่วคราว (รอเจ้าของเลือก — DECISIONS 2.45): ไปชดเชยได้ไม่เกิน N เดือนหลังเดือนบริการสุดท้าย
+--   เลยแล้ว: recorder ต้องกด "ไม่ชดเชย" หรือให้ Host บันทึก
+CREATE FUNCTION public.missed_makeup_deadline_months()
+RETURNS int
+LANGUAGE sql
+IMMUTABLE
+SET search_path = public, pg_temp
+AS $$ SELECT 12 $$;
+
+-- ⚠ เกณฑ์ชั่วคราว (รอเจ้าของ): เดือนแรกที่นับตกบริการ = เดือนที่ตั้งสถานีในระบบ (เวลาไทย) แต่ไม่ก่อนเดือนเริ่มสัญญา
+--   ยังไม่ตั้งสถานี → NULL (ไม่นับ) · ตรงกับ trackingStartMonth() ใน lib/rules/missedResolution.ts
+CREATE FUNCTION public.missed_tracking_start_month(p_start_date date, p_initialized_at timestamptz)
+RETURNS date
+LANGUAGE sql
+IMMUTABLE
+SET search_path = public, pg_temp
+AS $$
+  SELECT CASE WHEN p_initialized_at IS NULL THEN NULL
+              ELSE greatest(date_trunc('month', p_start_date)::date,
+                            date_trunc('month', (p_initialized_at AT TIME ZONE 'Asia/Bangkok'))::date)
+         END
+$$;
+
+-- =====================================================================
+-- 1. ตารางผลของเดือนที่ตก
 -- =====================================================================
 CREATE TYPE public.missed_resolution_kind AS ENUM ('makeup', 'waived');
 
@@ -49,7 +78,6 @@ CREATE TABLE public.missed_service_resolutions (
   missed_month  date NOT NULL,
   kind          public.missed_resolution_kind NOT NULL,
   makeup_month  date,
-  makeup_date   date,
   reason        text,
   evidence_path text,
   decided_by    uuid REFERENCES auth.users (id),
@@ -58,18 +86,16 @@ CREATE TABLE public.missed_service_resolutions (
   CONSTRAINT missed_service_resolutions_contract_month_key UNIQUE (contract_id, missed_month),
   CONSTRAINT missed_month_is_first_day CHECK (missed_month = date_trunc('month', missed_month)::date),
   CONSTRAINT makeup_month_is_first_day CHECK (makeup_month IS NULL OR makeup_month = date_trunc('month', makeup_month)::date),
-  CONSTRAINT makeup_date_in_makeup_month CHECK (
-    makeup_date IS NULL OR date_trunc('month', makeup_date)::date = makeup_month),
   CONSTRAINT kind_fields CHECK (
-    (kind = 'makeup' AND makeup_month IS NOT NULL AND makeup_month > missed_month)
-    OR (kind = 'waived' AND makeup_month IS NULL AND makeup_date IS NULL
-        AND reason IS NOT NULL AND btrim(reason) <> '')),
+    (kind = 'makeup' AND makeup_month IS NOT NULL AND makeup_month > missed_month
+     AND reason IS NULL AND evidence_path IS NULL)
+    OR (kind = 'waived' AND makeup_month IS NULL AND reason IS NOT NULL AND btrim(reason) <> '')),
   CONSTRAINT reason_length CHECK (reason IS NULL OR char_length(reason) <= 1000),
   CONSTRAINT evidence_path_length CHECK (evidence_path IS NULL OR char_length(evidence_path) <= 300)
 );
 
 COMMENT ON TABLE public.missed_service_resolutions IS
-  'M18 / DECISIONS 2.41: decision per missed service month (makeup or waived). No row = pending. Written only through resolve_missed_service().';
+  'M18 / DECISIONS 2.41+2.45: outcome per missed service month. No row = pending. waived via resolve_missed_service(); makeup rows are maintained by the visits trigger from the linked make-up visit.';
 
 -- =====================================================================
 -- 2. visits.makeup_for_month — ผูกการเข้าชดเชย
@@ -89,6 +115,7 @@ CREATE UNIQUE INDEX visits_makeup_for_month_key
 COMMENT ON COLUMN public.visits.makeup_for_month IS
   'M18: this routine visit makes up the missed month (1st day). Not counted as the routine visit of its own month.';
 
+-- BEFORE: ตรวจ + สร้าง/ปรับแถว makeup (แถวแม่ต้องมีก่อน FK ตรวจตอนจบคำสั่ง)
 CREATE FUNCTION public.visits_makeup_link_guard()
 RETURNS trigger
 LANGUAGE plpgsql
@@ -96,27 +123,71 @@ SECURITY DEFINER
 SET search_path = public, pg_temp
 AS $$
 DECLARE
-  v_kind  public.missed_resolution_kind;
-  v_month date;
+  v_missed      date := NEW.makeup_for_month;
+  v_visit_month date := date_trunc('month', NEW.visit_date)::date;
+  v_now_month   date := date_trunc('month', (now() AT TIME ZONE 'Asia/Bangkok'))::date;
+  v_start_month date;
+  v_term        int;
+  v_cancelled   boolean;
+  v_last_month  date;
+  v_kind        public.missed_resolution_kind;
 BEGIN
-  IF NEW.makeup_for_month IS NULL THEN
+  IF v_missed IS NULL THEN
     RETURN NEW;
   END IF;
   -- คิวเดียวกับ resolve_missed_service / save_service_visit ของสัญญานี้
   PERFORM pg_advisory_xact_lock(hashtextextended('public.save_service_visit:' || NEW.contract_id::text, 0));
 
-  SELECT r.kind, r.makeup_month INTO v_kind, v_month
-    FROM missed_service_resolutions r
-   WHERE r.contract_id = NEW.contract_id AND r.missed_month = NEW.makeup_for_month;
-  IF NOT FOUND OR v_kind <> 'makeup' THEN
-    RAISE EXCEPTION 'this month has no make-up decision' USING ERRCODE = 'MS006';
+  SELECT date_trunc('month', c.start_date)::date, c.term_years,
+         (c.status = 'cancelled' OR c.cancelled_at IS NOT NULL)
+    INTO v_start_month, v_term, v_cancelled
+    FROM contracts c WHERE c.id = NEW.contract_id;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'contract not found' USING ERRCODE = 'AG004';
   END IF;
+  IF v_cancelled THEN
+    RAISE EXCEPTION 'the contract is cancelled' USING ERRCODE = 'MS009';
+  END IF;
+  v_last_month := (v_start_month + make_interval(months => v_term * 12 - 1))::date;
+
+  -- เดือนที่ตก: เดือนบริการ (กฎข้อ 5) ที่ผ่านไปแล้ว และตกจริง
+  IF v_missed < v_start_month OR v_missed > v_last_month OR v_missed >= v_now_month THEN
+    RAISE EXCEPTION 'makeup_for_month must be a past service month of this contract' USING ERRCODE = 'MS001';
+  END IF;
+  IF EXISTS (SELECT 1 FROM visits vi
+              WHERE vi.contract_id = NEW.contract_id AND vi.id <> NEW.id
+                AND vi.visit_type = 'routine' AND vi.makeup_for_month IS NULL
+                AND date_trunc('month', vi.visit_date)::date = v_missed) THEN
+    RAISE EXCEPTION 'this month has a routine visit; it was not missed' USING ERRCODE = 'MS002';
+  END IF;
+
+  -- การเข้าชดเชย: routine · อยู่หลังเดือนที่ตก
   IF NEW.visit_type <> 'routine' THEN
     RAISE EXCEPTION 'a make-up visit must be a routine visit' USING ERRCODE = 'MS006';
   END IF;
-  IF date_trunc('month', NEW.visit_date)::date <> v_month THEN
-    RAISE EXCEPTION 'the make-up visit must be in the chosen make-up month' USING ERRCODE = 'MS006';
+  IF v_visit_month <= v_missed THEN
+    RAISE EXCEPTION 'a make-up visit must be after the missed month' USING ERRCODE = 'MS006';
   END IF;
+  -- เพดานเวลา (ค่าชั่วคราว): recorder เท่านั้นที่ติด · host บันทึกได้
+  IF current_app_role() = 'recorder'
+     AND v_visit_month > (v_last_month + make_interval(months => missed_makeup_deadline_months()))::date THEN
+    RAISE EXCEPTION 'the make-up deadline has passed; mark it as waived or ask host' USING ERRCODE = 'MS008';
+  END IF;
+
+  SELECT r.kind INTO v_kind FROM missed_service_resolutions r
+   WHERE r.contract_id = NEW.contract_id AND r.missed_month = v_missed
+     FOR UPDATE;
+  IF FOUND AND v_kind = 'waived' THEN
+    RAISE EXCEPTION 'this month is already marked as waived' USING ERRCODE = 'MS010';
+  END IF;
+
+  INSERT INTO missed_service_resolutions AS r (contract_id, missed_month, kind, makeup_month, decided_by, decided_at)
+  VALUES (NEW.contract_id, v_missed, 'makeup', v_visit_month, auth.uid(), now())
+  ON CONFLICT (contract_id, missed_month) DO UPDATE
+     SET makeup_month = EXCLUDED.makeup_month,
+         decided_by   = EXCLUDED.decided_by,
+         decided_at   = EXCLUDED.decided_at
+   WHERE r.makeup_month IS DISTINCT FROM EXCLUDED.makeup_month;
   RETURN NEW;
 END;
 $$;
@@ -125,8 +196,35 @@ CREATE TRIGGER visits_makeup_link_guard
   BEFORE INSERT OR UPDATE OF makeup_for_month, visit_date, visit_type, contract_id ON public.visits
   FOR EACH ROW EXECUTE FUNCTION public.visits_makeup_link_guard();
 
+-- AFTER: เลิกผูก / ลบการเข้า → ลบแถว makeup ที่ไม่มีการเข้าผูกแล้ว (กลับเป็นรอตัดสิน)
+--   ต้องเป็น AFTER: ตอน BEFORE แถว visits ยังอ้างแถวผลอยู่ ลบแล้ว FK จะขวาง
+CREATE FUNCTION public.visits_makeup_unlink_cleanup()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+BEGIN
+  IF OLD.makeup_for_month IS NOT NULL
+     AND (TG_OP = 'DELETE'
+          OR NEW.makeup_for_month IS DISTINCT FROM OLD.makeup_for_month
+          OR NEW.contract_id IS DISTINCT FROM OLD.contract_id) THEN
+    DELETE FROM missed_service_resolutions r
+     WHERE r.contract_id = OLD.contract_id AND r.missed_month = OLD.makeup_for_month
+       AND r.kind = 'makeup'
+       AND NOT EXISTS (SELECT 1 FROM visits vi
+                        WHERE vi.contract_id = r.contract_id AND vi.makeup_for_month = r.missed_month);
+  END IF;
+  RETURN NULL; -- AFTER trigger
+END;
+$$;
+
+CREATE TRIGGER visits_makeup_unlink_cleanup
+  AFTER UPDATE OF makeup_for_month, contract_id OR DELETE ON public.visits
+  FOR EACH ROW EXECUTE FUNCTION public.visits_makeup_unlink_cleanup();
+
 -- =====================================================================
--- 3. RLS + สิทธิ์ตาราง (อ่านอย่างเดียว · เขียนผ่าน RPC)
+-- 3. RLS + สิทธิ์ตาราง (อ่านอย่างเดียว · เขียนผ่าน RPC / trigger)
 -- =====================================================================
 ALTER TABLE public.missed_service_resolutions ENABLE ROW LEVEL SECURITY;
 
@@ -139,7 +237,7 @@ GRANT SELECT ON public.missed_service_resolutions TO authenticated;
 GRANT ALL ON public.missed_service_resolutions TO service_role;
 
 -- =====================================================================
--- 4. Storage: ไฟล์หลักฐาน (ไม่บังคับ)
+-- 4. Storage: ไฟล์หลักฐานของ "ไม่ชดเชย" (ไม่บังคับ)
 -- =====================================================================
 INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 VALUES ('missed-service-evidence', 'missed-service-evidence', false, 5242880,
@@ -149,8 +247,8 @@ ON CONFLICT (id) DO UPDATE
       file_size_limit    = EXCLUDED.file_size_limit,
       allowed_mime_types = EXCLUDED.allowed_mime_types;
 
--- อ่าน: ต้องมีการตัดสินอ้างอิง path นี้ (subquery อ่านตาม RLS ของผู้ใช้) หรือเป็นไฟล์ของตัวเองที่เพิ่งอัปโหลด
---       ไม่เกิน 1 ชม. (ให้แอปลบไฟล์ที่อัปโหลดแล้วบันทึกการตัดสินไม่สำเร็จได้ — เหมือน contract-files)
+-- อ่าน: ต้องมีแถวอ้างอิง path นี้ (subquery อ่านตาม RLS ของผู้ใช้) หรือเป็นไฟล์ของตัวเองที่เพิ่งอัปโหลด
+--       ไม่เกิน 1 ชม. (ให้แอปลบไฟล์ที่อัปโหลดแล้วบันทึกไม่สำเร็จได้ — เหมือน contract-files)
 CREATE POLICY missed_evidence_bucket_read ON storage.objects FOR SELECT TO authenticated
   USING (
     bucket_id = 'missed-service-evidence'
@@ -162,7 +260,16 @@ CREATE POLICY missed_evidence_bucket_read ON storage.objects FOR SELECT TO authe
     )
   );
 
--- ไฟล์หลักฐานเก่า (เปลี่ยนไฟล์ / ลบแถวตามสัญญา) → ลงคิวลบ ถ้าไม่มีแถวอื่นใช้ path นั้น
+CREATE POLICY missed_evidence_bucket_insert ON storage.objects FOR INSERT TO authenticated
+  WITH CHECK (
+    bucket_id = 'missed-service-evidence'
+    AND public.storage_contract_id(name) IS NOT NULL
+    AND (public.is_host()
+         OR (public.current_app_role() = 'recorder'
+             AND public.contract_in_scope(public.storage_contract_id(name))))
+  );
+
+-- ไฟล์หลักฐานเก่า (เปลี่ยนไฟล์ / ลบแถว) → ลงคิวลบ ถ้าไม่มีแถวอื่นใช้ path นั้น
 CREATE FUNCTION public.missed_evidence_enqueue_object_delete()
 RETURNS trigger
 LANGUAGE plpgsql
@@ -186,19 +293,11 @@ $$;
 CREATE TRIGGER missed_evidence_enqueue_object_delete
   AFTER DELETE OR UPDATE OF evidence_path ON public.missed_service_resolutions
   FOR EACH ROW EXECUTE FUNCTION public.missed_evidence_enqueue_object_delete();
-CREATE POLICY missed_evidence_bucket_insert ON storage.objects FOR INSERT TO authenticated
-  WITH CHECK (
-    bucket_id = 'missed-service-evidence'
-    AND public.storage_contract_id(name) IS NOT NULL
-    AND (public.is_host()
-         OR (public.current_app_role() = 'recorder'
-             AND public.contract_in_scope(public.storage_contract_id(name))))
-  );
 
 -- =====================================================================
--- 5. RPC: ตัดสินเดือนที่ตก
--- payload: { contract_id, missed_month 'YYYY-MM-01', kind 'makeup'|'waived',
---            makeup_date 'YYYY-MM-DD' (บังคับเมื่อ makeup), reason (บังคับเมื่อ waived), evidence_path (ไม่บังคับ) }
+-- 5. RPC: ไม่ชดเชย (ชดเชย = บันทึกการเข้าชดเชย ข้อ 6)
+-- payload: { contract_id, missed_month 'YYYY-MM-01', reason (บังคับ), evidence_path (ไม่บังคับ),
+--            kind (ไม่บังคับ — ถ้าส่งต้องเป็น 'waived') }
 -- =====================================================================
 CREATE FUNCTION public.resolve_missed_service(p jsonb)
 RETURNS jsonb
@@ -209,9 +308,6 @@ AS $$
 DECLARE
   v_contract    uuid;
   v_missed      date;
-  v_kind        public.missed_resolution_kind;
-  v_mk_date     date;
-  v_mk_month    date;
   v_reason      text := nullif(btrim(p ->> 'reason'), '');
   v_evidence    text := nullif(btrim(p ->> 'evidence_path'), '');
   v_role        text := current_app_role();
@@ -219,9 +315,7 @@ DECLARE
   v_now_month   date := date_trunc('month', (now() AT TIME ZONE 'Asia/Bangkok'))::date;
   v_start_month date;
   v_term        int;
-  v_cancelled   date;
-  v_old         missed_service_resolutions%ROWTYPE;
-  v_has_old     boolean;
+  v_cancelled   boolean;
   v_row         missed_service_resolutions%ROWTYPE;
 BEGIN
   -- สิทธิ์ก่อน (คนไม่มีสิทธิ์ไม่ได้ถือ lock / ลองว่ามี id จริงไหม)
@@ -230,17 +324,14 @@ BEGIN
   END IF;
 
   IF p IS NULL OR jsonb_typeof(p) <> 'object'
-     OR nullif(p ->> 'contract_id', '') IS NULL OR nullif(p ->> 'missed_month', '') IS NULL
-     OR nullif(p ->> 'kind', '') IS NULL THEN
-    RAISE EXCEPTION 'contract_id, missed_month and kind are required' USING ERRCODE = '22004';
+     OR nullif(p ->> 'contract_id', '') IS NULL OR nullif(p ->> 'missed_month', '') IS NULL THEN
+    RAISE EXCEPTION 'contract_id and missed_month are required' USING ERRCODE = '22004';
   END IF;
-  IF (p ->> 'kind') NOT IN ('makeup', 'waived') THEN
-    RAISE EXCEPTION 'kind must be makeup or waived' USING ERRCODE = '22023';
+  IF p ? 'kind' AND (p ->> 'kind') IS DISTINCT FROM 'waived' THEN
+    RAISE EXCEPTION 'only waived can be decided here; a make-up is recorded as a visit' USING ERRCODE = '22023';
   END IF;
   v_contract := (p ->> 'contract_id')::uuid;
   v_missed   := (p ->> 'missed_month')::date;
-  v_kind     := (p ->> 'kind')::public.missed_resolution_kind;
-  v_mk_date  := nullif(p ->> 'makeup_date', '')::date;
 
   -- ---------- สัญญา + ขอบเขต (ก่อนถือ lock — คนนอกขอบเขตไม่ได้ถือคิวของสาขาอื่น) ----------
   IF NOT EXISTS (SELECT 1 FROM contracts c WHERE c.id = v_contract) THEN
@@ -252,16 +343,19 @@ BEGIN
 
   PERFORM pg_advisory_xact_lock(hashtextextended('public.save_service_visit:' || v_contract::text, 0));
 
-  SELECT date_trunc('month', c.start_date)::date, c.term_years, c.cancelled_at::date
+  SELECT date_trunc('month', c.start_date)::date, c.term_years,
+         (c.status = 'cancelled' OR c.cancelled_at IS NOT NULL)
     INTO v_start_month, v_term, v_cancelled
     FROM contracts c WHERE c.id = v_contract;
+  IF v_cancelled THEN
+    RAISE EXCEPTION 'the contract is cancelled' USING ERRCODE = 'MS009';
+  END IF;
 
   -- ---------- เดือนที่ตก ----------
   IF v_missed <> date_trunc('month', v_missed)::date
      OR v_missed < v_start_month
      OR v_missed >= (v_start_month + make_interval(months => v_term * 12))::date
-     OR v_missed >= v_now_month
-     OR (v_cancelled IS NOT NULL AND date_trunc('month', v_cancelled)::date <= v_missed) THEN
+     OR v_missed >= v_now_month THEN
     RAISE EXCEPTION 'missed_month must be the 1st day of a past service month of this contract'
       USING ERRCODE = 'MS001';
   END IF;
@@ -272,48 +366,18 @@ BEGIN
     RAISE EXCEPTION 'this month has a routine visit; it was not missed' USING ERRCODE = 'MS002';
   END IF;
 
-  SELECT * INTO v_old FROM missed_service_resolutions r
-   WHERE r.contract_id = v_contract AND r.missed_month = v_missed
-     FOR UPDATE;
-  v_has_old := FOUND;
-
-  -- ---------- ตามชนิด ----------
-  IF v_kind = 'makeup' THEN
-    IF v_mk_date IS NULL THEN
-      RAISE EXCEPTION 'makeup_date is required for a make-up decision' USING ERRCODE = 'MS003';
-    END IF;
-    v_mk_month := date_trunc('month', v_mk_date)::date;
-    IF v_mk_month <= v_missed THEN
-      RAISE EXCEPTION 'the make-up month must be after the missed month' USING ERRCODE = 'MS003';
-    END IF;
-    -- recorder ย้อนก่อนเดือนนี้ไม่ได้ (host ได้) · คงเดือนชดเชยเดิมได้ (แก้เหตุผล/หลักฐาน)
-    IF NOT v_is_host AND v_mk_month < v_now_month
-       AND NOT (v_has_old AND v_old.kind = 'makeup' AND v_old.makeup_month = v_mk_month) THEN
-      RAISE EXCEPTION 'the make-up month cannot be before the current month' USING ERRCODE = 'MS003';
-    END IF;
-    -- ค่าชั่วคราว: ไม่เกิน 12 เดือนหลัง max(เดือนบริการสุดท้าย, เดือนปัจจุบัน)
-    IF v_mk_month > (greatest((v_start_month + make_interval(months => v_term * 12 - 1))::date, v_now_month)
-                     + interval '12 months')::date THEN
-      RAISE EXCEPTION 'the make-up month is too far ahead' USING ERRCODE = 'MS003';
-    END IF;
-  ELSE
-    IF v_reason IS NULL THEN
-      RAISE EXCEPTION 'a reason is required when no make-up is given' USING ERRCODE = 'MS004';
-    END IF;
-    v_mk_date := NULL;
-    v_mk_month := NULL;
-  END IF;
-  IF v_reason IS NOT NULL AND char_length(v_reason) > 1000 THEN
-    RAISE EXCEPTION 'reason is too long' USING ERRCODE = '22001';
-  END IF;
-
-  -- ---------- มีการเข้าชดเชยผูกอยู่ → เปลี่ยนชนิด/เดือนไม่ได้ ----------
-  IF v_has_old
-     AND (v_old.kind IS DISTINCT FROM v_kind OR v_old.makeup_month IS DISTINCT FROM v_mk_month)
-     AND EXISTS (SELECT 1 FROM visits vi
-                  WHERE vi.contract_id = v_contract AND vi.makeup_for_month = v_missed) THEN
+  -- ---------- ชดเชยแล้ว → เปลี่ยนเป็นไม่ชดเชยไม่ได้ ----------
+  IF EXISTS (SELECT 1 FROM visits vi
+              WHERE vi.contract_id = v_contract AND vi.makeup_for_month = v_missed) THEN
     RAISE EXCEPTION 'a make-up visit is linked to this month; unlink or delete that visit first'
       USING ERRCODE = 'MS005';
+  END IF;
+
+  IF v_reason IS NULL THEN
+    RAISE EXCEPTION 'a reason is required when no make-up is given' USING ERRCODE = 'MS004';
+  END IF;
+  IF char_length(v_reason) > 1000 THEN
+    RAISE EXCEPTION 'reason is too long' USING ERRCODE = '22001';
   END IF;
 
   -- ---------- หลักฐาน ----------
@@ -328,15 +392,13 @@ BEGIN
     END IF;
   END IF;
 
-  -- ---------- บันทึก ----------
+  -- ---------- บันทึก (แถว makeup ที่ค้างโดยไม่มีการเข้าผูก ถูกเขียนทับเป็น waived ได้) ----------
   INSERT INTO missed_service_resolutions AS r
-         (contract_id, missed_month, kind, makeup_month, makeup_date, reason, evidence_path,
-          decided_by, decided_at)
-  VALUES (v_contract, v_missed, v_kind, v_mk_month, v_mk_date, v_reason, v_evidence, auth.uid(), now())
+         (contract_id, missed_month, kind, makeup_month, reason, evidence_path, decided_by, decided_at)
+  VALUES (v_contract, v_missed, 'waived', NULL, v_reason, v_evidence, auth.uid(), now())
   ON CONFLICT (contract_id, missed_month) DO UPDATE
      SET kind          = EXCLUDED.kind,
-         makeup_month  = EXCLUDED.makeup_month,
-         makeup_date   = EXCLUDED.makeup_date,
+         makeup_month  = NULL,
          reason        = EXCLUDED.reason,
          evidence_path = EXCLUDED.evidence_path,
          decided_by    = EXCLUDED.decided_by,
@@ -349,8 +411,9 @@ $$;
 
 -- =====================================================================
 -- 6. RPC: บันทึกการเข้าชดเชย = save_service_visit เดิม + ผูก/เลิกผูก ใน transaction เดียว
--- payload = payload ของ save_service_visit + `makeup_for_month` ('YYYY-MM-01' ผูก · null เลิกผูก — key บังคับ)
--- SECURITY INVOKER: สิทธิ์ทั้งหมดมาจาก save_service_visit + RLS ของ visits + trigger ด้านบน
+-- payload = payload ของ save_service_visit + `makeup_for_month` ('YYYY-MM-01' = เดือนที่ตกที่ชดเชย · null = เลิกผูก
+--           — key บังคับ) · การเข้าต้องเป็น routine และอยู่หลังเดือนที่ตก (เดือนไหนก็ได้ — 2.45)
+-- SECURITY INVOKER: สิทธิ์ทั้งหมดมาจาก save_service_visit + RLS ของ visits + trigger ข้อ 2
 -- =====================================================================
 CREATE FUNCTION public.save_makeup_service_visit(p jsonb)
 RETURNS jsonb
@@ -381,7 +444,8 @@ BEGIN
   -- ถือคิวของสัญญาก่อนแตะแถว visits (ลำดับเดียวกับ save_service_visit — กัน deadlock)
   PERFORM pg_advisory_xact_lock(hashtextextended('public.save_service_visit:' || v_contract::text, 0));
 
-  -- เลิกผูก/เปลี่ยนผูกก่อนบันทึก (การเข้าที่ย้ายวันออกจากเดือนชดเชยจะไม่ติดด่านของการผูกเดิม)
+  -- เลิกผูก / ย้ายไปชดเชยเดือนอื่น: เลิกผูกเดิมก่อน (trigger ลบแถว makeup เดิม → กลับเป็นรอตัดสิน)
+  -- ผูกเดือนเดิมอยู่แล้ว: คงลิงก์ไว้ — ถ้าย้ายวันที่ trigger ปรับ makeup_month ตามเอง
   UPDATE visits vi SET makeup_for_month = NULL
    WHERE vi.id = v_visit_id AND vi.contract_id = v_contract AND vi.makeup_for_month IS NOT NULL
      AND vi.makeup_for_month IS DISTINCT FROM v_month;
@@ -390,7 +454,7 @@ BEGIN
 
   IF v_month IS NOT NULL THEN
     UPDATE visits vi SET makeup_for_month = v_month
-     WHERE vi.id = v_visit_id AND vi.makeup_for_month IS DISTINCT FROM v_month;
+     WHERE vi.id = v_visit_id AND vi.contract_id = v_contract AND vi.makeup_for_month IS DISTINCT FROM v_month;
   END IF;
 
   RETURN coalesce(v_result, '{}'::jsonb) || jsonb_build_object('makeup_for_month', v_month);
@@ -398,7 +462,76 @@ END;
 $$;
 
 -- =====================================================================
--- 7. audit (เนื้อเดิมจาก 20261112150000 + กรณี missed_service_resolutions "M18")
+-- 7. อ่านรายการ "รอตัดสิน" (แถว "รอชดเชย <เดือน>" ในหน้า /service · หน้า ต้องทำ)
+--   p_branch_id: NULL = ทุกสาขาที่มองเห็น · p_month: เดือนของหน้า (วันใดก็ได้ในเดือน · NULL = เดือนปัจจุบัน)
+--   คืนเดือนที่ตกก่อน min(p_month, เดือนปัจจุบัน) ที่ยังไม่ชดเชยและไม่ได้ตัดสินว่าไม่ชดเชย · รวมสัญญาที่จบ/ปิดแล้ว
+--   · ไม่รวมสัญญายกเลิก · นับตั้งแต่ missed_tracking_start_month (เกณฑ์ชั่วคราว)
+--   SECURITY INVOKER: RLS ของ contracts/customers/visits/missed_service_resolutions ทำงานตามผู้เรียก
+--   + recorder เห็นเฉพาะสัญญาในขอบเขต (contract_in_scope) · บทบาทอื่นนอกจาก host/admin/recorder → 42501
+-- =====================================================================
+CREATE FUNCTION public.list_pending_missed_services(p_branch_id uuid DEFAULT NULL, p_month date DEFAULT NULL)
+RETURNS TABLE (
+  contract_id           uuid,
+  customer_id           uuid,
+  branch_id             uuid,
+  missed_month          date,
+  last_service_month    date,
+  makeup_deadline_month date,
+  past_deadline         boolean
+)
+LANGUAGE plpgsql
+STABLE
+SECURITY INVOKER
+SET search_path = public, pg_temp
+AS $$
+#variable_conflict use_column
+DECLARE
+  v_role      text := current_app_role();
+  v_now_month date := date_trunc('month', (now() AT TIME ZONE 'Asia/Bangkok'))::date;
+  v_upto      date;
+BEGIN
+  IF v_role IS NULL OR v_role NOT IN ('host', 'admin', 'recorder') THEN
+    RAISE EXCEPTION 'not allowed to read missed services' USING ERRCODE = '42501';
+  END IF;
+  v_upto := least(coalesce(date_trunc('month', p_month)::date, v_now_month), v_now_month);
+
+  RETURN QUERY
+  WITH c AS (
+    SELECT ct.id AS contract_id, cu.id AS customer_id, cu.branch_id,
+           missed_tracking_start_month(ct.start_date, ct.stations_initialized_at) AS track_from,
+           (date_trunc('month', ct.start_date) + make_interval(months => ct.term_years * 12 - 1))::date AS last_month
+      FROM contracts ct
+      JOIN customers cu ON cu.id = ct.customer_id
+     WHERE ct.status <> 'cancelled' AND ct.cancelled_at IS NULL
+       AND ct.stations_initialized_at IS NOT NULL
+       AND (p_branch_id IS NULL OR cu.branch_id = p_branch_id)
+       AND (v_role <> 'recorder' OR contract_in_scope(ct.id))
+  ), m AS (
+    SELECT c.*, gs::date AS missed_month
+      FROM c,
+           generate_series(c.track_from, least(c.last_month, (v_upto - interval '1 month')::date),
+                           interval '1 month') gs
+  )
+  SELECT m.contract_id, m.customer_id, m.branch_id, m.missed_month, m.last_month,
+         (m.last_month + make_interval(months => missed_makeup_deadline_months()))::date,
+         v_now_month > (m.last_month + make_interval(months => missed_makeup_deadline_months()))::date
+    FROM m
+   WHERE NOT EXISTS (SELECT 1 FROM visits vi
+                      WHERE vi.contract_id = m.contract_id AND vi.visit_type = 'routine'
+                        AND vi.makeup_for_month IS NULL
+                        AND vi.visit_date >= m.missed_month
+                        AND vi.visit_date < (m.missed_month + interval '1 month')::date)
+     AND NOT EXISTS (SELECT 1 FROM visits vi
+                      WHERE vi.contract_id = m.contract_id AND vi.makeup_for_month = m.missed_month)
+     AND NOT EXISTS (SELECT 1 FROM missed_service_resolutions r
+                      WHERE r.contract_id = m.contract_id AND r.missed_month = m.missed_month
+                        AND r.kind = 'waived')
+   ORDER BY m.branch_id, m.customer_id, m.contract_id, m.missed_month;
+END;
+$$;
+
+-- =====================================================================
+-- 8. audit (เนื้อเดิมจาก 20261112150000 + กรณี missed_service_resolutions "M18")
 -- =====================================================================
 CREATE OR REPLACE FUNCTION public.audit_trigger()
 RETURNS trigger
@@ -480,11 +613,18 @@ CREATE TRIGGER audit_missed_service_resolutions
   FOR EACH ROW EXECUTE FUNCTION public.audit_trigger();
 
 -- =====================================================================
--- 8. สิทธิ์ function (ทุกตัวในไฟล์นี้)
+-- 9. สิทธิ์ function (ทุกตัวในไฟล์นี้)
 -- =====================================================================
 REVOKE ALL ON FUNCTION public.visits_makeup_link_guard() FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.visits_makeup_unlink_cleanup() FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.missed_evidence_enqueue_object_delete() FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.missed_makeup_deadline_months() FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.missed_makeup_deadline_months() TO authenticated;
+REVOKE ALL ON FUNCTION public.missed_tracking_start_month(date, timestamptz) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.missed_tracking_start_month(date, timestamptz) TO authenticated;
 REVOKE ALL ON FUNCTION public.resolve_missed_service(jsonb) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.resolve_missed_service(jsonb) TO authenticated;
 REVOKE ALL ON FUNCTION public.save_makeup_service_visit(jsonb) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.save_makeup_service_visit(jsonb) TO authenticated;
+REVOKE ALL ON FUNCTION public.list_pending_missed_services(uuid, date) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.list_pending_missed_services(uuid, date) TO authenticated;

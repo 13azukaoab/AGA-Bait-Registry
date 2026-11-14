@@ -1,87 +1,83 @@
 /**
- * M18 — จัดการตกบริการ ชดเชย / ไม่ชดเชย (DECISIONS 2.41 · docs/plans/2026-11-14-missed-service-resolution.md)
+ * M18 — จัดการตกบริการ ชดเชย / ไม่ชดเชย
+ * (DECISIONS 2.41 + 2.45 · docs/plans/2026-11-14-missed-service-resolution.md ข้อ 0)
  *
  * Logic summary:
  *   - เดือนที่ตกบริการ (isMissedService) เป็น "ประวัติจริงเสมอ" — การชดเชยไม่ลบการตก แค่มีสถานะกำกับ
- *   - การตัดสินต่อ 1 เดือนที่ตก (ตาราง missed_service_resolutions): ไม่มีแถว = รอตัดสิน
- *   - สถานะ 5 แบบคำนวณจาก การตัดสิน + การเข้าที่ผูก (makeupForMonth) + เดือนปัจจุบัน (Asia/Bangkok)
- *     ไม่มี cron เขียนข้อมูล: เดือนชดเชยผ่านไปโดยไม่มีการเข้าที่ผูก → "ชดเชยไม่ได้ทำ" → กลับเข้ารายการต้องทำ
- *   - ชดเชยแล้ว = มีการเข้า routine ของสัญญาเดียวกันที่ผูกกับเดือนที่ตก และอยู่ในเดือนชดเชย
- *   - เดือนชดเชยหลังสัญญาจบนับใน snapshot ตาม MAKEUP_SNAPSHOT_POLICY (จุดเดียวที่ต้องเปลี่ยนถ้าเจ้าของเลือกอีกแบบ)
+ *   - ไม่มีการเลือกเดือนชดเชยล่วงหน้า (2.45): ชดเชยแล้ว = หัวหน้างานบันทึก "บริการชดเชย" ในวันที่ไปจริง
+ *     → การเข้านั้นมี makeupForMonth = เดือนที่ตก (ฐานข้อมูลสร้างแถวการตัดสิน kind=makeup ให้เอง)
+ *   - สถานะ 3 แบบ: รอตัดสิน / ชดเชยแล้ว / ไม่ชดเชย · "ชดเชยแล้ว" ยึดการเข้าที่ผูกไว้จริงเป็นหลัก
+ *     (แถว makeup ที่ไม่มีการเข้าผูก = รอตัดสิน)
+ *   - เกณฑ์ชั่วคราว (รอเจ้าของ): นับเดือนที่ตกตั้งแต่เดือนที่ตั้งสถานีในระบบ (trackingStartMonth) —
+ *     สัญญาเก่าที่นำเข้าไม่มีประวัติการเข้า จะไม่ท่วมรายการ · เกณฑ์เดียวกับ SQL `missed_tracking_start()`
+ *   - สัญญายกเลิก: ตัดสินไม่ได้ (2.45) จึงไม่แสดงในรายการ
+ *   - เพดานเวลาไปชดเชยอยู่ที่ฐานข้อมูลจุดเดียว (`missed_makeup_deadline_months()`) — หน้าจออ่านจาก
+ *     RPC list_pending_missed_services ไม่ต้องมีค่าซ้ำฝั่งนี้
  * ทุก month ในไฟล์นี้เป็น 'YYYY-MM' · เทียบด้วย string ได้เพราะรูปแบบคงที่
+ * ⚠ ตัวแปลงจาก DB: missed_month / makeup_month / makeup_for_month เก็บ 'YYYY-MM-01' → ตัดเป็น 'YYYY-MM' ทุกช่อง
  */
-import type {
-  Contract,
-  MakeupSnapshotPolicy,
-  MissedResolutionStatus,
-  MissedServiceResolution,
-  Visit,
-} from "./types";
+import type { Contract, MissedResolutionStatus, MissedServiceResolution, Visit } from "./types";
 import { serviceMonths } from "./serviceMonths";
 import { isMissedService } from "./missedService";
 import { listMonths, monthOf } from "./date";
 
 /**
- * ⚠ รอเจ้าของยืนยัน (แบบข้อ 5 ข้อสุดท้าย): เลือกชดเชย ม.ค. 2027 แต่ไม่ได้ไป ยังนับลูกค้า ม.ค. ไหม
- * ค่าปัจจุบัน "scheduled" = นับตั้งแต่เลือกชดเชยไว้ (ตามที่แบบเขียน) · "visited" = นับเมื่อไปจริงเท่านั้น
+ * เดือนแรกที่นับตกบริการ (เกณฑ์ชั่วคราว — รอเจ้าของ) = เดือนที่ตั้งสถานีในระบบ แต่ไม่ก่อนเดือนเริ่มสัญญา
+ * ยังไม่ตั้งสถานี → null (ยังไม่นับตก)
  */
-export const MAKEUP_SNAPSHOT_POLICY: MakeupSnapshotPolicy = "scheduled";
+export function trackingStartMonth(contract: Contract): string | null {
+  if (!contract.stationsInitializedAt) return null;
+  const init = monthOf(contract.stationsInitializedAt.slice(0, 10));
+  const start = monthOf(contract.startDate);
+  return init > start ? init : start;
+}
 
-/** เดือนที่ตกบริการของสัญญา (เฉพาะเดือนที่ผ่านไปแล้ว: < currentMonth) */
+/** เดือนที่ตกบริการของสัญญา (เดือนที่ผ่านไปแล้ว: < currentMonth · ตั้งแต่ trackingStartMonth · ไม่รวมสัญญายกเลิก) */
 export function missedMonths(contract: Contract, visits: Visit[], currentMonth: string): string[] {
+  const from = trackingStartMonth(contract);
+  if (from === null || contract.cancelledAt) return [];
   return serviceMonths(contract.startDate, contract.termYears).filter(
-    (m) => m < currentMonth && isMissedService(contract, m, visits),
+    (m) => m >= from && m < currentMonth && isMissedService(contract, m, visits),
   );
 }
 
-/** มีการเข้าชดเชยที่ผูกไว้กับการตัดสินนี้ ในเดือนชดเชย */
-function hasLinkedMakeupVisit(r: MissedServiceResolution, visits: Visit[]): boolean {
-  return visits.some(
+/** การเข้าชดเชยที่ผูกกับเดือนที่ตก: routine · สัญญาเดียวกัน · อยู่หลังเดือนที่ตก */
+export function linkedMakeupVisit(
+  contractId: string,
+  missedMonth: string,
+  visits: Visit[],
+): Visit | undefined {
+  return visits.find(
     (v) =>
-      v.contractId === r.contractId &&
+      v.contractId === contractId &&
       v.visitType === "routine" &&
-      v.makeupForMonth === r.missedMonth &&
-      monthOf(v.visitDate) === r.makeupMonth,
+      v.makeupForMonth === missedMonth &&
+      monthOf(v.visitDate) > missedMonth,
   );
 }
 
-/** สถานะการแก้ไขของ 1 เดือนที่ตก (5 แบบ) */
+/** สถานะการแก้ไขของ 1 เดือนที่ตก (3 แบบ) */
 export function missedResolutionStatus(
   contract: Contract,
   missedMonth: string,
   resolution: MissedServiceResolution | undefined,
   visits: Visit[],
-  currentMonth: string,
 ): MissedResolutionStatus {
-  if (!resolution || resolution.contractId !== contract.id || resolution.missedMonth !== missedMonth)
-    return "pending";
-  if (resolution.kind === "waived") return "waived";
-  if (hasLinkedMakeupVisit(resolution, visits)) return "made_up";
-  if (resolution.makeupMonth && currentMonth > resolution.makeupMonth) return "makeup_not_done";
-  return "makeup_scheduled";
+  const own =
+    resolution && resolution.contractId === contract.id && resolution.missedMonth === missedMonth
+      ? resolution
+      : undefined;
+  if (own?.kind === "waived") return "waived";
+  if (linkedMakeupVisit(contract.id, missedMonth, visits)) return "made_up";
+  return "pending";
 }
 
-/** อยู่ในรายการ "ต้องทำ" ไหม (รอตัดสิน หรือ ชดเชยไม่ได้ทำ) */
+/** อยู่ในรายการ "ต้องทำ" / แถว "รอชดเชย" ไหม */
 export function needsDecision(status: MissedResolutionStatus): boolean {
-  return status === "pending" || status === "makeup_not_done";
+  return status === "pending";
 }
 
-/** เดือนชดเชยเริ่มต้น = เดือนถัดจากเดือนบริการสุดท้าย (SPEC §7.2 — ไม่ใช้ end_date) */
-export function defaultMakeupMonth(contract: Contract): string {
-  return listMonths(lastServiceMonth(contract), 2)[1] as string;
-}
-
-/** เดือนบริการสุดท้าย 'YYYY-MM' (เดือนเริ่ม + ปี×12 − 1 — กฎข้อ 5) */
+/** เดือนบริการสุดท้าย 'YYYY-MM' (เดือนเริ่ม + ปี×12 − 1 — กฎข้อ 5 ไม่ใช้ end_date) */
 export function lastServiceMonth(contract: Contract): string {
   return listMonths(monthOf(contract.startDate), contract.termYears * 12).at(-1) as string;
-}
-
-/** การตัดสินนี้ทำให้สัญญานับใน snapshot ของเดือนชดเชยไหม (ตาม policy) */
-export function makeupCountsInSnapshot(
-  resolution: MissedServiceResolution,
-  visits: Visit[],
-  policy: MakeupSnapshotPolicy = MAKEUP_SNAPSHOT_POLICY,
-): boolean {
-  if (resolution.kind !== "makeup" || !resolution.makeupMonth) return false;
-  return policy === "scheduled" || hasLinkedMakeupVisit(resolution, visits);
 }

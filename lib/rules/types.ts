@@ -15,6 +15,8 @@ export interface Contract {
   termYears: TermYears;
   valueTotal: number; // มูลค่าสัญญาเต็ม
   cancelledAt?: string; // 'YYYY-MM-DD' | undefined
+  /** M18: วันที่ตั้งสถานีในระบบ (contracts.stations_initialized_at) — ใช้เป็นจุดเริ่มนับตกบริการ */
+  stationsInitializedAt?: string; // 'YYYY-MM-DD' ตามเวลา Asia/Bangkok (ตัวแปลงต้องแปลง timestamptz เป็นวันที่ไทยก่อน)
 }
 
 export interface Visit {
@@ -32,26 +34,14 @@ export interface MissedServiceResolution {
   contractId: string;
   missedMonth: string; // 'YYYY-MM'
   kind: MissedResolutionKind;
-  makeupMonth?: string; // 'YYYY-MM' เมื่อ kind = makeup
+  makeupMonth?: string; // 'YYYY-MM' เมื่อ kind = makeup (= เดือนของการเข้าชดเชย ระบบตั้งให้)
 }
 
 /**
- * สถานะที่หน้าจอแสดง 5 แบบ
- * pending = รอตัดสิน · makeup_scheduled = ชดเชย → เดือน · made_up = ชดเชยแล้ว
- * makeup_not_done = ชดเชยไม่ได้ทำ (กลับไปรอตัดสิน) · waived = ไม่ชดเชย
+ * สถานะที่หน้าจอแสดง 3 แบบ (DECISIONS 2.45 — ไม่เลือกเดือนชดเชยล่วงหน้า)
+ * pending = รอตัดสิน · made_up = ชดเชยแล้ว (มีการเข้าชดเชยที่ผูกไว้) · waived = ไม่ชดเชย
  */
-export type MissedResolutionStatus =
-  | "pending"
-  | "makeup_scheduled"
-  | "made_up"
-  | "makeup_not_done"
-  | "waived";
-
-/**
- * กติกานับเดือนชดเชยหลังสัญญาจบใน snapshot (รอเจ้าของยืนยัน)
- * scheduled = นับเมื่อเลือกชดเชยไว้ ไม่ว่าจะไปหรือไม่ · visited = นับเมื่อมีการเข้าชดเชยที่ผูกไว้จริง
- */
-export type MakeupSnapshotPolicy = "scheduled" | "visited";
+export type MissedResolutionStatus = "pending" | "made_up" | "waived";
 
 export interface BranchRef {
   area: string; // เช่น 'เขต 1'
