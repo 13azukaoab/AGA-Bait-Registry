@@ -1680,7 +1680,7 @@ function fheadHtml(c,posHtml,withContact){
     '<div class="sumchips" style="margin:0"><span class="chip na">สัญญา '+esc(c.ct)+'</span>'+
     (c.fresh?'<span class="chip pend">ยังไม่ระบุจำนวนสถานี</span>':'<span class="chip na num"><span class="sttype">IG</span> '+c.ig+'</span><span class="chip na num"><span class="sttype">IC</span> '+c.ic+'</span>')+
     '<span class="chip '+(agN?'pend':'na')+' num"><span class="sttype">AG</span> '+agN+(agN?' ค้างติดตาม':'')+'</span>'+
-    (c.makeupFor?(c.overCap?'<span class="mkchip" style="white-space:normal;max-width:100%;border-radius:10px;background:var(--danger-soft);color:var(--danger)">เลยเพดานชดเชย '+msMonthTh(c.makeupFor)+' (12 เดือนหลังสัญญาจบ) — บันทึกบริการชดเชยไม่ได้ · ให้ Host กด "ไม่ชดเชย" ที่หน้าสถานะทะเบียนบริการ</span>':'<span class="mkchip" style="white-space:normal;max-width:100%;border-radius:10px">บันทึกบริการชดเชย '+msMonthTh(c.makeupFor)+' · กรอกผลของวันที่ไปจริง · ผูกกับเดือนที่ตกอัตโนมัติ</span>'):'')+'</div>'+
+    (c.makeupFor?(c.overCap?(msRole()==='host'?'<span class="mkchip" style="white-space:normal;max-width:100%;border-radius:10px">บันทึกบริการชดเชย '+msMonthTh(c.makeupFor)+' · <b>เกินเพดาน 12 เดือนหลังสัญญาจบ</b> — Host บันทึกได้เป็นกรณีพิเศษ (ลง audit_log)</span>':'<span class="mkchip" style="white-space:normal;max-width:100%;border-radius:10px;background:var(--danger-soft);color:var(--danger)">เลยเพดานชดเชย '+msMonthTh(c.makeupFor)+' (12 เดือนหลังสัญญาจบ) — หัวหน้างานบันทึกบริการชดเชยไม่ได้ ต้องให้ Host · หรือกด "ไม่ชดเชย" ที่หน้าสถานะทะเบียนบริการ</span>'):'<span class="mkchip" style="white-space:normal;max-width:100%;border-radius:10px">บันทึกบริการชดเชย '+msMonthTh(c.makeupFor)+' · กรอกผลของวันที่ไปจริง · ผูกกับเดือนที่ตกอัตโนมัติ</span>'):'')+'</div>'+
     (withContact?'<div id="ctInfoBox">'+ctInfoHtml(c)+'</div>':'')+'</div>';
 }
 function fieldsHtml(ctx,c,extra,bxDate){
@@ -2123,7 +2123,7 @@ function svNextUndone(fromId){
 }
 function svSave(){
   if(!SV) return;
-  var _mc=PK.sv.sel&&custById(PK.sv.sel);if(_mc&&_mc.overCap){toast('เลยเพดานชดเชย 12 เดือนหลังสัญญาจบ — บันทึกบริการชดเชยไม่ได้');return}
+  var _mc=PK.sv.sel&&custById(PK.sv.sel);if(_mc&&_mc.overCap&&msRole()!=='host'){toast('เลยเพดานชดเชย 12 เดือนหลังสัญญาจบ — หัวหน้างานบันทึกไม่ได้ ต้องให้ Host');return}
   SV.tried=true; AGM.sv.tried=true; agRender('sv');
   if(svMissing().length) return;
   var c=custById(SV.id);
@@ -2638,7 +2638,7 @@ var MS=[
   {n:6,id:'m6',br:'พุทธมณฑล',name:'ร้านเสริมสวยบ้านดอกไม้',ct:'CT26-0000266',end:'2026-09-06',missed:'2026-08',res:null,cancelled:true},
   {n:7,id:'m7',br:'นครปฐม',name:'หจก. สยามการช่าง',ct:'CT24-0000190',end:'2025-07-31',missed:'2025-06',res:null}   /* ตัวอย่างเลยเพดาน 12 เดือนหลังสัญญาจบ */
 ];
-/* เพดานชดเชย (DECISIONS 2.45 · เจ้าของกำหนด 12 เดือนหลังสัญญาจบ): เลยแล้วบันทึกบริการชดเชยไม่ได้ · เหลือ "ไม่ชดเชย" ที่ Host กดได้ */
+/* เพดานชดเชย (DECISIONS 2.45 · 12 เดือนหลังสัญญาจบ): เลยแล้ว หัวหน้างานบันทึกบริการชดเชยไม่ได้ · Host บันทึกได้ (อนุญาตกรณีพิเศษ) · "ไม่ชดเชย" กดได้ตามปกติ */
 var MS_CAP_MONTHS=12;
 function msCapMonth(it){var y=+it.end.slice(0,4),m=+it.end.slice(5,7)+MS_CAP_MONTHS;y+=Math.floor((m-1)/12);m=(m-1)%12+1;return y+'-'+(m<10?'0':'')+m}
 function msOverCap(it){return !it.cancelled&&MS_CUR>msCapMonth(it)}
@@ -2669,11 +2669,11 @@ function msRenderTodo(){
     var st=msState(it),lab=MS_LAB[st.s],dis=can?'':' disabled title="admin ดูอย่างเดียว — หัวหน้างาน/host เท่านั้นที่ตัดสินได้"',ended=it.end<MS_CUR+'-01';
     var over=msOverCap(it),host=msRole()==='host';
     var sub=it.cancelled?'สัญญายกเลิกแล้ว — ไม่ต้องชดเชย/ตัดสิน'
-      :over?'เลยเพดานชดเชยแล้ว (12 เดือนหลังสัญญาจบ · ครบ '+msMonthTh(msCapMonth(it))+') — บันทึกบริการชดเชยไม่ได้ · Host กด "ไม่ชดเชย" เพื่อปิดเรื่อง'
+      :over?'เลยเพดานชดเชยแล้ว (12 เดือนหลังสัญญาจบ · ครบ '+msMonthTh(msCapMonth(it))+') — '+(host?'Host บันทึกบริการชดเชยได้เป็นกรณีพิเศษ (เกินเพดาน)':'หัวหน้างานบันทึกบริการชดเชยไม่ได้ (ต้องให้ Host) · กด "ไม่ชดเชย" เพื่อปิดเรื่องได้')
       :'แสดงในหน้าลงข้อมูลบริการเป็นแถว "รอชดเชย '+msMonthTh(it.missed)+'"'+(ended?' · สัญญาจบแล้ว '+msDateTh(it.end)+' · ชดเชยได้ถึง '+msMonthTh(msCapMonth(it)):'');
-    var wdis=over&&!host?' disabled title="เลยเพดานชดเชย — เฉพาะ Host กดไม่ชดเชยได้"':dis;
-    var acts=it.cancelled?'':'<button class="btn sm'+(over?' primary':'')+'" data-ms="waive" data-id="'+it.id+'"'+wdis+'>ไม่ชดเชย</button>'+
-         '<button class="btn sm'+(over?'':' primary')+'" data-ms="rec" data-id="'+it.id+'"'+(over?' disabled title="เลยเพดานชดเชย 12 เดือนหลังสัญญาจบ — บันทึกไม่ได้"':dis)+'>บันทึกบริการชดเชย</button>';
+    var rlock=over&&!host;   /* เลยเพดาน: หัวหน้างานบันทึกชดเชยไม่ได้ · Host ได้ */
+    var acts=it.cancelled?'':'<button class="btn sm'+(rlock?' primary':'')+'" data-ms="waive" data-id="'+it.id+'"'+dis+'>ไม่ชดเชย</button>'+
+         '<button class="btn sm'+(rlock?'':' primary')+'" data-ms="rec" data-id="'+it.id+'"'+(rlock?' disabled title="เลยเพดานชดเชย 12 เดือนหลังสัญญาจบ — หัวหน้างานบันทึกไม่ได้ ต้องให้ Host"':dis)+'>บันทึกบริการชดเชย'+(over&&host?' (เกินเพดาน)':'')+'</button>';
     h+='<div class="msrow"><div class="main"><b>'+esc(it.name)+'</b><small>สาขา'+esc(it.br)+' · '+esc(it.ct)+' · ตกบริการ '+msMonthTh(it.missed)+'</small></div>'+
        '<div class="st"><span class="chip '+(it.cancelled?'na':lab[1])+'">'+(it.cancelled?'สัญญายกเลิก':esc(msText(st)))+'</span>'+(over?' <span class="chip na">เลยเพดาน</span>':'')+'<small>'+esc(sub)+'</small></div><div class="acts">'+acts+'</div></div>';
   });
@@ -2769,8 +2769,8 @@ document.addEventListener('click',function(e){
     if(e.target.closest('a,button'))return;var b=t.querySelector('.main b');if(b)location.href=custHref(b.textContent,[].indexOf.call(t.parentNode.children,t));return}
   var a=t.dataset.ms,id=t.dataset.id,it=id&&msFind(id);
   if(a==='close'){msDlgClose();return}
-  if(a==='waive'&&it){if(msCan()&&!it.cancelled&&(!msOverCap(it)||msRole()==='host'))msOpenWaive(it,t);return}
-  if(a==='rec'&&it){if(msCan()&&!it.cancelled&&!msOverCap(it))msGoMakeup(it);return}
+  if(a==='waive'&&it){if(msCan()&&!it.cancelled)msOpenWaive(it,t);return}
+  if(a==='rec'&&it){if(msCan()&&!it.cancelled&&(!msOverCap(it)||msRole()==='host'))msGoMakeup(it);return}
   if(a==='confirmw'&&it){
     var rs=$('msReason').value.trim();if(!rs){msErr('กรุณาพิมพ์เหตุผลที่ไม่ชดเชย');$('msReason').focus();return}
     $('msErr').hidden=true;$('msStep').innerHTML='<span class="lab" style="margin-right:auto">ปิดเรื่องเดือนนี้โดยไม่ชดเชย?</span><button class="btn" data-ms="backw" data-id="'+it.id+'">กลับไปแก้</button><button class="btn danger" data-ms="dow" data-id="'+it.id+'">ยืนยัน ไม่ชดเชย</button>';
