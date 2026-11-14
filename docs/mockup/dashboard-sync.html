@@ -219,6 +219,18 @@ tr.detail>td{padding:0;background:var(--surface-2);white-space:normal}
 .errbox .mono{display:block;color:var(--danger);margin-top:2px}
 .fix{font-size:12.5px;color:var(--fg);margin:0 0 10px}
 .fix b{font-weight:600}
+.fold>summary{padding:13px 16px;font-size:14px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:9px;flex-wrap:wrap;list-style:none}
+.fold>summary::-webkit-details-marker{display:none}
+.fold>summary::before{content:"▸";color:var(--fg-muted);transition:transform .15s}
+.fold[open]>summary::before{transform:rotate(90deg)}
+.fold[open]>summary{border-bottom:1px solid var(--border)}
+.hero .act{margin-left:auto;align-self:center}
+.hero .next{margin:6px 0 0;font-size:13px;color:var(--fg)}
+.chk{display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--fg-muted);cursor:pointer;padding:8px 2px}
+button.stat{font:inherit;color:inherit;text-align:left;cursor:pointer;width:100%}
+button.stat:hover{border-color:var(--border-strong)}
+tr.grp td{background:var(--surface-2);color:var(--fg-muted)}
+@media (max-width:860px){.btn.sm,.btn.actbtn{min-height:40px}.chk{min-height:40px}.chk input{width:20px;height:20px}}
 .more{padding:12px 16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--fg-muted)}
 .empty{padding:26px 16px;text-align:center;color:var(--fg-muted)}
 
@@ -248,9 +260,9 @@ tr.detail>td{padding:0;background:var(--surface-2);white-space:normal}
   <div class="spacer"></div>
   <span class="pill">วันนี้ <b>06/11/2026</b></span>
   <select class="role" id="roleSel" aria-label="เลือกบทบาท" onchange="setRole(this.value)">
-    <option value="host" selected>host · ส่วนกลาง</option>
-    <option value="admin">admin · แอดมิน</option>
-    <option value="recorder">recorder · หัวหน้างาน</option>
+    <option value="host" selected>OM/PM · ส่วนกลาง</option>
+    <option value="admin">แอดมิน</option>
+    <option value="recorder">หัวหน้างาน</option>
   </select>
   <button class="theme-btn" id="themeBtn" aria-label="สลับธีม" onclick="toggleTheme()">◐</button>
   <a class="avatar" href="login.html" title="ออกจากระบบ (กลับหน้าเข้าสู่ระบบ)" aria-label="ออกจากระบบ">นท</a>
@@ -282,11 +294,11 @@ tr.detail>td{padding:0;background:var(--surface-2);white-space:normal}
 
   <main id="main">
     <div class="page-head"><h1>Dashboard Sync</h1>
-      <p>ติดตามการส่งตัวเลขไป AGA Bait Dashboard · ดูประวัติ · ดาวน์โหลดไฟล์สำรอง · เฉพาะ host · ข้อมูลในหน้านี้เป็นตัวอย่าง</p></div>
+      <p>ติดตามการส่งตัวเลขไป AGA Bait Dashboard · ดูประวัติ · ดาวน์โหลดไฟล์สำรอง · เฉพาะ OM/PM · ข้อมูลในหน้านี้เป็นตัวอย่าง</p></div>
 
     <div id="lockMsg" class="panel lock" hidden>
       <div style="font-size:30px" aria-hidden="true">🔒</div>
-      <h2 style="margin:8px 0 4px;font-size:16px">หน้านี้สำหรับ host เท่านั้น</h2>
+      <h2 style="margin:8px 0 4px;font-size:16px">หน้านี้สำหรับ OM/PM เท่านั้น</h2>
       <p style="color:var(--fg-muted);margin:0">บทบาทนี้ไม่มีสิทธิ์ดูการตั้งค่า/ประวัติการส่งข้อมูล สิทธิ์บังคับที่ฐานข้อมูล (RLS) ไม่ใช่แค่ซ่อนปุ่ม</p>
     </div>
 
@@ -301,35 +313,6 @@ tr.detail>td{padding:0;background:var(--surface-2);white-space:normal}
 
       <div class="stats" id="stats"></div>
 
-      <!-- 2) ช่องทางส่ง + 3) Export -->
-      <div class="twocol">
-        <section class="panel" aria-labelledby="h-ch">
-          <h3 id="h-ch">ระบบส่งข้อมูลเข้า Dashboard อย่างไร</h3>
-          <div class="body">
-            <div class="ch"><div class="i" aria-hidden="true">⏰</div><div><b>Auto Sync ทุกวัน 06:00 น. (เวลาไทย)</b>
-              <small>รันบน Vercel Cron เอง ไม่ต้องเปิดคอมพิวเตอร์ · ตั้งเวลา <code>0 23 * * *</code> (UTC) · ระบบอาจเริ่มรันช่วง 06:00–06:59 ถือว่าปกติ</small>
-              <small>ไม่คำนวณ "เดือนที่ปิดแล้ว" ใหม่เอง — ใช้ snapshot ที่เก็บไว้ (รอเจ้าของยืนยัน SPEC §14 ข้อ 9)</small></div></div>
-            <div class="ch"><div class="i" aria-hidden="true">🔒</div><div><b>ปิดเดือน → ส่งทันที</b>
-              <small>เมื่อ host หรือหัวหน้างานกดปิดเดือน ระบบเก็บ snapshot แล้วส่ง Dashboard ทันที ไม่ต้องรอรอบ 06:00 · ถ้าส่งไม่สำเร็จ เดือนยังถือว่าปิดแล้ว</small></div></div>
-            <div class="ch"><div class="i" aria-hidden="true">↻</div><div><b>คำนวณ snapshot ใหม่ → ส่งทันที</b>
-              <small>ใช้เมื่อมีการแก้ผลบริการหลังปิดเดือน (กดที่หน้า <a href="month-closure.html" style="color:var(--accent-strong)">ปิดเดือน</a>)</small></div></div>
-            <div class="ch"><div class="i" aria-hidden="true">⇩</div><div><b>Export สำรอง (ทำเอง)</b>
-              <small>ดาวน์โหลดไฟล์ <code>dashboard_data.json</code> ไว้เป็นหลักฐาน/ใช้ยามฉุกเฉินเมื่อส่งอัตโนมัติไม่ได้ — ดูกล่องด้านขวา</small></div></div>
-          </div>
-        </section>
-
-        <section class="panel" aria-labelledby="h-exp">
-          <h3 id="h-exp">Export สำรอง <span class="chip info mono">dashboard_data.json</span></h3>
-          <div class="body">
-            <p style="margin:0 0 10px;font-size:13px">สร้างไฟล์จากข้อมูล ณ ตอนนี้ ในรูปแบบเดียวกับที่ Dashboard อ่าน (ไม่เปลี่ยนรูปแบบ)</p>
-            <ul class="checks" id="expChecks" aria-label="ผลตรวจไฟล์ก่อนดาวน์โหลด"></ul>
-            <button class="btn primary" id="expBtn" onclick="doExport()">⇩ ดาวน์โหลด dashboard_data.json</button>
-            <span id="expMsg" class="chip ok" style="margin-left:8px" hidden></span>
-            <div class="note"><span class="ic">ℹ</span><span>ไฟล์มีเฉพาะตัวเลขสรุปรายสาขา ไม่มีชื่อลูกค้า/เบอร์โทร (PDPA) · การดาวน์โหลดถูกบันทึกลงประวัติด้านล่างด้วย · <b>ตัวอย่างนี้สร้างข้อมูลสมมติ 2 เดือน</b> ของจริงมีทุกเดือน JAN.25 – เดือนล่าสุด</span></div>
-          </div>
-        </section>
-      </div>
-
       <!-- 4) ประวัติ -->
       <section class="panel" aria-labelledby="h-hist" style="margin-top:16px">
         <h3 id="h-hist">ประวัติการส่ง <span class="chip na" id="histCount"></span></h3>
@@ -338,6 +321,7 @@ tr.detail>td{padding:0;background:var(--surface-2);white-space:normal}
             <select id="fRes" onchange="resetPage()"><option value="all">ทั้งหมด</option><option value="ok">สำเร็จ</option><option value="skip">ข้าม (ไม่มีการเปลี่ยนแปลง)</option><option value="fail">ล้มเหลว</option></select></div>
           <div class="field"><label for="fTrg">ช่องทาง</label>
             <select id="fTrg" onchange="resetPage()"><option value="all">ทุกช่องทาง</option><option value="auto">Auto Sync 06:00</option><option value="close">ปิดเดือน</option><option value="resync">คำนวณ snapshot ใหม่</option><option value="retry">ส่งใหม่ (กดเอง)</option><option value="export">Export สำรอง</option></select></div>
+          <label class="chk"><input type="checkbox" id="fGrp" checked onchange="resetPage()"> รวมรายการ "ข้าม" ที่ติดกัน</label>
         </div>
         <div class="tablewrap">
           <table>
@@ -349,9 +333,37 @@ tr.detail>td{padding:0;background:var(--surface-2);white-space:normal}
         <div class="more" id="histMore"></div>
       </section>
 
+      <!-- 2) Export สำรอง -->
+      <section class="panel" aria-labelledby="h-exp">
+          <h3 id="h-exp">Export สำรอง <span class="chip info mono">dashboard_data.json</span></h3>
+          <div class="body">
+            <p style="margin:0 0 10px;font-size:13px">สร้างไฟล์จากข้อมูล ณ ตอนนี้ ในรูปแบบเดียวกับที่ Dashboard อ่าน (ไม่เปลี่ยนรูปแบบ)</p>
+            <ul class="checks" id="expChecks" aria-label="ผลตรวจไฟล์ก่อนดาวน์โหลด"></ul>
+            <button class="btn primary" id="expBtn" onclick="doExport()">⇩ ดาวน์โหลด dashboard_data.json</button>
+            <span id="expMsg" class="chip ok" style="margin-left:8px" hidden></span>
+            <div class="note"><span class="ic">ℹ</span><span>ไฟล์มีเฉพาะตัวเลขสรุปรายสาขา ไม่มีชื่อลูกค้า/เบอร์โทร (PDPA) · การดาวน์โหลดถูกบันทึกลงประวัติด้านล่างด้วย · <b>ตัวอย่างนี้สร้างข้อมูลสมมติ 2 เดือน</b> ของจริงมีทุกเดือน JAN.25 – เดือนล่าสุด</span></div>
+          </div>
+        </section>
+
+      <!-- 3) ระบบทำงานอย่างไร (พับเก็บ) -->
+      <details class="panel fold">
+          <summary id="h-ch">ระบบส่งข้อมูลเข้า Dashboard อย่างไร <span class="chip na">อ่านครั้งเดียวพอ</span></summary>
+          <div class="body">
+            <div class="ch"><div class="i" aria-hidden="true">⏰</div><div><b>Auto Sync ทุกวัน 06:00 น. (เวลาไทย)</b>
+              <small>รันบน Vercel Cron เอง ไม่ต้องเปิดคอมพิวเตอร์ · ตั้งเวลา <code>0 23 * * *</code> (UTC) · ระบบอาจเริ่มรันช่วง 06:00–06:59 ถือว่าปกติ</small>
+              <small>ไม่คำนวณ "เดือนที่ปิดแล้ว" ใหม่เอง — ใช้ snapshot ที่เก็บไว้ จนกว่าจะสั่งคำนวณใหม่ (เจ้าของตัดสินแล้ว)</small></div></div>
+            <div class="ch"><div class="i" aria-hidden="true">🔒</div><div><b>ปิดเดือน → ส่งทันที</b>
+              <small>เมื่อ OM/PM หรือหัวหน้างานกดปิดเดือน ระบบเก็บ snapshot แล้วส่ง Dashboard ทันที ไม่ต้องรอรอบ 06:00 · ถ้าส่งไม่สำเร็จ เดือนยังถือว่าปิดแล้ว</small></div></div>
+            <div class="ch"><div class="i" aria-hidden="true">↻</div><div><b>คำนวณ snapshot ใหม่ → ส่งทันที</b>
+              <small>ใช้เมื่อมีการแก้ผลบริการหลังปิดเดือน (กดที่หน้า <a href="month-closure.html" style="color:var(--accent-strong)">ปิดเดือน</a>)</small></div></div>
+            <div class="ch"><div class="i" aria-hidden="true">⇩</div><div><b>Export สำรอง (ทำเอง)</b>
+              <small>ดาวน์โหลดไฟล์ <code>dashboard_data.json</code> ไว้เป็นหลักฐาน/ใช้ยามฉุกเฉินเมื่อส่งอัตโนมัติไม่ได้ — ดูกล่องด้านขวา</small></div></div>
+          </div>
+        </details>
+
       <!-- 5) ปลายทาง (อ่านอย่างเดียว) -->
-      <section class="panel" aria-labelledby="h-cfg">
-        <h3 id="h-cfg">ปลายทางที่ส่งไป <span class="chip na">อ่านอย่างเดียว</span></h3>
+      <details class="panel fold">
+        <summary id="h-cfg">ปลายทางที่ส่งไป <span class="chip na">อ่านอย่างเดียว</span></summary>
         <div class="body">
           <div class="kvs" style="margin-top:0">
             <div class="kv"><span>Repo</span><b class="mono">13azukaoab/AGA-Bait-Dashboard</b></div>
@@ -362,7 +374,7 @@ tr.detail>td{padding:0;background:var(--surface-2);white-space:normal}
           </div>
           <div class="note"><span class="ic">ℹ</span><span>ค่าเหล่านี้ตั้งที่ Vercel (Environment Variable) ไม่ใช่ในหน้านี้ — ระบบไม่แสดงและไม่รับ token ทางหน้าจอ เพื่อไม่ให้ความลับรั่วไหล · เมื่อ commit สำเร็จ Netlify จะอัปเดต Dashboard ภายใน ~30 วินาที</span></div>
         </div>
-      </section>
+      </details>
     </div>
   </main>
 </div>
@@ -379,7 +391,7 @@ var ERRS={
 function pad(n){return String(n).padStart(2,"0")}
 function fmt(ts){var d=new Date(ts);return pad(d.getUTCDate())+"/"+pad(d.getUTCMonth()+1)+"/"+d.getUTCFullYear()+" "+pad(d.getUTCHours())+":"+pad(d.getUTCMinutes())}
 function at(off,h,m){return TODAY-off*DAY+(h*60+m)*60000}
-var HOST="host · QCS ส่วนกลาง", REC="recorder · หัวหน้างาน A";
+var HOST="สมชาย (OM/PM)", REC="นท (หัวหน้างาน)";
 var LOGS=[], uid=0;
 function add(ts,trg,res,by,sec,o){o=o||{};o.id=++uid;o.ts=ts;o.trg=trg;o.res=res;o.by=by;o.sec=sec;LOGS.push(o)}
 /* Auto Sync รายวัน 35 วัน: ผลตามตาราง · เวลาเริ่มไม่ตรงนาที (Vercel Cron 06:00–06:59) */
@@ -387,9 +399,9 @@ function add(ts,trg,res,by,sec,o){o=o||{};o.id=++uid;o.ts=ts;o.trg=trg;o.res=res
   var okDays={0:1,2:1,6:1,9:1,15:1,21:1,26:1,31:1}, fails={3:"502",23:"401"};
   for(var o=0;o<=34;o++){
     var mm=(o*7+5)%55+3, ts=at(o,6,mm);
-    if(fails[o]) add(ts,"auto","fail","ระบบ (Cron)",fails[o]==="401"?1.1:30.2,{err:fails[o],months:"OCT.26 (+ตัวเลขใหม่)"});
-    else if(okDays[o]) add(ts,"auto","ok","ระบบ (Cron)",3+(o%4)*.7,{commit:(0xa3f9c21-o*40961).toString(16).slice(-7),files:"dashboard_data.json, index.html",months:o>5?"SEP.26 และ OCT.26":"OCT.26",rows:"22 เดือน × 43 สาขา"});
-    else add(ts,"auto","skip","ระบบ (Cron)",1.6+(o%3)*.3,{note:"ข้อมูลเหมือนรอบก่อน ไม่ commit (ไม่ทำให้ Netlify build ใหม่)"});
+    if(fails[o]) add(ts,"auto","fail","ระบบ Auto Update",fails[o]==="401"?1.1:30.2,{err:fails[o],months:"OCT.26 (+ตัวเลขใหม่)"});
+    else if(okDays[o]) add(ts,"auto","ok","ระบบ Auto Update",3+(o%4)*.7,{commit:(0xa3f9c21-o*40961).toString(16).slice(-7),files:"dashboard_data.json, index.html",months:o>5?"SEP.26 และ OCT.26":"OCT.26",rows:"22 เดือน × 43 สาขา"});
+    else add(ts,"auto","skip","ระบบ Auto Update",1.6+(o%3)*.3,{note:"ข้อมูลเหมือนรอบก่อน ไม่ commit (ไม่ทำให้ Netlify build ใหม่)"});
   }
   add(at(3,9,41),"retry","ok",HOST,3.9,{commit:"7be05d3",files:"dashboard_data.json, index.html",months:"OCT.26",rows:"22 เดือน × 43 สาขา",note:"ส่งใหม่หลัง Auto Sync 06:22 ล้มเหลว"});
   add(at(23,10,2),"retry","ok",HOST,4.4,{commit:"1c8e9a4",files:"dashboard_data.json, index.html",months:"SEP.26",rows:"21 เดือน × 43 สาขา",note:"ส่งใหม่หลังเปลี่ยน token ใหม่ที่ Vercel"});
@@ -429,11 +441,15 @@ function renderAlerts(){
   }
   document.getElementById("alerts").innerHTML=out;
 }
+function relDay(ts){var d=Math.floor(now0/DAY)-Math.floor(ts/DAY);return d<=0?"วันนี้":d===1?"เมื่อวาน":d+" วันที่แล้ว"}
+function dm(ts){var d=new Date(ts);return pad(d.getUTCDate())+"/"+pad(d.getUTCMonth()+1)}
 function renderLast(){
   var la=lastAttempt(), lo=lastOk(), r=RES[la.res], cls=la.res==="fail"?"fail":(la.res==="skip"?"skip":"ok");
   var title=la.res==="ok"?"ส่งสำเร็จ":la.res==="skip"?"ตรวจแล้ว ไม่มีการเปลี่ยนแปลง":"ส่งไม่สำเร็จ";
-  var h='<div class="hero"><div class="badge '+cls+'" aria-hidden="true">'+r[2]+'</div><div><h2>'+title+' · <span class="num">'+fmt(la.ts)+'</span></h2>'+
-   '<p>ช่องทาง: '+TRG[la.trg]+' · ผู้สั่ง: '+la.by+' · ใช้เวลา '+la.sec.toFixed(1)+' วินาที</p></div></div>';
+  var h='<div class="hero"><div class="badge '+cls+'" aria-hidden="true">'+r[2]+'</div><div><h2>'+title+' · <span class="num">'+fmt(la.ts)+'</span> <span style="font-weight:400;color:var(--fg-muted);font-size:13px">('+relDay(la.ts)+')</span></h2>'+
+   '<p>ช่องทาง: '+TRG[la.trg]+' · ผู้สั่ง: '+la.by+' · ใช้เวลา '+la.sec.toFixed(1)+' วินาที</p>'+
+   '<p class="next">'+(la.res==="fail"?'<b style="color:var(--danger)">ต้องทำ:</b> กด “ส่งตอนนี้” หรือรอ Auto Sync รอบถัดไป (07/11/2026 ~06:00) ระบบจะลองส่งซ้ำให้':'<b style="color:var(--ok)">✓ ไม่ต้องทำอะไร</b> · รอบถัดไป 07/11/2026 ~06:00')+'</p></div>'+
+   '<div class="act"><button class="btn actbtn'+(la.res==="fail"?' primary':'')+'" onclick="retry(0)">↻ ส่งตอนนี้</button></div></div>';
   h+='<div class="kvs">'+
    '<div class="kv"><span>ส่งสำเร็จ (commit) ล่าสุด</span><b class="num">'+fmt(lo.ts)+'</b></div>'+
    '<div class="kv"><span>commit</span><b class="mono">'+(lo.commit||"-")+'</b></div>'+
@@ -445,7 +461,7 @@ function renderStats(){
   var lo=lastOk(), st=autoStreak(), f=fail30(), unres=f.filter(function(l){return !resolvedAfter(l)}).length;
   var s='<div class="stat ok"><div class="lab">Dashboard อัปเดตล่าสุด</div><div class="val num" style="font-size:18px;margin-top:8px">'+fmt(lo.ts)+'</div><div class="sub">ครั้งล่าสุดที่มีการ commit จริง</div></div>'+
    '<div class="stat '+(st>=7?'ok':'accent')+'"><div class="lab">Auto Sync ไม่พลาดติดต่อกัน</div><div class="val num">'+st+' วัน</div><div class="sub">เป้าหมายยอมรับระบบ: 7 วัน (SPEC §15 ข้อ 5)</div></div>'+
-   '<div class="stat '+(f.length?'warn':'ok')+'"><div class="lab">ล้มเหลวใน 30 วันล่าสุด</div><div class="val num">'+f.length+' ครั้ง</div><div class="sub">'+(unres?unres+' ครั้งยังไม่ได้ส่งซ้ำสำเร็จ':'ทุกครั้งส่งซ้ำสำเร็จแล้ว')+'</div></div>'+
+   '<button type="button" class="stat '+(f.length?'warn':'ok')+'" onclick="showFails()" title="กดเพื่อดูเฉพาะรายการที่ล้มเหลวในประวัติ"><div class="lab">ล้มเหลวใน 30 วันล่าสุด ↓</div><div class="val num">'+f.length+' ครั้ง</div><div class="sub">'+(unres?unres+' ครั้งยังไม่ได้ส่งซ้ำสำเร็จ':'ทุกครั้งส่งซ้ำสำเร็จแล้ว')+'</div></button>'+
    '<div class="stat accent"><div class="lab">รอบ Auto Sync ถัดไป</div><div class="val num" style="font-size:18px;margin-top:8px">07/11/2026 ~06:00</div><div class="sub">เริ่มได้ถึง 06:59 · เวลาไทย</div></div>';
   document.getElementById("stats").innerHTML=s;
 }
@@ -454,21 +470,46 @@ function filtered(){
   return LOGS.filter(function(l){return (r==="all"||l.res===r)&&(t==="all"||l.trg===t)});
 }
 function resetPage(){shown=PAGE;openId=null;renderHist()}
-function renderHist(){
-  var rows=filtered(), body=document.getElementById("histBody"), h="";
-  rows.slice(0,shown).forEach(function(l){
-    var r=RES[l.res], isOpen=(openId===l.id);
-    h+='<tr class="'+(isOpen?'sel':'')+'"><td class="num">'+fmt(l.ts)+'</td><td>'+TRG[l.trg]+'</td>'+
-      '<td><span class="chip '+r[1]+'"><span aria-hidden="true">'+r[2]+'</span> '+r[0]+'</span></td><td>'+l.by+'</td><td class="r num">'+l.sec.toFixed(1)+' วิ</td>'+
-      '<td class="r"><button class="btn sm ghost" aria-expanded="'+isOpen+'" aria-controls="d'+l.id+'" onclick="toggleRow('+l.id+')">'+(isOpen?'ซ่อน':'รายละเอียด')+'</button></td></tr>';
-    if(isOpen) h+='<tr class="detail" id="d'+l.id+'"><td colspan="6"><div class="dbox">'+detailHtml(l)+'</div></td></tr>';
+var openG={};
+function rowHtml(l){
+  var r=RES[l.res], isOpen=(openId===l.id), h;
+  h='<tr class="'+(isOpen?'sel':'')+'"><td class="num">'+fmt(l.ts)+'</td><td>'+TRG[l.trg]+'</td>'+
+    '<td><span class="chip '+r[1]+'"><span aria-hidden="true">'+r[2]+'</span> '+r[0]+'</span></td><td>'+l.by+'</td><td class="r num">'+l.sec.toFixed(1)+' วิ</td>'+
+    '<td class="r"><button class="btn sm ghost" aria-expanded="'+isOpen+'" aria-controls="d'+l.id+'" onclick="toggleRow('+l.id+')">'+(isOpen?'ซ่อน':'รายละเอียด')+'</button></td></tr>';
+  if(isOpen) h+='<tr class="detail" id="d'+l.id+'"><td colspan="6"><div class="dbox">'+detailHtml(l)+'</div></td></tr>';
+  return h;
+}
+/* รวมแถว "ข้าม" ที่ติดกันตั้งแต่ 2 แถวขึ้นไปเป็นแถวเดียว (กดแสดงเพื่อกางดู) */
+function groupItems(rows){
+  if(!document.getElementById("fGrp").checked) return rows.map(function(l){return {logs:[l]}});
+  var items=[], cur=null;
+  rows.forEach(function(l){
+    if(l.res==="skip"){ if(!cur){cur={g:true,logs:[]};items.push(cur)} cur.logs.push(l); }
+    else { cur=null; items.push({logs:[l]}); }
   });
-  if(!rows.length) h='<tr><td colspan="6"><div class="empty">ไม่พบรายการตามตัวกรอง</div></td></tr>';
+  return items.map(function(it){return (it.g&&it.logs.length<2)?{logs:it.logs}:it});
+}
+function renderHist(){
+  var rows=filtered(), items=groupItems(rows), body=document.getElementById("histBody"), h="";
+  items.slice(0,shown).forEach(function(it){
+    if(!it.g){ h+=rowHtml(it.logs[0]); return; }
+    var first=it.logs[0], last=it.logs[it.logs.length-1], key=last.id, open=!!openG[key];
+    h+='<tr class="grp"><td class="num">'+(dm(last.ts)===dm(first.ts)?dm(first.ts):dm(last.ts)+" – "+dm(first.ts))+'</td><td>'+TRG[first.trg]+'</td>'+
+      '<td><span class="chip na"><span aria-hidden="true">–</span> ข้าม '+it.logs.length+' รอบติดกัน</span></td><td colspan="2">ข้อมูลเหมือนรอบก่อน ไม่ commit</td>'+
+      '<td class="r"><button class="btn sm ghost" aria-expanded="'+open+'" onclick="toggleGrp('+key+')">'+(open?'ซ่อน':'แสดง')+'</button></td></tr>';
+    if(open) it.logs.forEach(function(l){h+=rowHtml(l)});
+  });
+  if(!items.length) h='<tr><td colspan="6"><div class="empty">ไม่พบรายการตามตัวกรอง</div></td></tr>';
   body.innerHTML=h;
   document.getElementById("histCount").textContent=rows.length+" รายการ";
   var more=document.getElementById("histMore");
-  more.innerHTML='<span>แสดง '+Math.min(shown,rows.length)+' จาก '+rows.length+' รายการ · ระบบเก็บประวัติถาวร ไม่ลบอัตโนมัติ</span>'+
-    (rows.length>shown?'<button class="btn sm" onclick="shown+=PAGE;renderHist()">แสดงเพิ่ม '+Math.min(PAGE,rows.length-shown)+' รายการ</button>':'');
+  more.innerHTML='<span>แสดง '+Math.min(shown,items.length)+' จาก '+items.length+' แถว ('+rows.length+' รายการ) · ระบบเก็บประวัติถาวร ไม่ลบอัตโนมัติ</span>'+
+    (items.length>shown?'<button class="btn sm" onclick="shown+=PAGE;renderHist()">แสดงเพิ่ม '+Math.min(PAGE,items.length-shown)+' แถว</button>':'');
+}
+function toggleGrp(k){openG[k]=!openG[k];renderHist()}
+function showFails(){
+  document.getElementById("fRes").value="fail"; document.getElementById("fTrg").value="all";
+  resetPage(); var t=document.getElementById("h-hist"); if(t) t.scrollIntoView({behavior:"smooth",block:"start"});
 }
 function detailHtml(l){
   var h="";
@@ -491,10 +532,10 @@ function toggleRow(id){openId=(openId===id)?null:id;renderHist();var b=document.
 
 /* ส่งใหม่ (จำลอง: สำเร็จเสมอ) — บันทึกเป็นแถวใหม่ ไม่แก้แถวเก่า (log ห้ามถูกเขียนทับ) */
 function retry(id){
-  var btns=document.querySelectorAll("#alerts .btn,#histBody .btn.primary");btns.forEach(function(b){b.disabled=true;b.textContent="กำลังส่ง…"});
+  var btns=document.querySelectorAll("#alerts .btn,#histBody .btn.primary,#lastBox .actbtn");btns.forEach(function(b){b.disabled=true;b.textContent="กำลังส่ง…"});
   setTimeout(function(){
     now0+=60000*3;
-    add(now0,"retry","ok",HOST,4.1,{commit:"f2a7c19",files:"dashboard_data.json, index.html",months:"OCT.26",rows:"22 เดือน × 43 สาขา",note:"ส่งใหม่ตามที่ host กด"});
+    add(now0,"retry","ok",HOST,4.1,{commit:"f2a7c19",files:"dashboard_data.json, index.html",months:"OCT.26",rows:"22 เดือน × 43 สาขา",note:"ส่งใหม่ตามที่ OM/PM กด"});
     LOGS.sort(function(a,b){return b.ts-a.ts});
     openId=null;renderAll();
     var a=document.getElementById("alerts");a.innerHTML='<div class="alert ok" role="status"><span class="ic" aria-hidden="true">✓</span><div><b>ส่ง Dashboard สำเร็จ</b><small>บันทึกลงประวัติแล้ว · Netlify จะอัปเดตภายใน ~30 วินาที</small></div></div>';
