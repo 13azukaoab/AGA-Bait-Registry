@@ -3,10 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>ปิดเดือน · AGA Bait Registry</title>
+<title>ส่งข้อมูล และสรุปงานประจำเดือน · AGA Bait Registry</title>
 <!--
   หน้าจอ 8 "ปิดเดือน" (SPEC §8, §7.7) — ผู้ใช้: host + หัวหน้างาน (recorder) [เจ้าของตัดสิน 6 พ.ย. 2026 — ต่างจาก SPEC §5 เดิมที่ host เท่านั้น]
-  สิทธิ์: host และ recorder = เห็นข้อมูลส่วนกลาง 24 สาขา (division_scope) + ปิดเดือน + แก้ข้อมูลเดือนที่ปิดแล้วได้เท่ากัน · admin = ไม่เห็นหน้านี้
+  สิทธิ์: OM/PM และหัวหน้างาน = เห็นข้อมูลส่วนกลาง 24 สาขา (division_scope) + ปิดเดือน + แก้ข้อมูลเดือนที่ปิดแล้วได้เท่ากัน · admin = ไม่เห็นหน้านี้
   ⚠ เจ้าของตัดสิน 6 พ.ย. 2026: เดือนที่ปิดแล้ว "แก้ตรงได้" (ไม่มีขั้นปลดล็อก) → ขัด CLAUDE.md กฎข้อ 7 / SPEC §7.7 / §15 ข้อ 3 ที่ต้องปรับตาม
   mockup ข้อมูลตัวอย่าง (ไม่ใช่ตัวเลขจริง) — กดเล่นได้จริงเมื่อเปิดไฟล์ในเบราว์เซอร์
 
@@ -223,6 +223,19 @@ main{flex:1;min-width:0;padding:20px 24px 48px}
 .bar{height:8px;border-radius:999px;background:var(--surface-3);overflow:hidden;margin-top:8px}
 .bar>i{display:block;height:100%;background:var(--ok);border-radius:999px}
 .bar.warnbar>i{background:var(--warn)}
+/* --- แผงประวัติบริการรายราย: ลอยทับด้านขวา ไม่มีฉากมืด หน้าเดิมยังเลื่อน/กดได้ · ปิดด้วย ✕ หรือ Esc --- */
+.svcpanel{position:fixed;right:16px;bottom:16px;top:84px;width:min(520px,calc(100vw - 32px));z-index:40;display:flex;flex-direction:column;background:var(--surface);border:1px solid var(--border-strong);border-radius:var(--radius);box-shadow:var(--drawer-shadow)}
+.svcpanel[hidden]{display:none}
+.svcpanel .sp-head{display:flex;gap:10px;align-items:flex-start;padding:12px 14px;border-bottom:1px solid var(--border)}
+.svcpanel .sp-head h3{margin:0;font-size:15px}
+.svcpanel .sp-head small{display:block;color:var(--fg-muted);font-size:12px;margin-top:2px}
+.svcpanel .sp-body{padding:12px 14px;overflow:auto;flex:1}
+.svcpanel .sp-foot{padding:10px 14px;border-top:1px solid var(--border);font-size:12px;color:var(--fg-muted)}
+.svcpanel table{width:100%;border-collapse:collapse;font-size:12.5px}
+.svcpanel th{text-align:left;font-size:11.5px;color:var(--fg-muted);font-weight:600;padding:6px 6px;border-bottom:1px solid var(--border)}
+.svcpanel td.note{min-width:130px;font-size:12px}
+.svcpanel td{padding:7px 6px;border-bottom:1px solid var(--border)}
+@media (max-width:860px){.btn.sm{min-height:40px}.svcpanel #svcClose{min-height:44px;min-width:44px}.svcpanel{left:8px;right:8px;top:auto;height:62vh;width:auto;bottom:8px}}
 .tablewrap{border:1px solid var(--border);border-radius:var(--radius);overflow-x:auto}
 table{border-collapse:collapse;width:100%;font-size:13px;white-space:nowrap}
 thead th{background:var(--surface-2);color:var(--fg-muted);font-weight:600;font-size:11.5px;text-align:left;padding:9px 12px;border-bottom:1px solid var(--border)}
@@ -279,9 +292,9 @@ td.r,th.r{text-align:right} td.c,th.c{text-align:center}
   <div class="spacer"></div>
   <span class="pill">วันนี้ <b>06/11/2026</b></span>
   <select class="role" id="roleSel" aria-label="เลือกบทบาท" onchange="setRole(this.value)">
-    <option value="host" selected>host · ส่วนกลาง</option>
-    <option value="admin">admin · แอดมิน</option>
-    <option value="recorder">recorder · หัวหน้างาน</option>
+    <option value="host" selected>OM/PM · ส่วนกลาง</option>
+    <option value="admin">แอดมิน</option>
+    <option value="recorder">หัวหน้างาน</option>
   </select>
   <button class="theme-btn" id="themeBtn" aria-label="สลับธีม" onclick="toggleTheme()">◐</button>
   <a class="avatar" href="login.html" title="ออกจากระบบ (กลับหน้าเข้าสู่ระบบ)" aria-label="ออกจากระบบ">นท</a>
@@ -312,14 +325,14 @@ td.r,th.r{text-align:right} td.c,th.c{text-align:center}
   <div class="nav-backdrop" id="navBackdrop" onclick="toggleNav(false)" aria-hidden="true"></div>
 
   <main id="main">
-    <div class="page-head"><h1>ปิดเดือน</h1>
-      <p>ยืนยันตัวเลขบริการรายเดือนและส่งเข้า Dashboard · host และหัวหน้างานใช้ได้ · ข้อมูลในหน้านี้เป็นตัวอย่าง</p>
-      <p id="scopeNote" style="margin-top:6px" hidden><span class="chip info">ขอบเขตข้อมูลของคุณ: ส่วนกลาง 24 สาขา · ปิดต่างจังหวัดได้เฉพาะ host</span></p></div>
+    <div class="page-head"><h1>ส่งข้อมูล และสรุปงานประจำเดือน</h1>
+      <p>ปิดเดือนเพื่อยืนยันตัวเลขบริการรายเดือนและส่งเข้า Dashboard · OM/PM และหัวหน้างาน ใช้ได้ · ข้อมูลในหน้านี้เป็นตัวอย่าง</p>
+      <p id="scopeNote" style="margin-top:6px" hidden><span class="chip info">ขอบเขตข้อมูลของคุณ: ส่วนกลาง 24 สาขา · ปิดต่างจังหวัดได้เฉพาะ OM/PM</span></p></div>
 
     <div id="lockMsg" class="panel lock" hidden>
       <div style="font-size:30px">🔒</div>
-      <h2 style="margin:8px 0 4px;font-size:16px">หน้านี้สำหรับ host และหัวหน้างานเท่านั้น</h2>
-      <p style="color:var(--fg-muted);margin:0">บทบาท admin ไม่มีสิทธิ์ปิด/เปิดเดือน สิทธิ์นี้บังคับที่ฐานข้อมูล (RLS) ไม่ใช่แค่ซ่อนปุ่ม</p>
+      <h2 style="margin:8px 0 4px;font-size:16px">หน้านี้สำหรับ OM/PM และหัวหน้างาน เท่านั้น</h2>
+      <p style="color:var(--fg-muted);margin:0">ตำแหน่งแอดมินไม่มีสิทธิ์ปิด/เปิดเดือน สิทธิ์นี้บังคับที่ฐานข้อมูล (RLS) ไม่ใช่แค่ซ่อนปุ่ม</p>
     </div>
 
     <div id="content">
@@ -375,10 +388,10 @@ var MONTHS=[
    c:{status:"open",history:[]},
    p:{status:"open",unupd:["ตาก","เชียงใหม่","ภูเก็ต","อุดรธานี","ตรัง"],history:[]}},
  {key:"SEP.26",label:"ก.ย. 2026",
-   c:{status:"closed",snap:{full:22,contracts:2466,missed:7},closedAt:"05/10/2026 09:12",closedBy:"host · QCS ส่วนกลาง",sync:"ok",syncAt:"05/10/2026 09:13",
-      history:[{t:"05/10/2026 09:12",ev:"ปิดเดือน (ส่วนกลาง)",by:"host · QCS ส่วนกลาง",note:"ตกบริการ 7 ราย · ส่ง Dashboard สำเร็จ"}]},
-   p:{status:"closed",unupd:[],carried:[],closedAt:"05/10/2026 09:30",closedBy:"host · QCS ส่วนกลาง",sync:"ok",syncAt:"05/10/2026 09:31",
-      history:[{t:"05/10/2026 09:30",ev:"ปิดเดือน (ต่างจังหวัด)",by:"host · QCS ส่วนกลาง",note:"อัปเดตครบ 19/19 สาขา · ส่ง Dashboard สำเร็จ"}]}}
+   c:{status:"closed",snap:{full:22,contracts:2466,missed:7},closedAt:"05/10/2026 09:12",closedBy:"สมชาย (OM/PM)",sync:"ok",syncAt:"05/10/2026 09:13",
+      history:[{t:"05/10/2026 09:12",ev:"ปิดเดือน (ส่วนกลาง)",by:"สมชาย (OM/PM)",note:"ตกบริการ 7 ราย · ส่ง Dashboard สำเร็จ"}]},
+   p:{status:"closed",unupd:[],carried:[],closedAt:"05/10/2026 09:30",closedBy:"สมชาย (OM/PM)",sync:"ok",syncAt:"05/10/2026 09:31",
+      history:[{t:"05/10/2026 09:30",ev:"ปิดเดือน (ต่างจังหวัด)",by:"สมชาย (OM/PM)",note:"อัปเดตครบ 19/19 สาขา · ส่ง Dashboard สำเร็จ"}]}}
 ];
 var LEGACY="JAN.25 – AUG.26 · 20 เดือน";
 var LAST_SYNC="05/10/2026 09:31"; /* เวลาส่ง Dashboard สำเร็จครั้งล่าสุด (ทุกเดือน ทุกส่วน) — อัปเดตทุกครั้งที่ส่งสำเร็จ */
@@ -468,9 +481,9 @@ function scopeCard(m,k){
     else body='จบ '+m.endsOn+' · ปิดได้ตั้งแต่เดือนถัดไป';
     acts='<button class="btn sm" aria-disabled="true" onclick="return false">ปิดไม่ได้ — เดือนยังไม่จบ</button>';
   } else if(s.status==="open"){
-    if(k==="c") body='สาขากรอกครบ '+BR_FULL+' / '+BR.length+' · <b style="color:var(--danger)">ตกบริการ '+MISS+' ราย</b><br>ผู้ปิดได้: host หรือ recorder';
-    else { var un=s.unupd||[]; body='อัปเดตแล้ว <b>'+provUpd(m)+' / '+PROV_N+'</b> สาขา'+(un.length?'<br>ยังใช้ค่ายกมา '+un.length+' สาขา ('+un.slice(0,3).join(", ")+(un.length>3?" …":"")+')':'<br>อัปเดตครบทุกสาขาแล้ว')+'<br>ผู้ปิดได้: host เท่านั้น'; }
-    acts=canClose(k)?'<button class="btn sm primary" onclick="openScope(\''+k+'\')">ปิด'+t.name+'</button>':'<button class="btn sm" aria-disabled="true" onclick="return false" title="เฉพาะ host ปิดส่วนนี้ได้">เฉพาะ host ปิดได้</button>';
+    if(k==="c") body='สาขากรอกครบ '+BR_FULL+' / '+BR.length+' · <b style="color:var(--danger)">ตกบริการ '+MISS+' ราย</b><br>ผู้ปิดได้: OM/PM หรือหัวหน้างาน';
+    else { var un=s.unupd||[]; body='อัปเดตแล้ว <b>'+provUpd(m)+' / '+PROV_N+'</b> สาขา'+(un.length?'<br>ยังใช้ค่ายกมา '+un.length+' สาขา ('+un.slice(0,3).join(", ")+(un.length>3?" …":"")+')':'<br>อัปเดตครบทุกสาขาแล้ว')+'<br>ผู้ปิดได้: OM/PM เท่านั้น'; }
+    acts=canClose(k)?'<button class="btn sm primary" onclick="openScope(\''+k+'\')">ปิด'+t.name+'</button>':'<button class="btn sm" aria-disabled="true" onclick="return false" title="เฉพาะ OM/PM ปิดส่วนนี้ได้">เฉพาะ OM/PM ปิดได้</button>';
     if(k==="p") acts+=' <a class="btn sm" href="provincial-port-update.html" style="text-decoration:none;display:inline-block">ไปหน้า port →</a>';
   } else {
     body='ปิดโดย '+s.closedBy+'<br>'+s.closedAt+' · ส่ง Dashboard '+(s.sync==="ok"?'<span style="color:var(--ok)">สำเร็จ</span>':'<span style="color:var(--danger)">ไม่สำเร็จ</span>');
@@ -519,7 +532,7 @@ function pStep1(m){
   }).join("");
   return '<div class="kvs"><div class="kv"><span>อัปเดตแล้ว</span><b class="num">'+upd+' / '+PROV_N+'</b><div class="bar" aria-hidden="true"><i style="width:'+pct+'%"></i></div></div>'+
    '<div class="kv"><span>ยังใช้ค่ายกมา</span><b class="num" style="color:'+(un.length?'var(--warn)':'var(--ok)')+'">'+un.length+' สาขา</b></div></div>'+
-   '<div class="hint"><b>ใช้ค่ายกมา</b> = สาขาที่ host ยังไม่ได้บันทึกยอดเดือนนี้ในหน้า port · ระบบส่ง Dashboard ด้วยค่าของเดือนก่อน (SPEC §6.5) · ปิดได้ แต่ต้องติ๊กรับทราบในขั้นถัดไป</div>'+
+   '<div class="hint"><b>ใช้ค่ายกมา</b> = สาขาที่ OM/PM ยังไม่ได้บันทึกยอดเดือนนี้ในหน้า port · ระบบส่ง Dashboard ด้วยค่าของเดือนก่อน (SPEC §6.5) · ปิดได้ แต่ต้องติ๊กรับทราบในขั้นถัดไป</div>'+
    '<div class="tools"><div class="field"><label for="pView">แสดง</label><select id="pView" onchange="showAllProv=this.value===\'all\';renderDetail()"><option value="bad"'+(showAllProv?'':' selected')+'>เฉพาะสาขาที่ยังใช้ค่ายกมา ('+un.length+')</option><option value="all"'+(showAllProv?' selected':'')+'>ทั้ง '+PROV_N+' สาขา (ต่างจังหวัด)</option></select></div><div style="flex:1"></div>'+
    '<a class="btn sm" href="provincial-port-update.html" style="text-decoration:none;display:inline-block">ไปอัปเดตที่หน้า port →</a></div>'+
    '<div class="tablewrap"><table><thead><tr><th>สาขา</th><th class="c">สถานะ</th></tr></thead><tbody>'+(rows||'<tr><td colspan="2" style="color:var(--fg-muted)">อัปเดตครบทุกสาขาแล้ว</td></tr>')+'</tbody></table></div>'+
@@ -531,7 +544,7 @@ function pStep2(m){
   var un=m.p.unupd||[];
   var cState=m.c.status==="closed"?'ส่วนกลางปิดแล้ว ใช้ค่า snapshot ที่เก็บไว้':'ส่วนกลางยังไม่ปิด ใช้ค่าที่มี/ยกมาจากเดือนก่อน';
   return '<div class="alert danger"><span class="ic">⚡</span><div><b>การปิดต่างจังหวัดจะส่ง Dashboard ทันที</b><small>สร้าง <code>dashboard_data.json</code> ครบ 43 สาขา · ต่างจังหวัด 19 = ค่าที่อัปเดต'+(un.length?' (ยกมา '+un.length+' สาขา)':'')+' · '+cState+' · Netlify deploy ~30 วินาที</small></div></div>'+
-   '<div class="alert warn"><span class="ic">👤</span><div><b>เฉพาะ host ปิดส่วนนี้ได้</b><small>ข้อมูลต่างจังหวัดเป็น manual ที่ host กรอกเอง · ชื่อผู้ปิดถูกบันทึกใน audit log</small></div></div>'+
+   '<div class="alert warn"><span class="ic">👤</span><div><b>เฉพาะ OM/PM ปิดส่วนนี้ได้</b><small>ข้อมูลต่างจังหวัดเป็น manual ที่ OM/PM กรอกเอง · ชื่อผู้ปิดถูกบันทึกใน audit log</small></div></div>'+
    '<div class="confirmbox"><div style="font-weight:600;margin:0 0 10px">สรุปที่จะปิด: ต่างจังหวัด '+m.label+' · อัปเดตแล้ว '+provUpd(m)+'/'+PROV_N+' สาขา'+(un.length?' · <span style="color:var(--warn)">ใช้ค่ายกมา '+un.length+' สาขา</span>':'')+'</div>'+
    (un.length?'<label class="chk"><input type="checkbox" id="ackBox" '+(ack?'checked':'')+' onchange="ack=this.checked;clearErr()"><span>รับทราบว่า <b>'+un.length+' สาขา</b> ยังใช้ค่ายกมาจากเดือนก่อน ('+un.join(", ")+') และจะขึ้น Dashboard ด้วยค่านั้น</span></label>':'')+
    '<div class="field"><label for="typedKey">พิมพ์ <b class="num">'+m.key+'</b> เพื่อยืนยันการปิดเดือน</label><input class="typein" id="typedKey" autocomplete="off" spellcheck="false" placeholder="'+m.key+'" value="'+typed.replace(/"/g,"")+'" oninput="typed=this.value;clearErr()"></div>'+
@@ -563,20 +576,20 @@ function step2(){
   var shown=showAllMiss?list:list.slice(0,8);
   var brs=BR.filter(function(b){return b[3]>0});
   var rows=shown.map(function(x){
-    return '<tr><td><b>'+x.cust+'</b></td><td class="num">'+x.no+'</td><td>'+x.br+'</td><td class="c">'+x.team+'</td><td class="c num">'+x.mth+' / '+x.term+'</td></tr>';
+    return '<tr><td><b>'+x.cust+'</b></td><td class="num">'+x.no+'</td><td>'+x.br+'</td><td class="c">'+x.team+'</td><td class="c num" title="เดือนที่ '+x.mth+' ของสัญญา '+x.term+' เดือน">'+x.mth+' / '+x.term+'</td><td class="c"><button class="btn sm" onclick="openSvc('+MISSED.indexOf(x)+',this)" aria-haspopup="dialog">ดูประวัติ</button></td></tr>';
   }).join("");
   return '<div style="font-weight:600;margin:0 0 8px">ตกบริการ '+cur().label+' · '+MISS+' ราย ใน '+brs.length+' สาขา</div>'+
    '<div class="alert warn"><span class="ic">⚠</span><div><b>ปิดเดือนได้ แม้ยังมีตกบริการ</b><small>รายการนี้จะถูกบันทึกเป็น "ตกบริการ" ของเดือนนี้ · กลับมากรอกรอบประจำเดือนย้อนหลังได้ภายหลัง (แล้วกดคำนวณ snapshot ใหม่เพื่ออัปเดต Dashboard)</small></div></div>'+
    '<div class="tools"><div class="field"><label for="mbr">สาขา</label><select id="mbr" onchange="missBr=this.value;showAllMiss=false;renderDetail()"><option value="all">ทุกสาขา ('+MISS+')</option>'+brs.map(function(b){return '<option value="'+b[0]+'"'+(missBr===b[0]?' selected':'')+'>'+b[0]+' ('+b[3]+')</option>'}).join("")+'</select></div>'+
    '<div style="flex:1"></div><button class="btn sm" onclick="exportMissed()">↓ ส่งออก CSV</button></div>'+
-   '<div class="tablewrap"><table><thead><tr><th>ลูกค้า</th><th>เลขที่สัญญา</th><th>สาขา</th><th class="c">ทีม</th><th class="c">เดือนบริการที่</th></tr></thead><tbody>'+rows+'</tbody></table></div>'+
+   '<div class="tablewrap"><table><thead><tr><th>ลูกค้า</th><th>เลขที่สัญญา</th><th>สาขา</th><th class="c">ทีม</th><th class="c" title="เดือนนี้เป็นเดือนที่เท่าไรของสัญญา เช่น 1 / 36 = เดือนที่ 1 จากสัญญา 36 เดือน (3 ปี)">เดือนที่ในสัญญา</th><th class="c">ประวัติบริการ</th></tr></thead><tbody>'+rows+'</tbody></table></div>'+
    (list.length>shown.length?'<div style="padding:10px 0"><button class="btn ghost sm" onclick="showAllMiss=true;renderDetail()">แสดงทั้งหมด '+list.length+' ราย</button></div>':'<div style="font-size:12px;color:var(--fg-muted);padding:8px 0">แสดงครบ '+list.length+' ราย</div>')+
    '<div class="navbtns"><button class="btn" onclick="goStep(1)">← ย้อนกลับ</button><button class="btn primary" onclick="goStep(3)">ถัดไป: ยืนยันปิด →</button></div>';
 }
 
 function step3(m){
   return '<div class="alert danger"><span class="ic">⚡</span><div><b>การปิดส่วนกลางจะส่ง Dashboard ทันที</b><small>สร้าง <code>dashboard_data.json</code> ครบ 43 สาขา (ส่วนกลาง 24 = computed · ต่างจังหวัด 19 = '+(m.p.status==="closed"?'ปิดแล้ว ใช้ค่าที่ปิดไว้':'ยังไม่ปิด ใช้ค่าที่มี/ยกมาจากเดือนก่อน')+') แล้ว commit เข้า repo AGA-Bait-Dashboard · Netlify deploy ใช้เวลา ~30 วินาที · ผู้ที่เปิด Dashboard จะเห็นตัวเลขใหม่ทันที</small></div></div>'+
-   '<div class="alert warn"><span class="ic">✎</span><div><b>ปิดแล้ว ตัวเลขส่วนกลางบน Dashboard ของเดือน '+m.label+' จะถูกเก็บเป็น snapshot</b><small>host และหัวหน้างานยังแก้ผลบริการเดือนนี้ย้อนหลังได้ · ทุกการแก้บันทึกใน audit log · Dashboard ไม่เปลี่ยนจนกว่าจะกด "คำนวณ snapshot ใหม่"</small></div></div>'+
+   '<div class="alert warn"><span class="ic">✎</span><div><b>ปิดแล้ว ตัวเลขส่วนกลางบน Dashboard ของเดือน '+m.label+' จะถูกเก็บเป็น snapshot</b><small>OM/PM และหัวหน้างาน ยังแก้ผลบริการเดือนนี้ย้อนหลังได้ · ทุกการแก้บันทึกใน audit log · Dashboard ไม่เปลี่ยนจนกว่าจะกด "คำนวณ snapshot ใหม่"</small></div></div>'+
    '<div class="alert warn"><span class="ic">👥</span><div><b>ปิดส่วนกลางมีผลกับทุกสาขาในส่วนกลาง (24 สาขา) ไม่ใช่เฉพาะทีมของคุณ</b><small>ส่งตัวเลขทุกสาขาส่วนกลางพร้อมกัน · ชื่อผู้ปิดถูกบันทึกใน audit log</small></div></div>'+
    '<div class="confirmbox">'+
    '<div style="font-weight:600;margin:0 0 10px">สรุปที่จะปิด: ส่วนกลาง '+m.label+' · สาขากรอกครบ '+BR_FULL+'/'+BR.length+' · สัญญากรอกครบ '+fmt(TOT-MISS)+'/'+fmt(TOT)+' · <span style="color:var(--danger)">ตกบริการ '+MISS+' ราย</span></div>'+
@@ -591,7 +604,7 @@ function clearErr(){ errMsg=""; var e=$("closeErr"); if(e) e.textContent=""; }
 /* --- ปิดเดือน (ส่วนที่เลือก): ตรวจ → จำลองขั้นตอน → เสร็จ — ปิดส่วนไหนเสร็จ ส่ง Dashboard ทันที ส่วนที่เหลือใช้ค่าที่มี/ค่ายกมา --- */
 function doClose(){
   var m=cur(), k=scopeSel, s=m[k], e=$("closeErr");
-  if(!canClose(k)){ errMsg="เฉพาะ host ปิดส่วนต่างจังหวัดได้"; e.textContent=errMsg; return; }
+  if(!canClose(k)){ errMsg="เฉพาะ OM/PM ปิดส่วนต่างจังหวัดได้"; e.textContent=errMsg; return; }
   var need=(k==="c")?MISS:(s.unupd||[]).length;
   if(need>0 && !ack){ errMsg=(k==="c")?"ติ๊กรับทราบเรื่องตกบริการก่อน":"ติ๊กรับทราบเรื่องสาขาที่ยังใช้ค่ายกมาก่อน"; e.textContent=errMsg; return; }
   if(typed.trim().toUpperCase()!==m.key){ errMsg="พิมพ์ "+m.key+" ให้ตรงก่อน จึงจะปิดเดือนได้"; e.textContent=errMsg; $("typedKey").focus(); return; }
@@ -630,11 +643,11 @@ function closedView(m,s,k){
   if(k==="c"){
     var n=s.snap||{full:0,contracts:0,missed:0};
     out+='<div class="kvs"><div class="kv"><span>สาขากรอกครบ (ส่วนกลาง)</span><b class="num">'+n.full+' / '+BR.length+'</b></div><div class="kv"><span>สัญญาในเดือนบริการ</span><b class="num">'+fmt(n.contracts)+'</b></div><div class="kv"><span>ตกบริการที่บันทึกไว้</span><b class="num" style="color:'+(n.missed?'var(--danger)':'var(--ok)')+'">'+n.missed+' ราย</b></div></div>'+
-     '<div class="alert info"><span class="ic">✎</span><div><b>เดือนนี้แก้ข้อมูลย้อนหลังได้ตามปกติ</b><small>host และหัวหน้างานกรอก/แก้ผลบริการเดือนนี้ได้เลย ไม่ต้องปลดล็อก · ทุกการแก้บันทึกใน audit log · ตัวเลขบน Dashboard จะเปลี่ยนเมื่อกด "คำนวณ snapshot ใหม่" เท่านั้น</small><div style="margin-top:8px"><a class="btn sm" href="aga-bait-registry-prototype.html" style="text-decoration:none;display:inline-block">ไปหน้ากรอกผลบริการ →</a></div></div></div>';
+     '<div class="alert info"><span class="ic">✎</span><div><b>เดือนนี้แก้ข้อมูลย้อนหลังได้ตามปกติ</b><small>OM/PM และหัวหน้างาน กรอก/แก้ผลบริการเดือนนี้ได้เลย ไม่ต้องปลดล็อก · ทุกการแก้บันทึกใน audit log · ตัวเลขบน Dashboard จะเปลี่ยนเมื่อกด "คำนวณ snapshot ใหม่" เท่านั้น</small><div style="margin-top:8px"><a class="btn sm" href="aga-bait-registry-prototype.html" style="text-decoration:none;display:inline-block">ไปหน้ากรอกผลบริการ →</a></div></div></div>';
   } else {
     var cr=(s.carried||[]);
     out+='<div class="kvs"><div class="kv"><span>อัปเดตแล้วตอนปิด</span><b class="num">'+(PROV_N-cr.length)+' / '+PROV_N+'</b></div><div class="kv"><span>ปิดโดยใช้ค่ายกมา</span><b class="num" style="color:'+(cr.length?'var(--warn)':'var(--ok)')+'">'+cr.length+' สาขา</b>'+(cr.length?'<small style="color:var(--fg-muted);font-size:11px">'+cr.join(", ")+'</small>':'')+'</div></div>'+
-     '<div class="alert info"><span class="ic">✎</span><div><b>แก้ข้อมูลต่างจังหวัดย้อนหลังได้ที่หน้า port (เฉพาะ host)</b><small>ทุกการแก้บันทึกใน audit log · ตัวเลขบน Dashboard จะเปลี่ยนเมื่อกด "คำนวณ snapshot ใหม่" เท่านั้น</small><div style="margin-top:8px"><a class="btn sm" href="provincial-port-update.html" style="text-decoration:none;display:inline-block">ไปหน้า port ต่างจังหวัด →</a></div></div></div>';
+     '<div class="alert info"><span class="ic">✎</span><div><b>แก้ข้อมูลต่างจังหวัดย้อนหลังได้ที่หน้า port (เฉพาะ OM/PM)</b><small>ทุกการแก้บันทึกใน audit log · ตัวเลขบน Dashboard จะเปลี่ยนเมื่อกด "คำนวณ snapshot ใหม่" เท่านั้น</small><div style="margin-top:8px"><a class="btn sm" href="provincial-port-update.html" style="text-decoration:none;display:inline-block">ไปหน้า port ต่างจังหวัด →</a></div></div></div>';
   }
   out+='<div class="sech" style="font-weight:600;margin:20px 0 6px">ประวัติการปิดเดือนและการแก้ไข (audit log) · '+nm+'</div><ul class="hist">'+
    (s.history.length?s.history.map(function(h){return '<li><span class="t num">'+h.t+'</span><span><b>'+h.ev+'</b> · '+h.by+'<br><span style="color:var(--fg-muted)">'+h.note+'</span></span></li>'}).join(""):'<li style="color:var(--fg-muted)">ยังไม่มีประวัติ</li>')+'</ul>';
@@ -661,14 +674,57 @@ function resync(){
 /* --- ส่งออก CSV (UTF-8 + BOM เปิดใน Excel ไทยได้) --- */
 function exportMissed(){
   var list=MISSED.filter(function(x){return missBr==="all"||x.br===missBr});
-  var csv="﻿ลูกค้า,เลขที่สัญญา,สาขา,ทีม,เดือนบริการที่\n"+list.map(function(x){return [x.cust,x.no,x.br,x.team,x.mth+"/"+x.term].join(",")}).join("\n");
+  var csv="﻿ลูกค้า,เลขที่สัญญา,สาขา,ทีม,เดือนที่ในสัญญา\n"+list.map(function(x){return [x.cust,x.no,x.br,x.team,x.mth+"/"+x.term].join(",")}).join("\n");
   var a=document.createElement("a"); a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8"}));
   a.download="ตกบริการ-"+sel+".csv"; a.click(); setTimeout(function(){URL.revokeObjectURL(a.href)},500);
 }
 
+/* --- ประวัติบริการรายราย (ข้อมูลสมมติ) — เปิดเป็นแผงลอย ไม่บังหน้าเดิม ปุ่มแถวอื่นกด = สลับข้อมูล --- */
+var svcOpener=null;
+function svcPanel(){
+  var p=document.getElementById("svcPanel");
+  if(!p){ p=document.createElement("aside"); p.id="svcPanel"; p.className="svcpanel"; p.hidden=true;
+    p.setAttribute("role","dialog"); p.setAttribute("aria-label","ประวัติบริการของลูกค้า"); document.body.appendChild(p); }
+  return p;
+}
+var MISS_WHY=["ลูกค้าไม่สะดวก ขอเลื่อนนัด","ติดต่อลูกค้าไม่ได้","ปิดซ่อม/ปรับปรุงพื้นที่ เข้าไม่ได้","ลูกค้าปิดกิจการชั่วคราว"];
+var TH_M=["ม.ค.","ก.พ.","มี.ค.","เม.ย.","พ.ค.","มิ.ย.","ก.ค.","ส.ค.","ก.ย.","ต.ค.","พ.ย.","ธ.ค."];
+/* รายเดือนย้อนหลังตั้งแต่เดือนที่ปิด (ต.ค. 2026 = ตกบริการ) ไปจนถึงเดือนแรกของสัญญา (สูงสุด 8 เดือน) — เดือนที่ไม่มีการเข้า = ตกบริการ */
+function svcData(x){
+  var T=["ปกติ","ปกติ","ปกติ","พบปลวก","ปกติ","ปกติ"], n=Math.min(x.mth,8), mm=9, yy=2026, i, d, r, out=[], missedBefore=[];
+  for(i=0;i<n;i++,mm--){
+    if(mm<0){mm=11;yy--;}
+    var label=TH_M[mm]+" "+yy;
+    if(i===0){ out.push({m:label,date:"",res:"ตกบริการ",cur:true,note:(x.mth%3===0)?"":MISS_WHY[x.mth%4]}); continue; }
+    if((x.mth*3+i)%5===0){ out.push({m:label,date:"",res:"ตกบริการ",note:MISS_WHY[(x.mth+i)%4]}); missedBefore.push(label); continue; }
+    d=((x.mth*7+i*5)%24)+2; r=T[(x.mth+i)%6];
+    out.push({m:label,date:String(d).padStart(2,"0")+"/"+String(mm+1).padStart(2,"0")+"/"+yy,res:r,note:r==="พบปลวก"?"พบปลวกที่สถานี IG — เปลี่ยนเหยื่อแล้ว":""});
+  }
+  return {rows:out,missedBefore:missedBefore};
+}
+function svcBody(x){
+  var D=svcData(x), chip={"ปกติ":"ok","พบปลวก":"pend","ตกบริการ":"miss"};
+  var sum=D.missedBefore.length?'<div class="alert warn"><span class="ic">⚠</span><div><b>เคยตกบริการมาแล้ว '+D.missedBefore.length+' เดือน (ก่อนเดือนนี้)</b><small>'+D.missedBefore.join(" · ")+'</small></div></div>'
+    :'<div class="alert ok"><span class="ic">✓</span><div><b>ไม่เคยตกบริการมาก่อนเดือนนี้</b></div></div>';
+  var rows=D.rows.map(function(r){
+    return '<tr><td>'+r.m+(r.cur?' <span class="chip info">เดือนนี้</span>':'')+'</td><td class="num">'+(r.date||'ไม่มีการเข้า')+'</td><td><span class="chip '+chip[r.res]+'">'+r.res+'</span></td><td class="note">'+(r.note||(r.res==="ตกบริการ"?'<span style="color:var(--fg-faint)">ยังไม่ได้กรอกเหตุผล</span>':'<span style="color:var(--fg-faint)">—</span>'))+'</td></tr>';
+  }).join("");
+  return sum+'<div style="font-weight:600;margin:0 0 6px">ประวัติบริการรายเดือน</div><table><thead><tr><th>เดือน</th><th>วันที่เข้า</th><th>ผล</th><th>หมายเหตุ</th></tr></thead><tbody>'+rows+'</tbody></table>';
+}
+function openSvc(i,btn){
+  var x=MISSED[i], p=svcPanel(); svcOpener=btn||null;
+  p.innerHTML='<div class="sp-head"><div style="flex:1"><h3>'+x.cust+'</h3><small>'+x.no+' · '+x.br+' · ทีม '+x.team+' · เดือนที่ '+x.mth+' ของสัญญา '+x.term+' เดือน</small></div>'+
+    '<button class="btn ghost sm" id="svcClose" onclick="closeSvc()" aria-label="ปิดประวัติบริการ">✕ ปิด</button></div>'+
+    '<div class="sp-body">'+svcBody(x)+'</div>'+
+    '<div class="sp-foot">หมายเหตุ = เหตุผลที่หัวหน้างานกรอกไว้ตอนตกบริการ · ข้อมูลตัวอย่าง · ดูครบทุกครั้งได้ที่ <a href="customer-detail.html#tab=visits">หน้ารายละเอียดลูกค้า ↗</a> · หน้านี้ยังเลื่อนและกดได้ตามปกติ</div>';
+  p.hidden=false; document.getElementById("svcClose").focus();
+}
+function closeSvc(){ var p=document.getElementById("svcPanel"); if(p) p.hidden=true; if(svcOpener&&document.contains(svcOpener)) svcOpener.focus(); svcOpener=null; }
+document.addEventListener("keydown",function(e){ var p=document.getElementById("svcPanel"); if(e.key==="Escape"&&p&&!p.hidden) closeSvc(); });
+
 /* --- role / theme / nav --- */
 var ROLE="host";
-function actor(){ return ROLE==="recorder"?"recorder · หัวหน้างาน (นท)":"host · QCS ส่วนกลาง"; }
+function actor(){ return ROLE==="recorder"?"นท (หัวหน้างาน)":"สมชาย (OM/PM)"; }
 function setRole(r){
   ROLE=r; var ok=(r==="host"||r==="recorder");
   $("content").hidden=!ok; $("lockMsg").hidden=ok; $("scopeNote").hidden=(r!=="recorder");
