@@ -1415,8 +1415,8 @@ function visitsHtml(){
     if(open){
       h+='<tr class="sub"><td colspan="6"><div class="lab" style="margin-bottom:6px">บันทึกโดย '+esc(v.by)+' · '+(v.inspect?'ตรวจภายใน':'ไม่ตรวจภายใน')+' · '+(v.proxy?'เซ็นแทน':'ลูกค้าเซ็นเอง')+' · เคมีผง '+(v.powder||0)+' จุด</div>'+(v.note?'<div style="margin-bottom:8px"><span class="lab">หมายเหตุ:</span> '+esc(v.note)+'</div>':'');
       if(!v.checks.length)h+='<span class="lab">'+(v.type==='routine'?'ทุกสถานีปกติ — ไม่มีจุดที่พบปลวก (exception entry §7.5)':'ไม่มีการตรวจสถานีในครั้งนี้')+'</span>';
-      else h+='<table><thead><tr><th>สถานี</th><th>ชนิด</th><th>F / ครั้งที่</th><th>สัดส่วนปลวก (เฉพาะ AG)</th><th class="r">เหยื่อเติม (ก.)</th><th>หมายเหตุ</th></tr></thead><tbody>'+
-        v.checks.map(function(x){return '<tr><td class="mono">'+esc(x.st.code)+'</td><td><span class="sttype">'+x.st.type+'</span></td><td>'+(x.st.type==='AG'?'<b>F'+x.k.no+'</b>':'<span class="lab">ครั้งที่ '+x.k.no+'</span>')+'</td><td>'+(x.st.type!=='AG'?'<span class="lab">—</span>':x.k.caste==='ปลวกตาย'?chip('ok','ปลวกตาย'):esc(x.k.caste))+'</td><td class="r num">'+x.k.bait+'</td><td>'+(x.k.note?esc(x.k.note):'<span class="lab">—</span>')+'</td></tr>'}).join('')+'</tbody></table>';
+      else h+='<table><thead><tr><th>สถานี</th><th>จุดที่ติด (ป้ายกำกับ)</th><th>ชนิด</th><th>F / ครั้งที่</th><th>สัดส่วนปลวก (เฉพาะ AG)</th><th class="r">เหยื่อเติม (ก.)</th><th>หมายเหตุ</th></tr></thead><tbody>'+
+        v.checks.map(function(x){return '<tr><td class="mono">'+esc(x.st.code)+'</td><td>'+(x.st.label?esc(x.st.label):'<span class="lab">—</span>')+'</td><td><span class="sttype">'+x.st.type+'</span></td><td>'+(x.st.type==='AG'?'<b>F'+x.k.no+'</b>':'<span class="lab">ครั้งที่ '+x.k.no+'</span>')+'</td><td>'+(x.st.type!=='AG'?'<span class="lab">—</span>':x.k.caste==='ปลวกตาย'?chip('ok','ปลวกตาย'):esc(x.k.caste))+'</td><td class="r num">'+x.k.bait+'</td><td>'+(x.k.note?esc(x.k.note):'<span class="lab">—</span>')+'</td></tr>'}).join('')+'</tbody></table>';
       h+='</td></tr>';
     }
   });
