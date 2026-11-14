@@ -3,29 +3,42 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="aga-nav-start" content="mini">
 <title>AGA Bait Registry — รายละเอียดลูกค้า</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@300;400;500;600;700&display=swap">
 <!--
 ================================================================================
- หน้า "รายละเอียดลูกค้า" (SPEC §8 หน้าจอ 4) — mockup layout แบบ B (แผงซ้ายติดหมุด + แท็บ)
+ หน้า "รายละเอียดลูกค้า" (SPEC §8 หน้าจอ 4) — mockup FINAL ทบทวนกับเจ้าของ 14–15 พ.ย. 2026
  ผู้ใช้: host / admin / recorder   (viewer เปิดไม่ได้ — PDPA, SPEC §5)
 ================================================================================
- โครงหน้า
-   ซ้าย (sticky)  ข้อมูลลูกค้า (customers) + สรุปตัวเลข + แจ้งเตือนที่ต้องทำ
-   ขวา (4 แท็บ)   สัญญา (contracts) · สถานี (stations + station_checks)
-                  ประวัติบริการ (visits + station_checks) · ไฟล์แนบ (Storage)
+ โครงหน้า (บนลงล่าง)
+   หัว           ชื่อลูกค้า + ปุ่มไปหน้าลงข้อมูลทำบริการ / กล่อง AG / แก้ข้อมูลลูกค้า
+   การ์ดตัวเลข 5 ใบ (kpiHtml)  สัญญาปัจจุบัน → เหลือในสัญญา → สถานะกล่อง AG → เดือนตกบริการ → เข้าบริการล่าสุด
+                 สถานะกล่อง AG: เหลือง = มีจุดรอถอด · ฟ้า = มีจุดติดตามผล · เขียว = ไม่มี AG ที่ต้องติดตาม
+   แถบเตือน (alertsHtml)  เฉพาะเรื่องที่ไม่มีการ์ด: สัญญาใกล้หมด · วันสิ้นสุดผิดกฎ · รอเก็บสถานี · ลูกค้าทีมอื่น
+   ซ้าย (sticky) ข้อมูลติดต่อ — แก้ได้ทีละแถว (ผู้ติดต่อ · เบอร์โทรหลายเบอร์ · หมายเหตุ) ลง audit_log
+                 หัวหน้างานแก้ลูกค้าทีมอื่น → ถามยืนยัน 1 ครั้งต่อลูกค้า (เหมือนการกรอกผลบริการข้ามทีม SPEC §5)
+   ขวา (แท็บ)   ภาพรวม (กราฟ, เปิดเป็นแท็บแรก) · สัญญา · สถานี · ประวัติทำบริการ · ไฟล์แนบ · ไทม์ไลน์ (host)
 
- หน้านี้ "ดูอย่างเดียว" — ปุ่มแก้ไข/กรอกผลทั้งหมดเป็นลิงก์ไปหน้าเดิม (เจ้าของเลือกแล้ว)
-   host/admin  → ลิงก์ "แก้ข้อมูล" และ "แนบ/อัปเดตไฟล์" ไปหน้าเปิดงาน  (admin-add-customer.html)
-   host/recorder → ลิงก์ "กรอกผลบริการ / กล่องเหยื่อ" ไปหน้าเดิมใน prototype
+ สิ่งที่แก้ได้ในหน้านี้ = ข้อมูลติดต่อเท่านั้น · ที่เหลือดูอย่างเดียว — ปุ่มแก้ไข/กรอกผลเป็นลิงก์ไปหน้าเดิม
+   host/admin  → "แก้ข้อมูลลูกค้า" / "แก้สัญญานี้" / "แนบ/อัปเดตไฟล์" ไปหน้าเปิดงาน (admin-add-customer.html)
+   host/recorder → "ลงข้อมูลทำบริการประจำเดือน / กล่อง AG นอกรอบประจำเดือน" ไปหน้า #service / #bait ใน prototype
    ไฟล์แนบ: หน้านี้ดู/ดาวน์โหลดอย่างเดียว · แนบสัญญา+Site plan และ "อัปเดต Site plan" ทำที่หน้าเปิดงานที่เดียว
+
+ แท็บภาพรวม (กราฟ) — นับเป็น "จุด" = จำนวนสถานี
+   ช่วงบน พบปลวก = แท่งซ้อน สถานีภายนอก (IG+IC) + AG · ช่วงล่าง เปลี่ยนไม้ (สเกลของตัวเอง) · กรองผสมได้ · เลือกช่วงเดือนได้
+   นับ 1 สถานีต่อ 1 เดือน — สถานีเดิมที่พบอีกในเดือนถัดไปนับซ้ำได้ · การ์ด "สถานีที่เคย…" นับสถานีละครั้งทั้งช่วง
+   ค่าเริ่มต้น = ตั้งแต่เริ่มสัญญาถึงเดือนปัจจุบัน · ชี้ตัวเลข/แท่งเห็นหมายเลขสถานี · ขยายเต็มจอ / คัดลอก / บันทึกเป็นรูป PNG
+ ตกบริการ (2.41): ส่วน "เดือนที่ตกบริการ" บนสุดของแท็บประวัติทำบริการ · ชดเชย (ปฏิทินเลือกวัน) / ไม่ชดเชย (เหตุผลบังคับ + ยืนยัน)
+   สถานะ รอตัดสิน · ชดเชย → เดือน · ชดเชยแล้ว · ชดเชยไม่ได้ทำ · ไม่ชดเชย — คำ/สีต้องตรงกับหน้า #todo
+ แท็บสถานี เปิดที่มุมมอง "ต้องดู" = AG ที่ยังไม่จบ + IG/IC ที่พบปลวกเดือนนี้/เดือนก่อน + สถานีหาย/ถอนออก
 
  วิธีลิงก์มาหน้านี้จากหน้าอื่น (service / bait / registry)
    customer-detail.html?c=<customer_id>#tab=stations&contract=CT26-0000142&station=AG-04
    พารามิเตอร์: c = ลูกค้า (c1..c3 ในเดโม)
-                tab = contracts | stations | visits | files
+                tab = dash | contracts | stations | visits | files | timeline
                 contract = เลขที่สัญญาที่จะเลือก/กรอง · station = รหัสสถานีที่จะกางประวัติ
                 status / type = ตัวกรองเริ่มต้นของแท็บสถานี (เช่น status=pending_removal)
 
@@ -34,10 +47,18 @@
    - เดือนบริการ = เดือนเริ่ม + (ปี × 12) เดือน ไม่ใช้วันสิ้นสุด (§7.2)
    - ตกบริการ = เดือนในช่วงบริการที่ไม่มี visit ประเภท routine (§7.4)
    - F1–F10 นับต่อสถานี คำนวณอัตโนมัติจากลำดับวันที่ตรวจ (§7.5)
-   - เดือนที่ปิดแล้ว (month_closures) แสดง 🔒 = แก้ไม่ได้ (§7.7)
+   - สัดส่วนปลวก (termite_caste) มีเฉพาะรอบติดตาม AG · IG/IC แบบ exception บันทึกแค่เลขสถานี + เหยื่อ (§7.5)
+   - เดือนที่ปิดแล้ว (month_closures) แสดงป้าย "ปิดเดือนแล้ว" — ไม่ล็อกข้อมูล (เจ้าของตัดสิน 6 พ.ย. 2026, SPEC v1.2 §7.7):
+     host/recorder ยังแก้ผลย้อนหลังได้ ลง audit_log · snapshot ที่ส่ง Dashboard คงเดิมจนกว่าสั่งคำนวณใหม่
+   - สถานะสถานี (DECISIONS 2.34 / 2.20): AG = ติดตามผล → รอถอด → ถอดแล้ว (ไม่มี "กำจัดแล้ว") · แยก "หาย" / "ถอนออก"
+     ออกจากถอดแล้ว/เก็บคืนแล้ว · เปลี่ยนเป็นหาย/ถอนออกได้ผ่านงานซ่อมตอนลงข้อมูลบริการเท่านั้น (2.29)
+   - แก้สัญญา (DECISIONS 3.11): สัญญาปิดแล้ว/ยกเลิก admin แก้ไม่ได้ host แก้ได้ · ไฟล์สัญญาปิดแล้วล็อกทุกคน (3.13)
+     สัญญายกเลิก host ยังแก้ไฟล์ได้ · บันทึกชนกัน (3.12) แจ้งที่หน้าเปิดงาน
+   - Renew (DECISIONS 2.19): สัญญาใหม่ต่อจากสัญญาเก่า — ย้ายแถวสถานีมา (F นับต่อ) · ประวัติผลบริการสัญญาเก่าเปิดดูได้เสมอ
    - ไฟล์แนบ: ครั้งแรกเป็น PDF ไฟล์เดียว "สัญญา + Site plan" (admin แนบตอนเปิดงาน) · ตอนติดตั้งมีแก้ Site plan
      = "อัปเดต Site plan" เพิ่มเวอร์ชันพร้อมเหตุผล เก็บทุกเวอร์ชัน (ทำที่หน้าเปิดงาน) · สัญญาที่ปิดแล้วล็อกไฟล์
-   - สัญญา expired_pending_collection ต้องเก็บสถานี IG/IC คืนครบก่อนปิด (§7.8)
+   - หมดสัญญา (DECISIONS 2.42, SPEC §7.8 v1.9): เก็บคืนเฉพาะ IG · IC (แบบปูน) มอบให้ลูกค้า ไม่ต้องเก็บ · กล่อง AG ที่ค้างไม่ต้องเก็บ
+     ปิดสัญญาได้แม้ IG ยังไม่เก็บ (2.42 ฉบับแก้ 15 พ.ย.) · IG ที่ค้างยังขึ้น "รอเก็บ" จนกด เก็บแล้ว / ไม่เก็บ (เหตุผลบังคับ + ยืนยัน) · IC แสดง "มอบให้ลูกค้า" (คำนวณจากชนิด + สถานะสัญญา ไม่มีช่องใหม่)
  ข้อมูลทั้งหมดเป็นชื่อสมมติ ไม่มี PII จริง
 ================================================================================
 -->
@@ -52,6 +73,7 @@
   --tier-l:#a86c07; --tier-l-soft:#fbf0db; --tier-xl:#c2561f; --tier-xl-soft:#fce6da; --on-tier:#ffffff;
   --radius:10px; --shadow:0 1px 2px rgba(20,40,70,.06),0 1px 3px rgba(20,40,70,.05);
   color-scheme:light;
+  --c-ext:var(--ok); --c-ag:var(--danger); --c-timber:color-mix(in srgb,var(--warn) 60%,var(--fg) 40%);
 }
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
   --bg:#0e1621; --surface:#16202c; --surface-2:#1b2733; --surface-3:#222f3d;
@@ -63,6 +85,7 @@
   --tier-l:#d99b3e; --tier-l-soft:#332713; --tier-xl:#e07a4e; --tier-xl-soft:#3a2016; --on-tier:#0b1420;
   --shadow:0 1px 2px rgba(0,0,0,.3);
   color-scheme:dark;
+  --c-ext:var(--ok); --c-ag:var(--danger); --c-timber:color-mix(in srgb,var(--warn) 75%,var(--bg) 25%);
 }}
 :root[data-theme="dark"]{
   --bg:#0e1621; --surface:#16202c; --surface-2:#1b2733; --surface-3:#222f3d;
@@ -74,6 +97,7 @@
   --tier-l:#d99b3e; --tier-l-soft:#332713; --tier-xl:#e07a4e; --tier-xl-soft:#3a2016; --on-tier:#0b1420;
   --shadow:0 1px 2px rgba(0,0,0,.3);
   color-scheme:dark;
+  --c-ext:var(--ok); --c-ag:var(--danger); --c-timber:color-mix(in srgb,var(--warn) 75%,var(--bg) 25%);
 }
 *{box-sizing:border-box}
 html,body{height:100%}
@@ -234,9 +258,9 @@ tr.sub table{font-size:12px;background:var(--surface);border:1px solid var(--bor
 .head{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px}
 .head h1{margin:0;font-size:20px;font-weight:600}
 .head .acts{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap}
-.detail{display:grid;grid-template-columns:300px minmax(0,1fr);gap:16px;align-items:start}
+.detail{display:grid;grid-template-columns:380px minmax(0,1fr);gap:16px;align-items:start}
 .info{position:sticky;top:75px}
-.kv{display:grid;grid-template-columns:78px 1fr;gap:6px 10px;font-size:13px;margin:0}
+.kv{display:grid;grid-template-columns:96px minmax(0,1fr);gap:6px 10px;font-size:13px;margin:0}
 .kv dt{color:var(--fg-muted);font-size:12px}
 .kv dd{margin:0;word-break:break-word}
 .sumgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:2px}
@@ -251,6 +275,7 @@ tr.sub table{font-size:12px;background:var(--surface);border:1px solid var(--bor
 .alert.info{background:var(--accent-soft);border-color:var(--accent);color:var(--fg)}
 .alert b{font-weight:600}
 .alert .linkbtn{font-size:12px}
+@media (max-width:860px){.btn.sm{min-height:40px}.alert .linkbtn,.hint .linkbtn,.dgrid .linkbtn{min-height:32px;padding:4px 2px}}   /* ปุ่ม/ลิงก์ในหน้าจอสัมผัส ให้กดง่ายขึ้น */
 .tabs{display:flex;gap:2px;border-bottom:1px solid var(--border);padding:0 10px;overflow-x:auto;background:var(--surface);border-radius:var(--radius) var(--radius) 0 0}
 .tab{font-family:inherit;font-size:13.5px;padding:11px 13px;color:var(--fg-muted);cursor:pointer;border:0;border-bottom:3px solid transparent;background:none;white-space:nowrap;display:flex;align-items:center;gap:7px}
 .tab:hover{color:var(--fg)}
@@ -271,6 +296,46 @@ tr.sub table{font-size:12px;background:var(--surface);border:1px solid var(--bor
 .filters{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin-bottom:12px}
 .field{display:flex;flex-direction:column;gap:3px}
 .field label{font-size:11px;color:var(--fg-muted)}
+.field textarea{font-family:inherit;font-size:13px;color:var(--fg);background:var(--surface);border:1px solid var(--border-strong);border-radius:8px;padding:6px 10px;resize:vertical;min-height:56px}
+.pen{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;margin-left:6px;vertical-align:middle;border:1px solid var(--border-strong);border-radius:50%;background:var(--accent-soft);color:var(--accent-strong);font-size:12px;line-height:1;cursor:pointer;padding:0}
+.pen:hover{background:var(--accent);color:var(--accent-fg)}
+.pen:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+@media (max-width:860px){.pen{width:32px;height:32px}}
+.inl{display:flex;gap:6px;align-items:flex-start;min-width:0;max-width:100%}
+.inl input,.inl textarea{flex:1 1 0;min-width:0;width:0;font-family:inherit;font-size:13px;color:var(--fg);background:var(--surface);border:1px solid var(--border-strong);border-radius:8px;padding:5px 8px}
+.inl textarea{resize:vertical;min-height:54px}
+.inl-b{display:inline-flex;gap:4px;flex:none}
+.inl-b .pen{margin-left:0}
+.inl-f{display:flex;flex-direction:column;gap:4px;flex:1;min-width:0}
+.inl-f input{flex:none;width:100%}
+.ph{margin-bottom:6px;line-height:1.7}
+.ph .pen{margin-left:6px}
+.ph .pen+.pen{margin-left:4px}
+.pen.del{font-size:11px;color:var(--danger);background:var(--danger-soft)}
+.addph{font-size:12px;margin-top:2px}
+.chartwrap{overflow-x:auto;padding-bottom:4px;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface-2)}
+.chartwrap svg{display:block}
+/* หมายเหตุในตารางประวัติ: บรรทัดเดียว ตัด … (ดูเต็มเมื่อชี้ หรือกาง ▸) ให้ทุกแถวสูงเท่ากัน */
+td.note1{max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+td.tipc{cursor:help;text-decoration:underline dotted var(--fg-faint);text-underline-offset:4px}
+td.tipc:hover,td.tipc:focus-visible{background:var(--accent-soft);outline:none}
+.datip{position:fixed;z-index:120;display:none;max-width:min(360px,calc(100vw - 16px));background:var(--surface);color:var(--fg);border:1px solid var(--border-strong);border-radius:var(--radius);box-shadow:0 6px 20px rgba(0,0,0,.18);padding:8px 10px;pointer-events:none}
+.datip-h{font-size:12px;font-weight:600;margin-bottom:6px}
+.datip-b{display:flex;flex-wrap:wrap;gap:4px 6px}
+.datip-b .mono{font-size:12px;background:var(--surface-3);border-radius:4px;padding:1px 6px}
+.chart-head{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:6px}
+.chart-head .acts{display:flex;gap:6px;flex-wrap:wrap}
+.dashfs{position:fixed;inset:0;z-index:90;background:var(--bg);display:flex;flex-direction:column;padding:14px 18px;gap:12px}
+.dashfs-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.dashfs-bar .acts{margin-left:auto;display:flex;gap:6px;flex-wrap:wrap}
+.dashfs-body{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:12px;overflow:auto}
+.dashfs-body svg{width:100%;height:auto;max-height:100%;min-width:0}
+@media (max-width:860px){.dashfs-body svg{width:auto;height:auto;max-width:none}}
+.ph.delc{background:var(--danger-soft);border:1px solid var(--danger);border-radius:8px;padding:6px 8px;display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.ph.delc span{flex:1 1 100%}
+.btn.danger{background:var(--danger);border-color:var(--danger);color:var(--surface)}
+.pen.ok{background:var(--ok-soft);color:var(--ok)}
+#ie-err{color:var(--danger);font-size:12px;margin-top:3px}
 .field select,.field input{font-family:inherit;font-size:13px;color:var(--fg);background:var(--surface);border:1px solid var(--border-strong);border-radius:8px;padding:6px 10px;min-width:130px}
 .chips{display:flex;flex-wrap:wrap;gap:7px;align-items:center;margin-bottom:10px}
 .pager{display:flex;align-items:center;gap:8px;justify-content:space-between;flex-wrap:wrap;margin-top:10px;font-size:12px;color:var(--fg-muted)}
@@ -317,8 +382,8 @@ tr.sub table{font-size:12px;background:var(--surface);border:1px solid var(--bor
 .hist .hnum{width:28px;height:22px;border-radius:6px;background:var(--surface);border:1px solid var(--border);display:grid;place-items:center;font-size:11px;font-weight:600;flex:none}
 .blocked{max-width:520px;margin:60px auto;text-align:center}
 .blocked h2{margin:0 0 8px;font-size:18px}
-.toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:var(--fg);color:var(--bg);padding:9px 16px;border-radius:9px;font-size:13px;z-index:80;box-shadow:var(--shadow);max-width:90vw}
-@media (max-width:1100px){.detail{grid-template-columns:260px minmax(0,1fr)}}
+.toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:var(--fg);color:var(--bg);padding:9px 16px;border-radius:9px;font-size:13px;z-index:100;box-shadow:var(--shadow);max-width:90vw}
+@media (max-width:1100px){.detail{grid-template-columns:320px minmax(0,1fr)}}
 @media (max-width:860px){
   main{padding:14px}
   .detail{grid-template-columns:minmax(0,1fr)}
@@ -330,6 +395,56 @@ tr.sub table{font-size:12px;background:var(--surface);border:1px solid var(--bor
   .pill,.avatar{display:none}
   select.role{max-width:170px;min-width:0}
 }
+/* ---------- ปรับ UX 15 พ.ย. 2026: ไอคอน / แถวตัวเลข / แถบเตือน / วิธีอ่าน / ต้องดู ---------- */
+.ic{width:1.05em;height:1.05em;vertical-align:-0.18em;flex:none}
+.btn .ic{width:15px;height:15px;margin-right:5px}
+.btn.sm .ic{width:14px;height:14px;margin-right:4px}
+.chip .ic{width:12px;height:12px;margin-right:3px}
+.pen .ic{width:14px;height:14px;margin:0}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin:0 0 10px}
+.kp{font:inherit;text-align:left;color:var(--fg);background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:10px 14px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:2px;min-width:0}
+button.kp{cursor:pointer} button.kp:hover{border-color:var(--accent)} button.kp:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.kp .l{font-size:12px;color:var(--fg-muted)}
+.kp .v{font-size:22px;font-weight:700;line-height:1.25;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.kp .s{font-size:12px;color:var(--fg-muted)}
+.kp .go{font-size:12px;color:var(--accent-strong);text-decoration:underline}
+.kp.bad{border-color:var(--danger);background:var(--danger-soft)} .kp.bad .v{color:var(--danger)}
+.kp.warn{border-color:var(--warn);background:var(--warn-soft)} .kp.warn .v{color:var(--warn)}
+.kp.info{border-color:var(--accent);background:var(--accent-soft)} .kp.info .v{color:var(--accent-strong)}
+.kp.good{border-color:var(--ok);background:var(--ok-soft)} .kp.good .v{color:var(--ok)}
+.kp .v .ic{width:20px;height:20px}
+.alerts{display:grid;gap:6px;margin:0 0 14px}
+.alerts:empty{display:none}
+.alerts .alert{margin:0;display:flex;align-items:center;flex-wrap:wrap;gap:4px 10px;font-size:13px;padding:9px 12px}
+.alerts .alert>.ic{width:18px;height:18px}
+.alert.bad>.ic{color:var(--danger)} .alert.warn>.ic{color:var(--warn)} .alert.info>.ic{color:var(--accent)}
+.alerts .alert .act{margin-left:auto;font-weight:600}
+details.hint{padding:6px 12px}
+details.hint summary{cursor:pointer;list-style:none;display:inline-flex;align-items:center;gap:6px;color:var(--accent-strong);font-weight:600;font-size:12px}
+details.hint summary::-webkit-details-marker{display:none}
+details.hint[open] summary{margin-bottom:6px}
+.hint-body{line-height:1.6}
+.td-sub{margin-top:3px;display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.mv{color:var(--fg-muted);margin-left:4px}
+.alert.xteam{margin:0 0 12px;display:flex;flex-wrap:wrap;gap:4px 8px;align-items:center}
+.alert.xteam .xt-acts{display:flex;gap:6px;margin-left:auto}
+.missbox{border:1px solid var(--danger);background:var(--surface);border-radius:var(--radius);margin:0 0 14px;overflow:hidden}
+.missbox-h{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:9px 12px;background:var(--danger-soft);font-size:13px}
+.missbox-h>.ic{color:var(--danger);width:18px;height:18px}
+.missrow{display:grid;grid-template-columns:96px auto minmax(0,1fr) auto;gap:6px 10px;align-items:center;padding:9px 12px;border-top:1px solid var(--border);font-size:13px}
+.missrow .miss-st{min-width:0}
+.miss-acts{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+@media (max-width:860px){.missrow{grid-template-columns:1fr}.miss-acts{justify-content:flex-start}}
+.mcell.mk{outline:2px dashed var(--warn);outline-offset:-2px}
+.rs-ov{position:fixed;inset:0;z-index:110;background:var(--scrim);display:flex;align-items:center;justify-content:center;padding:16px}
+.rs-box{background:var(--surface);color:var(--fg);border-radius:var(--radius);box-shadow:var(--shadow);width:min(440px,100%);padding:16px 18px;display:flex;flex-direction:column;gap:10px}
+.rs-box h3{margin:0;font-size:16px}
+.rs-box .field input,.rs-box .field textarea{width:100%;min-width:0}
+.rs-box textarea{font-family:inherit;font-size:13px;color:var(--fg);background:var(--surface);border:1px solid var(--border-strong);border-radius:8px;padding:6px 10px;min-height:70px;resize:vertical}
+.rs-box .err{color:var(--danger);font-size:12px}
+.rs-acts{display:flex;gap:8px;justify-content:flex-end;align-items:center;flex-wrap:wrap}
+.card-acts{display:flex;gap:6px;flex-wrap:wrap;margin-top:12px;padding-top:12px;border-top:1px solid var(--border)}
+@media (max-width:860px){.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.kp .v{font-size:18px}}
 </style>
 </head>
 <body>
@@ -395,6 +510,8 @@ tr.sub table{font-size:12px;background:var(--surface);border:1px solid var(--bor
           <select id="demoSel" aria-label="เลือกลูกค้าตัวอย่าง (เฉพาะ mockup)"></select></label>
       </div>
       <div class="head" id="head"></div>
+      <div class="kpis" id="kpis" role="group" aria-label="ตัวเลขสำคัญของลูกค้ารายนี้"></div>
+      <div class="alerts" id="alerts" role="region" aria-label="งานที่ต้องทำ"></div>
       <div class="detail">
         <aside class="panel info" id="info" aria-label="ข้อมูลลูกค้า"></aside>
         <div class="tabcard">
@@ -619,17 +736,21 @@ var HD=(function(){
    0) ค่าคงที่ของเดโม
    ====================================================================== */
 var TODAY='2026-10-16';            // "วันนี้" ในเดโม (ให้ตรงกับเดือน ต.ค. 2026 ใน prototype)
-var CLOSED_THROUGH='2026-08';      // เดือนที่ Host ปิดแล้ว (month_closures) → 🔒
+var CLOSED_THROUGH='2026-08';      // เดือนที่ Host ปิดแล้ว (month_closures) → ป้าย "ปิดเดือนแล้ว" (ไม่ล็อกข้อมูล)
 var ME_TEAM='A';                   // recorder ที่ login อยู่ในเดโม = ทีม A
 var EDIT_URL='admin-add-customer.html';          // หน้าแก้ข้อมูล (host/admin)
 var ATTACH_URL='admin-add-customer.html';          // หน้าเปิดงาน = ที่แนบ/อัปเดตไฟล์ (host/admin)
-var ENTRY_URL='aga-bait-registry-prototype.html';// หน้ากรอกผล/กล่องเหยื่อ/รอเก็บสถานี (host/recorder)
+var ENTRY_URL='aga-bait-registry-prototype.html';// หน้า prototype (host/recorder) — ต่อ #service / #bait / #collect
+var SERVICE_URL=ENTRY_URL+'#service',BAIT_URL=ENTRY_URL+'#bait',COLLECT_URL=ENTRY_URL+'#collect';
 
 /* mock ของตาราง tier_rules — production ต้องอ่านจาก DB เสมอ ห้าม hardcode (CLAUDE.md ข้อ 3) */
 var TIER_RULES=[{tier:'S',min:0,max:30000},{tier:'M',min:30000,max:50000},{tier:'L',min:50000,max:100000},{tier:'XL',min:100000,max:Infinity}];
 
 var TH_M=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
-var ST_LABEL={active:['ใช้งาน','ok'],eliminated:['กำจัดแล้ว','info'],pending_removal:['รอถอด','pend'],removed:['ถอดแล้ว','done']};
+/* สถานะสถานี (2.34 + 2.20) — ไม่มี "กำจัดแล้ว" · active ของ AG แสดงเป็น "ติดตามผล" ส่วน IG/IC แสดง "ใช้งาน" */
+var ST_LABEL={active:['ใช้งาน','ok'],pending_removal:['รอถอด','pend'],removed:['ถอดแล้ว','done'],lost:['หาย','miss'],withdrawn:['ถอนออก','na']};
+function stLabel(s){return s.status==='active'&&s.type==='AG'?['ติดตามผล','info']:ST_LABEL[s.status]}
+function inArea(s){return s.status!=='removed'&&s.status!=='lost'&&s.status!=='withdrawn'}   // ยังอยู่หน้างาน (หาย/ถอนออกไม่นับ)
 var CT_LABEL={active:['ใช้งาน','ok'],expired_pending_collection:['หมดสัญญา · รอเก็บสถานี','pend'],closed:['ปิดสัญญาแล้ว','done'],cancelled:['ยกเลิก','miss']};
 var VT_LABEL={routine:['รอบประจำเดือน','info'],problem:['รอบแก้ไขปัญหา','miss'],follow_up:['รอบติดตามผล','pend']};
 
@@ -653,6 +774,28 @@ function serviceMonths(start,years){                                            
   return out;
 }
 function chip(cls,text,title){return '<span class="chip '+cls+'"'+(title?' title="'+esc(title)+'"':'')+'>'+esc(text)+'</span>'}
+/* ไอคอนเส้นชุดเดียวทั้งหน้า (แทนสัญลักษณ์ ✎ ▣ ⛶ ⧉ ⬇ 🗑 🔒 ที่แต่ละเครื่องแสดงไม่เหมือนกัน) — วาดด้วย currentColor จึงเปลี่ยนตามธีม */
+var IC_PATH={
+  pencil:'M4 20h4L18.5 9.5a2.8 2.8 0 0 0-4-4L4 16v4z M13.5 6.5l4 4',
+  trash:'M4 7h16 M10 11v6 M14 11v6 M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2l1-12 M9 7V4h6v3',
+  box:'M12 3l8 4.5v9L12 21l-8-4.5v-9z M12 12l8-4.5 M12 12v9 M12 12L4 7.5',
+  max:'M4 8V4h4 M16 4h4v4 M20 16v4h-4 M8 20H4v-4',
+  copy:'M8 8h12v12H8z M16 8V4H4v12h4',
+  download:'M4 17v3h16v-3 M7 11l5 5 5-5 M12 4v12',
+  check:'M5 12l5 5L20 7', x:'M18 6L6 18 M6 6l12 12', plus:'M12 5v14 M5 12h14',
+  info:'M12 3a9 9 0 1 0 0 18a9 9 0 0 0 0-18z M12 8h.01 M11 12h1v4h1',
+  alert:'M12 9v4 M12 17h.01 M10.3 3.9L2.4 18a2 2 0 0 0 1.7 3h15.8a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z',
+  alertc:'M12 3a9 9 0 1 0 0 18a9 9 0 0 0 0-18z M12 8v4 M12 16h.01',
+  moved:'M15 14l5-5-5-5 M20 9H9.5A5.5 5.5 0 0 0 4 14.5V20',
+  back:'M9 14L4 9l5-5 M4 9h10.5A5.5 5.5 0 0 1 20 14.5V20',
+  pin:'M12 11a3 3 0 1 0 0-6a3 3 0 0 0 0 6z M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z',
+  history:'M12 8v4l3 2 M3.05 11a9 9 0 1 1 .5 4 M3 20v-5h5',
+  file:'M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z M14 3v5h5',
+  lock:'M6 11h12v10H6z M8 11V7a4 4 0 0 1 8 0v4'
+};
+function ic(n){return '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="'+IC_PATH[n]+'"/></svg>'}
+/* กล่อง "วิธีอ่าน" (ข้อ 3) — ข้อความอธิบายเก็บไว้ในปุ่ม ⓘ กดแล้วค่อยกางออก ไม่กินพื้นที่บนสุดของแท็บ */
+function hint(html,extraStyle){return '<details class="hint"'+(extraStyle?' style="'+extraStyle+'"':'')+'><summary>'+ic('info')+'วิธีอ่าน</summary><div class="hint-body">'+html+'</div></details>'}
 function tierBadge(c){var t=tierCode(c);return '<span class="tier '+t.toLowerCase()+'" title="มูลค่าต่อปี '+num(annualValue(c.value,c.years))+' บาท">'+t+'</span>'}
 function seed(n){var s=n;return function(){s=(s*1103515245+12345)&0x7fffffff;return s/0x7fffffff}}
 
@@ -667,10 +810,14 @@ function mkStations(list,contract,type,prefix,n,installed,status,removedAt,colle
   }
 }
 function st(list,contract,code){for(var i=0;i<list.length;i++){if(list[i].contract===contract&&list[i].code===code)return list[i]}throw new Error('no station '+contract+code)}
-function addCheck(s,date,type,caste,bait,note){s.checks.push({date:date,type:type,caste:caste,bait:bait,note:note||''})}
+/* สัดส่วนปลวก (caste) บันทึกเฉพาะรอบติดตาม AG (F) — IG/IC แบบ exception บันทึกแค่เลขสถานี + เหยื่อ (SPEC §7.5) */
+function addCheck(s,date,type,caste,bait,note){s.checks.push({date:date,type:type,caste:s.type==='AG'?caste:'',bait:bait,note:note||''})}
+/* เวลาเข้า/ออก (24 ชม. — SPEC v1.8 start_time/end_time) ข้อมูลตัวอย่างสมมติ: เริ่มสุ่มตามวันที่ ออก = เข้า + เวลาที่ใช้ */
+function hhmm(m){m=((m%1440)+1440)%1440;return pad(Math.floor(m/60))+':'+pad(m%60)}
 function addVisit(list,o){
-  list.push({contract:o.contract,date:o.date,type:o.type||'routine',team:o.team,dur:o.dur,inspect:!!o.inspect,proxy:!!o.proxy,
-    timber:o.timber||0,powder:o.powder||0,first:!!o.first,extraAg:o.extraAg||0,note:o.note||'',by:o.by||'สมศรี (หัวหน้างาน A)'});
+  var dd=+o.date.slice(8,10),t0=8*60+((dd*37)%6)*30+((dd*13)%3)*10;
+  list.push({start:hhmm(t0),end:hhmm(t0+o.dur),contract:o.contract,date:o.date,type:o.type||'routine',team:o.team,dur:o.dur,inspect:!!o.inspect,proxy:!!o.proxy,
+    timber:o.timber||0,makeupFor:o.makeupFor||null,powder:o.powder||0,first:!!o.first,extraAg:o.extraAg||0,note:o.note||'',by:o.by||'สมศรี (หัวหน้างาน A)'});
 }
 function routines(list,contract,team,dates,timber,rnd,by){
   dates.forEach(function(d){addVisit(list,{contract:contract,date:d,type:'routine',team:team,dur:45+Math.round(rnd()*75),
@@ -693,26 +840,43 @@ function monthDates(year,startM,endM,days,skip){
   var out=[];for(var m=startM;m<=endM;m++){var key=year+'-'+pad(m);if(skip&&skip.indexOf(key)>=0)continue;out.push(ymd(year,m,days[(m-1)%days.length]))}return out;
 }
 
+/* ข้อมูลตัวอย่าง: สถานีที่เปลี่ยนไม้ในแต่ละรอบประจำเดือน (ของจริง = ผลบริการรายสถานี) หมุนเวียน ~1 ใน mod สถานี (ตัวเลขสมมติให้เห็นยอดตอนดู mockup เท่านั้น ไม่ใช่กฎของระบบ) */
+function mkTimber(list,contract,dates,mod){
+  dates.forEach(function(d,mi){
+    list.forEach(function(s){
+      if(s.contract!==contract||s.type==='AG')return;
+      var n=+s.code.split('-')[1],mm=mod+((mi*7)%3)-1;if((n+mi)%mm===0)(s.timberAt=s.timberAt||[]).push(d);
+    });
+  });
+}
 function buildC1(){
   var rnd=seed(11);
   var c={id:'c1',name:'บมจ. สยามพัฒนาเฮ้าส์',branch:'พุทธมณฑล',zone:'เขต 1',team:'A',type:'ออฟฟิต',
-    contact:'คุณสมชาย ใจดี',phone:'02-123-4567',address:'99/9 หมู่ 3 ถ.พุทธมณฑลสาย 2 ต.ศาลายา อ.พุทธมณฑล จ.นครปฐม 73170',
+    contact:'คุณสมชาย ใจดี',phones:[{no:'02-123-4567',label:'โต๊ะต้อนรับ'},{no:'081-555-0142',label:'คุณสมชาย (มือถือ)'}],note:'สะดวกทุกวันจันทร์',address:'99/9 หมู่ 3 ถ.พุทธมณฑลสาย 2 ต.ศาลายา อ.พุทธมณฑล จ.นครปฐม 73170',
     audit:'แก้ไขล่าสุด 05/10/2026 โดย ธนพร (admin)',
     contracts:[
       {no:'CT25-0000098',team:'A',start:'2025-01-01',end:'2025-12-31',years:1,value:36000,sale:'new',status:'closed',closedAt:'2026-01-12',cancelledAt:null},
-      {no:'CT26-0000142',team:'A',start:'2026-01-01',end:'2028-12-31',years:3,value:150000,sale:'renew',status:'active',closedAt:null,cancelledAt:null}],
+      {no:'CT26-0000142',team:'A',start:'2026-01-01',end:'2028-12-31',years:3,value:150000,sale:'renew',renewFrom:'CT25-0000098',status:'active',closedAt:null,cancelledAt:null}],
     stations:[],visits:[],
     files:{'CT25-0000098':{contract_pdf:{name:'CT25-0000098.pdf',size:1.6,by:'ธนพร',at:'2025-01-03'},site_plan:[]},
            'CT26-0000142':{contract_pdf:{name:'CT26-0000142.pdf',size:1.8,by:'ธนพร',at:'2026-01-02'},
              site_plan:[{name:'siteplan-v2.pdf',size:2.4,by:'ธนพร',at:'2026-08-24',reason:'แก้ตอนติดตั้ง — เพิ่มจุด AG หน้าโถง'}]}}};
   var S=c.stations,V=c.visits;
-  mkStations(S,'CT25-0000098','IG','IG',16,'2025-01-10','removed','2026-01-12','2026-01-12');
-  mkStations(S,'CT25-0000098','IC','IC',4,'2025-01-10','removed','2026-01-12','2026-01-12');
+  /* Renew (2.19): สัญญาเก่ามี 16 IG + 4 IC → ย้ายแถวสถานีมาสัญญาใหม่ 14 IG + 4 IC (ติดตั้งเดิม 10/01/2025, F นับต่อ)
+     ส่วนที่ไม่ย้าย 2 IG อยู่กับสัญญาเก่า (เก็บคืนแล้ว) · visits ของสัญญาเก่าไม่ย้าย เปิดดูได้ที่แท็บ "ประวัติบริการ" */
+  mkStations(S,'CT25-0000098','IG','IG',2,'2025-01-10','removed','2026-01-12','2026-01-12');
   mkStations(S,'CT26-0000142','IG','IG',96,'2026-01-05');
   mkStations(S,'CT26-0000142','IC','IC',24,'2026-01-05');
+  S.forEach(function(s){
+    if(s.contract!=='CT26-0000142')return;
+    var n=+s.code.split('-')[1];
+    if((s.type==='IG'&&n<=14)||(s.type==='IC'&&n<=4)){s.installed='2025-01-10';s.movedFrom='CT25-0000098'}
+  });
   mkStations(S,'CT26-0000142','AG','AG',4,'2026-08-22','active',null,null,2);
+  [['AG-01','โถงหน้า'],['AG-02','โถงหน้า ฝั่งซ้าย'],['AG-03','หน้าลิฟต์'],['AG-04','ห้องเก็บของ']].forEach(function(x){st(S,'CT26-0000142',x[0]).label=x[1]});   // ป้ายจุด (point_label · ตัวอย่าง)
   st(S,'CT26-0000142','AG-03').installed='2026-09-22';              // เพิ่มจุดทีหลัง → F นับแยกจากจุดอื่น (§7.5)
-  st(S,'CT26-0000142','IG-072').status='eliminated';
+  st(S,'CT26-0000142','IG-072').status='lost';st(S,'CT26-0000142','IG-072').removedAt='2026-09-18';       // สถานีหาย (2.20)
+  st(S,'CT26-0000142','IC-020').status='withdrawn';st(S,'CT26-0000142','IC-020').removedAt='2026-08-12';  // ถอนออก (2.20)
   addCheck(st(S,'CT26-0000142','IG-017'),'2026-10-14','routine','งาน>ทหาร',100,'พบบริเวณขอบกำแพงหลังอาคาร B');
   addCheck(st(S,'CT26-0000142','IG-044'),'2026-08-12','routine','ทหาร>งาน',50);
   addCheck(st(S,'CT26-0000142','IC-009'),'2026-07-14','routine','งาน>ทหาร',50);
@@ -723,6 +887,9 @@ function buildC1(){
   addCheck(ag3,'2026-10-15','follow_up','ทหาร>งาน',100,'ติดตั้ง 22/09 — F1 ครั้งแรก');
   addCheck(ag4,'2026-09-05','follow_up','ทหาร',100);addCheck(ag4,'2026-09-22','follow_up','ทหาร>งาน',50);addCheck(ag4,'2026-10-15','follow_up','ปลวกตาย',0,'พบปลวกตาย → รอถอด');
   ag4.status='pending_removal';
+  /* ข้อมูลตัวอย่างพบปลวกรายเดือน (IG/IC) ให้กราฟแดชบอร์ดมีข้อมูล — วันที่ตรงกับรอบประจำเดือนด้านล่าง */
+  [['2026-01-14','IG-005'],['2026-02-11','IG-005'],['2026-02-11','IG-021'],['2026-03-12','IG-021'],['2026-04-15','IG-017'],['2026-05-13','IG-017'],['2026-05-13','IG-044'],['2026-05-13','IC-009'],['2026-09-14','IG-017']]
+    .forEach(function(x){addCheck(st(S,'CT26-0000142',x[1]),x[0],'routine','ทหาร>งาน',50)});
   routines(V,'CT25-0000098','A',monthDates(2025,1,12,[10]),0,rnd);
   routines(V,'CT26-0000142','A',['2026-01-14','2026-02-11','2026-03-12','2026-04-15','2026-05-13','2026-07-14','2026-08-12','2026-09-14','2026-10-14'],216,rnd);   // ไม่มี มิ.ย. → ตกบริการ
   addVisit(V,{contract:'CT26-0000142',date:'2026-08-22',type:'problem',team:'A',dur:150,inspect:true,first:true,extraAg:600,note:'พบปลวกใต้ดินโถงหน้า — ติดตั้งกล่อง AG-01, 02, 04 (S)'});
@@ -730,26 +897,28 @@ function buildC1(){
   addVisit(V,{contract:'CT26-0000142',date:'2026-09-22',type:'follow_up',team:'A',dur:70,first:true,extraAg:200,note:'ติดตั้ง AG-03 เพิ่ม (S)'});
   addVisit(V,{contract:'CT26-0000142',date:'2026-10-08',type:'follow_up',team:'A',dur:30,note:'ถอดกล่อง AG-01'});
   addVisit(V,{contract:'CT26-0000142',date:'2026-10-15',type:'follow_up',team:'A',dur:60});
+  mkTimber(S,'CT26-0000142',['2026-01-14','2026-02-11','2026-03-12','2026-04-15','2026-05-13','2026-07-14','2026-08-12','2026-09-14','2026-10-14'],12);   // เปลี่ยนไม้ ≈ 8% ของสถานี IG/IC ต่อรอบ (ตัวอย่าง)
   finishVisits(c);return c;
 }
 
 function buildC2(){
   var rnd=seed(5);
   var c={id:'c2',name:'คุณวิรัช ตั้งมั่น (บ้านพัก)',branch:'พุทธมณฑล',zone:'เขต 1',team:'A',type:'บ้านเดี่ยว',
-    contact:'คุณวิรัช ตั้งมั่น',phone:'081-234-5678',address:'12/34 ซ.ศาลายา 5 ต.ศาลายา อ.พุทธมณฑล จ.นครปฐม 73170',
+    contact:'คุณวิรัช ตั้งมั่น',phones:[{no:'081-234-5678',label:''}],address:'12/34 ซ.ศาลายา 5 ต.ศาลายา อ.พุทธมณฑล จ.นครปฐม 73170',
     audit:'แก้ไขล่าสุด 03/03/2026 โดย ธนพร (admin)',
     contracts:[{no:'CT26-0000088',team:'A',start:'2026-03-03',end:'2027-02-28',years:1,value:24000,sale:'new',status:'active',closedAt:null,cancelledAt:null}],
     stations:[],visits:[],
     files:{}};   // ตั้งใจไม่มีไฟล์ → เดโมสถานะ "ยังไม่แนบ"
   mkStations(c.stations,'CT26-0000088','IG','IG',8,'2026-03-10',null,null,null,2);
   routines(c.visits,'CT26-0000088','A',['2026-03-10','2026-04-14','2026-05-12','2026-06-09','2026-07-14','2026-08-11','2026-09-15','2026-10-13'],16,rnd);
+  mkTimber(c.stations,'CT26-0000088',['2026-03-10','2026-04-14','2026-05-12','2026-06-09','2026-07-14','2026-08-11','2026-09-15','2026-10-13'],10);
   finishVisits(c);return c;
 }
 
 function buildC3(){
   var rnd=seed(23);
   var c={id:'c3',name:'โรงแรมบ้านสวนรีสอร์ท',branch:'นครปฐม',zone:'เขต 1',team:'B',type:'โรงแรม/รีสอร์ท',
-    contact:'คุณนภา แสงทอง (ผู้จัดการ)',phone:'034-111-222',address:'55 ถ.เพชรเกษม ต.ธรรมศาลา อ.เมืองนครปฐม จ.นครปฐม 73000',
+    contact:'คุณนภา แสงทอง (ผู้จัดการ)',phones:[{no:'034-111-222',label:''}],address:'55 ถ.เพชรเกษม ต.ธรรมศาลา อ.เมืองนครปฐม จ.นครปฐม 73000',
     audit:'แก้ไขล่าสุด 15/10/2026 โดย ธนพร (admin)',
     contracts:[{no:'CT23-0000311',team:'B',start:'2023-10-14',end:'2026-10-13',years:3,value:90000,sale:'new',status:'expired_pending_collection',closedAt:null,cancelledAt:null}],
     stations:[],visits:[],
@@ -758,16 +927,22 @@ function buildC3(){
   mkStations(S,N,'IG','IG',34,'2023-10-20',null,null,null,2);
   mkStations(S,N,'IC','IC',9,'2023-10-20',null,null,null,2);
   mkStations(S,N,'AG','AG',2,'2026-06-10',null,null,null,2);
-  S.forEach(function(s,i){if(s.type!=='AG'&&i<18)s.collectedAt='2026-10-15'});     // เก็บคืนแล้ว 18 จาก 43 (IG/IC)
-  var a1=st(S,N,'AG-01'),a2=st(S,N,'AG-02');
+  S.forEach(function(s,i){if(s.type==='IG'&&i<18)s.collectedAt='2026-10-15'});     // เก็บ IG คืนแล้ว 18 จาก 34 · IC 9 จุดมอบให้ลูกค้า (2.42)
+  S.forEach(function(s){if(s.type==='IG'&&/^IG-(19|20)$/.test(s.code))s.collectWaived={reason:'ลูกค้าไม่อนุญาตให้เข้าพื้นที่เก็บ (ฝังใต้พื้นห้องครัว)',by:'วิไล (หัวหน้างาน B)',at:'2026-10-15'}});   // IG ไม่เก็บ+เหตุผล (2.42 แก้ไข)
+  var a1=st(S,N,'AG-01'),a2=st(S,N,'AG-02');a1.label='ครัว';a2.label='ห้องอาหาร';
   addCheck(a1,'2026-07-08','follow_up','ทหาร>งาน',100);addCheck(a1,'2026-08-05','follow_up','ปลวกตาย',0);a1.status='removed';a1.removedAt='2026-09-02';
   addCheck(a2,'2026-07-08','follow_up','งาน>ทหาร',100);addCheck(a2,'2026-08-05','follow_up','ทหาร>งาน',50);addCheck(a2,'2026-09-02','follow_up','ปลวกตาย',0,'พบปลวกตาย → รอถอด');a2.status='pending_removal';
   var skip=['2025-02','2025-06'],V=c.visits,m,dates=[],y=2023,mm=10;                // 36 เดือน ต.ค.23–ก.ย.26 ข้าม 2 เดือน → ตกบริการ 2
   for(var i=0;i<36;i++){var key=y+'-'+pad(mm);if(skip.indexOf(key)<0)dates.push(ymd(y,mm,[14,11,9,13,10][i%5]));mm++;if(mm>12){mm=1;y++}}
   routines(V,N,'B',dates,86,rnd,'วิไล (หัวหน้างาน B)');
+  /* ตกบริการ (DECISIONS 2.41) ตัวอย่าง: ก.พ. 2025 ไม่ชดเชย · มิ.ย. 2025 ชดเชย ส.ค. 2025 และไปทำแล้ว */
+  c.resol={};c.resol[N+'|2025-02']={kind:'waived',reason:'ลูกค้ายินยอม — ปิดปรับปรุงโรงแรมทั้งเดือน',file:'หนังสือยินยอม.pdf',by:'วิไล (หัวหน้างาน B)',at:'2025-03-05'};
+  c.resol[N+'|2025-06']={kind:'makeup',makeup:'2025-08-20',by:'วิไล (หัวหน้างาน B)',at:'2025-07-02'};
+  addVisit(V,{contract:N,date:'2025-08-20',type:'routine',team:'B',dur:60,makeupFor:'2025-06',note:'บริการชดเชย มิ.ย. 2025',by:'วิไล (หัวหน้างาน B)'});
   addVisit(V,{contract:N,date:'2026-06-10',type:'problem',team:'B',dur:120,inspect:true,first:true,extraAg:400,note:'ติดตั้งกล่อง AG-01, 02 (S)',by:'วิไล (หัวหน้างาน B)'});
   ['2026-07-08','2026-08-05','2026-09-02'].forEach(function(d){addVisit(V,{contract:N,date:d,type:'follow_up',team:'B',dur:50,by:'วิไล (หัวหน้างาน B)'})});
   addVisit(V,{contract:N,date:'2026-09-02',type:'follow_up',team:'B',dur:5,note:'ถอดกล่อง AG-01',by:'วิไล (หัวหน้างาน B)'});
+  mkTimber(S,N,dates,12);
   finishVisits(c);return c;
 }
 
@@ -777,9 +952,10 @@ var DB={c1:buildC1(),c2:buildC2(),c3:buildC3()};
    3) สถานะหน้า (state) + ตัวเลือกจาก URL
    ====================================================================== */
 var role='recorder';
-var S={cid:'c1',tab:'contracts',sel:null,
-  st:{contract:'all',type:'all',status:'all',q:'',page:1,open:{}},
+var S={cid:'c1',tab:'dash',sel:null,
+  st:{contract:'all',type:'all',status:'all',q:'',page:1,open:{},attn:true},
   vi:{contract:'all',type:'all',page:1,open:{}},
+  da:{contract:null},
   tl:{contract:'all',kind:'all',page:1}};
 var PAGE_ST=10,PAGE_VI=8,PAGE_TL=12;
 
@@ -792,13 +968,22 @@ function can(what){
   if(what==='attach')return role==='host'||role==='admin';     // ลิงก์ไปแนบ/อัปเดตไฟล์ที่หน้าเปิดงาน
   return false;
 }
+/* 3.11: สัญญาปิดแล้ว/ยกเลิก → admin แก้ไม่ได้ host แก้ได้ (บังคับที่ DB) · 3.13: ไฟล์สัญญาปิดแล้วล็อกทุกคน · ยกเลิก host ยังแก้ไฟล์ได้ */
+/* แก้ผู้ติดต่อ/โทร/หมายเหตุ: host + admin + หัวหน้างาน (recorder) — recorder แก้ได้เฉพาะ 3 ช่องนี้ (production = สิทธิ์ระดับคอลัมน์ + RLS) */
+/* หัวหน้างานแก้ข้อมูลติดต่อลูกค้าทีมอื่น → ถามยืนยัน 1 ครั้งต่อลูกค้า (เหมือนกรอกผลบริการข้ามทีม SPEC §5) · audit บันทึกว่า "ข้ามทีม" */
+function needXteam(){return role==='recorder'&&cust().team!==ME_TEAM&&!(S.xteamOk||{})[S.cid]}
+function canEditContact(){return role==='host'||role==='admin'||role==='recorder'}
+function isLockedContract(k){return k.status==='closed'||k.status==='cancelled'}
+function canEditContract(k){return role==='host'||(role==='admin'&&!isLockedContract(k))}
+function canAttachContract(k){return role==='host'?k.status!=='closed':(role==='admin'&&!isLockedContract(k))}
 
 function readUrl(){
   var q=new URLSearchParams(location.search),h=new URLSearchParams((location.hash||'').replace(/^#/,''));
   if(q.get('c')&&DB[q.get('c')])S.cid=q.get('c');
-  var t=h.get('tab');if(['contracts','stations','visits','files','timeline'].indexOf(t)>=0)S.tab=t;
+  var t=h.get('tab');if(['contracts','stations','visits','dash','files','timeline'].indexOf(t)>=0)S.tab=t;
   var cn=h.get('contract');
   if(cn&&contractOf(cn)){S.sel=cn;S.st.contract=cn;S.vi.contract=cn}
+  if(h.get('type')||h.get('status')||h.get('station'))S.st.attn=false;   // ลิงก์เจาะจงจากหน้าอื่น → ดูทุกสถานี
   if(h.get('type'))S.st.type=h.get('type');
   if(h.get('status'))S.st.status=h.get('status');
   if(h.get('station')){S.tab='stations';S.st.q=h.get('station');S.st.open[(cn||'')+'|'+h.get('station')]=true;S.st.open['*|'+h.get('station')]=true}
@@ -819,42 +1004,170 @@ function monthStates(c){                                   // §7.4 ตกบร
   });
 }
 function missedAll(){var out=[];cust().contracts.forEach(function(c){monthStates(c).forEach(function(x){if(x.s==='miss')out.push({c:c.no,m:x.m})})});return out}
-function stationCounts(list){var r={IG:0,IC:0,AG:0,active:0,eliminated:0,pending_removal:0,removed:0,total:list.length};list.forEach(function(s){r[s.type]++;r[s.status]++});return r}
-function collectProgress(no){var l=cust().stations.filter(function(s){return s.contract===no&&(s.type==='IG'||s.type==='IC')});return {done:l.filter(function(s){return s.collectedAt}).length,total:l.length}}
+function stationCounts(list){var r={IG:0,IC:0,AG:0,active:0,pending_removal:0,removed:0,lost:0,withdrawn:0,total:list.length};list.forEach(function(s){r[s.type]++;r[s.status]++});return r}
+/* เก็บสถานีคืนเมื่อหมดสัญญา = IG เท่านั้น (2.42) */
+/* ======================================================================
+   ตกบริการ: ชดเชย / ไม่ชดเชย (DECISIONS 2.41 · docs/plans/2026-11-14-missed-service-resolution.md)
+   1 เดือนที่ตก = 1 เรื่อง · ไม่มีการตัดสิน = รอตัดสิน · ชดเชย = เลือกวันไปบริการแทน (ค่าเริ่มต้น = วันที่ 1 ของเดือนถัดจากสัญญาจบ)
+   ชดเชยแล้ว = มีการเข้าที่ผูก makeupFor กับเดือนที่ตก · เดือนชดเชยผ่านไปแล้วไม่มีการเข้า = ชดเชยไม่ได้ทำ (กลับไปตัดสินใหม่)
+   ไม่ชดเชย = เหตุผลบังคับ · หลักฐานไม่บังคับ · ยืนยันก่อนบันทึก · เดือนที่ตกยังนับ "ตกบริการ" ในประวัติเสมอ
+   สิทธิ์: หัวหน้างาน + host กดได้ · admin ดูอย่างเดียว (ของจริงบังคับที่ RLS) · ทุกการตัดสินลง audit_log
+   ====================================================================== */
+var RS_LABEL={pending:['รอตัดสิน','miss'],makeup:['ชดเชย','pend'],done:['ชดเชยแล้ว','ok'],failed:['ชดเชยไม่ได้ทำ','miss'],waived:['ไม่ชดเชย','na']};
+function canResolve(){return role==='host'||role==='recorder'}
+function resolState(k,m){
+  var r=(cust().resol||{})[k.no+'|'+m],cur=TODAY.slice(0,7);
+  if(!r)return {s:'pending'};
+  if(r.kind==='waived')return {s:'waived',r:r};
+  var mm=r.makeup.slice(0,7),done=cust().visits.some(function(v){return v.contract===k.no&&v.makeupFor===m});
+  return {s:done?'done':mm<cur?'failed':'makeup',r:r,mm:mm};
+}
+function resolText(st){return st.s==='makeup'?'ชดเชย → '+monthTh(st.mm):RS_LABEL[st.s][0]}
+function resolShort(st){return st.s==='makeup'?'→'+TH_M[+st.mm.slice(5,7)-1]:st.s==='pending'?'รอตัดสิน':st.s==='failed'?'ไม่ได้ทำ':st.s==='done'?'ชดเชยแล้ว':'ไม่ชดเชย'}
+function missedCounts(){var r={pending:0,makeup:0,done:0,waived:0,total:0};missedAll().forEach(function(x){var st=resolState(contractOf(x.c),x.m);r.total++;r[st.s==='failed'?'pending':st.s]++});return r}
+function firstOfNextMonth(m){var y=+m.slice(0,4),mo=+m.slice(5,7)+1;if(mo>12){mo=1;y++}return ymd(y,mo,1)}
+/* วันเริ่มต้นของปฏิทินชดเชย = วันที่ 1 ของเดือนถัดจากสัญญาจบ · วันต่ำสุด = เดือนถัดจากเดือนที่ตก (หัวหน้างานเลือกย้อนก่อนเดือนนี้ไม่ได้ · host ได้) */
+function makeupBounds(k,m){
+  var ms=serviceMonths(k.start,k.years),min=firstOfNextMonth(m),today1=TODAY.slice(0,7)+'-01';
+  if(role!=='host'&&min<today1)min=today1;
+  var def=firstOfNextMonth(ms[ms.length-1]);if(def<min)def=min;
+  return {min:min,def:def};
+}
+function missedHtml(scs){
+  var list=[];missedAll().forEach(function(x){if(scs.some(function(k){return k.no===x.c}))list.push(x)});
+  if(!list.length)return '';
+  var h='<div class="missbox"><div class="missbox-h">'+ic('alert')+'<b>เดือนที่ตกบริการ</b> <span class="lab">'+list.length+' เดือน · ต้องตัดสินว่าจะชดเชยหรือไม่</span>'+(canResolve()?'':'<span class="lab" style="margin-left:auto">ดูอย่างเดียว (admin)</span>')+'</div>';
+  list.slice().reverse().forEach(function(x){
+    var k=contractOf(x.c),st=resolState(k,x.m),lab=RS_LABEL[st.s],key=x.c+'|'+x.m,sub='';
+    if(st.s==='pending')sub='ยังไม่ได้คุยกับลูกค้า';
+    else if(st.s==='makeup')sub='นัด '+fmt(st.r.makeup)+' · รอทำ · ตัดสินโดย '+esc(st.r.by);
+    else if(st.s==='done')sub='เข้าบริการชดเชยแล้ว '+fmt(st.r.makeup);
+    else if(st.s==='failed')sub='เลือกชดเชย '+monthTh(st.mm)+' แต่ไม่มีการเข้า → ต้องตัดสินใหม่';
+    else sub=esc(st.r.reason)+(st.r.file?' · แนบ '+esc(st.r.file):'')+' · โดย '+esc(st.r.by);
+    var btn='';
+    if(canResolve()&&st.s!=='done'){
+      var again=st.s==='makeup'||st.s==='waived';
+      btn='<span class="miss-acts"><button class="btn sm" data-act="rs-open" data-kind="waive" data-k="'+esc(key)+'">'+(again&&st.s==='makeup'?'เปลี่ยนเป็นไม่ชดเชย':'ไม่ชดเชย')+'</button>'+
+          '<button class="btn sm'+(again?'':' primary')+'" data-act="rs-open" data-kind="makeup" data-k="'+esc(key)+'">'+(st.s==='makeup'?'เปลี่ยนวัน':st.s==='waived'?'เปลี่ยนเป็นชดเชย':'ชดเชย')+'</button></span>';
+    }
+    h+='<div class="missrow"><b>'+monthTh(x.m)+'</b>'+(scs.length>1?'<span class="mono lab">'+esc(x.c)+'</span>':'<span></span>')+'<span class="miss-st">'+chip(lab[1],resolText(st))+' <span class="lab">'+sub+'</span></span>'+btn+'</div>';
+  });
+  return h+'</div>';
+}
+/* หน้าต่าง ชดเชย / ไม่ชดเชย (modal) */
+var rsOpener=null;
+function rsOpen(kind,key,opener){
+  var p=key.split('|'),k=contractOf(p[0]),m=p[1],old=(cust().resol||{})[key];rsOpener=opener||null;rsClose(true);
+  var o=document.createElement('div');o.id='rsDlg';o.className='rs-ov';
+  var body;
+  if(kind==='makeup'){
+    var b=makeupBounds(k,m),val=old&&old.kind==='makeup'?old.makeup:b.def;
+    body='<h3 id="rsT">ชดเชย '+monthTh(m)+'</h3><p class="lab">สัญญา '+esc(k.no)+' · เดือนบริการ '+monthTh(serviceMonths(k.start,k.years)[0])+' – '+monthTh(serviceMonths(k.start,k.years).slice(-1)[0])+'</p>'+
+      '<div class="field"><label for="rsDate">วันที่ไปบริการชดเชย</label><input type="date" id="rsDate" value="'+val+'" min="'+b.min+'"><span class="lab">ค่าเริ่มต้น = วันที่ 1 ของเดือนถัดจากสัญญาจบ ('+fmt(b.def)+') · เลือกวันในช่วงสัญญาได้ · ต้องหลังเดือนที่ตก'+(role==='host'?'':' และไม่ย้อนก่อนเดือนนี้')+'</span></div>'+
+      '<p class="lab">เดือนนั้นลูกค้าจะขึ้นในหน้าลงข้อมูลบริการเป็นแถว "ชดเชย '+monthTh(m)+'"</p><div class="err" id="rsErr" role="alert" hidden></div>'+
+      '<div class="rs-acts"><button class="btn" data-act="rs-close">ยกเลิก</button><button class="btn primary" data-act="rs-save" data-kind="makeup" data-k="'+esc(key)+'">บันทึกชดเชย</button></div>';
+  }else{
+    body='<h3 id="rsT">ไม่ชดเชย '+monthTh(m)+'</h3><p class="lab">สัญญา '+esc(k.no)+' · เดือนนี้ยังนับเป็นตกบริการในประวัติ แต่ปิดเรื่องไม่ต้องตามต่อ</p>'+
+      '<div class="field"><label for="rsReason">เหตุผล (บังคับ)</label><textarea id="rsReason" maxlength="300" placeholder="เช่น ลูกค้ายินยอม ปิดอาคารทั้งเดือน">'+esc(old&&old.kind==='waived'?old.reason:'')+'</textarea></div>'+
+      '<div class="field"><label for="rsFile">หลักฐาน (ไม่บังคับ)</label><input type="file" id="rsFile" accept=".pdf,image/*"></div><div class="err" id="rsErr" role="alert" hidden></div>'+
+      '<div id="rsStep" class="rs-acts"><button class="btn" data-act="rs-close">ยกเลิก</button><button class="btn primary" data-act="rs-confirm" data-k="'+esc(key)+'">ไม่ชดเชย</button></div>';
+  }
+  o.innerHTML='<div class="rs-box" role="dialog" aria-modal="true" aria-labelledby="rsT">'+body+'</div>';
+  document.body.appendChild(o);
+  var f=o.querySelector('input,textarea');if(f)f.focus();
+}
+function rsClose(quiet){var o=document.getElementById('rsDlg');if(o)o.remove();if(!quiet&&rsOpener&&document.contains(rsOpener))rsOpener.focus()}
+function rsErr(msg){var e=document.getElementById('rsErr');e.textContent=msg;e.hidden=false}
+function collectProgress(no){var l=cust().stations.filter(function(s){return s.contract===no&&s.type==='IG'&&s.status!=='lost'&&s.status!=='withdrawn'});
+  var done=l.filter(function(s){return s.collectedAt}).length,waived=l.filter(function(s){return !s.collectedAt&&s.collectWaived}).length;
+  return {done:done,waived:waived,pending:l.length-done-waived,total:l.length}}
+/* สถานะ IG ของสัญญาที่หมด/ปิดแล้ว (2.42): 'pending' รอเก็บ · 'collected' เก็บแล้ว · 'waived' ไม่เก็บ+เหตุผล · '' = ไม่เกี่ยว */
+function igCollect(s){var k=contractOf(s.contract);if(s.type!=='IG'||!k||(k.status!=='expired_pending_collection'&&k.status!=='closed'))return '';
+  if(s.status==='lost'||s.status==='withdrawn')return '';return s.collectedAt?'collected':s.collectWaived?'waived':'pending'}
 
 function infoHtml(){
-  var c=cust(),all=stationCounts(c.stations.filter(function(s){return s.status!=='removed'})),missed=missedAll();   // นับเฉพาะสถานีที่ยังอยู่หน้างาน
-  var activeCt=c.contracts.filter(function(x){return x.status==='active'}).length;
-  var last=c.visits.length?c.visits[0].date:null;
-  var h='<h3>ข้อมูลลูกค้า <span class="chip na" title="ข้อมูลส่วนบุคคล — viewer อ่านไม่ได้ (PDPA)">🔒 PDPA</span></h3><div class="body">';
-  h+='<dl class="kv"><dt>สาขา</dt><dd>'+esc(c.branch)+' · '+esc(c.zone)+'</dd><dt>ทีม</dt><dd>'+esc(c.team)+'</dd><dt>ประเภท</dt><dd>'+esc(c.type)+'</dd>'+
-     '<dt>ผู้ติดต่อ</dt><dd>'+esc(c.contact)+'</dd><dt>โทร</dt><dd>'+esc(c.phone)+'</dd><dt>ที่อยู่</dt><dd>'+esc(c.address)+'</dd></dl>';
-  h+='<div class="sep"></div><div class="lab" style="margin-bottom:6px">สรุป</div><div class="sumgrid">'+
-     '<div class="sbox"><div class="v num">'+activeCt+' <span class="lab">/ '+c.contracts.length+'</span></div><div class="l">สัญญาใช้งาน / ทั้งหมด</div></div>'+
-     '<div class="sbox"><div class="v num">'+all.total+'</div><div class="l">สถานีในพื้นที่ ('+all.IG+' IG · '+all.IC+' IC · '+all.AG+' AG)</div></div>'+
-     '<div class="sbox '+(missed.length?'bad':'good')+'"><div class="v num">'+missed.length+'</div><div class="l">เดือนตกบริการ</div></div>'+
-     '<div class="sbox"><div class="v num" style="font-size:15px;padding-top:3px">'+fmt(last)+'</div><div class="l">เข้าบริการล่าสุด</div></div></div>';
-  h+=alertsHtml();
+  var c=cust();
+  var xt=S.xteamAsk?'<div class="alert warn xteam" role="alertdialog" aria-label="ยืนยันแก้ข้อมูลลูกค้าทีมอื่น">'+ic('alertc')+'<b>ลูกค้าของทีม '+esc(c.team)+'</b><span>คุณเป็นทีม '+ME_TEAM+' — ต้องการแก้ข้อมูลติดต่อของลูกค้าทีมอื่นใช่ไหม ระบบจะบันทึกว่าแก้ข้ามทีม (ถามครั้งเดียวต่อลูกค้า)</span>'+
+     '<span class="xt-acts"><button class="btn sm" data-act="xteam-no">ยกเลิก</button><button class="btn sm primary" id="xtYes" data-act="xteam-yes">ยืนยัน แก้ไข</button></span></div>':'';
+  var h='<h3>ข้อมูลลูกค้า <span class="chip na" title="ข้อมูลส่วนบุคคล — viewer อ่านไม่ได้ (PDPA)">'+ic('lock')+'PDPA</span>'+
+     '</h3><div class="body">'+xt;
+  function pen(f,label){return canEditContact()?' <button class="pen" data-act="info-edit" data-f="'+f+'" title="แก้'+label+' — ลูกค้าเปลี่ยนผู้ดูแลระหว่างทำบริการได้" aria-label="แก้'+label+'">'+ic('pencil')+'</button>':''}
+  h+='<dl class="kv"><dt>สาขา</dt><dd>'+esc(c.branch)+' · '+esc(c.zone)+'</dd><dt>ทีมที่เข้าล่าสุด</dt><dd>'+(c.visits.length?esc(c.visits[0].team)+' <span class="lab">· '+fmt(c.visits[0].date)+'</span>':'<span class="lab">ยังไม่เคยเข้า</span>')+'</dd><dt>ประเภท</dt><dd>'+esc(c.type)+'</dd>';
+  /* แก้ทีละแถว (S.editField) — กดดินสอของแถวไหน แถวนั้นกลายเป็นช่องพิมพ์ในที่เดิม แถวอื่นไม่ขยับ */
+  /* เบอร์โทรได้หลายเบอร์ (เลขเบอร์ + ชื่อ/หน้าที่ไม่บังคับ) — แก้/ลบรายเบอร์ · + เพิ่มเบอร์ · ลบได้จนเหลือ 1 เบอร์ */
+  function phoneEditor(p,key){
+    return '<div class="inl"><span class="inl-f"><input id="ie-phone" type="tel" inputmode="tel" value="'+esc(p.no)+'" maxlength="40" autocomplete="off" placeholder="เบอร์โทร" aria-label="เบอร์โทร">'+
+      '<input id="ie-phonelabel" value="'+esc(p.label||'')+'" maxlength="40" autocomplete="off" placeholder="ชื่อ/หน้าที่ (ไม่บังคับ) เช่น ฝ่ายบัญชี" aria-label="ชื่อหรือหน้าที่ของเบอร์นี้"></span>'+
+      '<span class="inl-b"><button class="pen ok" data-act="info-save" aria-label="บันทึกเบอร์โทร" title="บันทึก (Enter)">'+ic('check')+'</button><button class="pen" data-act="info-cancel" aria-label="ยกเลิก" title="ยกเลิก (Esc)">'+ic('x')+'</button></span></div><div class="err" id="ie-err" role="alert" hidden></div>';
+  }
+  function phonesRow(){
+    var ph=c.phones||[],r='<dt>โทร</dt><dd>';
+    ph.forEach(function(p,i){
+      var key='phone:'+i;
+      if(S.editField===key){r+=phoneEditor(p,key);return}
+      if(S.delPhone===i){   /* ยืนยันก่อนลบ — ปุ่มเริ่มต้นคือ "ไม่ลบ" กันกดพลาด */
+        r+='<div class="ph delc" role="alertdialog" aria-label="ยืนยันการลบเบอร์ '+esc(p.no)+'"><span>ลบเบอร์ <b>'+esc(p.no)+'</b>'+(p.label?' <span class="lab">('+esc(p.label)+')</span>':'')+' ?</span> '+
+           '<button class="btn sm" id="delNo" data-act="phone-del-no">ไม่ลบ</button> <button class="btn sm danger" data-act="phone-del-yes" data-i="'+i+'">ลบเบอร์</button></div>';
+        return;
+      }
+      r+='<div class="ph"><span>'+esc(p.no)+(p.label?' <span class="lab">· '+esc(p.label)+'</span>':'')+'</span>'+pen(key,'เบอร์ '+p.no)+
+         (canEditContact()&&ph.length>1?'<button class="pen del" data-act="phone-del" data-i="'+i+'" aria-label="ลบเบอร์ '+esc(p.no)+'" title="ลบเบอร์นี้">'+ic('trash')+'</button>':'')+'</div>';
+    });
+    if(S.editField==='phone:new')r+=phoneEditor({no:'',label:''},'phone:new');
+    else if(canEditContact())r+='<button class="linkbtn addph" data-act="info-edit" data-f="phone:new">'+ic('plus')+'เพิ่มเบอร์</button>';
+    return r+'</dd>';
+  }
+  function fieldRow(f,label,val,empty,multi){
+    if(S.editField!==f)return '<dt>'+label+'</dt><dd>'+(val?esc(val):empty)+pen(f,label)+'</dd>';
+    var inp=multi?'<textarea id="ie-'+f+'" maxlength="300" placeholder="เช่น สะดวกทุกวันจันทร์" aria-label="'+label+'">'+esc(val||'')+'</textarea>'
+                 :'<input id="ie-'+f+'" value="'+esc(val||'')+'" maxlength="80" autocomplete="off" aria-label="'+label+'">';
+    return '<dt>'+label+'</dt><dd><div class="inl">'+inp+'<span class="inl-b"><button class="pen ok" data-act="info-save" aria-label="บันทึก'+label+'" title="บันทึก (Enter)">'+ic('check')+'</button><button class="pen" data-act="info-cancel" aria-label="ยกเลิก" title="ยกเลิก (Esc)">'+ic('x')+'</button></span></div><div class="err" id="ie-err" role="alert" hidden></div></dd>';
+  }
+  h+=fieldRow('contact','ผู้ติดต่อ',c.contact,'<span class="lab">—</span>')+phonesRow()+
+     '<dt>ที่อยู่</dt><dd>'+esc(c.address)+'</dd>'+fieldRow('note','หมายเหตุ',c.note,'<span class="lab">—</span>',true)+'</dl>';
   h+='<div class="sep"></div><div class="lab">'+esc(c.audit)+' · <span class="tag">audit_log</span></div></div>';
   return h;
 }
+/* แถบงานที่ต้องทำ (บนสุดของหน้า เต็มความกว้าง) เรียงตามความเร่งด่วน: แดง (ตกบริการ) → เหลือง (รอถอด/ใกล้หมด/รอเก็บ) → ฟ้า (ข้อมูล) */
 function alertsHtml(){
-  var c=cust(),h='',all=stationCounts(c.stations);
+  /* ตกบริการ + สถานะกล่อง AG แสดงเป็นการ์ดตัวเลขด้านบนแล้ว (ไม่ซ้ำเป็นแถบเตือน) — แถบเตือนเหลือเฉพาะเรื่องสัญญา/ทีม */
+  var c=cust(),warn=[],info=[];
   c.contracts.forEach(function(k){
     if(k.status==='active'){
       var left=days(TODAY,k.end);
-      if(left<=90)h+='<div class="alert warn"><b>สัญญา '+esc(k.no)+' ใกล้หมด</b> — อีก '+left+' วัน (หมด '+fmt(k.end)+')</div>';
-      if(k.end!==defaultEnd(k.start,k.years))h+='<div class="alert warn"><b>วันสิ้นสุด '+esc(k.no)+' ไม่ตรงกฎ</b> — '+fmt(k.end)+' (ควรเป็น '+fmt(defaultEnd(k.start,k.years))+' = วันเริ่ม + '+k.years+' ปี − 1 วัน) <button class="linkbtn" data-act="goto" data-tab="contracts" data-contract="'+esc(k.no)+'">ดูสัญญา</button></div>';
+      if(left<=90)warn.push('<b>สัญญา '+esc(k.no)+' ใกล้หมด</b><span>อีก '+left+' วัน (หมด '+fmt(k.end)+')</span>');
+      if(k.end!==defaultEnd(k.start,k.years))warn.push('<b>วันสิ้นสุด '+esc(k.no)+' ไม่ตรงกฎ</b><span>'+fmt(k.end)+' (ควรเป็น '+fmt(defaultEnd(k.start,k.years))+')</span><button class="linkbtn act" data-act="goto" data-tab="contracts" data-contract="'+esc(k.no)+'">ดูสัญญา</button>');
     }
     if(k.status==='expired_pending_collection'){
       var p=collectProgress(k.no);
-      h+='<div class="alert warn"><b>หมดสัญญา — รอเก็บสถานีคืน</b> '+p.done+' / '+p.total+' จุด (IG/IC) ยังไม่ครบจึงปิดสัญญาไม่ได้ ('+esc(k.no)+') '+(can('entry')||can('edit')?'<a href="'+ENTRY_URL+'">ไปหน้ารอเก็บสถานี ↗</a>':'')+'</div>';
+      warn.push('<b>หมดสัญญา — IG รอเก็บ '+p.pending+' จุด</b><span>เก็บแล้ว '+p.done+(p.waived?' · ไม่เก็บ '+p.waived:'')+' / '+p.total+' · ปิดสัญญาได้แม้ยังไม่เก็บ · IC มอบให้ลูกค้า ('+esc(k.no)+')</span>'+(can('entry')||can('edit')?'<a class="act" href="'+COLLECT_URL+'">ไปหน้าลูกค้ารอเก็บสถานี ↗</a>':''));
     }
   });
-  if(all.pending_removal)h+='<div class="alert warn"><b>กล่องเหยื่อ AG รอถอด '+all.pending_removal+' จุด</b> <button class="linkbtn" data-act="goto" data-tab="stations" data-status="pending_removal">ดูรายการ</button></div>';
-  var m=missedAll();
-  if(m.length)h+='<div class="alert bad"><b>ตกบริการ '+m.length+' เดือน</b> — '+m.slice(0,4).map(function(x){return monthTh(x.m)}).join(', ')+(m.length>4?' …':'')+' <button class="linkbtn" data-act="goto" data-tab="visits">ดูแถบเดือนบริการ</button></div>';
-  if(role==='recorder'&&c.team!==ME_TEAM)h+='<div class="alert info"><b>ลูกค้าของทีม '+esc(c.team)+'</b> — คุณเป็นทีม '+ME_TEAM+' ถ้ากรอกผลบริการให้ลูกค้ารายนี้ ระบบจะถามยืนยัน 1 ครั้งและบันทึกใน audit log (SPEC §5)</div>';
+  if(role==='recorder'&&c.team!==ME_TEAM)info.push('<b>ลูกค้าของทีม '+esc(c.team)+'</b><span>คุณเป็นทีม '+ME_TEAM+' — ถ้ากรอกผลบริการให้ลูกค้ารายนี้ ระบบจะถามยืนยัน 1 ครั้งและบันทึกการแก้ไว้</span>');
+  return warn.map(function(x){return '<div class="alert warn">'+ic('alertc')+x+'</div>'}).join('')+
+         info.map(function(x){return '<div class="alert info">'+ic('info')+x+'</div>'}).join('');
+}
+/* แถวตัวเลขสำคัญ 4 ช่อง (แทนกล่องสรุปในแผงซ้าย) — สัญญาปัจจุบัน · ระยะที่เหลือ · ตกบริการ · เข้าล่าสุด */
+/* รายชื่อจุด AG สำหรับการ์ด: "AG-02 โถงหน้า" (สูงสุด 3 จุด แล้ว +N) */
+function agNames(list){var a=list.map(function(x){return x.code+(x.label?' '+x.label:'')});return a.length>3?a.slice(0,3).join(' · ')+' · +'+(a.length-3):a.join(' · ')}
+function kpiHtml(){
+  var c=cust(),cs=sortedContracts(),k=cs.filter(function(x){return x.status==='active'})[0]||cs.filter(function(x){return x.status==='expired_pending_collection'})[0]||cs[0];
+  var area=stationCounts(c.stations.filter(inArea)),m=missedAll(),last=c.visits[0],cur=TODAY.slice(0,7);
+  var h='<div class="kp"><span class="l">'+(k.status==='active'?'สัญญาปัจจุบัน':'สัญญาล่าสุด')+'</span><span class="v">'+tierBadge(k)+' '+num(k.value)+' <span class="lab">บาท</span></span><span class="s">'+k.years+' ปี · '+(k.sale==='new'?'New':'Renew')+' · '+area.total+' สถานีในพื้นที่</span></div>';
+  if(k.status==='active'){var left=serviceMonths(k.start,k.years).filter(function(x){return x>cur}).length;
+    h+='<div class="kp"><span class="l">เหลือในสัญญา</span><span class="v">'+left+' <span class="lab">เดือน</span></span><span class="s">หมด '+fmt(k.end)+'</span></div>'}
+  else if(k.status==='expired_pending_collection'){var p=collectProgress(k.no);
+    h+='<div class="kp bad"><span class="l">หมดสัญญา · IG รอเก็บ</span><span class="v">'+p.pending+' <span class="lab">จุด</span></span><span class="s">เก็บแล้ว '+p.done+(p.waived?' · ไม่เก็บ '+p.waived:'')+' จาก '+p.total+' · IC มอบให้ลูกค้า</span></div>'}
+  else h+='<div class="kp"><span class="l">สถานะสัญญา</span><span class="v" style="font-size:16px">'+CT_LABEL[k.status][0]+'</span><span class="s">'+(k.closedAt?'ปิดเมื่อ '+fmt(k.closedAt):'')+'</span></div>';
+  /* สถานะกล่อง AG: รอถอด (เหลือง) > ติดตามผลอยู่ (ฟ้า) > ไม่มีปัญหา (เขียว) */
+  var ags=c.stations.filter(function(x){return x.type==='AG'}),pend=ags.filter(function(x){return x.status==='pending_removal'}),trk=ags.filter(function(x){return x.status==='active'});
+  if(pend.length)h+='<button class="kp warn" data-act="ag-view" data-status="pending_removal" title="ดูรายการกล่อง AG ที่รอถอด'+(trk.length?' (ยังมีติดตามผลอีก '+trk.length+' จุด — ดูในแท็บสถานี)':'')+'"><span class="l">สถานะกล่อง AG</span><span class="v">'+ic('alertc')+'รอถอด '+pend.length+' จุด</span><span class="s">'+esc(agNames(pend))+' · พบปลวกตาย ยังไม่ได้ถอด</span><span class="go">ดูรายการ</span></button>';
+  else if(trk.length)h+='<button class="kp info" data-act="ag-view" data-status="active" title="ดูกล่อง AG ที่กำลังติดตามผล"><span class="l">สถานะกล่อง AG</span><span class="v">'+trk.length+' <span class="lab">จุดติดตามผล</span></span><span class="s">'+esc(agNames(trk))+' · ยังไม่มีจุดรอถอด</span><span class="go">ดูรายการ</span></button>';
+  else h+='<div class="kp good"><span class="l">สถานะกล่อง AG</span><span class="v">'+ic('check')+'ไม่มีปัญหา</span><span class="s">ไม่มี AG ที่ต้องติดตาม</span></div>';
+  var mc=missedCounts();
+  h+=m.length?'<button class="kp '+(mc.pending?'bad':'info')+'" data-act="vis-miss" title="จัดการเดือนที่ตกบริการ"><span class="l">เดือนตกบริการ</span><span class="v">'+m.length+'</span><span class="s">'+(mc.pending?'รอตัดสิน '+mc.pending:'ตัดสินครบแล้ว')+(mc.makeup?' · ชดเชยรอทำ '+mc.makeup:'')+'</span><span class="go">จัดการเดือนที่ตก</span></button>'
+             :'<div class="kp good"><span class="l">เดือนตกบริการ</span><span class="v">0</span><span class="s">บริการครบทุกเดือน</span></div>';
+  h+='<button class="kp" data-act="vis-all" title="เปิดแท็บประวัติทำบริการทั้งหมด"><span class="l">เข้าบริการล่าสุด</span><span class="v" style="font-size:18px">'+(last?fmt(last.date):'—')+'</span><span class="go">'+(last?'ทีม '+esc(last.team)+' · ':'')+'ดูทั้งหมด '+c.visits.length+' ครั้ง</span></button>';
   return h;
 }
 
@@ -866,19 +1179,19 @@ function headHtml(){
   var h='<h1>'+esc(c.name)+'</h1>';
   h+=act?chip('ok','มีสัญญาใช้งาน'):pend?chip('pend','หมดสัญญา · รอเก็บสถานี'):chip('done','ไม่มีสัญญาใช้งาน');
   h+='<div class="acts">';
-  if(can('entry'))h+='<a class="btn primary" href="'+ENTRY_URL+'" title="ไปหน้ากรอกผลบริการรายเดือน (IG/IC)">✎ กรอกผลบริการ ↗</a><a class="btn" href="'+ENTRY_URL+'" title="ไปหน้ากล่องเหยื่อ AG นอกรอบ">▣ กล่องเหยื่อ AG นอกรอบ ↗</a>';
-  if(can('edit'))h+='<a class="btn'+(can('entry')?'':' primary')+'" href="'+EDIT_URL+'" title="ไปหน้าเปิดงาน/ทะเบียนเพื่อแก้ข้อมูลลูกค้า สัญญา สถานี">✎ แก้ข้อมูลลูกค้า/สัญญา ↗</a>';
-  if(role==='host')h+='<button class="btn" data-act="goto" data-tab="timeline" title="ดูประวัติการแก้ไขของลูกค้ารายนี้ (audit_log — เฉพาะ host)">⟲ ประวัติการแก้ไข</button>';
+  if(can('entry'))h+='<a class="btn primary" href="'+SERVICE_URL+'" title="ไปหน้าลงข้อมูลทำบริการประจำเดือน">'+ic('pencil')+'ลงข้อมูลทำบริการประจำเดือน ↗</a><a class="btn" href="'+BAIT_URL+'" title="ไปหน้ากล่อง AG นอกรอบประจำเดือน">'+ic('box')+'กล่อง AG นอกรอบประจำเดือน ↗</a>';
+  if(can('edit'))h+='<a class="btn'+(can('entry')?'':' primary')+'" href="'+EDIT_URL+'" title="ไปหน้าเปิดงานเพื่อแก้ข้อมูลลูกค้า (แก้สัญญา/สถานีดูที่แท็บสัญญา)">'+ic('pencil')+'แก้ข้อมูลลูกค้า ↗</a>';
+  if(role==='host')h+='<button class="btn" data-act="goto" data-tab="timeline" title="ดูประวัติการแก้ไขของลูกค้ารายนี้ (audit_log — เฉพาะ host)">'+ic('history')+'ประวัติการแก้ไข</button>';
   if(!can('entry')&&!can('edit'))h+='<span class="lab">ดูอย่างเดียว</span>';
   h+='</div>';return h;
 }
-var TABS=[['contracts','สัญญา'],['stations','สถานี'],['visits','ประวัติบริการ'],['files','ไฟล์แนบ'],['timeline','ไทม์ไลน์']];
+var TABS=[['dash','ภาพรวม'],['contracts','สัญญา'],['stations','สถานี'],['visits','ประวัติทำบริการ'],['files','ไฟล์แนบ'],['timeline','ไทม์ไลน์']];   // ภาพรวม (กราฟ) มาก่อน — เปิดหน้ามาเจอเป็นแท็บแรก
 function visTabs(){return TABS.filter(function(t){return t[0]!=='timeline'||role==='host'})}   // ไทม์ไลน์ = audit_log → host อ่านได้คนเดียว (RLS)
 function tabsHtml(){
   var c=cust(),counts={contracts:c.contracts.length,stations:c.stations.length,visits:c.visits.length,files:fileCount(),timeline:tlRows().length};
   return visTabs().map(function(t){
     var on=S.tab===t[0];
-    return '<button class="tab" role="tab" id="tab-'+t[0]+'" aria-selected="'+on+'" aria-controls="panel" tabindex="'+(on?0:-1)+'" data-act="tab" data-tab="'+t[0]+'">'+t[1]+' <span class="chip done">'+counts[t[0]]+'</span></button>';
+    return '<button class="tab" role="tab" id="tab-'+t[0]+'" aria-selected="'+on+'" aria-controls="panel" tabindex="'+(on?0:-1)+'" data-act="tab" data-tab="'+t[0]+'">'+t[1]+(counts[t[0]]==null?'':' <span class="chip done">'+counts[t[0]]+'</span>')+'</button>';
   }).join('');
 }
 function fileCount(){var n=0,c=cust();Object.keys(c.files).forEach(function(k){var f=c.files[k];if(f.contract_pdf)n++;n+=(f.site_plan||[]).length});return n}   // นับทุกเวอร์ชันของ Site plan
@@ -889,16 +1202,31 @@ function fileCount(){var n=0,c=cust();Object.keys(c.files).forEach(function(k){v
 function contractsHtml(){
   var cs=sortedContracts();
   if(!S.sel||!contractOf(S.sel))S.sel=cs[0].no;
-  var h='<p class="hint">ตาราง <code>contracts</code> — 1 ลูกค้ามีได้หลายสัญญา (ต่อสัญญา = สัญญาใหม่ต่อเนื่อง) · Tier คำนวณจากมูลค่าต่อปีด้วย <code>tier_rules</code> · คลิกแถวเพื่อดูรายละเอียด</p>';
-  h+='<div class="tablewrap"><table><thead><tr><th scope="col">เลขที่สัญญา</th><th scope="col">Tier</th><th scope="col">ประเภท</th><th scope="col">ช่วงสัญญา</th><th class="r" scope="col">มูลค่าสัญญา</th><th class="r" scope="col">ต่อปี</th><th scope="col">ทีม</th><th scope="col">สถานะ</th></tr></thead><tbody>';
+  var h=hint('1 ลูกค้ามีได้หลายสัญญา — ต่อสัญญา (Renew) = สัญญาใหม่ต่อจากสัญญาเดิม · Tier คิดจากมูลค่าต่อปีตามเกณฑ์ที่ตั้งไว้ · กดเลขสัญญาเพื่อดูรายละเอียดด้านล่าง');
+  h+='<div class="tablewrap"><table><thead><tr><th scope="col">สัญญา</th><th scope="col">Tier</th><th scope="col">ช่วงสัญญา</th><th class="r" scope="col">มูลค่า (บาท)</th><th scope="col">ทีม</th></tr></thead><tbody>';
   cs.forEach(function(k){
     var s=CT_LABEL[k.status];
-    h+='<tr class="row'+(k.no===S.sel?' sel':'')+'"><td><button class="linkbtn mono" data-act="pick-contract" data-contract="'+esc(k.no)+'" aria-pressed="'+(k.no===S.sel)+'">'+esc(k.no)+'</button></td><td>'+tierBadge(k)+'</td>'+
-      '<td>'+(k.sale==='new'?chip('info','New'):chip('na','Renew'))+' <span class="lab">'+k.years+' ปี</span></td><td>'+fmt(k.start)+' – '+fmt(k.end)+'</td>'+
-      '<td class="r num">'+num(k.value)+'</td><td class="r num">'+num(annualValue(k.value,k.years))+'</td><td>'+esc(k.team)+'</td><td>'+chip(s[1],s[0],k.status)+'</td></tr>';
+    h+='<tr class="row'+(k.no===S.sel?' sel':'')+'"><td><button class="linkbtn mono" data-act="pick-contract" data-contract="'+esc(k.no)+'" aria-pressed="'+(k.no===S.sel)+'">'+esc(k.no)+'</button><div class="td-sub">'+chip(s[1],s[0],k.status)+'<span class="lab">'+(k.sale==='new'?'New':'Renew')+' · '+k.years+' ปี</span></div></td><td>'+tierBadge(k)+'</td>'+
+      '<td>'+fmt(k.start)+' – '+fmt(k.end)+'</td>'+
+      '<td class="r num">'+num(k.value)+'<div class="lab">'+num(annualValue(k.value,k.years))+' / ปี</div></td><td>'+esc(k.team)+'</td></tr>';
   });
   h+='</tbody></table></div>';
   return h+contractDetailHtml(contractOf(S.sel));
+}
+/* Renew (2.19): บอกว่าสัญญานี้ต่อจากสัญญาไหน ย้ายสถานีมากี่จุด และเปิดดูประวัติสัญญาเก่าได้เสมอ — สัญญาเก่าชี้กลับมาที่สัญญาใหม่ */
+function renewHtml(k){
+  var cu=cust(),h='';
+  function ctBtn(no){return '<span class="mono">'+esc(no)+'</span>'}
+  if(k.renewFrom){
+    var mv={IG:0,IC:0,AG:0};cu.stations.forEach(function(s){if(s.contract===k.no&&s.movedFrom===k.renewFrom)mv[s.type]++});
+    var left=cu.stations.filter(function(s){return s.contract===k.renewFrom});
+    h+='<div class="alert info" style="margin-top:10px"><b>สัญญาต่อเนื่อง (Renew)</b> — ต่อจากสัญญา '+ctBtn(k.renewFrom)+'<br>'+
+      'ย้ายสถานีมาจากสัญญาเก่า <b>'+mv.IG+' IG · '+mv.IC+' IC</b> (F นับต่อจากเดิม) · ไม่ย้าย '+left.length+' จุด'+(left.length?' (อยู่กับสัญญาเก่า / รอเก็บสถานี)':'')+' · ประวัติผลบริการของสัญญาเก่าเปิดดูได้เสมอ</div>';
+  }
+  cu.contracts.forEach(function(n){
+    if(n.renewFrom===k.no)h+='<div class="alert info" style="margin-top:10px"><b>ต่อสัญญาแล้ว</b> — สัญญาใหม่ '+ctBtn(n.no)+' · สถานีที่ยังใช้งานย้ายไปสัญญาใหม่ · ผลบริการของสัญญานี้เปิดดูอ้างอิงได้เสมอ</div>';
+  });
+  return h;
 }
 function contractDetailHtml(k){
   var cu=cust(),ms=monthStates(k),cnt={ok:0,miss:0,total:ms.length};ms.forEach(function(x){if(x.s==='ok')cnt.ok++;if(x.s==='miss')cnt.miss++});
@@ -908,19 +1236,32 @@ function contractDetailHtml(k){
   var h='<div class="dcard"><h4><span class="mono">'+esc(k.no)+'</span> '+tierBadge(k)+' '+chip(CT_LABEL[k.status][1],CT_LABEL[k.status][0],k.status)+' '+(k.sale==='new'?chip('info','New'):chip('na','Renew'))+'</h4>';
   h+='<div class="dgrid">'+
     '<div class="it"><span class="lab">ลูกค้า / ทีม</span>'+esc(cu.name)+' · ทีม '+esc(k.team)+'</div>'+
-    '<div class="it"><span class="lab">วันเริ่ม – วันสิ้นสุด</span>'+fmt(k.start)+' – '+fmt(k.end)+(bad?' <span class="chip pend" title="ควรเป็น '+fmt(de)+'">⚠ ไม่ตรงกฎ</span>':'')+'</div>'+
+    '<div class="it"><span class="lab">วันเริ่ม – วันสิ้นสุด</span>'+fmt(k.start)+' – '+fmt(k.end)+(bad?' <span class="chip pend" title="ควรเป็น '+fmt(de)+'">'+ic('alertc')+'ไม่ตรงกฎ</span>':'')+'</div>'+
     '<div class="it"><span class="lab">เดือนบริการ (§7.2)</span>'+monthTh(first)+' – '+monthTh(lastM)+' · '+ms.length+' เดือน</div>'+
     '<div class="it"><span class="lab">มูลค่าสัญญา / ต่อปี</span>'+num(k.value)+' / '+num(annualValue(k.value,k.years))+' บาท</div>'+
-    '<div class="it"><span class="lab">Site plan</span>อยู่ในไฟล์สัญญา · '+(((cu.files[k.no]||{}).site_plan||[]).length?'อัปเดต '+cu.files[k.no].site_plan.length+' ครั้ง':'ยังไม่มีอัปเดต')+' <button class="linkbtn" data-act="goto" data-tab="files" data-contract="'+esc(k.no)+'">ดูไฟล์</button></div>'+
+    '<div class="it"><span class="lab">Site plan</span>อยู่ในไฟล์สัญญา · '+(((cu.files[k.no]||{}).site_plan||[]).length?'อัปเดต '+cu.files[k.no].site_plan.length+' ครั้ง':'ยังไม่มีอัปเดต')+'</div>'+
     '<div class="it"><span class="lab">ปิดสัญญา / ยกเลิก</span>'+(k.closedAt?'ปิดเมื่อ '+fmt(k.closedAt):k.cancelledAt?'ยกเลิก '+fmt(k.cancelledAt):'—')+'</div>'+
-    '<div class="it"><span class="lab">สถานี</span>'+sc.total+' จุด ('+sc.IG+' IG · '+sc.IC+' IC · '+sc.AG+' AG) <button class="linkbtn" data-act="goto" data-tab="stations" data-contract="'+esc(k.no)+'">ดูสถานี</button></div>'+
-    '<div class="it"><span class="lab">บริการประจำเดือน</span>ครบ '+cnt.ok+' · <span style="color:'+(cnt.miss?'var(--danger)':'inherit')+'">ตกบริการ '+cnt.miss+'</span> / '+cnt.total+' เดือน <button class="linkbtn" data-act="goto" data-tab="visits" data-contract="'+esc(k.no)+'">ดูประวัติ</button></div></div>';
+    '<div class="it"><span class="lab">สถานี</span>'+sc.total+' จุด ('+sc.IG+' IG · '+sc.IC+' IC · '+sc.AG+' AG)</div>'+
+    '<div class="it"><span class="lab">บริการประจำเดือน</span>ครบ '+cnt.ok+' · <span style="color:'+(cnt.miss?'var(--danger)':'inherit')+'">ตกบริการ '+cnt.miss+'</span> / '+cnt.total+' เดือน</div></div>';
+  h+=renewHtml(k);
+  /* ปุ่มของการ์ดรวมไว้แถวเดียวท้ายการ์ด (ข้อมูลด้านบนเป็นข้อความล้วน ไม่มีลิงก์แย่งสายตา) */
+  var succ=cu.contracts.filter(function(n){return n.renewFrom===k.no})[0];
+  h+='<div class="card-acts">'+
+    '<button class="btn sm" data-act="goto" data-tab="stations" data-contract="'+esc(k.no)+'">'+ic('pin')+'สถานี</button>'+
+    '<button class="btn sm" data-act="goto" data-tab="visits" data-contract="'+esc(k.no)+'">'+ic('history')+'ประวัติทำบริการ</button>'+
+    '<button class="btn sm" data-act="goto" data-tab="files" data-contract="'+esc(k.no)+'">'+ic('file')+'ไฟล์</button>'+
+    (k.renewFrom?'<button class="btn sm" data-act="pick-contract" data-contract="'+esc(k.renewFrom)+'">'+ic('back')+'สัญญาเก่า '+esc(k.renewFrom)+'</button>':'')+
+    (succ?'<button class="btn sm" data-act="pick-contract" data-contract="'+esc(succ.no)+'">'+ic('moved')+'สัญญาใหม่ '+esc(succ.no)+'</button>':'')+
+    (can('edit')?(canEditContract(k)
+      ?'<a class="btn sm" style="margin-left:auto" href="'+EDIT_URL+'?contract='+encodeURIComponent(k.no)+'" title="ไปหน้าเปิดงานเพื่อแก้สัญญานี้'+(isLockedContract(k)?' — สัญญา'+(k.status==='closed'?'ปิดแล้ว':'ยกเลิก')+' แก้ได้เฉพาะ host · ทุกการแก้ลง audit':'')+'">'+ic('pencil')+'แก้สัญญานี้ ↗</a>'
+      :'<span class="chip na" style="margin-left:auto" title="admin แก้ไม่ได้ — ถ้าพิมพ์ผิดจริงให้แจ้ง host">'+ic('lock')+'สัญญา'+(k.status==='closed'?'ปิดแล้ว':'ยกเลิก')+' · แก้ได้เฉพาะ host</span>'):'')+
+    '</div>';
   if(k.status==='cancelled'){h+='<div class="steps"><span class="step cur">ยกเลิก</span></div>'}
   else{h+='<div class="steps" aria-label="สถานะสัญญา">'+steps.map(function(s,i){return '<span class="step '+(i<idx?'past':i===idx?'cur':'')+'">'+CT_LABEL[s][0]+'</span>'}).join('<span aria-hidden="true">›</span>')+'</div>'}
   if(k.status==='expired_pending_collection'){
-    var p=collectProgress(k.no),pc=p.total?Math.round(p.done/p.total*100):0;
-    h+='<div style="margin-top:10px"><div class="lab" style="display:flex;justify-content:space-between"><span>เก็บสถานี IG/IC คืนบริษัท (§7.8)</span><b>'+p.done+' / '+p.total+' จุด</b></div><div class="bar" role="progressbar" aria-valuenow="'+pc+'" aria-valuemin="0" aria-valuemax="100" aria-label="ความคืบหน้าการเก็บสถานีคืน"><i style="width:'+pc+'%"></i></div>'+
-      '<div class="lab" style="margin-top:5px">'+(p.done===p.total?'เก็บครบแล้ว — พร้อมกด "ปิดสัญญา"':'ยังเหลือ '+(p.total-p.done)+' จุด — ปิดสัญญาไม่ได้จนกว่าจะเก็บครบ')+'</div></div>';
+    var p=collectProgress(k.no),pc=p.total?Math.round((p.done+p.waived)/p.total*100):0;
+    h+='<div style="margin-top:10px"><div class="lab" style="display:flex;justify-content:space-between"><span>เก็บสถานี IG คืนบริษัท (§7.8 · IC มอบให้ลูกค้า · AG ที่ค้างไม่ต้องเก็บ)</span><b>เก็บแล้ว '+p.done+(p.waived?' · ไม่เก็บ '+p.waived:'')+' · รอเก็บ '+p.pending+' / '+p.total+' จุด</b></div><div class="bar" role="progressbar" aria-valuenow="'+pc+'" aria-valuemin="0" aria-valuemax="100" aria-label="ความคืบหน้าการเก็บสถานีคืน"><i style="width:'+pc+'%"></i></div>'+
+      '<div class="lab" style="margin-top:5px">'+(p.pending?'ปิดสัญญาได้แม้ยังเหลือ IG '+p.pending+' จุด — จุดที่ค้างยังขึ้น "รอเก็บ" จนกด "เก็บแล้ว" หรือ "ไม่เก็บ" (ไม่เก็บต้องระบุเหตุผล + ยืนยัน)':'IG จัดการครบทุกจุดแล้ว (เก็บแล้ว / ไม่เก็บ)')+'</div></div>';
   }
   return h+'</div>';
 }
@@ -929,10 +1270,20 @@ function contractDetailHtml(k){
    7) แท็บ "สถานี"  (stations + station_checks)
    ====================================================================== */
 var TYPE_ORDER={AG:0,IG:1,IC:2};
+/* "ต้องดู" = AG ที่ยังไม่จบ (ติดตามผล/รอถอด) + IG/IC ที่พบปลวกเดือนนี้หรือเดือนก่อน + สถานีหาย/ถอนออก */
+function prevMonth(m){var y=+m.slice(0,4),mo=+m.slice(5,7)-1;if(mo<1){mo=12;y--}return y+'-'+pad(mo)}
+function isAttn(s){
+  if(s.status==='lost'||s.status==='withdrawn')return true;
+  if(s.type==='AG')return s.status==='active'||s.status==='pending_removal';
+  var from=prevMonth(TODAY.slice(0,7));
+  return s.status==='active'&&s.checks.some(function(k){return k.date.slice(0,7)>=from});
+}
+/* IC ของสัญญาที่หมดแล้ว (รอเก็บ) หรือปิดแล้ว = มอบให้ลูกค้า (2.42) — คืนค่า 'expired' / 'closed' / '' */
+function icHanded(s){var k=contractOf(s.contract);return k&&s.type==='IC'?(k.status==='closed'?'closed':k.status==='expired_pending_collection'?'expired':''):''}
 function stationRows(){
   var q=S.st.q.trim().toLowerCase();
   return cust().stations.filter(function(s){
-    return (S.st.contract==='all'||s.contract===S.st.contract)&&(S.st.type==='all'||s.type===S.st.type)&&
+    return (!S.st.attn||isAttn(s))&&(S.st.contract==='all'||s.contract===S.st.contract)&&(S.st.type==='all'||s.type===S.st.type)&&
            (S.st.status==='all'||s.status===S.st.status)&&(!q||s.code.toLowerCase().indexOf(q)>=0);
   }).sort(function(a,b){
     if(a.contract!==b.contract)return a.contract<b.contract?1:-1;
@@ -945,7 +1296,7 @@ function stationRows(){
    ใช้ลิ้นชัก HD ตามเดิม (ไม่แก้บล็อก AGA-HISTORY-DRAWER): ครอบ hmFor ชั่วคราวระหว่าง HD.open แล้วคืนค่าเดิมเสมอ */
 function hdBtn(label,ct,kinds,title,sub){
   if(role!=='host')return '';
-  return '<button type="button" class="hd-btn" data-hd-scope="1" data-hd-contract="'+esc(ct)+'" data-hd-kinds="'+esc(kinds.join('|'))+'" data-hd-title="'+esc(title)+'" data-hd-sub="'+esc(sub)+'" title="ดูประวัติการแก้ไขที่เกี่ยวข้อง (เฉพาะ host · ข้อมูลตัวอย่าง)" aria-label="ดูประวัติการแก้ไข '+esc(label)+'">⟲ ประวัติ</button>';
+  return '<button type="button" class="hd-btn" data-hd-scope="1" data-hd-contract="'+esc(ct)+'" data-hd-kinds="'+esc(kinds.join('|'))+'" data-hd-title="'+esc(title)+'" data-hd-sub="'+esc(sub)+'" title="ดูประวัติการแก้ไขที่เกี่ยวข้อง (เฉพาะ host · ข้อมูลตัวอย่าง)" aria-label="ดูประวัติการแก้ไข '+esc(label)+'">'+ic('history')+'ประวัติ</button>';
 }
 function hdOpenScoped(b){
   if(role!=='host')return;
@@ -964,7 +1315,11 @@ function stationsHtml(){
   var cnt=stationCounts(scope),rows=stationRows(),pages=Math.max(1,Math.ceil(rows.length/PAGE_ST));
   if(S.st.page>pages)S.st.page=pages;
   var slice=rows.slice((S.st.page-1)*PAGE_ST,S.st.page*PAGE_ST);
-  var h='<p class="hint">ตาราง <code>stations</code> + <code>station_checks</code> — ไม่จำกัดจำนวนต่อลูกค้า · AG ติดตั้งเมื่อแก้ปัญหาปลวก แล้วตามด้วย F1–F10 นับ<b>แยกต่อสถานี</b> · IG/IC ตรวจประจำเดือน บันทึกเฉพาะจุดที่พบปลวก (exception) · คลิก ▸ ดูประวัติการตรวจของจุดนั้น</p>';
+  var h=hint('IG/IC = สถานีภายนอก ตรวจทุกเดือน บันทึกเฉพาะจุดที่พบปลวก · AG = กล่องเหยื่อที่ติดเมื่อพบปลวก นับรอบติดตาม F1, F2… แยกต่อสถานี · สถานะ AG: ติดตามผล → รอถอด (พบปลวกตาย) → ถอดแล้ว (จบงาน) · <b>หาย / ถอนออก</b> แยกจากถอดแล้ว/เก็บคืนแล้ว เปลี่ยนได้ผ่านงานซ่อมตอนลงข้อมูลบริการเท่านั้น · ฝังสถานีแทนใช้เลขเดิมได้ · '+ic('moved')+' = สถานีที่ย้ายมาจากสัญญาเก่า (Renew) · กด ▸ ดูประวัติการตรวจของจุดนั้น');
+  var attnN=scope.filter(isAttn).length;
+  h+='<div class="chips" role="group" aria-label="มุมมองรายการสถานี"><span class="lab">มุมมอง:</span>'+
+    '<button class="chip pend'+(S.st.attn?' on':'')+'" data-act="st-attn" data-v="1" aria-pressed="'+!!S.st.attn+'" title="AG ที่ยังไม่จบ · จุดที่พบปลวกเดือนนี้/เดือนก่อน · หาย/ถอนออก">'+ic('alertc')+'ต้องดู '+attnN+'</button>'+
+    '<button class="chip na'+(S.st.attn?'':' on')+'" data-act="st-attn" data-v="0" aria-pressed="'+!S.st.attn+'">ทุกสถานี '+scope.length+'</button></div>';
   h+='<div class="filters">'+
     '<div class="field"><label for="f-st-contract">สัญญา</label><select id="f-st-contract" data-bind="st.contract"><option value="all">ทุกสัญญา</option>'+sortedContracts().map(function(k){return '<option value="'+esc(k.no)+'"'+(S.st.contract===k.no?' selected':'')+'>'+esc(k.no)+'</option>'}).join('')+'</select></div>'+
     '<div class="field"><label for="f-st-q">ค้นรหัสสถานี</label><input id="f-st-q" data-bind="st.q" value="'+esc(S.st.q)+'" placeholder="เช่น AG-04"></div></div>';
@@ -973,23 +1328,23 @@ function stationsHtml(){
     ['IG','IC','AG'].map(function(t){return '<button class="chip info'+(S.st.type===t?' on':'')+'" data-act="flt" data-k="type" data-v="'+t+'"><b>'+t+'</b> '+cnt[t]+'</button>'}).join('')+'</div>';
   h+='<div class="chips" role="group" aria-label="กรองตามสถานะสถานี"><span class="lab">สถานะ:</span>'+
     '<button class="chip na'+(S.st.status==='all'?' on':'')+'" data-act="flt" data-k="status" data-v="all">ทั้งหมด</button>'+
-    Object.keys(ST_LABEL).map(function(k){return '<button class="chip '+ST_LABEL[k][1]+(S.st.status===k?' on':'')+'" data-act="flt" data-k="status" data-v="'+k+'" title="'+k+'">'+ST_LABEL[k][0]+' '+cnt[k]+'</button>'}).join('')+'</div>';
-  if(!rows.length)return h+'<div class="empty">ไม่พบสถานีตามเงื่อนไข — ลองล้างตัวกรอง <button class="linkbtn" data-act="clear-st">ล้างตัวกรอง</button></div>';
-  h+='<div class="tablewrap"><table><thead><tr><th style="width:34px" aria-label="ขยายดูประวัติ"></th><th scope="col">รหัส</th><th scope="col">ชนิด</th>'+(multi?'<th scope="col">สัญญา</th>':'')+'<th scope="col">ติดตั้ง</th><th scope="col">สถานะ</th><th scope="col">ตรวจ / F</th><th scope="col">ตรวจล่าสุด</th><th scope="col">ถอด / เก็บคืน</th>'+(hc?'<th scope="col">ประวัติแก้ไข</th>':'')+'</tr></thead><tbody>';
+    Object.keys(ST_LABEL).map(function(k){return '<button class="chip '+ST_LABEL[k][1]+(S.st.status===k?' on':'')+'" data-act="flt" data-k="status" data-v="'+k+'" title="'+k+'">'+(k==='active'?'ใช้งาน · ติดตามผล':ST_LABEL[k][0])+' '+cnt[k]+'</button>'}).join('')+'</div>';
+  if(!rows.length)return h+(S.st.attn?'<div class="empty">ไม่มีจุดที่ต้องดูตอนนี้ <button class="linkbtn" data-act="st-attn" data-v="0">ดูทุกสถานี</button></div>':'<div class="empty">ไม่พบสถานีตามเงื่อนไข — ลองล้างตัวกรอง <button class="linkbtn" data-act="clear-st">ล้างตัวกรอง</button></div>');
+  h+='<div class="tablewrap"><table><thead><tr><th style="width:34px" aria-label="ขยายดูประวัติ"></th><th scope="col">รหัส</th><th scope="col">ชนิด</th><th scope="col">ติดตั้ง</th><th scope="col">สถานะ</th><th scope="col">พบปลวก / รอบ F</th><th scope="col">ตรวจล่าสุด</th><th scope="col">ถอด / เก็บคืน / มอบ</th>'+(hc?'<th scope="col">ประวัติแก้ไข</th>':'')+'</tr></thead><tbody>';
   slice.forEach(function(s){
-    var key=s.contract+'|'+s.code,open=!!(S.st.open[key]||S.st.open['*|'+s.code]&&S.st.q),last=s.checks[s.checks.length-1],lab=ST_LABEL[s.status];
-    var fcol=s.type==='AG'?(s.checks.length?'F'+s.checks.length:'S (ยังไม่ติดตาม)'):(s.checks.length?'พบ '+s.checks.length+' ครั้ง':'—');
+    var key=s.contract+'|'+s.code,open=!!(S.st.open[key]||S.st.open['*|'+s.code]&&S.st.q),last=s.checks[s.checks.length-1],lab=stLabel(s);
+    var fcol=s.type==='AG'?(s.checks.length?'F'+s.checks.length:'S (ยังไม่ติดตาม)'):(s.checks.length?'พบปลวก '+s.checks.length+' ครั้ง':'—');
     h+='<tr class="row"><td><button class="caret" data-act="st-open" data-k="'+esc(key)+'" aria-expanded="'+open+'" aria-label="ประวัติการตรวจของ '+esc(s.code)+'">'+(open?'▾':'▸')+'</button></td>'+
-      '<td class="mono">'+esc(s.code)+'</td><td><span class="sttype">'+s.type+'</span></td>'+(multi?'<td class="mono lab">'+esc(s.contract)+'</td>':'')+
+      '<td class="mono">'+esc(s.code)+(s.label?' <span class="lab" style="font-family:inherit">'+esc(s.label)+'</span>':'')+(s.movedFrom?'<span class="mv" title="ย้ายมาจากสัญญา '+esc(s.movedFrom)+' (Renew) — การนับเดิมต่อเนื่อง" aria-label="ย้ายมาจากสัญญา '+esc(s.movedFrom)+'">'+ic('moved')+'</span>':'')+(multi?'<div class="lab">'+esc(s.contract)+'</div>':'')+'</td><td><span class="sttype">'+s.type+'</span></td>'+
       '<td>'+fmt(s.installed)+'</td><td>'+chip(lab[1],lab[0],s.status)+'</td><td>'+fcol+'</td>'+
-      '<td>'+(last?fmt(last.date)+' · '+esc(last.caste):'<span class="lab">—</span>')+'</td>'+
-      '<td>'+(s.collectedAt?'เก็บคืน '+fmt(s.collectedAt):s.removedAt?'ถอด '+fmt(s.removedAt):'<span class="lab">—</span>')+'</td>'+
+      '<td>'+(last?fmt(last.date)+(s.type==='AG'&&last.caste?'<div class="lab">'+esc(last.caste)+'</div>':''):'<span class="lab">—</span>')+'</td>'+
+      '<td>'+(igCollect(s)==='pending'?'<span class="chip pend">รอเก็บ</span>':igCollect(s)==='waived'?'<span class="chip na" title="'+esc(s.collectWaived.reason)+'">ไม่เก็บ</span><div class="lab note1" title="'+esc(s.collectWaived.reason)+'">'+esc(s.collectWaived.reason)+'</div>':s.type==='IC'&&!s.removedAt&&icHanded(s)?'<span title="'+(icHanded(s)==='closed'?'มอบให้ลูกค้าเมื่อปิดสัญญา':'สัญญาหมดแล้ว — IC แบบปูนมอบให้ลูกค้า ไม่ต้องเก็บคืน')+'">มอบให้ลูกค้า</span><div class="lab">'+(icHanded(s)==='closed'?'เมื่อปิดสัญญา':'ไม่ต้องเก็บ')+'</div>':s.collectedAt?fmt(s.collectedAt)+'<div class="lab">เก็บคืน</div>':s.removedAt?fmt(s.removedAt)+'<div class="lab">'+(s.status==='lost'?'หาย':s.status==='withdrawn'?'ถอนออก':'ถอด')+'</div>':'<span class="lab">—</span>')+'</td>'+
       (hc?'<td>'+hdBtn('สถานี '+s.code,s.contract,s.type==='AG'?['สถานี','ผลบริการ','กล่อง AG']:['สถานี','ผลบริการ'],'ประวัติสถานี '+s.code,'สัญญา '+s.contract+' · กรองเรื่องสถานี/ผลบริการ')+'</td>':'')+'</tr>';
     if(open){
-      h+='<tr class="sub"><td></td><td colspan="'+((multi?8:7)+(hc?1:0))+'">';
+      h+='<tr class="sub"><td></td><td colspan="'+(7+(hc?1:0))+'">';
       if(!s.checks.length)h+='<span class="lab">'+(s.type==='AG'?'ติดตั้งแล้ว ยังไม่มีรอบติดตาม (F1)':'ไม่พบปลวกในทุกรอบ — ไม่มีบันทึกผิดปกติ (exception entry §7.5)')+'</span>';
-      else h+='<table><thead><tr><th>'+(s.type==='AG'?'F':'ครั้งที่')+'</th><th>วันที่ตรวจ</th><th>รอบ</th><th>สัดส่วนปลวก</th><th class="r">เหยื่อเติม (ก.)</th><th>หมายเหตุ</th></tr></thead><tbody>'+
-        s.checks.map(function(k){return '<tr><td><b>'+(s.type==='AG'?'F'+k.no:k.no)+'</b></td><td>'+fmt(k.date)+'</td><td>'+chip(VT_LABEL[k.type][1],VT_LABEL[k.type][0])+'</td><td>'+(k.caste==='ปลวกตาย'?chip('ok','ปลวกตาย'):esc(k.caste))+'</td><td class="r num">'+k.bait+'</td><td>'+(k.note?esc(k.note):'<span class="lab">—</span>')+'</td></tr>'}).join('')+'</tbody></table>';
+      else h+='<table><thead><tr><th>'+(s.type==='AG'?'F':'ครั้งที่')+'</th><th>วันที่ตรวจ</th><th>รอบ</th>'+(s.type==='AG'?'<th>สัดส่วนปลวก</th>':'')+'<th class="r">เหยื่อเติม (ก.)</th><th>หมายเหตุ</th></tr></thead><tbody>'+
+        s.checks.map(function(k){return '<tr><td><b>'+(s.type==='AG'?'F'+k.no:k.no)+'</b></td><td>'+fmt(k.date)+'</td><td>'+chip(VT_LABEL[k.type][1],VT_LABEL[k.type][0])+'</td>'+(s.type==='AG'?'<td>'+(k.caste==='ปลวกตาย'?chip('ok','ปลวกตาย'):esc(k.caste))+'</td>':'')+'<td class="r num">'+k.bait+'</td><td>'+(k.note?esc(k.note):'<span class="lab">—</span>')+'</td></tr>'}).join('')+'</tbody></table>';
       h+='</td></tr>';
     }
   });
@@ -1009,16 +1364,26 @@ function visitsHtml(){
   var rows=cu.visits.filter(function(v){return (S.vi.contract==='all'||v.contract===S.vi.contract)&&(S.vi.type==='all'||v.type===S.vi.type)});
   var pages=Math.max(1,Math.ceil(rows.length/PAGE_VI));if(S.vi.page>pages)S.vi.page=pages;
   var slice=rows.slice((S.vi.page-1)*PAGE_VI,S.vi.page*PAGE_VI);
-  var h='<p class="hint">ตาราง <code>visits</code> + <code>station_checks</code> — 1 แถว = 1 ครั้งที่เข้าบริการ (เข้าหลายวันในเดือนเดียว = หลายแถว) · 🔒 = เดือนที่ปิดแล้ว แก้ไม่ได้ · ตกบริการ = เดือนในช่วงสัญญาที่ไม่มีรอบประจำเดือน (routine)</p>';
+  var h=hint('1 แถว = 1 ครั้งที่เข้าบริการ (เข้าหลายวันในเดือนเดียว = หลายแถว) · ตกบริการ = เดือนในช่วงสัญญาที่ไม่มีรอบประจำเดือน · ป้าย "ปิดเดือนแล้ว" = ส่งสรุปเดือนนั้นแล้ว แต่ host/หัวหน้างานยังแก้ย้อนหลังได้ (มีบันทึกการแก้ทุกครั้ง · ตัวเลขที่ส่ง Dashboard คงเดิมจนกว่าจะสั่งคำนวณใหม่)');
   var scs=sortedContracts().filter(function(k){return S.vi.contract==='all'||k.no===S.vi.contract});
+  var mf=S.vi.month||'all';
+  h+=missedHtml(scs);
+  h+='<div class="chips" role="group" aria-label="กรองแถบเดือนบริการ"><span class="lab">แถบเดือน:</span>'+
+    [['all','ทุกเดือน'],['ok','บริการครบ'],['miss','ตกบริการ']].map(function(o){return '<button class="chip '+(o[0]==='miss'?'miss':o[0]==='ok'?'ok':'na')+(mf===o[0]?' on':'')+'" data-act="vmonth" data-v="'+o[0]+'" aria-pressed="'+(mf===o[0])+'">'+o[1]+'</button>'}).join('')+
+    '<span class="lab">· ตารางด้านล่างคือทุกครั้งที่เข้าบริการ (ไม่ขึ้นกับตัวกรองนี้)</span></div>';
   h+='<div class="legend" aria-label="คำอธิบายแถบเดือนบริการ"><span><i class="sw ok"></i>บริการครบ</span><span><i class="sw miss"></i>ตกบริการ</span><span><i class="sw now"></i>เดือนนี้ยังไม่เข้า</span><span><i class="sw fut"></i>ยังไม่ถึง</span></div>';
   scs.forEach(function(k){
-    var ms=monthStates(k),miss=ms.filter(function(x){return x.s==='miss'}).length;
+    var ms=monthStates(k),miss=ms.filter(function(x){return x.s==='miss'}).length,mkM={};
+    Object.keys(cust().resol||{}).forEach(function(key){var r=cust().resol[key],p=key.split('|');if(p[0]===k.no&&r.kind==='makeup')mkM[r.makeup.slice(0,7)]=monthTh(p[1])});
     h+='<div class="strip"><h5><span class="mono">'+esc(k.no)+'</span>'+tierBadge(k)+'<span class="lab">'+ms.length+' เดือนบริการ · '+(miss?'<b style="color:var(--danger)">ตกบริการ '+miss+' เดือน</b>':'ไม่มีตกบริการ')+'</span></h5>';
-    for(var i=0;i<ms.length;i+=12){
-      h+='<div class="mrow">'+ms.slice(i,i+12).map(function(x){
-        var sym={ok:'✓',miss:'ตก',now:'…',fut:'–',cx:'ยก'}[x.s];
-        return '<div class="mcell '+x.s+'" title="'+monthTh(x.m)+'"><b>'+TH_M[+x.m.split('-')[1]-1]+' '+x.m.slice(2,4)+'</b>'+sym+'</div>';
+    var shown=ms.filter(function(x){return mf==='all'||(mf==='miss'&&x.s==='miss')||(mf==='ok'&&x.s==='ok')});
+    if(!shown.length)h+='<div class="lab" style="padding:6px 0">ไม่มีเดือนตามตัวกรองในสัญญานี้</div>';
+    for(var i=0;i<shown.length;i+=12){
+      h+='<div class="mrow">'+shown.slice(i,i+12).map(function(x){
+        var sym={ok:'✓',miss:'ตก',now:'…',fut:'–',cx:'ยก'}[x.s],tt=monthTh(x.m);
+        if(x.s==='miss'){var rs=resolState(k,x.m);sym=resolShort(rs);tt+=' · ตกบริการ · '+resolText(rs)}
+        if(mkM[x.m]){sym+=' +ชดเชย';tt+=' · มีบริการชดเชยของ '+mkM[x.m]}
+        return '<div class="mcell '+x.s+(mkM[x.m]?' mk':'')+'" title="'+esc(tt)+'"><b>'+TH_M[+x.m.split('-')[1]-1]+' '+x.m.slice(2,4)+'</b>'+sym+'</div>';
       }).join('')+'</div>';
     }
     h+='</div>';
@@ -1026,19 +1391,19 @@ function visitsHtml(){
   h+='<div class="filters"><div class="field"><label for="f-vi-contract">สัญญา</label><select id="f-vi-contract" data-bind="vi.contract"><option value="all">ทุกสัญญา</option>'+sortedContracts().map(function(k){return '<option value="'+esc(k.no)+'"'+(S.vi.contract===k.no?' selected':'')+'>'+esc(k.no)+'</option>'}).join('')+'</select></div>'+
     '<div class="field"><label for="f-vi-type">ประเภทการเข้า</label><select id="f-vi-type" data-bind="vi.type"><option value="all">ทุกประเภท</option>'+Object.keys(VT_LABEL).map(function(t){return '<option value="'+t+'"'+(S.vi.type===t?' selected':'')+'>'+VT_LABEL[t][0]+'</option>'}).join('')+'</select></div></div>';
   if(!rows.length)return h+'<div class="empty">ไม่พบการเข้าบริการตามเงื่อนไข</div>';
-  h+='<div class="tablewrap"><table><thead><tr><th style="width:34px"></th><th scope="col">วันที่</th><th scope="col">ประเภท</th>'+(multi?'<th scope="col">สัญญา</th>':'')+'<th scope="col">ทีม</th><th class="r" scope="col">เวลา (นาที)</th><th class="r" scope="col">เหยื่อ IG/IC (ก.)</th><th class="r" scope="col">เหยื่อ AG (ก.)</th><th class="r" scope="col">ไม้ล่อ (ชิ้น)</th><th scope="col">S</th><th scope="col">จุดที่ตรวจ</th><th scope="col">หมายเหตุ</th>'+(hc?'<th scope="col">ประวัติแก้ไข</th>':'')+'</tr></thead><tbody>';
+  h+='<div class="tablewrap"><table><thead><tr><th style="width:34px"></th><th scope="col">วันที่</th><th scope="col">ประเภท</th><th scope="col">ทีม</th><th scope="col">เวลาเข้า–ออก</th><th class="r" scope="col">เวลา (นาที)</th><th class="r" scope="col">เหยื่อ IG/IC (ก.)</th><th class="r" scope="col">เหยื่อ AG (ก.)</th><th class="r" scope="col">ไม้ล่อ (ชิ้น)</th><th scope="col">S</th><th scope="col">จุดที่พบปลวก</th><th scope="col">หมายเหตุ</th>'+(hc?'<th scope="col">ประวัติแก้ไข</th>':'')+'</tr></thead><tbody>';
   slice.forEach(function(v){
     var key=v.contract+'|'+v.date+'|'+v.type,open=!!S.vi.open[key],locked=v.date.slice(0,7)<=CLOSED_THROUGH,lab=VT_LABEL[v.type];
     h+='<tr class="row"><td><button class="caret" data-act="vi-open" data-k="'+esc(key)+'" aria-expanded="'+open+'" aria-label="รายละเอียดการเข้าวันที่ '+fmt(v.date)+'">'+(open?'▾':'▸')+'</button></td>'+
-      '<td>'+fmt(v.date)+(locked?' <span title="เดือนที่ปิดแล้ว แก้ไม่ได้" aria-label="เดือนที่ปิดแล้ว">🔒</span>':'')+'</td><td>'+chip(lab[1],lab[0],v.type)+'</td>'+(multi?'<td class="mono lab">'+esc(v.contract)+'</td>':'')+
-      '<td>'+esc(v.team)+'</td><td class="r num">'+v.dur+'</td><td class="r num">'+(v.baitIgIc||'—')+'</td><td class="r num">'+(v.baitAg||'—')+'</td><td class="r num">'+(v.timber||'—')+'</td>'+
-      '<td>'+(v.first?chip('info','S ติดตั้ง'):'<span class="lab">—</span>')+'</td><td class="num">'+(v.checks.length?v.checks.length+' จุด':'<span class="lab">ไม่พบ</span>')+'</td><td style="white-space:normal;min-width:160px">'+(v.note?esc(v.note):'<span class="lab">—</span>')+'</td>'+
+      '<td>'+fmt(v.date)+((multi||locked)?'<div class="td-sub">'+(multi?'<span class="mono lab">'+esc(v.contract)+'</span>':'')+(locked?chip('na','ปิดเดือนแล้ว','เดือนนี้ปิดแล้ว — host/recorder ยังแก้ผลย้อนหลังได้ (ลง audit) · ค่าที่ส่ง Dashboard คงเดิมจนกว่าสั่งคำนวณใหม่'):'')+'</div>':'')+'</td><td>'+chip(lab[1],lab[0],v.type)+(v.makeupFor?'<div class="td-sub">'+chip('pend','ชดเชย '+monthTh(v.makeupFor))+'</div>':'')+'</td>'+
+      '<td>'+esc(v.team)+'</td><td class="num">'+v.start+'–'+v.end+'</td><td class="r num">'+v.dur+'</td><td class="r num">'+(v.baitIgIc||'—')+'</td><td class="r num">'+(v.baitAg||'—')+'</td><td class="r num">'+(v.timber||'—')+'</td>'+
+      '<td>'+(v.first?chip('info','S ติดกล่อง'):'<span class="lab">—</span>')+'</td><td class="num'+(v.checks.length?' tipc':'')+'"'+(v.checks.length?' tabindex="0" data-tip="'+esc('พบปลวก · '+fmt(v.date)+' · '+v.checks.length+' จุด')+'" data-codes="'+esc(v.checks.map(function(x){return x.st.code}).join(' '))+'"':'')+'>'+(v.checks.length?v.checks.length+' จุด':'<span class="lab">ไม่พบ</span>')+'</td><td class="note1"'+(v.note?' title="'+esc(v.note)+'"':'')+'>'+(v.note?esc(v.note):'<span class="lab">—</span>')+'</td>'+
       (hc?'<td>'+hdBtn('การเข้าบริการ '+fmt(v.date),v.contract,v.baitAg?['ผลบริการ','กล่อง AG']:['ผลบริการ'],'ประวัติการเข้าบริการ '+fmt(v.date),'สัญญา '+v.contract+' · '+lab[0]+' · กรองเรื่องผลบริการ')+'</td>':'')+'</tr>';
     if(open){
-      h+='<tr class="sub"><td></td><td colspan="'+((multi?11:10)+(hc?1:0))+'"><div class="lab" style="margin-bottom:6px">บันทึกโดย '+esc(v.by)+' · '+(v.inspect?'ตรวจภายใน':'ไม่ตรวจภายใน')+' · '+(v.proxy?'เซ็นแทน':'ลูกค้าเซ็นเอง')+' · เคมีผง '+(v.powder||0)+' จุด</div>';
+      h+='<tr class="sub"><td></td><td colspan="'+(11+(hc?1:0))+'"><div class="lab" style="margin-bottom:6px">บันทึกโดย '+esc(v.by)+' · '+(v.inspect?'ตรวจภายใน':'ไม่ตรวจภายใน')+' · '+(v.proxy?'เซ็นแทน':'ลูกค้าเซ็นเอง')+' · เคมีผง '+(v.powder||0)+' จุด</div>'+(v.note?'<div style="margin-bottom:8px"><span class="lab">หมายเหตุ:</span> '+esc(v.note)+'</div>':'');
       if(!v.checks.length)h+='<span class="lab">'+(v.type==='routine'?'ทุกสถานีปกติ — ไม่มีจุดที่พบปลวก (exception entry §7.5)':'ไม่มีการตรวจสถานีในครั้งนี้')+'</span>';
-      else h+='<table><thead><tr><th>สถานี</th><th>ชนิด</th><th>F / ครั้งที่</th><th>สัดส่วนปลวก</th><th class="r">เหยื่อเติม (ก.)</th><th>หมายเหตุ</th></tr></thead><tbody>'+
-        v.checks.map(function(x){return '<tr><td class="mono">'+esc(x.st.code)+'</td><td><span class="sttype">'+x.st.type+'</span></td><td>'+(x.st.type==='AG'?'<b>F'+x.k.no+'</b>':'<span class="lab">ครั้งที่ '+x.k.no+'</span>')+'</td><td>'+(x.k.caste==='ปลวกตาย'?chip('ok','ปลวกตาย'):esc(x.k.caste))+'</td><td class="r num">'+x.k.bait+'</td><td>'+(x.k.note?esc(x.k.note):'<span class="lab">—</span>')+'</td></tr>'}).join('')+'</tbody></table>';
+      else h+='<table><thead><tr><th>สถานี</th><th>ชนิด</th><th>F / ครั้งที่</th><th>สัดส่วนปลวก (เฉพาะ AG)</th><th class="r">เหยื่อเติม (ก.)</th><th>หมายเหตุ</th></tr></thead><tbody>'+
+        v.checks.map(function(x){return '<tr><td class="mono">'+esc(x.st.code)+'</td><td><span class="sttype">'+x.st.type+'</span></td><td>'+(x.st.type==='AG'?'<b>F'+x.k.no+'</b>':'<span class="lab">ครั้งที่ '+x.k.no+'</span>')+'</td><td>'+(x.st.type!=='AG'?'<span class="lab">—</span>':x.k.caste==='ปลวกตาย'?chip('ok','ปลวกตาย'):esc(x.k.caste))+'</td><td class="r num">'+x.k.bait+'</td><td>'+(x.k.note?esc(x.k.note):'<span class="lab">—</span>')+'</td></tr>'}).join('')+'</tbody></table>';
       h+='</td></tr>';
     }
   });
@@ -1056,12 +1421,13 @@ function fileActs(file){
 }
 function filesHtml(){
   var cu=cust(),att=can('attach');
-  var h='<p class="hint">ไฟล์เก็บใน Supabase Storage (private bucket) — เปิดผ่าน signed URL ที่หมดอายุเร็ว ไม่มีลิงก์สาธารณะ (PDPA) · หน้านี้<b>ดู/ดาวน์โหลดอย่างเดียว</b> — admin แนบ "สัญญา + Site plan" (PDF ไฟล์เดียว) และ "อัปเดต Site plan" ที่<b>หน้าเปิดงาน</b>'+(att?' · กดลิงก์ในแต่ละสัญญาเพื่อไปที่นั่น':'')+'</p>';
+  var h=hint('ไฟล์เปิดผ่านลิงก์ชั่วคราว ไม่มีลิงก์สาธารณะ (PDPA) · หน้านี้<b>ดู/ดาวน์โหลดอย่างเดียว</b> — แนบ "สัญญา + Site plan" (PDF ไฟล์เดียว) และอัปเดต Site plan ที่<b>หน้าเปิดงาน</b>'+(att?' (กดปุ่มในแต่ละสัญญา)':''));
   sortedContracts().forEach(function(k){
     var f=cu.files[k.no]||{},pdf=f.contract_pdf,sp=f.site_plan||[];
-    var locked=k.status==='closed'||k.status==='cancelled';
+    var locked=!canAttachContract(k);   // 3.13: ปิดแล้ว = ล็อกทุกคนรวม host · ยกเลิก = host แก้ได้ admin แก้ไม่ได้
+    var lockMsg=k.status==='closed'?'สัญญาปิดแล้ว — ไฟล์ล็อกทุกคน (เปิดดูได้)':'สัญญายกเลิก — แนบ/อัปเดตไฟล์ได้เฉพาะ host';
     h+='<div class="fcard"><h4><span class="mono">'+esc(k.no)+'</span>'+tierBadge(k)+chip(CT_LABEL[k.status][1],CT_LABEL[k.status][0])+
-      (att?'<span style="margin-left:auto">'+(locked?'<span class="lab">สัญญาปิดแล้ว — ไฟล์ล็อก</span>':'<a class="btn sm" href="'+ATTACH_URL+'?contract='+encodeURIComponent(k.no)+'" title="ไปหน้าเปิดงานเพื่อแนบไฟล์ / อัปเดต Site plan">แนบ / อัปเดตที่หน้าเปิดงาน ↗</a>')+'</span>':'')+'</h4>';
+      ((att||k.status==='closed')?'<span style="margin-left:auto">'+(locked?'<span class="lab">'+lockMsg+'</span>':'<a class="btn sm" href="'+ATTACH_URL+'?contract='+encodeURIComponent(k.no)+'" title="ไปหน้าเปิดงานเพื่อแนบไฟล์ / อัปเดต Site plan">แนบ / อัปเดตที่หน้าเปิดงาน ↗</a>')+'</span>':'')+'</h4>';
     h+='<div class="frow"><div class="ficon" aria-hidden="true">PDF</div><div class="fmain"><b>สัญญา + Site plan (PDF ไฟล์เดียว)</b>'+
       (pdf?'<span class="lab">'+esc(pdf.name)+' · '+pdf.size.toFixed(1)+' MB · แนบ '+fmt(pdf.at)+' โดย '+esc(pdf.by)+'</span>':'<span class="lab">admin ยังไม่ได้แนบตอนเปิดงาน</span>')+
       '</div><div class="facts">'+(pdf?fileActs(pdf):chip('pend','ยังไม่แนบไฟล์'))+'</div></div>';
@@ -1086,12 +1452,14 @@ function render(){
   document.getElementById('page').hidden=viewer;
   if(viewer)return;
   document.getElementById('head').innerHTML=headHtml();
+  document.getElementById('kpis').innerHTML=kpiHtml();
+  document.getElementById('alerts').innerHTML=alertsHtml();
   document.getElementById('info').innerHTML=infoHtml();
   if(S.tab==='timeline'&&role!=='host')S.tab='contracts';   // ไทม์ไลน์ host เท่านั้น
   document.getElementById('tabs').innerHTML=tabsHtml();
   var p=document.getElementById('panel');
   p.setAttribute('aria-labelledby','tab-'+S.tab);
-  p.innerHTML=({contracts:contractsHtml,stations:stationsHtml,visits:visitsHtml,files:filesHtml,timeline:tlHtml})[S.tab]();
+  p.innerHTML=({contracts:contractsHtml,stations:stationsHtml,visits:visitsHtml,dash:dashHtml,files:filesHtml,timeline:tlHtml})[S.tab]();
   writeUrl();
 }
 /* ======================================================================
@@ -1106,7 +1474,7 @@ function tlRows(){
 function tlHtml(){
   var all=hmFor({cid:S.cid,onlyChange:true}),rows=tlRows(),kinds=[];
   all.forEach(function(e){if(kinds.indexOf(e.k)<0)kinds.push(e.k)});
-  var h='<p class="hint">ตาราง <code>audit_log</code> — ใครแก้อะไร เมื่อไหร่ ของลูกค้ารายนี้ (เห็นเฉพาะ host) · แสดงเฉพาะ <b>การเปลี่ยนแปลง</b> · การกรอกผลบริการปกติดูที่แท็บ “ประวัติบริการ” · ดูทุกสาขารวมกันที่ <a href="history-log.html">ประวัติย้อนหลัง ↗</a> · ข้อมูลตัวอย่าง</p>';
+  var h=hint('ใครแก้อะไร เมื่อไหร่ ของลูกค้ารายนี้ (เห็นเฉพาะ host) · แสดงเฉพาะ<b>การเปลี่ยนแปลง</b> — การกรอกผลบริการปกติดูที่แท็บ “ประวัติทำบริการ” · ดูทุกสาขารวมกันที่ <a href="history-log.html">ประวัติย้อนหลัง ↗</a> · ข้อมูลตัวอย่าง');
   h+='<div class="filters"><div class="field"><label for="f-tl-contract">สัญญา</label><select id="f-tl-contract" data-bind="tl.contract"><option value="all">ทุกสัญญา</option>'+
      cust().contracts.map(function(k){return '<option value="'+esc(k.no)+'"'+(S.tl.contract===k.no?' selected':'')+'>'+esc(k.no)+'</option>'}).join('')+'</select></div>'+
      '<div class="field"><label for="f-tl-kind">เรื่องที่แก้</label><select id="f-tl-kind" data-bind="tl.kind"><option value="all">ทุกเรื่อง</option>'+
@@ -1124,10 +1492,210 @@ function tlHtml(){
   return h+pager(rows.length,S.tl.page,PAGE_TL,'tl-page');
 }
 
+/* ======================================================================
+   แท็บ "แดชบอร์ด" — กราฟแท่งจำนวนจุดที่พบปลวกรายเดือนบริการ ตามระยะสัญญาที่เลือก + ตารางข้อมูล
+   นับ 1 สถานีต่อ 1 เดือน (เข้าหลายครั้งในเดือนเดียวนับครั้งเดียว) · นับรวมเดือนที่ AG บันทึก "ปลวกตาย"
+   ของจริง: query เดียว group station_checks ตามเดือนของสัญญา (โหลดตอนเปิดแท็บ)
+   ====================================================================== */
+/* ตัวกรองแดชบอร์ด: ext = สถานีภายนอก (IG+IC) · ag = กล่อง AG · timber = เปลี่ยนไม้ (เลือกผสมได้)
+   ทุกชุดข้อมูลนับเป็น "จุด" (จำนวนสถานี) · กราฟแยก 2 ช่วง แกนเดือนเดียวกัน:
+     ช่วงบน  "พบปลวก"   = แท่งซ้อน สถานีภายนอก + AG (เรื่องหลัก สเกลเล็ก)
+     ช่วงล่าง "เปลี่ยนไม้" = แท่งเดียว สเกลของตัวเอง
+   (ไม่รวมสองช่วงเป็นแท่งเดียว เพราะเป็นคนละเรื่อง สเกลต่างกันมาก และ "รวม" ไม่มีความหมาย) */
+function daF(){var f=S.da.f;if(!f){f=S.da.f={ext:true,ag:true,timber:true}}return f}
+function daAll(){var f=daF();return f.ext&&f.ag&&f.timber}
+function termiteByMonth(k){
+  var by={},sn=0;
+  cust().stations.forEach(function(s){
+    if(s.contract!==k.no)return;
+    if(s.type!=='AG')sn++;
+    s.checks.forEach(function(x){var m=x.date.slice(0,7);by[m]=by[m]||{IG:{},IC:{},AG:{},T:{}};by[m][s.type][s.code]=1});
+    (s.timberAt||[]).forEach(function(d){var m=d.slice(0,7);by[m]=by[m]||{IG:{},IC:{},AG:{},T:{}};by[m].T[s.code]=1});   // สถานีที่เปลี่ยนไม้ในเดือนนั้น
+  });
+  var states={};monthStates(k).forEach(function(x){states[x.m]=x.s});
+  return serviceMonths(k.start,k.years).map(function(m){
+    var o=by[m]||{IG:{},IC:{},AG:{},T:{}},ig=Object.keys(o.IG).length,ic=Object.keys(o.IC).length,ag=Object.keys(o.AG).length,t=Object.keys(o.T).length;
+    var L=function(o){return Object.keys(o).sort()};
+    return {m:m,ig:ig,ic:ic,ag:ag,ext:ig+ic,t:t,s:states[m],sn:sn,igL:L(o.IG),icL:L(o.IC),agL:L(o.AG),tL:L(o.T)};
+  });
+}
+/* ช่วงเดือนที่ดู (S.da.from/to = 'YYYY-MM'):
+   ยังไม่เลือก (null) = ตั้งแต่เริ่มสัญญาถึงเดือนปัจจุบัน (ไม่โชว์เดือนที่ยังไม่ถึง — พรีเซนต์ไม่มีที่ว่างเปล่า) · '' = ทั้งสัญญา · สลับให้ถ้าเลือกกลับด้าน */
+function daRows(k){
+  var all=termiteByMonth(k),ms=all.map(function(r){return r.m}),a=S.da.from,b=S.da.to,last=ms[ms.length-1],nowIdx=-1;
+  all.forEach(function(r,i){if(r.s!=='fut')nowIdx=i});
+  var nowM=nowIdx>=0?ms[nowIdx]:ms[0];
+  if(ms.indexOf(a)<0)a=ms[0];
+  if(b==null)b=nowM;else if(ms.indexOf(b)<0)b=last;
+  if(a>b){var t=a;a=b;b=t}
+  return {all:all,rows:all.filter(function(r){return r.m>=a&&r.m<=b}),from:a,to:b,full:a===ms[0]&&b===last,toNow:a===ms[0]&&b===nowM,nowM:nowM};
+}
+/* รายการหมายเลขสถานีสำหรับ tooltip (เกิน 40 ตัวตัดเหลือ "+N") */
+function daCodes(a){return a.length>40?a.slice(0,40).join(', ')+' … +'+(a.length-40):a.join(', ')}
+function daPts(r,f){return (f.ext?r.ext:0)+(f.ag?r.ag:0)}   // จุด "พบปลวก" ตามตัวกรอง (ไม้แยกคนละช่วง)
+function daHasFind(f){return !!(f.ext||f.ag)}
+function daWord(f){return daHasFind(f)?'พบปลวก':'เปลี่ยนไม้'}
+function daNiceMax(v,step){return Math.max(step*2,Math.ceil(v/step)*step)}
+/* พาดหัวสรุปประเด็น (ใช้ทั้งบนหน้าและหัวรูปที่ส่งออก) */
+function daHeadline(rows,f){
+  var past=rows.filter(function(r){return r.s!=='fut'});if(!past.length)return 'ยังไม่มีเดือนที่ผ่านมา';
+  if(daHasFind(f)){
+    var fm=past.filter(function(r){return daPts(r,f)>0}),best=fm.reduce(function(a,r){return !a||daPts(r,f)>daPts(a,f)?r:a},null);
+    if(!fm.length)return 'ไม่พบปลวกในทุก '+past.length+' เดือนที่ผ่านมา';
+    var mx=daPts(best,f),tops=fm.filter(function(r){return daPts(r,f)===mx}).map(function(r){return TH_M[+r.m.slice(5,7)-1]});
+    return 'พบปลวก '+fm.length+' จาก '+past.length+' เดือน · สูงสุด '+tops.join(', ')+' ('+mx+' จุด)';
+  }
+  var tot=past.reduce(function(a,r){return a+r.t},0),avg=tot/past.length;
+  return 'เปลี่ยนไม้เฉลี่ย '+avg.toFixed(1)+' จุด/เดือน';
+}
+/* hdr = {t1,t2,foot} → ใส่หัวกระดาษ+พื้นหลัง+คำอธิบายสีสำหรับส่งออกเป็นรูป · tall = ความสูงรวมของพื้นที่กราฟ */
+function dashSvg(rows,hdr,tall,f){
+  f=f||daF();
+  var n=rows.length,showA=daHasFind(f),showB=!!f.timber;
+  var st=n<=12?54:n<=24?38:26,bw=n<=12?30:n<=24?24:18,fs=st<30?12:13,L=40,R=10,W=L+n*st+R;
+  var total=tall||(showA&&showB?390:300),hA=showA&&showB?Math.round(total*.5):total,hB=showA&&showB?total-hA:total;
+  var maxA=Math.max(4,Math.max.apply(null,rows.map(function(r){return daPts(r,f)}))),gsA=maxA>20?5:maxA>10?2:1;
+  var maxT=Math.max.apply(null,rows.map(function(r){return r.t}));
+  var gsB=maxT>40?10:maxT>20?5:2,maxB=daNiceMax(Math.max(maxT,1),gsB);
+  var off=hdr?58:0,extra=hdr?46:0,y=0,out='',H;
+  function grid(top,h,max,gs,label){
+    var o='<text x="2" y="'+(top-10)+'" font-size="'+(fs+1)+'" font-weight="600" fill="var(--fg)">'+label+'</text>';
+    for(var g=0;g<=max;g+=gs){var yy=top+h-g*h/max;o+='<line x1="'+L+'" x2="'+(W-R+6)+'" y1="'+yy+'" y2="'+yy+'" stroke="var(--border)" stroke-width="0.5"/><text x="'+(L-8)+'" y="'+(yy+4)+'" text-anchor="end" font-size="'+fs+'" fill="var(--fg-muted)">'+g+'</text>'}
+    return o;
+  }
+  var tA=26,tB;
+  if(showA){out+=grid(tA,hA,maxA,gsA,'พบปลวก (จุด)')}
+  tB=showA?tA+hA+44:26;
+  if(showB){out+=grid(tB,hB,maxB,gsB,'เปลี่ยนไม้ (จุด)')}
+  var bottom=showB?tB+hB:tA+hA;
+  rows.forEach(function(r,i){
+    var x=L+i*st+(st-bw)/2,mo=+r.m.slice(5,7),fut=r.s==='fut',cx=x+bw/2;
+    if(showA){
+      var e=f.ext?r.ext:0,a=f.ag?r.ag:0,yy=tA+hA,he=e*hA/maxA,ha=a*hA/maxA;
+      if(e>0){yy-=he;out+='<rect x="'+x+'" y="'+yy+'" width="'+bw+'" height="'+he+'" fill="var(--c-ext)"'+(a>0?'':' rx="3"')+' stroke="var(--surface-2)" stroke-width="2"><title>'+monthTh(r.m)+' · สถานีภายนอก: '+e+' จุด (IG '+r.ig+' · IC '+r.ic+')\n'+daCodes(r.igL.concat(r.icL))+'</title></rect>'}
+      if(a>0){yy-=ha;out+='<rect x="'+x+'" y="'+yy+'" width="'+bw+'" height="'+ha+'" rx="3" fill="var(--c-ag)" stroke="var(--surface-2)" stroke-width="2"><title>'+monthTh(r.m)+' · AG: '+a+' จุด\n'+daCodes(r.agL)+'</title></rect>'}
+      if(e+a>0)out+='<text x="'+cx+'" y="'+(yy-5)+'" text-anchor="middle" font-size="'+fs+'" font-weight="600" fill="var(--fg)">'+(e+a)+'</text>';
+      else if(fut)out+='<rect x="'+x+'" y="'+(tA+hA-3)+'" width="'+bw+'" height="3" rx="1.5" fill="var(--border-strong)"/>';
+    }
+    if(showB){
+      var v=r.t,h3=v*hB/maxB;
+      if(v>0)out+='<rect x="'+x+'" y="'+(tB+hB-h3)+'" width="'+bw+'" height="'+h3+'" rx="3" fill="var(--c-timber)"><title>'+monthTh(r.m)+' · เปลี่ยนไม้: '+v+' จุด\n'+daCodes(r.tL)+'</title></rect><text x="'+cx+'" y="'+(tB+hB-h3-5)+'" text-anchor="middle" font-size="'+fs+'" font-weight="600" fill="var(--fg)">'+v+'</text>';
+      else if(fut)out+='<rect x="'+x+'" y="'+(tB+hB-3)+'" width="'+bw+'" height="3" rx="1.5" fill="var(--border-strong)"/>';
+    }
+    out+='<text x="'+cx+'" y="'+(bottom+18)+'" text-anchor="middle" font-size="'+fs+'" fill="'+(r.s==='miss'?'var(--danger)':fut?'var(--fg-faint)':'var(--fg-muted)')+'">'+TH_M[mo-1]+'</text>';
+    if(r.s==='miss')out+='<text x="'+cx+'" y="'+(bottom+32)+'" text-anchor="middle" font-size="'+(fs-1)+'" fill="var(--danger)">ตก</text>';
+    else if(mo===1||i===0)out+='<text x="'+cx+'" y="'+(bottom+32)+'" text-anchor="middle" font-size="'+(fs-1)+'" fill="var(--fg-faint)">'+r.m.slice(2,4)+'</text>';
+  });
+  var TH=bottom+42+off+extra;
+  var s='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 '+W+' '+TH+'" width="'+W+'" height="'+TH+'" role="img" aria-label="กราฟจำนวนจุดรายเดือนบริการ แยกช่วงพบปลวกและเปลี่ยนไม้" font-family="\'Noto Sans Thai\',Tahoma,sans-serif"><title>จำนวนจุดรายเดือนบริการ</title>';
+  if(hdr)s+='<rect width="100%" height="100%" fill="var(--surface)"/><text x="12" y="26" font-size="17" font-weight="600" fill="var(--fg)">'+esc(hdr.t1)+'</text><text x="12" y="46" font-size="12" fill="var(--fg-muted)">'+esc(hdr.t2)+'</text>';
+  s+='<g transform="translate(0,'+off+')">'+out+'</g>';
+  if(hdr){
+    var ly=bottom+42+off+16,lx=12,items=[];
+    if(f.ext)items.push(['var(--c-ext)','สถานีภายนอก (IG+IC)']);if(f.ag)items.push(['var(--c-ag)','AG']);if(f.timber)items.push(['var(--c-timber)','เปลี่ยนไม้']);
+    items.forEach(function(it){s+='<rect x="'+lx+'" y="'+(ly-9)+'" width="10" height="10" rx="2" fill="'+it[0]+'"/><text x="'+(lx+16)+'" y="'+ly+'" font-size="12" fill="var(--fg-muted)">'+it[1]+'</text>';lx+=16+it[1].length*7+20});
+    s+='<text x="12" y="'+(ly+22)+'" font-size="10" fill="var(--fg-faint)">'+esc(hdr.foot)+'</text>';
+  }
+  return s+'</svg>';
+}
+function dashChart(rows){return '<div class="chartwrap">'+dashSvg(rows)+'</div>'}
+function daFilterLabel(f){var a=[];if(f.ext)a.push('สถานีภายนอก (IG+IC)');if(f.ag)a.push('AG');if(f.timber)a.push('เปลี่ยนไม้');return a.join(' + ')}
+/* ข้อมูลของแท็บแดชบอร์ดตอนนี้ (ใช้ร่วมกับปุ่มขยาย/คัดลอกรูป) */
+function dashNow(){
+  var k=contractOf(S.da.contract)||sortedContracts()[0],dr=daRows(k),f=daF();
+  return {k:k,rows:dr.rows,f:f,hdr:{t1:daHeadline(dr.rows,f),t2:cust().name+' · สัญญา '+k.no+' · '+monthTh(dr.from)+' – '+monthTh(dr.to)+' · แสดง: '+daFilterLabel(f),
+    foot:'AGA Bait Registry · สร้างเมื่อ '+fmt(TODAY)+' · จุด = จำนวนสถานี นับ 1 สถานีต่อ 1 เดือนต่อประเภทงาน'}};
+}
+/* แปลง SVG → PNG (2 เท่า) โดยแทน var(--x) เป็นสีจริงของธีมตอนนี้ (อ่านผ่าน element ทดลอง รองรับ color-mix) — cb(blob) */
+function dashPng(cb){
+  var d=dashNow(),probe=document.createElement('span');document.body.appendChild(probe);
+  var svg=dashSvg(d.rows,d.hdr,null,d.f).replace(/var\((--[a-z0-9-]+)\)/g,function(m,v){probe.style.color='';probe.style.color='var('+v+')';return getComputedStyle(probe).color||'#888'});
+  probe.remove();
+  var m=svg.match(/viewBox="0 0 (\d+) (\d+)"/),w=+m[1],h=+m[2],img=new Image();
+  img.onload=function(){var c=document.createElement('canvas');c.width=w*2;c.height=h*2;var x=c.getContext('2d');x.scale(2,2);x.drawImage(img,0,0,w,h);c.toBlob(function(b){cb(b,d)},'image/png')};
+  img.onerror=function(){cb(null,d)};
+  img.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svg);
+}
+function dashDownload(b,d){var a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='termite-points-'+d.k.no+'.png';document.body.appendChild(a);a.click();a.remove();setTimeout(function(){URL.revokeObjectURL(a.href)},2000)}
+function dashCopy(){
+  dashPng(function(b,d){
+    if(!b){toast('สร้างรูปไม่สำเร็จ ลองกด "บันทึกเป็นรูป"');return}
+    if(navigator.clipboard&&window.ClipboardItem){
+      navigator.clipboard.write([new ClipboardItem({'image/png':b})]).then(function(){toast('คัดลอกรูปกราฟแล้ว — วางที่อื่นได้เลย (Ctrl+V)')},
+        function(){dashDownload(b,d);toast('คัดลอกไม่ได้ในเบราว์เซอร์นี้ จึงบันทึกเป็นไฟล์รูปให้แทน')});
+    }else{dashDownload(b,d);toast('เบราว์เซอร์นี้คัดลอกรูปไม่ได้ จึงบันทึกเป็นไฟล์รูปให้แทน')}
+  });
+}
+function dashSave(){dashPng(function(b,d){if(!b){toast('สร้างรูปไม่สำเร็จ');return}dashDownload(b,d);toast('บันทึกรูปกราฟแล้ว')})}
+/* tooltip รายการสถานี: ชี้เมาส์ / โฟกัสคีย์บอร์ด / แตะ ที่ตัวเลขในตารางแดชบอร์ด */
+function tipShow(td){
+  var t=document.getElementById('daTip');if(!t){t=document.createElement('div');t.id='daTip';t.className='datip';t.setAttribute('role','tooltip');document.body.appendChild(t)}
+  var codes=(td.getAttribute('data-codes')||'').split(' ').filter(Boolean);
+  t.innerHTML='<div class="datip-h">'+esc(td.getAttribute('data-tip'))+'</div><div class="datip-b">'+codes.map(function(c){return '<span class="mono">'+esc(c)+'</span>'}).join('')+'</div>';
+  t.style.display='block';var r=td.getBoundingClientRect(),w=t.offsetWidth,h=t.offsetHeight,x=Math.min(Math.max(8,r.left+r.width/2-w/2),innerWidth-w-8),y=r.bottom+6;if(y+h>innerHeight-8)y=Math.max(8,r.top-h-6);
+  t.style.left=x+'px';t.style.top=y+'px';
+}
+function tipHide(){var t=document.getElementById('daTip');if(t)t.style.display='none'}
+document.addEventListener('mouseover',function(e){var td=e.target.closest&&e.target.closest('td.tipc');if(td)tipShow(td);else if(!e.target.closest||!e.target.closest('#daTip'))tipHide()});
+document.addEventListener('focusin',function(e){var td=e.target.closest&&e.target.closest('td.tipc');if(td)tipShow(td);else tipHide()});
+document.addEventListener('click',function(e){var td=e.target.closest&&e.target.closest('td.tipc');if(td)tipShow(td);else tipHide()});
+document.addEventListener('scroll',tipHide,true);
+var fsOpener=null;
+function dashOpenFs(opener){
+  var d=dashNow();fsOpener=opener||null;closeDashFs(true);
+  var o=document.createElement('div');o.id='dashFs';o.className='dashfs';o.setAttribute('role','dialog');o.setAttribute('aria-modal','true');o.setAttribute('aria-label','กราฟจำนวนจุด ขยายเต็มจอ');
+  o.innerHTML='<div class="dashfs-bar"><b>'+esc(d.hdr.t1)+'</b><span class="lab">'+esc(d.hdr.t2)+'</span><span class="acts"><button class="btn sm" data-act="dash-copy">'+ic('copy')+'คัดลอกเป็นรูป</button><button class="btn sm" data-act="dash-save">'+ic('download')+'บันทึกเป็นรูป</button><button class="btn sm primary" id="dashFsX" data-act="dash-fs-close">'+ic('x')+'ปิด</button></span></div><div class="dashfs-body">'+dashSvg(d.rows,null,430,d.f)+'</div>';
+  document.body.appendChild(o);document.body.style.overflow='hidden';document.getElementById('dashFsX').focus();
+}
+function closeDashFs(quiet){var o=document.getElementById('dashFs');if(o)o.remove();document.body.style.overflow='';if(!quiet&&fsOpener&&document.contains(fsOpener))fsOpener.focus()}
+function dashHtml(){
+  var cs=sortedContracts(),k=contractOf(S.da.contract)||contractOf(S.sel)||cs[0];S.da.contract=k.no;
+  var f=daF(),dr=daRows(k),rows=dr.rows,past=rows.filter(function(r){return r.s!=='fut'}),hasF=daHasFind(f),word=daWord(f);
+  var val=function(r){return hasF?daPts(r,f):r.t},found=past.filter(function(r){return val(r)>0});
+  var seen={};cust().stations.forEach(function(s){
+    if(s.contract!==k.no)return;
+    if(hasF){if((s.type==='AG'&&f.ag)||(s.type!=='AG'&&f.ext))s.checks.forEach(function(x){var m=x.date.slice(0,7);if(m>=dr.from&&m<=dr.to)seen[s.code]=1})}
+    else (s.timberAt||[]).forEach(function(d){var m=d.slice(0,7);if(m>=dr.from&&m<=dr.to)seen[s.code]=1});
+  });
+  var best=found.reduce(function(a,r){return !a||val(r)>val(a)?r:a},null);
+  var opts=function(sel){return dr.all.map(function(r){return '<option value="'+r.m+'"'+(r.m===sel?' selected':'')+'>'+monthTh(r.m)+'</option>'}).join('')};
+  var h='<div class="filters"><div class="field"><label for="f-da-contract">สัญญา</label><select id="f-da-contract" data-bind="da.contract">'+cs.map(function(x){return '<option value="'+esc(x.no)+'"'+(x.no===k.no?' selected':'')+'>'+esc(x.no)+' · '+x.years+' ปี · '+monthTh(serviceMonths(x.start,x.years)[0])+' – '+monthTh(serviceMonths(x.start,x.years).slice(-1)[0])+'</option>'}).join('')+'</select></div>'+
+     '<div class="field"><label for="f-da-from">ตั้งแต่เดือน</label><select id="f-da-from" data-bind="da.from">'+opts(dr.from)+'</select></div>'+
+     '<div class="field"><label for="f-da-to">ถึงเดือน</label><select id="f-da-to" data-bind="da.to">'+opts(dr.to)+'</select></div></div>';
+  var yrs=k.years>1?dr.all.reduce(function(a,r,i){if(i%12===0)a.push(i);return a},[]):[];
+  h+='<div class="chips" role="group" aria-label="เลือกช่วงเวลาลัด"><span class="lab">ช่วง:</span>'+
+     '<button class="chip na'+(dr.toNow&&!dr.full?' on':'')+'" data-act="da-range" data-a="" data-b="now" aria-pressed="'+(dr.toNow&&!dr.full)+'">จนถึงปัจจุบัน</button>'+
+     '<button class="chip na'+(dr.full?' on':'')+'" data-act="da-range" data-a="" data-b="" aria-pressed="'+dr.full+'">ทั้งสัญญา</button>'+
+     yrs.map(function(i,n){var a=dr.all[i].m,b=dr.all[Math.min(i+11,dr.all.length-1)].m,on=dr.from===a&&dr.to===b;return '<button class="chip na'+(on?' on':'')+'" data-act="da-range" data-a="'+a+'" data-b="'+b+'" aria-pressed="'+on+'">ปีที่ '+(n+1)+'</button>'}).join('')+
+     '<span class="lab">· แสดง '+monthTh(dr.from)+' – '+monthTh(dr.to)+' ('+rows.length+' เดือน)</span></div>';
+  h+='<div class="sumgrid" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr));margin-bottom:12px">'+
+     '<div class="sbox"><div class="v num">'+Object.keys(seen).length+'</div><div class="l">สถานีที่เคย'+word+' (นับสถานีละ 1 ครั้งทั้งช่วง)</div></div>'+
+     '<div class="sbox"><div class="v num" style="font-size:16px;padding-top:2px">'+(best?monthTh(best.m)+' · '+val(best)+' จุด':'—')+'</div><div class="l">เดือนที่'+word+'มากสุด</div></div>'+
+     '<div class="sbox"><div class="v num">'+found.length+' <span class="lab">/ '+past.length+'</span></div><div class="l">เดือนที่'+word+' / เดือนที่ผ่านมา</div></div></div>';
+  h+='<div class="chart-head"><h4 style="margin:0;font-size:15px" id="daHead">'+esc(daHeadline(rows,f))+' <span class="tag mono">'+esc(k.no)+'</span></h4><span class="acts">'+
+     '<button class="btn sm" data-act="dash-fs" title="ดูกราฟขยายเต็มจอ">'+ic('max')+'ขยายเต็มจอ</button><button class="btn sm" data-act="dash-copy" title="คัดลอกกราฟเป็นรูปภาพ แล้ววาง (Ctrl+V) ที่อื่นได้">'+ic('copy')+'คัดลอกเป็นรูป</button><button class="btn sm" data-act="dash-save" title="บันทึกกราฟเป็นไฟล์ PNG">'+ic('download')+'บันทึกเป็นรูป</button></span></div>';
+  h+='<div class="chips" role="group" aria-label="เลือกข้อมูลที่แสดงในกราฟ (เลือกผสมได้)"><span class="lab">แสดง:</span>'+
+     '<button class="chip na'+(daAll()?' on':'')+'" data-act="da-all" aria-pressed="'+daAll()+'">ทั้งหมด</button>'+
+     '<button class="chip ok'+(f.ext?' on':'')+'" data-act="da-f" data-k="ext" aria-pressed="'+!!f.ext+'" title="IG + IC"><i class="sw" style="background:var(--c-ext)"></i>สถานีภายนอก</button>'+
+     '<button class="chip miss'+(f.ag?' on':'')+'" data-act="da-f" data-k="ag" aria-pressed="'+!!f.ag+'"><i class="sw" style="background:var(--c-ag)"></i>AG</button>'+
+     '<button class="chip pend'+(f.timber?' on':'')+'" data-act="da-f" data-k="timber" aria-pressed="'+!!f.timber+'" title="จุด (สถานี) ที่เปลี่ยนไม้ในเดือนนั้น"><i class="sw" style="background:var(--c-timber)"></i>เปลี่ยนไม้</button></div>';
+  h+=dashChart(rows)+
+     '<div class="legend" aria-label="คำอธิบายกราฟ">'+(f.ext?'<span><i class="sw" style="background:var(--c-ext)"></i>สถานีภายนอก (IG+IC)</span>':'')+(f.ag?'<span><i class="sw" style="background:var(--c-ag)"></i>AG</span>':'')+(f.timber?'<span><i class="sw" style="background:var(--c-timber)"></i>เปลี่ยนไม้</span>':'')+'<span style="color:var(--danger)">ตก = เดือนตกบริการ</span></div>'+
+     hint('ทุกอย่างนับเป็น<b>จุด (จำนวนสถานี)</b> · ช่วงบน = จุดที่พบปลวก (สถานีภายนอก + AG) · ช่วงล่าง = จุดที่เปลี่ยนไม้ · <b>กราฟนับรายเดือน</b>: สถานีเดิมที่พบอีกในเดือนถัดไปนับซ้ำได้ (เช่น ม.ค. พบจุด 1,2,3,4 = 4 จุด · ก.พ. พบจุด 2,3,4 = 3 จุด) ส่วนการ์ด “สถานีที่เคย…” นับสถานีละ 1 ครั้งทั้งช่วง (ตัวอย่างนี้ = 4 สถานี) · รวมเดือนที่ AG บันทึก “ปลวกตาย” · ชี้ที่แท่งเพื่อดูรายละเอียด · ค่าเริ่มต้นแสดงถึงเดือนปัจจุบัน','margin-top:8px');
+  var cols=[];if(f.ext)cols.push(['IG',function(r){return r.ig},0,function(r){return r.igL}],['IC',function(r){return r.ic},0,function(r){return r.icL}]);if(f.ag)cols.push(['AG',function(r){return r.ag},0,function(r){return r.agL}]);if(hasF)cols.push(['รวมพบปลวก (จุด)',function(r){return daPts(r,f)},1,function(r){return (f.ext?r.igL.concat(r.icL):[]).concat(f.ag?r.agL:[])}]);if(f.timber)cols.push(['เปลี่ยนไม้ (จุด)',function(r){return r.t},1,function(r){return r.tL}]);
+  h+='<div class="tablewrap" style="max-height:360px;overflow:auto"><table><thead><tr><th scope="col">เดือนบริการ</th>'+cols.map(function(c){return '<th class="r" scope="col">'+c[0]+'</th>'}).join('')+'<th scope="col">สถานะเดือน</th></tr></thead><tbody>'+
+     rows.map(function(r){
+       var lab={ok:['ok','บริการครบ'],miss:['miss','ตกบริการ'],now:['pend','เดือนนี้ ยังไม่เข้า'],fut:['na','ยังไม่ถึง'],cx:['na','ยกเลิก']}[r.s]||['na','—'],fut=r.s==='fut';
+       return '<tr'+(fut?' style="opacity:.6"':'')+'><td>'+monthTh(r.m)+'</td>'+cols.map(function(c){var v=fut?'—':c[1](r),L=(!fut&&c[3])?c[3](r):null,tip=L&&L.length?' tabindex="0" data-tip="'+esc(c[0]+' · '+monthTh(r.m)+' · '+L.length+' จุด')+'" data-codes="'+esc(L.join(' '))+'"':'';return '<td class="r num'+(tip?' tipc':'')+'"'+tip+'>'+(c[2]&&!fut?'<b>'+v+'</b>':v)+'</td>'}).join('')+'<td>'+chip(lab[0],lab[1])+'</td></tr>';
+     }).join('')+'</tbody></table></div>';
+  return h;
+}
 function setPath(path,val){var a=path.split('.');S[a[0]][a[1]]=val;S[a[0]].page=1}
 function toast(msg){var t=document.getElementById('toast');t.textContent=msg;t.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(function(){t.hidden=true},3200)}
+function stampAudit(c,what){c.audit='แก้ไขล่าสุด '+fmt(TODAY)+' โดย '+({host:'host',admin:'admin',recorder:'หัวหน้างาน (ทีม '+ME_TEAM+')'}[role])+' ('+what+(role==='recorder'&&c.team!==ME_TEAM?' · ข้ามทีม':'')+')'}
+function refocusInfo(f){var b=document.querySelector('.pen[data-f="'+f+'"]')||document.querySelector('.addph');if(b)b.focus()}
 function gotoTab(tab,contract,status){
-  S.tab=tab;
+  S.tab=tab;if(tab==='stations')S.st.attn=false;   // มาจากลิงก์/ปุ่มที่เจาะจง → แสดงทุกสถานีตามตัวกรองนั้น
   if(contract){S.sel=contract;S.st.contract=contract;S.vi.contract=contract;S.st.page=1;S.vi.page=1}
   if(status){S.st.status=status;S.st.type='all';S.st.page=1}
   render();document.getElementById('panel').scrollIntoView({behavior:'smooth',block:'nearest'});
@@ -1135,10 +1703,80 @@ function gotoTab(tab,contract,status){
 
 var ACT={
   'tab':function(el){S.tab=el.dataset.tab;render()},
+  'info-edit':function(el){if(needXteam()){S.xteamAsk={act:'info-edit',f:el.dataset.f};S.editField=null;S.delPhone=null;render();var y=document.getElementById('xtYes');if(y)y.focus();return}
+    var f=el.dataset.f;S.editField=f;S.delPhone=null;render();var i=document.getElementById('ie-'+f.split(':')[0]);if(i){i.focus();try{i.setSelectionRange(i.value.length,i.value.length)}catch(x){}}},
+  'info-cancel':function(){var f=S.editField;S.editField=null;render();refocusInfo(f)},
+  'phone-del':function(el){if(needXteam()){S.xteamAsk={act:'phone-del',i:el.dataset.i};S.editField=null;render();var y=document.getElementById('xtYes');if(y)y.focus();return}S.editField=null;S.delPhone=+el.dataset.i;render();var n=document.getElementById('delNo');if(n)n.focus()},
+  'phone-del-no':function(){var i=S.delPhone;S.delPhone=null;render();var b=document.querySelector('.pen.del[data-i="'+i+'"]');if(b)b.focus()},
+  'phone-del-yes':function(el){
+    var c=cust(),i=+el.dataset.i,p=c.phones[i];S.delPhone=null;
+    if(!p||c.phones.length<2){render();return}
+    c.phones.splice(i,1);stampAudit(c,'โทร');render();toast('ลบเบอร์ '+p.no+' แล้ว (ลง audit_log)');refocusInfo('phone:new');
+  },
+  'info-save':function(){
+    var f=S.editField,c=cust(),base=f&&f.split(':')[0],i=f&&document.getElementById('ie-'+base),er=document.getElementById('ie-err');if(!f||!i)return;
+    var v=i.value.trim(),LAB={contact:'ผู้ติดต่อ',phone:'โทร',note:'หมายเหตุ'},msg='',changed;
+    var PH=/^[0-9+()\-\s,/.]{8,40}$/;
+    if(base==='contact'&&!v)msg='กรุณากรอกชื่อผู้ติดต่อ';
+    if(base==='phone'){
+      var idx=f==='phone:new'?-1:+f.split(':')[1];
+      if(!PH.test(v))msg='เบอร์โทรไม่ถูกต้อง — ใช้ตัวเลข เว้นวรรค - + ( ) ได้ อย่างน้อย 8 ตัว';
+      else if(c.phones.some(function(p,k){return k!==idx&&p.no.replace(/\D/g,'')===v.replace(/\D/g,'')}))msg='มีเบอร์นี้อยู่แล้ว';
+    }
+    if(msg){er.textContent=msg;er.hidden=false;i.setAttribute('aria-invalid','true');i.focus();return}
+    if(base==='phone'){
+      var lb=document.getElementById('ie-phonelabel').value.trim();
+      if(idx<0){c.phones.push({no:v,label:lb});changed=true}
+      else{var o=c.phones[idx];changed=o.no!==v||o.label!==lb;o.no=v;o.label=lb}
+    }else{changed=v!==(c[base]||'');c[base]=v}
+    S.editField=null;
+    if(changed)stampAudit(c,LAB[base]);
+    render();toast(changed?(f==='phone:new'?'เพิ่มเบอร์แล้ว':'บันทึก'+LAB[base]+'แล้ว')+' (ลง audit_log)':'ไม่มีการเปลี่ยนแปลง');
+    refocusInfo(f==='phone:new'?'phone:new':f);
+  },
+  /* ตัวกรองกราฟ: toggle ทีละตัว (ผสมได้) · ถ้าปิดจนไม่เหลือ = กลับเป็น "ทั้งหมด" · "ทั้งหมด" = เปิดครบ */
+  'da-f':function(el){var f=daF(),all=daAll();
+    if(all){f.ext=f.ag=f.timber=false;f[el.dataset.k]=true}   // กดตัวเดียวตอนที่เลือกทั้งหมดอยู่ = โฟกัสตัวนั้น
+    else f[el.dataset.k]=!f[el.dataset.k];
+    if(!f.ext&&!f.ag&&!f.timber)f.ext=f.ag=f.timber=true;render()},
+  'da-all':function(){var f=daF();f.ext=f.ag=f.timber=true;render()},
+  'da-range':function(el){S.da.from=el.dataset.a||null;S.da.to=el.dataset.b==='now'?null:el.dataset.b;render()},   // to: null = ถึงเดือนปัจจุบัน · '' = ทั้งสัญญา
+  'dash-fs':function(el){dashOpenFs(el)},
+  'dash-fs-close':function(){closeDashFs()},
+  'dash-copy':function(){dashCopy()},
+  'dash-save':function(){dashSave()},
+  'xteam-yes':function(){var a=S.xteamAsk;S.xteamOk=S.xteamOk||{};S.xteamOk[S.cid]=true;S.xteamAsk=null;if(a)ACT[a.act]({dataset:{f:a.f,i:a.i}})},
+  'xteam-no':function(){S.xteamAsk=null;render()},
+  'rs-open':function(el){if(!canResolve())return;rsOpen(el.dataset.kind,el.dataset.k,el)},
+  'rs-close':function(){rsClose()},
+  'rs-save':function(el){   /* บันทึกชดเชย */
+    var key=el.dataset.k,p=key.split('|'),k=contractOf(p[0]),d=document.getElementById('rsDate').value,b=makeupBounds(k,p[1]),c=cust();
+    if(!d){rsErr('กรุณาเลือกวันที่ไปบริการชดเชย');return}
+    if(d<b.min){rsErr('วันที่ต้องไม่ก่อน '+fmt(b.min)+(role==='host'?'':' (หัวหน้างานเลือกย้อนเดือนที่ผ่านแล้วไม่ได้)'));return}
+    c.resol=c.resol||{};c.resol[key]={kind:'makeup',makeup:d,by:({host:'host',recorder:'หัวหน้างาน (ทีม '+ME_TEAM+')'}[role]),at:TODAY};
+    stampAudit(c,'ตกบริการ '+monthTh(p[1])+' → ชดเชย '+fmt(d));rsClose(true);render();toast('บันทึกชดเชย '+monthTh(p[1])+' → '+fmt(d)+' แล้ว (ลง audit_log)');
+  },
+  'rs-confirm':function(el){   /* ไม่ชดเชย ขั้น 1: ตรวจเหตุผล แล้วถามยืนยัน */
+    var r=document.getElementById('rsReason').value.trim();if(!r){rsErr('กรุณาพิมพ์เหตุผลที่ไม่ชดเชย');document.getElementById('rsReason').focus();return}
+    document.getElementById('rsErr').hidden=true;
+    document.getElementById('rsStep').innerHTML='<span class="lab" style="margin-right:auto">ปิดเรื่องเดือนนี้โดยไม่ชดเชย?</span><button class="btn" id="rsBack" data-act="rs-back" data-k="'+esc(el.dataset.k)+'">กลับไปแก้</button><button class="btn danger" data-act="rs-waive" data-k="'+esc(el.dataset.k)+'">ยืนยัน ไม่ชดเชย</button>';
+    document.getElementById('rsBack').focus();
+  },
+  'rs-back':function(el){document.getElementById('rsStep').innerHTML='<button class="btn" data-act="rs-close">ยกเลิก</button><button class="btn primary" data-act="rs-confirm" data-k="'+esc(el.dataset.k)+'">ไม่ชดเชย</button>';document.getElementById('rsReason').focus()},
+  'rs-waive':function(el){   /* ไม่ชดเชย ขั้น 2: บันทึก */
+    var key=el.dataset.k,p=key.split('|'),c=cust(),f=document.getElementById('rsFile'),fn=f&&f.files&&f.files[0]?f.files[0].name:'';
+    c.resol=c.resol||{};c.resol[key]={kind:'waived',reason:document.getElementById('rsReason').value.trim(),file:fn,by:({host:'host',recorder:'หัวหน้างาน (ทีม '+ME_TEAM+')'}[role]),at:TODAY};
+    stampAudit(c,'ตกบริการ '+monthTh(p[1])+' → ไม่ชดเชย');rsClose(true);render();toast('บันทึก ไม่ชดเชย '+monthTh(p[1])+' แล้ว (ลง audit_log)');
+  },
+  'vmonth':function(el){S.vi.month=el.dataset.v;render()},
+  'vis-miss':function(){S.vi.month='all';S.vi.contract='all';gotoTab('visits');var b=document.querySelector('.missbox');if(b)b.scrollIntoView({behavior:'smooth',block:'start'})},
+  'vis-all':function(){S.vi.month='all';S.vi.type='all';S.vi.contract='all';S.vi.page=1;gotoTab('visits')},
   'goto':function(el){gotoTab(el.dataset.tab,el.dataset.contract,el.dataset.status)},
   'pick-contract':function(el){S.sel=el.dataset.contract;render()},
   'flt':function(el){S.st[el.dataset.k]=el.dataset.v;S.st.page=1;render()},
-  'clear-st':function(){S.st.contract='all';S.st.type='all';S.st.status='all';S.st.q='';S.st.page=1;render()},
+  'clear-st':function(){S.st.attn=false;S.st.contract='all';S.st.type='all';S.st.status='all';S.st.q='';S.st.page=1;render()},
+  'ag-view':function(el){S.tab='stations';S.st.attn=false;S.st.type='AG';S.st.status=el.dataset.status||'all';S.st.contract='all';S.st.page=1;render();document.getElementById('panel').scrollIntoView({behavior:'smooth',block:'nearest'})},
+  'st-attn':function(el){S.st.attn=el.dataset.v==='1';S.st.page=1;render()},
   'st-open':function(el){var k=el.dataset.k;S.st.open[k]=!S.st.open[k];render()},
   'vi-open':function(el){var k=el.dataset.k;S.vi.open[k]=!S.vi.open[k];render()},
   'st-page':function(el){S.st.page+=+el.dataset.d;render()},
@@ -1157,11 +1795,21 @@ document.addEventListener('click',function(e){
   var fn=ACT[el.dataset.act];if(fn)fn(el,e);
 });
 document.addEventListener('change',function(e){
-  var el=e.target.closest('[data-bind]');if(el){setPath(el.dataset.bind,el.value);render()}
+  var el=e.target.closest('[data-bind]');if(el){setPath(el.dataset.bind,el.value);if(el.dataset.bind==='da.contract'){S.da.from=null;S.da.to=null}render()}
 });
 document.addEventListener('input',function(e){
   var el=e.target;
   if(el.id==='f-st-q'){S.st.q=el.value;S.st.page=1;var pos=el.selectionStart;render();var n=document.getElementById('f-st-q');n.focus();try{n.setSelectionRange(pos,pos)}catch(x){}}
+});
+/* แก้ในแถว: Enter = บันทึก (ช่องหมายเหตุใช้ Ctrl+Enter เพราะพิมพ์หลายบรรทัดได้) · Esc = ยกเลิก */
+document.addEventListener('keydown',function(e){
+  if(e.key==='Escape'&&document.getElementById('dashFs')){closeDashFs();return}
+  if(e.key==='Escape'&&document.getElementById('rsDlg')){rsClose();return}
+  if(e.key==='Escape'&&S.xteamAsk){ACT['xteam-no']();return}
+  if(e.key==='Escape'&&S.delPhone!=null){ACT['phone-del-no']();return}
+  var t=e.target;if(!t||!/^ie-/.test(t.id||''))return;
+  if(e.key==='Escape'){e.preventDefault();ACT['info-cancel']()}
+  else if(e.key==='Enter'&&(t.tagName==='INPUT'||e.ctrlKey||e.metaKey)){e.preventDefault();ACT['info-save']()}
 });
 /* คีย์บอร์ดแท็บ: ← → Home End */
 document.getElementById('tabs').addEventListener('keydown',function(e){
@@ -1173,8 +1821,8 @@ document.getElementById('tabs').addEventListener('keydown',function(e){
 var demo=document.getElementById('demoSel');
 Object.keys(DB).forEach(function(k){var o=document.createElement('option');o.value=k;o.textContent=DB[k].name;demo.appendChild(o)});
 demo.addEventListener('change',function(){
-  S.cid=demo.value;S.sel=null;S.tab='contracts';
-  S.st={contract:'all',type:'all',status:'all',q:'',page:1,open:{}};S.vi={contract:'all',type:'all',page:1,open:{}};S.tl={contract:'all',kind:'all',page:1};
+  S.cid=demo.value;S.sel=null;S.tab='dash';S.editField=null;S.delPhone=null;S.xteamAsk=null;S.da={contract:null};
+  S.st={contract:'all',type:'all',status:'all',q:'',page:1,open:{},attn:true};S.vi={contract:'all',type:'all',page:1,open:{}};S.tl={contract:'all',kind:'all',page:1};
   try{history.replaceState(null,'','?c='+S.cid)}catch(x){}render();
 });
 document.getElementById('roleSel').addEventListener('change',function(e){role=e.target.value;applyNavRole(role);render()});
