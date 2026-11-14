@@ -14,7 +14,7 @@ import { Chip, TierBadge } from "@/components/ui";
 import { cx } from "@/components/ui/cx";
 
 import { MonthTagBadge } from "./MonthTagBadge";
-import { monthChoices, monthLabel } from "./months";
+import { monthChoices, monthLabel } from "@/lib/service/months";
 import { searchContracts } from "./search";
 import { INPUT, LABEL } from "./styles";
 import type { BranchOption, ContractListItem, ZoneOption } from "./types";

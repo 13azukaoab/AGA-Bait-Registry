@@ -11,7 +11,7 @@ import {
 } from "./draftRow";
 import { sanitizeSearch } from "./renewal";
 import { describeDbError } from "./errors";
-import { currentBangkokMonth, monthChoices, monthLabel, monthRange, resolveMonth } from "./months";
+import { currentBangkokMonth, monthChoices, monthLabel, monthRange, resolveMonth } from "@/lib/service/months";
 import { sortTeams } from "./data";
 
 const branches: BranchOption[] = [

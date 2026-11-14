@@ -11,7 +11,7 @@
 import { redirect } from "next/navigation";
 
 import { loadContractList, loadServiceMaster } from "@/components/service/data";
-import { currentBangkokMonth, resolveMonth } from "@/components/service/months";
+import { currentBangkokMonth, resolveMonth } from "@/lib/service/months";
 import { ServiceClient } from "@/components/service/ServiceClient";
 import { Alert } from "@/components/ui";
 import { canAccessPath, homeForRole } from "@/lib/auth/access";

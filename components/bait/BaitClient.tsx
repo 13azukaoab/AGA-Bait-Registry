@@ -19,7 +19,7 @@ import { ConfirmDialog } from "@/components/service/ConfirmDialog";
 import { ContractList, type ListView } from "@/components/service/ContractList";
 import { loadContractCounts, loadContractDetail, loadVisit, type ServiceMaster } from "@/components/service/data";
 import { defaultVisitDate, formFromVisit, newId } from "@/components/service/formState";
-import { monthLabel, todayBangkok } from "@/components/service/months";
+import { monthLabel, todayBangkok } from "@/lib/service/months";
 import type { ContractDetail, ContractListItem, FormState, LoadedVisit } from "@/components/service/types";
 import { Alert, Toast } from "@/components/ui";
 import { createClient } from "@/lib/supabase/client";

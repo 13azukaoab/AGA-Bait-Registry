@@ -12,7 +12,7 @@ import { redirect } from "next/navigation";
 
 import { BaitClient } from "@/components/bait/BaitClient";
 import { loadContractList, loadServiceMaster } from "@/components/service/data";
-import { currentBangkokMonth, resolveMonth } from "@/components/service/months";
+import { currentBangkokMonth, resolveMonth } from "@/lib/service/months";
 import { Alert } from "@/components/ui";
 import { canAccessPath, homeForRole } from "@/lib/auth/access";
 import { requireProfile } from "@/lib/auth/session";

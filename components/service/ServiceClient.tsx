@@ -24,7 +24,7 @@ import { ConfirmDialog } from "./ConfirmDialog";
 import { ContractList, type ListView } from "./ContractList";
 import { loadContractCounts, loadContractDetail, loadVisit, type ServiceMaster } from "./data";
 import { formFromVisit, newVisitForm } from "./formState";
-import { monthLabel, todayBangkok } from "./months";
+import { monthLabel, todayBangkok } from "@/lib/service/months";
 import { searchContracts } from "./search";
 import { ServiceForm, type SavedInfo } from "./ServiceForm";
 import type { ContractDetail, ContractListItem, FormState, LoadedVisit } from "./types";

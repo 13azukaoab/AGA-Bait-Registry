@@ -18,7 +18,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { annualValue, serviceMonths, tierOf, type TierRule } from "@/lib/rules";
 
 import { contractMonthTag } from "./contractTag";
-import { monthRange, serviceTeams } from "./months";
+import { monthRange, serviceTeams } from "@/lib/service/months";
 import { trimDbTime } from "./timeInput";
 import type {
   AgHistory,

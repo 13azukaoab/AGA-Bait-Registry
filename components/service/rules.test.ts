@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { baitToSelect, resolveBait, resolvePowder } from "./bait";
 import { describeServiceError } from "./errors";
-import { serviceTeams } from "./months";
+import { serviceTeams } from "@/lib/service/months";
 import { searchContracts } from "./search";
 import { buildInitPlan, emptySetup, parseCount } from "./setup";
 import { baselineIndex, describeNumbers, inUseIndex, nextAgNumber } from "./stationIndex";
