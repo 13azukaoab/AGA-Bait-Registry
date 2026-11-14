@@ -2665,13 +2665,13 @@ function clOpen(kind,r,opener){
     '<div class="acts" id="msStep"><button class="btn" data-ms="close">ยกเลิก</button><button class="btn primary" data-cl="confirmskip" data-id="'+r.id+'">ไม่เก็บ</button></div>',opener);
 }
 function clN(r){var n=+($('clN').value);if(!(n>=1&&n<=clRem(r)&&n%1===0)){msErr('ใส่จำนวนตั้งแต่ 1 ถึง '+clRem(r)+' สถานี');return 0}return n}
-/* ---- #service: แถวชดเชย (โคลนจากลูกค้าเดิม — 1 ลูกค้ามี 2 แถวได้: ปกติ + ชดเชย) ---- */
+/* ---- #service: แถวชดเชย (โคลนจากลูกค้าเดิม — 1 ลูกค้ามี 2 แถวได้: ปกติ + ชดเชย) · ฟอร์มเต็มเหมือนบริการปกติ (พบปลวก/เปลี่ยนไม้/งานซ่อม/กล่อง AG) ---- */
 function svSyncMakeup(){
   for(var i=CUSTOMERS.length-1;i>=0;i--){if(CUSTOMERS[i].mkOf)CUSTOMERS.splice(i,1)}
   MS.forEach(function(it){
     var r=it.res;if(!r||r.kind!=='makeup'||r.date.slice(0,7)!==MS_CUR)return;
     var base=null;CUSTOMERS.forEach(function(c){if(c.ct===it.ct&&!c.mkOf)base=c});if(!base)return;
-    var cl=Object.assign({},base,{id:1000+it.n,mkOf:base.id,makeupFor:it.missed,msId:it.id,done:!!r.done,ag:[],mo:null,fresh:false,editInfo:false});delete cl.agDate;
+    var cl=Object.assign({},base,{id:1000+it.n,mkOf:base.id,makeupFor:it.missed,msId:it.id,done:!!r.done,ag:JSON.parse(JSON.stringify(base.ag)),agDate:base.agDate?Object.assign({},base.agDate):undefined,mo:null,fresh:false,editInfo:false});
     CUSTOMERS.push(cl);
   });
   if(PK.sv.sel&&!custById(PK.sv.sel))PK.sv.sel=null;
