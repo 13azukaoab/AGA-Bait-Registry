@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>อัพเดท port สาขาต่างจังหวัด · AGA Bait Registry</title>
+<title>ลงข้อมูล Port ต่างจังหวัด · AGA Bait Registry</title>
 <!--
   หน้าจอ 9 "อัพเดท port สาขาต่างจังหวัด" (SPEC §8 หน้า 9 ฉบับ reframe v1.4, §6.5, §9.1) — ผู้ใช้: host เท่านั้น
   mockup ข้อมูลตัวอย่าง (ตัวเลขสมมติ ไม่ใช่ข้อมูลจริง) — กดเล่นได้จริงเมื่อเปิดไฟล์ในเบราว์เซอร์
@@ -20,7 +20,19 @@
   3) วางตารางจาก Excel/เว็บ (คั่นด้วย tab) → ระบบ map เข้า S1…XL3 ให้ + แสดงตัวอย่างก่อนใส่ลงฟอร์ม
   4) เดือนที่ยังไม่มีข้อมูล → "ยกค่าเดือนล่าสุดมาก่อน" (SPEC §6.5) สถานะ ยังไม่อัปเดต จนกว่า host ยืนยัน/บันทึก
   5) บันทึก = monthly_branch_snapshots (source=manual) · ส่งไป Dashboard เป็นแถว 16 ฟิลด์ตาม §9.1
-     (ดูตัวอย่างแถวสดๆ ที่กล่อง "ข้อมูลสำหรับทีมพัฒนา" ท้ายหน้า)
+     (กล่อง "ข้อมูลสำหรับทีมพัฒนา" ท้ายหน้าถูกเอาออกแล้ว — เจ้าของสั่ง 14 พ.ย. 2026 · ย้ายสาระมาไว้ที่นี่)
+
+  ข้อมูลสำหรับทีมพัฒนา (นัท / Jane / Toon):
+  - 1 สาขา × 1 เดือน = 1 แถวใน monthly_branch_snapshots · source='manual' · branches.division='province'
+  - เก็บมูลค่าแยกทั้ง 8 tier → ต้องมี migration ใหม่เพิ่มคอลัมน์ v_s1 … v_xl3 (numeric 14,2)
+    · vS/vM/vL/vXL/value/cust คำนวณจากคอลัมน์เหล่านี้ ไม่ให้กรอกซ้ำ
+  - ยอดจากรายงาน (รวมทั้งสิ้น) ใช้ตรวจตอนกรอก เก็บเป็น report_cust, report_value (nullable) เป็นหลักฐานตรวจย้อนหลัง
+  - สถานะ "อัปเดตแล้ว" = แถว source='manual' ที่ confirmed_at ไม่ว่าง · ค่ายกมา = สร้างตอนส่ง Dashboard หรือคำนวณสด
+    (ไม่เขียนแถวซ้ำจนกว่า OM/PM ยืนยัน — ตัดสินตอน build)
+  - เกณฑ์ band อ่านจาก tier_rules (annual) ห้าม hardcode · สัญญา 3 ปี ใช้ มูลค่าสัญญา ÷ 3 เทียบ band
+    · เดือนที่ปิดแล้วใช้เกณฑ์เดิมตอนปิด (DECISIONS 2.31) → ต้องเก็บประวัติเกณฑ์พร้อมเดือนที่เริ่มใช้
+  - RLS: เฉพาะ role host (หน้าจอเรียก OM/PM) INSERT/UPDATE ได้ · ทุกการแก้ลง audit_log ด้วย trigger (รวมเดือนที่ปิดแล้ว — SPEC v1.2)
+  - แถวที่ส่ง Dashboard = 16 ฟิลด์ตาม SPEC §9.1 (area, branch, s1…xl3, cust, vS, vM, vL, vXL, value)
 
   กฎ tier: เกณฑ์ band อ่านจากตาราง tier_rules (SPEC §7.1) — คิดจาก "มูลค่าต่อปี" เท่ากันทั้งสัญญา 1 ปีและ 3 ปี
     (สัญญา 3 ปี มูลค่าสัญญา = ปีละ × 3) · ป้ายชีท Rules ของ Excel เดิม M3 ">30-49.9K" ผิด ห้ามคัดลอก (SPEC §7.1)
@@ -234,6 +246,20 @@ td.r,th.r{text-align:right}
 #brTable tbody tr.sel:hover>td{background:var(--accent-soft)}
 .rowbtn{font-family:inherit;font-size:13px;font-weight:600;color:var(--fg);background:none;border:0;padding:3px 0;cursor:pointer;text-align:left}
 .rowbtn:hover{color:var(--accent-strong);text-decoration:underline}
+.zrow>th,.zrow>td{background:var(--surface-3);font-size:12px;font-weight:600;border-top:1px solid var(--border-strong);text-align:left}
+.zrow>td{font-weight:500}.zrow>td.r{text-align:right}
+.zrow .zc{font-weight:400;color:var(--fg-muted);margin-left:6px}
+@media (max-width:860px){.rowbtn,.zbtn{min-height:40px;display:inline-flex;align-items:center}#brTable td.brn{padding-top:2px;padding-bottom:2px}.btn.sm{min-height:40px}}
+button.stat{font:inherit;color:inherit;text-align:left;cursor:pointer;width:100%}
+button.stat:hover{border-color:var(--border-strong)}
+.zbtn{font:inherit;font-weight:600;color:inherit;background:none;border:0;padding:0;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+.zbtn .zt{color:var(--fg-muted);width:12px}
+.legend{margin:0;padding:10px 16px;font-size:12px;color:var(--fg-muted);border-top:1px solid var(--border)}
+@media (min-width:1100px){.tablewrap{overflow-x:clip}#brTable thead th{position:sticky;top:57px;z-index:3;background:var(--surface-2)}}
+#brTable td.who{font-size:12px;white-space:nowrap}
+#brTable td.who b{display:block;font-weight:500}
+#brTable td.who .at{display:block;font-size:11px;color:var(--fg-muted)}
+#brTable td.brn{padding-left:22px}
 .zone{display:block;font-size:11px;font-weight:400;color:var(--fg-muted)}
 .up{color:var(--ok)} .down{color:var(--danger)} .flat{color:var(--fg-muted)}
 .big-diff{font-weight:600}
@@ -320,11 +346,11 @@ dialog .row{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
     <span class="tb-title"><b>ข้อมูลหลังบ้านระบบเหยื่อ</b><span>ส่วนกลาง</span></span>
   </a>
   <div class="spacer"></div>
-  <span class="pill">วันนี้ <b>07/11/2026</b></span>
+  <span class="pill">วันนี้ <b>06/11/2026</b></span>
   <select class="role" id="roleSel" aria-label="เลือกบทบาท" onchange="setRole(this.value)">
-    <option value="host" selected>host · ส่วนกลาง</option>
-    <option value="admin">admin · แอดมิน</option>
-    <option value="recorder">recorder · หัวหน้างาน</option>
+    <option value="host" selected>OM/PM · ส่วนกลาง</option>
+    <option value="admin">แอดมิน</option>
+    <option value="recorder">หัวหน้างาน</option>
   </select>
   <button class="theme-btn" id="themeBtn" aria-label="สลับธีม" onclick="toggleTheme()">◐</button>
   <a class="avatar" href="login.html" title="ออกจากระบบ (กลับหน้าเข้าสู่ระบบ)" aria-label="ออกจากระบบ">นท</a>
@@ -355,14 +381,14 @@ dialog .row{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
   <div class="nav-backdrop" id="navBackdrop" onclick="toggleNav(false)" aria-hidden="true"></div>
 
   <main id="main">
-    <div class="page-head"><h1>อัพเดท port สาขาต่างจังหวัด</h1>
-      <p>กรอก/วางสรุปมูลค่าลูกค้า แยก Size × ปี ของ 19 สาขาต่างจังหวัดรายเดือน แทนการอัปเดตไฟล์ Excel · เฉพาะ host · ตัวเลขในหน้านี้เป็นตัวอย่างสมมติ</p>
+    <div class="page-head"><h1>ลงข้อมูล Port ต่างจังหวัด</h1>
+      <p>กรอก/วางสรุปมูลค่าลูกค้า แยก Size × ปี ของ 19 สาขาต่างจังหวัดรายเดือน แทนการอัปเดตไฟล์ Excel · เฉพาะ OM/PM · ตัวเลขในหน้านี้เป็นตัวอย่างสมมติ</p>
       <button type="button" class="btn" id="hdPort" hidden onclick="HD.open({title:'ประวัติการลงข้อมูล Port ต่างจังหวัด',k:'Port ต่างจังหวัด'})">⟲ ประวัติการลง Port</button></div>
 
     <div id="lockMsg" class="panel lock" hidden>
       <div style="font-size:30px" aria-hidden="true">🔒</div>
-      <h2 style="margin:8px 0 4px;font-size:16px">หน้านี้สำหรับ host เท่านั้น</h2>
-      <p style="color:var(--fg-muted);margin:0">ตัวเลขต่างจังหวัดแก้ได้เฉพาะ host (SPEC §5) · สิทธิ์บังคับที่ฐานข้อมูล (RLS) ไม่ใช่แค่ซ่อนปุ่ม</p>
+      <h2 style="margin:8px 0 4px;font-size:16px">หน้านี้สำหรับ OM/PM เท่านั้น</h2>
+      <p style="color:var(--fg-muted);margin:0">ตัวเลขต่างจังหวัดแก้ได้เฉพาะ OM/PM (SPEC §5) · สิทธิ์บังคับที่ฐานข้อมูล (RLS) ไม่ใช่แค่ซ่อนปุ่ม</p>
     </div>
 
     <div id="content">
@@ -393,13 +419,14 @@ dialog .row{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
             <table id="brTable">
               <caption class="sr">ตารางสถานะการอัปเดต port ของสาขาต่างจังหวัดในเดือนที่เลือก</caption>
               <thead><tr>
-                <th scope="col">สาขา</th><th scope="col">สถานะ</th><th scope="col" class="r">ราย</th>
+                <th scope="col">สาขา</th><th scope="col">สถานะ</th><th scope="col">อัปเดตโดย</th><th scope="col" class="r">ราย</th>
                 <th scope="col" class="r">มูลค่ารวม (บาท)</th><th scope="col" class="r">เดือนก่อน</th><th scope="col" class="r">ส่วนต่าง</th><th scope="col">เทียบยอด</th>
               </tr></thead>
               <tbody id="brBody"></tbody>
               <tfoot><tr id="brFoot"></tr></tfoot>
             </table>
           </div>
+          <p class="legend"><span aria-hidden="true">⚑</span> = ส่วนต่างจากเดือนก่อนเกิน 10% — ไม่ใช่ข้อผิดพลาด แต่ควรตรวจว่ากรอกถูก · ตัวกรอง "ส่วนต่างเกิน 10%" ดูเฉพาะรายการเหล่านี้ได้ · กดหัวเขตเพื่อพับ/กางสาขา</p>
         </section>
 
         <!-- ขวา: แผงแก้ไข -->
@@ -412,23 +439,6 @@ dialog .row{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
           <div id="edBox" hidden></div>
         </section>
       </div>
-
-      <details class="dev">
-        <summary>ข้อมูลสำหรับทีมพัฒนา (นัท / Jane / Toon)</summary>
-        <div class="devbody">
-          <b style="color:var(--fg)">การเก็บข้อมูล</b>
-          <ul>
-            <li>1 สาขา × 1 เดือน = 1 แถวใน <code>monthly_branch_snapshots</code> · <code>source = 'manual'</code> · ผูกหน่วยงานที่ระดับสาขา (<code>branches.division = 'province'</code>)</li>
-            <li>เจ้าของยืนยันให้เก็บ <b>มูลค่าแยกทั้ง 8 tier</b> → ต้องทำ migration ใหม่เพิ่มคอลัมน์ <code>v_s1 … v_xl3</code> (numeric 14,2) · <code>vS/vM/vL/vXL/value/cust</code> คำนวณจากคอลัมน์เหล่านี้ ไม่ให้กรอกซ้ำ</li>
-            <li>ยอดจากรายงาน (รวมทั้งสิ้น) ใช้ตรวจตอนกรอกเท่านั้น เก็บเป็น <code>report_cust</code>, <code>report_value</code> (nullable) เพื่อใช้เป็นหลักฐานตรวจย้อนหลัง</li>
-            <li>สถานะ "อัปเดตแล้ว" = แถว <code>source='manual'</code> ที่ <code>confirmed_at</code> ไม่ว่าง · ค่ายกมา = สร้างตอนส่ง Dashboard หรือคำนวณสด (ไม่เขียนแถวซ้ำจนกว่า host ยืนยัน) — ตัดสินตอน build</li>
-            <li>เกณฑ์ band อ่านจาก <code>tier_rules</code> (annual) ห้าม hardcode · สัญญา 3 ปี: ใช้ มูลค่าสัญญา ÷ 3 เทียบ band</li>
-            <li>RLS: เฉพาะ <code>host</code> INSERT/UPDATE ได้ · ทุกการแก้ลง <code>audit_log</code> ด้วย trigger (รวมเดือนที่ปิดแล้ว — SPEC v1.2)</li>
-          </ul>
-          <b style="color:var(--fg)">แถวที่จะส่ง Dashboard (16 ฟิลด์ ตาม §9.1) — ของสาขาที่เปิดอยู่ ณ ตอนนี้</b>
-          <pre id="jsonPrev">เลือกสาขาก่อน</pre>
-        </div>
-      </details>
     </div>
   </main>
 </div>
@@ -518,7 +528,7 @@ function hmFor(s){
     return true;});
 }
 /* ===== /AGA-HISTORY-MOCK v1 ===== */
-/* ===== AGA-HISTORY-DRAWER v1 : ลิ้นชัก "ประวัติ" ตามจุด (เห็นเฉพาะ host) =====
+/* ===== AGA-HISTORY-DRAWER v1 : ลิ้นชัก "ประวัติ" ตามจุด (เห็นเฉพาะ OM/PM) =====
    แหล่งจริงอยู่ที่ docs/mockup/_shell/history-drawer.js — คัดลอกบล็อกนี้ไปทุกหน้าที่มีปุ่ม "ประวัติ" (ดู _shell/README.md)
    ต้องมี history-mock.js (HM_ALL / HM_CUST / hmFor) อยู่ก่อนในหน้าเดียวกัน
    วิธีใช้ในหน้า:
@@ -574,7 +584,7 @@ var HD=(function(){
     ensureCss();
     var n=rowsFor({ct:ct,name:name}).list.length;
     return '<button type="button" class="hd-btn" data-hd-ct="'+esc(ct)+'" data-hd-name="'+esc(name)+'"'+(isHost()?'':' hidden')+
-      ' title="ดูประวัติการแก้ไขของสัญญานี้ (เฉพาะ host)" aria-label="ดูประวัติการแก้ไข '+esc(ct)+'">⟲ ประวัติ ('+n+')</button>';
+      ' title="ดูประวัติการแก้ไขของสัญญานี้ (เฉพาะ OM/PM)" aria-label="ดูประวัติการแก้ไข '+esc(ct)+'">⟲ ประวัติ ('+n+')</button>';
   }
   function sync(r){
     role=r;
@@ -602,7 +612,7 @@ var HD=(function(){
     var cid=(r.cu&&r.cu.cid)||'';
     document.getElementById('hdTitle').innerHTML=esc(o.title||('ประวัติการแก้ไข · '+(o.ct||'')))+
       '<small>'+(o.name?esc(o.name)+' · ':'')+list.length+' รายการ (เฉพาะการเปลี่ยนแปลง) · 4–10 พ.ย. 2026</small>';
-    var h='<p class="hd-note">ข้อมูลตัวอย่าง — ของจริงอ่านจาก <b>audit_log</b> (host เท่านั้น) · การกรอกผลบริการปกติจำนวนมากไม่แสดงที่นี่'+
+    var h='<p class="hd-note">ข้อมูลตัวอย่าง — ของจริงอ่านจาก <b>audit_log</b> (OM/PM เท่านั้น) · การกรอกผลบริการปกติจำนวนมากไม่แสดงที่นี่'+
       (r.sample?' · <b>เลขสัญญานี้ในเดโมยังไม่มีประวัติเฉพาะ จึงแสดงชุดตัวอย่าง</b>':'')+'</p>';
     if(!shown.length){ h+='<div class="hd-empty">ยังไม่มีการแก้ไขในช่วงที่เก็บ</div>'; }
     else {
@@ -659,8 +669,8 @@ var BRANCHES=[
  ["เขต 12","ระนอง"],["เขต 12","นครศรีธรรมราช"],["เขต 12","ตรัง"],["เขต 12","ชุมพร"]
 ];
 var MONTHS=["SEP.26","OCT.26","NOV.26"];
-var MONTH_INFO={"SEP.26":{closed:true,closedAt:"03/10/2026",closedBy:"recorder · หัวหน้างาน A"},"OCT.26":{closed:false},"NOV.26":{closed:false}};
-var HOST_NAME="host · QCS ส่วนกลาง";
+var MONTH_INFO={"SEP.26":{closed:true,closedAt:"03/10/2026",closedBy:"สมชาย (OM/PM)"},"OCT.26":{closed:false},"NOV.26":{closed:false}};
+var HOST_NAME="สมชาย (OM/PM)";
 var CLOSED_EDITS={}; /* จำนวนครั้งที่แก้หลังปิดเดือน (ชิป "แก้หลังปิด N" หน้าปิดเดือน) */
 
 /* ===== เครื่องมือตัวเลข ===== */
@@ -714,8 +724,8 @@ var AUG26_TOTAL=[]; /* มูลค่ารวม AUG.26 (เดือนก่
     var sep=makeBase(i,7), oct=mutate(sep,i,11), ts=totalsOf(sep), to=totalsOf(oct);
     AUG26_TOTAL[i]=r2(ts.v*(0.95+mulberry(i*53+3)()*0.1));
     STORE["SEP.26"][i]={tiers:sep,report:[ts.n,ts.v],updated:true,at:"02/10/2026 "+(9+i%6)+":1"+(i%10),by:HOST_NAME};
-    /* OCT.26: อุดรธานี(6) กับ ลพบุรี(8) ยังไม่อัปเดต · ภูเก็ต(13) ไม่ได้ใส่ยอดรายงาน */
-    if(i!==6&&i!==8) STORE["OCT.26"][i]={tiers:oct,report:(i===13?null:[to.n,to.v]),updated:true,at:"05/11/2026 "+(10+i%5)+":2"+(i%10),by:HOST_NAME};
+    /* OCT.26: เหลือ อุดรธานี(6) สาขาเดียวที่ยังไม่อัปเดต (ไว้ให้ลองกรอกเอง) · ภูเก็ต(13) ไม่ได้ใส่ยอดรายงาน */
+    if(i!==6) STORE["OCT.26"][i]={tiers:oct,report:(i===13?null:[to.n,to.v]),updated:true,at:"05/11/2026 "+(10+i%5)+":2"+(i%10),by:HOST_NAME};
   });
 })();
 /* มูลค่าเดือนก่อน (AD) — SEP.26 ใช้ค่าสมมติของ AUG.26 */
@@ -794,8 +804,8 @@ function renderMonthAlert(){
   var pm=prevMonthOf(curMonth);
   if(info.closed){
     var n=CLOSED_EDITS[curMonth]||0;
-    html+='<div class="alert warn"><span class="ic" aria-hidden="true">⚠</span><div><b>เดือนนี้ปิดแล้ว</b> (ปิด '+esc(info.closedAt)+' โดย '+esc(info.closedBy)+') · host แก้ย้อนหลังได้ และลง audit log ทุกครั้ง'
-      +'<small>ตัวเลขบน Dashboard คงค่าเดิมจนกด "คำนวณ snapshot ใหม่ + ส่ง Dashboard" ที่หน้า <a href="month-closure.html" style="color:var(--accent-strong)">ปิดเดือน</a> · แก้หลังปิดแล้ว <b>'+n+'</b> ครั้งในเดือนนี้ (หน้านี้)</small></div></div>';
+    html+='<div class="alert warn"><span class="ic" aria-hidden="true">⚠</span><div><b>เดือนนี้ปิดแล้ว</b> (ปิด '+esc(info.closedAt)+' โดย '+esc(info.closedBy)+') · OM/PM แก้ย้อนหลังได้ และลง audit log ทุกครั้ง'
+      +'<small>ตัวเลขบน Dashboard คงค่าเดิมจนกด "คำนวณ snapshot ใหม่ + ส่ง Dashboard" ที่หน้า <a href="month-closure.html" style="color:var(--accent-strong)">ปิดเดือน</a> · แก้หลังปิดแล้ว <b>'+n+'</b> ครั้งในเดือนนี้ (หน้านี้) · เกณฑ์ Tier ใหม่ไม่มีผลย้อนหลัง เดือนที่ปิดแล้วใช้เกณฑ์เดิมตอนปิดเดือน</small></div></div>';
   }
   if(carriedAll&&pm){
     html+='<div class="alert info"><span class="ic" aria-hidden="true">↻</span><div><b>ยังไม่มีข้อมูลเดือน '+esc(curMonth)+'</b> — ระบบยกค่าจาก '+esc(pm)+' มาให้ทั้ง 19 สาขา (สถานะ "ยังไม่อัปเดต")'
@@ -811,6 +821,10 @@ function checkState(r){
   var t=totalsOf(r.tiers);
   return (t.n===r.report[0]&&cents(t.v)===cents(r.report[1]))?"ok":"miss";
 }
+function filterSt(v){
+  document.getElementById("fSt").value=v; document.getElementById("fQ").value=""; document.getElementById("fZone").value="all";
+  renderTable(); var h=document.getElementById("h-tbl"); if(h)h.scrollIntoView({behavior:"smooth",block:"start"});
+}
 function renderStats(){
   var upd=0,tv=0,pv=0,tn=0;
   BRANCHES.forEach(function(_,i){
@@ -819,14 +833,19 @@ function renderStats(){
   });
   var diff=(tv-pv)/100, pend=BRANCHES.length-upd;
   document.getElementById("stats").innerHTML=
-   '<div class="stat ok"><div class="lab">อัปเดตแล้ว</div><div class="val">'+upd+' / '+BRANCHES.length+'</div><div class="sub">สาขาต่างจังหวัดเดือน '+esc(curMonth)+'</div></div>'
-  +'<div class="stat '+(pend?"warn":"ok")+'"><div class="lab">ยังไม่อัปเดต</div><div class="val">'+pend+'</div><div class="sub">'+(pend?"ใช้ค่ายกมาไปก่อน":"ครบทุกสาขาแล้ว")+'</div></div>'
+   '<button type="button" class="stat ok" onclick="filterSt(&quot;ok&quot;)" title="กดเพื่อดูเฉพาะสาขาที่อัปเดตแล้ว"><div class="lab">อัปเดตแล้ว ↓</div><div class="val">'+upd+' / '+BRANCHES.length+'</div><div class="sub">สาขาต่างจังหวัดเดือน '+esc(curMonth)+'</div></button>'
+  +'<button type="button" class="stat '+(pend?"warn":"ok")+'" onclick="filterSt(&quot;pend&quot;)" title="กดเพื่อดูเฉพาะสาขาที่ยังไม่อัปเดต"><div class="lab">ยังไม่อัปเดต ↓</div><div class="val">'+pend+'</div><div class="sub">'+(pend?"ใช้ค่ายกมาไปก่อน":"ครบทุกสาขาแล้ว")+'</div></button>'
   +'<div class="stat accent"><div class="lab">มูลค่ารวม 19 สาขา (บาท)</div><div class="val">'+fmt2(tv/100)+'</div><div class="sub">'+fmt0(tn)+' ราย</div></div>'
   +'<div class="stat '+(diff<0?"danger":(diff>0?"ok":""))+'"><div class="lab">ส่วนต่างจากเดือนก่อน (บาท)</div><div class="val">'+fmtSigned(diff)+'</div><div class="sub">เทียบ '+esc(prevMonthOf(curMonth)||"เดือนก่อนหน้า (สมมติ)")+'</div></div>';
 }
+var ZCOL={};
+function toggleZone(z){
+  ZCOL[z]=!ZCOL[z]; renderTable();
+  var b=document.querySelector('.zbtn[onclick*="'+z+'"]'); if(b)b.focus();
+}
 function renderTable(){
   var q=document.getElementById("fQ").value.trim(), z=document.getElementById("fZone").value, st=document.getElementById("fSt").value;
-  var rows=[], sumN=0, sumV=0, sumP=0, shown=0;
+  var rows=[], sumN=0, sumV=0, sumP=0, shown=0, zones=[], zmap={}, anyCollapsed=false;
   BRANCHES.forEach(function(b,i){
     var r=getRec(curMonth,i), t=totalsOf(r.tiers), p=prevTotal(curMonth,i), d=r2(t.v-p), pct=p?Math.abs(d)/p:0;
     if(q&&b[1].indexOf(q)<0)return;
@@ -835,18 +854,28 @@ function renderTable(){
     if(st==="ok"&&!r.updated)return;
     if(st==="big"&&pct<=0.10)return;
     shown++; sumN+=t.n; sumV+=cents(t.v); sumP+=cents(p);
+    var G=zmap[b[0]]; if(!G){G=zmap[b[0]]={z:b[0],rows:[],n:0,v:0,p:0,upd:0};zones.push(G)}
+    G.n+=t.n; G.v+=cents(t.v); G.p+=cents(p); if(r.updated)G.upd++;
     var chip=r.updated?'<span class="chip ok">✓ อัปเดตแล้ว</span>':'<span class="chip pend"'+(r.carried?' title="ค่ายกมาจาก '+esc(r.from||"เดือนก่อน")+'"':"")+'>○ ยังไม่อัปเดต</span>';
     var cs=checkState(r), cchip=cs==="ok"?'<span class="chip ok">ตรง</span>':(cs==="miss"?'<span class="chip miss">ไม่ตรง</span>':'<span class="chip na">'+(r.carried?"–":"ไม่ได้เทียบ")+'</span>');
     var dc=d>0?"up":(d<0?"down":"flat");
     var dirtyMark=(i===sel&&dirty)?' <span class="chip pend">● แก้อยู่ ยังไม่บันทึก</span>':"";
-    rows.push('<tr'+(i===sel?' class="sel" aria-current="true"':"")+'>'
-      +'<td><button type="button" class="rowbtn" onclick="openBranch('+i+')" aria-label="เปิดแก้ไขสาขา'+esc(b[1])+'">'+esc(b[1])+'</button><span class="zone">'+esc(b[0])+dirtyMark+'</span></td>'
-      +'<td>'+chip+'</td><td class="r">'+fmt0(t.n)+'</td><td class="r">'+fmt2(t.v)+'</td><td class="r">'+fmt2(p)+'</td>'
-      +'<td class="r '+dc+(pct>0.10?" big-diff":"")+'">'+fmtSigned(d)+(pct>0.10?" ⚑":"")+'</td><td>'+cchip+'</td></tr>');
+    G.rows.push('<tr'+(i===sel?' class="sel" aria-current="true"':"")+'>'
+      +'<td class="brn"><button type="button" class="rowbtn" onclick="openBranch('+i+')" aria-label="เปิดแก้ไขสาขา'+esc(b[1])+' '+esc(b[0])+'">'+esc(b[1])+'</button><span class="zone">'+dirtyMark+'</span></td>'
+      +'<td>'+chip+'</td><td class="who">'+(r.updated&&r.by?'<b>'+esc(r.by)+'</b><span class="at">'+esc(r.at||"")+'</span>':'<span class="at">–</span>')+'</td><td class="r">'+fmt0(t.n)+'</td><td class="r">'+fmt2(t.v)+'</td><td class="r">'+fmt2(p)+'</td>'
+      +'<td class="r '+dc+(pct>0.10?" big-diff":"")+'">'+fmtSigned(d)+(pct>0.10?' <span title="ส่วนต่างเกิน 10% จากเดือนก่อน — ตรวจว่ากรอกถูกหรือไม่">⚑</span>':"")+'</td><td>'+cchip+'</td></tr>');
   });
-  document.getElementById("brBody").innerHTML=rows.length?rows.join(""):'<tr><td colspan="7" class="empty">ไม่พบสาขาตามตัวกรอง</td></tr>';
+  zones.forEach(function(G){
+    var dd=G.v-G.p, dc=dd>0?"up":(dd<0?"down":"flat"), all=G.upd===G.rows.length;
+    var col=!!ZCOL[G.z];
+    rows.push('<tr class="zrow"><th scope="rowgroup" colspan="1"><button type="button" class="zbtn" aria-expanded="'+(!col)+'" onclick="toggleZone(&quot;'+esc(G.z)+'&quot;)"><span class="zt" aria-hidden="true">'+(col?'▸':'▾')+'</span>'+esc(G.z)+' <span class="zc">'+G.rows.length+' สาขา</span></button></th>'
+      +'<td><span class="chip '+(all?'ok':'pend')+'">'+G.upd+' / '+G.rows.length+' อัปเดตแล้ว</span></td><td></td>'
+      +'<td class="r">'+fmt0(G.n)+'</td><td class="r">'+fmt2(G.v/100)+'</td><td class="r">'+fmt2(G.p/100)+'</td><td class="r '+dc+'">'+fmtSigned(dd/100)+'</td><td></td></tr>');
+    if(!col)G.rows.forEach(function(h){rows.push(h)});
+  });
+  document.getElementById("brBody").innerHTML=rows.length?rows.join(""):'<tr><td colspan="8" class="empty">ไม่พบสาขาตามตัวกรอง</td></tr>';
   document.getElementById("brFoot").innerHTML=rows.length?
-    '<td>รวม '+shown+' สาขา</td><td></td><td class="r">'+fmt0(sumN)+'</td><td class="r">'+fmt2(sumV/100)+'</td><td class="r">'+fmt2(sumP/100)+'</td><td class="r">'+fmtSigned((sumV-sumP)/100)+'</td><td></td>':"";
+    '<td>รวม '+shown+' สาขา</td><td></td><td></td><td class="r">'+fmt0(sumN)+'</td><td class="r">'+fmt2(sumV/100)+'</td><td class="r">'+fmt2(sumP/100)+'</td><td class="r">'+fmtSigned((sumV-sumP)/100)+'</td><td></td>':"";
   document.getElementById("tblCount").textContent=shown+" / "+BRANCHES.length+" สาขา";
 }
 function renderAll(){
@@ -903,11 +932,10 @@ function renderEditor(){
    +'<textarea id="pasteTa" spellcheck="false" placeholder="S1\t8\t143,688.73&#10;S3\t29\t1,175,706.72&#10;…&#10;รวมทั้งสิ้น\t43\t1,853,040.30" oninput="onPasteInput()" onpaste="setTimeout(readPaste,0)"></textarea>'
    +'<div class="acts"><button type="button" class="btn sm" id="pvBtn" onclick="readPaste()">อ่านข้อมูล</button>'
    +'<button type="button" class="btn sm primary" id="applyBtn" onclick="applyPaste()" hidden>ใส่ลงฟอร์ม</button>'
-   +'<button type="button" class="btn ghost sm" onclick="clearPaste()">ล้าง</button>'
-   +'<span class="chip na" title="ยังไม่ทำใน mockup — เลื่อนไปตอน build">วางรูปภาพ · เร็วๆ นี้</span></div>'
+   +'<button type="button" class="btn ghost sm" onclick="clearPaste()">ล้าง</button></div>'
    +'<div id="pvOut" aria-live="polite"></div></div>'
    +'<div class="tablewrap"><table class="tiertbl"><caption class="sr">ตารางจำนวนและมูลค่าสัญญา 8 tier ของสาขา</caption>'
-   +'<thead><tr><th scope="col">Tier</th><th scope="col" class="band">ช่วงมูลค่า (จาก tier_rules)</th><th scope="col" class="r">จำนวน (ราย)</th><th scope="col" class="r">มูลค่ารวม (บาท)</th></tr></thead>'
+   +'<thead><tr><th scope="col">Tier</th><th scope="col" class="band">'+(closed?'ช่วงมูลค่า (เกณฑ์ ณ ตอนปิดเดือน)':'ช่วงมูลค่า (เกณฑ์ปัจจุบัน)')+'</th><th scope="col" class="r">จำนวน (ราย)</th><th scope="col" class="r">มูลค่ารวม (บาท)</th></tr></thead>'
    +'<tbody>'+rowsHtml+'<tr class="tot"><td colspan="2">รวมที่ระบบคำนวณ</td><td class="num" id="sumN">0</td><td class="num" id="sumV">0.00</td></tr></tbody></table></div>'
    +'<div class="ctrl"><h4>ยอดจากรายงาน (รวมทั้งสิ้น) — ใช้ตรวจยอดก่อนบันทึก</h4>'
    +'<div class="line"><label for="rN">จำนวน (ราย)</label><input class="cnt" id="rN" inputmode="numeric" autocomplete="off" value="'+esc(draft.report[0])+'" oninput="onField()" onblur="fixFmt(this,0)" onkeydown="enterNext(event)"></div>'
