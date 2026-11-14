@@ -1,7 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { buildBranchSnapshot } from "./snapshot";
 import { TIER_RULES } from "./__fixtures__/tierRules";
-import type { Contract, BranchRef } from "./types";
+import type { Contract, BranchRef, MissedServiceResolution } from "./types";
+import { MAKEUP_SNAPSHOT_POLICY } from "./missedResolution";
 
 const branch: BranchRef = { area: "เขต 1", branch: "นครปฐม" };
 
@@ -40,5 +41,106 @@ describe("buildBranchSnapshot", () => {
     const row = buildBranchSnapshot(branch, contracts, "2026-03", TIER_RULES);
     expect(row.cust).toBe(0);
     expect(row.value).toBe(0);
+  });
+});
+
+// M18 / DECISIONS 2.41 ②: เดือนชดเชยหลังสัญญาจบ นับลูกค้า + มูลค่า + Tier ในเดือนนั้น
+describe("buildBranchSnapshot + เดือนชดเชย", () => {
+  const c1: Contract = { id: "c1", startDate: "2026-01-01", termYears: 1, valueTotal: 150000 }; // XL1
+  const mk = (missedMonth: string, makeupMonth: string): MissedServiceResolution => ({
+    contractId: "c1",
+    missedMonth,
+    kind: "makeup",
+    makeupMonth,
+  });
+
+  it("ตก พ.ค. ชดเชย ม.ค. 2027 → ม.ค. 2027 นับ 1 ลูกค้า + มูลค่าเต็ม + Tier เดิม", () => {
+    const row = buildBranchSnapshot(branch, [c1], "2027-01", TIER_RULES, {
+      resolutions: [mk("2026-05", "2027-01")],
+      visits: [],
+      policy: "scheduled",
+    });
+    expect(row.cust).toBe(1);
+    expect(row.xl1).toBe(1);
+    expect(row.vXL).toBe(150000);
+    expect(row.value).toBe(150000);
+    expect(row.value_annual).toBe(150000);
+  });
+
+  it("ก.พ. 2027 (ไม่มีชดเชย) → ไม่นับ", () => {
+    const row = buildBranchSnapshot(branch, [c1], "2027-02", TIER_RULES, {
+      resolutions: [mk("2026-05", "2027-01")],
+      visits: [],
+      policy: "scheduled",
+    });
+    expect(row.cust).toBe(0);
+    expect(row.value).toBe(0);
+  });
+
+  it("ชดเชยในช่วงสัญญา (มิ.ย. 2026) → ไม่นับซ้ำ", () => {
+    const row = buildBranchSnapshot(branch, [c1], "2026-06", TIER_RULES, {
+      resolutions: [mk("2026-05", "2026-06")],
+      visits: [],
+      policy: "scheduled",
+    });
+    expect(row.cust).toBe(1);
+    expect(row.value).toBe(150000);
+  });
+
+  it("ชดเชย 2 เดือนที่ตกในเดือนเดียวกัน → นับสัญญาครั้งเดียว", () => {
+    const row = buildBranchSnapshot(branch, [c1], "2027-01", TIER_RULES, {
+      resolutions: [mk("2026-05", "2027-01"), mk("2026-08", "2027-01")],
+      visits: [],
+      policy: "scheduled",
+    });
+    expect(row.cust).toBe(1);
+    expect(row.value).toBe(150000);
+  });
+
+  it("ไม่ชดเชย → ไม่นับเดือนหลังสัญญา", () => {
+    const row = buildBranchSnapshot(branch, [c1], "2027-01", TIER_RULES, {
+      resolutions: [{ contractId: "c1", missedMonth: "2026-05", kind: "waived" }],
+      visits: [],
+      policy: "scheduled",
+    });
+    expect(row.cust).toBe(0);
+  });
+
+  it("สัญญายกเลิกก่อนเดือนชดเชย → ไม่นับ", () => {
+    const row = buildBranchSnapshot(
+      branch,
+      [{ ...c1, cancelledAt: "2026-10-01" }],
+      "2027-01",
+      TIER_RULES,
+      { resolutions: [mk("2026-05", "2027-01")], visits: [], policy: "scheduled" },
+    );
+    expect(row.cust).toBe(0);
+  });
+
+  it("การตัดสินของสัญญาอื่นไม่ทำให้สัญญานี้ถูกนับ", () => {
+    const row = buildBranchSnapshot(branch, [c1], "2027-01", TIER_RULES, {
+      resolutions: [{ ...mk("2026-05", "2027-01"), contractId: "other" }],
+      visits: [],
+      policy: "scheduled",
+    });
+    expect(row.cust).toBe(0);
+  });
+
+  it("policy visited: ชดเชย ม.ค. 2027 แต่ไม่ได้ไป → ไม่นับ · ไปแล้ว → นับ", () => {
+    const opts = { resolutions: [mk("2026-05", "2027-01")], policy: "visited" as const };
+    expect(buildBranchSnapshot(branch, [c1], "2027-01", TIER_RULES, { ...opts, visits: [] }).cust).toBe(0);
+    const visited = buildBranchSnapshot(branch, [c1], "2027-01", TIER_RULES, {
+      ...opts,
+      visits: [{ contractId: "c1", visitDate: "2027-01-12", visitType: "routine", makeupForMonth: "2026-05" }],
+    });
+    expect(visited.cust).toBe(1);
+  });
+
+  it("ไม่ส่ง policy → ใช้ค่าเริ่มต้นจุดเดียว (MAKEUP_SNAPSHOT_POLICY)", () => {
+    const row = buildBranchSnapshot(branch, [c1], "2027-01", TIER_RULES, {
+      resolutions: [mk("2026-05", "2027-01")],
+      visits: [],
+    });
+    expect(row.cust).toBe(MAKEUP_SNAPSHOT_POLICY === "scheduled" ? 1 : 0);
   });
 });

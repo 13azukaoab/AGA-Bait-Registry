@@ -1,14 +1,38 @@
-import type { BranchRef, Contract, SnapshotRow, TierRule } from "./types";
+import type {
+  BranchRef,
+  Contract,
+  MakeupSnapshotPolicy,
+  MissedServiceResolution,
+  SnapshotRow,
+  TierRule,
+  Visit,
+} from "./types";
 import { annualValue, tierOf } from "./tier";
 import { serviceMonths } from "./serviceMonths";
 import { monthOf } from "./date";
+import { makeupCountsInSnapshot } from "./missedResolution";
 
-/** สร้างแถว snapshot รูปแบบ Dashboard (SPEC §7.6, §9.1) สำหรับ 1 สาขา × 1 เดือน */
+/**
+ * M18 (DECISIONS 2.41 ②): ข้อมูลเดือนชดเชย (ไม่บังคับ — ไม่ส่ง = ผลเหมือนเดิมทุกประการ)
+ * visits ใช้เฉพาะเมื่อ policy = "visited" (ต้องมีการเข้าที่ผูก makeupForMonth ของสัญญาเหล่านี้)
+ */
+export interface SnapshotMakeupInput {
+  resolutions: MissedServiceResolution[];
+  visits: Visit[];
+  policy?: MakeupSnapshotPolicy;
+}
+
+/**
+ * สร้างแถว snapshot รูปแบบ Dashboard (SPEC §7.6, §9.1) สำหรับ 1 สาขา × 1 เดือน
+ * นับสัญญาเมื่อ: month อยู่ในเดือนบริการ หรือ (M18) month เป็นเดือนชดเชยหลังสัญญาจบ
+ * · ไม่ถูกยกเลิกก่อน/ในเดือนนั้น · นับต่อสัญญาไม่เกิน 1 ครั้งต่อเดือน · Tier/มูลค่าเดิมของสัญญา
+ */
 export function buildBranchSnapshot(
   branch: BranchRef,
   contracts: Contract[],
   month: string,
   rules: TierRule[],
+  makeups?: SnapshotMakeupInput,
 ): SnapshotRow {
   const row: SnapshotRow = {
     area: branch.area,
@@ -18,8 +42,22 @@ export function buildBranchSnapshot(
   };
 
   for (const c of contracts) {
-    if (!serviceMonths(c.startDate, c.termYears).includes(month)) continue;
     if (c.cancelledAt && monthOf(c.cancelledAt) <= month) continue;
+    const months = serviceMonths(c.startDate, c.termYears);
+    const inService = months.includes(month);
+    // เดือนชดเชยในช่วงสัญญานับอยู่แล้ว ไม่นับซ้ำ · หลังสัญญาจบนับเมื่อมีการตัดสินชดเชยเดือนนี้
+    const isAfterEnd = month > months[months.length - 1];
+    const countsAsMakeup =
+      !inService &&
+      isAfterEnd &&
+      !!makeups &&
+      makeups.resolutions.some(
+        (r) =>
+          r.contractId === c.id &&
+          r.makeupMonth === month &&
+          makeupCountsInSnapshot(r, makeups.visits, makeups.policy),
+      );
+    if (!inService && !countsAsMakeup) continue;
 
     const av = annualValue(c.valueTotal, c.termYears);
     const tier = tierOf(av, rules);

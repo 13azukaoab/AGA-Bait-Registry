@@ -21,7 +21,37 @@ export interface Visit {
   contractId: string;
   visitDate: string; // 'YYYY-MM-DD'
   visitType: VisitType;
+  /** M18: การเข้านี้เป็น "ชดเชยของเดือน" 'YYYY-MM' (ไม่นับเป็น routine ของเดือนตัวเอง) */
+  makeupForMonth?: string;
 }
+
+/** M18 (DECISIONS 2.41): การตัดสินต่อ 1 เดือนที่ตกบริการ · ไม่มีแถว = รอตัดสิน */
+export type MissedResolutionKind = "makeup" | "waived";
+
+export interface MissedServiceResolution {
+  contractId: string;
+  missedMonth: string; // 'YYYY-MM'
+  kind: MissedResolutionKind;
+  makeupMonth?: string; // 'YYYY-MM' เมื่อ kind = makeup
+}
+
+/**
+ * สถานะที่หน้าจอแสดง 5 แบบ
+ * pending = รอตัดสิน · makeup_scheduled = ชดเชย → เดือน · made_up = ชดเชยแล้ว
+ * makeup_not_done = ชดเชยไม่ได้ทำ (กลับไปรอตัดสิน) · waived = ไม่ชดเชย
+ */
+export type MissedResolutionStatus =
+  | "pending"
+  | "makeup_scheduled"
+  | "made_up"
+  | "makeup_not_done"
+  | "waived";
+
+/**
+ * กติกานับเดือนชดเชยหลังสัญญาจบใน snapshot (รอเจ้าของยืนยัน)
+ * scheduled = นับเมื่อเลือกชดเชยไว้ ไม่ว่าจะไปหรือไม่ · visited = นับเมื่อมีการเข้าชดเชยที่ผูกไว้จริง
+ */
+export type MakeupSnapshotPolicy = "scheduled" | "visited";
 
 export interface BranchRef {
   area: string; // เช่น 'เขต 1'
