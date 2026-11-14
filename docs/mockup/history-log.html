@@ -192,7 +192,21 @@ main{flex:1;min-width:0;padding:20px 24px 48px}
 .tools{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;padding:12px 16px;border-bottom:1px solid var(--border)}
 .field{display:flex;flex-direction:column;gap:3px}
 .field[hidden]{display:none}
-.field label{font-size:11px;color:var(--fg-muted)}
+.field label,.field .fl{font-size:11px;color:var(--fg-muted)}
+/* ตัวกรองแบบติ๊กเลือกได้หลายรายการ (ไม่ติ๊กเลย = ทั้งหมด) */
+.ms{position:relative}
+.ms-b{font-family:inherit;font-size:13px;color:var(--fg);background:var(--surface);border:1px solid var(--border-strong);border-radius:8px;padding:7px 10px;min-width:120px;max-width:200px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:8px;text-align:left}
+.ms-b span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ms-b::after{content:"▾";font-size:11px;color:var(--fg-muted);flex:none}
+.ms-b.on{border-color:var(--accent);background:var(--accent-soft);color:var(--accent-strong);font-weight:600}
+.ms-p{position:absolute;left:0;top:calc(100% + 4px);z-index:25;min-width:100%;width:max-content;max-width:min(300px,86vw);max-height:280px;overflow-y:auto;background:var(--surface);border:1px solid var(--border-strong);border-radius:10px;box-shadow:var(--drawer-shadow);padding:6px}
+.ms-p[hidden]{display:none}
+.ms-p.r{left:auto;right:0}
+.ms-p label{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:6px;font-size:13px;color:var(--fg);cursor:pointer}
+.ms-p label:hover{background:var(--surface-2)}
+.field .ms-p input{width:16px;height:16px;min-width:0;padding:0;flex:none;accent-color:var(--accent)}
+.ms-p .ms-clr{display:block;width:100%;font-family:inherit;font-size:12px;text-align:left;border:0;border-bottom:1px solid var(--border);background:transparent;color:var(--accent-strong);padding:6px 8px 8px;margin-bottom:4px;cursor:pointer}
+.ms-p .ms-none{padding:8px;font-size:12px;color:var(--fg-muted)}
 .field select,.field input{font-family:inherit;font-size:13px;color:var(--fg);background:var(--surface);border:1px solid var(--border-strong);border-radius:8px;padding:7px 10px;min-width:120px}
 .field input[type=search]{min-width:200px}
 .seg{display:inline-flex;background:var(--surface-2);border:1px solid var(--border);border-radius:10px;padding:3px;gap:3px}
@@ -323,13 +337,12 @@ table.hl tbody tr.row.closed td:first-child{box-shadow:inset 4px 0 0 var(--warn)
             <option value="1">วันนี้ (10 พ.ย.)</option><option value="3">3 วันล่าสุด</option><option value="7" selected>7 วันล่าสุด</option><option value="custom">กำหนดเอง…</option></select></div>
           <div class="field" id="fRange" hidden><label for="fFrom">ตั้งแต่วันที่</label><input id="fFrom" type="date" min="2026-10-01" max="2026-11-10" value="2026-11-04" onchange="hv.upd()"></div>
           <div class="field" id="fRange2" hidden><label for="fTo">ถึงวันที่</label><input id="fTo" type="date" min="2026-10-01" max="2026-11-10" value="2026-11-10" onchange="hv.upd()"></div>
-          <div class="field"><label for="fMonth">เดือนของข้อมูล</label><select id="fMonth" onchange="hv.upd()">
-            <option value="">ทุกเดือน</option><option value="2026-10">ต.ค. 2026 (ปิดแล้ว)</option><option value="2026-11">พ.ย. 2026 (เดือนปัจจุบัน)</option></select></div>
-          <div class="field"><label for="fWho">ใคร</label><select id="fWho" onchange="hv.upd()"></select></div>
-          <div class="field"><label for="fBr">สาขา</label><select id="fBr" onchange="hv.upd()"></select></div>
-          <div class="field"><label for="fKind">ประเภทข้อมูล</label><select id="fKind" onchange="hv.upd()"></select></div>
-          <div class="field"><label for="fAct">การกระทำ</label><select id="fAct" onchange="hv.upd()">
-            <option value="">เพิ่ม / แก้ / ลบ</option><option value="insert">เพิ่ม</option><option value="update">แก้</option><option value="delete">ลบ</option></select></div>
+          <div class="field"><span class="fl" id="fMonthL">เดือนของข้อมูล</span><div class="ms" id="fMonth" data-all="ทุกเดือน"><button type="button" class="ms-b" aria-haspopup="true" aria-expanded="false" aria-labelledby="fMonthL fMonthB"><span id="fMonthB">ทุกเดือน</span></button><div class="ms-p" role="group" aria-labelledby="fMonthL" hidden></div></div></div>
+          <div class="field"><span class="fl" id="fZoneL">เขต</span><div class="ms" id="fZone" data-all="ทุกเขต"><button type="button" class="ms-b" aria-haspopup="true" aria-expanded="false" aria-labelledby="fZoneL fZoneB"><span id="fZoneB">ทุกเขต</span></button><div class="ms-p" role="group" aria-labelledby="fZoneL" hidden></div></div></div>
+          <div class="field"><span class="fl" id="fWhoL">ใคร</span><div class="ms" id="fWho" data-all="ทุกคน"><button type="button" class="ms-b" aria-haspopup="true" aria-expanded="false" aria-labelledby="fWhoL fWhoB"><span id="fWhoB">ทุกคน</span></button><div class="ms-p" role="group" aria-labelledby="fWhoL" hidden></div></div></div>
+          <div class="field"><span class="fl" id="fBrL">สาขา</span><div class="ms" id="fBr" data-all="ทุกสาขา"><button type="button" class="ms-b" aria-haspopup="true" aria-expanded="false" aria-labelledby="fBrL fBrB"><span id="fBrB">ทุกสาขา</span></button><div class="ms-p" role="group" aria-labelledby="fBrL" hidden></div></div></div>
+          <div class="field"><span class="fl" id="fKindL">ประเภทข้อมูล</span><div class="ms" id="fKind" data-all="ทุกประเภท"><button type="button" class="ms-b" aria-haspopup="true" aria-expanded="false" aria-labelledby="fKindL fKindB"><span id="fKindB">ทุกประเภท</span></button><div class="ms-p" role="group" aria-labelledby="fKindL" hidden></div></div></div>
+          <div class="field"><span class="fl" id="fActL">การกระทำ</span><div class="ms" id="fAct" data-all="เพิ่ม / แก้ / ลบ"><button type="button" class="ms-b" aria-haspopup="true" aria-expanded="false" aria-labelledby="fActL fActB"><span id="fActB">เพิ่ม / แก้ / ลบ</span></button><div class="ms-p" role="group" aria-labelledby="fActL" hidden></div></div></div>
           <div class="field" style="flex:1;min-width:180px"><label for="fQ">ค้นหา</label><input id="fQ" type="search" placeholder="เลขสัญญา / ชื่อลูกค้า / ข้อความ" oninput="hv.upd()" autocomplete="off" style="width:100%"></div>
           <label class="chk"><input type="checkbox" id="fClosed" onchange="hv.upd()"> เฉพาะ "แก้หลังปิดเดือน"</label>
         </div>
@@ -441,11 +454,61 @@ var hv=(function(){
   var $=function(id){return document.getElementById(id);};
   var esc=function(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');};
   var ACT={insert:'เพิ่ม',update:'แก้',delete:'ลบ'};
+  /* เขต → สาขา (เดโม: อิงหน้า prototype · พัทยา = เขต 5 เป็นข้อสมมติ รอยืนยันกับรายการเขตจริง) · สาขาต่างจังหวัด/ส่วนกลางแยกกลุ่มของตัวเอง */
+  var ZONE={'นครปฐม':'เขต 1','พุทธมณฑล':'เขต 1','นนทบุรี':'เขต 2','พัฒนาการ':'เขต 4','ลาดพร้าว':'เขต 4','ระยอง':'เขต 5','พัทยา':'เขต 5','สุขุมวิท':'เขต 6','ส่วนกลาง':'ส่วนกลาง'};
+  HM_PROV.forEach(function(b){ZONE[b]='ต่างจังหวัด (Port)';});
+  var zoneOf=function(br){return ZONE[br]||'อื่นๆ';};
+  var MS={}; /* id → {opts:[{v,t}], sel:{v:1}} */
+  function msVal(id){return MS[id].opts.filter(function(o){return MS[id].sel[o.v];}).map(function(o){return o.v;});}
+  function msLabel(id){
+    var el=$(id),v=msVal(id),b=el.querySelector('.ms-b'),t=el.getAttribute('data-all');
+    if(v.length){t=v.length===1?MS[id].opts.filter(function(o){return o.v===v[0];})[0].t:'เลือก '+v.length+' รายการ';}
+    el.querySelector('.ms-b span').textContent=t; b.classList.toggle('on',v.length>0);
+  }
+  function msBuild(id,opts){
+    var m=MS[id]=MS[id]||{sel:{}}; m.opts=opts;
+    Object.keys(m.sel).forEach(function(k){if(!opts.some(function(o){return o.v===k;}))delete m.sel[k];});
+    var p=$(id).querySelector('.ms-p');
+    p.innerHTML='<button type="button" class="ms-clr">✕ ล้าง (เลือกทั้งหมด)</button>'+(opts.length?opts.map(function(o,i){
+      return '<label><input type="checkbox" data-i="'+i+'"'+(m.sel[o.v]?' checked':'')+'> '+esc(o.t)+'</label>';}).join(''):'<div class="ms-none">ไม่มีตัวเลือก</div>');
+    msLabel(id);
+  }
+  function msClose(except){document.querySelectorAll('.ms-p:not([hidden])').forEach(function(p){
+    if(p.parentNode===except)return; p.hidden=true; p.parentNode.querySelector('.ms-b').setAttribute('aria-expanded','false');});}
+  function msInit(){
+    document.querySelectorAll('.ms').forEach(function(el){
+      var b=el.querySelector('.ms-b'),p=el.querySelector('.ms-p');
+      b.addEventListener('click',function(){
+        var open=p.hidden; msClose(open?el:null); p.hidden=!open; b.setAttribute('aria-expanded',String(open));
+        if(open){p.classList.remove('r'); if(p.getBoundingClientRect().right>window.innerWidth-8)p.classList.add('r');}
+      });
+      p.addEventListener('change',function(ev){
+        var i=ev.target.getAttribute('data-i'); if(i===null)return;
+        var o=MS[el.id].opts[+i]; if(ev.target.checked)MS[el.id].sel[o.v]=1; else delete MS[el.id].sel[o.v];
+        msLabel(el.id); if(el.id==='fZone')brOpts(); hv.upd();
+      });
+      p.addEventListener('click',function(ev){
+        if(!ev.target.classList.contains('ms-clr'))return;
+        MS[el.id].sel={}; msBuild(el.id,MS[el.id].opts); if(el.id==='fZone')brOpts(); hv.upd();
+      });
+    });
+    document.addEventListener('click',function(ev){if(!ev.target.closest('.ms'))msClose();});
+    document.addEventListener('keydown',function(ev){if(ev.key==='Escape')msClose();});
+  }
+  /* สาขาแสดงเฉพาะของเขตที่เลือก (ไม่เลือกเขต = ทุกสาขา) · สาขาที่ติ๊กไว้แล้วหลุดเขต → เอาออกเอง */
+  function brOpts(){
+    var z=msVal('fZone'), all=uniqS(function(e){return e.br;});
+    msBuild('fBr',all.filter(function(b){return !z.length||z.indexOf(zoneOf(b))>=0;}).map(function(b){return {v:b,t:b+(z.length?'':' · '+zoneOf(b))};}));
+  }
+  function uniqS(f){var s={},o=[];HM_ALL.forEach(function(e){var v=f(e);if(v&&!s[v]){s[v]=1;o.push(v);}});return o;}
+  function fillSel2(){['fMonth','fZone','fWho','fKind','fAct'].forEach(function(i){msBuild(i,MS[i].opts);}); brOpts();}
   function fillSel(){
-    var uniq=function(f){var s={},o=[];HM_ALL.forEach(function(e){var v=f(e);if(v&&!s[v]){s[v]=1;o.push(v);}});return o;};
-    $('fWho').innerHTML='<option value="">ทุกคน</option>'+uniq(function(e){return e.who;}).map(function(v){return '<option>'+esc(v)+'</option>';}).join('');
-    $('fBr').innerHTML='<option value="">ทุกสาขา</option>'+uniq(function(e){return e.br;}).map(function(v){return '<option>'+esc(v)+'</option>';}).join('');
-    $('fKind').innerHTML='<option value="">ทุกประเภทข้อมูล</option>'+uniq(function(e){return e.k;}).map(function(v){return '<option>'+esc(v)+'</option>';}).join('');
+    var pl=function(f){return uniqS(f).map(function(v){return {v:v,t:v};});};
+    msBuild('fMonth',[{v:'2026-10',t:'ต.ค. 2026 (ปิดแล้ว)'},{v:'2026-11',t:'พ.ย. 2026 (เดือนปัจจุบัน)'}]);
+    msBuild('fZone',['เขต 1','เขต 2','เขต 4','เขต 5','เขต 6','ต่างจังหวัด (Port)','ส่วนกลาง'].filter(function(z){return uniqS(function(e){return zoneOf(e.br);}).indexOf(z)>=0;}).map(function(v){return {v:v,t:v};}));
+    msBuild('fWho',pl(function(e){return e.who;})); brOpts(); msBuild('fKind',pl(function(e){return e.k;}));
+    msBuild('fAct',[{v:'insert',t:'เพิ่ม'},{v:'update',t:'แก้'},{v:'delete',t:'ลบ'}]);
+    msInit();
   }
   /* ช่วงวันที่กำหนดเอง → เลขวันของ พ.ย. 2026 (1 พ.ย. = 1 · 31 ต.ค. = 0) · ถ้าวันเริ่มเลยวันสิ้นสุด สลับให้เอง · ข้อมูลเดโมมีแค่ 4–10 พ.ย. */
   function dayNo(v){var p=v.split('-');return Math.round((Date.UTC(+p[0],+p[1]-1,+p[2])-Date.UTC(2026,9,31))/864e5);}
@@ -455,12 +518,12 @@ var hv=(function(){
     return [a,b];
   }
   function filt(includeBatch){
-    var per=$('fPeriod').value, minD, maxD=99, mk=$('fMonth').value, who=$('fWho').value, br=$('fBr').value, k=$('fKind').value, a=$('fAct').value;
+    var per=$('fPeriod').value, minD, maxD=99, mk=msVal('fMonth'), zn=msVal('fZone'), who=msVal('fWho'), br=msVal('fBr'), k=msVal('fKind'), a=msVal('fAct');
     if(per==='custom'){var r=rangeDays();minD=r[0];maxD=r[1];}else minD=10-(+per-1);
     var q=$('fQ').value.toLowerCase().replace(/\s+/g,''), co=$('fClosed').checked;
     return HM_ALL.filter(function(e){
-      if(e.d<minD||e.d>maxD) return false; if(mk&&e.mk!==mk) return false; if(who&&e.who!==who) return false; if(br&&e.br!==br) return false;
-      if(k&&e.k!==k) return false; if(a&&e.a!==a) return false; if(co&&!e.closed) return false;
+      if(e.d<minD||e.d>maxD) return false; if(mk.length&&mk.indexOf(e.mk)<0) return false; if(zn.length&&zn.indexOf(zoneOf(e.br))<0) return false; if(who.length&&who.indexOf(e.who)<0) return false; if(br.length&&br.indexOf(e.br)<0) return false;
+      if(k.length&&k.indexOf(e.k)<0) return false; if(a.length&&a.indexOf(e.a)<0) return false; if(co&&!e.closed) return false;
       if(!includeBatch&&e.b) return false;
       if(q){var hay=(e.ct+e.cn+e.x+e.who+e.br+e.k).toLowerCase().replace(/\s+/g,''); if(hay.indexOf(q)<0) return false;}
       return true; });
@@ -527,7 +590,7 @@ var hv=(function(){
     $('more').innerHTML='<span>แสดง <b>'+shown.length+'</b> จาก <b>'+rows.length+'</b> รายการ'+(S.mode==='chg'?' · ไม่รวมการกรอกปกติ '+grpd.length+' กลุ่ม':'')+'</span>'+
       (shown.length<rows.length?'<button class="btn sm" type="button" onclick="hv.more()">โหลดเพิ่ม (+'+Math.min(PAGE,rows.length-shown.length)+')</button>':'');
     [['mChg',S.mode==='chg'],['mAll',S.mode==='all'],['vTable',S.view==='table'],['vLine',S.view==='line']].forEach(function(p){$(p[0]).setAttribute('aria-pressed',p[1]?'true':'false');});
-    var act=!!($('fWho').value||$('fBr').value||$('fKind').value||$('fAct').value||$('fMonth').value||$('fQ').value||$('fClosed').checked||$('fPeriod').value!=='7');
+    var act=!!(msVal('fWho').length||msVal('fBr').length||msVal('fZone').length||msVal('fKind').length||msVal('fAct').length||msVal('fMonth').length||$('fQ').value||$('fClosed').checked||$('fPeriod').value!=='7');
     var cu=$('fPeriod').value==='custom'; $('fRange').hidden=!cu; $('fRange2').hidden=!cu;
     $('bReset').hidden=!act;
   }
@@ -541,7 +604,7 @@ var hv=(function(){
     more:function(){S.shown+=PAGE;render();},
     tog:function(id){OPEN[id]=!OPEN[id];render();},
     sub:function(id){SUBN[id]=(SUBN[id]||10)+20;render();},
-    reset:function(){$('fPeriod').value='7';$('fFrom').value='2026-11-04';$('fTo').value='2026-11-10';$('fMonth').value='';$('fWho').value='';$('fBr').value='';$('fKind').value='';$('fAct').value='';$('fQ').value='';$('fClosed').checked=false;S.shown=PAGE;render();},
+    reset:function(){$('fPeriod').value='7';$('fFrom').value='2026-11-04';$('fTo').value='2026-11-10';['fMonth','fZone','fWho','fBr','fKind','fAct'].forEach(function(i){MS[i].sel={};}); fillSel2();$('fQ').value='';$('fClosed').checked=false;S.shown=PAGE;render();},
     /* ส่งออก: ทุกรายการที่ตรงตัวกรองและตามโหมดที่เลือก · กลุ่มกรอกปกติ = 1 แถว (คอลัมน์ "จำนวนรายการ") */
     export:function(){
       if(typeof XLSX==='undefined'){alert('ต้องมีอินเทอร์เน็ตเพื่อโหลดไลบรารีส่งออก Excel (SheetJS) — ลองใหม่เมื่อออนไลน์');return;}
