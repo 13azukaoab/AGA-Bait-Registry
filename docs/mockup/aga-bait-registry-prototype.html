@@ -2791,14 +2791,15 @@ clRender();
    จำนวนที่เข้าบริการ · ตกบริการ (กดดูรายชื่อ) · ลูกค้าใหม่ · ต่อสัญญา (ลูกค้าเดิมเพิ่ม/ต่อสัญญา)
    ข้อมูลในนี้เป็นข้อมูลสมมติ — ของจริงคำนวณจาก visits + contracts ของเดือนที่เลือก */
 var TM=[
+  /* ชื่อเขต/สาขาอิง lib/dashboard/branches.ts (SPEC §4) เท่านั้น ห้ามตั้งชื่อเอง */
   {team:'ทีม A',zone:'เขต 1',br:'นครปฐม',min:3120,visits:65,plan:72,newc:3,renew:1,miss:[{n:'ไทยแพคโลจิสติกส์',m:'พ.ค. 2026'},{n:'โรงเรียนอนุบาลดอกไม้',m:'มิ.ย. 2026'}]},
-  {team:'ทีม B',zone:'เขต 1',br:'นครปฐม',min:2880,visits:52,plan:60,newc:2,renew:2,miss:[{n:'ร้านอาหารครัวริมคลอง',m:'เม.ย. 2026'}]},
+  {team:'ทีม B',zone:'เขต 1',br:'พุทธมณฑล',min:2880,visits:52,plan:60,newc:2,renew:2,miss:[{n:'ร้านอาหารครัวริมคลอง',m:'เม.ย. 2026'}]},
   {team:'ทีม C',zone:'เขต 1',br:'หัวหิน',min:2520,visits:61,plan:76,newc:1,renew:0,miss:[{n:'หจก. ทรัพย์เจริญ',m:'ก.ค. 2026'},{n:'บจก. เมโทรแวร์เฮ้าส์',m:'มี.ค. 2026'}]},
-  {team:'ทีม D',zone:'เขต 2',br:'พุทธมณฑล',min:1890,visits:28,plan:50,newc:0,renew:1,miss:[]},
-  {team:'ทีม E',zone:'เขต 2',br:'สมุทรสาคร',min:2160,visits:44,plan:48,newc:1,renew:0,miss:[{n:'ร้านกาแฟบ้านไร่',m:'ส.ค. 2026'}]},
-  /* ตัวอย่าง 1 ทีมวิ่งหลายสาขา: ยอดทีม = ผลรวมของทุกสาขา · กด "5 สาขา" เพื่อดูแยกรายสาขา */
-  {team:'ทีม F (ทีมกลาง)',zone:'เขต 1',br:'หลายสาขา',min:3300,visits:58,plan:70,newc:2,renew:1,miss:[{n:'โรงงานสยามฟู้ด',m:'ก.ย. 2026'}],
-   brs:[{br:'นครปฐม',min:900,visits:16,plan:18},{br:'หัวหิน',min:780,visits:14,plan:16},{br:'ราชบุรี',min:600,visits:10,plan:14,miss:1},{br:'กาญจนบุรี',min:540,visits:10,plan:12},{br:'สุพรรณบุรี',min:480,visits:8,plan:10}]}
+  {team:'ทีม D',zone:'เขต 2',br:'สาทร',min:1890,visits:28,plan:50,newc:0,renew:1,miss:[]},
+  {team:'ทีม E',zone:'เขต 2',br:'นนทบุรี',min:2160,visits:44,plan:48,newc:1,renew:0,miss:[{n:'ร้านกาแฟบ้านไร่',m:'ส.ค. 2026'}]},
+  /* ตัวอย่าง 1 ทีมวิ่งหลายสาขา (เขต 2 มี 4 สาขา + ข้ามไปช่วยปทุมธานี เขต 3) · ยอดทีม = ผลรวมทุกสาขา · นับไว้ใต้เขตบ้านของทีม (รอเจ้าของตัดสิน) */
+  {team:'ทีม F (ทีมกลาง)',zone:'เขต 2',br:'หลายสาขา',min:3300,visits:58,plan:70,newc:2,renew:1,miss:[{n:'โรงงานสยามฟู้ด',m:'ก.ย. 2026'}],
+   brs:[{br:'สาทร',min:900,visits:16,plan:18},{br:'ปทุมวัน',min:780,visits:14,plan:16,miss:1},{br:'พระราม 4',min:600,visits:10,plan:14},{br:'นนทบุรี',min:540,visits:10,plan:12},{br:'ปทุมธานี',zone:'เขต 3',min:480,visits:8,plan:10}]}
 ];
 var tmOpen={},tmBr={};
 function tmHm(m){return Math.floor(m/60)+':'+('0'+(m%60)).slice(-2)}
@@ -2819,7 +2820,7 @@ function tmRender(){
   zones.forEach(function(z){
     z.items.sort(function(x,y){return TM[x].br<TM[y].br?-1:TM[x].br>TM[y].br?1:0});
     var zm=0,zv=0,zp=0,zmi=0,zn=0,zr=0,brs={};
-    z.items.forEach(function(i){var t=TM[i];zm+=t.min;zv+=t.visits;zp+=t.plan;zmi+=t.miss.length;zn+=t.newc;zr+=t.renew;(t.brs||[{br:t.br}]).forEach(function(x){brs[x.br]=1})});
+    z.items.forEach(function(i){var t=TM[i];zm+=t.min;zv+=t.visits;zp+=t.plan;zmi+=t.miss.length;zn+=t.newc;zr+=t.renew;(t.brs||[{br:t.br}]).forEach(function(x){if(!x.zone)brs[x.br]=1})});
     h+='<tr class="tmzone"><td colspan="2">'+esc(z.name)+' <span class="zsub">· '+Object.keys(brs).length+' สาขา · '+z.items.length+' ทีม</span></td>'+
        '<td class="num">'+Math.floor(zm/60)+' ชม. '+(zm%60)+' นาที <span class="zsub">· เฉลี่ย '+tmHm(Math.round(zm/zv))+'</span></td>'+
        '<td class="c num">'+zv+'/'+zp+' ราย <span class="zsub">('+Math.round(zv*100/zp)+'%)</span></td>'+
@@ -2833,7 +2834,7 @@ function tmRender(){
          '<td class="c">'+(n?'<button type="button" class="tmmiss" data-tm="'+i+'" aria-expanded="'+op+'" aria-controls="tmDet'+i+'">'+n+' ราย '+(op?'▾':'▸')+'</button>':'<span class="tmmiss zero">0</span>')+'</td>'+
          '<td class="c num">'+t.newc+'</td><td class="c num">'+t.renew+'</td></tr>';
       if(bo)t.brs.forEach(function(x){var p=Math.round(x.visits*100/x.plan);
-        h+='<tr class="tmsub"><td></td><td>└ '+esc(x.br)+'</td><td class="num">'+Math.floor(x.min/60)+' ชม. '+(x.min%60)+' นาที</td>'+
+        h+='<tr class="tmsub"><td></td><td>└ '+esc(x.br)+(x.zone?' <span class="zsub">· '+esc(x.zone)+' (ข้ามเขต)</span>':'')+'</td><td class="num">'+Math.floor(x.min/60)+' ชม. '+(x.min%60)+' นาที</td>'+
            '<td class="c num">'+x.visits+'/'+x.plan+' ราย <span style="color:var(--fg-muted)">('+p+'%)</span></td><td class="c num">'+(x.miss||0)+'</td><td></td><td></td></tr>'});
       if(op)h+='<tr class="tmdet" id="tmDet'+i+'"><td colspan="7"><ul>'+t.miss.map(function(x){return '<li><b>'+esc(x.n)+'</b> · ตกบริการ '+esc(x.m)+'</li>'}).join('')+'</ul></td></tr>';
     });
