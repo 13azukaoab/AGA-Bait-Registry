@@ -509,6 +509,7 @@ tfoot td{padding:10px 12px;font-weight:700;background:var(--surface-2);border-to
 .cllg{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:12.5px;color:var(--fg-muted)}
 .cllg i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
 #clBody tr.clfin td{background:var(--surface-2)}#clBody tr.clfin td>b,#clBody tr.clfin td .num{color:var(--fg-muted)}
+.clreason{max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .clsub{display:block;color:var(--fg-muted);font-size:12px;margin-top:2px}
 #s-collect td{vertical-align:top;white-space:normal}
 #s-collect td .chip{margin-top:4px}
@@ -2723,7 +2724,7 @@ var CL=[
   {id:'k2',name:'ตลาดสดบางแค',ct:'CT24-0000102',end:'2026-09-30',closed:false,ig:30,got:30,skip:0,ic:16,gotM:12,skipM:0,fin:'2026-10',last:{date:'2026-10-05',team:'B',kind:'got'}},
   {id:'k3',name:'ร้านเสริมสวยบ้านดอกไม้',ct:'CT26-0000266',end:'2026-09-06',closed:true,ig:4,got:0,skip:0,ic:0,gotM:0,skipM:0,fin:null},
   {id:'k4',name:'ร้านกาแฟบ้านไร่',ct:'CT25-0000120',end:'2026-08-31',closed:false,ig:6,got:4,skip:0,ic:4,gotM:0,skipM:0,fin:null,last:{date:'2026-09-10',team:'B',kind:'got'}},
-  {id:'k5',name:'หจก. รุ่งเรืองพาณิชย์',ct:'CT25-0000077',end:'2026-08-20',closed:true,ig:10,got:7,skip:3,ic:4,gotM:2,skipM:3,fin:'2026-10',last:{date:'2026-10-14',team:'B',kind:'skip'}}
+  {id:'k5',name:'หจก. รุ่งเรืองพาณิชย์',ct:'CT25-0000077',end:'2026-08-20',closed:true,ig:10,got:7,skip:3,ic:4,gotM:2,skipM:3,fin:'2026-10',last:{date:'2026-10-14',team:'B',kind:'skip',reason:'ลูกค้าเทพื้นคอนกรีตทับจุด IG 3 จุด เข้าไม่ถึง'}}
 ];
 /* ระยะสัญญา DD/MM/YYYY – DD/MM/YYYY · start ไม่ระบุ = สัญญา 1 ปี (เริ่ม = สิ้นสุด − 1 ปี + 1 วัน · ข้อมูลสมมติ) */
 function clDmy(d){return d.slice(8,10)+'/'+d.slice(5,7)+'/'+d.slice(0,4)}
@@ -2763,7 +2764,7 @@ function clRender(){
       '<td><span class="num">'+esc(r.ct)+'</span><small class="clsub num">'+clTerm(r)+'</small>'+chip+'</td>'+
       '<td><span class="num"><b>'+r.got+'</b> / '+r.ig+' สถานี</span><div class="clbar clbar-sm" role="img" aria-label="เก็บแล้ว '+r.got+' · ไม่เก็บ '+r.skip+' · เหลือ '+rm+'"><i class="ok" style="width:'+pg+'%"></i><i class="sk" style="width:'+ps+'%"></i><i class="rm" style="width:'+pr+'%"></i></div>'+
         '<small class="clsub">'+(rm>0?'<span style="color:var(--danger);font-weight:600">เหลือ '+rm+'</span>'+(r.skip?' · ไม่เก็บ '+r.skip:''):(r.skip?'ไม่เหลือให้เก็บ · ไม่เก็บ '+r.skip:'เก็บครบ'))+'</small></td>'+
-      '<td class="num">'+(r.last?msDateTh(r.last.date)+'<small class="clsub">ทีม '+esc(r.last.team)+(r.last.kind==='skip'?' · ลูกค้าไม่ให้เก็บ':'')+'</small>':'<span class="tmdash">-</span>')+'</td>'+
+      '<td class="num">'+(r.last?msDateTh(r.last.date)+'<small class="clsub">ทีม '+esc(r.last.team)+(r.last.kind==='skip'?' · ลูกค้าไม่ให้เก็บ':'')+'</small>'+(r.last.kind==='skip'&&r.last.reason?'<small class="clsub clreason" title="'+esc(r.last.reason)+'">เหตุผล: '+esc(r.last.reason)+'</small>':''):'<span class="tmdash">-</span>')+'</td>'+
       '<td class="r">'+(acts||finTxt)+(acts&&fin?'<div style="margin-top:6px">'+finTxt+'</div>':'')+'</td></tr>';
   }).join(''):'<tr><td colspan="5" class="empty">ไม่มีลูกค้าตามตัวกรองนี้</td></tr>';
   var hold=MS.filter(function(it){return msOpen(it)&&it.end<MS_CUR+'-01'});
@@ -2782,7 +2783,7 @@ function clOpen(kind,r,opener){
     '<div class="acts" id="msStep"><button class="btn" data-ms="close">ยกเลิก</button><button class="btn primary" data-cl="confirmskip" data-id="'+r.id+'">ไม่เก็บ</button></div>',opener);
 }
 function clDT(){var d=$('clD').value,t=$('clT').value;if(!d){msErr('กรุณาเลือกวันที่');$('clD').focus();return null}if(d>TODAY_ISO){msErr('วันที่ต้องไม่เกินวันนี้');$('clD').focus();return null}if(!t){msErr('กรุณาเลือกทีมที่เข้า');$('clT').focus();return null}return {d:d,t:t}}
-function clLog(r,kind,n,dt,reason){(r.log=r.log||[]).push({kind:kind,n:n,date:dt.d,team:dt.t,reason:reason||'',by:msRole()});if(!r.last||dt.d>=r.last.date)r.last={date:dt.d,team:dt.t,kind:kind};var inM=dt.d.slice(0,7)===MS_CUR;if(kind==='got'){r.got+=n;if(inM)r.gotM=(r.gotM||0)+n}else{r.skip+=n;if(inM)r.skipM=(r.skipM||0)+n}if(clRem(r)===0)r.fin=dt.d.slice(0,7)}
+function clLog(r,kind,n,dt,reason){(r.log=r.log||[]).push({kind:kind,n:n,date:dt.d,team:dt.t,reason:reason||'',by:msRole()});if(!r.last||dt.d>=r.last.date)r.last={date:dt.d,team:dt.t,kind:kind,reason:reason||''};var inM=dt.d.slice(0,7)===MS_CUR;if(kind==='got'){r.got+=n;if(inM)r.gotM=(r.gotM||0)+n}else{r.skip+=n;if(inM)r.skipM=(r.skipM||0)+n}if(clRem(r)===0)r.fin=dt.d.slice(0,7)}
 function clN(r){var n=+($('clN').value);if(!(n>=1&&n<=clRem(r)&&n%1===0)){msErr('ใส่จำนวนตั้งแต่ 1 ถึง '+clRem(r)+' สถานี');return 0}return n}
 /* ---- #service: แถวชดเชย (โคลนจากลูกค้าเดิม — 1 ลูกค้ามี 2 แถวได้: ปกติ + ชดเชย) · ฟอร์มเต็มเหมือนบริการปกติ (พบปลวก/เปลี่ยนไม้/งานซ่อม/กล่อง AG) ---- */
 function svSyncMakeup(){
