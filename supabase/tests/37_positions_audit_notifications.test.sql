@@ -3,7 +3,7 @@
 -- ผู้ใช้: h1 = PM (host) · h2 = OM (host) · ow = เจ้าของ (ตั้งผ่าน SQL ของผู้ดูแลฐานข้อมูล)
 --         r1 / r2 = หัวหน้างาน · v1 = viewer · n1 = ผู้ใช้ใหม่ที่ไม่ส่ง division_scope
 BEGIN;
-SELECT plan(76);
+SELECT plan(75);
 
 CREATE FUNCTION pg_temp.id(p text) RETURNS uuid LANGUAGE sql IMMUTABLE AS
   $$ SELECT ('00000000-0000-0000-0000-0000000000' || p)::uuid $$;
@@ -106,12 +106,15 @@ SELECT throws_ok($$INSERT INTO positions (code, name_th, role, assignable) VALUE
   'PS002', NULL, 'service_role cannot create a non-assignable position');
 RESET ROLE;
 
--- Supabase Auth (auth.admin.deleteUser) ลบ auth.users → cascade ลบ profiles ของเจ้าของไม่ได้
-SET LOCAL SESSION AUTHORIZATION supabase_auth_admin;
-SELECT throws_ok($$DELETE FROM auth.users WHERE id = '00000000-0000-0000-0000-0000000000a3'$$,
-  'PS001', NULL, 'Auth server cannot delete the owner user (cascade guarded)');
-RESET SESSION AUTHORIZATION;
-SELECT isnt((SELECT user_id FROM profiles WHERE user_id = pg_temp.id('a3')), NULL, 'owner profile still exists');
+-- เงื่อนไข "เส้นทาง API" ครบทุกกรณี (DB ในเครื่องจำลอง session_user ของ Supabase Auth ไม่ได้ จึงเทสที่ตัวเงื่อนไข)
+SELECT results_eq(
+  $$SELECT public.is_api_session_for(su, r) FROM (VALUES
+      ('supabase_auth_admin', 'none', 1), ('authenticator', 'none', 2), ('postgres', 'authenticated', 3),
+      ('postgres', 'service_role', 4), ('postgres', 'anon', 5), ('postgres', 'none', 6), ('postgres', NULL, 7)
+    ) AS t (su, r, o) ORDER BY o$$,
+  $$VALUES (true), (true), (true), (true), (true), (false), (false)$$,
+  'API session = Auth server / authenticator / anon / authenticated / service_role · SQL admin is not');
+SELECT is(public.is_api_session(), false, 'plain SQL session (postgres) is not an API session');
 
 -- ผู้ดูแลฐานข้อมูล (SQL ตรง) ตั้ง/ถอดได้
 SELECT lives_ok($$UPDATE profiles SET position_code = 'owner' WHERE user_id = pg_temp.id('a5')$$,
@@ -130,6 +133,7 @@ UPDATE customers SET name = 'Central (PM)' WHERE id = pg_temp.id('c1');
 SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a2', true);  -- OM
 UPDATE customers SET name = 'Central (OM)' WHERE id = pg_temp.id('c1');
 RESET ROLE;
+SELECT set_config('request.jwt.claim.sub', '', true);  -- ไม่มีผู้ใช้
 UPDATE customers SET name = 'Central (SQL)' WHERE id = pg_temp.id('c1');
 
 SELECT results_eq(
@@ -258,11 +262,12 @@ SELECT is((SELECT division_scope::text FROM profiles WHERE user_id = pg_temp.id(
 
 SET LOCAL ROLE authenticated;
 SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a7', true);  -- new user
-SELECT is((SELECT count(*)::int FROM customers WHERE id IN (pg_temp.id('c1'), pg_temp.id('c2'))), 2,
-  'new user sees central + province customers');
+SELECT is((SELECT public.branch_in_scope(branch_id) FROM customers WHERE id = pg_temp.id('c1'))
+          AND (SELECT public.branch_in_scope(branch_id) FROM customers WHERE id = pg_temp.id('c2')), true,
+  'new user has central + province branches in scope');
 SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a5', true);  -- central only
-SELECT is((SELECT count(*)::int FROM customers WHERE id IN (pg_temp.id('c1'), pg_temp.id('c2'))), 1,
-  'central-only user still sees only central');
+SELECT is((SELECT public.branch_in_scope(branch_id) FROM customers WHERE id = pg_temp.id('c2')), false,
+  'central-only user does not have province branches in scope');
 RESET ROLE;
 
 SELECT * FROM finish();

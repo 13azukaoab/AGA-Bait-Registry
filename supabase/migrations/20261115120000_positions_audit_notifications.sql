@@ -45,14 +45,25 @@
 --    ⚠ auth.admin.updateUserById (รีเซ็ตรหัส / แบน / เปลี่ยนอีเมล) ไม่แตะ profiles — DB กันไม่ได้
 --      → route ฝั่ง server ทุกตัวที่เรียก auth.admin.* กับผู้ใช้เป้าหมาย ต้องเช็ก positions.assignable ก่อน
 -- =====================================================================
+--    * แยกเงื่อนไขเป็น is_api_session_for(session_user, role) ให้เทสได้ครบทุกกรณี
+--      (DB ในเครื่องจำลอง session_user = supabase_auth_admin ไม่ได้ — postgres ไม่มีสิทธิ์ SET SESSION AUTHORIZATION)
+CREATE FUNCTION public.is_api_session_for(p_session_user text, p_role text)
+RETURNS boolean
+LANGUAGE sql
+IMMUTABLE
+SET search_path = public, pg_temp
+AS $$
+  SELECT coalesce(p_session_user, '') IN ('authenticator', 'supabase_auth_admin')
+      OR coalesce(p_role, 'none') IN ('anon', 'authenticated', 'service_role')
+$$;
+
 CREATE FUNCTION public.is_api_session()
 RETURNS boolean
 LANGUAGE sql
 STABLE
 SET search_path = public, pg_temp
 AS $$
-  SELECT session_user::text IN ('authenticator', 'supabase_auth_admin')
-      OR coalesce(current_setting('role', true), 'none') IN ('anon', 'authenticated', 'service_role')
+  SELECT public.is_api_session_for(session_user::text, current_setting('role', true))
 $$;
 
 -- =====================================================================
@@ -393,6 +404,7 @@ UPDATE public.profiles
 -- 5. สิทธิ์ function (anon ไม่ได้ · trigger function ไม่ให้ใครเรียกตรง)
 -- =====================================================================
 REVOKE ALL ON FUNCTION public.is_api_session()                  FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.is_api_session_for(text, text)      FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.positions_owner_guard()           FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.profiles_owner_guard()            FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.profiles_notify_position_change() FROM PUBLIC, anon, authenticated;

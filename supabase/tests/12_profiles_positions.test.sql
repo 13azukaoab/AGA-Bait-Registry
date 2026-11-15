@@ -109,7 +109,7 @@ SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a3
 SELECT throws_ok(
   $$INSERT INTO positions (code, name_th, role) VALUES ('x', 'X', 'admin')$$,
   '42501', NULL, 'recorder cannot add positions');
-SELECT is((SELECT count(*)::int FROM positions), 4, 'signed-in users read positions');
+SELECT is((SELECT count(*)::int FROM positions), 5, 'signed-in users read positions');  -- M21: + เจ้าของ
 RESET ROLE;
 SET LOCAL ROLE anon;
 -- anon ถูกปฏิเสธตั้งแต่ชั้นสิทธิ์ (SQLSTATE 42501) ไม่ใช่แค่ถูก RLS กรองจนเหลือ 0 แถว
