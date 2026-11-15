@@ -24,7 +24,9 @@
 -- trigger ที่อยู่บน contracts อยู่แล้ว (ไม่แตะ ไม่แทนที่):
 --   contracts_cancelled_at_sync (M18) · contracts_closed_guard (M12) · contracts_renew_contract_lock (M15)
 --   contracts_renewal_same_customer (M9) · ชื่อ trigger นี้ contracts_renewed_from_lock
---   (BEFORE UPDATE ทำงานเรียงตามตัวอักษร → ต่อท้ายสุด ไม่ขัดกับตัวอื่น)
+--   (BEFORE UPDATE ทำงานเรียงตามตัวอักษร → ต่อท้ายสุด ไม่ขัดกับตัวอื่น · เลยทำให้กรณีผูกกับสัญญาลูกค้าอื่นได้ P0001 จาก
+--   contracts_renewal_same_customer ก่อน AG009 — ตั้งใจคงไว้ เพราะเทส 21 พึ่งลำดับนี้)
+--   ใช้ BEFORE UPDATE ธรรมดา (ไม่ระบุ OF คอลัมน์) เพื่อให้จับได้แม้ trigger อื่นในอนาคตเขียนทับ NEW.renewed_from_contract_id
 
 CREATE FUNCTION public.contracts_renewed_from_lock()
 RETURNS trigger
@@ -46,5 +48,5 @@ $$;
 REVOKE ALL ON FUNCTION public.contracts_renewed_from_lock() FROM PUBLIC, anon, authenticated;
 
 CREATE TRIGGER contracts_renewed_from_lock
-  BEFORE UPDATE OF renewed_from_contract_id ON public.contracts
+  BEFORE UPDATE ON public.contracts
   FOR EACH ROW EXECUTE FUNCTION public.contracts_renewed_from_lock();
