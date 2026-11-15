@@ -521,6 +521,11 @@ tfoot td{padding:10px 12px;font-weight:700;background:var(--surface-2);border-to
 .tmfl{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 14px;font-size:12.5px;background:var(--accent-soft);border-color:var(--accent)}
 .tmtip{position:fixed;z-index:60;display:none;pointer-events:none;background:var(--surface);color:var(--fg);border:1px solid var(--border-strong);border-radius:8px;padding:8px 10px;font-size:12.5px;line-height:1.6;box-shadow:var(--shadow);max-width:260px}
 .tmcb i[data-tip]:hover,.tmcs i[data-tip]:hover{filter:brightness(1.12)}.tmcp h4 small{font-weight:400;color:var(--fg-muted)}
+.tmtm{display:flex;align-items:flex-start;gap:8px}.tmtm input{width:18px;height:18px;margin-top:2px;accent-color:var(--accent);cursor:pointer;flex:none}#tmBody tr.cmpsel td{box-shadow:inset 0 0 0 9999px color-mix(in srgb,var(--accent) 6%,transparent)}
+.tmcmp{margin:0 16px 12px;border:1px solid var(--accent);border-radius:var(--radius);background:var(--surface);overflow:hidden}.cmphd{display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px;padding:10px 14px;background:var(--accent-soft)}.cmpnote{font-size:12px;color:var(--fg-muted);flex:1}
+.cmpscroll{overflow-x:auto}.tmcmp table{width:100%;border-collapse:collapse;font-size:13px}.tmcmp th,.tmcmp td{padding:7px 12px;border-top:1px solid var(--border);white-space:nowrap}.tmcmp thead th{font-size:12.5px;background:var(--surface-2);border-top:0}.tmcmp tbody th{text-align:left;font-weight:400;color:var(--fg-muted)}.cmpnm{font-weight:700}.cmpx{border:0;background:none;color:var(--fg-muted);cursor:pointer;min-width:28px;min-height:28px;border-radius:6px}.cmpx:hover{background:var(--surface-3)}.tmcmp td.best{background:var(--ok-soft);color:var(--ok);font-weight:700}.tmcmp .cmpg{background:var(--surface-2);font-weight:600}.cmpbar{height:4px;background:var(--surface-3);border-radius:2px;margin-top:3px}.cmpbar i{display:block;height:100%;background:var(--accent);border-radius:2px}
+@media (max-width:860px){.tmcmp{margin:0 12px 12px}}
+@media (max-width:860px){#tmSec .tmcmp table{display:table;width:max-content;min-width:100%}#tmSec .tmcmp thead{display:table-header-group}#tmSec .tmcmp tbody{display:table-row-group}#tmSec .tmcmp tr{display:table-row}#tmSec .tmcmp td,#tmSec .tmcmp th{display:table-cell;width:auto;white-space:nowrap}}
 .tmmode{display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:10px 16px 0;font-size:12.5px;color:var(--fg-muted)}.tmmode .segbtn{border:1px solid var(--border);min-height:34px}
 .tmch{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px;padding:0 16px 14px}
 .tmcp{border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;background:var(--surface)}.tmcfull{grid-column:1 / -1}
@@ -994,6 +999,7 @@ i.wr,rect.wr{background:var(--accent);fill:var(--accent)}i.wf,rect.wf{background
         <div class="tmch" id="tmCharts"></div>
         <div class="tmsortm"><label for="tmSortSel">เรียงตาม</label><select id="tmSortSel" onchange="tmSortSel(this.value)"><option value="team">ชื่อทีม</option><option value="val">มูลค่าสูงสุด</option><option value="st">สถานีสูงสุด</option><option value="hours">ชั่วโมงทำงานสูงสุด</option><option value="miss">ตกบริการมากสุด</option></select></div>
         <div class="hmlg"><span>แรเงา = อันดับ 1–3 ของแต่ละคอลัมน์</span><span class="hm hmA hm1">1</span><span class="hm hmA hm2">2</span><span class="hm hmA hm3">3</span><span class="hmsep">·</span><span class="hmmiss">แถบแดง = มีลูกค้าตกบริการ (ทุกราย)</span></div>
+        <div class="tmcmp" id="tmCmp" hidden></div>
         <div class="tablewrap"><table>
           <thead><tr id="tmHead"></tr></thead>
           <tbody id="tmBody"></tbody>
@@ -3236,7 +3242,7 @@ var TM_BASE=TM.slice(),TM_MODE='full';
     TM_BASE_ALL.push({team:sp[0],tiers:tr,zone:sp[1],br:sp[2],min:min,visits:visits,plan:plan,newc:nn,renew:rn,newN:newN,renN:renN,miss:miss});
   });
 })();
-function tmSetMode(m){TM_MODE=m;TM=(m==='full')?TM_BASE_ALL:TM_BASE;TM_F={on:[1,1,1,1],team:''};tmOpen={};tmBr={};
+function tmSetMode(m){TM_CMP=[];TM_MODE=m;TM=(m==='full')?TM_BASE_ALL:TM_BASE;TM_F={on:[1,1,1,1],team:''};tmOpen={};tmBr={};
   [].forEach.call(document.querySelectorAll('[data-tmmode]'),function(b){var on=b.getAttribute('data-tmmode')===m;b.classList.toggle('on',on);b.setAttribute('aria-pressed',on?'true':'false')});tmRender()}
 document.addEventListener('click',function(e){var b=e.target.closest&&e.target.closest('[data-tmmode]');if(b)tmSetMode(b.getAttribute('data-tmmode'))});
 TM=TM_BASE_ALL;
@@ -3244,6 +3250,46 @@ TM=TM_BASE_ALL;
 function tmHth(k,lab,cls){var on=TM_SORT===k,asc=(k==='team')?!TM_REV:TM_REV,ar=on?(asc?'▲':'▼'):'↕';return '<button type="button" class="tmth'+(on?' on':'')+' '+cls+'" data-tmsort="'+k+'" aria-label="เรียงตาม'+lab+(on?' (ตอนนี้'+(asc?'น้อยไปมาก':'มากไปน้อย')+')':'')+'">'+lab+' <i aria-hidden="true">'+ar+'</i></button>'}
 function tmSortSel(v){TM_SORT=v;TM_REV=false;tmRender()}
 document.addEventListener('click',function(e){var sh=e.target.closest&&e.target.closest('[data-tmsort]');if(!sh)return;var k=sh.getAttribute('data-tmsort');if(TM_SORT===k)TM_REV=!TM_REV;else{TM_SORT=k;TM_REV=false}tmRender();var nh=document.querySelector('#tmHead [data-tmsort="'+k+'"]');if(nh)nh.focus()});
+/* ===== เปรียบเทียบหลายทีม (เจ้าของสั่ง 15 พ.ย. 2026) =====
+   ติ๊กช่อง ☐ หน้าชื่อทีมในตาราง (เลือกได้สูงสุด 6 ทีม) → แผง "เปรียบเทียบทีมที่เลือก" แสดงตัวชี้วัดเรียงข้างกัน + คอลัมน์ "รวมกลุ่ม"
+   ค่าที่ดีที่สุดของแต่ละแถวไฮไลต์ · ใช้ข้อมูลชุดเดียวกับตาราง (ตัวกรองขนาด S/M/L/XL มีผล) */
+var TM_CMP=[],TM_CMP_MAX=6;
+function tmCmpRender(){
+  var box=$('tmCmp');if(!box)return;
+  var sel=TM.filter(function(t){return TM_CMP.indexOf(t.team)>=0});
+  TM_CMP=sel.map(function(t){return t.team});
+  [].forEach.call(document.querySelectorAll('#tmBody input[data-tmcmp]'),function(c){var on=TM_CMP.indexOf(c.getAttribute('data-tmcmp'))>=0;c.checked=on;var tr=c.closest('tr');if(tr)tr.classList.toggle('cmpsel',on)});
+  if(!sel.length){box.hidden=true;box.innerHTML='';return}
+  box.hidden=false;
+  var C=sel.map(function(t){var m=tmMet(t),i=TM.indexOf(t);return {t:t,n:m.n,st:m.st,val:m.val/1e6,h:t.min/60,min:t.min,vis:t.visits,plan:t.plan,miss:t.miss.length,nw:tmNRList(i,'new').length,rn:tmNRList(i,'ren').length}});
+  function sum(k){return C.reduce(function(a,c){return a+c[k]},0)}
+  var G={n:sum('n'),st:sum('st'),val:sum('val'),h:sum('h'),min:sum('min'),vis:sum('vis'),plan:sum('plan'),miss:sum('miss'),nw:sum('nw'),rn:sum('rn')};
+  var R=[
+    {l:'ลูกค้าที่ดูแล (ราย)',g:function(c){return c.n},f:function(v){return v.toLocaleString('en-US')},best:'max'},
+    {l:'สถานี',g:function(c){return c.st},f:function(v){return v.toLocaleString('en-US')},best:'max',bar:1},
+    {l:'มูลค่าสัญญา (ล้านบาท)',g:function(c){return c.val},f:function(v){return v.toFixed(1)},best:'max',bar:1},
+    {l:'ชั่วโมงทำงาน (ชม.)',g:function(c){return c.h},f:function(v){return v.toFixed(1)},best:'max',bar:1},
+    {l:'เฉลี่ยต่อครั้ง (ชม.:นาที)',g:function(c){return c.min/c.vis},f:function(v){return wtFmt(Math.round(v))}},
+    {l:'เข้าบริการแล้ว (% ของแผน)',g:function(c){return c.vis*100/c.plan},f:function(v){return v.toFixed(0)+'%'},best:'max'},
+    {l:'ตกบริการ (% ของลูกค้า)',g:function(c){return c.n?c.miss*100/c.n:0},f:function(v,c){return (c.miss||0)+' ราย · '+v.toFixed(1)+'%'},best:'min'},
+    {l:'ลูกค้าใหม่ (New)',g:function(c){return c.nw},f:function(v){return v}},
+    {l:'ต่อสัญญา (Renew)',g:function(c){return c.rn},f:function(v){return v}}
+  ];
+  var head='<tr><th>ตัวชี้วัด</th>'+C.map(function(c){return '<th class="r"><span class="cmpnm">'+esc(c.t.team)+'</span><button type="button" class="cmpx" data-tmcmpx="'+esc(c.t.team)+'" aria-label="เอา '+esc(c.t.team)+' ออกจากการเปรียบเทียบ">✕</button></th>'}).join('')+(C.length>1?'<th class="r cmpg">รวมกลุ่ม</th>':'')+'</tr>';
+  var body=R.map(function(r){
+    var vals=C.map(function(c){return r.g(c)}),mx=Math.max.apply(0,vals),mn=Math.min.apply(0,vals);
+    var cells=C.map(function(c,k){var v=vals[k],isBest=C.length>1&&r.best&&((r.best==='max'&&v===mx&&mx>mn)||(r.best==='min'&&v===mn&&mx>mn));
+      return '<td class="r num'+(isBest?' best':'')+'">'+r.f(v,c)+(r.bar&&mx>0?'<div class="cmpbar"><i style="width:'+(v/mx*100)+'%"></i></div>':'')+'</td>'});
+    var gv=r.g(G);
+    return '<tr><th scope="row">'+r.l+'</th>'+cells.join('')+(C.length>1?'<td class="r num cmpg">'+r.f(gv,G)+'</td>':'')+'</tr>'}).join('');
+  box.innerHTML='<div class="cmphd"><b>เปรียบเทียบทีมที่เลือก (' +C.length+' ทีม)</b><span class="cmpnote">'+(C.length<2?'เลือกเพิ่มอีกอย่างน้อย 1 ทีมเพื่อเทียบ':'ไฮไลต์เขียว = ค่าที่ดีที่สุดของแถว · รวมกลุ่ม = รวมทุกทีมที่เลือก')+'</span><button type="button" class="btn sm" data-tmcmpclear>ล้างที่เลือก</button></div><div class="cmpscroll"><table><thead>'+head+'</thead><tbody>'+body+'</tbody></table></div>';
+}
+document.addEventListener('change',function(e){var c=e.target.closest&&e.target.closest('input[data-tmcmp]');if(!c)return;var n=c.getAttribute('data-tmcmp'),i=TM_CMP.indexOf(n);
+  if(c.checked){if(TM_CMP.length>=TM_CMP_MAX){c.checked=false;toast('เลือกเปรียบเทียบได้สูงสุด '+TM_CMP_MAX+' ทีม');return}if(i<0)TM_CMP.push(n)}else if(i>=0)TM_CMP.splice(i,1);
+  tmCmpRender()});
+document.addEventListener('click',function(e){var x=e.target.closest&&e.target.closest('[data-tmcmpx]');if(x){var i=TM_CMP.indexOf(x.getAttribute('data-tmcmpx'));if(i>=0)TM_CMP.splice(i,1);tmCmpRender();return}
+  if(e.target.closest&&e.target.closest('[data-tmcmpclear]')){TM_CMP=[];tmCmpRender()}});
+var _tmRenderBase=tmRender;tmRender=function(){_tmRenderBase();tmCmpRender()};
 function tmRender(){
   var body=$('tmBody');if(!body)return;
   var tMin=0,tV=0,tNew=0,tRen=0,tMiss=0,max=0;
@@ -3269,7 +3315,7 @@ function tmRender(){
       var t=TM[i],m=tmMet(t),dp=Math.round(t.visits*100/t.plan);
       var bo=!!tmBr[i]&&t.brs,bcell=t.brs?'<button type="button" class="tmbr" data-tmb="'+i+'" aria-expanded="'+!!bo+'">'+t.brs.length+' สาขา '+(bo?'▾':'▸')+'</button>':esc(t.zone)+' · '+esc(t.br);
       /* 1 แถว = 1 ทีม: ทีม(+เขต·สาขา) | มูลค่า | สถานี(+ราย) | ชั่วโมงทำงาน(+เฉลี่ย/ราย) | เข้าบริการ | ตกบริการ(+รายชื่อ+หมายเหตุ) | New | Renew */
-      h+='<tr class="tmrow"><td data-label="ทีม"><b>'+esc(t.team)+'</b><small class="clsub">'+bcell+'</small></td>'+
+      h+='<tr class="tmrow"><td data-label="ทีม"><div class="tmtm"><input type="checkbox" data-tmcmp="'+esc(t.team)+'" aria-label="เลือก '+esc(t.team)+' เพื่อเปรียบเทียบ" title="ติ๊กเพื่อเปรียบเทียบทีม"><div><b>'+esc(t.team)+'</b><small class="clsub">'+bcell+'</small></div></div></td>'+
          '<td class="r num'+hm('val',i,'hmA')+'" data-label="มูลค่า (ล้านบาท)">'+(m.val/1e6).toFixed(1)+'</td>'+
          '<td class="r num'+hm('st',i,'hmA')+'" data-label="สถานี">'+m.st.toLocaleString('en-US')+'<small class="clsub">'+m.n+' ราย</small></td>'+
          '<td class="r num'+hm('hours',i,'hmA')+'" data-label="ชั่วโมงทำงาน">'+(t.min/60).toFixed(1)+' ชม.<small class="clsub">เฉลี่ย '+tmHm(Math.round(t.min/t.visits))+'/ราย</small></td>'+
