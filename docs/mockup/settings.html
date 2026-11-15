@@ -25,6 +25,8 @@
    - ทีม         : code ซ้ำไม่ได้ (ไม่สนตัวพิมพ์) แก้ code หลังสร้างไม่ได้ (ถูกอ้างอิงในสัญญา)
                    เฉพาะ Sup เป็นทีมระบบ ลบ/ปิดใช้ไม่ได้ (เจ้าของสั่ง 15 พ.ย. 2026: Z เป็นทีมปกติ งานหลัก = ติดตั้งงานใหม่ + งานรอง = ช่วยทีมอื่นและดูแลพื้นที่ในบางสาขา) · ทีมอื่นมีปุ่มลบทุกทีม แต่ถ้ายังมีงานผูกอยู่ ระบบไม่ให้ลบและเสนอปิดใช้งานแทน
    - ประเภทลูกค้า + ทีม บันทึกทันทีที่กด (แจ้งผลด้วย toast) · เกณฑ์ Tier บันทึกแบบมีขั้นตอนยืนยัน
+   - แท็บทีม: เกณฑ์ Workload (ชม./คน/เดือน, ค่าเริ่มต้น 30 — host แก้ได้ ทุกคนเห็นค่าเดียวกัน, บันทึกต้องพิมพ์ "ยืนยันแก้ไข")
+               + จำนวนคนภาคสนามต่อทีม (staff) — ใช้คำนวณ Workload ของทีม (M25)
    - ตัวเลขใช้งาน (ลูกค้าต่อประเภท, งานต่อทีม, ตัวอย่างผลกระทบ Tier) เป็นข้อมูลสมมติเพื่อดู UI
    ============================================================================ */
 :root{
@@ -207,6 +209,8 @@ main{flex:1;min-width:0;padding:20px 24px 64px}
 .btn.ghost{background:transparent;border-color:transparent;color:var(--accent-strong)}
 .btn.dangerfill{background:var(--danger);border-color:var(--danger);color:var(--on-tier)}
 .btn.sm{padding:4px 10px;font-size:12px}
+.wl{display:flex;align-items:center;gap:8px 14px;flex-wrap:wrap}
+.wl .push{margin-left:auto}
 .nowstrip{display:flex;align-items:center;gap:6px 12px;flex-wrap:wrap;background:var(--surface);border:1px solid var(--accent);border-radius:var(--radius);padding:10px 14px;margin-bottom:14px;font-size:13px}
 .nowstrip .grow{flex:1}
 .slot-del{display:inline-block;width:36px}
@@ -534,13 +538,23 @@ dialog form{display:flex;flex-direction:column;max-height:88vh}
 
     <!-- ================= 3. ทีม ================= -->
     <section id="p-teams" role="tabpanel" aria-labelledby="tab-teams" hidden>
+      <div class="card" style="margin-bottom:14px">
+        <h3>เกณฑ์ Workload <span class="sub">ใช้กับทุกทีม · ทุกคนเห็นค่าเดียวกัน</span></h3>
+        <div class="pad wl">
+          <div class="inp-money"><input class="inp" type="text" id="wlIn" inputmode="decimal" autocomplete="off" aria-label="เกณฑ์ Workload (ชั่วโมงต่อคนต่อเดือน)" aria-describedby="wlErr"><span class="unit">ชม. / คน / เดือน</span></div>
+          <span class="hint" id="wlWas"></span>
+          <span class="push hostonly"><button class="btn sm" type="button" onclick="wlRevert()">ยกเลิกการแก้</button> <button class="btn primary sm" type="button" onclick="wlSave()">บันทึกเกณฑ์…</button></span>
+        </div>
+        <div class="err" id="wlErr" role="alert" style="padding:0 16px 10px"></div>
+        <div class="pad" style="border-top:1px solid var(--border)"><p class="hint">ชั่วโมงงานต่อคนภาคสนามต่อเดือนที่ถือว่าเต็มกำลัง ใช้เทียบกับงานที่ทีมถือ (ค่าเริ่มต้น 30) · ผู้ดูแลระบบ (PM / OM / เจ้าของ) แก้ได้ ตำแหน่งอื่นดูได้อย่างเดียว</p></div>
+      </div>
       <div class="card">
         <h3>รายชื่อทีม <span class="sub" id="teamStat"></span>
           <span class="push hostonly"><button class="btn primary sm" onclick="editTeam(-1)">+ เพิ่มทีม</button></span>
         </h3>
         <div class="tablewrap">
           <table>
-            <thead><tr><th>ทีม</th><th>ชื่อ / คำอธิบาย</th><th>ประเภททีม</th><th class="r">งานเปิดอยู่เดือนนี้</th><th>ใช้งาน</th><th></th></tr></thead>
+            <thead><tr><th>ทีม</th><th>ชื่อ / คำอธิบาย</th><th>ประเภททีม</th><th class="r">คนภาคสนาม</th><th class="r">งานเปิดอยู่เดือนนี้</th><th>ใช้งาน</th><th></th></tr></thead>
             <tbody id="teamBody"></tbody>
           </table>
         </div>
@@ -929,10 +943,10 @@ function delGroup(gi){
 /* ============================ 3. ทีม ============================ */
 var KIND={service:'ทีมบริการ',install:'ทีมติดตั้ง',lead:'ทีมหัวหน้างาน'};
 var TEAMS=(function(){
-  var uses=[9,7,11,6,10,8,5,9,7,4,6,8,3,5,2], t=[];
-  'ABCDEFGHIJKLMNO'.split('').forEach(function(c,i){ t.push({c:c,name:'ทีม '+c,kind:'service',use:uses[i],on:true,sys:false}); });
-  t.push({c:'Z',name:'ทีม Z (ติดตั้ง)',kind:'install',use:14,on:true,sys:false});
-  t.push({c:'Sup',name:'หัวหน้างาน (Supervisor)',kind:'lead',use:3,on:true,sys:true});
+  var uses=[9,7,11,6,10,8,5,9,7,4,6,8,3,5,2], staff=[4,3,5,3,4,4,2,4,3,2,3,4,2,3,2], t=[];
+  'ABCDEFGHIJKLMNO'.split('').forEach(function(c,i){ t.push({c:c,name:'ทีม '+c,kind:'service',staff:staff[i],use:uses[i],on:true,sys:false}); });
+  t.push({c:'Z',name:'ทีม Z (ติดตั้ง)',kind:'install',staff:6,use:14,on:true,sys:false});
+  t.push({c:'Sup',name:'หัวหน้างาน (Supervisor)',kind:'lead',staff:3,use:3,on:true,sys:true});
   return t;
 })();
 function renderTeams(){
@@ -943,11 +957,39 @@ function renderTeams(){
     return '<tr class="'+(t.on?'':'off')+'"><td><span class="code">'+esc(t.c)+'</span></td>'+
       '<td>'+esc(t.name)+(t.sys?' <span class="chip neutral" title="ทีมระบบ ลบ/ปิดใช้ไม่ได้">🔒 ทีมระบบ</span>':'')+'</td>'+
       '<td><span class="chip neutral">'+KIND[t.kind]+'</span></td>'+
+      '<td class="r">'+t.staff+'</td>'+
       '<td class="r">'+t.use+'</td>'+
       '<td><button class="sw" role="switch" aria-checked="'+t.on+'" aria-label="เปิด/ปิดใช้ทีม '+esc(t.c)+'"'+(isHost?' onclick="toggleTeam('+i+')"':' tabindex="-1" style="pointer-events:none"')+'></button></td>'+
       '<td style="white-space:nowrap">'+(isHost?'<button class="btn sm" onclick="editTeam('+i+')">แก้ไข</button> '+
         (!t.sys?'<button class="btn sm" style="color:var(--danger)" aria-label="ลบทีม '+esc(t.c)+'" onclick="delTeam('+i+')">ลบ</button>':''):'')+'</td></tr>';
   }).join('');
+}
+/* ---------- เกณฑ์ Workload (ชม./คน/เดือน) — ค่าเดียวทั้งระบบ ---------- */
+var WL_DEFAULT=30, wlSaved=WL_DEFAULT;
+function wlParse(){ return parseFloat(String($('wlIn').value).replace(/,/g,'')); }
+function wlRender(){
+  var inp=$('wlIn'); inp.readOnly=!isHost;
+  var v=wlParse(), bad=!(v>0 && v<=300);
+  $('wlErr').textContent=(inp.value.trim()===''||bad)?'ใส่ตัวเลขมากกว่า 0 และไม่เกิน 300':'';
+  inp.setAttribute('aria-invalid',$('wlErr').textContent?'true':'false');
+  $('wlWas').textContent=(!bad && v!==wlSaved)?'เดิม '+nf.format(wlSaved)+' · ยังไม่บันทึก':'';
+}
+$('wlIn').addEventListener('input',wlRender);
+$('wlIn').addEventListener('blur',function(){ var v=wlParse(); if(v>0) this.value=nf.format(v); });
+function wlRevert(){ $('wlIn').value=nf.format(wlSaved); wlRender(); }
+function wlSave(){
+  var v=wlParse();
+  if(!(v>0 && v<=300)){ toast('ตัวเลขยังไม่ถูกต้อง แก้ช่องสีแดงก่อน',true); return; }
+  if(v===wlSaved){ toast('ยังไม่มีการเปลี่ยนแปลง'); return; }
+  openDlg({
+    title:'ต้องการบันทึกเกณฑ์ Workload ใหม่ใช่หรือไม่?', ok:'ใช่ บันทึกเกณฑ์ใหม่', cancel:'ยังไม่บันทึก',
+    body:'<p class="hint" style="margin-bottom:6px">สิ่งที่จะเปลี่ยน</p><ul class="chg"><li>เกณฑ์ Workload <b>'+nf.format(wlSaved)+'</b><span class="arrow">→</span><b>'+nf.format(v)+'</b> ชม./คน/เดือน</li></ul>'+
+      '<div class="callout" style="background:var(--warn-soft);color:var(--warn);margin-bottom:14px">⚠ ทุกทีมและทุกคนจะเห็นค่าใหม่ทันที · ระบบจดไว้ในประวัติการแก้ไข</div>'+
+      '<div class="fld"><label for="f_conf">ยืนยันการแก้ไข — พิมพ์คำว่า <b>ยืนยันแก้ไข</b> เพื่อบันทึก</label><input class="inp" type="text" id="f_conf" autocomplete="off" placeholder="ยืนยันแก้ไข"></div>',
+    onOk:function(){
+      if($('f_conf').value.trim()!=='ยืนยันแก้ไข') return 'พิมพ์คำว่า "ยืนยันแก้ไข" ให้ตรงก่อนจึงจะบันทึกได้';
+      wlSaved=v; wlRevert(); toast('บันทึกเกณฑ์ Workload แล้ว'); return null;
+    }});
 }
 function toggleTeam(i){
   var t=TEAMS[i];
@@ -961,7 +1003,7 @@ function toggleTeam(i){
   t.on=true; renderTeams(); toast('เปิดใช้ทีม '+t.c+' แล้ว');
 }
 function editTeam(i){
-  var add=(i<0), t=add?{c:'',name:'',kind:'service',use:0,on:true,sys:false}:TEAMS[i];
+  var add=(i<0), t=add?{c:'',name:'',kind:'service',staff:0,use:0,on:true,sys:false}:TEAMS[i];
   var kindOpts=Object.keys(KIND).map(function(k){ return '<option value="'+k+'"'+(k===t.kind?' selected':'')+'>'+KIND[k]+'</option>'; }).join('');
   openDlg({
     title:add?'เพิ่มทีม':'แก้ไขทีม '+t.c,
@@ -970,6 +1012,7 @@ function editTeam(i){
       '<span class="note">'+(add?'ตัวอักษร/ตัวเลข 1–4 ตัว ซ้ำไม่ได้ (ไม่สนตัวพิมพ์) · สร้างแล้วแก้ไม่ได้':'แก้รหัสไม่ได้ เพราะถูกอ้างอิงในสัญญา')+'</span></div>'+
       '<div class="fld"><label for="f_kind">ประเภททีม</label><select id="f_kind"'+(t.sys?' disabled':'')+'>'+kindOpts+'</select></div></div>'+
       '<div class="fld"><label for="f_tname">ชื่อ / คำอธิบาย</label><input type="text" id="f_tname" maxlength="40" value="'+esc(t.name)+'" placeholder="เช่น ทีมเขต 3"></div>'+
+      '<div class="fld"><label for="f_staff">จำนวนคนภาคสนาม</label><input type="number" id="f_staff" min="0" max="99" step="1" inputmode="numeric" value="'+t.staff+'" style="width:110px"><span class="note">นับเฉพาะคนที่ออกทำงานหน้างาน ใช้คำนวณ Workload ของทีม</span></div>'+
       (t.sys?'<p class="hint">ทีมระบบ — ลบ/ปิดใช้ไม่ได้ และเปลี่ยนประเภทไม่ได้</p>':'<label class="check"><input type="checkbox" id="f_ton"'+(t.on?' checked':'')+'> เปิดใช้งาน</label>'),
     onOk:function(){
       var code=add?$('f_code').value.trim():t.c, name=$('f_tname').value.trim().replace(/\s+/g,' ');
@@ -978,9 +1021,11 @@ function editTeam(i){
         if(TEAMS.some(function(x){ return norm(x.c)===norm(code); })) return 'มีรหัสทีม "'+code+'" อยู่แล้ว';
       }
       if(!name) return 'ใส่ชื่อทีมก่อน';
+      var staff=parseInt($('f_staff').value,10);
+      if(!(staff>=0 && staff<=99)) return 'จำนวนคนภาคสนามต้องเป็นเลข 0–99';
       var kind=t.sys?t.kind:$('f_kind').value, on=t.sys?true:$('f_ton').checked;
-      if(add){ TEAMS.push({c:code,name:name,kind:kind,use:0,on:on,sys:false}); }
-      else{ t.name=name; t.kind=kind; t.on=on; }
+      if(add){ TEAMS.push({c:code,name:name,kind:kind,staff:staff,use:0,on:on,sys:false}); }
+      else{ t.name=name; t.kind=kind; t.staff=staff; t.on=on; }
       renderTeams(); toast(add?'เพิ่มทีม '+code+' แล้ว':'บันทึกทีม '+code+' แล้ว'); return null;
     }
   });
@@ -1005,7 +1050,7 @@ function setRole(v){
   $('roBanner').hidden=isHost;
   document.querySelectorAll('.hostonly').forEach(function(el){ el.hidden=!isHost; });
   applyNavRole(v);
-  updateTier(); renderTypes(); renderTeams();
+  updateTier(); renderTypes(); renderTeams(); wlRender();
 }
 /* ===== AGA-SHELL v1 : เปิด/ปิดลิ้นชักเมนูบนจอเล็ก (body.nav-open) ===== */
 /* เมนูย่อบนจอกว้าง (body.nav-mini) — ปุ่ม ☰ บนจอกว้าง = ย่อ/ขยาย · จอเล็กยังเปิดลิ้นชัก (body.nav-open)
@@ -1061,7 +1106,7 @@ function toggleTheme(){
 try{ var th=localStorage.getItem('aga-theme'); if(th) document.documentElement.setAttribute('data-theme',th); }catch(e){}
 
 /* ============================ เริ่มต้น ============================ */
-setInputs(); renderHist(); renderTypes(); renderTeams(); updateTier();
+setInputs(); renderHist(); renderTypes(); renderTeams(); updateTier(); wlRevert();
 (function(){ var h=location.hash.replace('#',''); if(TABS.indexOf(h)>=0) showTab(h); })();
 try{ var _rs=document.getElementById('roleSel'); if(_rs) applyNavRole(_rs.value); }catch(e){}
 </script>
