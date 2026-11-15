@@ -65,7 +65,7 @@ export function buildBranchSnapshot(
     if (!inService && !countsAsMakeup) continue;
 
     const av = annualValue(c.valueTotal, c.termYears);
-    const tier = tierOf(av, rules);
+    const tier = tierOf(av, rules, month); // M20: เกณฑ์ของเดือนที่คำนวณ (DECISIONS 2.31)
 
     const countKey = `${tier.toLowerCase()}${c.termYears}` as
       | "s1" | "s3" | "m1" | "m3" | "l1" | "l3" | "xl1" | "xl3";

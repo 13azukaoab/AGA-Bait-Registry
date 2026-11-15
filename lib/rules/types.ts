@@ -1,10 +1,15 @@
 export type Tier = "S" | "M" | "L" | "XL";
 export type TermYears = 1 | 3;
 
-/** เกณฑ์ Tier: ใช้ขอบล่าง (minAnnual) เรียงจากน้อยไปมาก เลือก tier ที่ minAnnual <= annual สูงสุด */
+/**
+ * เกณฑ์ Tier: ใช้ขอบล่าง (minAnnual) เรียงจากน้อยไปมาก เลือก tier ที่ minAnnual <= annual สูงสุด
+ * M20 (DECISIONS 2.31): `effectiveMonth` = เดือนที่ชุดเกณฑ์นี้เริ่มใช้ (`tier_rules.effective_month`
+ * รับได้ทั้ง 'YYYY-MM' และ 'YYYY-MM-01') · ไม่ระบุ = ชุดเดียวแบบเดิม ใช้ได้ทุกเดือน
+ */
 export interface TierRule {
   tier: Tier;
   minAnnual: number;
+  effectiveMonth?: string;
 }
 
 export type VisitType = "routine" | "problem" | "follow_up";
