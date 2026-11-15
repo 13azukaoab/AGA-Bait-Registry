@@ -98,7 +98,7 @@ var HD=(function(){
       if(openUl) h+='</ul>';
     }
     document.getElementById('hdBody').innerHTML=h;
-    var f=(cid?'<a href="customer-detail.html?c='+esc(cid)+'#tab=timeline">ไทม์ไลน์เต็มของลูกค้า ↗</a>':'')+'<a href="history-log.html">ประวัติย้อนหลังทุกสาขา ↗</a>';
+    var f=(cid?'<a href="customer-detail.html?c='+esc(cid)+'#tab=timeline">ไทม์ไลน์เต็มของลูกค้า ↗</a>':'')+'<a href="history-log.html">ประวัติการแก้ไขทุกสาขา ↗</a>';
     document.getElementById('hdFoot').innerHTML=f;
     document.getElementById('hdOv').hidden=false; var p=document.getElementById('hdPanel'); p.hidden=false; p.focus();
   }

@@ -712,8 +712,8 @@ var hv=(function(){
       var rows=(S.mode==='all'?filt(true):filt(false));
       var data=[['วันที่','เวลา','ใคร','ตำแหน่ง','สาขา','เลขที่สัญญา','ลูกค้า','ประเภทข้อมูล','การกระทำ','รายละเอียด','จำนวนรายการ (กลุ่มกรอกปกติ)','แก้หลังปิดเดือน','เดือนของข้อมูล']];
       rows.forEach(function(e){data.push(['2026-11-'+hmPad(e.d),e.t+(e.t2?'–'+e.t2:''),e.who,e.role,e.br,e.ct==='-'||e.ct==='หลายสัญญา'?'':e.ct,e.cn,e.k,ACT[e.a],e.x,e.b?e.n:'',e.closed?'ใช่':'',e.mk]);});
-      var wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(data),'ประวัติย้อนหลัง');
-      XLSX.writeFile(wb,'AGA-ประวัติย้อนหลัง.xlsx');
+      var wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(data),'ประวัติการแก้ไข');
+      XLSX.writeFile(wb,'AGA-ประวัติการแก้ไข.xlsx');
     }
   };
 })();

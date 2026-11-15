@@ -1500,7 +1500,7 @@ function tlRows(){
 function tlHtml(){
   var all=hmFor({cid:S.cid,onlyChange:true}),rows=tlRows(),kinds=[];
   all.forEach(function(e){if(kinds.indexOf(e.k)<0)kinds.push(e.k)});
-  var h=hint('ใครแก้อะไร เมื่อไหร่ ของลูกค้ารายนี้ (เห็นเฉพาะ host) · แสดงเฉพาะ<b>การเปลี่ยนแปลง</b> — การกรอกผลบริการปกติดูที่แท็บ “ประวัติทำบริการ” · ดูทุกสาขารวมกันที่ <a href="history-log.html">ประวัติย้อนหลัง ↗</a> · ข้อมูลตัวอย่าง');
+  var h=hint('ใครแก้อะไร เมื่อไหร่ ของลูกค้ารายนี้ (เห็นเฉพาะ host) · แสดงเฉพาะ<b>การเปลี่ยนแปลง</b> — การกรอกผลบริการปกติดูที่แท็บ “ประวัติทำบริการ” · ดูทุกสาขารวมกันที่ <a href="history-log.html">ประวัติการแก้ไข ↗</a> · ข้อมูลตัวอย่าง');
   h+='<div class="filters"><div class="field"><label for="f-tl-contract">สัญญา</label><select id="f-tl-contract" data-bind="tl.contract"><option value="all">ทุกสัญญา</option>'+
      cust().contracts.map(function(k){return '<option value="'+esc(k.no)+'"'+(S.tl.contract===k.no?' selected':'')+'>'+esc(k.no)+'</option>'}).join('')+'</select></div>'+
      '<div class="field"><label for="f-tl-kind">เรื่องที่แก้</label><select id="f-tl-kind" data-bind="tl.kind"><option value="all">ทุกเรื่อง</option>'+
