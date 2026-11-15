@@ -768,7 +768,7 @@ tfoot td{padding:10px 12px;font-weight:700;background:var(--surface-2);border-to
     <!-- ========== 1. TODO ========== -->
     <section id="s-todo">
       <div class="page-head"><h1>สถานะทะเบียนบริการ</h1>
-        <p>งานที่ต้องทำของเดือน — ความคืบหน้าการกรอกผล เรื่องตกบริการที่ต้องตัดสิน และกล่องเหยื่อรอถอด · สรุปรายทีมและสัญญาใกล้หมด ดูที่ <a href="#material" onclick="go('material');matTab('team');return false">หน้าสรุปงานบริการรายเดือน →</a></p></div>
+        <p>งานที่ต้องทำของเดือน — ความคืบหน้าการกรอกผล เรื่องตกบริการที่ต้องตัดสิน และกล่องเหยื่อรอถอด · สรุปรายทีมและลูกค้าใกล้หมดสัญญา ดูที่ <a href="#material" onclick="go('material');matTab('team');return false">หน้าสรุปงานบริการรายเดือน →</a></p></div>
       <div class="card" style="margin-bottom:18px">
         <h3><span class="dot" style="background:var(--accent)"></span> สถานะงานกรอกผล · ต.ค. 2026 <small style="font-size:12px;font-weight:400;color:var(--fg-muted)">เดือนที่ยังไม่ปิดเก่าสุด · ปิดเดือนแล้วหน้านี้เลื่อนไปเดือนถัดไปเอง</small></h3>
         <div class="body" style="padding:15px 16px">
@@ -824,12 +824,12 @@ tfoot td{padding:10px 12px;font-weight:700;background:var(--surface-2);border-to
     <!-- ========== สรุปวัสดุ (internal: host/admin/recorder) ========== -->
     <section id="s-material" hidden>
       <div class="page-head"><h1>สรุปงานบริการรายเดือน</h1>
-        <p>สรุปวัสดุที่ใช้ (เหยื่อ NEMESIS · เคมีผง · ไม้ล่อ) เวลาทำงาน สรุปรายทีม และสัญญาใกล้หมด — สำหรับวางแผนสต็อก/ต้นทุน/กำลังคน <span class="chip pend">🔒 internal เท่านั้น</span></p></div>
+        <p>สรุปวัสดุที่ใช้ (เหยื่อ NEMESIS · เคมีผง · ไม้ล่อ) เวลาทำงาน สรุปรายทีม และลูกค้าใกล้หมดสัญญา — สำหรับวางแผนสต็อก/ต้นทุน/กำลังคน <span class="chip pend">🔒 internal เท่านั้น</span></p></div>
       <div class="seg" role="tablist" aria-label="หัวข้อสรุป">
         <button type="button" class="segbtn on" role="tab" aria-selected="true" id="matTabMat" onclick="matTab('mat')">วัสดุ</button>
         <button type="button" class="segbtn" role="tab" aria-selected="false" id="matTabTime" onclick="matTab('time')">เวลาทำงาน</button>
         <button type="button" class="segbtn" role="tab" aria-selected="false" id="matTabTeam" onclick="matTab('team')">สรุปรายทีม</button>
-        <button type="button" class="segbtn" role="tab" aria-selected="false" id="matTabExp" onclick="matTab('exp')">สัญญาใกล้หมด</button>
+        <button type="button" class="segbtn" role="tab" aria-selected="false" id="matTabExp" onclick="matTab('exp')">ลูกค้าใกล้หมดสัญญา</button>
       </div>
       <div class="toolbar">
         <div class="field"><label for="matPeriod">ช่วงเวลา</label><select id="matPeriod" onchange="matPeriodChg()"><option value="m">เดือนนี้ (ต.ค. 2026)</option><option value="q">ไตรมาส 4/2026 (ต.ค. – ธ.ค.)</option><option value="y">ปี 2026</option><option value="custom">กำหนดช่วงเอง…</option></select></div>
@@ -1851,7 +1851,7 @@ function expRender(){
   var rows=EXP.map(function(x){var c=null;CUSTOMERS.forEach(function(k){if(k.ct===x.ct&&!k.mkOf)c=k});return c?{c:c,end:x.end,val:x.val,d:expDays(x.end)}:null}).filter(function(x){return x&&x.d>=0&&x.d<=90}).sort(function(a,b){return a.d-b.d});
   var tot=0,n30=0;rows.forEach(function(x){tot+=x.val;if(x.d<=30)n30++});
   $('expStats').innerHTML=
-    '<div class="stat warn"><div class="lab"><span class="dot" style="background:var(--warn)"></span> สัญญาใกล้หมด (≤90 วัน)</div><div class="val num">'+rows.length+' <span style="font-size:14px;color:var(--fg-muted)">ราย</span></div><div class="sub">ควรติดต่อต่อสัญญา</div></div>'+
+    '<div class="stat warn"><div class="lab"><span class="dot" style="background:var(--warn)"></span> ลูกค้าใกล้หมดสัญญา (≤90 วัน)</div><div class="val num">'+rows.length+' <span style="font-size:14px;color:var(--fg-muted)">ราย</span></div><div class="sub">ควรติดต่อต่อสัญญา</div></div>'+
     '<div class="stat danger"><div class="lab"><span class="dot" style="background:var(--danger)"></span> หมดภายใน 30 วัน</div><div class="val num">'+n30+' <span style="font-size:14px;color:var(--fg-muted)">ราย</span></div><div class="sub">เร่งติดต่อก่อน</div></div>'+
     '<div class="stat"><div class="lab">มูลค่าสัญญารวม</div><div class="val num">'+tot.toLocaleString('en-US')+' <span style="font-size:14px;color:var(--fg-muted)">บาท</span></div><div class="sub">ที่กำลังจะหมด</div></div>';
   body.innerHTML=rows.length?rows.map(function(x){
