@@ -559,6 +559,8 @@ tfoot td{padding:10px 12px;font-weight:700;background:var(--surface-2);border-to
 .rbtn:hover .rb-ripple,.rbtn:focus-visible .rb-ripple{width:14em;height:14em}.rbtn:active{transform:scale(.97)}.rbtn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 @media (prefers-reduced-motion:reduce){.rb-ripple{transition:none}}
 @media (max-width:860px){.magrid{padding:10px}.macard{flex-wrap:wrap}.rbtn{width:100%}.malg{margin-left:0;width:100%}}
+.chip.wait{background:var(--accent-soft);color:var(--accent)}
+#s-registry td .clsub{display:block}
 .matmode{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:0 0 12px;font-size:12.5px;color:var(--fg-muted)}.matmode .segbtn{border:1px solid var(--border);min-height:34px}
 .tmmode{display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:10px 16px 0;font-size:12.5px;color:var(--fg-muted)}.tmmode .segbtn{border:1px solid var(--border);min-height:34px}
 .tmch{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px;padding:0 16px 14px}
@@ -1081,34 +1083,26 @@ i.wr,rect.wr{background:var(--accent);fill:var(--accent)}i.wf,rect.wf{background
     <section id="s-registry" hidden>
       <div class="page-head"><h1>ทะเบียนลูกค้า / สัญญา</h1>
         <p>ตารางแบบ Excel — พิมพ์ในช่องได้ เลื่อนด้วย Tab/Enter กรอง/เรียง/คัดลอกได้ · Tier คำนวณจากมูลค่าต่อปีอัตโนมัติ</p></div>
+      <div class="matmode" id="rgMode" role="group" aria-label="ข้อมูลตัวอย่าง"><span>ข้อมูลตัวอย่าง:</span><button type="button" class="segbtn on" data-rgmode="base" aria-pressed="true">7 แถว</button><button type="button" class="segbtn" data-rgmode="full" aria-pressed="false">เต็ม 120 แถว</button></div>
       <div class="toolbar">
         <div class="field"><label for="rgZone">เขต</label><select id="rgZone" onchange="rgFltZone()"></select></div>
         <div class="field"><label for="rgBranch">สาขา</label><select id="rgBranch" onchange="rgFltApply()"></select></div>
         <div class="field"><label for="rgTeam">ทีม</label><select id="rgTeam" onchange="rgFltApply()"><option value="">ทุกทีม</option><option>A</option><option>B</option><option>C</option><option>D</option><option>E</option><option>F</option><option>G</option><option>H</option><option>I</option><option>J</option><option>K</option><option>L</option><option>M</option><option>N</option><option>O</option><option>Z</option></select></div>
-        <div class="field"><label for="rgStatus">สถานะ</label><select id="rgStatus" onchange="rgFltApply()"><option value="">ทั้งหมด</option><option>Active</option><option>ใกล้หมด</option></select></div>
+        <div class="field"><label for="rgStatus">สถานะ</label><select id="rgStatus" onchange="rgFltApply()"><option value="">ทั้งหมด</option><option>Active</option><option>ใกล้หมด</option><option>รอเก็บสถานี</option><option>หมดสัญญา</option></select></div>
         <div class="field"><label for="rgSearch">ค้นหา</label><input id="rgSearch" type="search" placeholder="ชื่อลูกค้า / เลขที่สัญญา" oninput="rgFltApply()" autocomplete="off"></div>
         <button class="btn sm" type="button" id="rgClear" onclick="rgFltReset()" hidden>✕ ล้างตัวกรอง</button>
         <div id="rgShown" class="num" role="status" aria-live="polite" style="align-self:center;font-size:12.5px;font-weight:600"></div>
         <div id="regSortHint" style="flex:1;align-self:center;font-size:11.5px;color:var(--fg-muted)">คลิกหัวคอลัมน์เพื่อเรียงลำดับ · คลิกซ้ำ = มาก→น้อย · คลิกครั้งที่ 3 = กลับลำดับเดิม</div>
         <button class="btn" type="button" onclick="exportRegistryXL()" title="ส่งออกตารางทะเบียนทั้งหมดเป็น .xlsx (ตามลำดับที่เห็นอยู่)">↓ ส่งออก Excel</button>
-        <button class="btn primary">+ เพิ่มลูกค้า</button>
       </div>
       <div class="tablewrap">
         <table>
           <thead><tr>
-            <th class="c">#</th><th>ชื่อลูกค้า</th><th>เลขที่สัญญา</th><th>ทีม</th><th>ประเภท</th>
+            <th class="c">#</th><th>ชื่อลูกค้า</th><th>เลขที่สัญญา</th><th>สาขา / เขต</th><th>ทีม</th><th>ประเภท</th>
             <th>เริ่ม</th><th>สิ้นสุด</th><th class="r">มูลค่าสัญญา</th><th class="r">ต่อปี</th>
             <th class="c">Tier <span class="auto-tag">อัตโนมัติ</span></th><th class="c">สถานี</th><th class="c">สถานะ</th>
           </tr></thead>
-          <tbody>
-            <tr data-zone="เขต 4" data-br="พัฒนาการ"><td class="c num">1</td><td><b>บจก. เมืองทองคลังสินค้า</b></td><td class="num">CT23-0000017</td><td>A</td><td>โรงงาน</td><td class="num">14/11/66</td><td class="num">13/11/69</td><td class="r num">450,000</td><td class="r num">150,000</td><td class="c"><span class="tier xl3">XL3</span></td><td class="c num">52</td><td class="c"><span class="chip ok">Active</span></td></tr>
-            <tr data-zone="เขต 6" data-br="สุขุมวิท"><td class="c num">2</td><td><b>อาคารชุดลุมพินีวิว</b></td><td class="num">CT23-0000041</td><td>B</td><td>อาคาร</td><td class="num">26/11/66</td><td class="num">25/11/69</td><td class="r num">180,000</td><td class="r num">60,000</td><td class="c"><span class="tier l3">L3</span></td><td class="c num">30</td><td class="c"><span class="chip ok">Active</span></td></tr>
-            <tr data-zone="เขต 4" data-br="ลาดพร้าว"><td class="c num">3</td><td><b>บมจ. สยามพัฒนาเฮ้าส์</b></td><td class="num">CT26-0000142</td><td>A</td><td>ออฟฟิศ</td><td class="num">01/09/69</td><td class="num">31/08/70</td><td class="r num">96,000</td><td class="r num">96,000</td><td class="c"><span class="tier l1">L1</span></td><td class="c num">125</td><td class="c"><span class="chip ok">Active</span></td></tr>
-            <tr data-zone="เขต 1" data-br="นครปฐม"><td class="c num">4</td><td><b>โรงแรมบ้านสวนรีสอร์ท</b></td><td class="num">CT25-0000311</td><td>B</td><td>โรงแรม</td><td class="num">01/07/68</td><td class="num">30/06/71</td><td class="r num">135,000</td><td class="r num">45,000</td><td class="c"><span class="tier m3">M3</span></td><td class="c num">51</td><td class="c"><span class="chip ok">Active</span></td></tr>
-            <tr data-zone="เขต 2" data-br="นนทบุรี"><td class="c num">5</td><td><b>หจก. ทรัพย์เจริญ</b></td><td class="num">CT26-0000203</td><td>A</td><td>ทาวน์โฮม</td><td class="num">15/01/69</td><td class="num">14/01/70</td><td class="r num">36,000</td><td class="r num">36,000</td><td class="c"><span class="tier m1">M1</span></td><td class="c num">18</td><td class="c"><span class="chip ok">Active</span></td></tr>
-            <tr data-zone="เขต 1" data-br="พุทธมณฑล"><td class="c num">6</td><td><b>คุณวิรัช ตั้งมั่น</b></td><td class="num">CT26-0000088</td><td>A</td><td>บ้าน</td><td class="num">03/04/69</td><td class="num">02/04/70</td><td class="r num">28,000</td><td class="r num">28,000</td><td class="c"><span class="tier s1">S1</span></td><td class="c num">8</td><td class="c"><span class="chip ok">Active</span></td></tr>
-            <tr data-zone="เขต 5" data-br="ระยอง"><td class="c num">7</td><td><b>คุณสมหญิง รุ่งเรือง</b></td><td class="num">CT26-0000009</td><td>A</td><td>บ้าน</td><td class="num">07/12/68</td><td class="num">06/12/69</td><td class="r num">24,000</td><td class="r num">24,000</td><td class="c"><span class="tier s1">S1</span></td><td class="c num">6</td><td class="c"><span class="chip pend">ใกล้หมด</span></td></tr>
-          </tbody>
+          <tbody></tbody>
         </table>
         <div class="empty" id="rgNoRes" hidden></div>
       </div>
@@ -1950,7 +1944,7 @@ function matTab(t){
    ข้อมูลสมมติ — ของจริงอ่านจาก contracts (end_date, tier, value_total) ตามสิทธิ์สาขา */
 var EXP=[
   {ct:'CT23-0000017',end:'2026-11-26',val:450000},{ct:'CT23-0000041',end:'2026-12-08',val:180000},{ct:'CT26-0000009',end:'2026-12-19',val:24000},
-  {ct:'CT25-0000255',end:'2026-12-30',val:210000},{ct:'CT24-0000049',end:'2027-01-12',val:620000},{ct:'CT24-0000121',end:'2027-01-20',val:175000},{ct:'CT25-0000219',end:'2027-01-24',val:60000}
+  {ct:'CT25-0000255',end:'2026-12-30',val:210000},{ct:'CT24-0000049',end:'2027-01-12',val:620000},{ct:'CT24-0000121',end:'2027-01-20',val:175000},{ct:'CT25-0000219',end:'2027-01-24',val:60000},{ct:'CT26-0000203',end:'2027-01-14',val:36000}
 ];
 function expDays(e){return Math.round((new Date(e+'T00:00:00')-new Date(TODAY_ISO+'T00:00:00'))/86400000)}
 function expRender(){
@@ -2846,13 +2840,13 @@ function addCustLinks(){
    • เทียบตามค่าจริง: ตัวเลข (มีคอมมา) · วันที่ dd/mm/yy (พ.ศ. 2 หลัก) · Tier (S<M<L<XL แล้วตามปี) · ที่เหลือเรียงตามตัวอักษรไทย (เลขในข้อความเรียงตามค่า)
    • ช่องว่างอยู่ท้ายเสมอทั้งสองทิศ · เลข # คงเดิม · ส่งออก Excel ตามลำดับที่เห็น
    • ตัวกรอง (เขต/สาขา/ทีม/สถานะ/ค้นหา) ทำงานจริง — ดูหัวข้อ "ตัวกรองตารางทะเบียน" ถัดไป · เรียงกับกรองใช้ร่วมกันได้ (เรียงไม่แตะสถานะซ่อน/แสดงของแถว) */
-var RG={col:-1,dir:0}, RGC=new Intl.Collator('th',{numeric:true,sensitivity:'base'}), RG_TIER_COL=9;
+var RG={col:-1,dir:0}, RGC=new Intl.Collator('th',{numeric:true,sensitivity:'base'}), RG_TIER_COL=10;
 function rgKey(tr,i){
   var c=tr.cells[i]; if(!c) return '';
   var t=c.querySelector('.tier'); if(t) return t.textContent.trim();
   var ch=c.querySelector('.chip'); if(ch) return ch.textContent.trim();
   var b=c.querySelector('b'), s=(b?b.textContent:c.textContent).replace(/\s+/g,' ').trim();   /* ชื่อลูกค้า: อ่านจาก <b> ไม่เอาลิงก์ ↗ */
-  var d=/^(\d{2})\/(\d{2})\/(\d{2})$/.exec(s); if(d) return String(+d[3]*10000+(+d[2])*100+(+d[1]));   /* yy mm dd → ตัวเลขเรียงได้ */
+  var d=/^(\d{2})\/(\d{2})\/(\d{4})$/.exec(s); if(d) return String(+d[3]*10000+(+d[2])*100+(+d[1]));   /* yyyy mm dd (ค.ศ.) → ตัวเลขเรียงได้ */
   return s==='—'?'':s;
 }
 function rgTierRank(s){ var m=/^(S|M|L|XL)(\d)?/.exec(s); return m?({S:1,M:2,L:3,XL:4}[m[1]]*10+(+m[2]||0)):null; }
@@ -2906,13 +2900,7 @@ function rgInit(){
    • กรองรันเฉพาะตอนผู้ใช้เปลี่ยนตัวกรอง — ไม่ผูกกับการแก้ค่าในแถวและไม่ผูกกับการเรียงลำดับ (กันแถวหายตอนกำลังพิมพ์)
    • "ส่งออก Excel" ส่งทุกแถวของตาราง ไม่ขึ้นกับตัวกรอง (ตรงกับตารางเปิดงาน)
    • ปุ่ม "⟲ ประวัติ (n)" ต่อท้ายชื่อลูกค้าทุกแถว: HD.btn() จากบล็อก AGA-HISTORY-DRAWER · ซ่อนเองเมื่อ role ไม่ใช่ host (HD.sync ใน setRole) */
-var RG_BR={'พัฒนาการ':'เขต 4','ลาดพร้าว':'เขต 4','ประชาชื่น':'เขต 4','สุวินทวงศ์':'เขต 4',
-  'รามอินทรา':'เขต 3','ปทุมธานี':'เขต 3','อยุธยา':'เขต 3',
-  'พุทธมณฑล':'เขต 1','พระราม2':'เขต 1','หัวหิน':'เขต 1','นครปฐม':'เขต 1',
-  'สุขุมวิท':'เขต 6','ปากน้ำ':'เขต 6','ชลบุรี':'เขต 6',
-  'นนทบุรี':'เขต 2','สาทร':'เขต 2','พระราม4':'เขต 2','ปทุมวัน':'เขต 2',
-  'สมุทรปราการ':'เขต 5','ระยอง':'เขต 5','ปราจีนบุรี':'เขต 5','พัทยา':'เขต 5',
-  'ปากช่อง':'เขต 9','สระบุรี':'เขต 9'};   /* master 24 สาขา → เขต (ชุดเดียวกับ BRZONE ใน admin-add-customer.html) */
+var RG_BR={'พุทธมณฑล':'เขต 1','นครปฐม':'เขต 1','หัวหิน':'เขต 1','สาทร':'เขต 2','ปทุมวัน':'เขต 2','พระราม 4':'เขต 2','นนทบุรี':'เขต 2','ปทุมธานี':'เขต 3','รามอินทรา':'เขต 3','อยุธยา':'เขต 3','ลาดพร้าว':'เขต 4','พัฒนาการ':'เขต 4','สุวินทวงศ์':'เขต 4','ประชาชื่น':'เขต 4','สมุทรปราการ':'เขต 5','พัทยา':'เขต 5','ระยอง':'เขต 5','สุขุมวิท':'เขต 6','ปากน้ำ':'เขต 6','ชลบุรี':'เขต 6','ปากช่อง':'เขต 9','สระบุรี':'เขต 9','พระราม 2':'เขต 13','ปราจีนบุรี':'เขต 13'};   /* master 24 สาขา → เขต (ชุดเดียวกับ BRZONE ใน admin-add-customer.html) */
 function rgNorm(s){ return String(s||'').toLowerCase().replace(/\s+/g,''); }
 function rgEl(id){ return document.getElementById(id); }
 function rgBranchOpts(zone){   /* รายการสาขาตามเขตที่เลือก (ว่าง = ทุกเขต) */
@@ -2921,6 +2909,50 @@ function rgBranchOpts(zone){   /* รายการสาขาตามเข�
   b.innerHTML='<option value="">ทุกสาขา</option>'+list.map(function(n){return '<option>'+n+'</option>';}).join('');
   b.value=(list.indexOf(keep)>=0)?keep:'';
 }
+/* ===== ทะเบียนลูกค้า/สัญญา: ข้อมูลมาจาก CUSTOMERS ชุดเดียวกับหน้าอื่น (เจ้าของสั่ง 15 พ.ย. 2026) =====
+   • สาขา/ทีม/Tier/สถานี = CUSTOMERS · วันสิ้นสุด = EXP (ใกล้หมดสัญญา) หรือ CL (รอเก็บสถานี) ถ้ามี → ตรงกับหน้า #material / #collect
+   • สถานะ 4 แบบ: Active · ใกล้หมด (หมดใน ≤90 วัน) · รอเก็บสถานี (สัญญาหมดแล้ว ยังเก็บ IG ไม่ครบ) · หมดสัญญา
+   • วันที่เป็น ค.ศ. (dd/mm/yyyy) · ไม่มีปุ่มเพิ่มลูกค้า — ลูกค้าเข้าระบบจากงานที่ Admin เปิดเท่านั้น
+   • "เต็ม 120 แถว" = ข้อมูลสมมติ (CUSTOMERS + ลูกค้าตัวอย่าง) ไว้ดูความแน่น · Tier เกณฑ์ใน mockup เป็นตัวอย่าง ของจริงอ่านจาก tier_rules */
+var RG_META={'CT23-0000017':{s:'2023-11-27',v:450000,t:'โรงงาน'},'CT23-0000041':{s:'2023-12-09',v:180000,t:'อาคาร'},'CT26-0000142':{s:'2026-09-01',v:96000,t:'ออฟฟิศ'},'CT25-0000311':{s:'2025-07-01',v:135000,t:'โรงแรม'},'CT26-0000203':{s:'2026-01-15',v:36000,t:'ทาวน์โฮม'},'CT26-0000088':{s:'2026-04-03',v:28000,t:'บ้าน'},'CT26-0000009':{s:'2025-12-20',v:24000,t:'บ้าน'}};
+var RG_BASE_CT=['CT23-0000017','CT23-0000041','CT26-0000142','CT25-0000311','CT26-0000203','CT26-0000088','CT26-0000009'];
+var RG_TYPES=['โรงงาน','อาคาร','ออฟฟิศ','โรงแรม','ทาวน์โฮม','บ้าน','ร้านอาหาร','คลินิก','โรงเรียน','โกดัง'],RG_TEAMS=['A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','Z'];
+var RG_MODE='base';
+function rgAddDays(i,n){var d=new Date(i+'T00:00:00Z');d.setUTCDate(d.getUTCDate()+n);return d.toISOString().slice(0,10)}
+function rgAddYears(i,y){var d=new Date(i+'T00:00:00Z');d.setUTCFullYear(d.getUTCFullYear()+y);return d.toISOString().slice(0,10)}
+function rgFmt(i){return i.slice(8,10)+'/'+i.slice(5,7)+'/'+i.slice(0,4)}
+function rgAnnual(letter,k){return letter==='s'?18000+(k*1700)%11000:letter==='m'?31000+(k*1300)%17000:letter==='l'?52000+(k*2300)%45000:110000+(k*9100)%240000}
+function rgTierOf(a,y){return (a<30000?'s':a<50000?'m':a<100000?'l':'xl')+y}
+function rgStatusOf(ct,end,cl){var c=cl[ct],d=Math.round((new Date(end+'T00:00:00Z')-new Date(TODAY_ISO+'T00:00:00Z'))/86400000);
+  if(d<0){return (c&&!c.closed&&(c.got+c.skip)<c.ig)?'รอเก็บสถานี':'หมดสัญญา'}return d<=90?'ใกล้หมด':'Active'}
+function rgBuild(mode){
+  var cl={},ex={};CL.forEach(function(x){cl[x.ct]=x});EXP.forEach(function(x){ex[x.ct]=x});
+  function mk(n,ct,br,team,tierLetter,yrs,k,st,cid){
+    var meta=RG_META[ct],end,start,annual,val;
+    if(cl[ct]||ex[ct]){end=(cl[ct]||ex[ct]).end;start=rgAddDays(rgAddYears(end,-yrs),1)}
+    else if(meta){start=meta.s;end=rgAddDays(rgAddYears(start,yrs),-1)}
+    else{var off=20+((k*53)%(365*yrs-60));start=rgAddDays(TODAY_ISO,-off);end=rgAddDays(rgAddYears(start,yrs),-1)}
+    annual=meta?meta.v/yrs:rgAnnual(tierLetter,k);val=annual*yrs;
+    return {n:n,ct:ct,br:br,team:team,type:meta?meta.t:RG_TYPES[k%RG_TYPES.length],s:start,e:end,v:val,a:annual,tier:rgTierOf(annual,yrs),st:st,status:rgStatusOf(ct,end,cl),cid:cid}}
+  var out=[],k=0;
+  CUSTOMERS.forEach(function(c){if(c.mkOf)return;k++;var yrs=+c.tier.slice(-1)||1;out.push(mk(c.name,c.ct,c.branch,c.team,c.tier.slice(0,-1),yrs,k,c.ig+c.ic,c.id))});
+  if(mode==='base')return RG_BASE_CT.map(function(ct){return out.filter(function(x){return x.ct===ct})[0]}).filter(Boolean);
+  for(var i=out.length;i<120;i++){var yrs=(i%3===0)?3:1,letter=['s','s','m','l','xl'][i%5],ct='CT'+(24+(i%3))+'-'+(100000+i*7);
+    out.push(mk('ลูกค้าตัวอย่าง '+('00'+(i+1)).slice(-3),ct,MAT_CENTRAL[i%24],RG_TEAMS[(i*7)%16],letter,yrs,i,4+(i*11)%90,null))}
+  return out;
+}
+function rgRowHtml(r,i){
+  var z=RG_BR[r.br]||'',cls={'Active':'ok','ใกล้หมด':'pend','รอเก็บสถานี':'wait','หมดสัญญา':'na'}[r.status];
+  var link=r.cid?'<a class="rowlk" href="'+custHref(r.n,r.cid)+'" title="ดูรายละเอียดลูกค้า" aria-label="ดูรายละเอียดลูกค้า '+esc(r.n)+'">↗</a>':'';
+  return '<tr data-zone="'+esc(z)+'" data-br="'+esc(r.br)+'"><td class="c num">'+(i+1)+'</td><td><b>'+esc(r.n)+'</b>'+link+'</td><td class="num">'+r.ct+'</td><td>'+esc(r.br)+'<small class="clsub">'+esc(z)+'</small></td><td>'+r.team+'</td><td>'+esc(r.type)+'</td><td class="num">'+rgFmt(r.s)+'</td><td class="num">'+rgFmt(r.e)+'</td><td class="r num">'+matFmt(r.v)+'</td><td class="r num">'+matFmt(r.a)+'</td><td class="c">'+tierBadge(r.tier)+'</td><td class="c num">'+r.st+'</td><td class="c"><span class="chip '+cls+'">'+r.status+'</span></td></tr>'}
+function rgSetMode(m){
+  RG_MODE=m;var tb=document.querySelector('#s-registry tbody');if(!tb)return;
+  [].forEach.call(document.querySelectorAll('[data-rgmode]'),function(b){var on=b.getAttribute('data-rgmode')===m;b.classList.toggle('on',on);b.setAttribute('aria-pressed',on?'true':'false')});
+  var rows=rgBuild(m);tb.innerHTML=rows.map(rgRowHtml).join('');
+  [].forEach.call(tb.rows,function(tr,i){tr.dataset.ord=i});
+  RG={col:-1,dir:0};rgAddHist();rgApply();rgFltApply();
+}
+document.addEventListener('click',function(e){var b=e.target.closest&&e.target.closest('[data-rgmode]');if(b)rgSetMode(b.getAttribute('data-rgmode'))});
 function rgFltInit(){
   var z=rgEl('rgZone'); if(!z) return;
   var zones=[]; Object.keys(RG_BR).forEach(function(n){ if(zones.indexOf(RG_BR[n])<0) zones.push(RG_BR[n]); });
@@ -2931,8 +2963,8 @@ function rgFltInit(){
 function rgFltMatch(tr,f){
   if(f.zone && tr.dataset.zone!==f.zone) return false;
   if(f.branch && tr.dataset.br!==f.branch) return false;
-  if(f.team && tr.cells[3].textContent.trim()!==f.team) return false;
-  if(f.status){ var ch=tr.cells[11].querySelector('.chip'); if((ch?ch.textContent:tr.cells[11].textContent).trim()!==f.status) return false; }
+  if(f.team && tr.cells[4].textContent.trim()!==f.team) return false;
+  if(f.status){ var ch=tr.cells[12].querySelector('.chip'); if((ch?ch.textContent:tr.cells[12].textContent).trim()!==f.status) return false; }
   if(f.q){
     var b=tr.cells[1].querySelector('b');
     if(rgNorm(b?b.textContent:tr.cells[1].textContent).indexOf(f.q)<0 && rgNorm(tr.cells[2].textContent).indexOf(f.q)<0) return false;
@@ -3493,7 +3525,7 @@ function goHash(){ var h=location.hash.slice(1); if(SCREENS.indexOf(h)>=0) go(h)
 initEntryPages();
 window.addEventListener('hashchange',goHash); goHash();
 addCustLinks();
-rgInit(); rgAddHist(); rgFltInit(); rgFltApply();
+rgInit(); rgFltInit(); rgSetMode('base');
 /* กรองเมนูตามสิทธิ์เริ่มต้นตามค่าใน role selector */
 try{var _rs=document.getElementById('roleSel'); if(_rs) applyNavRole(_rs.value);}catch(e){}
 try{var t=localStorage.getItem('aga-theme'); if(t)document.documentElement.setAttribute('data-theme',t)}catch(e){}
