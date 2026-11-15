@@ -526,6 +526,9 @@ tfoot td{padding:10px 12px;font-weight:700;background:var(--surface-2);border-to
 .cmpscroll{overflow-x:auto}.tmcmp table{width:100%;border-collapse:collapse;font-size:13px}.tmcmp th,.tmcmp td{padding:7px 12px;border-top:1px solid var(--border);white-space:nowrap}.tmcmp thead th{font-size:12.5px;background:var(--surface-2);border-top:0}.tmcmp tbody th{text-align:left;font-weight:400;color:var(--fg-muted)}.cmpnm{font-weight:700}.cmpx{border:0;background:none;color:var(--fg-muted);cursor:pointer;min-width:28px;min-height:28px;border-radius:6px}.cmpx:hover{background:var(--surface-3)}.tmcmp td.best{background:var(--ok-soft);color:var(--ok);font-weight:700}.tmcmp .cmpg{background:var(--surface-2);font-weight:600}.cmpbar{height:4px;background:var(--surface-3);border-radius:2px;margin-top:3px}.cmpbar i{display:block;height:100%;background:var(--accent);border-radius:2px}
 @media (max-width:860px){.tmcmp{margin:0 12px 12px}}
 @media (max-width:860px){#tmSec .tmcmp table{display:table;width:max-content;min-width:100%}#tmSec .tmcmp thead{display:table-header-group}#tmSec .tmcmp tbody{display:table-row-group}#tmSec .tmcmp tr{display:table-row}#tmSec .tmcmp td,#tmSec .tmcmp th{display:table-cell;width:auto;white-space:nowrap}}
+.mhlg{display:inline-flex;align-items:center;gap:4px;margin-left:12px;font-weight:400;font-size:12px}.mhs.mh1{background:color-mix(in srgb,var(--fg-muted) 40%,transparent)}.mhs.mh2{background:color-mix(in srgb,var(--fg-muted) 31%,transparent)}.mhs.mh3{background:color-mix(in srgb,var(--fg-muted) 23%,transparent)}.mhs.mh4{background:color-mix(in srgb,var(--fg-muted) 15%,transparent)}.mhs.mh5{background:color-mix(in srgb,var(--fg-muted) 9%,transparent)}.mhs{display:inline-flex;align-items:center;justify-content:center;width:22px;height:18px;border-radius:4px;font-style:normal;font-weight:700;font-size:11px;color:var(--fg);background:color-mix(in srgb,var(--fg-muted) 22%,transparent)}
+#matMat td.mhc.n1{--hc:var(--nem-out)}#matMat td.mhc.n2{--hc:var(--nem)}#matMat td.mhc.p{--hc:var(--pow)}#matMat td.mhc.w{--hc:var(--wood)}
+#matMat td.mh1{background:color-mix(in srgb,var(--hc) 38%,transparent);font-weight:700}#matMat td.mh2{background:color-mix(in srgb,var(--hc) 29%,transparent)}#matMat td.mh3{background:color-mix(in srgb,var(--hc) 21%,transparent)}#matMat td.mh4{background:color-mix(in srgb,var(--hc) 14%,transparent)}#matMat td.mh5{background:color-mix(in srgb,var(--hc) 8%,transparent)}
 .matmode{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:0 0 12px;font-size:12.5px;color:var(--fg-muted)}.matmode .segbtn{border:1px solid var(--border);min-height:34px}
 .tmmode{display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:10px 16px 0;font-size:12.5px;color:var(--fg-muted)}.tmmode .segbtn{border:1px solid var(--border);min-height:34px}
 .tmch{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px;padding:0 16px 14px}
@@ -956,7 +959,7 @@ i.wr,rect.wr{background:var(--accent);fill:var(--accent)}i.wf,rect.wf{background
         </div>
       </div>
 
-      <div style="font-size:12.5px;color:var(--fg-muted);font-weight:600;margin:20px 0 10px">ตารางรวมทุกวัสดุ แยกสาขา <span style="font-weight:400">(กดหัวคอลัมน์เพื่อเรียง)</span></div>
+      <div style="font-size:12.5px;color:var(--fg-muted);font-weight:600;margin:20px 0 10px">ตารางรวมทุกวัสดุ แยกสาขา <span style="font-weight:400">(กดหัวคอลัมน์เพื่อเรียง)</span><span class="mhlg">แรเงา = อันดับ 1–5 ของแต่ละคอลัมน์ <i class="mhs mh1">1</i><i class="mhs mh2">2</i><i class="mhs mh3">3</i><i class="mhs mh4">4</i><i class="mhs mh5">5</i></span></div>
       <div class="tmsortm"><label for="matSortSel">เรียงตาม</label><select id="matSortSel" onchange="matSortSel(this.value)"><option value="-1">ลำดับเดิม</option><option value="0">สาขา (ก-ฮ)</option><option value="1">NEMESIS นอก มากสุด</option><option value="2">NEMESIS ใน มากสุด</option><option value="3">เคมีผง (จุด) มากสุด</option><option value="4">เคมีผง (ก.) มากสุด</option><option value="5">ไม้ล่อ มากสุด</option></select></div>
       <div class="tablewrap">
         <table>
@@ -1971,6 +1974,16 @@ document.addEventListener('click',function(e){var b=e.target.closest&&e.target.c
 var MAT_CENTRAL=['พุทธมณฑล','นครปฐม','หัวหิน','สาทร','ปทุมวัน','พระราม 4','นนทบุรี','ปทุมธานี','รามอินทรา','อยุธยา','ลาดพร้าว','พัฒนาการ','สุวินทวงศ์','ประชาชื่น','สมุทรปราการ','พัทยา','ระยอง','สุขุมวิท','ปากน้ำ','ชลบุรี','ปากช่อง','สระบุรี','พระราม 2','ปราจีนบุรี'];
 var MAT_BASE_HTML=null,MAT_MODE='base';
 function matFmt(n){return Math.round(n).toLocaleString('en-US')}
+/* heat map อันดับ 1–5 ของแต่ละคอลัมน์ในตารางแยกสาขา (เจ้าของสั่ง 15 พ.ย. 2026): สีตามชนิดวัสดุ · ยิ่งเข้มยิ่งใช้มาก · ค่าเท่ากันได้อันดับเดียวกัน · ค่า 0 ไม่ลงสี */
+function matHeat(){
+  var tb=document.querySelector('#matMat tbody');if(!tb)return;
+  var tone=['','n1','n2','p','p','w'];
+  for(var c=1;c<=5;c++){
+    var vals=[].map.call(tb.rows,function(r){return parseFloat(r.cells[c].textContent.replace(/,/g,''))||0});
+    var top=vals.filter(function(v,i){return v>0&&vals.indexOf(v)===i}).sort(function(a,b){return b-a}).slice(0,5);
+    [].forEach.call(tb.rows,function(r,i){var td=r.cells[c];td.className=td.className.replace(/\s*\bmh\w*/g,'');var k=top.indexOf(vals[i]);if(k>=0)td.className+=' mhc '+tone[c]+' mh'+(k+1)})
+  }
+}
 function matSetMode(m){
   var root=$('matMat');if(!root)return;
   if(MAT_BASE_HTML===null)MAT_BASE_HTML=root.innerHTML;
@@ -1979,7 +1992,7 @@ function matSetMode(m){
   root.innerHTML=MAT_BASE_HTML;MAT_SORT={col:-1,rev:false};
   if(m==='full')matBuildFull(root);
   [].forEach.call(root.querySelectorAll('tbody tr'),function(tr,i){tr.setAttribute('data-o',i)});
-  matLabels();matCap();matSortApply();
+  matLabels();matCap();matSortApply();matHeat();
 }
 function matBuildFull(root){
   var D=MAT_CENTRAL.map(function(n,k){var o=Math.round((150+((k*37)%420))/10)*10,i=Math.round((1200+((k*211)%3300))/10)*10,p=20+((k*53)%210),w=Math.round((150+((k*97)%520))/10)*10;return {n:n,o:o,i:i,p:p,g:Math.round(p*0.3),w:w}});
@@ -3383,7 +3396,7 @@ function tmRender(){
 }
 document.addEventListener('click',function(e){var nb3=e.target.closest&&e.target.closest('[data-tmnote]');if(nb3){var q=nb3.getAttribute('data-tmnote').split('_'),xx=TM[+q[0]].miss[+q[1]],cn=msCan();msDlgOpen('<h3 id="msT" style="margin:0 0 4px;font-size:16px">หมายเหตุตกบริการ</h3><div class="lab">'+esc(xx.n)+' · '+esc(TM[+q[0]].team)+' · ต.ค. 2026</div>'+'<div class="field"><label for="tmNote">ตกบริการเพราะอะไร</label><textarea id="tmNote" maxlength="200" placeholder="เช่น ลูกค้าปิดอาคาร / ติดต่อไม่ได้"'+(cn?'':' disabled')+'>'+esc(xx.note||'')+'</textarea>'+(xx.by?'<span class="lab">บันทึกล่าสุดโดย '+esc(xx.by)+'</span>':'')+'</div>'+'<div class="acts"><button class="btn" data-ms="close">'+(cn?'ยกเลิก':'ปิด')+'</button>'+(cn?'<button class="btn primary" data-tmsave="'+q[0]+'_'+q[1]+'">บันทึก</button>':'')+'</div>',nb3);return}var sv=e.target.closest&&e.target.closest('[data-tmsave]');if(sv){var p=sv.getAttribute('data-tmsave').split('_'),x=TM[+p[0]].miss[+p[1]],inp=$('tmNote');x.note=inp.value.trim();msDlgClose(true);x.by=({host:'Host',recorder:'หัวหน้างาน'}[msRole()]||msRole())+' · '+msDateTh(TODAY_ISO);tmRender();toast('บันทึกหมายเหตุตกบริการแล้ว');var n2=document.querySelector('[data-tmnote="'+p[0]+'_'+p[1]+'"]');if(n2)n2.focus();return}var bb=e.target.closest&&e.target.closest('[data-tmb]');if(bb){var j=bb.getAttribute('data-tmb');tmBr[j]=!tmBr[j];tmRender();var nb2=document.querySelector('[data-tmb="'+j+'"]');if(nb2)nb2.focus();return}});
 tmRender();
-[].forEach.call(document.querySelectorAll('#matMat tbody tr'),function(r,i){r.setAttribute('data-o',i)});matInitSort();matLabels();matCap();
+[].forEach.call(document.querySelectorAll('#matMat tbody tr'),function(r,i){r.setAttribute('data-o',i)});matInitSort();matLabels();matCap();matHeat();
 /* ===== #todo: เตือนเมื่อเข้าเดือนใหม่แต่ยังปิดงานเดือนก่อนไม่เสร็จ (เจ้าของสั่ง 14 พ.ย. 2026) =====
    หน้านี้แสดง "เดือนที่ยังไม่ปิดเก่าสุด" (TM_VIEW) · ถ้าเดือนนั้นเก่ากว่าเดือนปัจจุบันตามวันที่จริง (เขตเวลาไทย)
    → เปิดหน้าจอเตือนครั้งเดียวต่อการเปิดหน้าเว็บ · ปุ่ม "ไปกรอกข้อมูลต่อ" พาไปหน้ากรอกผลบริการ + ลิงก์ไปหน้า "ส่งข้อมูล และสรุปงานประจำเดือน" (เฉพาะ host/หัวหน้างาน · admin เห็นแค่ปุ่มรับทราบ) */
