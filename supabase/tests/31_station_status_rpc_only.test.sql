@@ -105,8 +105,8 @@ SELECT throws_ok($$UPDATE stations SET status = 'removed', removed_at = now() WH
 SELECT throws_ok($$UPDATE stations SET status = 'eliminated' WHERE id = '00000000-0000-0000-0000-0000000000e2'$$,
   '42501', NULL, 'admin cannot mark a station eliminated directly');
 -- งานอื่นของ admin บน stations ยังทำได้เหมือนเดิม
-SELECT lives_ok($$UPDATE stations SET collected_at = now() WHERE id = '00000000-0000-0000-0000-0000000000e1'$$,
-  'admin can still set collected_at of a removed box');
+SELECT throws_ok($$UPDATE stations SET collected_at = now() WHERE id = '00000000-0000-0000-0000-0000000000e1'$$,
+  '42501', NULL, 'admin cannot set collected_at directly any more (M19b: collection goes through collect_ig_stations)');
 SELECT lives_ok($$UPDATE stations SET status = 'pending_removal' WHERE id = '00000000-0000-0000-0000-0000000000e2'$$,
   'admin can still change a box in use (active → pending_removal)');
 SELECT lives_ok($$UPDATE stations SET status = 'active' WHERE id = '00000000-0000-0000-0000-0000000000e2'$$,
@@ -157,8 +157,8 @@ SELECT throws_ok($$UPDATE stations SET status = 'withdrawn' WHERE id = '00000000
   '42501', NULL, 'recorder cannot switch lost → withdrawn directly');
 SELECT throws_ok($$UPDATE stations SET removed_at = now() WHERE id = '00000000-0000-0000-0000-0000000000b5'$$,
   '42501', NULL, 'recorder cannot set removed_at of a lost station directly');
-SELECT lives_ok($$UPDATE stations SET collected_at = now() WHERE id = '00000000-0000-0000-0000-0000000000b5'$$,
-  'recorder can still set collected_at of a lost station');
+SELECT throws_ok($$UPDATE stations SET collected_at = now() WHERE id = '00000000-0000-0000-0000-0000000000b5'$$,
+  '42501', NULL, 'recorder cannot set collected_at directly any more (M19b: collection goes through collect_ig_stations)');
 -- ตั้งวันถอดล่วงหน้าแล้วค่อยถอดผ่าน RPC (coalesce เก็บค่าปลอม) → กันที่ตัวการตั้ง removed_at
 SELECT throws_ok($$UPDATE stations SET removed_at = '2025-01-01' WHERE id = '00000000-0000-0000-0000-0000000000e2'$$,
   '42501', NULL, 'recorder cannot pre-set removed_at of a box in use');

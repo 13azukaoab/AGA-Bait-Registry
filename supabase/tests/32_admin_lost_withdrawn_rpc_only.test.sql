@@ -68,8 +68,8 @@ SELECT throws_ok($$UPDATE stations SET status = 'lost' WHERE id = '00000000-0000
 SELECT throws_ok($$UPDATE stations SET removed_at = now() WHERE id = '00000000-0000-0000-0000-0000000000b4'$$,
   '42501', NULL, 'admin cannot change removed_at of a withdrawn station directly (rule 0b: removed_at is system-set)');
 -- งานอื่นของ admin ยังทำได้
-SELECT lives_ok($$UPDATE stations SET collected_at = now() WHERE id = '00000000-0000-0000-0000-0000000000b3'$$,
-  'admin can still set collected_at of a lost station');
+SELECT throws_ok($$UPDATE stations SET collected_at = now() WHERE id = '00000000-0000-0000-0000-0000000000b3'$$,
+  '42501', NULL, 'admin cannot set collected_at directly any more (M19b: collection goes through collect_ig_stations)');
 SELECT lives_ok($$UPDATE stations SET status = 'pending_removal' WHERE id = '00000000-0000-0000-0000-0000000000b2'$$,
   'admin can still change a box in use (active → pending_removal)');
 SELECT lives_ok($$UPDATE stations SET status = 'active' WHERE id = '00000000-0000-0000-0000-0000000000b2'$$,
