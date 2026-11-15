@@ -540,14 +540,14 @@ tfoot td{padding:10px 12px;font-weight:700;background:var(--surface-2);border-to
   #matMat .stats{grid-template-columns:1fr}
   #s-material .btn.sm,#s-material .segbtn{min-height:40px}
   #s-material .toolbar select,#s-material .toolbar input{min-height:40px}
-  #matMat .tablewrap,#matTime .tablewrap{overflow:visible;background:none;border:0;box-shadow:none}
-  #matMat table,#matTime table,#matMat tbody,#matTime tbody,#matMat tfoot,#matTime tfoot,#matMat tr,#matTime tr,#matMat td,#matTime td{display:block;width:100%}
-  #matMat thead,#matTime thead{display:none}
-  #matMat tbody tr,#matTime tbody tr,#matMat tfoot tr,#matTime tfoot tr{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:10px 14px;margin-bottom:8px}
-  #matMat td,#matTime td{display:flex;justify-content:space-between;gap:10px;border:0;padding:3px 0;text-align:right}
-  #matMat td::before,#matTime td::before{content:attr(data-label);color:var(--fg-muted);text-align:left}
-  #matMat td:first-child,#matTime td:first-child{font-weight:600;justify-content:flex-start;text-align:left}
-  #matMat td:first-child::before,#matTime td:first-child::before{display:none}
+  #matMat .tablewrap,#matTime .tablewrap,#matExp .tablewrap{overflow:visible;background:none;border:0;box-shadow:none}
+  #matMat table,#matTime table,#matExp table,#matMat tbody,#matTime tbody,#matExp tbody,#matMat tfoot,#matTime tfoot,#matExp tfoot,#matMat tr,#matTime tr,#matExp tr,#matMat td,#matTime td,#matExp td{display:block;width:100%}
+  #matMat thead,#matTime thead,#matExp thead{display:none}
+  #matMat tbody tr,#matTime tbody tr,#matExp tbody tr,#matMat tfoot tr,#matTime tfoot tr,#matExp tfoot tr{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:10px 14px;margin-bottom:8px}
+  #matMat td,#matTime td,#matExp td{display:flex;justify-content:space-between;gap:10px;border:0;padding:3px 0;text-align:right}
+  #matMat td::before,#matTime td::before,#matExp td::before{content:attr(data-label);color:var(--fg-muted);text-align:left}
+  #matMat td:first-child,#matTime td:first-child,#matExp td:first-child{font-weight:600;justify-content:flex-start;text-align:left}
+  #matMat td:first-child::before,#matTime td:first-child::before,#matExp td:first-child::before{display:none}
 }
 .clrow2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .clrow3 .field{min-width:0}.clrow3 input,.clrow3 select{width:100%;min-width:0;max-width:100%;box-sizing:border-box}
@@ -768,7 +768,7 @@ tfoot td{padding:10px 12px;font-weight:700;background:var(--surface-2);border-to
     <!-- ========== 1. TODO ========== -->
     <section id="s-todo">
       <div class="page-head"><h1>สถานะทะเบียนบริการ</h1>
-        <p>งานที่ต้องทำของเดือน — ความคืบหน้าการกรอกผล เรื่องตกบริการที่ต้องตัดสิน สัญญาใกล้หมด และกล่องเหยื่อรอถอด · <a href="#material" onclick="go('material');matTab('team');return false">ดูสรุปรายทีม →</a> (อยู่ในหน้าสรุปงานบริการรายเดือน)</p></div>
+        <p>งานที่ต้องทำของเดือน — ความคืบหน้าการกรอกผล เรื่องตกบริการที่ต้องตัดสิน และกล่องเหยื่อรอถอด · สรุปรายทีมและสัญญาใกล้หมด ดูที่ <a href="#material" onclick="go('material');matTab('team');return false">หน้าสรุปงานบริการรายเดือน →</a></p></div>
       <div class="card" style="margin-bottom:18px">
         <h3><span class="dot" style="background:var(--accent)"></span> สถานะงานกรอกผล · ต.ค. 2026 <small style="font-size:12px;font-weight:400;color:var(--fg-muted)">เดือนที่ยังไม่ปิดเก่าสุด · ปิดเดือนแล้วหน้านี้เลื่อนไปเดือนถัดไปเอง</small></h3>
         <div class="body" style="padding:15px 16px">
@@ -783,7 +783,6 @@ tfoot td{padding:10px 12px;font-weight:700;background:var(--surface-2);border-to
       <div class="stats">
         <!-- (UX 14 พ.ย.) เหลือ 4 การ์ด "งานที่ต้องทำ" · "ยังไม่กรอก" อยู่ในการ์ดความคืบหน้าด้านบนแล้ว · ตัวเลขวัสดุ (เหยื่อ/ไม้ล่อ/กล่องในพื้นที่) ดูที่หน้าสรุปงานบริการรายเดือน -->
         <div class="stat danger" id="msStat"></div>
-        <div class="stat warn"><div class="lab"><span class="dot" style="background:var(--warn)"></span> สัญญาใกล้หมด (≤90 วัน)</div><div class="val num">7</div><div class="sub">ควรติดต่อต่อสัญญา</div></div>
         <div class="stat warn" id="clStat"></div>
         <div class="stat accent"><div class="lab"><span class="dot" style="background:var(--accent)"></span> กล่องเหยื่อรอถอด</div><div class="val num">12</div><div class="sub">พบปลวกตายแล้ว · รอถอด</div></div>
       </div>
@@ -797,14 +796,6 @@ tfoot td{padding:10px 12px;font-weight:700;background:var(--surface-2);border-to
             <div class="r" data-cust-link tabindex="0" role="link"><div class="main"><b>โรงแรมบ้านสวนรีสอร์ท</b><small>ทีม B · 45 สถานี · CT25-0000311</small></div><div class="meta"><b>ครบ 15 วัน</b>ยังไม่กรอก</div></div>
           </div>
           <div style="padding:10px 16px;border-top:1px solid var(--border)"><a class="btn ghost sm" onclick="go('service')">เปิดหน้ากรอกผลบริการ →</a></div>
-        </div>
-        <div class="card">
-          <h3><span class="dot" style="background:var(--warn)"></span> สัญญาใกล้หมด (≤90 วัน) <span class="count badge-warn">7</span></h3>
-          <div class="rowlist">
-            <div class="r" data-cust-link tabindex="0" role="link"><div class="main"><b>บจก. เมืองทองคลังสินค้า</b><small>XL3 · มูลค่า 450,000 · CT23-0000017</small></div><div class="meta"><b>29 วัน</b>หมด 13 พ.ย. 69</div></div>
-            <div class="r" data-cust-link tabindex="0" role="link"><div class="main"><b>อาคารชุดลุมพินีวิว</b><small>L3 · มูลค่า 180,000 · CT23-0000041</small></div><div class="meta"><b>41 วัน</b>หมด 25 พ.ย. 69</div></div>
-            <div class="r" data-cust-link tabindex="0" role="link"><div class="main"><b>คุณสมหญิง รุ่งเรือง</b><small>S1 · มูลค่า 24,000 · CT26-0000009</small></div><div class="meta"><b>52 วัน</b>หมด 6 ธ.ค. 69</div></div>
-          </div>
         </div>
         <div class="card">
           <h3><span class="dot" style="background:var(--accent)"></span> กล่องเหยื่อรอถอด <span class="count badge-accent">12</span></h3>
@@ -833,11 +824,12 @@ tfoot td{padding:10px 12px;font-weight:700;background:var(--surface-2);border-to
     <!-- ========== สรุปวัสดุ (internal: host/admin/recorder) ========== -->
     <section id="s-material" hidden>
       <div class="page-head"><h1>สรุปงานบริการรายเดือน</h1>
-        <p>สรุปวัสดุที่ใช้ (เหยื่อ NEMESIS · เคมีผง · ไม้ล่อ) เวลาทำงาน และสรุปรายทีม ในช่วงที่เลือก — สำหรับวางแผนสต็อก/ต้นทุน/กำลังคน <span class="chip pend">🔒 internal เท่านั้น</span></p></div>
+        <p>สรุปวัสดุที่ใช้ (เหยื่อ NEMESIS · เคมีผง · ไม้ล่อ) เวลาทำงาน สรุปรายทีม และสัญญาใกล้หมด — สำหรับวางแผนสต็อก/ต้นทุน/กำลังคน <span class="chip pend">🔒 internal เท่านั้น</span></p></div>
       <div class="seg" role="tablist" aria-label="หัวข้อสรุป">
         <button type="button" class="segbtn on" role="tab" aria-selected="true" id="matTabMat" onclick="matTab('mat')">วัสดุ</button>
         <button type="button" class="segbtn" role="tab" aria-selected="false" id="matTabTime" onclick="matTab('time')">เวลาทำงาน</button>
         <button type="button" class="segbtn" role="tab" aria-selected="false" id="matTabTeam" onclick="matTab('team')">สรุปรายทีม</button>
+        <button type="button" class="segbtn" role="tab" aria-selected="false" id="matTabExp" onclick="matTab('exp')">สัญญาใกล้หมด</button>
       </div>
       <div class="toolbar">
         <div class="field"><label for="matPeriod">ช่วงเวลา</label><select id="matPeriod" onchange="matPeriodChg()"><option value="m">เดือนนี้ (ต.ค. 2026)</option><option value="q">ไตรมาส 4/2026 (ต.ค. – ธ.ค.)</option><option value="y">ปี 2026</option><option value="custom">กำหนดช่วงเอง…</option></select></div>
@@ -927,6 +919,15 @@ tfoot td{padding:10px 12px;font-weight:700;background:var(--surface-2);border-to
           <tbody id="tmBody"></tbody>
         </table></div>
       </div>
+      </div>
+      <div id="matExp" hidden>
+        <!-- ย้ายมาจากหน้า #todo (เจ้าของสั่ง 15 พ.ย. 2026): สัญญาที่จะหมดภายใน 90 วัน เรียงจากใกล้หมดสุด · ข้อมูลสมมติ ของจริงอ่านจาก contracts.end_date -->
+        <div class="stats" id="expStats"></div>
+        <div class="tablewrap"><table>
+          <thead><tr><th>สาขา</th><th>ลูกค้า</th><th>สัญญา</th><th>Tier</th><th class="r">มูลค่า (บาท)</th><th class="r">เหลือ</th></tr></thead>
+          <tbody id="expBody"></tbody>
+        </table></div>
+        <div class="note"><span class="ic">ℹ</span><span>แสดงสัญญาที่จะหมดภายใน <b>90 วัน</b> นับจากวันนี้ · เรียงจากใกล้หมดสุด · กดชื่อลูกค้าเพื่อไปหน้ารายละเอียด/ต่อสัญญา (ต่อสัญญาแล้วเรื่องตกบริการที่ค้างของสัญญาเก่าเป็นโมฆะอัตโนมัติ)</span></div>
       </div>
       <div id="matTime" hidden>
         <div class="stats" id="wtStats"></div>
@@ -1830,11 +1831,36 @@ function wtView(v){
 }
 function matTab(t){
   var time=(t==='time');
-  $('matMat').hidden=(t!=='mat'); $('matTime').hidden=!time; $('matTeam').hidden=(t!=='team'); $('matExport').hidden=(t!=='mat');
-  [['matTabMat','mat'],['matTabTime','time'],['matTabTeam','team']].forEach(function(p){
+  $('matMat').hidden=(t!=='mat'); $('matTime').hidden=!time; $('matTeam').hidden=(t!=='team'); $('matExp').hidden=(t!=='exp'); $('matExport').hidden=(t!=='mat');
+  [['matTabMat','mat'],['matTabTime','time'],['matTabTeam','team'],['matTabExp','exp']].forEach(function(p){
     var b=$(p[0]); b.classList.toggle('on',p[1]===t); b.setAttribute('aria-selected',p[1]===t?'true':'false');
   });
   if(time) wtSumRender();
+  if(t==='exp') expRender();
+}
+/* ===== #material › สัญญาใกล้หมด (ย้ายมาจาก #todo) =====
+   สัญญาที่หมดภายใน 90 วันนับจากวันนี้ (TODAY_ISO) เรียงใกล้หมดสุดก่อน · tone: ≤30 วัน แดง · ≤60 เหลือง · อื่นๆ ปกติ
+   ข้อมูลสมมติ — ของจริงอ่านจาก contracts (end_date, tier, value_total) ตามสิทธิ์สาขา */
+var EXP=[
+  {ct:'CT23-0000017',end:'2026-11-26',val:450000},{ct:'CT23-0000041',end:'2026-12-08',val:180000},{ct:'CT26-0000009',end:'2026-12-19',val:24000},
+  {ct:'CT25-0000255',end:'2026-12-30',val:210000},{ct:'CT24-0000049',end:'2027-01-12',val:620000},{ct:'CT24-0000121',end:'2027-01-20',val:175000},{ct:'CT25-0000219',end:'2027-01-24',val:60000}
+];
+function expDays(e){return Math.round((new Date(e+'T00:00:00')-new Date(TODAY_ISO+'T00:00:00'))/86400000)}
+function expRender(){
+  var body=$('expBody');if(!body)return;
+  var rows=EXP.map(function(x){var c=null;CUSTOMERS.forEach(function(k){if(k.ct===x.ct&&!k.mkOf)c=k});return c?{c:c,end:x.end,val:x.val,d:expDays(x.end)}:null}).filter(function(x){return x&&x.d>=0&&x.d<=90}).sort(function(a,b){return a.d-b.d});
+  var tot=0,n30=0;rows.forEach(function(x){tot+=x.val;if(x.d<=30)n30++});
+  $('expStats').innerHTML=
+    '<div class="stat warn"><div class="lab"><span class="dot" style="background:var(--warn)"></span> สัญญาใกล้หมด (≤90 วัน)</div><div class="val num">'+rows.length+' <span style="font-size:14px;color:var(--fg-muted)">ราย</span></div><div class="sub">ควรติดต่อต่อสัญญา</div></div>'+
+    '<div class="stat danger"><div class="lab"><span class="dot" style="background:var(--danger)"></span> หมดภายใน 30 วัน</div><div class="val num">'+n30+' <span style="font-size:14px;color:var(--fg-muted)">ราย</span></div><div class="sub">เร่งติดต่อก่อน</div></div>'+
+    '<div class="stat"><div class="lab">มูลค่าสัญญารวม</div><div class="val num">'+tot.toLocaleString('en-US')+' <span style="font-size:14px;color:var(--fg-muted)">บาท</span></div><div class="sub">ที่กำลังจะหมด</div></div>';
+  body.innerHTML=rows.length?rows.map(function(x){
+    var c=x.c,tone=x.d<=30?'color:var(--danger);font-weight:600':x.d<=60?'color:var(--warn);font-weight:600':'';
+    return '<tr><td>'+esc(c.branch)+'</td><td><b>'+esc(c.name)+'</b><a class="rowlk" href="'+custHref(c.name,c.id)+'" aria-label="ดูรายละเอียดลูกค้า '+esc(c.name)+'">↗</a></td>'+
+      '<td><span class="num">'+esc(c.ct)+'</span><small class="clsub num">หมด '+msDateTh(x.end)+'</small></td><td>'+tierBadge(c.tier)+'</td>'+
+      '<td class="r num">'+x.val.toLocaleString('en-US')+'</td><td class="r num" style="'+tone+'">'+x.d+' วัน</td></tr>'
+  }).join(''):'<tr><td colspan="6" class="empty">ไม่มีสัญญาที่จะหมดภายใน 90 วัน</td></tr>';
+  matLabels();
 }
 function matPeriodChg(){
   var p=$('matPeriod').value;$('matRange').hidden=(p!=='custom');
@@ -1843,7 +1869,7 @@ function matPeriodChg(){
 }
 /* ใส่ data-label ให้ทุกช่องตาราง ให้มือถือแสดงเป็นการ์ด (ชื่อหัวคอลัมน์ : ค่า) */
 function matLabels(){
-  [].forEach.call(document.querySelectorAll('#matMat table,#matTime table'),function(tb){
+  [].forEach.call(document.querySelectorAll('#matMat table,#matTime table,#matExp table'),function(tb){
     var hs=[].map.call(tb.querySelectorAll('thead th'),function(h){return h.textContent.replace(/\s+/g,' ').trim()});
     [].forEach.call(tb.querySelectorAll('tbody tr,tfoot tr'),function(tr){var k=0;[].forEach.call(tr.cells,function(td){if(hs[k])td.setAttribute('data-label',hs[k]);k+=(td.colSpan||1)})});
   });
