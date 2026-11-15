@@ -481,6 +481,15 @@ tfoot td{padding:10px 12px;font-weight:700;background:var(--surface-2);border-to
 .tmmc{display:flex;align-items:center;gap:6px;justify-content:space-between}
 .tmmc .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12.5px;color:var(--danger);font-weight:600;text-align:left}
 .tmmc .tmnbtn{width:30px;height:30px}
+.tmlgb{font:inherit;font-size:12px;font-weight:700;min-width:36px;min-height:30px;padding:0 10px;border:0;border-radius:6px;cursor:pointer}
+.tmlgb.off{opacity:.35;text-decoration:line-through}.tmlgb:focus-visible,.tmcr:focus-visible,.tmm:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.tmhint{font-size:12px;color:var(--fg-faint);align-self:center}
+.tmcr[data-tmteam],.tmm[data-tmteam]{cursor:pointer;border-radius:8px}.tmcr[data-tmteam]:hover{background:var(--surface-2)}
+.tmcr.dim,.tmm.dim{opacity:.35}.tmcr.sel{background:var(--accent-soft);outline:1px solid var(--accent)}.tmm.dim:hover{opacity:.7}
+.tmfl{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 14px;font-size:12.5px;background:var(--accent-soft);border-color:var(--accent)}
+.tmtip{position:fixed;z-index:60;display:none;pointer-events:none;background:var(--surface);color:var(--fg);border:1px solid var(--border-strong);border-radius:8px;padding:8px 10px;font-size:12.5px;line-height:1.6;box-shadow:var(--shadow);max-width:260px}
+.tmcb i[data-tip]:hover,.tmcs i[data-tip]:hover{filter:brightness(1.12)}.tmcp h4 small{font-weight:400;color:var(--fg-muted)}
+.tmmode{display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:10px 16px 0;font-size:12.5px;color:var(--fg-muted)}.tmmode .segbtn{border:1px solid var(--border);min-height:34px}
 .tmch{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px;padding:0 16px 14px}
 .tmcp{border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;background:var(--surface)}.tmcfull{grid-column:1 / -1}
 .tmcp h4{margin:0 0 6px;font-size:13px;font-weight:600}
@@ -499,6 +508,7 @@ tfoot td{padding:10px 12px;font-weight:700;background:var(--surface-2);border-to
 .tmm div{display:flex;justify-content:space-between;gap:6px;color:var(--fg-muted)}.tmm div b{color:var(--fg);font-weight:600}
 @media (max-width:860px){.tmch{grid-template-columns:1fr;padding:0 12px 12px}.tmcr{grid-template-columns:46px minmax(0,1fr) 96px}}
 .tmnr{background:none;border:0;border-bottom:1px dashed var(--fg-muted);font:inherit;color:inherit;cursor:pointer;min-width:28px;min-height:28px;padding:0 4px}.tmnr:hover{color:var(--accent);border-bottom-color:var(--accent)}.tmnr:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.nrlist{list-style:none;margin:10px 0 0;padding:0}.nrlist li{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:7px 0;border-top:1px dashed var(--border)}.nrlist li:first-child{border-top:0}.nrlist small{display:block;font-size:12px;color:var(--fg-muted)}
 .tmnote{display:flex;align-items:center;gap:10px;padding:5px 0;border-top:1px dashed var(--border);font-size:13px}.tmnote:first-child{border-top:0}
 .tmnote b{white-space:nowrap}.tmntxt{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--fg-muted);font-size:12.5px}.tmntxt.none{color:var(--fg-faint);font-style:italic}
 .tmnbtn{flex:none;width:36px;height:36px;display:inline-flex;align-items:center;justify-content:center;border:1px solid var(--border-strong);border-radius:8px;background:var(--surface);color:var(--fg-muted);cursor:pointer}
@@ -932,6 +942,7 @@ tfoot td{padding:10px 12px;font-weight:700;background:var(--surface-2);border-to
         <!-- ย้ายมาจากหน้า #todo (เจ้าของสั่ง 15 พ.ย. 2026): เป็นสรุปทั้งเดือน ไม่ใช่งานค้าง -->
       <div class="tmsec" id="tmSec">
         <h3><span class="dot" style="background:var(--accent)"></span> สรุปรายทีม · ต.ค. 2026 <small>เวลาบริการ · ตกบริการ · ลูกค้าเพิ่ม (ข้อมูลสมมติ)</small></h3>
+        <div class="tmmode" role="group" aria-label="ข้อมูลตัวอย่าง"><span>ข้อมูลตัวอย่าง:</span><button type="button" class="segbtn" data-tmmode="base" aria-pressed="false">6 ทีม</button><button type="button" class="segbtn on" data-tmmode="full" aria-pressed="true">เต็ม 16 ทีม (A–O, Z)</button></div>
         <div class="tmk" id="tmKpi"></div>
         <div class="tmch" id="tmCharts"></div>
         <div class="tablewrap"><table>
@@ -3006,7 +3017,7 @@ var TM=[
   {team:'ทีม D',newN:[],renN:["สำนักงานกฎหมายสาทร"],tiers:[35,10,4,1],zone:'เขต 2',br:'สาทร',min:1890,visits:28,plan:50,newc:0,renew:1,miss:[]},
   {team:'ทีม E',newN:["ร้านเบเกอรี่นนทบุรี"],renN:[],tiers:[22,14,9,3],zone:'เขต 2',br:'นนทบุรี',min:2160,visits:44,plan:48,newc:1,renew:0,miss:[{n:'ร้านกาแฟบ้านไร่'}]},
   /* ตัวอย่าง 1 ทีมวิ่งหลายสาขา (เขต 2 มี 4 สาขา + ข้ามไปช่วยปทุมธานี เขต 3) · ยอดทีม = ผลรวมทุกสาขา · นับไว้ใต้เขตบ้านของทีม (รอเจ้าของตัดสิน) */
-  {team:'ทีม F',newN:["โกดังสินค้าปทุมวัน","ร้านอาหารพระราม 4"],renN:["หจก. ทรัพย์เจริญ"],tiers:[38,18,10,4],zone:'เขต 2',br:'หลายสาขา',min:3300,visits:58,plan:70,newc:2,renew:1,miss:[{n:'โรงงานสยามฟู้ด',br:'ปทุมวัน'}],
+  {team:'ทีม F',newN:["โกดังสินค้าปทุมวัน","ร้านอาหารพระราม 4"],renN:["อาคารสำนักงานสาทรทาวเวอร์"],tiers:[38,18,10,4],zone:'เขต 2',br:'หลายสาขา',min:3300,visits:58,plan:70,newc:2,renew:1,miss:[{n:'โรงงานสยามฟู้ด',br:'ปทุมวัน'}],
    brs:[{br:'สาทร',min:900,visits:16,plan:18},{br:'ปทุมวัน',min:780,visits:14,plan:16,miss:1},{br:'พระราม 4',min:600,visits:10,plan:14},{br:'นนทบุรี',min:540,visits:10,plan:12},{br:'ปทุมธานี',zone:'เขต 3',min:480,visits:8,plan:10}]}
 ];
 var tmOpen={},tmBr={};
@@ -3023,24 +3034,80 @@ function tmMissCell(i,br){
    กราฟ 2: สถานีที่ดูแลต่อทีม เทียบค่าเฉลี่ย (เส้นประ + ป้าย ±%) · ตัวชี้วัด: มูลค่าสัญญา · สถานีต่อชั่วโมง · อัตราตกบริการ
    ข้อมูลสมมติ: สถานีต่อราย S 8 · M 20 · L 45 · XL 80 · มูลค่าเฉลี่ยต่อราย S 30k · M 90k · L 180k · XL 400k — ของจริงรวมจาก contracts/stations */
 var TM_TIER=[['S','s'],['M','m'],['L','l'],['XL','xl']],TM_ST=[8,20,45,80],TM_VAL=[30000,90000,180000,400000];
+/* ===== กราฟภาระงานต่อทีม แบบโต้ตอบ (เจ้าของสั่ง 15 พ.ย. 2026) =====
+   • ชี้/แตะที่แท่ง = กล่องรายละเอียด (ลูกค้า สถานี มูลค่า)
+   • กดปุ่มขนาด S/M/L/XL ในคำอธิบายสี = เปิด/ปิดขนาดนั้น (กราฟทั้ง 3 ชุดคำนวณใหม่)
+   • กดแถวทีม = กรองตารางด้านล่างเฉพาะทีมนั้น (กดซ้ำ = ล้าง) · ปุ่ม "ล้างตัวกรอง" รีเซ็ตทั้งหมด */
+var TM_F={on:[1,1,1,1],team:''};
+function tmTipShow(x,y,html){
+  var t=$('tmTip');if(!t){t=document.createElement('div');t.id='tmTip';t.className='tmtip';t.setAttribute('role','status');document.body.appendChild(t)}
+  t.innerHTML=html;t.style.display='block';var w=t.offsetWidth,h=t.offsetHeight,px=x+14,py=y+14;
+  if(px+w>innerWidth-8)px=x-w-14;if(py+h>innerHeight-8)py=y-h-14;t.style.left=Math.max(8,px)+'px';t.style.top=Math.max(8,py)+'px'}
+function tmTipHide(){var t=$('tmTip');if(t)t.style.display='none'}
 function tmCharts(){
   var box=$('tmCharts');if(!box)return;
   var ord=TM.slice().sort(function(a,b){return a.team<b.team?-1:1});
-  var D=ord.map(function(t){var n=0,st=0,val=0;t.tiers.forEach(function(v,i){n+=v;st+=v*TM_ST[i];val+=v*TM_VAL[i]});return {t:t,n:n,st:st,val:val,sph:st/(t.min/60),mr:t.miss.length*100/n}});
-  var maxN=Math.max.apply(0,D.map(function(d){return d.n})),maxS=Math.max.apply(0,D.map(function(d){return d.st})),avg=D.reduce(function(a,d){return a+d.st},0)/D.length;
-  var g1=D.map(function(d){return '<div class="tmcr"><b>'+esc(d.t.team)+'</b><div class="tmcb" style="width:'+(d.n/maxN*100)+'%">'+d.t.tiers.map(function(v,i){if(!v)return '';var p=v*100/d.n;return '<i class="tier '+TM_TIER[i][1]+'3" style="width:'+p+'%" title="'+esc(d.t.team)+' · '+TM_TIER[i][0]+' '+v+' ราย ('+Math.round(p)+'%)">'+(p>=11?TM_TIER[i][0]:'')+'</i>'}).join('')+'</div><span class="num"><b>'+d.n+'</b> ราย</span><small class="tmct">'+d.t.tiers.map(function(v,i){return TM_TIER[i][0]+' '+v}).join(' · ')+'</small></div>'}).join('');
-  var g2=D.map(function(d){var p=Math.round((d.st/avg-1)*100);return '<div class="tmcr"><b>'+esc(d.t.team)+'</b><div class="tmcs"><i style="width:'+(d.st/maxS*100)+'%" title="'+esc(d.t.team)+' · '+d.st.toLocaleString('en-US')+' สถานี · เฉลี่ยทุกทีม '+Math.round(avg).toLocaleString('en-US')+'"></i><span class="avgl" style="left:'+(avg/maxS*100)+'%"></span></div><span class="num"><b>'+d.st.toLocaleString('en-US')+'</b> <span class="chip '+(p>10?'miss':p<-10?'ok':'na')+'">'+(p>0?'+':'')+p+'%</span></span></div>'}).join('');
-  var g3=D.map(function(d){return '<div class="tmm"><b>'+esc(d.t.team)+'</b><div><span>มูลค่าสัญญา</span><b class="num">'+(d.val/1e6).toFixed(1)+' ล้าน</b></div><div><span>สถานี / ชม.ทำงาน</span><b class="num">'+d.sph.toFixed(1)+'</b></div><div><span>อัตราตกบริการ</span><b class="num" style="'+(d.mr>=3?'color:var(--danger)':'')+'">'+d.mr.toFixed(1)+'%</b></div></div>'}).join('');
+  var D=ord.map(function(t){var n=0,st=0,val=0;t.tiers.forEach(function(v,i){if(!TM_F.on[i])return;n+=v;st+=v*TM_ST[i];val+=v*TM_VAL[i]});return {t:t,n:n,st:st,val:val,sph:t.min?st/(t.min/60):0,mr:n?t.miss.length*100/n:0}});
+  var maxN=Math.max.apply(0,D.map(function(d){return d.n}))||1,maxS=Math.max.apply(0,D.map(function(d){return d.st}))||1,avg=D.reduce(function(a,d){return a+d.st},0)/D.length;
+  var offN=TM_F.on.filter(function(v){return !v}).length,filt=offN>0||!!TM_F.team;
+  function row(d,inner){var sel=TM_F.team===d.t.team;return '<div class="tmcr'+(TM_F.team&&!sel?' dim':'')+(sel?' sel':'')+'" role="button" tabindex="0" aria-pressed="'+sel+'" data-tmteam="'+esc(d.t.team)+'"><b>'+esc(d.t.team)+'</b>'+inner+'</div>'}
+  var g1=D.map(function(d){return row(d,'<div class="tmcb" style="width:'+(d.n/maxN*100)+'%">'+d.t.tiers.map(function(v,i){if(!v||!TM_F.on[i])return '';var p=v*100/d.n;
+      return '<i class="tier '+TM_TIER[i][1]+'3" style="width:'+p+'%" data-tip="<b>'+esc(d.t.team)+' · ขนาด '+TM_TIER[i][0]+'</b><br>'+v+' ราย ('+Math.round(p)+'% ของทีม)<br>'+(v*TM_ST[i]).toLocaleString('en-US')+' สถานี · '+((v*TM_VAL[i])/1e6).toFixed(1)+' ล้านบาท">'+(p>=11?TM_TIER[i][0]:'')+'</i>'}).join('')+'</div><span class="num"><b>'+d.n+'</b> ราย</span><small class="tmct">'+d.t.tiers.map(function(v,i){return TM_F.on[i]?TM_TIER[i][0]+' '+v:''}).filter(Boolean).join(' · ')+'</small>')}).join('');
+  var g2=D.map(function(d){var p=avg?Math.round((d.st/avg-1)*100):0;return row(d,'<div class="tmcs"><i style="width:'+(d.st/maxS*100)+'%" data-tip="<b>'+esc(d.t.team)+'</b><br>'+d.st.toLocaleString('en-US')+' สถานี จาก '+d.n+' ราย<br>เฉลี่ยทุกทีม '+Math.round(avg).toLocaleString('en-US')+' ('+(p>0?'+':'')+p+'%)"></i><span class="avgl" style="left:'+(avg/maxS*100)+'%"></span></div><span class="num"><b>'+d.st.toLocaleString('en-US')+'</b> <span class="chip '+(p>10?'miss':p<-10?'ok':'na')+'">'+(p>0?'+':'')+p+'%</span></span>')}).join('');
+  var g3=D.map(function(d){var sel=TM_F.team===d.t.team;return '<div class="tmm'+(TM_F.team&&!sel?' dim':'')+'" data-tmteam="'+esc(d.t.team)+'" role="button" tabindex="0" aria-pressed="'+sel+'"><b>'+esc(d.t.team)+'</b><div><span>มูลค่าสัญญา</span><b class="num">'+(d.val/1e6).toFixed(1)+' ล้าน</b></div><div><span>สถานี / ชม.ทำงาน</span><b class="num">'+d.sph.toFixed(1)+'</b></div><div><span>อัตราตกบริการ</span><b class="num" style="'+(d.mr>=3?'color:var(--danger)':'')+'">'+d.mr.toFixed(1)+'%</b></div></div>'}).join('');
+  var lg1='<div class="tmlg">'+TM_TIER.map(function(x,i){return '<button type="button" class="tmlgb tier '+x[1]+'3'+(TM_F.on[i]?'':' off')+'" aria-pressed="'+(TM_F.on[i]?'true':'false')+'" data-tmtier="'+i+'" title="'+(TM_F.on[i]?'กดเพื่อซ่อนขนาด ':'กดเพื่อแสดงขนาด ')+x[0]+'">'+x[0]+'</button>'}).join('')+'<span class="tmhint">กดขนาดเพื่อเปิด/ปิด · กดแถวทีมเพื่อกรองตาราง</span></div>';
   box.innerHTML=
-    '<div class="tmcp"><h4>ลูกค้าที่ดูแลต่อทีม แยกขนาด (Tier)</h4><div class="tmlg">'+TM_TIER.map(function(x){return '<span><i class="tier '+x[1]+'3"></i>'+x[0]+'</span>'}).join('')+'</div>'+g1+'</div>'+
+    (filt?'<div class="tmcp tmcfull tmfl"><span>กำลังกรอง: '+(offN?'ขนาด '+TM_TIER.filter(function(x,i){return TM_F.on[i]}).map(function(x){return x[0]}).join('/'):'')+(offN&&TM_F.team?' · ':'')+(TM_F.team?esc(TM_F.team):'')+'</span><button type="button" class="btn sm" data-tmreset>ล้างตัวกรอง ✕</button></div>':'')+
+    '<div class="tmcp"><h4>ลูกค้าที่ดูแลต่อทีม แยกขนาด (Tier)</h4>'+lg1+g1+'</div>'+
     '<div class="tmcp"><h4>สถานีที่ดูแลต่อทีม</h4><div class="tmlg"><span><i style="background:var(--accent)"></i>จำนวนสถานี</span><span><i class="dash"></i>ค่าเฉลี่ย '+Math.round(avg).toLocaleString('en-US')+'</span><span>ป้าย = สูง/ต่ำกว่าค่าเฉลี่ย</span></div>'+g2+'</div>'+
-    '<div class="tmcp tmcfull"><h4>ตัวชี้วัดเพิ่มต่อทีม</h4><div class="tmmg">'+g3+'</div></div>';
+    '<div class="tmcp tmcfull"><h4>ตัวชี้วัดเพิ่มต่อทีม'+(offN?' <small>(ตามขนาดที่เลือก)</small>':'')+'</h4><div class="tmmg">'+g3+'</div></div>';
 }
+(function(){
+  var box=document.getElementById('tmCharts')||document;
+  document.addEventListener('mousemove',function(e){var t=e.target.closest&&e.target.closest('#tmCharts [data-tip]');if(t)tmTipShow(e.clientX,e.clientY,t.getAttribute('data-tip'));else tmTipHide()});
+  document.addEventListener('click',function(e){
+    var c=e.target.closest&&e.target.closest('#tmCharts');if(!c)return;
+    var tg=e.target.closest('[data-tmtier]');
+    if(tg){var i=+tg.getAttribute('data-tmtier');TM_F.on[i]=TM_F.on[i]?0:1;if(!TM_F.on.some(function(v){return v}))TM_F.on[i]=1;tmRender();return}
+    if(e.target.closest('[data-tmreset]')){TM_F={on:[1,1,1,1],team:''};tmRender();return}
+    var tip=e.target.closest('[data-tip]');if(tip&&matchMedia('(hover:none)').matches){tmTipShow(e.clientX,e.clientY,tip.getAttribute('data-tip'));return}
+    var tm=e.target.closest('[data-tmteam]');if(tm){var n=tm.getAttribute('data-tmteam');TM_F.team=(TM_F.team===n)?'':n;tmRender();var nb=document.querySelector('#tmCharts [data-tmteam="'+n+'"]');if(nb)nb.focus()}
+  });
+  document.addEventListener('keydown',function(e){if((e.key==='Enter'||e.key===' ')&&e.target.matches&&e.target.matches('#tmCharts [data-tmteam]')){e.preventDefault();e.target.click()}});
+})();
 /* New / Renew: ชี้ = เห็นรายชื่อ (title) · กด = หน้าต่างรายชื่อ (มือถือไม่มีการชี้) */
-function tmNR(i,k){var t=TM[i],n=k==='new'?t.newc:t.renew,L=(k==='new'?t.newN:t.renN)||[];if(!n)return '<span class="tmdash">-</span>';
-  return '<button type="button" class="tmnr" data-tmnr="'+i+'_'+k+'" title="'+(k==='new'?'New':'Renew')+': '+esc(L.join(', '))+'" aria-label="'+(k==='new'?'ลูกค้าใหม่':'ต่อสัญญา')+' '+n+' ราย ของ'+esc(t.team)+' — ดูรายชื่อ">'+n+'</button>'}
-document.addEventListener('click',function(e){var b=e.target.closest&&e.target.closest('[data-tmnr]');if(!b)return;var p=b.getAttribute('data-tmnr').split('_'),t=TM[+p[0]],L=(p[1]==='new'?t.newN:t.renN)||[];
-  msDlgOpen('<h3 id="msT" style="margin:0 0 4px;font-size:16px">'+(p[1]==='new'?'ลูกค้าใหม่ (New)':'ต่อสัญญา (Renew)')+' · '+esc(t.team)+'</h3><div class="lab">เดือน ต.ค. 2026 · '+L.length+' ราย</div><ul style="margin:10px 0 0;padding-left:18px;line-height:1.8">'+L.map(function(x){return '<li>'+esc(x)+'</li>'}).join('')+'</ul><div class="acts"><button class="btn primary" data-ms="close">ปิด</button></div>',b)});
+/* ขนาด (Tier) + สาขาของลูกค้า New/Renew (ข้อมูลสมมติ) — ทีมที่ดูแลหลายสาขาแยกยอดรายสาขาได้ */
+var TM_NR={'บ้านพักคุณมาลี ศรีสวัสดิ์':['s1','นครปฐม'],'คลินิกทันตกรรมยิ้มสดใส':['s3','นครปฐม'],'ร้านอาหารสวนครัวป้าแดง':['s3','นครปฐม'],'บมจ. สยามพัฒนาเฮ้าส์':['l1','นครปฐม'],
+  'หอพักนักศึกษาศาลายา':['m1','พุทธมณฑล'],'ร้านขนมหวานบ้านสวน':['s1','พุทธมณฑล'],'โรงแรมบ้านสวนรีสอร์ท':['m3','พุทธมณฑล'],'อพาร์ตเมนต์ศรีสุข':['m3','พุทธมณฑล'],
+  'รีสอร์ทชายทะเลหัวหิน':['l3','หัวหิน'],'สำนักงานกฎหมายสาทร':['m1','สาทร'],'ร้านเบเกอรี่นนทบุรี':['s1','นนทบุรี'],
+  'โกดังสินค้าปทุมวัน':['l1','ปทุมวัน'],'ร้านอาหารพระราม 4':['s1','พระราม 4'],'อาคารสำนักงานสาทรทาวเวอร์':['xl1','สาทร']};
+function tmNRList(i,k,br){var t=TM[i];return ((k==='new'?t.newN:t.renN)||[]).filter(function(x){return !br||(TM_NR[x]||[])[1]===br})}
+function tmNR(i,k,br){var L=tmNRList(i,k,br),t=TM[i];if(!L.length)return '<span class="tmdash">-</span>';
+  var tip=(k==='new'?'New':'Renew')+': '+L.map(function(x){var m=TM_NR[x]||[];return x+(m[0]?' ('+m[0].toUpperCase()+')':'')}).join(', ');
+  return '<button type="button" class="tmnr" data-tmnr="'+i+'_'+k+'_'+(br||'')+'" title="'+esc(tip)+'" aria-label="'+(k==='new'?'ลูกค้าใหม่':'ต่อสัญญา')+' '+L.length+' ราย '+esc(t.team)+(br?' สาขา'+esc(br):'')+' — ดูรายชื่อ">'+L.length+'</button>'}
+document.addEventListener('click',function(e){var b=e.target.closest&&e.target.closest('[data-tmnr]');if(!b)return;var p=b.getAttribute('data-tmnr').split('_'),t=TM[+p[0]],br=p[2]||'',L=tmNRList(+p[0],p[1],br);
+  msDlgOpen('<h3 id="msT" style="margin:0 0 4px;font-size:16px">'+(p[1]==='new'?'ลูกค้าใหม่ (New)':'ต่อสัญญา (Renew)')+' · '+esc(t.team)+(br?' · สาขา'+esc(br):'')+'</h3><div class="lab">เดือน ต.ค. 2026 · '+L.length+' ราย</div>'+
+    '<ul class="nrlist">'+L.map(function(x){var m=TM_NR[x]||[];return '<li><span>'+esc(x)+'<small>สาขา'+esc(m[1]||'-')+'</small></span>'+(m[0]?tierBadge(m[0]):'')+'</li>'}).join('')+'</ul><div class="acts"><button class="btn primary" data-ms="close">ปิด</button></div>',b)});
+var TM_BASE_ALL=TM.slice();
+/* ===== ข้อมูลตัวอย่างเต็ม 16 ทีม (A–O + Z) — เจ้าของขอดูตอนข้อมูลเยอะ · ปุ่มสลับ 6 ทีม/16 ทีมอยู่หัวตาราง (เฉพาะ mockup) ===== */
+var TM_BASE=TM.slice(),TM_MODE='full';
+(function(){
+  var spec=[['ทีม G','เขต 3','ปทุมธานี'],['ทีม H','เขต 3','รามอินทรา'],['ทีม I','เขต 3','อยุธยา'],['ทีม J','เขต 4','ลาดพร้าว'],['ทีม K','เขต 4','พัฒนาการ'],['ทีม L','เขต 4','สุวินทวงศ์'],['ทีม M','เขต 4','ประชาชื่น'],['ทีม N','เขต 5','สมุทรปราการ'],['ทีม O','เขต 5','พัทยา'],['ทีม Z','เขต 5','ระยอง']];
+  var tpl=[[28,12,6,2],[36,16,8,3],[20,9,5,1],[44,22,11,5],[31,14,7,2],[26,15,9,4],[39,17,6,2],[33,13,10,3],[24,11,4,1],[41,19,8,4]];
+  var TIERC=['s1','m1','l1','xl1'];
+  spec.forEach(function(sp,k){
+    var tr=tpl[k],plan=tr.reduce(function(a,b){return a+b},0),visits=Math.round(plan*(0.78+((k*7)%5)*0.04)),min=visits*(40+((k*11)%25));
+    var nn=k%4,rn=(k*3)%3,newN=[],renN=[],miss=[];
+    for(var i=0;i<nn;i++){var nm='ลูกค้าใหม่ '+sp[0]+' #'+(i+1);newN.push(nm);TM_NR[nm]=[TIERC[(i+k)%3],sp[2]]}
+    for(var j=0;j<rn;j++){var nm2='ลูกค้าต่อสัญญา '+sp[0]+' #'+(j+1);renN.push(nm2);TM_NR[nm2]=[TIERC[(j+k+1)%4],sp[2]]}
+    if(k%3===0)for(var m=0;m<1+(k%2);m++)miss.push({n:'ลูกค้าตกบริการ '+sp[0]+' #'+(m+1)});
+    TM_BASE_ALL.push({team:sp[0],tiers:tr,zone:sp[1],br:sp[2],min:min,visits:visits,plan:plan,newc:nn,renew:rn,newN:newN,renN:renN,miss:miss});
+  });
+})();
+function tmSetMode(m){TM_MODE=m;TM=(m==='full')?TM_BASE_ALL:TM_BASE;TM_F={on:[1,1,1,1],team:''};tmOpen={};tmBr={};
+  [].forEach.call(document.querySelectorAll('[data-tmmode]'),function(b){var on=b.getAttribute('data-tmmode')===m;b.classList.toggle('on',on);b.setAttribute('aria-pressed',on?'true':'false')});tmRender()}
+document.addEventListener('click',function(e){var b=e.target.closest&&e.target.closest('[data-tmmode]');if(b)tmSetMode(b.getAttribute('data-tmmode'))});
+TM=TM_BASE_ALL;
 function tmRender(){
   var body=$('tmBody');if(!body)return;
   var tMin=0,tV=0,tNew=0,tRen=0,tMiss=0,max=0;
@@ -3055,6 +3122,7 @@ function tmRender(){
   var h='';
   [order].forEach(function(items){
     items.forEach(function(i){
+      if(TM_F.team&&TM[i].team!==TM_F.team)return;
       var t=TM[i],pct=max?Math.round(t.min*100/max):0,dp=Math.round(t.visits*100/t.plan);
       var bo=!!tmBr[i]&&t.brs,bcell=t.brs?'<button type="button" class="tmbr" data-tmb="'+i+'" aria-expanded="'+!!bo+'">'+t.brs.length+' สาขา '+(bo?'▾':'▸')+'</button>':esc(t.zone)+' · '+esc(t.br);
       h+='<tr class="tmrow"><td data-label="ทีม"><b>'+esc(t.team)+'</b></td><td data-label="เขต · สาขา">'+bcell+'</td>'+
@@ -3064,7 +3132,7 @@ function tmRender(){
          '<td class="c num" data-label="New">'+tmNR(i,'new')+'</td><td class="c num" data-label="Renew">'+tmNR(i,'ren')+'</td></tr>';
       if(bo)t.brs.forEach(function(x){var p=Math.round(x.visits*100/x.plan);
         h+='<tr class="tmsub"><td class="tmsp"></td><td data-label="สาขา">└ '+esc(x.br)+'</td><td class="num" data-label="เวลาบริการ">'+Math.floor(x.min/60)+' ชม. '+(x.min%60)+' นาที</td>'+
-           '<td class="c num" data-label="เข้าบริการ">'+x.visits+'/'+x.plan+' ราย <span style="color:var(--fg-muted)">('+p+'%)</span></td><td class="tmmcell" data-label="ตกบริการ">'+tmMissCell(i,x.br)+'</td><td class="tmsp"></td><td class="tmsp"></td></tr>'});
+           '<td class="c num" data-label="เข้าบริการ">'+x.visits+'/'+x.plan+' ราย <span style="color:var(--fg-muted)">('+p+'%)</span></td><td class="tmmcell" data-label="ตกบริการ">'+tmMissCell(i,x.br)+'</td><td class="c num" data-label="New">'+tmNR(i,'new',x.br)+'</td><td class="c num" data-label="Renew">'+tmNR(i,'ren',x.br)+'</td></tr>'});
 
     });
   });
