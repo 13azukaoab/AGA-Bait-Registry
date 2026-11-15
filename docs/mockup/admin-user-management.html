@@ -3,28 +3,35 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>จัดการผู้ใช้ (host) — mockup</title>
+<meta name="aga-nav-start" content="mini">
+<title>จัดการผู้ใช้ — mockup</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@300;400;500;600;700&display=swap">
 <!-- อ่านธีมที่บันทึกไว้ก่อน render เพื่อกันสีกะพริบตอนโหลด (ต้องอยู่ใน <head>) -->
 <script>try{var t=localStorage.getItem('aga-theme');if(t)document.documentElement.setAttribute('data-theme',t)}catch(e){}</script>
 <!--
-  หน้าจอ 11 "จัดการผู้ใช้" (SPEC §8) — เฉพาะ role host
+  หน้าจอ 11 "จัดการผู้ใช้" (SPEC §8) — เฉพาะผู้ดูแลระบบ (PM / OM / เจ้าของ)
   ----------------------------------------------------------------------------
   สรุป logic (ไว้ให้ทีม นัท/Jane/Toon อ่านก่อนต่อยอด)
-  1. host เป็นคนสร้างบัญชีให้ (host / admin / recorder) — ไม่มีหน้าสมัครเอง (SPEC §5)
-     viewer = หน้า public ไม่ login → ไม่มีบัญชี จึงไม่อยู่ใน dropdown role
-  2. ฟิลด์ตรงกับตาราง `profiles`: display_name, role, division_scope, team_id
-     + ที่เสนอเพิ่ม (รอเพิ่มใน SPEC §6): username, is_active, last_login
-  3. กฎของฟอร์มตาม role
-       host      → division_scope = ทุกหน่วยงาน (ล็อก) · ไม่มีทีม
-       admin     → ต้องเลือก division_scope · ไม่มีทีม
-       recorder  → ต้องเลือก division_scope + ทีม (ทีม = ตัวกรองเริ่มต้นของหน้าจอ SPEC §5)
-  4. รหัสผ่าน: ระบบสุ่มรหัสชั่วคราว แสดงครั้งเดียวหลังสร้าง/รีเซ็ต · ผู้ใช้ต้องเปลี่ยนตอนเข้าครั้งแรก
-  5. "ปิดบัญชี" = soft disable (is_active=false) ไม่ลบ เพราะ audit_log อ้างอิงผู้แก้ไข · เปิดคืนได้
-  6. กันพลาด: ปิด/ลดสิทธิ์ host คนสุดท้ายไม่ได้ · ปิดบัญชีตัวเองไม่ได้ · username ห้ามซ้ำ
-  7. ของจริงต้องบังคับที่ฐานข้อมูล (RLS: เฉพาะ host แก้ `profiles` ได้ + trigger กัน host คนสุดท้าย)
+  ** หน้าจอแสดงเฉพาะ "ชื่อตำแหน่ง" ห้ามโชว์ host/admin/recorder (ชื่อสิทธิ์ภายใน) ให้ผู้ใช้เห็น (SPEC §5.1) **
+  1. ผู้ดูแลระบบสร้างบัญชีให้ทุกคน — ไม่มีหน้าสมัครเอง (SPEC §5)
+     ผู้ชมทั่วไป (viewer) ดูหน้าสรุป public ไม่ต้อง login → ไม่มีบัญชี จึงไม่อยู่ใน dropdown ตำแหน่ง
+  2. ตำแหน่ง → สิทธิ์ภายใน (DECISIONS 1.3: ตำแหน่งใหม่ = แถวใหม่ในตาราง `positions` ไม่ต้องแก้โค้ด/RLS)
+       PM, OM, เจ้าของ → role host (สิทธิ์เท่ากัน ต่างแค่ชื่อที่แสดง)
+       แอดมิน (Admin)  → role admin   · หัวหน้างาน → role recorder
+     ในหน้านี้ POSITIONS เป็นข้อมูลตัวอย่างฝังไว้ — ของจริงอ่านจากตาราง `positions`
+  3. ฟิลด์ตรงกับตาราง `profiles`: display_name (ชื่อ-นามสกุลจริง), position
+     + ที่เสนอเพิ่ม (รอเพิ่มใน SPEC §6): username, is_active, last_login, must_change_password
+     (ชื่อฟิลด์เหล่านี้อยู่แค่ในคอมเมนต์ ไม่แสดงบนหน้าจอ — บนหน้าจอใช้คำไทย)
+  4. เฟส 1 ยังไม่ล็อก "หน่วยงานที่ดูแล" / "ทีม" ให้ผู้ใช้รายคน (เจ้าของสั่ง 15 พ.ย. 2026) — ตัดออกจากฟอร์ม/ตาราง/ตัวกรอง
+     ทำในเฟส 2 ตอนเอาสาขาต่างจังหวัดเข้ามาดูแล (ตอนนั้นค่อยกลับมาเพิ่ม division_scope, team_id ใน `profiles`)
+  5. รหัสผ่าน: ระบบสุ่มรหัสชั่วคราว แสดงครั้งเดียวหลังสร้าง/รีเซ็ต · ผู้ใช้ต้องเปลี่ยนตอนเข้าครั้งแรก (DECISIONS 1.7, 1.8)
+  6. "ปิดบัญชี" = soft disable (is_active=false) ไม่ลบ เพราะ audit_log อ้างอิงผู้แก้ไข · เปิดคืนได้ (DECISIONS 1.10)
+  7. กันพลาด: ปิด/ลดสิทธิ์ผู้ดูแลระบบคนสุดท้ายไม่ได้ · ปิดบัญชีตัวเองไม่ได้ · username ห้ามซ้ำ
+  9. ประวัติการแก้ไข (`audit_log`) ต้องจด "ตำแหน่งของผู้แก้ ณ ตอนนั้น" ลงแต่ละบรรทัด (ช่องใหม่ เช่น actor_position_code) — เจ้าของเลือก 15 พ.ย. 2026
+     เพื่อให้ประวัติเก่าไม่เปลี่ยนตามตำแหน่งปัจจุบันของคนนั้น · ตอนเปลี่ยนตำแหน่งต้องมีบรรทัดจด "ตำแหน่งเดิม → ใหม่" และคนที่ถูกเปลี่ยนเห็นแถบแจ้งตอนล็อกอินครั้งถัดไป
+  8. ของจริงต้องบังคับที่ฐานข้อมูล (RLS: เฉพาะสิทธิ์ host แก้ `profiles` ได้ + trigger กัน host คนสุดท้าย)
      — mockup นี้แค่แสดงพฤติกรรมหน้าจอ ข้อมูลเป็นชื่อสมมติทั้งหมด (ไม่มี PII จริง)
 -->
 <style>
@@ -171,6 +178,7 @@ main{flex:1;min-width:0;padding:20px 24px 48px}
 .btn.sm{padding:4px 10px;font-size:12px}
 .btn.link{border-color:transparent;background:transparent;color:var(--accent-strong)}
 .btn.link.bad{color:var(--danger)}
+@media (pointer:coarse),(max-width:600px){.btn.sm{min-height:40px;padding:8px 12px}}
 .btn:focus-visible,input:focus-visible,select:focus-visible,.stat:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .chip{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;padding:2px 9px;border-radius:999px;white-space:nowrap}
 .chip.ok{background:var(--ok-soft);color:var(--ok)}
@@ -224,7 +232,8 @@ tbody td:first-child{min-width:170px}
 .panel>h3{margin:0;padding:12px 16px;font-size:14px;font-weight:600;border-bottom:1px solid var(--border)}
 .panel .body{padding:14px 16px;display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px;font-size:12.5px}
 .panel .body b{display:block;margin-bottom:3px}
-.panel .body span.d{color:var(--fg-muted)}
+.panel .body .d{color:var(--fg-muted)}
+.panel .body ul.d{margin:4px 0 0;padding-left:18px;line-height:1.7}
 .note{font-size:12px;color:var(--fg-muted);background:var(--surface-2);border:1px solid var(--border);
   border-left:3px solid var(--accent);border-radius:0 8px 8px 0;padding:9px 12px;margin:12px 0 0}
 
@@ -274,7 +283,7 @@ ul.plain{margin:6px 0 0;padding-left:18px;font-size:12.5px;color:var(--fg-muted)
   </a>
   <div class="spacer"></div>
   <span class="pill hide-sm">เดือน <b>พ.ย. 2026</b></span>
-  <span class="pill"><span class="chip host">host</span> <b>ส่วนกลาง Bait</b></span>
+  <span class="pill"><span class="chip host">PM</span> <b>ส่วนกลาง Bait</b></span>
   <button class="theme-btn" id="themeBtn" aria-label="สลับธีมสว่าง/มืด" onclick="toggleTheme()">◐</button>
   <a class="avatar" href="login.html" title="ออกจากระบบ (กลับหน้าเข้าสู่ระบบ)" aria-label="ออกจากระบบ">สญ</a>
 </div>
@@ -306,20 +315,18 @@ ul.plain{margin:6px 0 0;padding-left:18px;font-size:12.5px;color:var(--fg-muted)
     <div class="page-head" style="display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap">
       <div style="flex:1;min-width:240px">
         <h1>จัดการผู้ใช้</h1>
-        <p>host สร้างบัญชีให้ทีมงาน กำหนดสิทธิ์ (role) ขอบเขตหน่วยงาน และทีม — ไม่มีหน้าสมัครเอง · <span class="chip warn">🔒 สิทธิ์ host</span></p>
+        <p>สร้างบัญชีให้ทีมงานและกำหนดตำแหน่ง — ไม่มีหน้าสมัครเอง · <span class="chip warn">🔒 เฉพาะผู้ดูแลระบบ (PM / OM / เจ้าของ)</span></p>
       </div>
       <button class="btn primary" type="button" onclick="openCreate()">+ สร้างบัญชี</button>
     </div>
 
     <!-- การ์ดสรุป (คลิกเพื่อกรองตาราง) -->
-    <div class="stats" id="stats" role="group" aria-label="สรุปจำนวนบัญชีตาม role"></div>
+    <div class="stats" id="stats" role="group" aria-label="สรุปจำนวนบัญชีตามตำแหน่ง"></div>
 
     <div class="toolbar">
-      <div class="field grow"><label for="q">ค้นหา</label><input id="q" type="search" placeholder="ชื่อที่แสดง / username" oninput="render()"></div>
+      <div class="field grow"><label for="q">ค้นหา</label><input id="q" type="search" placeholder="ชื่อ-นามสกุล / รหัสพนักงาน" oninput="render()"></div>
       <div class="field"><label for="fRole">ตำแหน่ง</label>
-        <select id="fRole" onchange="render()"><option value="">ทุกตำแหน่ง</option><option value="pm">Project Manager (PM)</option><option value="om">Operation Manager (OM)</option><option value="admin">Admin (เปิดงาน)</option><option value="recorder">หัวหน้างาน</option></select></div>
-      <div class="field"><label for="fScope">หน่วยงาน</label>
-        <select id="fScope" onchange="render()"><option value="">ทุกหน่วยงาน</option><option value="central">central (ส่วนกลาง)</option><option value="province">province (ต่างจังหวัด)</option><option value="all">ทุกหน่วยงาน (host)</option></select></div>
+        <select id="fRole" onchange="render()"></select></div>
       <div class="field"><label for="fStatus">สถานะ</label>
         <select id="fStatus" onchange="render()"><option value="">ทั้งหมด</option><option value="on">ใช้งาน</option><option value="off">ปิดบัญชี</option></select></div>
     </div>
@@ -327,25 +334,26 @@ ul.plain{margin:6px 0 0;padding-left:18px;font-size:12.5px;color:var(--fg-muted)
     <div class="tablewrap">
       <table>
         <thead><tr>
-          <th scope="col">ชื่อที่แสดง</th><th scope="col">ตำแหน่ง</th><th scope="col">หน่วยงาน (division_scope)</th>
-          <th scope="col">ทีม</th><th scope="col">สถานะ</th><th scope="col">เข้าใช้ล่าสุด</th><th scope="col"><span class="sr">จัดการ</span></th>
+          <th scope="col">ชื่อ-นามสกุล</th><th scope="col">ตำแหน่ง</th>
+          <th scope="col">สถานะ</th><th scope="col">เข้าใช้ล่าสุด</th><th scope="col"><span class="sr">จัดการ</span></th>
         </tr></thead>
         <tbody id="rows"></tbody>
       </table>
       <div class="empty" id="empty" hidden>ไม่พบบัญชีที่ตรงกับตัวกรอง ลองล้างคำค้นหาหรือเปลี่ยนตัวกรอง</div>
-      <div class="foot"><span id="footCount"></span><span style="flex:1"></span><span>ทุกการสร้าง/แก้ไข/ปิดบัญชี บันทึกใน audit log อัตโนมัติ</span></div>
+      <div class="foot"><span id="footCount"></span><span style="flex:1"></span><span>ทุกการสร้าง/แก้ไข/ปิดบัญชี บันทึกในประวัติการแก้ไขอัตโนมัติ</span></div>
     </div>
 
-    <div class="note"><b>viewer ไม่มีบัญชี</b> — ผู้บริหาร/ฝ่ายขาย/คนนอกดูหน้าสรุปตัวเลข (public) ได้โดยไม่ต้อง login ·
-      ทีมบริการหน้างานไม่มีบัญชีในเฟส 1 (ส่งสรุปงานให้หัวหน้างาน = recorder กรอกแทน)</div>
+    <div class="note"><b>ผู้ชมทั่วไปไม่ต้องมีบัญชี</b> — ผู้บริหาร/ฝ่ายขาย/คนนอกดูหน้าสรุปตัวเลขได้โดยไม่ต้องเข้าสู่ระบบ ·
+      ทีมบริการหน้างานไม่มีบัญชีในเฟส 1 (ส่งสรุปงานให้หัวหน้างานกรอกแทน)</div>
 
     <div class="panel">
-      <h3>แต่ละ role ทำอะไรได้ (SPEC §5)</h3>
+      <h3>แต่ละตำแหน่งทำอะไรได้</h3>
       <div class="body">
-        <div><b><span class="chip host">host</span> (PM / OM)</b><span class="d">ดู/แก้ทุกอย่าง + จัดการผู้ใช้ เกณฑ์ Tier ตั้งค่า ปิด/เปิดเดือน ตัวเลขต่างจังหวัด — PM กับ OM สิทธิ์เท่ากัน ต่างแค่ชื่อตำแหน่งที่แสดง</span></div>
-        <div><b><span class="chip admin">admin</span></b><span class="d">ดูทุกเขต · เพิ่ม/แก้ลูกค้า สัญญา สถานี เฉพาะหน่วยงานที่ได้รับสิทธิ์</span></div>
-        <div><b><span class="chip recorder">recorder</span></b><span class="d">ดูทุกเขต · กรอกผลบริการ เฉพาะหน่วยงานที่ได้รับสิทธิ์ · หน้าจอเริ่มต้นกรองตามทีมของตัวเอง</span></div>
+        <div><b><span class="chip host">PM</span> <span class="chip host">OM</span> <span class="chip host">เจ้าของ</span></b><ul class="d"><li>จัดการผู้ใช้</li><li>ตั้งค่าเกณฑ์ Tier / ประเภทลูกค้า</li><li>ปิดเดือน และแก้เดือนที่ปิดแล้ว</li><li>ลงข้อมูล Port ต่างจังหวัด</li><li>ดูประวัติการแก้ไข</li><li>Dashboard Sync</li><li>สามตำแหน่งนี้สิทธิ์เท่ากัน ต่างแค่ชื่อที่แสดง</li></ul></div>
+        <div><b><span class="chip admin">แอดมิน (Admin)</span></b><ul class="d"><li>ดูทุกเขต</li><li>เพิ่ม/แก้ลูกค้า สัญญา สถานี และแนบไฟล์สัญญา</li><li>ลบได้เฉพาะรายการที่ยังไม่มีผลบริการ</li><li>ไม่แก้ผลบริการ · ไม่ปิดเดือน</li></ul></div>
+        <div><b><span class="chip recorder">หัวหน้างาน (Supervisor)</span></b><ul class="d"><li>ดูทุกเขต</li><li>กรอก/แก้/ลบผลบริการประจำเดือน (รวมกล่อง AG)</li><li>ปิดเดือน และแก้เดือนที่ปิดแล้ว (ส่วนกลาง)</li><li>ไม่เพิ่ม/แก้ลูกค้าและสัญญา</li></ul></div>
       </div>
+      <div style="padding:0 16px 14px;font-size:12px;color:var(--fg-muted)">ต้องการตำแหน่งใหม่ (เช่น ผู้ช่วย PM) เพิ่มได้ภายหลังโดยไม่ต้องแก้ระบบ — เลือกสิทธิ์ให้เท่ากับตำแหน่งที่มีอยู่</div>
     </div>
   </main>
 </div>
@@ -362,33 +370,37 @@ ul.plain{margin:6px 0 0;padding-left:18px;font-size:12.5px;color:var(--fg-muted)
 
 <script>
 /* ===== ข้อมูลสมมติ (ไม่ใช่คนจริง) ===== */
-var ME = 'somying';                       // บัญชีที่กำลังล็อกอิน (host) — ใช้กันปิดบัญชีตัวเอง
-var TEAMS = ['A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','Z','Sup'];
-var DIVS  = {central:'central (ส่วนกลาง)', province:'province (ต่างจังหวัด)', all:'ทุกหน่วยงาน'};
+var ME = 'AG-01001';                       // บัญชีที่กำลังล็อกอิน (host) — ใช้กันปิดบัญชีตัวเอง
 /* A2 (10 พ.ย. 2026): ผู้ใช้เลือก "ตำแหน่ง" ไม่ใช่ role ดิบ — PM/OM สิทธิ์เท่ากัน (role='host' เต็ม) ต่างแค่ชื่อตำแหน่งที่แสดง
    key = ค่าที่เก็บใน dropdown/filter/สถิติ · role = สิทธิ์จริงที่ใช้คำนวณกฎฟอร์ม/RLS (ไม่เปลี่ยนจากเดิม) */
 var POSITIONS = [
   {key:'pm',       label:'Project Manager (PM)', short:'PM',         role:'host'},
   {key:'om',       label:'Operation Manager (OM)', short:'OM',       role:'host'},
-  {key:'admin',    label:'Admin (เปิดงาน)',       short:'Admin',     role:'admin'},
-  {key:'recorder', label:'หัวหน้างาน',            short:'หัวหน้างาน', role:'recorder'}
+  {key:'owner',    label:'เจ้าของ',               short:'เจ้าของ',   role:'host'},
+  {key:'admin',   label:'แอดมิน (Admin)',       short:'แอดมิน',    role:'admin'},
+  {key:'recorder', label:'หัวหน้างาน (Supervisor)', short:'หัวหน้างาน', role:'recorder'}
 ];
 function posInfo(key){return POSITIONS.filter(function(p){return p.key===key;})[0];}
 function roleOfPos(key){var p=posInfo(key); return p?p.role:key;}
 function posLabel(key){var p=posInfo(key); return p?p.label:key;}
 function posShort(key){var p=posInfo(key); return p?p.short:key;}
 var USERS = [
-  {id:1, name:'สมหญิง ใจดี',   un:'somying',  role:'host',     pos:'pm',       scope:'all',     team:'',    on:true,  last:'วันนี้ 08:41'},
-  {id:2, name:'ประเสริฐ รักงาน', un:'prasert',  role:'host',     pos:'om',       scope:'all',     team:'',    on:true,  last:'เมื่อวาน 17:20'},
-  {id:3, name:'วิภา สุขสันต์',   un:'wipa',     role:'admin',    pos:'admin',    scope:'central', team:'',    on:true,  last:'วันนี้ 09:05'},
-  {id:4, name:'กิตติ มั่นคง',    un:'kitti',    role:'admin',    pos:'admin',    scope:'central', team:'',    on:true,  last:'04/11/2026'},
-  {id:5, name:'นภา แสงทอง',     un:'napa',     role:'admin',    pos:'admin',    scope:'province',team:'',    on:true,  last:'30/10/2026'},
-  {id:6, name:'สมชาย ก้าวหน้า',  un:'somchai',  role:'recorder', pos:'recorder', scope:'central', team:'A',   on:true,  last:'วันนี้ 07:58'},
-  {id:7, name:'ธีรวัฒน์ เก่งกล้า', un:'theera',   role:'recorder', pos:'recorder', scope:'central', team:'E',   on:true,  last:'เมื่อวาน 16:02'},
-  {id:8, name:'มาลี ตั้งใจ',     un:'malee',    role:'recorder', pos:'recorder', scope:'central', team:'Z',   on:true,  last:'03/11/2026'},
-  {id:9, name:'อนุชา ใจเย็น',    un:'anucha',   role:'recorder', pos:'recorder', scope:'central', team:'I',   on:false, last:'12/09/2026'}
+  {id:1, name:'สมหญิง ใจดี',   un:'AG-01001',  role:'host',     pos:'pm',       on:true,  last:'วันนี้ 08:41'},
+  {id:2, name:'ประเสริฐ รักงาน', un:'AG-01002',  role:'host',     pos:'om',       on:true,  last:'เมื่อวาน 17:20'},
+  {id:3, name:'วิภา สุขสันต์',   un:'AG-01003',     role:'admin',    pos:'admin',    on:true,  last:'วันนี้ 09:05'},
+  {id:4, name:'กิตติ มั่นคง',    un:'AG-01004',    role:'admin',    pos:'admin',    on:true,  last:'04/11/2026'},
+  {id:5, name:'นภา แสงทอง',     un:'AG-01005',     role:'admin',    pos:'admin',    on:true,  last:'30/10/2026'},
+  {id:6, name:'สมชาย ก้าวหน้า',  un:'AG-01006',  role:'recorder', pos:'recorder', on:true,  last:'วันนี้ 07:58'},
+  {id:7, name:'ธีรวัฒน์ เก่งกล้า', un:'AG-01007',   role:'recorder', pos:'recorder', on:true,  last:'เมื่อวาน 16:02'},
+  {id:8, name:'มาลี ตั้งใจ',     un:'AG-01008',    role:'recorder', pos:'recorder', on:true,  last:'03/11/2026'},
+  {id:9, name:'อนุชา ใจเย็น',    un:'AG-01009',   role:'recorder', pos:'recorder', on:false, last:'12/09/2026'},
+  {id:10,name:'อรุณี พงษ์ไทย',  un:'AG-01010',   role:'host',     pos:'pm',       on:true,  last:'เมื่อวาน 11:15'},
+  {id:11,name:'วีระ ชัยมงคล',   un:'AG-01011',    role:'host',     pos:'pm',       on:true,  last:'05/11/2026'},
+  {id:12,name:'ภูมิ ธนากร',     un:'AG-01012',    role:'host',     pos:'owner',    on:true,  last:'02/11/2026'},
+  {id:13,name:'ปราณี เรืองศรี',  un:'AG-01013',   role:'admin',    pos:'admin',    on:true,  last:'วันนี้ 08:12'},
+  {id:14,name:'ชาญ ดีเลิศ',     un:'AG-01014',     role:'recorder', pos:'recorder', on:true,  last:'เมื่อวาน 15:40'}
 ];
-var nextId = 10, roleFilterCard = '';
+var nextId = 15, roleFilterCard = '';
 
 /* ===== helpers ===== */
 function $(id){return document.getElementById(id);}
@@ -401,20 +413,21 @@ function pwGen(){ /* ตัดตัวที่สับสน 0/O/1/l/I ออ
   for(var i=0;i<a.length;i++){ s+=abc[a[i]%abc.length]; if(i===3) s+='-'; }
   return s;
 }
-function scopeLabel(u){return DIVS[u.scope]||u.scope;}
 
 /* ===== การ์ดสรุป + ตาราง ===== */
 function counts(){
-  var c={pm:0,om:0,admin:0,recorder:0,off:0};
+  var c={off:0};
+  POSITIONS.forEach(function(p){c[p.key]=0;});
   USERS.forEach(function(u){ if(!u.on) c.off++; else c[u.pos]++; });
-  c.host=c.pm+c.om; // การ์ดสรุปรวม PM+OM เป็น host การ์ดเดียว (เจ้าของเลือก 10 พ.ย. 2026) — ตัวกรองตำแหน่งแยก PM/OM ยังอยู่ที่ dropdown เดิม
   return c;
 }
 function renderStats(){
+  /* การ์ดสรุปตามตำแหน่งจริง (เจ้าของเลือก 14 พ.ย. 2026) — สร้างจาก POSITIONS จึงเพิ่มตำแหน่งใหม่แล้วการ์ดโผล่เอง */
   var c=counts(), box=$('stats'); box.textContent='';
-  [['','ทั้งหมด',USERS.length,'ทุกบัญชี'],['host','host (PM+OM)',c.host,'PM '+c.pm+' · OM '+c.om],
-   ['admin','Admin',c.admin,'ใช้งานอยู่'],['recorder','หัวหน้างาน',c.recorder,'ใช้งานอยู่'],
-   ['off','ปิดบัญชี',c.off,'ล็อกอินไม่ได้']].forEach(function(s){
+  var cards=[['','ทั้งหมด',USERS.length,'ทุกบัญชี']];
+  POSITIONS.forEach(function(p){cards.push([p.key,p.short,c[p.key],'ใช้งานอยู่']);});
+  cards.push(['off','ปิดบัญชี',c.off,'เข้าสู่ระบบไม่ได้']);
+  cards.forEach(function(s){
     var b=el('button','stat'+(roleFilterCard===s[0]?' on':'')); b.type='button';
     b.setAttribute('aria-pressed', roleFilterCard===s[0]?'true':'false');
     b.appendChild(el('div','lab',s[1])); b.appendChild(el('div','val',String(s[2]))); b.appendChild(el('div','sub',s[3]));
@@ -423,15 +436,13 @@ function renderStats(){
   });
 }
 function match(u){
-  var q=$('q').value.trim().toLowerCase(), r=$('fRole').value, sc=$('fScope').value, st=$('fStatus').value;
+  var q=$('q').value.trim().toLowerCase(), r=$('fRole').value, st=$('fStatus').value;
   if(q && (u.name.toLowerCase().indexOf(q)<0 && u.un.toLowerCase().indexOf(q)<0)) return false;
   if(r && u.pos!==r) return false;
-  if(sc && u.scope!==sc) return false;
   if(st==='on' && !u.on) return false;
   if(st==='off' && u.on) return false;
   if(roleFilterCard==='off' && u.on) return false;
-  if(roleFilterCard==='host' && (u.role!=='host'||!u.on)) return false;
-  if((roleFilterCard==='admin'||roleFilterCard==='recorder') && (u.pos!==roleFilterCard||!u.on)) return false;
+  if(roleFilterCard && roleFilterCard!=='off' && (u.pos!==roleFilterCard||!u.on)) return false;
   return true;
 }
 function render(flashId){
@@ -442,9 +453,8 @@ function render(flashId){
     var tr=el('tr', (u.on?'':'is-off')+(u.id===flashId?' flash':''));
     var td=el('td'); td.appendChild(el('div','nm',u.name+(u.un===ME?' (คุณ)':''))); td.appendChild(el('div','un',u.un)); tr.appendChild(td);
     td=el('td'); td.appendChild(el('span','chip '+u.role,posShort(u.pos))); tr.appendChild(td);
-    tr.appendChild(el('td',null,scopeLabel(u)));
-    tr.appendChild(el('td',null,u.team||'—'));
     td=el('td'); var st=el('span','chip '+(u.on?'ok':'off')); st.appendChild(el('span','dot')); st.appendChild(document.createTextNode(u.on?'ใช้งาน':'ปิดบัญชี')); td.appendChild(st);
+    if(u.notice){ td.appendChild(document.createTextNode(' ')); td.appendChild(el('span','chip warn','รอแจ้งผู้ใช้')); }
     if(u.must){ td.appendChild(document.createTextNode(' ')); td.appendChild(el('span','chip warn','รอเปลี่ยนรหัส')); }
     tr.appendChild(td);
     tr.appendChild(el('td',null,u.last));
@@ -484,52 +494,30 @@ function fld(id,label,node,hint){
 function sel(opts, val){var s=document.createElement('select'); opts.forEach(function(o){var op=el('option',null,o[1]); op.value=o[0]; if(o[0]===val) op.selected=true; s.appendChild(op);}); return s;}
 function setErr(id,msg){ var w=$('f_'+id); if(!w) return; w.classList.toggle('bad',!!msg); $('e_'+id).textContent=msg||''; }
 
-/* กฎตามตำแหน่ง (อ่านสิทธิ์จริงผ่าน roleOfPos): PM/OM(host)=ล็อกทุกหน่วยงาน/ไม่มีทีม · Admin=เลือกหน่วยงาน/ไม่มีทีม · หัวหน้างาน(recorder)=เลือกหน่วยงาน+ทีม */
-function applyRoleRules(){
-  var pos=$('fr').value, role=roleOfPos(pos), sc=$('fs'), tm=$('ft');
-  if(role==='host'){ sc.value='all'; sc.disabled=true; tm.value=''; tm.disabled=true; }
-  else {
-    sc.disabled=false; if(sc.value==='all') sc.value='central';
-    if(role==='admin'){ tm.value=''; tm.disabled=true; } else { tm.disabled=false; }
-  }
-  [...sc.options].forEach(function(o){ o.hidden=(o.value==='all' && role!=='host'); o.disabled=(o.value==='all' && role!=='host'); });
-}
-
 /* ===== สร้าง / แก้ไข ===== */
 function formBody(u){
   var wrap=el('div'); var isEdit=!!u;
   var name=document.createElement('input'); name.type='text'; name.value=u?u.name:''; name.maxLength=60; name.placeholder='เช่น นภา แสงทอง'; name.autocomplete='off';
-  wrap.appendChild(fld('fn','ชื่อที่แสดง (display_name)',name));
-  var un=document.createElement('input'); un.type='text'; un.value=u?u.un:''; un.maxLength=20; un.placeholder='เช่น napa'; un.autocomplete='off'; un.autocapitalize='none';
+  var un=document.createElement('input'); un.type='text'; un.value=u?u.un:''; un.maxLength=20; un.placeholder='เช่น AG-01234'; un.autocomplete='off'; un.autocapitalize='none';
   if(isEdit) un.readOnly=true;
-  wrap.appendChild(fld('fu','username',un, isEdit?'แก้ username ไม่ได้ (ใช้ล็อกอิน + อ้างอิงใน audit log)':'a-z 0-9 . _ - ยาว 3–20 ตัว · ห้ามซ้ำ · สร้างแล้วเปลี่ยนไม่ได้'));
-  var r=sel([['pm','Project Manager (PM)'],['om','Operation Manager (OM)'],['admin','Admin (เปิดงาน)'],['recorder','หัวหน้างาน']], u?u.pos:'recorder');
-  wrap.appendChild(fld('fr','ตำแหน่ง',r,'PM และ OM มีสิทธิ์เท่ากัน (host เต็ม) ต่างกันแค่ชื่อตำแหน่งที่แสดง · ไม่มี viewer — ผู้ชมทั่วไปดูหน้าสรุป public ได้โดยไม่ต้องมีบัญชี'));
-  var row=el('div','two');
-  var sc=sel([['central','central (ส่วนกลาง)'],['province','province (ต่างจังหวัด)'],['all','ทุกหน่วยงาน (host)']], u?u.scope:'central');
-  row.appendChild(fld('fs','หน่วยงาน (division_scope)',sc));
-  var tm=sel([['','— เลือกทีม —']].concat(TEAMS.map(function(t){return [t,'ทีม '+t];})), u?u.team:'');
-  row.appendChild(fld('ft','ทีม (team_id)',tm));
-  wrap.appendChild(row);
-  wrap.appendChild(el('div','hint','recorder: ทีมคือตัวกรองเริ่มต้นของหน้าจอ แก้ข้อมูลทีมอื่นได้แต่ระบบถามยืนยัน (SPEC §5) · เฟส 1 ใช้ central เป็นหลัก'));
+  wrap.appendChild(fld('fu','รหัสพนักงาน (ใช้เข้าสู่ระบบ)',un, isEdit?'แก้รหัสพนักงานไม่ได้ (ใช้เข้าสู่ระบบ + อ้างอิงในประวัติการแก้ไข)':'ตัวอย่าง AG-01234 · ห้ามซ้ำ · สร้างแล้วเปลี่ยนไม่ได้'));
+  wrap.appendChild(fld('fn','ชื่อ - นามสกุล (เจ้าของรหัสพนักงาน)',name));
+  var r=sel([['','— เลือกตำแหน่ง —']].concat(POSITIONS.filter(function(p){return p.key!=='owner' || (u && u.pos==='owner');}).map(function(p){return [p.key,p.label];})), u?u.pos:'');
+  /* ตำแหน่ง "เจ้าของ" สร้างผ่านหน้านี้ไม่ได้ (มีคนเดียว ตั้งตอนติดตั้งระบบ) — โผล่ในรายการเฉพาะตอนแก้ไขบัญชีเจ้าของเอง */
+  wrap.appendChild(fld('fr','ตำแหน่ง',r,'PM · OM ดูแลระบบได้เต็ม · ผู้ชมทั่วไปไม่ต้องมีบัญชี'));
   return wrap;
 }
-/* เรียกหลัง openModal() เพราะต้องรอให้ฟิลด์อยู่ใน DOM จริงก่อน (ไม่ใช้ setTimeout เดาจังหวะ) */
-function wireRoleRules(){
-  $('fr').onchange=function(){ applyRoleRules(); setErr('fs'); setErr('ft'); };
-  applyRoleRules();
-}
-function readForm(){ return {name:$('fn').value.trim(), un:$('fu').value.trim().toLowerCase(), pos:$('fr').value, scope:$('fs').value, team:$('ft').value}; }
+function readForm(){ return {name:$('fn').value.trim(), un:$('fu').value.trim().toUpperCase(), pos:$('fr').value}; }
 function validate(v, existing){
-  var ok=true, role=roleOfPos(v.pos); ['fn','fu','fr','fs','ft'].forEach(function(i){setErr(i);});
-  if(!v.name){ setErr('fn','กรอกชื่อที่แสดง'); ok=false; }
+  var ok=true, role=roleOfPos(v.pos); ['fn','fu','fr'].forEach(function(i){setErr(i);});
+  if(!v.name){ setErr('fn','กรอกชื่อ-นามสกุลจริง'); ok=false; }
   if(!existing){
-    if(!/^[a-z0-9._-]{3,20}$/.test(v.un)){ setErr('fu','username ต้องเป็น a-z 0-9 . _ - ยาว 3–20 ตัว'); ok=false; }
-    else if(USERS.some(function(u){return u.un===v.un;})){ setErr('fu','username นี้มีคนใช้แล้ว ลองชื่ออื่น'); ok=false; }
+    if(!/^[A-Z0-9._-]{3,20}$/.test(v.un)){ setErr('fu','รหัสพนักงานต้องเป็นตัวอักษร/ตัวเลข ยาว 3–20 ตัว เช่น AG-01234'); ok=false; }
+    else if(USERS.some(function(u){return u.un.toUpperCase()===v.un;})){ setErr('fu','รหัสพนักงานนี้มีบัญชีแล้ว'); ok=false; }
   }
-  if(role==='recorder' && !v.team){ setErr('ft',posLabel(v.pos)+' ต้องเลือกทีม'); ok=false; }
+  if(!v.pos){ setErr('fr','เลือกตำแหน่งก่อน'); ok=false; }
   if(existing && existing.role==='host' && existing.on && role!=='host' && activeHosts(existing.id)===0){
-    setErr('fr','เปลี่ยนตำแหน่งนี้ไม่ได้ — ต้องมี host (PM/OM) ที่ใช้งานอยู่อย่างน้อย 1 คน'); ok=false; }
+    setErr('fr','เปลี่ยนตำแหน่งนี้ไม่ได้ — ต้องมีผู้ดูแลระบบ (PM / OM / เจ้าของ) ที่ใช้งานอยู่อย่างน้อย 1 คน'); ok=false; }
   return ok;
 }
 function openCreate(){
@@ -539,11 +527,10 @@ function openCreate(){
   openModal('สร้างบัญชีใหม่', body, [btn('ยกเลิก','',closeModal), btn('สร้างบัญชี','primary',function(){
     var v=readForm(); if(!validate(v,null)) return;
     var role=roleOfPos(v.pos);
-    var u={id:nextId++, name:v.name, un:v.un, role:role, pos:v.pos, scope:role==='host'?'all':v.scope, team:role==='recorder'?v.team:'', on:true, last:'ยังไม่เคยเข้า', must:true};
+    var u={id:nextId++, name:v.name, un:v.un, role:role, pos:v.pos, on:true, last:'ยังไม่เคยเข้า', must:true};
     USERS.push(u); render(u.id);
     showPassword('สร้างบัญชีแล้ว', u, 'ส่งรหัสนี้ให้ '+u.name+' ด้วยตัวเอง (โทร/แชตส่วนตัว)');
   })]);
-  wireRoleRules();
 }
 function openEdit(id){
   var u=USERS.filter(function(x){return x.id===id;})[0];
@@ -552,16 +539,26 @@ function openEdit(id){
   openModal('แก้ไขบัญชี · '+u.un, body, [btn('ยกเลิก','',closeModal), btn('บันทึก','primary',function(){
     var v=readForm(); if(!validate(v,u)) return;
     var role=roleOfPos(v.pos);
-    u.name=v.name; u.role=role; u.pos=v.pos; u.scope=role==='host'?'all':v.scope; u.team=role==='recorder'?v.team:'';
-    closeModal(); render(u.id); toast('บันทึกการแก้ไขแล้ว · เขียน audit log');
+    function save(){
+      var changed=(v.pos!==u.pos);
+      u.name=v.name; u.role=role;
+      if(changed){ u.noticeFrom=posLabel(u.pos); u.pos=v.pos; u.notice=true; }
+      closeModal(); render(u.id);
+      toast(changed?'บันทึกแล้ว · ระบบจะแจ้ง '+u.name+' ตอนเข้าสู่ระบบครั้งถัดไป · บันทึกลงประวัติการแก้ไข':'บันทึกการแก้ไขแล้ว · บันทึกลงประวัติการแก้ไข');
+    }
+    if(v.pos===u.pos){ save(); return; }
+    /* เปลี่ยนตำแหน่ง = เปลี่ยนสิทธิ์ → ถามยืนยันก่อน (เจ้าของสั่ง 15 พ.ย. 2026) */
+    var w=el('div'); w.appendChild(el('p',null,'เปลี่ยนตำแหน่งของ '+u.name+' ('+u.un+')'));
+    w.appendChild(el('p',null,posLabel(u.pos)+'  →  '+posLabel(v.pos)));
+    w.appendChild(el('div','banner warn','สิทธิ์ใช้งานของเขาจะเปลี่ยนทันที · ระบบจะแจ้งเขาตอนเข้าสู่ระบบครั้งถัดไป · ระบบจดไว้ในประวัติการแก้ไข (ใครแก้ เมื่อไหร่ จากอะไรเป็นอะไร พร้อมตำแหน่งของผู้แก้ ณ ตอนนั้น)'));
+    openModal('ยืนยันเปลี่ยนตำแหน่ง', w, [btn('กลับไปแก้','',function(){ openEdit(u.id); }), btn('ยืนยันเปลี่ยน','primary',save)]);
   })]);
-  wireRoleRules();
 }
 
 /* ===== แสดงรหัสชั่วคราว (สร้าง/รีเซ็ต) ===== */
 function showPassword(title, u, lead){
   var pw=pwGen(), w=el('div');
-  var kv=el('dl','kv'); [['ชื่อที่แสดง',u.name],['username',u.un],['ตำแหน่ง',posLabel(u.pos)]].forEach(function(p){kv.appendChild(el('dt',null,p[0])); kv.appendChild(el('dd',null,p[1]));}); w.appendChild(kv);
+  var kv=el('dl','kv'); [['ชื่อ-นามสกุล',u.name],['รหัสพนักงาน',u.un],['ตำแหน่ง',posLabel(u.pos)]].forEach(function(p){kv.appendChild(el('dt',null,p[0])); kv.appendChild(el('dd',null,p[1]));}); w.appendChild(kv);
   w.appendChild(el('div',null,'รหัสผ่านชั่วคราว'));
   var box=el('div','pwbox'); var code=el('code',null,pw); box.appendChild(code);
   box.appendChild(btn('คัดลอก','sm',function(){
@@ -585,15 +582,15 @@ function openReset(id){
 function openToggle(id){
   var u=USERS.filter(function(x){return x.id===id;})[0], w=el('div');
   if(u.on){
-    if(u.un===ME){ w.appendChild(el('div','banner bad','ปิดบัญชีตัวเองไม่ได้ — ให้ host คนอื่นเป็นคนปิดให้')); openModal('ปิดบัญชีไม่ได้', w, [btn('เข้าใจแล้ว','primary',closeModal)]); return; }
-    if(u.role==='host' && activeHosts(u.id)===0){ w.appendChild(el('div','banner bad','ปิดบัญชีไม่ได้ — ต้องมี host ที่ใช้งานอยู่อย่างน้อย 1 คน (สร้าง host คนใหม่ก่อน)')); openModal('ปิดบัญชีไม่ได้', w, [btn('เข้าใจแล้ว','primary',closeModal)]); return; }
+    if(u.un===ME){ w.appendChild(el('div','banner bad','ปิดบัญชีตัวเองไม่ได้ — ให้ผู้ดูแลระบบคนอื่นเป็นคนปิดให้')); openModal('ปิดบัญชีไม่ได้', w, [btn('เข้าใจแล้ว','primary',closeModal)]); return; }
+    if(u.role==='host' && activeHosts(u.id)===0){ w.appendChild(el('div','banner bad','ปิดบัญชีไม่ได้ — ต้องมีผู้ดูแลระบบ (PM / OM / เจ้าของ) ที่ใช้งานอยู่อย่างน้อย 1 คน (สร้างคนใหม่ก่อน)')); openModal('ปิดบัญชีไม่ได้', w, [btn('เข้าใจแล้ว','primary',closeModal)]); return; }
     w.appendChild(el('p',null,'ปิดบัญชีของ '+u.name+' ('+u.un+')?'));
-    var ul=el('ul','plain'); ['ล็อกอินไม่ได้ทันที (session ที่เปิดอยู่ถูกตัดออก)','ข้อมูลที่เคยกรอกและ audit log ยังอยู่ครบ — ไม่ลบ','เปิดบัญชีคืนได้ทุกเมื่อ'].forEach(function(t){ul.appendChild(el('li',null,t));}); w.appendChild(ul);
-    openModal('ปิดบัญชี', w, [btn('ยกเลิก','',closeModal), btn('ปิดบัญชี','danger',function(){u.on=false; closeModal(); render(u.id); toast('ปิดบัญชี '+u.un+' แล้ว · เขียน audit log');})]);
+    var ul=el('ul','plain'); ['ล็อกอินไม่ได้ทันที (session ที่เปิดอยู่ถูกตัดออก)','ข้อมูลที่เคยกรอกและประวัติการแก้ไขยังอยู่ครบ — ไม่ลบ','เปิดบัญชีคืนได้ทุกเมื่อ'].forEach(function(t){ul.appendChild(el('li',null,t));}); w.appendChild(ul);
+    openModal('ปิดบัญชี', w, [btn('ยกเลิก','',closeModal), btn('ปิดบัญชี','danger',function(){u.on=false; closeModal(); render(u.id); toast('ปิดบัญชี '+u.un+' แล้ว · บันทึกลงประวัติการแก้ไข');})]);
   } else {
     w.appendChild(el('p',null,'เปิดบัญชีของ '+u.name+' ('+u.un+') กลับมาใช้งาน?'));
     w.appendChild(el('div','banner warn','ถ้าไม่ได้เข้าใช้นานหรือจำรหัสไม่ได้ แนะนำให้กด "รีเซ็ตรหัส" หลังเปิดบัญชี'));
-    openModal('เปิดบัญชี', w, [btn('ยกเลิก','',closeModal), btn('เปิดบัญชี','primary',function(){u.on=true; closeModal(); render(u.id); toast('เปิดบัญชี '+u.un+' แล้ว · เขียน audit log');})]);
+    openModal('เปิดบัญชี', w, [btn('ยกเลิก','',closeModal), btn('เปิดบัญชี','primary',function(){u.on=true; closeModal(); render(u.id); toast('เปิดบัญชี '+u.un+' แล้ว · บันทึกลงประวัติการแก้ไข');})]);
   }
 }
 
@@ -646,6 +643,8 @@ function toggleTheme(){
   r.setAttribute('data-theme',next);
   try{localStorage.setItem('aga-theme',next)}catch(e){}
 }
+/* ตัวเลือกตำแหน่งในตัวกรอง สร้างจาก POSITIONS (ของจริงอ่านจากตาราง positions) */
+(function(){ var s=$('fRole'); s.appendChild(new Option('ทุกตำแหน่ง','')); POSITIONS.forEach(function(p){ s.appendChild(new Option(p.label,p.key)); }); })();
 applyNavRole('host'); // หน้านี้ไม่มี role selector — สิทธิ์ host เสมอ (ดู _shell/README.md)
 render();
 </script>
