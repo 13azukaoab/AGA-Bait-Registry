@@ -30,11 +30,19 @@ const BANGKOK_OFFSET_MS = 7 * 60 * 60 * 1000; // Asia/Bangkok = UTC+7 ตลอ�
 export function monthOf(iso: string): string {
   const t = iso.trim();
   const offset = /(?:Z|[+-]\d{2}(?::?\d{2})?)$/i;
-  if (t.length <= 10 || !offset.test(t)) return t.slice(0, 7);
-  const normalised = t.replace(" ", "T").replace(/([+-]\d{2})$/, "$1:00");
-  const ms = Date.parse(normalised);
-  if (Number.isNaN(ms)) return t.slice(0, 7);
-  return new Date(ms + BANGKOK_OFFSET_MS).toISOString().slice(0, 7);
+  let month: string;
+  if (t.length <= 10 || !offset.test(t)) {
+    month = t.slice(0, 7);
+  } else {
+    const normalised = t.replace(" ", "T").replace(/([+-]\d{2})$/, "$1:00");
+    const ms = Date.parse(normalised);
+    month = Number.isNaN(ms) ? "" : new Date(ms + BANGKOK_OFFSET_MS).toISOString().slice(0, 7);
+  }
+  // ค่าเพี้ยนต้องไม่ไหลไปเทียบ string แบบเงียบๆ
+  if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) {
+    throw new Error(`monthOf: invalid date/month value "${iso}"`);
+  }
+  return month;
 }
 
 /** ไล่เดือนต่อเนื่อง count เดือนจาก startMonth ('YYYY-MM') */

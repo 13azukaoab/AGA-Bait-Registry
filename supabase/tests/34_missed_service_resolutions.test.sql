@@ -8,7 +8,7 @@
 --   dr = สัญญาที่ลูกค้าต่อแล้ว (สัญญาใหม่ dn ใส่ระหว่างเทส — 2.47)
 --   da / db / dc = ชุดตาราง host×recorder × ภายใน/เลยเพดาน × waived/makeup × ปิด/ยกเลิก (da ภายใน · db เลย · dc ปิด)
 BEGIN;
-SELECT plan(156);
+SELECT plan(164);
 
 INSERT INTO auth.users (id, instance_id, aud, role, email) VALUES
   ('00000000-0000-0000-0000-0000000000a1', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'host@test.local'),
@@ -48,7 +48,8 @@ INSERT INTO contracts (id, customer_id, contract_no, start_date, term_years, val
   (pg_temp.id('db'), pg_temp.id('c1'), 'M-B', pg_temp.m(-30), 1, 24000,  pg_temp.m(-30), 'active', NULL),
   (pg_temp.id('dc'), pg_temp.id('c1'), 'M-C', pg_temp.m(-18), 1, 24000,  pg_temp.m(-18), 'closed', NULL),
   (pg_temp.id('dd'), pg_temp.id('c1'), 'M-R', pg_temp.m(-18), 1, 24000,  pg_temp.m(-18), 'active', NULL),
-  (pg_temp.id('df'), pg_temp.id('c1'), 'M-F', pg_temp.m(-18), 1, 24000,  pg_temp.m(-18), 'active', NULL);
+  (pg_temp.id('df'), pg_temp.id('c1'), 'M-F', pg_temp.m(-18), 1, 24000,  pg_temp.m(-18), 'active', NULL),
+  (pg_temp.id('10'), pg_temp.id('c1'), 'M-10', pg_temp.m(-18), 1, 24000, pg_temp.m(-18), 'active', NULL);
 -- d1: m(-15) มี routine (ไม่ตก) · เดือนอื่นตก
 INSERT INTO visits (id, contract_id, visit_date, visit_type, start_time, end_time) VALUES
   (pg_temp.id('e1'), pg_temp.id('d1'), pg_temp.m(-15) + 9, 'routine', '09:00', '10:00');
@@ -374,7 +375,13 @@ SELECT throws_ok($$SELECT public.reopen_missed_service(jsonb_build_object('contr
   'MS011', NULL, 'recorder cannot reopen on a renewed contract');
 SELECT lives_ok(format('SELECT public.save_service_visit(%L::jsonb)', pg_temp.sv('0a', 'dd', pg_temp.td()) || '{"note": "แก้"}'),
   'the kept make-up visit can still be edited (note)');
+SELECT throws_ok(pg_temp.mk('0a', 'dd', pg_temp.td(), NULL), 'MS011', NULL,
+  'recorder cannot unlink a make-up recorded before renewal (outcome kept)');
+SELECT is(pg_temp.pending('dd'), '{}'::date[], 'still nothing pending on the renewed contract');
 SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a1', true);
+SELECT throws_ok(pg_temp.mk('0a', 'dd', pg_temp.td(), NULL), 'MS011', NULL, 'host cannot unlink it either');
+SELECT lives_ok(pg_temp.old('0a', 'dd', pg_temp.m(-1) + 5), 'the kept make-up visit can still be moved to another month');
+SELECT is(pg_temp.res('dd', pg_temp.m(-13)), 'makeup|' || pg_temp.m(-1)::text, 'and its outcome follows the visit');
 SELECT throws_ok(pg_temp.mk('0c', 'dd', pg_temp.td(), pg_temp.m(-12)), 'MS011', NULL, 'host cannot make up a renewed contract either');
 SELECT throws_ok(pg_temp.rs('dd', pg_temp.m(-12), 'x'), 'MS011', NULL, 'host cannot waive a renewed contract either');
 SELECT throws_ok($$SELECT public.reopen_missed_service(jsonb_build_object('contract_id', pg_temp.id('dd'), 'missed_month', pg_temp.m(-14)))$$,
@@ -408,6 +415,7 @@ SELECT throws_ok(pg_temp.ro('d4', pg_temp.m(-14)), 'MS009', NULL, 'host cannot r
 -- admin / viewer
 SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a2', true);
 SELECT throws_ok(pg_temp.ro('db', pg_temp.m(-24)), '42501', NULL, 'admin cannot reopen');
+SELECT is(pg_temp.pending('dd'), '{}'::date[], 'admin also sees nothing pending on the renewed contract');
 SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a4', true);
 SELECT throws_ok(pg_temp.ro('db', pg_temp.m(-24)), '42501', NULL, 'viewer cannot reopen');
 RESET ROLE;
@@ -442,6 +450,18 @@ RESET ROLE;
 SELECT ok((SELECT cancelled_at IS NULL FROM contracts WHERE id = pg_temp.id('df')), 'un-cancelling clears cancelled_at');
 SELECT throws_ok($$UPDATE contracts SET cancelled_at = now() WHERE id = pg_temp.id('df')$$,
   '23514', NULL, 'setting cancelled_at alone on an active contract is refused');
+
+-- สัญญาที่ยกเลิกหลังชดเชยแล้ว: เลิกผูกไม่ได้ (ผลคงไว้)
+SET LOCAL ROLE authenticated;
+SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a3', true);
+SELECT lives_ok(pg_temp.mk('11', '10', pg_temp.td(), pg_temp.m(-13)), 'make-up recorded before cancellation');
+RESET ROLE;
+UPDATE contracts SET status = 'cancelled' WHERE id = pg_temp.id('10');
+SET LOCAL ROLE authenticated;
+SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a1', true);
+SELECT throws_ok(pg_temp.mk('11', '10', pg_temp.td(), NULL), 'MS009', NULL,
+  'a make-up on a cancelled contract cannot be unlinked (outcome kept)');
+RESET ROLE;
 
 -- =====================================================================
 -- ไฟล์หลักฐาน (แก้ตามผลตรวจ security รอบแรก)

@@ -18,6 +18,8 @@
 --      · 1 เดือนที่ตกผูกได้ 1 การเข้า (unique index → 23505)
 --      · เปลี่ยนการผูกได้เฉพาะผ่าน RPC (POST/PATCH ตรง → 42501) · ห้ามลงวันที่การเข้าชดเชยล่วงหน้า (MS006)
 --      · เดือนที่ตกต้องไม่ก่อนเดือนเริ่มนับ (ตั้งสถานี) — กันผูกเดือนของสัญญาเก่าที่ไม่มีประวัติแล้วดัน Dashboard (MS001)
+--      · ข้อจำกัดที่ยอมรับ: PATCH visits ตรง (ย้ายวัน/ชนิดของการเข้าที่ผูกอยู่) ถือ row lock ก่อน advisory lock — ลำดับกลับ
+--        กับ RPC → ชนกันพร้อมกันได้ deadlock 40P01 (Postgres ยกเลิกฝั่งหนึ่ง ข้อมูลไม่เสีย) · หน้าจอใช้ RPC
 --      · ข้อจำกัดที่ยอมรับ: เพิ่ม routine ย้อนหลังในเดือนที่ชดเชยไปแล้ว → แถว makeup ค้าง แต่ lib/rules ไม่นับ
 --        (เดือนนั้นไม่ตกแล้ว) · admin ลบสัญญา (ที่ไม่มีการเข้า) → แถว waived ถูก CASCADE ลบตาม (audit + คิวลบไฟล์)
 --      · บันทึกผ่าน `save_makeup_service_visit(p jsonb)` = `save_service_visit` เดิม (ไม่แตะ signature/เนื้อ) + ผูก/เลิกผูก
@@ -225,6 +227,17 @@ BEGIN
     RAISE EXCEPTION 'make-up links are changed through save_makeup_service_visit' USING ERRCODE = '42501';
   END IF;
 
+  -- เลิกผูก / ย้ายการผูกของการเข้าเดิม: สัญญายกเลิก (MS009) / ต่อแล้ว (MS011) ห้าม — ผลที่บันทึกไว้ต้องคงไว้ (2.47)
+  IF TG_OP = 'UPDATE' AND v_link_change AND OLD.makeup_for_month IS NOT NULL THEN
+    IF EXISTS (SELECT 1 FROM contracts c WHERE c.id = OLD.contract_id
+                AND (c.status = 'cancelled' OR c.cancelled_at IS NOT NULL)) THEN
+      RAISE EXCEPTION 'the contract is cancelled' USING ERRCODE = 'MS009';
+    END IF;
+    IF contract_is_renewed(OLD.contract_id) THEN
+      RAISE EXCEPTION 'the contract has been renewed; recorded outcomes are kept' USING ERRCODE = 'MS011';
+    END IF;
+  END IF;
+
   IF v_missed IS NULL THEN
     RETURN NEW;
   END IF;
@@ -253,8 +266,9 @@ BEGIN
   IF v_cancelled THEN
     RAISE EXCEPTION 'the contract is cancelled' USING ERRCODE = 'MS009';
   END IF;
-  -- 2.47: ลูกค้าต่อสัญญาแล้ว → ตกบริการที่ค้างเป็นโมฆะ บันทึกชดเชยไม่ได้
-  IF contract_is_renewed(NEW.contract_id) THEN
+  -- 2.47: ลูกค้าต่อสัญญาแล้ว → ตกบริการที่ค้างเป็นโมฆะ ผูกการเข้าชดเชยใหม่ไม่ได้
+  --   (การเข้าชดเชยที่ผูกไว้ก่อนต่อสัญญา = ผลที่คงไว้ แก้วันที่/ข้ามเดือนได้ตามด่านอื่น)
+  IF v_link_change AND contract_is_renewed(NEW.contract_id) THEN
     RAISE EXCEPTION 'the contract has been renewed; its open missed months are void' USING ERRCODE = 'MS011';
   END IF;
   v_start_month := date_trunc('month', v_start_date)::date;
@@ -699,7 +713,8 @@ BEGIN
       FROM contracts ct
       JOIN customers cu ON cu.id = ct.customer_id
      WHERE ct.status <> 'cancelled' AND ct.cancelled_at IS NULL
-       AND NOT contract_is_renewed(ct.id)
+       AND NOT EXISTS (SELECT 1 FROM contracts n                    -- 2.47 ต่อแล้ว (= contract_is_renewed)
+                        WHERE n.renewed_from_contract_id = ct.id AND n.id <> ct.id)
        AND ct.stations_initialized_at IS NOT NULL
        AND (p_branch_id IS NULL OR cu.branch_id = p_branch_id)
        AND (v_role <> 'recorder' OR contract_in_scope(ct.id))

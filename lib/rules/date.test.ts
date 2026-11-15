@@ -26,6 +26,18 @@ describe("date util", () => {
     expect(monthOf("2026-12-31 17:30:00+00")).toBe("2027-01");
   });
 
+  it("monthOf: รูปแบบ microseconds ที่ Postgres/PostgREST คืนมา", () => {
+    expect(monthOf("2026-12-31T17:30:00.123456+00:00")).toBe("2027-01");
+    expect(monthOf("2026-12-31 17:30:00.123456+00")).toBe("2027-01");
+  });
+
+  it("monthOf: ค่าไม่ถูกต้อง → throw (ไม่คืนค่าขยะเงียบๆ)", () => {
+    expect(() => monthOf("garbage")).toThrow();
+    expect(() => monthOf("")).toThrow();
+    expect(() => monthOf("2026-13-45T00:00:00Z")).toThrow();
+    expect(() => monthOf("2026-13")).toThrow();
+  });
+
   it("listMonths: ไล่เดือนต่อเนื่อง n เดือนจากเดือนเริ่ม", () => {
     expect(listMonths("2026-01", 3)).toEqual(["2026-01", "2026-02", "2026-03"]);
     expect(listMonths("2026-11", 3)).toEqual(["2026-11", "2026-12", "2027-01"]);
