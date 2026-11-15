@@ -516,6 +516,19 @@ tfoot td{padding:10px 12px;font-weight:700;background:var(--surface-2);border-to
 #s-collect td .chip{margin-top:4px}
 .clbar-sm{height:6px;margin:5px 0 3px;max-width:180px}
 .clrng{display:flex;align-items:center;gap:6px}.clrng input{width:150px;min-width:0}.clrng span{color:var(--fg-muted);font-size:12.5px}
+@media (max-width:860px){
+  #s-collect .tablewrap{overflow:visible;background:none;border:0;box-shadow:none}
+  #s-collect table,#s-collect tbody,#s-collect tr,#s-collect td{display:block;width:100%}
+  #s-collect thead{display:none}
+  #clBody tr{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:10px;padding:12px 14px;box-shadow:var(--shadow)}
+  #clBody tr.clfin{background:var(--surface-2)}
+  #clBody td,#clBody tr.clfin td{border:0;padding:4px 0;background:none}
+  #clBody td::before{content:attr(data-label);display:block;font-size:12px;color:var(--fg-muted)}
+  #clBody td:first-child::before,#clBody td:last-child::before{display:none}
+  #clBody td.r{text-align:left;padding-top:8px}
+  #clBody td.r .btn{margin:0 6px 6px 0;min-height:40px}
+  .clrbtn{min-height:40px;padding:0 12px}
+}
 .clrow2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .clrow3 .field{min-width:0}.clrow3 input,.clrow3 select{width:100%;min-width:0;max-width:100%;box-sizing:border-box}
 .clrow3{display:grid;grid-template-columns:minmax(0,.8fr) minmax(0,1.2fr) minmax(0,1fr);gap:10px}
@@ -2778,6 +2791,8 @@ function clRender(){
       '<td class="num">'+(r.last?msDateTh(r.last.date)+'<small class="clsub">ทีม '+esc(r.last.team)+(r.last.kind==='skip'?' · ลูกค้าไม่ให้เก็บ'+(r.last.reason?' <button type="button" class="clrbtn" data-clreason="'+r.id+'" aria-label="ดูเหตุผลที่ลูกค้าไม่ให้เก็บ '+esc(r.name)+'" title="เหตุผล: '+esc(r.last.reason)+' (กดเพื่อดูรายละเอียด)">เหตุผล</button>':''):'')+'</small>':'<span class="tmdash">-</span>')+'</td>'+
       '<td class="r">'+(acts||finTxt)+(acts&&fin?'<div style="margin-top:6px">'+finTxt+'</div>':'')+'</td></tr>';
   }).join(''):'<tr><td colspan="5" class="empty">ไม่มีลูกค้าตามตัวกรองนี้</td></tr>';
+  var LB=['ลูกค้า · สาขา','สัญญา','IG (เก็บแล้ว / ทั้งหมด)','วันที่เก็บ',''];
+  [].forEach.call(body.querySelectorAll('tr'),function(tr){[].forEach.call(tr.cells,function(td,i){if(LB[i])td.setAttribute('data-label',LB[i])})});
   var hold=MS.filter(function(it){return msOpen(it)&&it.end<MS_CUR+'-01'});
   $('clHold').innerHTML=hold.length?'<div class="note" style="margin-top:12px"><span class="ic">ℹ</span><span><b>ยังไม่ขึ้นรายการเก็บสถานี</b> (มีเรื่องรอชดเชย): '+hold.map(function(it){return esc(it.name)+' · รอชดเชย '+msMonthTh(it.missed)}).join(' · ')+' — จะขึ้นรายการหลังบันทึกบริการชดเชย หรือกดไม่ชดเชย</span></div>':'';
 }
