@@ -541,11 +541,24 @@ tfoot td{padding:10px 12px;font-weight:700;background:var(--surface-2);border-to
 @media (max-width:860px){#matMat .sep{border-left:0}#matMat td.ch{padding-left:0}#matMat tr.zr{background:var(--accent-soft)!important}#matMat tr.zr td:first-child{justify-content:space-between}}
 .matstat{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;padding:6px 12px;border-radius:999px;background:var(--warn-soft);color:var(--warn);align-self:center}.matstat i{width:8px;height:8px;border-radius:50%;background:var(--warn)}.matstat b{font-weight:700}
 .matalert{margin:0 0 14px;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface);overflow:hidden}.mahd{display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--surface-2);font-size:13px}.mact{color:var(--fg-muted);font-size:12px}
-.matalert ul{list-style:none;margin:0;padding:0}.matalert li{display:flex;align-items:center;gap:10px;padding:8px 14px;border-top:1px solid var(--border);font-size:13px}.matalert li span{flex:1;min-width:0}.matalert li i{width:8px;height:8px;border-radius:50%;flex:none}
-.matalert li.danger i{background:var(--danger)}.matalert li.warn i{background:var(--warn)}.matalert li.info i{background:var(--accent)}.matalert li.danger{background:color-mix(in srgb,var(--danger) 5%,transparent)}.mok{padding:10px 14px;font-size:13px;color:var(--ok)}
 .mdelta{margin-top:6px;font-size:12px;color:var(--fg-muted)}.mdelta .mdv{font-weight:700;color:var(--fg)}.mdelta.big .mdv{padding:1px 8px;border-radius:999px;background:var(--warn-soft);color:var(--warn)}.mdelta .mdp{color:var(--fg-faint)}
 .rflag{display:inline-block;margin-left:4px;padding:1px 7px;border-radius:999px;background:var(--warn-soft);color:var(--warn);font-size:11px;font-weight:700;white-space:nowrap}
-@media (max-width:860px){.matalert li{flex-wrap:wrap}.matalert li .btn{min-height:36px}.matstat{white-space:normal;border-radius:12px}}
+.matalert{margin:0 0 16px;border:1px solid var(--border);border-radius:14px;background:var(--surface);overflow:hidden}
+.mahd{display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px;padding:12px 16px;background:var(--surface-2);border-bottom:1px solid var(--border);font-size:14px}.mact{color:var(--fg-muted);font-size:12.5px}
+.malg{margin-left:auto;display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--fg-muted)}.malg i{width:8px;height:8px;border-radius:50%;margin-left:8px}.malg i:first-child{margin-left:0}
+.malg i.danger,.macard.danger .manum{--tone:var(--danger);--tone-soft:var(--danger-soft)}.malg i.warn,.macard.warn .manum{--tone:var(--warn);--tone-soft:var(--warn-soft)}.malg i.info,.macard.info .manum{--tone:var(--accent);--tone-soft:var(--accent-soft)}.malg i{background:var(--tone)}
+.magrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr));gap:10px;padding:12px}
+.macard{display:flex;align-items:center;gap:14px;padding:12px 14px;border:1px solid var(--border);border-radius:12px;background:var(--surface);transition:border-color .2s,box-shadow .2s}.macard:hover{border-color:var(--border-strong);box-shadow:var(--shadow)}
+.manum{flex:none;min-width:64px;padding:8px 6px;border-radius:10px;background:var(--tone-soft);color:var(--tone);text-align:center;line-height:1.1}.manum b{display:block;font-size:24px;font-weight:700}.manum small{font-size:11.5px;font-weight:600}
+.matx{flex:1;min-width:0}.matx b{display:block;font-size:14px;font-weight:600;color:var(--fg)}.matx span{display:block;margin-top:2px;font-size:12.5px;color:var(--fg-muted)}
+.mok{padding:14px 16px;font-size:13px;color:var(--ok)}
+.rbtn{flex:none;position:relative;overflow:hidden;border:0;cursor:pointer;font:inherit;font-size:13.5px;font-weight:500;padding:.65em 1.4em;border-radius:.6em;background:var(--fg);color:var(--surface);min-height:40px}
+.rb-grad{position:absolute;inset:0;margin-top:-.25em;border-radius:.6em;background-image:linear-gradient(rgba(0,0,0,0),rgba(0,0,0,0),rgba(0,0,0,.3));pointer-events:none}
+.rb-label{position:relative;top:-1px;white-space:nowrap}
+.rb-ripple{position:absolute;left:50%;top:50%;width:0;height:0;border-radius:9999px;background:color-mix(in srgb,var(--ok) 60%,transparent);transform:translate(-50%,-50%);transition:width .5s cubic-bezier(0,0,.2,1),height .5s cubic-bezier(0,0,.2,1);pointer-events:none}
+.rbtn:hover .rb-ripple,.rbtn:focus-visible .rb-ripple{width:14em;height:14em}.rbtn:active{transform:scale(.97)}.rbtn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+@media (prefers-reduced-motion:reduce){.rb-ripple{transition:none}}
+@media (max-width:860px){.magrid{padding:10px}.macard{flex-wrap:wrap}.rbtn{width:100%}.malg{margin-left:0;width:100%}}
 .matmode{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:0 0 12px;font-size:12.5px;color:var(--fg-muted)}.matmode .segbtn{border:1px solid var(--border);min-height:34px}
 .tmmode{display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:10px 16px 0;font-size:12.5px;color:var(--fg-muted)}.tmmode .segbtn{border:1px solid var(--border);min-height:34px}
 .tmch{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px;padding:0 16px 14px}
@@ -2033,20 +2046,21 @@ function matDeltas(){
 }
 function matAlerts(){
   var box=$('matAlerts');if(!box)return;var A=[];
-  /* ตกบริการ + ใกล้หมดสัญญา = สีแดง */
+  /* สีแดง = ต้องจัดการทันที · เหลือง = ควรตรวจ · ฟ้า = รับทราบการเปลี่ยนแปลง */
   if(typeof TM!=='undefined'&&TM.length){var mn=0,mt=0;TM.forEach(function(t){if(t.miss&&t.miss.length){mn+=t.miss.length;mt++}});
-    if(mn)A.push({k:'danger',t:'ลูกค้าตกบริการ <b>'+mn+' ราย</b> ใน '+mt+' ทีม',go:'team',b:'ดูรายทีม'})}
+    if(mn)A.push({k:'danger',n:mn,u:'ราย',t:'ลูกค้าตกบริการ',s:'กระจายอยู่ใน '+mt+' ทีม',go:'team',b:'ดูรายทีม'})}
   if(typeof EXP!=='undefined'){var e30=0,e60=0;EXP.forEach(function(x){var d=expDays(x.end);if(d>=0&&d<=30)e30++;else if(d>30&&d<=60)e60++});
-    if(e30)A.push({k:'danger',t:'สัญญาหมดภายใน 30 วัน <b>'+e30+' ราย</b>'+(e60?' (อีก '+e60+' รายใน 60 วัน)':''),go:'exp',b:'ดูรายชื่อ'})}
-  /* Workload + อัตราใช้ผิดปกติ = เหลือง */
+    if(e30)A.push({k:'danger',n:e30,u:'ราย',t:'สัญญาหมดภายใน 30 วัน',s:e60?'อีก '+e60+' ราย ภายใน 60 วัน':'ยังไม่มีรายอื่นใน 60 วัน',go:'exp',b:'ดูรายชื่อ'})}
   if(typeof TM!=='undefined'&&TM.length&&typeof wtSplit==='function'){var ov=TM.filter(function(t){return t.min/60/wtSplit(t).heads>WT_CAP}).map(function(t){return t.team});
-    if(ov.length)A.push({k:'warn',t:'<b>'+ov.length+' ทีม</b>เกินเกณฑ์ Workload ('+WT_CAP+' ชม./คน): '+ov.slice(0,3).map(esc).join(', ')+(ov.length>3?' +'+(ov.length-3):''),go:'time',b:'ดูเวลาทำงาน'})}
-  if(MAT_FLAGS.length)A.push({k:'warn',t:'NEMESIS ต่อกล่อง AG สูงกว่าปกติ <b>'+MAT_FLAGS.length+' สาขา</b>: '+MAT_FLAGS.slice(0,3).map(esc).join(', ')+(MAT_FLAGS.length>3?' +'+(MAT_FLAGS.length-3):''),go:'mat',b:'ดูตาราง',flag:1})
-  /* เปลี่ยนจากเดือนก่อน ≥10% = ฟ้า */
+    if(ov.length)A.push({k:'warn',n:ov.length,u:'ทีม',t:'เกินเกณฑ์ Workload ('+WT_CAP+' ชม./คน)',s:ov.slice(0,3).map(esc).join(', ')+(ov.length>3?' +'+(ov.length-3):''),go:'time',b:'ดูเวลาทำงาน'})}
+  if(MAT_FLAGS.length)A.push({k:'warn',n:MAT_FLAGS.length,u:'สาขา',t:'NEMESIS ต่อกล่อง AG สูงกว่าปกติ',s:MAT_FLAGS.slice(0,3).map(esc).join(', ')+(MAT_FLAGS.length>3?' +'+(MAT_FLAGS.length-3):''),go:'mat',b:'ดูตาราง',flag:1});
   var pc=MAT_MOM[MAT_MODE]||MAT_MOM.base,nm={n:'NEMESIS',p:'เคมีผง',w:'ไม้ล่อ'};
-  ['n','p','w'].forEach(function(k){if(Math.abs(pc[k])>=0.10)A.push({k:'info',t:nm[k]+(pc[k]>0?' เพิ่มขึ้น ':' ลดลง ')+'<b>'+Math.abs(pc[k]*100).toFixed(1)+'%</b> จากเดือนก่อน',go:'mat',b:'ดูวัสดุ'})});
+  ['n','p','w'].forEach(function(k){if(Math.abs(pc[k])>=0.10)A.push({k:'info',n:(pc[k]>0?'+':'−')+Math.abs(pc[k]*100).toFixed(1),u:'%',t:nm[k]+(pc[k]>0?' เพิ่มขึ้น':' ลดลง')+'จากเดือนก่อน',s:'เทียบ ก.ย. 2026',go:'mat',b:'ดูวัสดุ'})});
   var ord={danger:0,warn:1,info:2};A.sort(function(a,b){return ord[a.k]-ord[b.k]});
-  box.innerHTML='<div class="mahd"><b>ต้องดูเดือนนี้</b><span class="mact">'+A.length+' เรื่อง</span></div>'+(A.length?'<ul>'+A.map(function(a,i){return '<li class="'+a.k+'"><i aria-hidden="true"></i><span>'+a.t+'</span><button type="button" class="btn sm" data-matgo="'+a.go+'"'+(a.flag?' data-matflag="1"':'')+'>'+a.b+' →</button></li>'}).join('')+'</ul>':'<div class="mok">ไม่มีเรื่องผิดปกติเดือนนี้ ✓</div>')
+  var cnt={danger:0,warn:0,info:0};A.forEach(function(a){cnt[a.k]++});
+  box.innerHTML='<div class="mahd"><b>ต้องดูเดือนนี้</b><span class="mact">'+A.length+' เรื่อง</span><span class="malg"><i class="danger"></i>ด่วน '+cnt.danger+'<i class="warn"></i>ควรตรวจ '+cnt.warn+'<i class="info"></i>รับทราบ '+cnt.info+'</span></div>'+
+    (A.length?'<div class="magrid">'+A.map(function(a){return '<div class="macard '+a.k+'"><div class="manum"><b class="num">'+a.n+'</b><small>'+a.u+'</small></div><div class="matx"><b>'+a.t+'</b><span>'+a.s+'</span></div>'+
+      '<button type="button" class="rbtn" data-matgo="'+a.go+'"'+(a.flag?' data-matflag="1"':'')+'><span class="rb-ripple"></span><span class="rb-grad"></span><span class="rb-label">'+a.b+' →</span></button></div>'}).join('')+'</div>':'<div class="mok">ไม่มีเรื่องผิดปกติเดือนนี้ ✓</div>')
 }
 document.addEventListener('click',function(e){var b=e.target.closest&&e.target.closest('[data-matgo]');if(!b)return;matTab(b.getAttribute('data-matgo'));
   if(b.getAttribute('data-matflag')){var t=document.querySelector('#matMat .tablewrap');if(t)t.scrollIntoView({behavior:'smooth',block:'start'})}});
