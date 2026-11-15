@@ -32,4 +32,10 @@ describe("isMissedService", () => {
     const c = { ...base, cancelledAt: "2026-02-15" };
     expect(isMissedService(c, "2026-03", [])).toBe(false);
   });
+
+  it("รับเดือนแบบ 'YYYY-MM-01' จาก DB ได้", () => {
+    const c = { id: "x", startDate: "2026-01-01", termYears: 1 as const, valueTotal: 1 };
+    expect(isMissedService(c, "2026-05-01", [])).toBe(true);
+    expect(isMissedService(c, "2026-05-01", [{ contractId: "x", visitDate: "2026-05-09", visitType: "routine" }])).toBe(false);
+  });
 });

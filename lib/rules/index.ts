@@ -4,3 +4,4 @@ export * from "./monthKey";
 export * from "./serviceMonths";
 export * from "./missedService";
 export * from "./snapshot";
+export * from "./missedResolution";
