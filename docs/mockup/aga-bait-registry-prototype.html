@@ -274,7 +274,7 @@ td.r,th.r{text-align:right} td.c,th.c{text-align:center}
 .matbars .usefill{border-radius:0 4px 4px 0}
 .matbars .usetrack.stk{display:flex;gap:2px}
 .mseg{height:100%;min-width:3px;display:block;border:0;padding:0;margin:0}
-.mseg.in{background:var(--nem);border-radius:0 4px 4px 0} .mseg.out{background:var(--nem-out);border-radius:4px 0 0 4px}
+.mseg.in{background:var(--danger);border-radius:0 4px 4px 0} .mseg.out{background:var(--ok);border-radius:4px 0 0 4px}
 .matbars .v{text-align:right;font-weight:600;line-height:1.35} .matbars .v small{display:block;font-weight:400;font-size:10.5px;color:var(--fg-faint)}
 .leg{display:flex;flex-wrap:wrap;gap:14px;margin:0 0 12px;font-size:11.5px;color:var(--fg-muted)}
 .leg span{display:inline-flex;align-items:center;gap:6px}
@@ -935,7 +935,7 @@ i.wr,rect.wr{background:var(--accent);fill:var(--accent)}i.wf,rect.wf{background
       <div class="matmode" id="matMode" role="group" aria-label="ข้อมูลตัวอย่าง"><span>ข้อมูลตัวอย่าง:</span><button type="button" class="segbtn on" data-matmode="base" aria-pressed="true">3 สาขา</button><button type="button" class="segbtn" data-matmode="full" aria-pressed="false">เต็ม 24 สาขาส่วนกลาง</button></div>
       <div id="matMat">
       <div class="stats">
-        <div class="stat matn"><div class="lab"><span class="dot" style="background:var(--nem)"></span> NEMESIS (เหยื่อ) ที่ใช้</div><div class="val num">10,000 <span style="font-size:14px;color:var(--fg-muted)">ก.</span></div><div class="nembar" role="img" aria-label="สถานีภายนอก 12.5% · กล่อง AG 87.5%"><i style="width:12.5%;background:var(--nem-out)"></i><i style="width:87.5%;background:var(--nem)"></i></div><div class="nemsplit"><div><small><span class="sw" style="background:var(--nem-out)"></span> สถานีภายนอก (IG+IC)</small><b class="num">1,250 ก.</b><em class="num">12.5%</em></div><div><small><span class="sw" style="background:var(--nem)"></span> กล่อง AG (ภายใน)</small><b class="num">8,750 ก.</b><em class="num">87.5%</em></div></div></div>
+        <div class="stat matn"><div class="lab"><span class="dot" style="background:var(--nem)"></span> NEMESIS (เหยื่อ) ที่ใช้</div><div class="val num">10,000 <span style="font-size:14px;color:var(--fg-muted)">ก.</span></div><div class="nembar" role="img" aria-label="สถานีภายนอก 12.5% · กล่อง AG 87.5%"><i style="width:12.5%;background:var(--ok)"></i><i style="width:87.5%;background:var(--danger)"></i></div><div class="nemsplit"><div><small><span class="sw" style="background:var(--ok)"></span> สถานีภายนอก (IG+IC)</small><b class="num">1,250 ก.</b><em class="num">12.5%</em></div><div><small><span class="sw" style="background:var(--danger)"></span> กล่อง AG (ภายใน)</small><b class="num">8,750 ก.</b><em class="num">87.5%</em></div></div></div>
         <div class="stat matp"><div class="lab"><span class="dot" style="background:var(--pow)"></span> เคมีผง (ปลวกสวน)</div><div class="val num">420 <span style="font-size:14px;color:var(--fg-muted)">จุด</span></div><div class="sub">≈ 126 ก. (0.3 ก./จุด)</div></div>
         <div class="stat matw"><div class="lab"><span class="dot" style="background:var(--wood)"></span> ไม้ล่อที่เปลี่ยน</div><div class="val num">1,240 <span style="font-size:14px;color:var(--fg-muted)">ชิ้น</span></div><div class="sub">IG 520 จุด×2 + IC 200 จุด×1</div></div>
       </div>
@@ -943,7 +943,7 @@ i.wr,rect.wr{background:var(--accent);fill:var(--accent)}i.wf,rect.wf{background
         <div class="panel">
           <h3><span class="dot" style="background:var(--nem)"></span> NEMESIS แยกสาขา <span class="num" style="margin-left:auto;font-weight:700;color:var(--nem)">10,000 ก.</span></h3>
           <div class="body">
-            <div class="leg"><span><span class="sw" style="background:var(--nem-out)"></span> ภายนอก (IG+IC)</span><span><span class="sw" style="background:var(--nem)"></span> ภายใน (AG)</span></div>
+            <div class="leg"><span><span class="sw" style="background:var(--ok)"></span> ภายนอก (IG+IC)</span><span><span class="sw" style="background:var(--danger)"></span> ภายใน (AG)</span></div>
             <div class="usebars">
               <div class="userow"><span>พุทธมณฑล</span><div class="usetrack stk"><div class="mseg out" style="width:12.2%" data-tip="ภายนอก (IG+IC) · 600 ก. · 12%"></div><div class="mseg in" style="width:87.8%" data-tip="ภายใน (AG) · 4,300 ก. · 88%"></div></div><span class="v num">4,900 ก.<small>นอก 600 · ใน 4,300</small></span></div>
               <div class="userow"><span>หัวหิน</span><div class="usetrack stk"><div class="mseg out" style="width:8.2%" data-tip="ภายนอก (IG+IC) · 400 ก. · 12%"></div><div class="mseg in" style="width:58.2%" data-tip="ภายใน (AG) · 2,850 ก. · 88%"></div></div><span class="v num">3,250 ก.<small>นอก 400 · ใน 2,850</small></span></div>
@@ -953,7 +953,7 @@ i.wr,rect.wr{background:var(--accent);fill:var(--accent)}i.wf,rect.wf{background
         </div>
         <div class="panel">
           <h3><span class="dot" style="background:var(--pow)"></span> เคมีผง แยกสาขา <span class="num" style="margin-left:auto;font-weight:700;color:var(--pow)">420 จุด</span></h3>
-          <div class="body"><div class="usebars">
+          <div class="body"><div class="leg"><span><span class="sw" style="background:var(--pow)"></span> เคมีผง (จุดที่พบปลวกสวน)</span></div><div class="usebars">
             <div class="userow"><span>พุทธมณฑล</span><div class="usetrack"><div class="usefill pow" style="width:100%" data-tip="เคมีผง · 230 จุด · 69 ก. · 55% ของเขต"></div></div><span class="v num">230 จุด</span></div>
             <div class="userow"><span>หัวหิน</span><div class="usetrack"><div class="usefill pow" style="width:47.8%" data-tip="เคมีผง · 110 จุด · 33 ก. · 26% ของเขต"></div></div><span class="v num">110 จุด</span></div>
             <div class="userow"><span>นครปฐม</span><div class="usetrack"><div class="usefill pow" style="width:34.8%" data-tip="เคมีผง · 80 จุด · 24 ก. · 19% ของเขต"></div></div><span class="v num">80 จุด</span></div>
@@ -961,7 +961,7 @@ i.wr,rect.wr{background:var(--accent);fill:var(--accent)}i.wf,rect.wf{background
         </div>
         <div class="panel">
           <h3><span class="dot" style="background:var(--wood)"></span> ไม้ล่อ แยกสาขา <span class="num" style="margin-left:auto;font-weight:700;color:var(--wood)">1,240 ชิ้น</span></h3>
-          <div class="body"><div class="usebars">
+          <div class="body"><div class="leg"><span><span class="sw" style="background:var(--wood)"></span> ไม้ล่อที่เปลี่ยน (ชิ้น)</span></div><div class="usebars">
             <div class="userow"><span>พุทธมณฑล</span><div class="usetrack"><div class="usefill wood" style="width:100%" data-tip="ไม้ล่อ · 620 ชิ้น · 50% ของเขต"></div></div><span class="v num">620 ชิ้น</span></div>
             <div class="userow"><span>หัวหิน</span><div class="usetrack"><div class="usefill wood" style="width:58%" data-tip="ไม้ล่อ · 360 ชิ้น · 29% ของเขต"></div></div><span class="v num">360 ชิ้น</span></div>
             <div class="userow"><span>นครปฐม</span><div class="usetrack"><div class="usefill wood" style="width:41.9%" data-tip="ไม้ล่อ · 260 ชิ้น · 21% ของเขต"></div></div><span class="v num">260 ชิ้น</span></div>
