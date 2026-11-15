@@ -2713,11 +2713,11 @@ function msOpenWaive(it,opener){
 }
 /* ---- #collect: รอเก็บสถานี (IG เท่านั้น) ---- */
 var CL=[
-  {id:'k1',name:'ศูนย์ฝึกอบรมพัฒนาทักษะ',ct:'CT25-0000263',end:'2026-10-12',closed:false,ig:20,got:14,skip:0,ic:6},
-  {id:'k2',name:'ตลาดสดบางแค',ct:'CT24-0000102',end:'2026-09-30',closed:false,ig:30,got:30,skip:0,ic:16},
-  {id:'k3',name:'ร้านเสริมสวยบ้านดอกไม้',ct:'CT26-0000266',end:'2026-09-06',closed:true,ig:4,got:0,skip:0,ic:0},
-  {id:'k4',name:'ร้านกาแฟบ้านไร่',ct:'CT25-0000120',end:'2026-08-31',closed:false,ig:6,got:4,skip:0,ic:4},
-  {id:'k5',name:'หจก. รุ่งเรืองพาณิชย์',ct:'CT25-0000077',end:'2026-08-20',closed:true,ig:10,got:7,skip:3,ic:4}
+  {id:'k1',name:'ศูนย์ฝึกอบรมพัฒนาทักษะ',ct:'CT25-0000263',end:'2026-10-12',closed:false,ig:20,got:14,skip:0,ic:6,gotM:6,skipM:0,fin:null},
+  {id:'k2',name:'ตลาดสดบางแค',ct:'CT24-0000102',end:'2026-09-30',closed:false,ig:30,got:30,skip:0,ic:16,gotM:12,skipM:0,fin:'2026-10'},
+  {id:'k3',name:'ร้านเสริมสวยบ้านดอกไม้',ct:'CT26-0000266',end:'2026-09-06',closed:true,ig:4,got:0,skip:0,ic:0,gotM:0,skipM:0,fin:null},
+  {id:'k4',name:'ร้านกาแฟบ้านไร่',ct:'CT25-0000120',end:'2026-08-31',closed:false,ig:6,got:4,skip:0,ic:4,gotM:0,skipM:0,fin:null},
+  {id:'k5',name:'หจก. รุ่งเรืองพาณิชย์',ct:'CT25-0000077',end:'2026-08-20',closed:true,ig:10,got:7,skip:3,ic:4,gotM:2,skipM:3,fin:'2026-10'}
 ];
 function clRem(r){return r.ig-r.got-r.skip}
 function clFind(id){for(var i=0;i<CL.length;i++){if(CL[i].id===id)return CL[i]}return null}
@@ -2728,17 +2728,19 @@ function clRender(){
   var wait=CL.filter(function(r){return clRem(r)>0}),rem=0,got=0,skip=0,tot=0;
   CL.forEach(function(r){rem+=clRem(r);got+=r.got;skip+=r.skip;tot+=r.ig});
   var tc=$('clStat');if(tc){tc.className='stat '+(wait.length?'warn':'ok');tc.innerHTML='<div class="lab"><span class="dot" style="background:var(--'+(wait.length?'warn':'ok')+')"></span> ลูกค้ารอเก็บสถานี</div><div class="val num">'+wait.length+' <span style="font-size:14px;font-weight:500;color:var(--fg-muted)">ราย</span></div><div class="sub">IG เหลือ '+rem+' สถานี · <a href="#collect" onclick="go(\'collect\');return false">ดูรายการ →</a></div>'}
-  /* การ์ด 2 ใบแถวเดียว (เจ้าของเลือกแบบ A · 15 พ.ย. 2026): ลูกค้า (ราย) / สถานี IG — แถบ 3 สี เก็บแล้ว · ไม่เก็บ (ลูกค้าไม่ให้เก็บ) · ยังต้องเข้าเก็บ
-     ลูกค้า: เก็บครบ = ไม่เหลือ IG และไม่มีที่ไม่เก็บ · ไม่ให้เก็บ = ไม่เหลือ IG แต่มีบางสถานีกด "ไม่เก็บ" · ยังต้องเข้าเก็บ = ยังเหลือ IG */
-  var cDone=0,cSkip=0,cWait=0;CL.forEach(function(r){if(clRem(r)>0)cWait++;else if(r.skip>0)cSkip++;else cDone++});
-  var nC=CL.length||1,nS=tot||1;
+  /* การ์ด 2 ใบแถวเดียว (เจ้าของเลือกแบบ A · 15 พ.ย. 2026) — "ค้างทั้งหมด + ทำเดือนนี้":
+     แดง = ยังต้องเข้าเก็บ (ค้างทั้งหมด ไม่ว่าหมดสัญญาเดือนไหน) · เขียว/เทา = เก็บแล้ว / ไม่เก็บ (ลูกค้าไม่ให้) เฉพาะที่ทำในเดือนที่เลือก
+     ลูกค้า: ปิดครบเดือนนี้ (fin = เดือนนี้) แยกเป็น เก็บครบ (ไม่มีที่ไม่เก็บ) / ลูกค้าไม่ให้เก็บ (มีบางสถานีไม่เก็บ) */
+  var cDone=0,cSkip=0,cWait=0,gM=0,sM=0;
+  CL.forEach(function(r){if(clRem(r)>0)cWait++;else if(r.fin===MS_CUR){if(r.skip>0)cSkip++;else cDone++}gM+=r.gotM||0;sM+=r.skipM||0});
+  var nC=(cDone+cSkip+cWait)||1,nS=(gM+sM+rem)||1,mth=msMonthTh(MS_CUR);
   function bar(a,b,c,n){return '<div class="clbar" role="img" aria-label="เก็บแล้ว '+a+' · ไม่เก็บ '+b+' · ยังต้องเข้าเก็บ '+c+'"><i class="ok" style="width:'+(a*100/n)+'%"></i><i class="sk" style="width:'+(b*100/n)+'%"></i><i class="rm" style="width:'+(c*100/n)+'%"></i></div>'}
-  function lg(a,b,c,u){return '<div class="cllg"><span><i class="ok"></i>'+a+'</span><span><i class="sk"></i>'+b+'</span><span><i class="rm"></i>'+c+'</span></div>'}
+  function lg(a,b,c){return '<div class="cllg"><span><i class="ok"></i>'+a+'</span><span><i class="sk"></i>'+b+'</span><span><i class="rm"></i>'+c+'</span></div>'}
   $('clStats').innerHTML=
-    '<div class="stat clcard"><div class="lab">ลูกค้า (ราย)</div><div class="val num">'+cDone+' <span class="clu">/ '+CL.length+' ราย เก็บครบแล้ว</span></div>'+bar(cDone,cSkip,cWait,nC)+
-      lg('เก็บครบ '+cDone+' ราย','ลูกค้าไม่ให้เก็บ '+cSkip+' ราย','ยังต้องเข้าเก็บ '+cWait+' ราย')+'</div>'+
-    '<div class="stat clcard"><div class="lab">สถานี IG</div><div class="val num">'+got+' <span class="clu">/ '+tot+' สถานี เก็บคืนแล้ว ('+Math.round(got*100/nS)+'%)</span></div>'+bar(got,skip,rem,nS)+
-      lg('เก็บแล้ว '+got+' สถานี','ไม่เก็บ (ลูกค้าไม่ให้) '+skip+' สถานี','ยังไม่ได้เก็บ '+rem+' สถานี')+'</div>';
+    '<div class="stat clcard"><div class="lab">ลูกค้า (ราย) · '+mth+'</div><div class="val num">'+cDone+' <span class="clu">/ '+(cDone+cSkip+cWait)+' ราย เก็บครบเดือนนี้</span></div>'+bar(cDone,cSkip,cWait,nC)+
+      lg('เก็บครบเดือนนี้ '+cDone+' ราย','ลูกค้าไม่ให้เก็บ (เดือนนี้) '+cSkip+' ราย','ยังต้องเข้าเก็บ (ค้างทั้งหมด) '+cWait+' ราย')+'</div>'+
+    '<div class="stat clcard"><div class="lab">สถานี IG · '+mth+'</div><div class="val num">'+gM+' <span class="clu">/ '+(gM+sM+rem)+' สถานี เก็บคืนเดือนนี้</span></div>'+bar(gM,sM,rem,nS)+
+      lg('เก็บแล้วเดือนนี้ '+gM+' สถานี','ไม่เก็บ (ลูกค้าไม่ให้) '+sM+' สถานี','ยังไม่ได้เก็บ (ค้างทั้งหมด) '+rem+' สถานี')+'</div>';
   var dis=can?'':' disabled title="เฉพาะหัวหน้างาน/host"';
   body.innerHTML=rows.length?rows.map(function(r){
     var rm=clRem(r),chip=r.closed?'<span class="chip na">ปิดสัญญาแล้ว</span>':'<span class="chip pend">หมดสัญญา · ยังไม่ปิด</span>';
@@ -2820,13 +2822,13 @@ document.addEventListener('click',function(e){
   var cl=t.dataset.cl,r=id&&clFind(id);
   if(cl==='got'&&r&&msCan()){clOpen('got',r,t);return}
   if(cl==='skip'&&r&&msCan()){clOpen('skip',r,t);return}
-  if(cl==='savegot'&&r){var n=clN(r);if(!n)return;r.got+=n;msDlgClose(true);clRender();toast('บันทึกเก็บ IG คืน '+n+' สถานีแล้ว ('+r.name+')');return}
+  if(cl==='savegot'&&r){var n=clN(r);if(!n)return;r.got+=n;r.gotM=(r.gotM||0)+n;if(clRem(r)===0)r.fin=MS_CUR;msDlgClose(true);clRender();toast('บันทึกเก็บ IG คืน '+n+' สถานีแล้ว ('+r.name+')');return}
   if(cl==='confirmskip'&&r){
     var n2=clN(r);if(!n2)return;var rr=$('clR').value.trim();if(!rr){msErr('กรุณาพิมพ์เหตุผลที่ไม่เก็บ');$('clR').focus();return}
     $('msErr').hidden=true;$('msStep').innerHTML='<span class="lab" style="margin-right:auto">ไม่เก็บ IG '+n2+' สถานีนี้อีก?</span><button class="btn" data-cl="backskip" data-id="'+r.id+'">กลับไปแก้</button><button class="btn danger" data-cl="doskip" data-id="'+r.id+'" data-n="'+n2+'">ยืนยัน ไม่เก็บ</button>';
     var dk=$('msStep').querySelector('.danger');if(dk)dk.focus();return}
   if(cl==='backskip'&&r){$('msStep').innerHTML='<button class="btn" data-ms="close">ยกเลิก</button><button class="btn primary" data-cl="confirmskip" data-id="'+r.id+'">ไม่เก็บ</button>';return}
-  if(cl==='doskip'&&r){var n3=+t.dataset.n;r.skip+=n3;msDlgClose(true);clRender();toast('บันทึก ไม่เก็บ IG '+n3+' สถานี แล้ว — นับเป็น "IG ที่ทิ้งไว้สะสม" (ลง audit_log)');return}
+  if(cl==='doskip'&&r){var n3=+t.dataset.n;r.skip+=n3;r.skipM=(r.skipM||0)+n3;if(clRem(r)===0)r.fin=MS_CUR;msDlgClose(true);clRender();toast('บันทึก ไม่เก็บ IG '+n3+' สถานี แล้ว — นับเป็น "IG ที่ทิ้งไว้สะสม" (ลง audit_log)');return}
   if(cl==='close'&&r&&msCan()){
     var rm=clRem(r);msDlgOpen('<h3 id="msT" style="margin:0 0 4px;font-size:16px">ปิดสัญญา '+esc(r.ct)+'</h3><div class="lab">'+esc(r.name)+(rm>0?' · มี IG ยังไม่เก็บ '+rm+' สถานี — ปิดสัญญาได้ และ IG เหล่านี้ยังอยู่ในรายการรอเก็บจนกด "เก็บแล้ว" หรือ "ไม่เก็บ"':' · IG เก็บครบแล้ว')+'</div><div class="acts"><button class="btn" data-ms="close">ยกเลิก</button><button class="btn primary" data-cl="doclose" data-id="'+r.id+'">ยืนยัน ปิดสัญญา</button></div>',t);return}
   if(cl==='doclose'&&r){r.closed=true;msDlgClose(true);clRender();toast('ปิดสัญญา '+r.ct+' แล้ว'+(clRem(r)>0?' · IG ที่เหลือ '+clRem(r)+' สถานียังอยู่ในรายการรอเก็บ':''));return}
