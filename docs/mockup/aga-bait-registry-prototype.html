@@ -534,7 +534,12 @@ tfoot td{padding:10px 12px;font-weight:700;background:var(--surface-2);border-to
 .tmcb i{display:flex;align-items:center;justify-content:center;font-style:normal;font-size:10.5px;font-weight:700;border-radius:2px;overflow:hidden;min-width:0;cursor:default}
 .tmcb i:first-child{border-radius:4px 2px 2px 4px}.tmcb i:last-child{border-radius:2px 4px 4px 2px}
 .tmcs{position:relative;height:14px}.tmcs i{display:block;height:100%;background:var(--accent);border-radius:2px 4px 4px 2px;cursor:default}
-.tmcs i.warn{background:var(--warn)}.wtch{padding:0;margin:14px 0}.chip.warn{background:var(--warn-soft);color:var(--warn);font-weight:700}
+.tmcs i.warn{background:var(--warn)}
+.wtbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px;margin:14px 0 0;font-size:12.5px;color:var(--fg-muted)}.wtbar input{width:64px;min-height:34px;text-align:right}.wtbar select{min-height:34px}.wthint{font-size:12px;color:var(--fg-faint)}
+.wtstack{overflow:hidden}.wtstack i{display:block;height:100%;cursor:default}.wtstack i+i{margin-left:2px}
+i.wr,rect.wr{background:var(--accent);fill:var(--accent)}i.wf,rect.wf{background:color-mix(in srgb,var(--accent) 38%,var(--surface));fill:color-mix(in srgb,var(--accent) 38%,var(--surface))}i.wp,rect.wp{background:var(--fg-muted);fill:var(--fg-muted)}
+.tmlg i.wr,.tmlg i.wf,.tmlg i.wp{width:10px;height:10px}
+.tmcs .avgl.cap{border-left-color:var(--danger)}.wtsvg{width:100%;height:auto;max-height:200px}.wtgrid{stroke:var(--border);stroke-width:1}.wtax{font-size:10px;fill:var(--fg-muted)}.wtax.b{font-weight:700;fill:var(--fg)}.wtinsight{font-size:12.5px;color:var(--fg-muted);margin-top:4px}.wtch{padding:0;margin:14px 0}.chip.warn{background:var(--warn-soft);color:var(--warn);font-weight:700}
 .tmcs .avgl{position:absolute;top:-4px;bottom:-4px;border-left:2px dashed var(--fg-muted)}
 .tmch.dense .tmcb{height:13px}.tmch.dense .tmct{display:none}.tmch.dense .tmcs{height:11px}.tmch.dense .tmlg{margin-bottom:2px}
 .tmmd{display:grid;grid-template-columns:1fr 1fr;gap:4px 28px}
@@ -892,9 +897,9 @@ tfoot td{padding:10px 12px;font-weight:700;background:var(--surface-2);border-to
     <!-- ========== สรุปวัสดุ (internal: host/admin/recorder) ========== -->
     <section id="s-material" hidden>
       <div class="page-head"><h1>สรุปงานบริการรายเดือน</h1>
-        <p>สรุปวัสดุที่ใช้ (เหยื่อ NEMESIS · เคมีผง · ไม้ล่อ) เวลาทำงาน สรุปรายทีม และลูกค้าใกล้หมดสัญญา — สำหรับวางแผนสต็อก/ต้นทุน/กำลังคน <span class="chip pend">🔒 internal เท่านั้น</span></p></div>
+        <p>สรุปการใช้อุปกรณ์ (เหยื่อ NEMESIS · เคมีผง · ไม้ล่อ) เวลาทำงาน สรุปรายทีม และลูกค้าใกล้หมดสัญญา — สำหรับวางแผนสต็อก/ต้นทุน/กำลังคน <span class="chip pend">🔒 internal เท่านั้น</span></p></div>
       <div class="seg" role="tablist" aria-label="หัวข้อสรุป">
-        <button type="button" class="segbtn on" role="tab" aria-selected="true" id="matTabMat" onclick="matTab('mat')">วัสดุ</button>
+        <button type="button" class="segbtn on" role="tab" aria-selected="true" id="matTabMat" onclick="matTab('mat')">การใช้อุปกรณ์</button>
         <button type="button" class="segbtn" role="tab" aria-selected="false" id="matTabTeam" onclick="matTab('team')">สรุปรายทีม</button>
         <button type="button" class="segbtn" role="tab" aria-selected="false" id="matTabTime" onclick="matTab('time')">เวลาทำงาน</button>
         <button type="button" class="segbtn" role="tab" aria-selected="false" id="matTabExp" onclick="matTab('exp')">ลูกค้าใกล้หมดสัญญา</button>
@@ -1008,6 +1013,7 @@ tfoot td{padding:10px 12px;font-weight:700;background:var(--surface-2);border-to
           <button type="button" class="segbtn on" role="tab" aria-selected="true" id="wtViewTeam" onclick="wtView('team')">รายทีม</button>
           <button type="button" class="segbtn" role="tab" aria-selected="false" id="wtViewCust" onclick="wtView('cust')">รายลูกค้า</button>
         </div>
+        <div class="wtbar" id="wtBar" hidden><label>เกณฑ์ภาระสูง <input type="number" id="wtCap" value="30" min="1" step="1" inputmode="numeric" oninput="wtCapSet(this.value)" aria-label="เกณฑ์ภาระสูง ชั่วโมงต่อคนต่อเดือน"> ชม./คน/เดือน</label><label>เทรนด์ของ <select id="wtTrendSel" onchange="wtTrendSet(this.value)" aria-label="เลือกทีมสำหรับเทรนด์"></select></label><span class="wthint">ข้อมูลสมมติ · จำนวนคนต่อทีมต้องเก็บจริงในระบบ</span></div>
         <div class="tmch dense wtch" id="wtCharts" hidden></div>
         <div class="tablewrap" id="wtTable"></div>
         <div class="note"><span class="ic">ℹ</span><span>เวลาทำงานจริง = เวลาออก − เวลาเข้า ของแต่ละครั้งที่เข้า · <b>ถ้าเข้าพร้อมหลายทีม นับเวลาเต็มให้ทุกทีม</b> (ยอด “รวมทุกทีม” จึงมากกว่าเวลาจริงของงานได้) · ตัวเลขในตารางนี้เป็น <b>ข้อมูลตัวอย่าง (สมมติ)</b> เพื่อดูหน้าตา</span></div>
@@ -1969,26 +1975,60 @@ function matCap(){
     var n=document.createElement('div');n.className='hint';n.style.marginTop='6px';n.textContent='แสดง 8 สาขาแรก · อีก '+(rows.length-8)+' สาขาดูในตารางด้านล่าง';u.appendChild(n);
   });
 }
-/* กราฟเวลาทำงานรายทีม (เจ้าของเลือกแบบ A 15 พ.ย. 2026)
-   • ซ้าย: เวลารวมต่อทีม (ชม.) · ขวา: เฉลี่ยต่อครั้ง — ทีมที่สูงกว่าค่าเฉลี่ยเกิน 10% ใช้สีเหลืองอำพันเตือน
-   • สีเดียวคือน้ำเงินแบรนด์ (ขนาดแท่ง = ปริมาณ) · สีเตือนใช้เฉพาะค่าผิดปกติ · เส้นประ = ค่าเฉลี่ยทุกทีม · ชี้/แตะแท่งเพื่อดูรายละเอียด */
+/* ===== เวลาทำงานรายทีมแยกประเภทงาน + ตัวช่วยตัดสินเรื่องกำลังคน (เจ้าของสั่ง 15 พ.ย. 2026) =====
+   ประเภทงาน = visits.visit_type: routine (ประจำเดือน) · problem (แก้ปัญหา) · follow_up (ติดตามผล) — มีใน schema อยู่แล้ว ไม่ต้องเพิ่มฟิลด์
+   ข้อมูลในหน้านี้เป็น "ข้อมูลสมมติ" (สัดส่วนประเภทงาน · จำนวนคน · เทรนด์ 6 เดือน สร้างจากชื่อทีม)
+   • แท่งซ้อน: เวลารวมต่อทีม แยก 3 ประเภท (ประจำเดือน = น้ำเงิน · ติดตามผล = น้ำเงินอ่อน · แก้ปัญหา = เทา) + ป้าย % งานนอกแผน
+   • ชม./คน: เวลารวม ÷ จำนวนคนภาคสนามในทีม เทียบ "เกณฑ์ภาระสูง" (ปรับได้) — เกินเกณฑ์ใช้สีเหลืองอำพัน
+   • เฉลี่ย/ครั้ง: ทีมที่สูงกว่าเฉลี่ยเกิน 10% ใช้สีเหลืองอำพัน
+   • เทรนด์ 6 เดือน: แท่งซ้อนรายเดือน (ทุกทีม หรือเลือกทีม) ดูว่างานนอกแผนโตขึ้นไหม
+   ฟิลด์ใหม่ที่ต้องมีจริง (แจ้ง FE): จำนวนคนภาคสนามต่อทีม (teams.headcount) */
+var WT_MONTHS=['พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.'],WT_CAP=30,WT_TREND_TEAM='';
+function wtSplit(t){
+  if(t._sp)return t._sp;
+  var c=t.team.charCodeAt(t.team.length-1),pp=0.04+(c%7)*0.012,pf=0.03+(c%5)*0.01,tot=t.min;
+  var p=Math.round(tot*pp),fu=Math.round(tot*pf);
+  t._sp={r:tot-p-fu,p:p,f:fu,heads:2+(c%2)};return t._sp}
+function wtTrendData(team){
+  var RF=[.88,.9,.93,.95,.97,1],PF=[.62,.72,.8,.88,.95,1],FF=[.8,.85,.9,.92,.96,1],out=[];
+  WT_MONTHS.forEach(function(m,i){var r=0,p=0,f=0;TM.forEach(function(t){if(team&&t.team!==team)return;var s=wtSplit(t);r+=s.r*RF[i];p+=s.p*PF[i];f+=s.f*FF[i]});out.push({m:m,r:r/60,p:p/60,f:f/60})});
+  return out}
+function wtCapSet(v){var n=parseFloat(v);if(!(n>0))return;WT_CAP=n;wtCharts()}
+function wtTrendSet(v){WT_TREND_TEAM=v;wtCharts()}
 function wtCharts(){
-  var box=$('wtCharts');if(!box)return;
-  if(WT_VIEW!=='team'||!TM.length){box.hidden=true;box.innerHTML='';return}
-  box.hidden=false;
-  var D=TM.map(function(t){return {t:t,h:t.min/60,a:t.min/t.visits}});
-  var totH=D.reduce(function(x,d){return x+d.h},0),totV=TM.reduce(function(x,t){return x+t.visits},0),avgH=totH/D.length,avgA=totH*60/totV;
-  var byH=D.slice().sort(function(x,y){return y.h-x.h}),byA=D.slice().sort(function(x,y){return y.a-x.a});
-  var maxH=byH[0].h||1,maxA=byA[0].a||1;
+  var box=$('wtCharts'),bar=$('wtBar');if(!box)return;
+  if(WT_VIEW!=='team'||!TM.length){box.hidden=true;box.innerHTML='';if(bar)bar.hidden=true;return}
+  box.hidden=false;if(bar)bar.hidden=false;
+  var tsel=$('wtTrendSel');if(tsel&&tsel.options.length!==TM.length+1){tsel.innerHTML='<option value="">ทุกทีม</option>'+TM.map(function(t){return '<option value="'+esc(t.team)+'">'+esc(t.team)+'</option>'}).join('')}
+  if(tsel)tsel.value=WT_TREND_TEAM;
+  var D=TM.map(function(t){var sp=wtSplit(t);return {t:t,sp:sp,h:t.min/60,a:t.min/t.visits,pp:t.min/60/sp.heads,off:(sp.p+sp.f)*100/t.min}});
+  var totM=TM.reduce(function(x,t){return x+t.min},0),totV=TM.reduce(function(x,t){return x+t.visits},0),avgA=totM/totV,totHeads=D.reduce(function(x,d){return x+d.sp.heads},0);
+  var byH=D.slice().sort(function(x,y){return y.h-x.h}),byA=D.slice().sort(function(x,y){return y.a-x.a}),byP=D.slice().sort(function(x,y){return y.pp-x.pp});
+  var maxH=byH[0].h||1,maxA=byA[0].a||1,maxP=Math.max(byP[0].pp,WT_CAP*1.15)||1;
   function row(name,bar,val){return '<div class="tmcr"><b>'+esc(name)+'</b>'+bar+'<span class="num">'+val+'</span></div>'}
-  var g1=byH.map(function(d){var p=Math.round((d.h/avgH-1)*100);
-    return row(d.t.team,'<div class="tmcs"><i style="width:'+(d.h/maxH*100)+'%" data-tip="<b>'+esc(d.t.team)+'</b><br>เวลาทำงานรวม '+d.h.toFixed(1)+' ชม.<br>เข้า '+d.t.visits+' ครั้ง<br>เฉลี่ยทุกทีม '+avgH.toFixed(1)+' ชม. ('+(p>0?'+':'')+p+'%)"></i><span class="avgl" style="left:'+(avgH/maxH*100)+'%"></span></div>','<b>'+d.h.toFixed(1)+'</b> ชม.')}).join('');
+  function seg(cls,v,tot,lab){return v>0?'<i class="'+cls+'" style="width:'+(v*100/tot)+'%" data-tip="'+lab+'"></i>':''}
+  var g1=byH.map(function(d){var m=d.t.min,s=d.sp,nm=esc(d.t.team);
+    var tip=function(l,v){return '<b>'+nm+' · '+l+'</b><br>'+(v/60).toFixed(1)+' ชม. ('+Math.round(v*100/m)+'% ของทีม)<br>ทั้งหมด '+d.h.toFixed(1)+' ชม.'};
+    return row(d.t.team,'<div class="tmcb wtstack" style="width:'+(d.h/maxH*100)+'%">'+seg('wr',s.r,m,tip('ประจำเดือน',s.r))+seg('wf',s.f,m,tip('ติดตามผล',s.f))+seg('wp',s.p,m,tip('แก้ปัญหา',s.p))+'</div>','<b>'+d.h.toFixed(1)+'</b> ชม. <span class="chip '+(d.off>=14?'warn':'na')+'" title="สัดส่วนงานนอกแผน (แก้ปัญหา + ติดตามผล)">'+Math.round(d.off)+'%</span>')}).join('');
+  var over=0;
+  var g3=byP.map(function(d){var ov=d.pp>WT_CAP;if(ov)over++;
+    return row(d.t.team,'<div class="tmcs"><i class="'+(ov?'warn':'')+'" style="width:'+(d.pp/maxP*100)+'%" data-tip="<b>'+esc(d.t.team)+'</b><br>'+d.h.toFixed(1)+' ชม. ÷ '+d.sp.heads+' คน = '+d.pp.toFixed(1)+' ชม./คน<br>เกณฑ์ภาระสูง '+WT_CAP+' ชม./คน"></i><span class="avgl cap" style="left:'+(WT_CAP/maxP*100)+'%"></span></div>','<b>'+d.pp.toFixed(1)+'</b> '+(ov?'<span class="chip warn">เกินเกณฑ์</span>':''))}).join('');
   var hi=0;
   var g2=byA.map(function(d){var p=Math.round((d.a/avgA-1)*100),warn=p>10;if(warn)hi++;
     return row(d.t.team,'<div class="tmcs"><i class="'+(warn?'warn':'')+'" style="width:'+(d.a/maxA*100)+'%" data-tip="<b>'+esc(d.t.team)+'</b><br>เฉลี่ย '+wtFmt(Math.round(d.a))+' ชม.:นาที ต่อครั้ง<br>เฉลี่ยทุกทีม '+wtFmt(Math.round(avgA))+' ('+(p>0?'+':'')+p+'%)"></i><span class="avgl" style="left:'+(avgA/maxA*100)+'%"></span></div>','<b>'+wtFmt(Math.round(d.a))+'</b> '+(warn?'<span class="chip warn">+'+p+'%</span>':''))}).join('');
+  var T=wtTrendData(WT_TREND_TEAM),mx=Math.max.apply(0,T.map(function(x){return x.r+x.p+x.f}))||1,W=340,H=170,L=34,B=22,TP=10,bw=34,gap=(W-L-6*bw)/6;
+  var ticks=[0,.5,1].map(function(k){var y=H-B-(H-B-TP)*k;return '<line x1="'+L+'" x2="'+W+'" y1="'+y+'" y2="'+y+'" class="wtgrid"/><text x="'+(L-5)+'" y="'+(y+4)+'" text-anchor="end" class="wtax">'+Math.round(mx*k)+'</text>'}).join('');
+  var cols=T.map(function(x,i){var x0=L+gap/2+i*(bw+gap),y=H-B,sc=(H-B-TP)/mx,out='';
+    [['wr',x.r,'ประจำเดือน'],['wf',x.f,'ติดตามผล'],['wp',x.p,'แก้ปัญหา']].forEach(function(sg){var h=sg[1]*sc;y-=h;out+='<rect x="'+x0+'" y="'+y+'" width="'+bw+'" height="'+Math.max(h-1,0)+'" class="'+sg[0]+'" data-tip="<b>'+x.m+' · '+sg[2]+'</b><br>'+sg[1].toFixed(1)+' ชม. ('+Math.round(sg[1]*100/(x.r+x.f+x.p))+'%)<br>รวมเดือนนี้ '+(x.r+x.f+x.p).toFixed(1)+' ชม."/>'});
+    var off=(x.p+x.f)*100/(x.r+x.p+x.f);
+    return out+'<text x="'+(x0+bw/2)+'" y="'+(y-4)+'" text-anchor="middle" class="wtax b">'+Math.round(off)+'%</text><text x="'+(x0+bw/2)+'" y="'+(H-6)+'" text-anchor="middle" class="wtax">'+x.m+'</text>'}).join('');
+  var f0=(T[0].p+T[0].f)*100/(T[0].r+T[0].p+T[0].f),f5=(T[5].p+T[5].f)*100/(T[5].r+T[5].p+T[5].f);
+  var sw=function(c,l){return '<span><i class="'+c+'"></i>'+l+'</span>'};
   box.innerHTML=
-    '<div class="tmcp"><h4>เวลาทำงานรวมต่อทีม <small>(ชั่วโมง)</small></h4><div class="tmlg"><span><i style="background:var(--accent)"></i>เวลารวม</span><span><i class="dash"></i>เฉลี่ยทุกทีม '+avgH.toFixed(1)+' ชม.</span></div>'+g1+'</div>'+
-    '<div class="tmcp"><h4>เฉลี่ยต่อครั้ง <small>(ชม.:นาที)</small></h4><div class="tmlg"><span><i style="background:var(--accent)"></i>ปกติ</span><span><i style="background:var(--warn)"></i>สูงกว่าเฉลี่ยเกิน 10% ('+hi+' ทีม)</span><span><i class="dash"></i>เฉลี่ยทุกทีม '+wtFmt(Math.round(avgA))+'</span></div>'+g2+'</div>';
+    '<div class="tmcp"><h4>เวลาทำงานรวมต่อทีม แยกประเภทงาน <small>(ชั่วโมง · % = งานนอกแผน)</small></h4><div class="tmlg">'+sw('wr','ประจำเดือน')+sw('wf','ติดตามผล')+sw('wp','แก้ปัญหา')+'</div>'+g1+'</div>'+
+    '<div class="tmcp"><h4>ชั่วโมงต่อคนในทีม <small>(เทียบเกณฑ์ภาระสูง '+WT_CAP+' ชม./คน · '+totHeads+' คน)</small></h4><div class="tmlg"><span><i style="background:var(--accent)"></i>ปกติ</span><span><i style="background:var(--warn)"></i>เกินเกณฑ์ ('+over+' ทีม)</span><span><i class="dash"></i>เกณฑ์ '+WT_CAP+'</span></div>'+g3+'</div>'+
+    '<div class="tmcp"><h4>เฉลี่ยต่อครั้ง <small>(ชม.:นาที)</small></h4><div class="tmlg"><span><i style="background:var(--accent)"></i>ปกติ</span><span><i style="background:var(--warn)"></i>สูงกว่าเฉลี่ยเกิน 10% ('+hi+' ทีม)</span><span><i class="dash"></i>เฉลี่ยทุกทีม '+wtFmt(Math.round(avgA))+'</span></div>'+g2+'</div>'+
+    '<div class="tmcp"><h4>เทรนด์ 6 เดือน — '+(WT_TREND_TEAM?esc(WT_TREND_TEAM):'ทุกทีม')+' <small>(ชั่วโมง · % บนแท่ง = งานนอกแผน)</small></h4><div class="tmlg">'+sw('wr','ประจำเดือน')+sw('wf','ติดตามผล')+sw('wp','แก้ปัญหา')+'</div><svg viewBox="0 0 '+W+' '+H+'" class="wtsvg" role="img" aria-label="เทรนด์ชั่วโมงทำงานรายเดือน งานนอกแผนจาก '+Math.round(f0)+'% เป็น '+Math.round(f5)+'%">'+ticks+cols+'</svg><div class="wtinsight">งานนอกแผน '+Math.round(f0)+'% → <b>'+Math.round(f5)+'%</b> ใน 6 เดือน '+(f5>f0+1?'(เพิ่มขึ้น — ควรจับตาเรื่องกำลังคน)':'(ทรงตัว)')+'</div></div>';
 }
 function wtSumRender(){
   if(!$('wtTable')) return;
@@ -2006,9 +2046,9 @@ function wtSumRender(){
   if(WT_VIEW==='team'){
     /* รายทีมจาก TM (หน้า #todo) · ลูกค้า(ราย) = จำนวนที่เข้าบริการ */
     var ord=TM.slice().sort(function(x,y){return x.team<y.team?-1:x.team>y.team?1:0});
-    html='<table><thead><tr><th>ทีม</th><th class="r">ลูกค้า (ราย)</th><th class="r">เข้า (ครั้ง)</th><th class="r">เวลารวม (ชม.:นาที)</th><th class="r">เฉลี่ย/ครั้ง</th></tr></thead><tbody>'+
-      ord.map(function(t){return '<tr><td><b>'+esc(t.team)+'</b></td><td class="r num">'+t.visits+'</td><td class="r num">'+t.visits+'</td><td class="r num">'+wtFmt(t.min)+'</td><td class="r num" style="color:var(--fg-muted)">'+wtFmt(Math.round(t.min/t.visits))+'</td></tr>'}).join('')+
-      '</tbody><tfoot><tr><td>รวมทุกทีม</td><td class="r num">'+tV+'</td><td class="r num">'+tV+'</td><td class="r num">'+wtFmt(tT)+'</td><td class="r num">'+wtFmt(Math.round(tT/tV))+'</td></tr></tfoot></table>';
+    html='<table><thead><tr><th>ทีม</th><th class="r">ลูกค้า (ราย)</th><th class="r">เข้า (ครั้ง)</th><th class="r">เวลารวม (ชม.:นาที)</th><th class="r">ประจำเดือน</th><th class="r">แก้ปัญหา</th><th class="r">ติดตามผล</th><th class="r">ชม./คน</th><th class="r">เฉลี่ย/ครั้ง</th></tr></thead><tbody>'+
+      ord.map(function(t){return '<tr><td><b>'+esc(t.team)+'</b></td><td class="r num">'+t.visits+'</td><td class="r num">'+t.visits+'</td><td class="r num">'+wtFmt(t.min)+'</td><td class="r num">'+wtFmt(wtSplit(t).r)+'</td><td class="r num">'+wtFmt(wtSplit(t).p)+'</td><td class="r num">'+wtFmt(wtSplit(t).f)+'</td><td class="r num">'+(t.min/60/wtSplit(t).heads).toFixed(1)+'</td><td class="r num" style="color:var(--fg-muted)">'+wtFmt(Math.round(t.min/t.visits))+'</td></tr>'}).join('')+
+      '</tbody><tfoot><tr><td>รวมทุกทีม</td><td class="r num">'+tV+'</td><td class="r num">'+tV+'</td><td class="r num">'+wtFmt(tT)+'</td><td class="r num">'+wtFmt(TM.reduce(function(x,t){return x+wtSplit(t).r},0))+'</td><td class="r num">'+wtFmt(TM.reduce(function(x,t){return x+wtSplit(t).p},0))+'</td><td class="r num">'+wtFmt(TM.reduce(function(x,t){return x+wtSplit(t).f},0))+'</td><td class="r num">'+(tT/60/TM.reduce(function(x,t){return x+wtSplit(t).heads},0)).toFixed(1)+'</td><td class="r num">'+wtFmt(Math.round(tT/tV))+'</td></tr></tfoot></table>';
   } else {
     rows.sort(function(a,b){return b.mins-a.mins});
     html='<table><thead><tr><th>ลูกค้า</th><th>เลขที่สัญญา</th><th>สาขา</th><th>ทีม</th><th class="r">เข้า (ครั้ง)</th><th class="r">เวลารวม (ชม.:นาที)</th><th class="r">เฉลี่ย/ครั้ง</th></tr></thead><tbody>'+
