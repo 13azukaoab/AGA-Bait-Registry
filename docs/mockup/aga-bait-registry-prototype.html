@@ -1098,7 +1098,6 @@ i.wr,rect.wr{background:var(--accent);fill:var(--accent)}i.wf,rect.wf{background
       <div class="toolbar">
         <div class="field"><label for="rgZone">เขต</label><select id="rgZone" onchange="rgFltZone()"></select></div>
         <div class="field"><label for="rgBranch">สาขา</label><select id="rgBranch" onchange="rgFltApply()"></select></div>
-        <div class="field"><label for="rgTeam">ทีม</label><select id="rgTeam" onchange="rgFltApply()"><option value="">ทุกทีม</option><option>A</option><option>B</option><option>C</option><option>D</option><option>E</option><option>F</option><option>G</option><option>H</option><option>I</option><option>J</option><option>K</option><option>L</option><option>M</option><option>N</option><option>O</option><option>Z</option></select></div>
         <div class="field"><label for="rgStatus">สถานะ</label><select id="rgStatus" onchange="rgFltApply()"><option value="">ทั้งหมด</option><option>Active</option><option>ใกล้หมด</option><option>รอเก็บสถานี</option><option>หมดสัญญา</option></select></div>
         <div class="field"><label for="rgSearch">ค้นหา</label><input id="rgSearch" type="search" placeholder="ชื่อลูกค้า / เลขที่สัญญา" oninput="rgFltApply()" autocomplete="off"></div>
         <button class="btn sm" type="button" id="rgClear" onclick="rgFltReset()" hidden>✕ ล้างตัวกรอง</button>
@@ -1109,7 +1108,7 @@ i.wr,rect.wr{background:var(--accent);fill:var(--accent)}i.wf,rect.wf{background
       <div class="tablewrap">
         <table>
           <thead><tr>
-            <th class="c">#</th><th>ลูกค้า</th><th>สัญญา · ระยะเวลา</th><th>สาขา · เขต</th><th class="c">ทีม</th><th class="r">มูลค่า</th><th class="c">Tier <span class="auto-tag">อัตโนมัติ</span></th><th class="c">สถานะ</th>
+            <th class="c">#</th><th>ลูกค้า</th><th>สัญญา · ระยะเวลา</th><th>สาขา · เขต</th><th class="r">มูลค่า</th><th class="c">Tier <span class="auto-tag">อัตโนมัติ</span></th><th class="c">สถานะ</th>
           </tr></thead>
           <tbody></tbody>
         </table>
@@ -2849,7 +2848,7 @@ function addCustLinks(){
    • เทียบตามค่าจริง: ตัวเลข (มีคอมมา) · วันที่ dd/mm/yy (พ.ศ. 2 หลัก) · Tier (S<M<L<XL แล้วตามปี) · ที่เหลือเรียงตามตัวอักษรไทย (เลขในข้อความเรียงตามค่า)
    • ช่องว่างอยู่ท้ายเสมอทั้งสองทิศ · เลข # คงเดิม · ส่งออก Excel ตามลำดับที่เห็น
    • ตัวกรอง (เขต/สาขา/ทีม/สถานะ/ค้นหา) ทำงานจริง — ดูหัวข้อ "ตัวกรองตารางทะเบียน" ถัดไป · เรียงกับกรองใช้ร่วมกันได้ (เรียงไม่แตะสถานะซ่อน/แสดงของแถว) */
-var RG={col:-1,dir:0}, RGC=new Intl.Collator('th',{numeric:true,sensitivity:'base'}), RG_TIER_COL=6;
+var RG={col:-1,dir:0}, RGC=new Intl.Collator('th',{numeric:true,sensitivity:'base'}), RG_TIER_COL=5;
 function rgKey(tr,i){
   var c=tr.cells[i]; if(!c) return '';
   if(c.dataset.k!==undefined) return c.dataset.k;   /* ช่องที่รวมหลายค่า (สัญญา=วันสิ้นสุด · มูลค่า=มูลค่ารวม) เรียงด้วย data-k */
@@ -2966,7 +2965,6 @@ function rgRowHtml(r,i){
     '<td class="rgname"><b>'+esc(r.n)+'</b>'+link+'<small class="rgsub">'+esc(r.type)+' · '+r.st+' สถานี</small></td>'+
     '<td data-k="'+r.e.replace(/-/g,'')+'"><span class="num rgct">'+r.ct+'</span><div class="rgbar '+tone+'" role="img" aria-label="ผ่านไป '+Math.round(pct)+'% ของสัญญา"><i style="width:'+pct.toFixed(1)+'%"></i></div><small class="rgdays '+(tone==='warn'?'hot':'')+'">'+dd.t+'</small></td>'+
     '<td class="rgbr">'+esc(r.br)+' <span>· '+esc(z)+'</span></td>'+
-    '<td class="c">'+r.team+'</td>'+
     '<td class="r num" data-k="'+r.v+'"><b>'+matFmt(r.v)+'</b><small class="rgsub">'+matFmt(r.a)+'/ปี</small></td>'+
     '<td class="c">'+tierBadge(r.tier)+'</td>'+
     '<td class="c"><span class="chip rgst '+cls+'"><i aria-hidden="true"></i>'+r.status+'</span></td></tr>'}
@@ -2988,8 +2986,7 @@ function rgFltInit(){
 function rgFltMatch(tr,f){
   if(f.zone && tr.dataset.zone!==f.zone) return false;
   if(f.branch && tr.dataset.br!==f.branch) return false;
-  if(f.team && tr.cells[4].textContent.trim()!==f.team) return false;
-  if(f.status){ var ch=tr.cells[7].querySelector('.chip'); if((ch?ch.textContent:tr.cells[7].textContent).trim()!==f.status) return false; }
+  if(f.status){ var ch=tr.cells[6].querySelector('.chip'); if((ch?ch.textContent:tr.cells[6].textContent).trim()!==f.status) return false; }
   if(f.q){
     var b=tr.cells[1].querySelector('b');
     if(rgNorm(b?b.textContent:tr.cells[1].textContent).indexOf(f.q)<0 && rgNorm(tr.cells[2].textContent).indexOf(f.q)<0) return false;
@@ -2998,10 +2995,10 @@ function rgFltMatch(tr,f){
 }
 function rgFltApply(){
   if(!rgEl('rgZone')) return;
-  var f={zone:rgEl('rgZone').value, branch:rgEl('rgBranch').value, team:rgEl('rgTeam').value, status:rgEl('rgStatus').value, q:rgNorm(rgEl('rgSearch').value)};
+  var f={zone:rgEl('rgZone').value, branch:rgEl('rgBranch').value, status:rgEl('rgStatus').value, q:rgNorm(rgEl('rgSearch').value)};
   var rows=document.querySelectorAll('#s-registry tbody tr'), shown=0;
   [].forEach.call(rows,function(tr){ var ok=rgFltMatch(tr,f); tr.hidden=!ok; if(ok) shown++; });
-  rgEl('rgClear').hidden=!(f.zone||f.branch||f.team||f.status||f.q);
+  rgEl('rgClear').hidden=!(f.zone||f.branch||f.status||f.q);
   rgEl('rgShown').textContent='แสดง '+shown+' จาก '+rows.length+' แถว';
   var nr=rgEl('rgNoRes');
   if(shown){ nr.hidden=true; nr.innerHTML=''; }
@@ -3009,7 +3006,7 @@ function rgFltApply(){
 }
 function rgFltZone(){ rgBranchOpts(rgEl('rgZone').value); rgFltApply(); }
 function rgFltReset(){
-  ['rgZone','rgTeam','rgStatus'].forEach(function(id){ rgEl(id).value=''; });
+  ['rgZone','rgStatus'].forEach(function(id){ rgEl(id).value=''; });
   rgEl('rgSearch').value=''; rgBranchOpts(''); rgFltApply();
 }
 /* ปุ่มประวัติ: ต่อท้ายลิงก์ ↗ (หรือชื่อ) ในคอลัมน์ชื่อลูกค้า — เรียงลำดับอ่านจาก <b> จึงไม่กระทบ */
@@ -3044,9 +3041,9 @@ function xlRows(wb,name,rows){ XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to
 
 function exportRegistryXL(){
   if(!xlReady()) return;
-  var wb=XLSX.utils.book_new(),rows=[['#','ชื่อลูกค้า','เลขที่สัญญา','สาขา','เขต','ทีม','ประเภท','เริ่ม','สิ้นสุด','มูลค่าสัญญา','ต่อปี','Tier','สถานี','สถานะ']];
+  var wb=XLSX.utils.book_new(),rows=[['#','ชื่อลูกค้า','เลขที่สัญญา','สาขา','เขต','ประเภท','เริ่ม','สิ้นสุด','มูลค่าสัญญา','ต่อปี','Tier','สถานี','สถานะ']];
   [].forEach.call(document.querySelectorAll('#s-registry tbody tr'),function(tr,i){var d=tr.dataset;
-    rows.push([i+1,d.name,d.ct,d.br,d.zone,d.team,d.type,rgFmt(d.s),rgFmt(d.e),+d.v,+d.a,String(d.tier).toUpperCase(),+d.st,d.status])});
+    rows.push([i+1,d.name,d.ct,d.br,d.zone,d.type,rgFmt(d.s),rgFmt(d.e),+d.v,+d.a,String(d.tier).toUpperCase(),+d.st,d.status])});
   xlRows(wb,'ทะเบียนลูกค้า-สัญญา',rows);
   XLSX.writeFile(wb,'AGA-ทะเบียนลูกค้า-สัญญา.xlsx');
 }
