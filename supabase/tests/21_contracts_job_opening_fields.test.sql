@@ -4,7 +4,7 @@
 -- Role simulation: seed as postgres, then SET LOCAL ROLE authenticated/anon and set
 -- request.jwt.claim.sub (what auth.uid() reads). RESET ROLE to inspect as superuser.
 BEGIN;
-SELECT plan(28);
+SELECT plan(29);
 
 -- ---------- structure ----------
 SELECT has_column('public', 'contracts', 'is_urgent',                'contracts.is_urgent');
@@ -62,19 +62,27 @@ SELECT lives_ok(
   'first service date without a time is allowed');
 
 -- ---------- admin in scope: new fields + renewal of the same customer ----------
+-- M23 (20261115100000): ช่อง renewed_from_contract_id แก้หลังสร้างไม่ได้ (AG009) → ตั้งลิงก์ d2 → d1 ตอนเตรียมข้อมูล (postgres)
+-- แทนการให้ admin UPDATE เอง · เทสลิงก์ผ่าน save_job_opening อยู่ใน 35_contract_renewed_from_lock
+UPDATE contracts SET renewed_from_contract_id = '00000000-0000-0000-0000-0000000000d1'
+ WHERE id = '00000000-0000-0000-0000-0000000000d2';
 SET LOCAL ROLE authenticated;
 SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a2', true);
 SELECT lives_ok(
   $$UPDATE contracts
-       SET is_urgent = true, renewed_from_contract_id = '00000000-0000-0000-0000-0000000000d1',
+       SET is_urgent = true,
            mail_received_date = '2026-01-10', first_service_time = '09:30', note = 'm9 note'
      WHERE id = '00000000-0000-0000-0000-0000000000d2'$$,
-  'admin fills the job-opening fields and links the previous contract of the same customer');
+  'admin fills the job-opening fields of a contract that is linked to the previous contract of the same customer');
 SELECT throws_ok(
   $$UPDATE contracts SET renewed_from_contract_id = '00000000-0000-0000-0000-0000000000d3'
      WHERE id = '00000000-0000-0000-0000-0000000000d2'$$,
   'P0001', 'a renewal must link to a contract of the same customer',
   'linking a contract of another customer is rejected (generic message, no other contract data)');
+-- M23: admin แก้ลิงก์ที่ตั้งแล้วด้วย UPDATE ตรงๆ ไม่ได้
+SELECT throws_ok(
+  $$UPDATE contracts SET renewed_from_contract_id = NULL WHERE id = '00000000-0000-0000-0000-0000000000d2'$$,
+  'AG009', NULL, 'M23: admin cannot clear the renewal link after the contract is created');
 -- admin นอกขอบเขต: RLS กรองจนกระทบ 0 แถว
 UPDATE contracts SET note = 'out of scope' WHERE id = '00000000-0000-0000-0000-0000000000d4';
 RESET ROLE;
