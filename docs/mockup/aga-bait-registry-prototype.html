@@ -931,7 +931,8 @@ tfoot td{padding:10px 12px;font-weight:700;background:var(--surface-2);border-to
         </div>
       </div>
 
-      <div style="font-size:12.5px;color:var(--fg-muted);font-weight:600;margin:20px 0 10px">ตารางรวมทุกวัสดุ แยกสาขา</div>
+      <div style="font-size:12.5px;color:var(--fg-muted);font-weight:600;margin:20px 0 10px">ตารางรวมทุกวัสดุ แยกสาขา <span style="font-weight:400">(กดหัวคอลัมน์เพื่อเรียง)</span></div>
+      <div class="tmsortm"><label for="matSortSel">เรียงตาม</label><select id="matSortSel" onchange="matSortSel(this.value)"><option value="-1">ลำดับเดิม</option><option value="0">สาขา (ก-ฮ)</option><option value="1">NEMESIS นอก มากสุด</option><option value="2">NEMESIS ใน มากสุด</option><option value="3">เคมีผง (จุด) มากสุด</option><option value="4">เคมีผง (ก.) มากสุด</option><option value="5">ไม้ล่อ มากสุด</option></select></div>
       <div class="tablewrap">
         <table>
           <thead><tr>
@@ -1922,6 +1923,19 @@ function expRender(){
   }).join(''):'<tr><td colspan="6" class="empty">ไม่มีสัญญาที่จะหมดภายใน 90 วัน</td></tr>';
   matLabels();
 }
+/* ตารางวัสดุแยกสาขา: หัวคอลัมน์เรียงได้ (เจ้าของสั่ง 15 พ.ย. 2026) · ตัวเลข = มากไปน้อยก่อน · สาขา = ก→ฮ · กดซ้ำสลับทิศ · แถวรวม (tfoot) ไม่ขยับ */
+var MAT_SORT={col:-1,rev:false};
+function matInitSort(){var ths=document.querySelectorAll('#matMat thead th');[].forEach.call(ths,function(th,i){if(th.querySelector('.tmth'))return;th.innerHTML='<button type="button" class="tmth '+(i?'r':'l')+'" data-matsort="'+i+'">'+th.innerHTML+' <i aria-hidden="true">↕</i></button>'})}
+function matSortApply(){
+  var tb=document.querySelector('#matMat tbody');if(!tb)return;var c=MAT_SORT.col;
+  var rows=[].slice.call(tb.rows);
+  if(c<0){rows.sort(function(a,b){return (+a.getAttribute('data-o'))-(+b.getAttribute('data-o'))})}
+  else rows.sort(function(a,b){var x=a.cells[c].innerText.trim(),y=b.cells[c].innerText.trim(),d;if(c===0)d=x.localeCompare(y,'th');else d=parseFloat(y.replace(/,/g,''))-parseFloat(x.replace(/,/g,''));return MAT_SORT.rev?-d:d});
+  rows.forEach(function(r){tb.appendChild(r)});
+  [].forEach.call(document.querySelectorAll('#matMat [data-matsort]'),function(b){var i=+b.getAttribute('data-matsort'),on=i===c,asc=(i===0)?!MAT_SORT.rev:MAT_SORT.rev;b.classList.toggle('on',on);b.querySelector('i').textContent=on?(asc?'▲':'▼'):'↕'});
+  var sel=$('matSortSel');if(sel)sel.value=String(c)}
+function matSortSel(v){MAT_SORT={col:+v,rev:false};matSortApply()}
+document.addEventListener('click',function(e){var b=e.target.closest&&e.target.closest('[data-matsort]');if(!b)return;var i=+b.getAttribute('data-matsort');if(MAT_SORT.col===i)MAT_SORT.rev=!MAT_SORT.rev;else MAT_SORT={col:i,rev:false};matSortApply();var nb=document.querySelector('#matMat [data-matsort="'+i+'"]');if(nb)nb.focus()});
 function matPeriodChg(){
   var p=$('matPeriod').value;$('matRange').hidden=(p!=='custom');
   var f=$('matFrom'),t=$('matTo');if(p==='custom'&&f.value&&t.value&&f.value>t.value){var x=f.value;f.value=t.value;t.value=x}
@@ -1930,7 +1944,7 @@ function matPeriodChg(){
 /* ใส่ data-label ให้ทุกช่องตาราง ให้มือถือแสดงเป็นการ์ด (ชื่อหัวคอลัมน์ : ค่า) */
 function matLabels(){
   [].forEach.call(document.querySelectorAll('#matMat table,#matTime table,#matExp table'),function(tb){
-    var hs=[].map.call(tb.querySelectorAll('thead th'),function(h){return h.textContent.replace(/\s+/g,' ').trim()});
+    var hs=[].map.call(tb.querySelectorAll('thead th'),function(h){return h.textContent.replace(/[↕▲▼]/g,"").replace(/\s+/g,' ').trim()});
     [].forEach.call(tb.querySelectorAll('tbody tr,tfoot tr'),function(tr){var k=0;[].forEach.call(tr.cells,function(td){if(hs[k])td.setAttribute('data-label',hs[k]);k+=(td.colSpan||1)})});
   });
 }
@@ -3184,7 +3198,7 @@ function tmRender(){
 }
 document.addEventListener('click',function(e){var nb3=e.target.closest&&e.target.closest('[data-tmnote]');if(nb3){var q=nb3.getAttribute('data-tmnote').split('_'),xx=TM[+q[0]].miss[+q[1]],cn=msCan();msDlgOpen('<h3 id="msT" style="margin:0 0 4px;font-size:16px">หมายเหตุตกบริการ</h3><div class="lab">'+esc(xx.n)+' · '+esc(TM[+q[0]].team)+' · ต.ค. 2026</div>'+'<div class="field"><label for="tmNote">ตกบริการเพราะอะไร</label><textarea id="tmNote" maxlength="200" placeholder="เช่น ลูกค้าปิดอาคาร / ติดต่อไม่ได้"'+(cn?'':' disabled')+'>'+esc(xx.note||'')+'</textarea>'+(xx.by?'<span class="lab">บันทึกล่าสุดโดย '+esc(xx.by)+'</span>':'')+'</div>'+'<div class="acts"><button class="btn" data-ms="close">'+(cn?'ยกเลิก':'ปิด')+'</button>'+(cn?'<button class="btn primary" data-tmsave="'+q[0]+'_'+q[1]+'">บันทึก</button>':'')+'</div>',nb3);return}var sv=e.target.closest&&e.target.closest('[data-tmsave]');if(sv){var p=sv.getAttribute('data-tmsave').split('_'),x=TM[+p[0]].miss[+p[1]],inp=$('tmNote');x.note=inp.value.trim();msDlgClose(true);x.by=({host:'Host',recorder:'หัวหน้างาน'}[msRole()]||msRole())+' · '+msDateTh(TODAY_ISO);tmRender();toast('บันทึกหมายเหตุตกบริการแล้ว');var n2=document.querySelector('[data-tmnote="'+p[0]+'_'+p[1]+'"]');if(n2)n2.focus();return}var bb=e.target.closest&&e.target.closest('[data-tmb]');if(bb){var j=bb.getAttribute('data-tmb');tmBr[j]=!tmBr[j];tmRender();var nb2=document.querySelector('[data-tmb="'+j+'"]');if(nb2)nb2.focus();return}});
 tmRender();
-matLabels();matCap();
+[].forEach.call(document.querySelectorAll('#matMat tbody tr'),function(r,i){r.setAttribute('data-o',i)});matInitSort();matLabels();matCap();
 /* ===== #todo: เตือนเมื่อเข้าเดือนใหม่แต่ยังปิดงานเดือนก่อนไม่เสร็จ (เจ้าของสั่ง 14 พ.ย. 2026) =====
    หน้านี้แสดง "เดือนที่ยังไม่ปิดเก่าสุด" (TM_VIEW) · ถ้าเดือนนั้นเก่ากว่าเดือนปัจจุบันตามวันที่จริง (เขตเวลาไทย)
    → เปิดหน้าจอเตือนครั้งเดียวต่อการเปิดหน้าเว็บ · ปุ่ม "ไปกรอกข้อมูลต่อ" พาไปหน้ากรอกผลบริการ + ลิงก์ไปหน้า "ส่งข้อมูล และสรุปงานประจำเดือน" (เฉพาะ host/หัวหน้างาน · admin เห็นแค่ปุ่มรับทราบ) */
