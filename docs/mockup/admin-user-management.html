@@ -551,7 +551,13 @@ function openEdit(id){
     var w=el('div'); w.appendChild(el('p',null,'เปลี่ยนตำแหน่งของ '+u.name+' ('+u.un+')'));
     w.appendChild(el('p',null,posLabel(u.pos)+'  →  '+posLabel(v.pos)));
     w.appendChild(el('div','banner warn','สิทธิ์ใช้งานของเขาจะเปลี่ยนทันที · ระบบจะแจ้งเขาตอนเข้าสู่ระบบครั้งถัดไป · ระบบจดไว้ในประวัติการแก้ไข (ใครแก้ เมื่อไหร่ จากอะไรเป็นอะไร พร้อมตำแหน่งของผู้แก้ ณ ตอนนั้น)'));
-    openModal('ยืนยันเปลี่ยนตำแหน่ง', w, [btn('กลับไปแก้','',function(){ openEdit(u.id); }), btn('ยืนยันเปลี่ยน','primary',save)]);
+    var conf=document.createElement('input'); conf.type='text'; conf.autocomplete='off'; conf.placeholder='ยืนยันแก้ไข';
+    var cf=fld('fconf','ยืนยันการแก้ไข — พิมพ์คำว่า "ยืนยันแก้ไข" เพื่อเปลี่ยนตำแหน่ง',conf);
+    w.appendChild(cf);
+    openModal('ยืนยันเปลี่ยนตำแหน่ง', w, [btn('กลับไปแก้','',function(){ openEdit(u.id); }), btn('ยืนยันเปลี่ยน','primary',function(){
+      if(conf.value.trim()!=='ยืนยันแก้ไข'){ setErr('fconf','พิมพ์คำว่า "ยืนยันแก้ไข" ให้ตรงก่อนจึงจะเปลี่ยนได้'); conf.focus(); return; }
+      save();
+    })]);
   })]);
 }
 

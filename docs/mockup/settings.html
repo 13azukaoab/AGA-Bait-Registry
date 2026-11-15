@@ -12,14 +12,18 @@
    หน้า "ตั้งค่า" (SPEC §8 หน้า 12) — host เท่านั้น
    3 แท็บ: (1) เกณฑ์ Tier  (2) ประเภทลูกค้า  (3) ทีม
 
+   หน้าจอแสดงเฉพาะ "ชื่อตำแหน่ง" (PM / OM / เจ้าของ = ผู้ดูแลระบบ) ไม่โชว์ host/admin/recorder (SPEC §5.1)
+
    Logic สรุป (สำหรับทีมที่รับช่วงต่อ):
    - เกณฑ์ Tier  : แก้ "จุดแบ่ง" 3 ค่า (M / L / XL) ปลายช่วงของ Tier ก่อนหน้าคำนวณให้เอง
                    (= จุดเริ่มของถัดไป − 0.01) จึงเกิดช่องว่าง/ช่วงซ้อนทับไม่ได้
                    ต้องกด "บันทึก" + ใส่เหตุผลก่อน เพราะกระทบการคำนวณ snapshot ส่ง Dashboard
-                   ตาราง DB: tier_rules (tier, min_annual, max_annual) — อ่านจากตารางนี้เสมอ ห้าม hardcode
+                   ตาราง DB: tier_rules (tier, min_annual, max_annual, effective_month) — อ่านจากตารางนี้เสมอ ห้าม hardcode
+                   **เกณฑ์มี "เริ่มใช้ตั้งแต่เดือน" (DECISIONS 2.31)**: 1 ชุดเกณฑ์ = 1 effective_month · เดือนไหนใช้ชุดที่ effective_month ล่าสุดไม่เกินเดือนนั้น
+                   เดือนที่ปิดแล้วคงเกณฑ์เดิม (ไม่ย้อนแก้) · เลือกเดือนเริ่มใช้ได้ตั้งแต่เดือนที่ยังเปิดเป็นต้นไป · บันทึกเดือนซ้ำ = แทนชุดเดิมของเดือนนั้น
    - ประเภทลูกค้า: master 14 ค่า 4 หมวด · เพิ่ม/แก้ชื่อ/ย้ายหมวด/เรียง/ปิดใช้ — มีลูกค้าใช้อยู่ = ลบไม่ได้ ปิดใช้ได้อย่างเดียว
    - ทีม         : code ซ้ำไม่ได้ (ไม่สนตัวพิมพ์) แก้ code หลังสร้างไม่ได้ (ถูกอ้างอิงในสัญญา)
-                   Z (ติดตั้งงานใหม่) และ Sup เป็นทีมระบบ ลบ/ปิดใช้ไม่ได้
+                   เฉพาะ Sup เป็นทีมระบบ ลบ/ปิดใช้ไม่ได้ (เจ้าของสั่ง 15 พ.ย. 2026: Z เป็นทีมปกติ งานหลัก = ติดตั้งงานใหม่ + งานรอง = ช่วยทีมอื่นและดูแลพื้นที่ในบางสาขา) · ทีมอื่นมีปุ่มลบทุกทีม แต่ถ้ายังมีงานผูกอยู่ ระบบไม่ให้ลบและเสนอปิดใช้งานแทน
    - ประเภทลูกค้า + ทีม บันทึกทันทีที่กด (แจ้งผลด้วย toast) · เกณฑ์ Tier บันทึกแบบมีขั้นตอนยืนยัน
    - ตัวเลขใช้งาน (ลูกค้าต่อประเภท, งานต่อทีม, ตัวอย่างผลกระทบ Tier) เป็นข้อมูลสมมติเพื่อดู UI
    ============================================================================ */
@@ -203,6 +207,10 @@ main{flex:1;min-width:0;padding:20px 24px 64px}
 .btn.ghost{background:transparent;border-color:transparent;color:var(--accent-strong)}
 .btn.dangerfill{background:var(--danger);border-color:var(--danger);color:var(--on-tier)}
 .btn.sm{padding:4px 10px;font-size:12px}
+.nowstrip{display:flex;align-items:center;gap:6px 12px;flex-wrap:wrap;background:var(--surface);border:1px solid var(--accent);border-radius:var(--radius);padding:10px 14px;margin-bottom:14px;font-size:13px}
+.nowstrip .grow{flex:1}
+.slot-del{display:inline-block;width:36px}
+@media (pointer:coarse),(max-width:600px){.btn.sm{min-height:40px;padding:8px 12px}}
 .btn.icon{padding:3px 8px;font-size:12px;line-height:1.4}
 .btn:hover{filter:brightness(.97)}
 
@@ -340,10 +348,10 @@ dialog form{display:flex;flex-direction:column;max-height:88vh}
   <div class="spacer"></div>
   <span class="pill">เดือน <b>พ.ย. 2026</b></span>
   <select class="role" id="roleSel" aria-label="เลือกบทบาท (เดโม)" onchange="setRole(this.value)">
-    <option value="host" selected>host · ส่วนกลาง</option>
-    <option value="admin">admin · แอดมิน</option>
-    <option value="recorder">recorder · หัวหน้างาน</option>
-    <option value="viewer">viewer · ผู้บริหาร</option>
+    <option value="host" selected>PM · ผู้ดูแลระบบ</option>
+    <option value="admin">แอดมิน (Admin)</option>
+    <option value="recorder">หัวหน้างาน (Supervisor)</option>
+    <option value="viewer">ผู้ชมทั่วไป (ไม่ต้องล็อกอิน)</option>
   </select>
   <button class="theme-btn" id="themeBtn" aria-label="สลับธีม" onclick="toggleTheme()">◐</button>
   <a class="avatar" href="login.html" title="ออกจากระบบ (กลับหน้าเข้าสู่ระบบ)" aria-label="ออกจากระบบ">นท</a>
@@ -375,9 +383,9 @@ dialog form{display:flex;flex-direction:column;max-height:88vh}
   <main>
     <div class="page-head">
       <h1>ตั้งค่า</h1>
-      <p>ข้อมูลหลัก (master data) ที่ทั้งระบบใช้ร่วมกัน · แก้ได้เฉพาะ host · ทุกการแก้ไขบันทึกลงประวัติ (audit log)</p>
+      <p>ข้อมูลหลักที่ทั้งระบบใช้ร่วมกัน · แก้ได้เฉพาะผู้ดูแลระบบ (PM / OM / เจ้าของ) · ทุกการแก้ไขบันทึกลงประวัติการแก้ไข</p>
     </div>
-    <div class="robanner" id="roBanner" hidden role="status">คุณกำลังดูในบทบาทที่ไม่ใช่ host — ดูได้อย่างเดียว แก้ไขไม่ได้ (บังคับที่ฐานข้อมูลด้วย RLS ไม่ใช่แค่ซ่อนปุ่ม)</div>
+    <div class="robanner" id="roBanner" hidden role="status">ตำแหน่งนี้ดูได้อย่างเดียว แก้ไขไม่ได้ (ระบบบังคับที่ฐานข้อมูล ไม่ใช่แค่ซ่อนปุ่ม)</div>
 
     <div class="tabs" role="tablist" aria-label="หมวดการตั้งค่า" id="tabs">
       <button class="tab" role="tab" id="tab-tier" aria-controls="p-tier" aria-selected="true" data-t="tier">เกณฑ์ Tier <i class="unsaved" id="unsavedDot" hidden title="มีการแก้ที่ยังไม่บันทึก"></i></button>
@@ -387,6 +395,7 @@ dialog form{display:flex;flex-direction:column;max-height:88vh}
 
     <!-- ================= 1. เกณฑ์ Tier ================= -->
     <section id="p-tier" role="tabpanel" aria-labelledby="tab-tier">
+      <div class="nowstrip" id="nowStrip" role="status"></div>
       <div class="cols">
         <div class="stack">
           <div class="card">
@@ -407,7 +416,7 @@ dialog form{display:flex;flex-direction:column;max-height:88vh}
                   <tr>
                     <td><span class="tier m big">M</span></td>
                     <td>
-                      <div class="inp-money"><input class="inp" type="number" id="in-m" min="1" step="1" inputmode="decimal" aria-label="จุดเริ่ม Tier M (บาทต่อปี)" aria-describedby="er-m"><span class="unit">บาท</span></div>
+                      <div class="inp-money"><input class="inp" type="text" id="in-m" inputmode="decimal" autocomplete="off" aria-label="จุดเริ่ม Tier M (บาทต่อปี)" aria-describedby="er-m"><span class="unit">บาท</span></div>
                       <div class="err" id="er-m" role="alert"></div><div class="was" id="was-m"></div>
                     </td>
                     <td><span id="to-m" class="num">—</span></td>
@@ -416,7 +425,7 @@ dialog form{display:flex;flex-direction:column;max-height:88vh}
                   <tr>
                     <td><span class="tier l big">L</span></td>
                     <td>
-                      <div class="inp-money"><input class="inp" type="number" id="in-l" min="1" step="1" inputmode="decimal" aria-label="จุดเริ่ม Tier L (บาทต่อปี)" aria-describedby="er-l"><span class="unit">บาท</span></div>
+                      <div class="inp-money"><input class="inp" type="text" id="in-l" inputmode="decimal" autocomplete="off" aria-label="จุดเริ่ม Tier L (บาทต่อปี)" aria-describedby="er-l"><span class="unit">บาท</span></div>
                       <div class="err" id="er-l" role="alert"></div><div class="was" id="was-l"></div>
                     </td>
                     <td><span id="to-l" class="num">—</span></td>
@@ -425,7 +434,7 @@ dialog form{display:flex;flex-direction:column;max-height:88vh}
                   <tr>
                     <td><span class="tier xl big">XL</span></td>
                     <td>
-                      <div class="inp-money"><input class="inp" type="number" id="in-xl" min="1" step="1" inputmode="decimal" aria-label="จุดเริ่ม Tier XL (บาทต่อปี)" aria-describedby="er-xl"><span class="unit">บาท</span></div>
+                      <div class="inp-money"><input class="inp" type="text" id="in-xl" inputmode="decimal" autocomplete="off" aria-label="จุดเริ่ม Tier XL (บาทต่อปี)" aria-describedby="er-xl"><span class="unit">บาท</span></div>
                       <div class="err" id="er-xl" role="alert"></div><div class="was" id="was-xl"></div>
                     </td>
                     <td class="fixed">ไม่จำกัด</td>
@@ -441,7 +450,7 @@ dialog form{display:flex;flex-direction:column;max-height:88vh}
             <div class="savebar hostonly">
               <span id="saveState" class="chip ok">✓ ตรงกับที่บันทึกไว้</span>
               <span class="push">
-                <button class="btn ghost sm" onclick="tierReset()" title="คืนเป็น 30,000 / 50,000 / 100,000 (ยังไม่บันทึกจนกว่าจะกดบันทึก)">คืนค่าตาม SPEC</button>
+                <button class="btn ghost sm" onclick="tierReset()" title="คืนเป็น 30,000 / 50,000 / 100,000 (ยังไม่บันทึกจนกว่าจะกดบันทึก)">คืนค่าเริ่มต้น</button>
                 <button class="btn sm" onclick="tierRevert()">ยกเลิกการแก้</button>
                 <button class="btn primary" onclick="tierSave()">บันทึกเกณฑ์…</button>
               </span>
@@ -469,19 +478,21 @@ dialog form{display:flex;flex-direction:column;max-height:88vh}
             <div id="impact"></div>
           </div>
           <div class="card">
-            <h3>ประวัติการแก้เกณฑ์ <span class="sub">จาก audit_log</span></h3>
+            <h3>เกณฑ์ที่ใช้ในแต่ละช่วงเดือน <span class="sub">เริ่มใช้ตั้งแต่เดือนไหน · ประวัติการแก้</span></h3>
+            <div class="tablewrap"><table class="imp" id="rulesTbl"><thead><tr><th>ใช้ตั้งแต่</th><th class="r">M เริ่ม</th><th class="r">L เริ่ม</th><th class="r">XL เริ่ม</th><th>สถานะ</th></tr></thead><tbody id="rulesBody"></tbody></table></div>
             <ul class="hist" id="hist"></ul>
           </div>
-          <div class="callout">การเปลี่ยนเกณฑ์มีผลกับการคำนวณ Tier และตัวเลข snapshot ที่ส่งไป Dashboard — <b>เดือนที่ปิดแล้วแก้ไม่ได้ตามกฎ</b> จึงไม่ถูกคำนวณใหม่ มีผลเฉพาะเดือนที่ยังเปิดอยู่</div>
+          <div class="callout">การเปลี่ยนเกณฑ์มีผลกับการคำนวณ Tier และตัวเลข snapshot ที่ส่งไป Dashboard — <b>เกณฑ์ใหม่มีผลตั้งแต่เดือนที่เลือกเป็นต้นไป</b> · เดือนที่ปิดแล้วคงเกณฑ์เดิม และตัวเลขที่ส่ง Dashboard ไปแล้วไม่เปลี่ยนจนกว่าจะสั่งคำนวณใหม่</div>
         </div>
       </div>
       <details class="dev">
         <summary>ข้อมูลสำหรับทีมพัฒนา</summary>
         <ul>
-          <li>เก็บในตาราง <code>tier_rules</code> (tier, min_annual, max_annual) — ฟังก์ชัน <code>tierOf(annualValue, rules)</code> อ่านจากตารางนี้ทุกครั้ง ห้าม hardcode</li>
-          <li>หน้านี้เขียน 4 แถวพร้อมกันใน transaction เดียว (กันสถานะครึ่งๆ กลางๆ) · RLS: เขียนได้เฉพาะ role <code>host</code></li>
+          <li>เก็บในตาราง <code>tier_rules</code> (tier, min_annual, max_annual, <b>effective_month</b>) — ฟังก์ชัน <code>tierOf(annualValue, rules)</code> อ่านจากตารางนี้ทุกครั้ง ห้าม hardcode</li>
+          <li>หน้านี้เขียน 4 แถวพร้อมกันใน transaction เดียว (กันสถานะครึ่งๆ กลางๆ) · RLS: เขียนได้เฉพาะผู้ดูแลระบบ (PM / OM / เจ้าของ)</li>
           <li>กติกา: min(S)=0 · min ต้องเรียงจากน้อยไปมาก · ทศนิยมไม่เกิน 2 ตำแหน่ง · max_annual ของแถวหนึ่ง = min_annual ของแถวถัดไป − 0.01 · XL ไม่มี max</li>
           <li>ต้องใส่เหตุผลทุกครั้งที่บันทึก → เก็บใน <code>audit_log</code> (ผ่าน trigger)</li>
+          <li><code>tierOf(annualValue, rules)</code> รับชุดเกณฑ์ที่ตรงกับเดือนของข้อมูล ไม่ใช่ชุดล่าสุดเสมอ</li>
         </ul>
       </details>
     </section>
@@ -493,6 +504,7 @@ dialog form{display:flex;flex-direction:column;max-height:88vh}
           <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap">
             <span class="chip accent" id="typeStat"></span>
             <span class="push" style="margin-left:auto;display:flex;gap:8px">
+              <button class="btn hostonly" id="sortBtn" type="button" aria-pressed="false" onclick="toggleSort()">จัดเรียงลำดับ</button>
               <button class="btn hostonly" onclick="editGroup(-1)">+ เพิ่มหมวด</button>
               <button class="btn primary hostonly" onclick="editItem(-1,-1)">+ เพิ่มประเภท</button>
             </span>
@@ -528,21 +540,21 @@ dialog form{display:flex;flex-direction:column;max-height:88vh}
         </h3>
         <div class="tablewrap">
           <table>
-            <thead><tr><th>ทีม</th><th>ชื่อ / คำอธิบาย</th><th>ประเภททีม</th><th>ขอบเขต</th><th class="r">งานเปิดอยู่เดือนนี้</th><th>ใช้งาน</th><th></th></tr></thead>
+            <thead><tr><th>ทีม</th><th>ชื่อ / คำอธิบาย</th><th>ประเภททีม</th><th class="r">งานเปิดอยู่เดือนนี้</th><th>ใช้งาน</th><th></th></tr></thead>
             <tbody id="teamBody"></tbody>
           </table>
         </div>
         <div class="pad" style="border-top:1px solid var(--border)">
-          <p class="hint">ในตารางเปิดงาน 1 สัญญาเลือกได้หลายทีมพร้อมกัน (เช่น A+E+Z) · ทีมที่ปิดใช้งานจะไม่อยู่ในตัวเลือกให้เลือกใหม่ แต่สัญญาเดิมที่ผูกไว้ยังคงอยู่</p>
+          <p class="hint">ในตารางเปิดงาน 1 สัญญาเลือกได้หลายทีมพร้อมกัน (เช่น A+E+Z) · ทีมที่ปิดใช้งานจะไม่อยู่ในตัวเลือกให้เลือกใหม่ แต่สัญญาเดิมที่ผูกไว้ยังคงอยู่<br>🔒 <b>ทีมระบบ</b> = ทีมพิเศษที่ระบบใช้ทำงาน ตอนนี้มีทีมเดียวคือ Sup (หัวหน้างาน) จึงลบหรือปิดใช้ไม่ได้ · ทีม Z เป็นทีมปกติ งานหลักคือติดตั้งงานใหม่ งานรองคือช่วยทีมอื่นและดูแลพื้นที่ในบางสาขา · ทีมอื่นลบได้เมื่อไม่มีงานผูกอยู่ ถ้ามีงานผูกอยู่ให้ปิดใช้งานแทน</p>
         </div>
       </div>
       <details class="dev">
         <summary>ข้อมูลสำหรับทีมพัฒนา</summary>
         <ul>
           <li>SPEC §6 ตาราง <code>teams</code> (id, branch_id, code, name) — <code>branch_id</code> ต้องเป็น <b>nullable</b> (null = ทีมส่วนกลางใช้ได้ทุกสาขา) ตามที่เจ้าของตัดสิน · เพิ่มคอลัมน์ <code>kind</code> (service/install/lead), <code>is_active</code>, <code>is_system</code></li>
-          <li>ยังเปิดอยู่ใน SPEC §14 ข้อ 6: ทีมผูก 1 สาขาหรือหลายสาขา → หน้านี้เตรียมช่อง "ขอบเขต" ไว้ทั้ง 2 แบบ (ส่วนกลางทุกสาขา / เฉพาะสาขา)</li>
+          <li>เฟส 1: ทุกทีมทำงานได้ทุกสาขาส่วนกลาง จึงไม่มีช่อง "ขอบเขต" (เจ้าของสั่ง 15 พ.ย. 2026) · เฟส 2 ตอนกำหนดว่าทีมไหนดู/ทำงานสาขาไหน ต้องเปลี่ยน <code>teams.branch_id</code> เป็นตารางเชื่อมทีม–สาขา (เลือกได้หลายสาขา) แล้วเพิ่มช่องเลือกสาขากลับมาในฟอร์มนี้ (SPEC §14 ข้อ 6)</li>
           <li><code>code</code> ไม่ซ้ำแบบไม่สนตัวพิมพ์ (กัน <code>sup</code>/<code>Sup</code> ที่เจอในไฟล์จริง) และแก้ไม่ได้หลังสร้าง เพราะถูกอ้างในสัญญาและข้อมูลภาระงานรายทีม</li>
-          <li>ทีมระบบ <code>Z</code> (ติดตั้งงานใหม่) และ <code>Sup</code> ลบ/ปิดใช้ไม่ได้</li>
+          <li>ทีมระบบมีทีมเดียวคือ <code>Sup</code> ลบ/ปิดใช้ไม่ได้ · <code>Z</code> เป็นทีมปกติ (ปิดใช้/ลบได้ตามกฎมีงานผูก) งานหลักคือติดตั้งงานใหม่ งานรองคือช่วยทีมอื่นและดูแลพื้นที่บางสาขา — <b>ต้องแก้ SPEC/ฐานข้อมูลที่เคยตั้ง Z เป็นทีมระบบ</b></li>
         </ul>
       </details>
     </section>
@@ -620,8 +632,14 @@ $('tabs').addEventListener('keydown',function(e){
 /* ============================ 1. เกณฑ์ Tier ============================ */
 /* ใน mockup ใช้ tierOf แบบนี้เพื่อให้พรีวิวสด — ของจริงอยู่ lib/rules/tierOf และอ่านจาก tier_rules */
 var T_DEFAULT={m:30000,l:50000,xl:100000};
-var tSaved=clone(T_DEFAULT), tDraft=clone(T_DEFAULT);
-var T_HIST=[{when:'1 ต.ค. 2026 · 09:00',who:'ระบบ',what:'ตั้งค่าเริ่มต้นตาม SPEC §7.1 (30,000 / 50,000 / 100,000)'}];
+var tSaved=clone(T_DEFAULT), tDraft=clone(T_DEFAULT); /* tSaved = ชุดล่าสุดที่บันทึก */
+/* ชุดเกณฑ์ตามเดือนที่เริ่มใช้ (ข้อมูลสมมติ) — เดือนปัจจุบัน = พ.ย. 2026 · ต.ค. 2026 และก่อนหน้า = ปิดแล้ว */
+var CUR_MONTH='2026-11', LAST_CLOSED='2026-10';
+var MONTH_TH=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+function monthTxt(k){ var a=k.split('-'); return MONTH_TH[parseInt(a[1],10)-1]+' '+a[0]; }
+function prevMonth(k){ var a=k.split('-'), y=+a[0], m=+a[1]-1; if(m<1){m=12;y--;} return y+'-'+(m<10?'0':'')+m; }
+function openMonths(){ var out=[], y=2026, m=11; for(var i=0;i<14;i++){ out.push(y+'-'+(m<10?'0':'')+m); m++; if(m>12){m=1;y++;} } return out; }
+var RULES=[{from:'2025-01',m:30000,l:50000,xl:100000,why:'ตั้งค่าเริ่มต้นตาม SPEC §7.1',who:'ระบบ',when:'1 ต.ค. 2026 · 09:00'}];
 
 function tierOf(a,t){ return a<t.m?'S':a<t.l?'M':a<t.xl?'L':'XL'; }
 function tierErrors(t){
@@ -644,11 +662,16 @@ var SYN=(function(){ var a=[]; BUCKETS.forEach(function(b){ for(var k=0;k<b[2];k
 function countTiers(t){ var c={S:0,M:0,L:0,XL:0}; SYN.forEach(function(v){ c[tierOf(v,t)]++; }); return c; }
 
 function readDraft(){
-  tDraft={m:parseFloat($('in-m').value), l:parseFloat($('in-l').value), xl:parseFloat($('in-xl').value)};
+  function num(id){ return parseFloat(String($(id).value).replace(/,/g,'')); }
+  tDraft={m:num('in-m'), l:num('in-l'), xl:num('in-xl')};
   updateTier();
 }
-['m','l','xl'].forEach(function(k){ $('in-'+k).addEventListener('input',readDraft); });
-function setInputs(){ ['m','l','xl'].forEach(function(k){ $('in-'+k).value=tDraft[k]; }); }
+['m','l','xl'].forEach(function(k){
+  $('in-'+k).addEventListener('input',readDraft);
+  /* ออกจากช่องแล้วจัดรูปเป็น 30,000 (พิมพ์มีหรือไม่มีจุลภาคก็ได้) */
+  $('in-'+k).addEventListener('blur',function(){ var v=parseFloat(String(this.value).replace(/,/g,'')); if(v>0) this.value=nf.format(v); });
+});
+function setInputs(){ ['m','l','xl'].forEach(function(k){ $('in-'+k).value=(tDraft[k]>0?nf.format(tDraft[k]):tDraft[k]); }); }
 
 function tBadge(tier,y){ return '<span class="tier '+tier.toLowerCase()+y+'">'+tier+y+'</span>'; }
 
@@ -696,7 +719,7 @@ function renderSamples(ok){
     if(!ok) return '<div class="sample">'+line+'<span class="chip neutral">—</span></div>';
     var got=tierOf(annual,tDraft), label=got+s[1], same=(label===s[2]);
     return '<div class="sample">'+line+tBadge(got,s[1])+
-      (same?'<span class="chip ok">ตรง SPEC</span>':'<span class="chip warn">SPEC ว่า '+s[2]+'</span>')+'</div>';
+      (same?'':'<span class="chip warn" title="เกณฑ์เริ่มต้น 30,000 / 50,000 / 100,000">เกณฑ์เริ่มต้นได้ '+s[2]+'</span>')+'</div>';
   }).join('');
 }
 function calc(){
@@ -713,17 +736,33 @@ function renderImpact(ok){
     var d=nxt[k]-now[k], ds=d===0?'<span class="fixed">—</span>':'<span class="'+(d>0?'diffpos':'diffneg')+'">'+(d>0?'+':'')+d+'</span>';
     return '<tr><td><span class="tier '+k.toLowerCase()+'">'+k+'</span></td><td class="r">'+now[k]+'</td><td class="r"><b>'+nxt[k]+'</b></td><td class="r">'+ds+'</td></tr>';
   }).join('');
-  box.innerHTML='<div class="tablewrap"><table class="imp"><thead><tr><th>Tier</th><th class="r">ตอนนี้</th><th class="r">หลังแก้</th><th class="r">ต่าง</th></tr></thead><tbody>'+rows+'</tbody></table></div>'+
+  box.innerHTML='<div class="tablewrap"><table class="imp"><thead><tr><th>Tier</th><th class="r">ที่บันทึกไว้</th><th class="r">หลังแก้</th><th class="r">ต่าง</th></tr></thead><tbody>'+rows+'</tbody></table></div>'+
     '<div class="pad" style="border-top:1px solid var(--border)">'+(moved?
       '<span class="chip warn">⚠ '+moved+' สัญญาจะเปลี่ยน Tier</span>':
       '<span class="chip ok">✓ ไม่มีสัญญาเปลี่ยน Tier</span>')+'</div>';
 }
 function renderHist(){
-  $('hist').innerHTML=T_HIST.map(function(h){
-    return '<li><b>'+esc(h.what)+'</b><small>'+esc(h.when)+' · โดย '+esc(h.who)+'</small></li>';
+  RULES.sort(function(a,b){ return a.from<b.from?-1:1; });
+  $('rulesBody').innerHTML=RULES.map(function(r,i){
+    var next=RULES[i+1], to=next?prevMonth(next.from):null;
+    var st=r.from>CUR_MONTH?'<span class="chip warn">ล่วงหน้า</span>':
+           (!next||next.from>CUR_MONTH)?'<span class="chip ok">ใช้อยู่ตอนนี้</span>':'<span class="chip neutral">ใช้แล้ว</span>';
+    var range='<b>'+monthTxt(r.from)+'</b><small style="display:block;color:var(--fg-muted)">'+(to?'ถึง '+monthTxt(to):'ใช้เรื่อยไปจนกว่าจะมีชุดใหม่')+(r.from<=LAST_CLOSED?' · รวมเดือนที่ปิดแล้ว (ไม่เปลี่ยน)':'')+'</small>';
+    return '<tr><td>'+range+'</td><td class="r">'+money(r.m)+'</td><td class="r">'+money(r.l)+'</td><td class="r">'+money(r.xl)+'</td><td>'+st+'</td></tr>';
+  }).join('');
+  /* แถบสรุปบนสุด: ชุดที่ใช้อยู่ตอนนี้ + จำนวนชุดล่วงหน้า */
+  var cur=null, ahead=[];
+  RULES.forEach(function(r){ if(r.from<=CUR_MONTH) cur=r; else ahead.push(r); });
+  $('nowStrip').innerHTML='<span class="chip ok">ใช้อยู่ตอนนี้</span>'+
+    '<span>M เริ่ม <b>'+money(cur.m)+'</b> · L เริ่ม <b>'+money(cur.l)+'</b> · XL เริ่ม <b>'+money(cur.xl)+'</b> บาท/ปี</span>'+
+    '<span class="hint">ตั้งแต่ '+monthTxt(cur.from)+'</span><span class="grow"></span>'+
+    (ahead.length?'<span class="chip warn">มีชุดล่วงหน้า '+ahead.length+' ชุด (เริ่ม '+monthTxt(ahead[0].from)+')</span>':'')+
+    '<button class="btn sm" type="button" onclick="document.getElementById(\'rulesTbl\').scrollIntoView({behavior:\'smooth\',block:\'center\'})">ดูทั้งหมด</button>';
+  $('hist').innerHTML=RULES.slice().reverse().map(function(r){
+    return '<li><b>'+esc(r.why)+'</b><small>เริ่มใช้ '+esc(monthTxt(r.from))+' · บันทึก '+esc(r.when)+' · โดย '+esc(r.who)+'</small></li>';
   }).join('');
 }
-function tierReset(){ tDraft=clone(T_DEFAULT); setInputs(); updateTier(); toast('คืนเป็นค่าตาม SPEC แล้ว (ยังไม่บันทึก)'); }
+function tierReset(){ tDraft=clone(T_DEFAULT); setInputs(); updateTier(); toast('คืนเป็นค่าเริ่มต้นแล้ว (ยังไม่บันทึก)'); }
 function tierRevert(){ tDraft=clone(tSaved); setInputs(); updateTier(); }
 function tierSave(){
   var err=tierErrors(tDraft);
@@ -745,19 +784,23 @@ function tierSave(){
     cancel:'ยังไม่บันทึก',
     body:'<p class="hint" style="margin-bottom:6px">สิ่งที่จะเปลี่ยน</p><ul class="chg">'+lines+'</ul>'+
       '<p class="hint" style="margin-bottom:6px">จำนวนสัญญาในแต่ละ Tier (ข้อมูลสมมติ)</p><ul class="chg">'+tierRows+'</ul>'+
+      '<div class="fld"><label for="f_eff">เริ่มใช้ตั้งแต่เดือน</label><select id="f_eff" class="inp">'+openMonths().map(function(k){ return '<option value="'+k+'">'+monthTxt(k)+(k===CUR_MONTH?' (เดือนนี้)':'')+'</option>'; }).join('')+'</select>'+
+        '<p class="hint" style="margin-top:6px">เลือกได้เฉพาะเดือนที่ยังเปิด · เดือนที่ปิดแล้ว (ต.ค. 2026 และก่อนหน้า) คงเกณฑ์เดิม</p></div>'+
       '<div class="callout" style="background:var(--warn-soft);color:var(--warn);margin-bottom:14px">'+
         (moved?'⚠ <b>'+moved+' สัญญา</b> จะเปลี่ยน Tier · ':'⚠ ')+
-        'เกณฑ์ใหม่มีผลกับเดือนที่ยังไม่ปิดเท่านั้น และส่งผลต่อตัวเลขที่ส่งไป Dashboard รอบถัดไป · เดือนที่ปิดแล้วไม่เปลี่ยน</div>'+
-      '<div class="fld"><label for="f_reason">เหตุผลในการแก้ (บังคับ — เก็บใน audit log)</label>'+
+        'เกณฑ์ใหม่ส่งผลต่อตัวเลขที่ส่งไป Dashboard ตั้งแต่เดือนที่เลือก · เดือนก่อนหน้านั้นไม่เปลี่ยน</div>'+
+      '<div class="fld"><label for="f_reason">เหตุผลในการแก้ (บังคับ — เก็บในประวัติการแก้ไข)</label>'+
       '<textarea id="f_reason" placeholder="เช่น ผู้บริหารอนุมัติปรับเกณฑ์ L เริ่มที่ 60,000 ตั้งแต่ ม.ค. 2027"></textarea></div>'+
-      '<label class="check"><input type="checkbox" id="f_ack"> ฉันตรวจสอบตัวเลขข้างบนแล้ว และยืนยันให้บันทึกเกณฑ์ใหม่</label>',
+      '<div class="fld"><label for="f_conf">ยืนยันการแก้ไข — พิมพ์คำว่า <b>ยืนยันแก้ไข</b> เพื่อบันทึก</label><input class="inp" type="text" id="f_conf" autocomplete="off" placeholder="ยืนยันแก้ไข"></div>',
     onOk:function(){
       var r=$('f_reason').value.trim();
       if(r.length<5) return 'ใส่เหตุผลอย่างน้อย 5 ตัวอักษร';
-      if(!$('f_ack').checked) return 'ติ๊กยืนยันว่าตรวจสอบตัวเลขแล้วก่อน';
+      if($('f_conf').value.trim()!=='ยืนยันแก้ไข') return 'พิมพ์คำว่า "ยืนยันแก้ไข" ให้ตรงก่อนจึงจะบันทึกได้';
+      var eff=$('f_eff').value;
       tSaved=clone(tDraft);
-      T_HIST.unshift({when:'6 พ.ย. 2026 · '+new Date().toTimeString().slice(0,5),who:'host (นท)',what:'แก้เกณฑ์: M '+money(tSaved.m)+' · L '+money(tSaved.l)+' · XL '+money(tSaved.xl)+' — '+r});
-      renderHist(); updateTier(); toast('บันทึกเกณฑ์ Tier แล้ว'); return null;
+      RULES=RULES.filter(function(x){ return x.from!==eff; });
+      RULES.push({from:eff,m:tSaved.m,l:tSaved.l,xl:tSaved.xl,why:r,who:'นท (PM)',when:'15 พ.ย. 2026 · '+new Date().toTimeString().slice(0,5)});
+      renderHist(); updateTier(); toast('บันทึกเกณฑ์ Tier แล้ว · เริ่มใช้ตั้งแต่ '+monthTxt(eff)); return null;
     }
   });
 }
@@ -787,14 +830,20 @@ function allTypeNames(exceptG,exceptI){
   var out=[]; TYPES.forEach(function(g,gi){ g.items.forEach(function(it,ii){ if(!(gi===exceptG&&ii===exceptI)) out.push(norm(it.n)); }); });
   return out;
 }
+var sortMode=false;
+function toggleSort(){
+  sortMode=!sortMode;
+  var b=$('sortBtn'); b.textContent=sortMode?'เสร็จสิ้นการจัดเรียง':'จัดเรียงลำดับ'; b.setAttribute('aria-pressed',sortMode);
+  renderTypes();
+}
 function renderTypes(){
   var total=0, active=0; TYPES.forEach(function(g){ total+=g.items.length; g.items.forEach(function(i){ if(i.on) active++; }); });
   $('cntTypes').textContent=total;
   $('typeStat').textContent=total+' ค่า · '+TYPES.length+' หมวด · ใช้งาน '+active;
   $('typeGroups').innerHTML=TYPES.map(function(g,gi){
     var head='<div class="tgroup-h"><b>'+esc(g.g)+'</b><span class="chip neutral">'+g.items.length+' ค่า</span><span class="push">'+
-      (isHost?'<button class="btn icon" aria-label="เลื่อนหมวดขึ้น" onclick="moveGroup('+gi+',-1)">▲</button>'+
-              '<button class="btn icon" aria-label="เลื่อนหมวดลง" onclick="moveGroup('+gi+',1)">▼</button>'+
+      (isHost?(sortMode?'<button class="btn icon" aria-label="เลื่อนหมวดขึ้น" onclick="moveGroup('+gi+',-1)">▲</button>'+
+              '<button class="btn icon" aria-label="เลื่อนหมวดลง" onclick="moveGroup('+gi+',1)">▼</button>':'')+
               '<button class="btn sm" onclick="editGroup('+gi+')">แก้ชื่อหมวด</button>'+
               (g.items.length===0?'<button class="btn sm" style="color:var(--danger)" onclick="delGroup('+gi+')">ลบหมวด</button>':''):'')+
       '</span></div>';
@@ -802,11 +851,11 @@ function renderTypes(){
       return '<div class="titem'+(it.on?'':' off')+'"><div class="nm"><b>'+esc(it.n)+'</b>'+(it.hint?'<small>'+esc(it.hint)+'</small>':'')+'</div>'+
         '<span class="use">'+(it.use?it.use+' สัญญา':'ยังไม่มีใช้')+'</span>'+
         (isHost?'<div class="acts">'+
-          '<button class="btn icon" aria-label="เลื่อน '+esc(it.n)+' ขึ้น" onclick="moveItem('+gi+','+ii+',-1)">▲</button>'+
-          '<button class="btn icon" aria-label="เลื่อน '+esc(it.n)+' ลง" onclick="moveItem('+gi+','+ii+',1)">▼</button>'+
+          (sortMode?'<button class="btn icon" aria-label="เลื่อน '+esc(it.n)+' ขึ้น" onclick="moveItem('+gi+','+ii+',-1)">▲</button>'+
+          '<button class="btn icon" aria-label="เลื่อน '+esc(it.n)+' ลง" onclick="moveItem('+gi+','+ii+',1)">▼</button>':'')+
           '<button class="sw" role="switch" aria-checked="'+it.on+'" aria-label="เปิด/ปิดใช้ '+esc(it.n)+'" onclick="toggleItem('+gi+','+ii+')"></button>'+
           '<button class="btn sm" onclick="editItem('+gi+','+ii+')">แก้ไข</button>'+
-          (it.use===0?'<button class="btn sm" style="color:var(--danger)" aria-label="ลบ '+esc(it.n)+'" onclick="delItem('+gi+','+ii+')">ลบ</button>':'')+
+          (it.use===0?'<button class="btn sm" style="color:var(--danger)" aria-label="ลบ '+esc(it.n)+'" onclick="delItem('+gi+','+ii+')">ลบ</button>':'<span class="slot-del" aria-hidden="true"></span>')+
         '</div>':'<span class="chip '+(it.on?'ok':'neutral')+'">'+(it.on?'ใช้งาน':'ปิดใช้')+'</span>')+'</div>';
     }).join(''):'<div class="empty">ยังไม่มีประเภทในหมวดนี้</div>';
     return '<div class="card tgroup">'+head+rows+'</div>';
@@ -878,17 +927,14 @@ function delGroup(gi){
 }
 
 /* ============================ 3. ทีม ============================ */
-var BRANCHES=['พัฒนาการ','ลาดพร้าว','ประชาชื่น','สุวินทวงศ์','รามอินทรา','ปทุมธานี','อยุธยา','พุทธมณฑล','พระราม2','หัวหิน','นครปฐม',
-  'สุขุมวิท','ปากน้ำ','ชลบุรี','นนทบุรี','สาทร','พระราม4','ปทุมวัน','สมุทรปราการ','ระยอง','ปราจีนบุรี','พัทยา','ปากช่อง','สระบุรี'];
-var KIND={service:'ทีมบริการ',install:'ติดตั้งงานใหม่',lead:'หัวหน้างาน'};
+var KIND={service:'ทีมบริการ',install:'ทีมติดตั้ง',lead:'ทีมหัวหน้างาน'};
 var TEAMS=(function(){
   var uses=[9,7,11,6,10,8,5,9,7,4,6,8,3,5,2], t=[];
-  'ABCDEFGHIJKLMNO'.split('').forEach(function(c,i){ t.push({c:c,name:'ทีม '+c,kind:'service',use:uses[i],on:true,sys:false,scope:''}); });
-  t.push({c:'Z',name:'ทีมติดตั้งงานใหม่',kind:'install',use:14,on:true,sys:true,scope:''});
-  t.push({c:'Sup',name:'หัวหน้างาน (Supervisor)',kind:'lead',use:3,on:true,sys:true,scope:''});
+  'ABCDEFGHIJKLMNO'.split('').forEach(function(c,i){ t.push({c:c,name:'ทีม '+c,kind:'service',use:uses[i],on:true,sys:false}); });
+  t.push({c:'Z',name:'ทีม Z (ติดตั้ง)',kind:'install',use:14,on:true,sys:false});
+  t.push({c:'Sup',name:'หัวหน้างาน (Supervisor)',kind:'lead',use:3,on:true,sys:true});
   return t;
 })();
-function scopeLabel(t){ return t.scope?('เฉพาะสาขา '+t.scope):'ทุกสาขาส่วนกลาง'; }
 function renderTeams(){
   var act=TEAMS.filter(function(t){ return t.on; }).length;
   $('cntTeams').textContent=TEAMS.length;
@@ -897,11 +943,10 @@ function renderTeams(){
     return '<tr class="'+(t.on?'':'off')+'"><td><span class="code">'+esc(t.c)+'</span></td>'+
       '<td>'+esc(t.name)+(t.sys?' <span class="chip neutral" title="ทีมระบบ ลบ/ปิดใช้ไม่ได้">🔒 ทีมระบบ</span>':'')+'</td>'+
       '<td><span class="chip neutral">'+KIND[t.kind]+'</span></td>'+
-      '<td style="white-space:nowrap">'+esc(scopeLabel(t))+'</td>'+
       '<td class="r">'+t.use+'</td>'+
       '<td><button class="sw" role="switch" aria-checked="'+t.on+'" aria-label="เปิด/ปิดใช้ทีม '+esc(t.c)+'"'+(isHost?' onclick="toggleTeam('+i+')"':' tabindex="-1" style="pointer-events:none"')+'></button></td>'+
       '<td style="white-space:nowrap">'+(isHost?'<button class="btn sm" onclick="editTeam('+i+')">แก้ไข</button> '+
-        ((!t.sys&&t.use===0)?'<button class="btn sm" style="color:var(--danger)" aria-label="ลบทีม '+esc(t.c)+'" onclick="delTeam('+i+')">ลบ</button>':''):'')+'</td></tr>';
+        (!t.sys?'<button class="btn sm" style="color:var(--danger)" aria-label="ลบทีม '+esc(t.c)+'" onclick="delTeam('+i+')">ลบ</button>':''):'')+'</td></tr>';
   }).join('');
 }
 function toggleTeam(i){
@@ -916,9 +961,8 @@ function toggleTeam(i){
   t.on=true; renderTeams(); toast('เปิดใช้ทีม '+t.c+' แล้ว');
 }
 function editTeam(i){
-  var add=(i<0), t=add?{c:'',name:'',kind:'service',use:0,on:true,sys:false,scope:''}:TEAMS[i];
+  var add=(i<0), t=add?{c:'',name:'',kind:'service',use:0,on:true,sys:false}:TEAMS[i];
   var kindOpts=Object.keys(KIND).map(function(k){ return '<option value="'+k+'"'+(k===t.kind?' selected':'')+'>'+KIND[k]+'</option>'; }).join('');
-  var brOpts=BRANCHES.map(function(b){ return '<option'+(b===t.scope?' selected':'')+'>'+esc(b)+'</option>'; }).join('');
   openDlg({
     title:add?'เพิ่มทีม':'แก้ไขทีม '+t.c,
     body:'<div class="row2"><div class="fld"><label for="f_code">รหัสทีม (code)</label>'+
@@ -926,8 +970,6 @@ function editTeam(i){
       '<span class="note">'+(add?'ตัวอักษร/ตัวเลข 1–4 ตัว ซ้ำไม่ได้ (ไม่สนตัวพิมพ์) · สร้างแล้วแก้ไม่ได้':'แก้รหัสไม่ได้ เพราะถูกอ้างอิงในสัญญา')+'</span></div>'+
       '<div class="fld"><label for="f_kind">ประเภททีม</label><select id="f_kind"'+(t.sys?' disabled':'')+'>'+kindOpts+'</select></div></div>'+
       '<div class="fld"><label for="f_tname">ชื่อ / คำอธิบาย</label><input type="text" id="f_tname" maxlength="40" value="'+esc(t.name)+'" placeholder="เช่น ทีมเขต 3"></div>'+
-      '<div class="fld"><label for="f_scope">ขอบเขตการใช้งาน</label><select id="f_scope"><option value="">ทุกสาขาส่วนกลาง (ค่าเริ่มต้น)</option>'+
-        '<optgroup label="เฉพาะสาขา">'+brOpts+'</optgroup></select></div>'+
       (t.sys?'<p class="hint">ทีมระบบ — ลบ/ปิดใช้ไม่ได้ และเปลี่ยนประเภทไม่ได้</p>':'<label class="check"><input type="checkbox" id="f_ton"'+(t.on?' checked':'')+'> เปิดใช้งาน</label>'),
     onOk:function(){
       var code=add?$('f_code').value.trim():t.c, name=$('f_tname').value.trim().replace(/\s+/g,' ');
@@ -936,16 +978,24 @@ function editTeam(i){
         if(TEAMS.some(function(x){ return norm(x.c)===norm(code); })) return 'มีรหัสทีม "'+code+'" อยู่แล้ว';
       }
       if(!name) return 'ใส่ชื่อทีมก่อน';
-      var scope=$('f_scope').value, kind=t.sys?t.kind:$('f_kind').value, on=t.sys?true:$('f_ton').checked;
-      if(add){ TEAMS.push({c:code,name:name,kind:kind,use:0,on:on,sys:false,scope:scope}); }
-      else{ t.name=name; t.kind=kind; t.on=on; t.scope=scope; }
+      var kind=t.sys?t.kind:$('f_kind').value, on=t.sys?true:$('f_ton').checked;
+      if(add){ TEAMS.push({c:code,name:name,kind:kind,use:0,on:on,sys:false}); }
+      else{ t.name=name; t.kind=kind; t.on=on; }
       renderTeams(); toast(add?'เพิ่มทีม '+code+' แล้ว':'บันทึกทีม '+code+' แล้ว'); return null;
     }
   });
 }
 function delTeam(i){
   var t=TEAMS[i];
-  openDlg({title:'ลบทีม '+t.c+'?',ok:'ลบ',danger:true,body:'<p>ทีมนี้ยังไม่มีงานผูกอยู่ ลบได้ปลอดภัย (ถ้ามีงานผูกแล้ว ระบบจะให้ปิดใช้แทน)</p>',
+  if(t.use>0){
+    /* ทีมที่ยังมีงานผูกอยู่ ลบไม่ได้ (สัญญาเดิมอ้างอิงทีมนี้) → เสนอปิดใช้งานแทน */
+    openDlg({title:'ลบทีม '+t.c+' ไม่ได้',ok:t.on?'ปิดใช้ทีมนี้แทน':'เข้าใจแล้ว',cancel:'ปิด',
+      body:'<p>ทีมนี้ยังมีงานเปิดอยู่ <b>'+t.use+' งาน</b> ถ้าลบ สัญญาเดิมจะไม่รู้ว่าเป็นของทีมไหน</p>'+
+        '<p class="hint" style="margin-top:8px">'+(t.on?'ปิดใช้ทีมแทนได้ — ทีมจะไม่อยู่ในตัวเลือกให้เลือกใหม่ แต่งานเดิมที่ผูกไว้ยังอยู่ครบ แล้วค่อยลบเมื่อไม่มีงานผูกแล้ว':'ทีมนี้ปิดใช้งานอยู่แล้ว จะลบได้เมื่อไม่มีงานผูกอยู่')+'</p>',
+      onOk:function(){ if(t.on){ t.on=false; renderTeams(); toast('ปิดใช้ทีม '+t.c+' แล้ว'); } return null; }});
+    return;
+  }
+  openDlg({title:'ลบทีม '+t.c+'?',ok:'ลบ',danger:true,body:'<p>ทีมนี้ไม่มีงานผูกอยู่ ลบได้ปลอดภัย</p>',
     onOk:function(){ TEAMS.splice(i,1); renderTeams(); toast('ลบทีม '+t.c+' แล้ว'); return null; }});
 }
 
