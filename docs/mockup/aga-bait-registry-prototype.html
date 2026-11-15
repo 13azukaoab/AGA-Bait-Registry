@@ -526,6 +526,7 @@ tfoot td{padding:10px 12px;font-weight:700;background:var(--surface-2);border-to
 .cmpscroll{overflow-x:auto}.tmcmp table{width:100%;border-collapse:collapse;font-size:13px}.tmcmp th,.tmcmp td{padding:7px 12px;border-top:1px solid var(--border);white-space:nowrap}.tmcmp thead th{font-size:12.5px;background:var(--surface-2);border-top:0}.tmcmp tbody th{text-align:left;font-weight:400;color:var(--fg-muted)}.cmpnm{font-weight:700}.cmpx{border:0;background:none;color:var(--fg-muted);cursor:pointer;min-width:28px;min-height:28px;border-radius:6px}.cmpx:hover{background:var(--surface-3)}.tmcmp td.best{background:var(--ok-soft);color:var(--ok);font-weight:700}.tmcmp .cmpg{background:var(--surface-2);font-weight:600}.cmpbar{height:4px;background:var(--surface-3);border-radius:2px;margin-top:3px}.cmpbar i{display:block;height:100%;background:var(--accent);border-radius:2px}
 @media (max-width:860px){.tmcmp{margin:0 12px 12px}}
 @media (max-width:860px){#tmSec .tmcmp table{display:table;width:max-content;min-width:100%}#tmSec .tmcmp thead{display:table-header-group}#tmSec .tmcmp tbody{display:table-row-group}#tmSec .tmcmp tr{display:table-row}#tmSec .tmcmp td,#tmSec .tmcmp th{display:table-cell;width:auto;white-space:nowrap}}
+.matmode{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:0 0 12px;font-size:12.5px;color:var(--fg-muted)}.matmode .segbtn{border:1px solid var(--border);min-height:34px}
 .tmmode{display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:10px 16px 0;font-size:12.5px;color:var(--fg-muted)}.tmmode .segbtn{border:1px solid var(--border);min-height:34px}
 .tmch{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px;padding:0 16px 14px}
 .tmcp{border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;background:var(--surface)}.tmcfull{grid-column:1 / -1}
@@ -918,6 +919,7 @@ i.wr,rect.wr{background:var(--accent);fill:var(--accent)}i.wf,rect.wf{background
         <button class="btn sm" type="button" id="matExport" onclick="exportMaterialXL()" title="ส่งออกสรุปการใช้วัสดุ + ตารางแยกสาขา เป็น .xlsx">↓ ส่งออก Excel</button>
       </div>
       <div class="note" id="matPeriodNote" hidden><span class="ic">ℹ</span><span>ตัวอย่างนี้แสดงข้อมูลสมมติของ <b>ต.ค. 2026</b> เท่านั้น · ของจริงตัวเลขจะรวมตามช่วงเวลาที่เลือก (ตัวกรองเขต/สาขา/ทีม/ชนิดวัสดุเอาออกแล้ว — แยกสาขาดูในตาราง แยกชนิดดูจากการ์ด)</span></div>
+      <div class="matmode" id="matMode" role="group" aria-label="ข้อมูลตัวอย่าง"><span>ข้อมูลตัวอย่าง:</span><button type="button" class="segbtn on" data-matmode="base" aria-pressed="true">3 สาขา</button><button type="button" class="segbtn" data-matmode="full" aria-pressed="false">เต็ม 24 สาขาส่วนกลาง</button></div>
       <div id="matMat">
       <div class="stats">
         <div class="stat matn"><div class="lab"><span class="dot" style="background:var(--nem)"></span> NEMESIS (เหยื่อ) ที่ใช้</div><div class="val num">10,000 <span style="font-size:14px;color:var(--fg-muted)">ก.</span></div><div class="nembar" role="img" aria-label="สถานีภายนอก 12.5% · กล่อง AG 87.5%"><i style="width:12.5%;background:var(--nem-out)"></i><i style="width:87.5%;background:var(--nem)"></i></div><div class="nemsplit"><div><small><span class="sw" style="background:var(--nem-out)"></span> สถานีภายนอก (IG+IC)</small><b class="num">1,250 ก.</b><em class="num">12.5%</em></div><div><small><span class="sw" style="background:var(--nem)"></span> กล่อง AG (ภายใน)</small><b class="num">8,750 ก.</b><em class="num">87.5%</em></div></div></div>
@@ -1963,6 +1965,53 @@ function matSortApply(){
   var sel=$('matSortSel');if(sel)sel.value=String(c)}
 function matSortSel(v){MAT_SORT={col:+v,rev:false};matSortApply()}
 document.addEventListener('click',function(e){var b=e.target.closest&&e.target.closest('[data-matsort]');if(!b)return;var i=+b.getAttribute('data-matsort');if(MAT_SORT.col===i)MAT_SORT.rev=!MAT_SORT.rev;else MAT_SORT={col:i,rev:false};matSortApply();var nb=document.querySelector('#matMat [data-matsort="'+i+'"]');if(nb)nb.focus()});
+/* ===== สลับข้อมูลตัวอย่างหน้า "การใช้อุปกรณ์": 3 สาขา ↔ เต็ม 24 สาขาส่วนกลาง (เจ้าของสั่ง 15 พ.ย. 2026 — ดูว่าตอนใช้งานจริงตารางแน่นแค่ไหน) =====
+   • เฉพาะ mockup · ชื่อสาขา = ส่วนกลาง 24 สาขาจาก lib/dashboard/branches.ts · ตัวเลขสร้างจากลำดับสาขา (สมมติ)
+   • กราฟแท่งแสดง 8 สาขาแรกเรียงมากไปน้อย (matCap) ที่เหลือดูในตาราง · ตารางเรียงได้ทุกคอลัมน์ */
+var MAT_CENTRAL=['พุทธมณฑล','นครปฐม','หัวหิน','สาทร','ปทุมวัน','พระราม 4','นนทบุรี','ปทุมธานี','รามอินทรา','อยุธยา','ลาดพร้าว','พัฒนาการ','สุวินทวงศ์','ประชาชื่น','สมุทรปราการ','พัทยา','ระยอง','สุขุมวิท','ปากน้ำ','ชลบุรี','ปากช่อง','สระบุรี','พระราม 2','ปราจีนบุรี'];
+var MAT_BASE_HTML=null,MAT_MODE='base';
+function matFmt(n){return Math.round(n).toLocaleString('en-US')}
+function matSetMode(m){
+  var root=$('matMat');if(!root)return;
+  if(MAT_BASE_HTML===null)MAT_BASE_HTML=root.innerHTML;
+  MAT_MODE=m;
+  [].forEach.call(document.querySelectorAll('[data-matmode]'),function(b){var on=b.getAttribute('data-matmode')===m;b.classList.toggle('on',on);b.setAttribute('aria-pressed',on?'true':'false')});
+  root.innerHTML=MAT_BASE_HTML;MAT_SORT={col:-1,rev:false};
+  if(m==='full')matBuildFull(root);
+  [].forEach.call(root.querySelectorAll('tbody tr'),function(tr,i){tr.setAttribute('data-o',i)});
+  matLabels();matCap();matSortApply();
+}
+function matBuildFull(root){
+  var D=MAT_CENTRAL.map(function(n,k){var o=Math.round((150+((k*37)%420))/10)*10,i=Math.round((1200+((k*211)%3300))/10)*10,p=20+((k*53)%210),w=Math.round((150+((k*97)%520))/10)*10;return {n:n,o:o,i:i,p:p,g:Math.round(p*0.3),w:w}});
+  function sum(k){return D.reduce(function(a,d){return a+d[k]},0)}
+  var T={o:sum('o'),i:sum('i'),p:sum('p'),g:sum('g'),w:sum('w')},NT=T.o+T.i;
+  /* การ์ดสรุป */
+  var st=root.querySelectorAll('.stats .stat');
+  st[0].querySelector('.val').firstChild.nodeValue=matFmt(NT)+' ';
+  var po=T.o*100/NT,bars=st[0].querySelectorAll('.nembar i');bars[0].style.width=po+'%';bars[1].style.width=(100-po)+'%';
+  var bs=st[0].querySelectorAll('.nemsplit b'),es=st[0].querySelectorAll('.nemsplit em');bs[0].textContent=matFmt(T.o)+' ก.';bs[1].textContent=matFmt(T.i)+' ก.';es[0].textContent=po.toFixed(1)+'%';es[1].textContent=(100-po).toFixed(1)+'%';
+  st[0].querySelector('.nembar').setAttribute('aria-label','สถานีภายนอก '+po.toFixed(1)+'% · กล่อง AG '+(100-po).toFixed(1)+'%');
+  st[1].querySelector('.val').firstChild.nodeValue=matFmt(T.p)+' ';st[1].querySelector('.sub').textContent='≈ '+matFmt(T.g)+' ก. (0.3 ก./จุด)';
+  st[2].querySelector('.val').firstChild.nodeValue=matFmt(T.w)+' ';var ig=Math.round(T.w*0.72/2);st[2].querySelector('.sub').textContent='IG '+matFmt(ig)+' จุด×2 + IC '+matFmt(T.w-ig*2)+' จุด×1';
+  /* กราฟแท่ง (เรียงมากไปน้อย) */
+  var panels=root.querySelectorAll('.cards.matbars .panel');
+  function setTot(p,txt){p.querySelector('h3 .num').textContent=txt}
+  setTot(panels[0],matFmt(NT)+' ก.');setTot(panels[1],matFmt(T.p)+' จุด');setTot(panels[2],matFmt(T.w)+' ชิ้น');
+  var byN=D.slice().sort(function(a,b){return (b.o+b.i)-(a.o+a.i)}),mxN=byN[0].o+byN[0].i;
+  panels[0].querySelector('.usebars').innerHTML=byN.map(function(d){var t=d.o+d.i;return '<div class="userow"><span>'+esc(d.n)+'</span><div class="usetrack stk"><div class="mseg out" style="width:'+(d.o/mxN*100)+'%" data-tip="ภายนอก (IG+IC) · '+matFmt(d.o)+' ก. · '+Math.round(d.o*100/t)+'%"></div><div class="mseg in" style="width:'+(d.i/mxN*100)+'%" data-tip="ภายใน (AG) · '+matFmt(d.i)+' ก. · '+Math.round(d.i*100/t)+'%"></div></div><span class="v num">'+matFmt(t)+' ก.<small>นอก '+matFmt(d.o)+' · ใน '+matFmt(d.i)+'</small></span></div>'}).join('');
+  var byP=D.slice().sort(function(a,b){return b.p-a.p}),mxP=byP[0].p;
+  panels[1].querySelector('.usebars').innerHTML=byP.map(function(d){return '<div class="userow"><span>'+esc(d.n)+'</span><div class="usetrack"><div class="usefill pow" style="width:'+(d.p/mxP*100)+'%" data-tip="เคมีผง · '+d.p+' จุด · '+d.g+' ก. · '+Math.round(d.p*100/T.p)+'% ของส่วนกลาง"></div></div><span class="v num">'+d.p+' จุด</span></div>'}).join('');
+  var byW=D.slice().sort(function(a,b){return b.w-a.w}),mxW=byW[0].w;
+  panels[2].querySelector('.usebars').innerHTML=byW.map(function(d){return '<div class="userow"><span>'+esc(d.n)+'</span><div class="usetrack"><div class="usefill wood" style="width:'+(d.w/mxW*100)+'%" data-tip="ไม้ล่อ · '+matFmt(d.w)+' ชิ้น · '+Math.round(d.w*100/T.w)+'% ของส่วนกลาง"></div></div><span class="v num">'+matFmt(d.w)+' ชิ้น</span></div>'}).join('');
+  /* ตาราง (ลำดับเดิมตามเขต) */
+  root.querySelector('tbody').innerHTML=D.map(function(d){return '<tr><td><b>'+esc(d.n)+'</b></td><td class="r num">'+matFmt(d.o)+'</td><td class="r num">'+matFmt(d.i)+'</td><td class="r num">'+d.p+'</td><td class="r num" style="color:var(--fg-muted)">'+d.g+'</td><td class="r num">'+matFmt(d.w)+'</td></tr>'}).join('');
+  root.querySelector('tfoot').innerHTML='<tr><td>รวมส่วนกลาง (24 สาขา)</td><td class="r num">'+matFmt(T.o)+'</td><td class="r num">'+matFmt(T.i)+'</td><td class="r num">'+matFmt(T.p)+'</td><td class="r num">'+matFmt(T.g)+'</td><td class="r num">'+matFmt(T.w)+'</td></tr>';
+  /* สรุปเคมีผง */
+  var cp=root.querySelector(':scope > .panel');
+  cp.querySelector('h3 .num').textContent=matFmt(T.p)+' จุด · ≈'+matFmt(T.g)+' ก.';
+  cp.querySelector('.usebars').innerHTML=byP.map(function(d){return '<div class="userow"><span>'+esc(d.n)+'</span><div class="usetrack"><div class="usefill pow" style="width:'+(d.p/mxP*100)+'%" data-tip="'+d.p+' จุด × 0.3 = '+d.g+' ก."></div></div><span class="v num">'+d.p+' จุด · '+d.g+' ก.</span></div>'}).join('');
+}
+document.addEventListener('click',function(e){var b=e.target.closest&&e.target.closest('[data-matmode]');if(b)matSetMode(b.getAttribute('data-matmode'))});
 function matPeriodChg(){
   var p=$('matPeriod').value;$('matRange').hidden=(p!=='custom');
   var f=$('matFrom'),t=$('matTo');if(p==='custom'&&f.value&&t.value&&f.value>t.value){var x=f.value;f.value=t.value;t.value=x}
