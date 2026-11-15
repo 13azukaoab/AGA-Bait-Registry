@@ -534,6 +534,7 @@ tfoot td{padding:10px 12px;font-weight:700;background:var(--surface-2);border-to
 .tmcb i{display:flex;align-items:center;justify-content:center;font-style:normal;font-size:10.5px;font-weight:700;border-radius:2px;overflow:hidden;min-width:0;cursor:default}
 .tmcb i:first-child{border-radius:4px 2px 2px 4px}.tmcb i:last-child{border-radius:2px 4px 4px 2px}
 .tmcs{position:relative;height:14px}.tmcs i{display:block;height:100%;background:var(--accent);border-radius:2px 4px 4px 2px;cursor:default}
+.tmcs i.warn{background:var(--warn)}.wtch{padding:0;margin:14px 0}.chip.warn{background:var(--warn-soft);color:var(--warn);font-weight:700}
 .tmcs .avgl{position:absolute;top:-4px;bottom:-4px;border-left:2px dashed var(--fg-muted)}
 .tmch.dense .tmcb{height:13px}.tmch.dense .tmct{display:none}.tmch.dense .tmcs{height:11px}.tmch.dense .tmlg{margin-bottom:2px}
 .tmmd{display:grid;grid-template-columns:1fr 1fr;gap:4px 28px}
@@ -1007,6 +1008,7 @@ tfoot td{padding:10px 12px;font-weight:700;background:var(--surface-2);border-to
           <button type="button" class="segbtn on" role="tab" aria-selected="true" id="wtViewTeam" onclick="wtView('team')">รายทีม</button>
           <button type="button" class="segbtn" role="tab" aria-selected="false" id="wtViewCust" onclick="wtView('cust')">รายลูกค้า</button>
         </div>
+        <div class="tmch dense wtch" id="wtCharts" hidden></div>
         <div class="tablewrap" id="wtTable"></div>
         <div class="note"><span class="ic">ℹ</span><span>เวลาทำงานจริง = เวลาออก − เวลาเข้า ของแต่ละครั้งที่เข้า · <b>ถ้าเข้าพร้อมหลายทีม นับเวลาเต็มให้ทุกทีม</b> (ยอด “รวมทุกทีม” จึงมากกว่าเวลาจริงของงานได้) · ตัวเลขในตารางนี้เป็น <b>ข้อมูลตัวอย่าง (สมมติ)</b> เพื่อดูหน้าตา</span></div>
       </div>
@@ -1967,6 +1969,27 @@ function matCap(){
     var n=document.createElement('div');n.className='hint';n.style.marginTop='6px';n.textContent='แสดง 8 สาขาแรก · อีก '+(rows.length-8)+' สาขาดูในตารางด้านล่าง';u.appendChild(n);
   });
 }
+/* กราฟเวลาทำงานรายทีม (เจ้าของเลือกแบบ A 15 พ.ย. 2026)
+   • ซ้าย: เวลารวมต่อทีม (ชม.) · ขวา: เฉลี่ยต่อครั้ง — ทีมที่สูงกว่าค่าเฉลี่ยเกิน 10% ใช้สีเหลืองอำพันเตือน
+   • สีเดียวคือน้ำเงินแบรนด์ (ขนาดแท่ง = ปริมาณ) · สีเตือนใช้เฉพาะค่าผิดปกติ · เส้นประ = ค่าเฉลี่ยทุกทีม · ชี้/แตะแท่งเพื่อดูรายละเอียด */
+function wtCharts(){
+  var box=$('wtCharts');if(!box)return;
+  if(WT_VIEW!=='team'||!TM.length){box.hidden=true;box.innerHTML='';return}
+  box.hidden=false;
+  var D=TM.map(function(t){return {t:t,h:t.min/60,a:t.min/t.visits}});
+  var totH=D.reduce(function(x,d){return x+d.h},0),totV=TM.reduce(function(x,t){return x+t.visits},0),avgH=totH/D.length,avgA=totH*60/totV;
+  var byH=D.slice().sort(function(x,y){return y.h-x.h}),byA=D.slice().sort(function(x,y){return y.a-x.a});
+  var maxH=byH[0].h||1,maxA=byA[0].a||1;
+  function row(name,bar,val){return '<div class="tmcr"><b>'+esc(name)+'</b>'+bar+'<span class="num">'+val+'</span></div>'}
+  var g1=byH.map(function(d){var p=Math.round((d.h/avgH-1)*100);
+    return row(d.t.team,'<div class="tmcs"><i style="width:'+(d.h/maxH*100)+'%" data-tip="<b>'+esc(d.t.team)+'</b><br>เวลาทำงานรวม '+d.h.toFixed(1)+' ชม.<br>เข้า '+d.t.visits+' ครั้ง<br>เฉลี่ยทุกทีม '+avgH.toFixed(1)+' ชม. ('+(p>0?'+':'')+p+'%)"></i><span class="avgl" style="left:'+(avgH/maxH*100)+'%"></span></div>','<b>'+d.h.toFixed(1)+'</b> ชม.')}).join('');
+  var hi=0;
+  var g2=byA.map(function(d){var p=Math.round((d.a/avgA-1)*100),warn=p>10;if(warn)hi++;
+    return row(d.t.team,'<div class="tmcs"><i class="'+(warn?'warn':'')+'" style="width:'+(d.a/maxA*100)+'%" data-tip="<b>'+esc(d.t.team)+'</b><br>เฉลี่ย '+wtFmt(Math.round(d.a))+' ชม.:นาที ต่อครั้ง<br>เฉลี่ยทุกทีม '+wtFmt(Math.round(avgA))+' ('+(p>0?'+':'')+p+'%)"></i><span class="avgl" style="left:'+(avgA/maxA*100)+'%"></span></div>','<b>'+wtFmt(Math.round(d.a))+'</b> '+(warn?'<span class="chip warn">+'+p+'%</span>':''))}).join('');
+  box.innerHTML=
+    '<div class="tmcp"><h4>เวลาทำงานรวมต่อทีม <small>(ชั่วโมง)</small></h4><div class="tmlg"><span><i style="background:var(--accent)"></i>เวลารวม</span><span><i class="dash"></i>เฉลี่ยทุกทีม '+avgH.toFixed(1)+' ชม.</span></div>'+g1+'</div>'+
+    '<div class="tmcp"><h4>เฉลี่ยต่อครั้ง <small>(ชม.:นาที)</small></h4><div class="tmlg"><span><i style="background:var(--accent)"></i>ปกติ</span><span><i style="background:var(--warn)"></i>สูงกว่าเฉลี่ยเกิน 10% ('+hi+' ทีม)</span><span><i class="dash"></i>เฉลี่ยทุกทีม '+wtFmt(Math.round(avgA))+'</span></div>'+g2+'</div>';
+}
 function wtSumRender(){
   if(!$('wtTable')) return;
   var br='', tm='';   /* ตัวกรองสาขา/ทีมเอาออกแล้ว (เจ้าของสั่ง 15 พ.ย. 2026) */
@@ -1993,6 +2016,7 @@ function wtSumRender(){
       '</tbody><tfoot><tr><td colspan="4">รวม '+rows.length+' ราย</td><td class="r num">'+tv+'</td><td class="r num">'+wtFmt(tm_)+'</td><td class="r num">'+wtFmt(Math.round(tm_/tv))+'</td></tr></tfoot></table>';
   }
   $('wtTable').innerHTML=html;
+  wtCharts();
   matLabels();
 }
 var BAIT_OPTS='<option>0 ก.</option><option selected>50 ก.</option><option>100 ก.</option><option>150 ก.</option><option>200 ก.</option>';
@@ -3122,7 +3146,7 @@ function tmCharts(){
 }
 (function(){
   var box=document.getElementById('tmCharts')||document;
-  document.addEventListener('mousemove',function(e){var t=e.target.closest&&e.target.closest('#tmCharts [data-tip]');if(t)tmTipShow(e.clientX,e.clientY,t.getAttribute('data-tip'));else tmTipHide()});
+  document.addEventListener('mousemove',function(e){var t=e.target.closest&&e.target.closest('#tmCharts [data-tip],#wtCharts [data-tip]');if(t)tmTipShow(e.clientX,e.clientY,t.getAttribute('data-tip'));else tmTipHide()});
   document.addEventListener('click',function(e){
     var c=e.target.closest&&e.target.closest('#tmCharts');if(!c)return;
     var tg=e.target.closest('[data-tmtier]');
