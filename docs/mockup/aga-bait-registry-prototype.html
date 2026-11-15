@@ -918,7 +918,7 @@ tfoot td{padding:10px 12px;font-weight:700;background:var(--surface-2);border-to
       </div>
       <div class="stats" id="clStats"></div>
       <div class="tablewrap"><table>
-        <thead><tr><th>ลูกค้า</th><th>เลขที่สัญญา</th><th>สิ้นสุดสัญญา</th><th class="c">สัญญา</th><th class="c">IG ทั้งหมด</th><th class="c">เก็บแล้ว</th><th class="c">ไม่เก็บ</th><th class="c">คงเหลือ</th><th class="c">IC</th><th></th></tr></thead>
+        <thead><tr><th>ลูกค้า</th><th>เลขที่สัญญา</th><th>สิ้นสุดสัญญา</th><th>เก็บล่าสุด</th><th class="c">สัญญา</th><th class="c">IG ทั้งหมด</th><th class="c">เก็บแล้ว</th><th class="c">ไม่เก็บ</th><th class="c">คงเหลือ</th><th class="c">IC</th><th></th></tr></thead>
         <tbody id="clBody"></tbody>
       </table></div>
       <div id="clHold"></div>
@@ -2714,11 +2714,11 @@ function msOpenWaive(it,opener){
 }
 /* ---- #collect: รอเก็บสถานี (IG เท่านั้น) ---- */
 var CL=[
-  {id:'k1',name:'ศูนย์ฝึกอบรมพัฒนาทักษะ',ct:'CT25-0000263',end:'2026-10-12',closed:false,ig:20,got:14,skip:0,ic:6,gotM:6,skipM:0,fin:null},
-  {id:'k2',name:'ตลาดสดบางแค',ct:'CT24-0000102',end:'2026-09-30',closed:false,ig:30,got:30,skip:0,ic:16,gotM:12,skipM:0,fin:'2026-10'},
+  {id:'k1',name:'ศูนย์ฝึกอบรมพัฒนาทักษะ',ct:'CT25-0000263',end:'2026-10-12',closed:false,ig:20,got:14,skip:0,ic:6,gotM:6,skipM:0,fin:null,last:{date:'2026-10-20',team:'A',kind:'got'}},
+  {id:'k2',name:'ตลาดสดบางแค',ct:'CT24-0000102',end:'2026-09-30',closed:false,ig:30,got:30,skip:0,ic:16,gotM:12,skipM:0,fin:'2026-10',last:{date:'2026-10-05',team:'B',kind:'got'}},
   {id:'k3',name:'ร้านเสริมสวยบ้านดอกไม้',ct:'CT26-0000266',end:'2026-09-06',closed:true,ig:4,got:0,skip:0,ic:0,gotM:0,skipM:0,fin:null},
-  {id:'k4',name:'ร้านกาแฟบ้านไร่',ct:'CT25-0000120',end:'2026-08-31',closed:false,ig:6,got:4,skip:0,ic:4,gotM:0,skipM:0,fin:null},
-  {id:'k5',name:'หจก. รุ่งเรืองพาณิชย์',ct:'CT25-0000077',end:'2026-08-20',closed:true,ig:10,got:7,skip:3,ic:4,gotM:2,skipM:3,fin:'2026-10'}
+  {id:'k4',name:'ร้านกาแฟบ้านไร่',ct:'CT25-0000120',end:'2026-08-31',closed:false,ig:6,got:4,skip:0,ic:4,gotM:0,skipM:0,fin:null,last:{date:'2026-09-10',team:'B',kind:'got'}},
+  {id:'k5',name:'หจก. รุ่งเรืองพาณิชย์',ct:'CT25-0000077',end:'2026-08-20',closed:true,ig:10,got:7,skip:3,ic:4,gotM:2,skipM:3,fin:'2026-10',last:{date:'2026-10-14',team:'B',kind:'skip'}}
 ];
 function clRem(r){return r.ig-r.got-r.skip}
 function clFind(id){for(var i=0;i<CL.length;i++){if(CL[i].id===id)return CL[i]}return null}
@@ -2747,10 +2747,10 @@ function clRender(){
     var rm=clRem(r),chip=r.closed?'<span class="chip na">ปิดสัญญาแล้ว</span>':'<span class="chip pend">หมดสัญญา · ยังไม่ปิด</span>';
     var acts=(rm>0?'<button class="btn sm primary" data-cl="got" data-id="'+r.id+'"'+dis+'>เก็บแล้ว</button> <button class="btn sm" data-cl="skip" data-id="'+r.id+'"'+dis+'>ไม่เก็บ</button> ':'')+
              (r.closed?'':'<button class="btn sm" data-cl="close" data-id="'+r.id+'"'+dis+'>ปิดสัญญา</button>');
-    return '<tr><td><b>'+esc(r.name)+'</b><a class="rowlk" href="'+custHref(r.name,r.id.slice(1))+'" aria-label="ดูรายละเอียดลูกค้า '+esc(r.name)+'">↗</a></td><td class="num">'+esc(r.ct)+'</td><td class="num">'+msDateTh(r.end)+'</td><td class="c">'+chip+'</td>'+
+    return '<tr><td><b>'+esc(r.name)+'</b><a class="rowlk" href="'+custHref(r.name,r.id.slice(1))+'" aria-label="ดูรายละเอียดลูกค้า '+esc(r.name)+'">↗</a></td><td class="num">'+esc(r.ct)+'</td><td class="num">'+msDateTh(r.end)+'</td><td class="num">'+(r.last?msDateTh(r.last.date)+'<small style="display:block;color:var(--fg-muted);font-size:12px">ทีม '+esc(r.last.team)+(r.last.kind==='skip'?' · ลูกค้าไม่ให้เก็บ':'')+'</small>':'<span class="tmdash">-</span>')+'</td><td class="c">'+chip+'</td>'+
       '<td class="c num">'+r.ig+'</td><td class="c num">'+r.got+'</td><td class="c num">'+r.skip+'</td><td class="c num" style="'+(rm>0?'color:var(--danger)':'')+'">'+rm+'</td>'+
       '<td class="c"><span class="chip na num" title="IC แบบปูน มอบให้ลูกค้า ไม่ต้องเก็บ">'+r.ic+' มอบลูกค้า</span></td><td class="r">'+acts+'</td></tr>';
-  }).join(''):'<tr><td colspan="10" class="empty">ไม่มีลูกค้าตามตัวกรองนี้</td></tr>';
+  }).join(''):'<tr><td colspan="11" class="empty">ไม่มีลูกค้าตามตัวกรองนี้</td></tr>';
   var hold=MS.filter(function(it){return msOpen(it)&&it.end<MS_CUR+'-01'});
   $('clHold').innerHTML=hold.length?'<div class="note" style="margin-top:12px"><span class="ic">ℹ</span><span><b>ยังไม่ขึ้นรายการเก็บสถานี</b> (มีเรื่องรอชดเชย): '+hold.map(function(it){return esc(it.name)+' · รอชดเชย '+msMonthTh(it.missed)}).join(' · ')+' — จะขึ้นรายการหลังบันทึกบริการชดเชย หรือกดไม่ชดเชย</span></div>':'';
 }
@@ -2767,7 +2767,7 @@ function clOpen(kind,r,opener){
     '<div class="acts" id="msStep"><button class="btn" data-ms="close">ยกเลิก</button><button class="btn primary" data-cl="confirmskip" data-id="'+r.id+'">ไม่เก็บ</button></div>',opener);
 }
 function clDT(){var d=$('clD').value,t=$('clT').value;if(!d){msErr('กรุณาเลือกวันที่');$('clD').focus();return null}if(d>TODAY_ISO){msErr('วันที่ต้องไม่เกินวันนี้');$('clD').focus();return null}if(!t){msErr('กรุณาเลือกทีมที่เข้า');$('clT').focus();return null}return {d:d,t:t}}
-function clLog(r,kind,n,dt,reason){(r.log=r.log||[]).push({kind:kind,n:n,date:dt.d,team:dt.t,reason:reason||'',by:msRole()});var inM=dt.d.slice(0,7)===MS_CUR;if(kind==='got'){r.got+=n;if(inM)r.gotM=(r.gotM||0)+n}else{r.skip+=n;if(inM)r.skipM=(r.skipM||0)+n}if(clRem(r)===0)r.fin=dt.d.slice(0,7)}
+function clLog(r,kind,n,dt,reason){(r.log=r.log||[]).push({kind:kind,n:n,date:dt.d,team:dt.t,reason:reason||'',by:msRole()});if(!r.last||dt.d>=r.last.date)r.last={date:dt.d,team:dt.t,kind:kind};var inM=dt.d.slice(0,7)===MS_CUR;if(kind==='got'){r.got+=n;if(inM)r.gotM=(r.gotM||0)+n}else{r.skip+=n;if(inM)r.skipM=(r.skipM||0)+n}if(clRem(r)===0)r.fin=dt.d.slice(0,7)}
 function clN(r){var n=+($('clN').value);if(!(n>=1&&n<=clRem(r)&&n%1===0)){msErr('ใส่จำนวนตั้งแต่ 1 ถึง '+clRem(r)+' สถานี');return 0}return n}
 /* ---- #service: แถวชดเชย (โคลนจากลูกค้าเดิม — 1 ลูกค้ามี 2 แถวได้: ปกติ + ชดเชย) · ฟอร์มเต็มเหมือนบริการปกติ (พบปลวก/เปลี่ยนไม้/งานซ่อม/กล่อง AG) ---- */
 function svSyncMakeup(){
