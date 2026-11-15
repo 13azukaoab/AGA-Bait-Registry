@@ -492,9 +492,9 @@ tfoot td{padding:10px 12px;font-weight:700;background:var(--surface-2);border-to
 #tmBody td.hm.hmA.hm1{background:var(--accent-soft);background:color-mix(in srgb,var(--accent) 30%,transparent)}
 #tmBody td.hm.hmA.hm2{background:var(--accent-soft);background:color-mix(in srgb,var(--accent) 19%,transparent)}
 #tmBody td.hm.hmA.hm3{background:var(--accent-soft);background:color-mix(in srgb,var(--accent) 10%,transparent)}
-#tmBody td.hm.hmD.hm1{background:var(--danger-soft);background:color-mix(in srgb,var(--danger) 30%,transparent)}
-#tmBody td.hm.hmD.hm2{background:var(--danger-soft);background:color-mix(in srgb,var(--danger) 19%,transparent)}
-#tmBody td.hm.hmD.hm3{background:var(--danger-soft);background:color-mix(in srgb,var(--danger) 10%,transparent)}
+#tmBody td.tmmcell.hasmiss{background:var(--danger-soft);box-shadow:inset 4px 0 0 var(--danger)}
+#tmBody td.tmmcell.hasmiss .chip.miss{background:var(--danger);color:var(--accent-fg);font-weight:700}
+.hmlg .hmmiss{display:inline-flex;align-items:center;gap:6px}.hmlg .hmmiss::before{content:'';width:14px;height:14px;border-radius:3px;background:var(--danger-soft);box-shadow:inset 4px 0 0 var(--danger)}
 .hmlg{display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:6px 16px;font-size:12px;color:var(--fg-muted)}
 .hmlg .hm{display:inline-flex;align-items:center;justify-content:center;width:22px;height:18px;border-radius:4px;font-size:11px;font-weight:700;color:var(--fg)}
 .hmlg .hm.hmA.hm1{background:color-mix(in srgb,var(--accent) 30%,transparent)}.hmlg .hm.hmA.hm2{background:color-mix(in srgb,var(--accent) 19%,transparent)}.hmlg .hm.hmA.hm3{background:color-mix(in srgb,var(--accent) 10%,transparent)}
@@ -985,7 +985,7 @@ tfoot td{padding:10px 12px;font-weight:700;background:var(--surface-2);border-to
         <div class="tmk" id="tmKpi"></div>
         <div class="tmch" id="tmCharts"></div>
         <div class="tmsortm"><label for="tmSortSel">เรียงตาม</label><select id="tmSortSel" onchange="tmSortSel(this.value)"><option value="team">ชื่อทีม</option><option value="val">มูลค่าสูงสุด</option><option value="st">สถานีสูงสุด</option><option value="hours">ชั่วโมงทำงานสูงสุด</option><option value="miss">ตกบริการมากสุด</option></select></div>
-        <div class="hmlg"><span>แรเงา = อันดับ 1–3 ของแต่ละคอลัมน์</span><span class="hm hmA hm1">1</span><span class="hm hmA hm2">2</span><span class="hm hmA hm3">3</span><span class="hmsep">·</span><span>ตกบริการใช้สีแดง (ยิ่งมากยิ่งต้องดู)</span></div>
+        <div class="hmlg"><span>แรเงา = อันดับ 1–3 ของแต่ละคอลัมน์</span><span class="hm hmA hm1">1</span><span class="hm hmA hm2">2</span><span class="hm hmA hm3">3</span><span class="hmsep">·</span><span class="hmmiss">แถบแดง = มีลูกค้าตกบริการ (ทุกราย)</span></div>
         <div class="tablewrap"><table>
           <thead><tr id="tmHead"></tr></thead>
           <tbody id="tmBody"></tbody>
@@ -3186,7 +3186,7 @@ function tmRender(){
   /* heat map อันดับ 1–3 ต่อคอลัมน์ (เจ้าของสั่ง 15 พ.ย. 2026): จัดอันดับจากทุกทีม (ไม่ขึ้นกับตัวกรองทีม) · ค่าเท่ากันได้อันดับเดียวกัน · ค่า 0 ไม่ลงสี */
   var MS=TM.map(function(t){var mm=tmMet(t);return {val:mm.val,st:mm.st,hours:t.min/60,miss:t.miss.length+(mm.n?t.miss.length/mm.n/1000:0)}});   /* ตกบริการ: เท่ากันตัดสินด้วยอัตรา % เพื่อให้ได้ 3 อันดับจริง */
   function rk(k){var v=MS.map(function(x){return x[k]}).filter(function(x){return x>0});return v.filter(function(x,i){return v.indexOf(x)===i}).sort(function(a,b){return b-a}).slice(0,3)}
-  var TOP={val:rk('val'),st:rk('st'),hours:rk('hours'),miss:rk('miss')};
+  var TOP={val:rk('val'),st:rk('st'),hours:rk('hours')};
   function hm(k,i,cls){var p=TOP[k].indexOf(MS[i][k]);return p>=0?' hm '+cls+' hm'+(p+1):''}
   var h='';
   [order].forEach(function(items){
@@ -3200,7 +3200,7 @@ function tmRender(){
          '<td class="r num'+hm('st',i,'hmA')+'" data-label="สถานี">'+m.st.toLocaleString('en-US')+'<small class="clsub">'+m.n+' ราย</small></td>'+
          '<td class="r num'+hm('hours',i,'hmA')+'" data-label="ชั่วโมงทำงาน">'+(t.min/60).toFixed(1)+' ชม.<small class="clsub">เฉลี่ย '+tmHm(Math.round(t.min/t.visits))+'/ราย</small></td>'+
          '<td class="c" data-label="เข้าบริการ"><span class="num"><b>'+t.visits+'</b>/'+t.plan+' ราย</span><div class="tmbar" style="min-width:80px" role="img" aria-label="ทำแล้ว '+dp+'%"><i style="width:'+dp+'%;background:var(--ok)"></i></div></td>'+
-         '<td class="tmmcell'+hm('miss',i,'hmD')+'" data-label="ตกบริการ (ต.ค.)">'+tmMissCell(i)+'</td>'+
+         '<td class="tmmcell'+(TM[i].miss.length?' hasmiss':'')+'" data-label="ตกบริการ (ต.ค.)">'+tmMissCell(i)+'</td>'+
          '<td class="c num" data-label="New">'+tmNR(i,'new')+'</td><td class="c num" data-label="Renew">'+tmNR(i,'ren')+'</td></tr>';
       if(bo)t.brs.forEach(function(x){var p=Math.round(x.visits*100/x.plan),mb=tmMet({tiers:x.tiers,min:x.min,miss:[]});
         h+='<tr class="tmsub"><td data-label="สาขา">└ '+esc(x.br)+'</td><td class="r num" data-label="มูลค่า (ล้านบาท)">'+(mb.val/1e6).toFixed(1)+'</td><td class="r num" data-label="สถานี">'+mb.st.toLocaleString('en-US')+'<small class="clsub">'+mb.n+' ราย</small></td><td class="r num" data-label="ชั่วโมงทำงาน">'+(x.min/60).toFixed(1)+' ชม.<small class="clsub">เฉลี่ย '+tmHm(Math.round(x.min/x.visits))+'/ราย</small></td>'+
