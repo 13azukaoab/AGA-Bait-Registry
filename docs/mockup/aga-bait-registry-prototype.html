@@ -260,7 +260,7 @@ td.r,th.r{text-align:right} td.c,th.c{text-align:center}
 .usefill.pow{background:var(--pow)} .usefill.wood{background:var(--wood)}
 #s-material .cards{grid-template-columns:repeat(auto-fit,minmax(min(100%,370px),1fr))}
 .matbars .userow{grid-template-columns:78px minmax(60px,1fr) 118px}
-.cards.matbars .userow{min-height:51px}
+.cards.matbars .userow{min-height:39px}
 .matbars .usetrack{border-radius:4px;overflow:visible}
 /* hover บนแท่ง → โชว์ตัวเลขของส่วนนั้น (ไม่ต้องพึ่งสีอย่างเดียว) */
 .matbars [data-tip]{position:relative;cursor:default}
@@ -1974,7 +1974,7 @@ function matSortSel(v){MAT_SORT={col:+v,rev:false};matSortApply()}
 document.addEventListener('click',function(e){var b=e.target.closest&&e.target.closest('[data-matsort]');if(!b)return;var i=+b.getAttribute('data-matsort');if(MAT_SORT.col===i)MAT_SORT.rev=!MAT_SORT.rev;else MAT_SORT={col:i,rev:false};matSortApply();var nb=document.querySelector('#matMat [data-matsort="'+i+'"]');if(nb)nb.focus()});
 /* ===== สลับข้อมูลตัวอย่างหน้า "การใช้อุปกรณ์": 3 สาขา ↔ เต็ม 24 สาขาส่วนกลาง (เจ้าของสั่ง 15 พ.ย. 2026 — ดูว่าตอนใช้งานจริงตารางแน่นแค่ไหน) =====
    • เฉพาะ mockup · ชื่อสาขา = ส่วนกลาง 24 สาขาจาก lib/dashboard/branches.ts · ตัวเลขสร้างจากลำดับสาขา (สมมติ)
-   • กราฟแท่งแสดง 8 สาขาแรกเรียงมากไปน้อย (matCap) ที่เหลือดูในตาราง · ตารางเรียงได้ทุกคอลัมน์ */
+   • กราฟแท่งแสดง 10 สาขาแรกเรียงมากไปน้อย (matCap) ที่เหลือดูในตาราง · ตารางเรียงได้ทุกคอลัมน์ */
 var MAT_CENTRAL=['พุทธมณฑล','นครปฐม','หัวหิน','สาทร','ปทุมวัน','พระราม 4','นนทบุรี','ปทุมธานี','รามอินทรา','อยุธยา','ลาดพร้าว','พัฒนาการ','สุวินทวงศ์','ประชาชื่น','สมุทรปราการ','พัทยา','ระยอง','สุขุมวิท','ปากน้ำ','ชลบุรี','ปากช่อง','สระบุรี','พระราม 2','ปราจีนบุรี'];
 var MAT_BASE_HTML=null,MAT_MODE='base';
 function matFmt(n){return Math.round(n).toLocaleString('en-US')}
@@ -2067,12 +2067,12 @@ function matLabels(){
     [].forEach.call(tb.querySelectorAll('tbody tr,tfoot tr'),function(tr){var k=0;[].forEach.call(tr.cells,function(td){if(hs[k])td.setAttribute('data-label',hs[k]);k+=(td.colSpan||1)})});
   });
 }
-/* กราฟแท่งแยกสาขา: แสดงสูงสุด 8 สาขา ที่เหลือดูในตารางด้านล่าง (ของจริงมีได้ถึง 24 สาขา) */
+/* กราฟแท่งแยกสาขา: แสดงสูงสุด 10 สาขา ที่เหลือดูในตารางด้านล่าง (ของจริงมีได้ถึง 24 สาขา) */
 function matCap(){
   [].forEach.call(document.querySelectorAll('#matMat .usebars'),function(u){
-    var rows=u.querySelectorAll('.userow');if(rows.length<=8||u.dataset.capped)return;u.dataset.capped='1';
-    [].forEach.call(rows,function(r,i){if(i>=8)r.hidden=true});
-    var n=document.createElement('div');n.className='hint';n.style.marginTop='6px';n.textContent='แสดง 8 สาขาแรก · อีก '+(rows.length-8)+' สาขาดูในตารางด้านล่าง';u.appendChild(n);
+    var rows=u.querySelectorAll('.userow');if(rows.length<=10||u.dataset.capped)return;u.dataset.capped='1';
+    [].forEach.call(rows,function(r,i){if(i>=10)r.hidden=true});
+    var n=document.createElement('div');n.className='hint';n.style.marginTop='6px';n.textContent='แสดง 10 สาขาแรก · อีก '+(rows.length-10)+' สาขาดูในตารางด้านล่าง';u.appendChild(n);
   });
 }
 /* ===== เวลาทำงานรายทีมแยกประเภทงาน + ตัวช่วยตัดสินเรื่องกำลังคน (เจ้าของสั่ง 15 พ.ย. 2026) =====
