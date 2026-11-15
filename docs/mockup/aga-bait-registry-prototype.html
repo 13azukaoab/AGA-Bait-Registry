@@ -574,7 +574,7 @@ tfoot td{padding:10px 12px;font-weight:700;background:var(--surface-2);border-to
 .tmcb i:first-child{border-radius:4px 2px 2px 4px}.tmcb i:last-child{border-radius:2px 4px 4px 2px}
 .tmcs{position:relative;height:14px}.tmcs i{display:block;height:100%;background:var(--accent);border-radius:2px 4px 4px 2px;cursor:default}
 .tmcs i.warn{background:var(--warn)}
-.wtbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px;margin:14px 0 0;font-size:12.5px;color:var(--fg-muted)}.wtbar input{width:64px;min-height:34px;text-align:right}.wtbar select{min-height:34px}.wthint{font-size:12px;color:var(--fg-faint)}
+.wtbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px;margin:14px 0 0;font-size:12.5px;color:var(--fg-muted)}.wtcapro{font-size:12.5px;color:var(--fg-muted)}.wtcapro b{color:var(--fg)}.wtcapro small{color:var(--fg-faint)}.wtcaplink{margin-left:10px;color:var(--accent);font-weight:600;text-decoration:underline}.wtbar select{min-height:34px}.wthint{font-size:12px;color:var(--fg-faint)}
 .wtstack{overflow:hidden}.wtstack i{display:block;height:100%;cursor:default}.wtstack i+i{margin-left:2px}
 i.wr,rect.wr{background:var(--accent);fill:var(--accent)}i.wf,rect.wf{background:color-mix(in srgb,var(--accent) 38%,var(--surface));fill:color-mix(in srgb,var(--accent) 38%,var(--surface))}i.wp,rect.wp{background:var(--fg-muted);fill:var(--fg-muted)}
 .tmlg i.wr,.tmlg i.wf,.tmlg i.wp{width:10px;height:10px}
@@ -1039,7 +1039,7 @@ i.wr,rect.wr{background:var(--accent);fill:var(--accent)}i.wf,rect.wf{background
           <button type="button" class="segbtn on" role="tab" aria-selected="true" id="wtViewTeam" onclick="wtView('team')">รายทีม</button>
           <button type="button" class="segbtn" role="tab" aria-selected="false" id="wtViewCust" onclick="wtView('cust')">รายลูกค้า</button>
         </div>
-        <div class="wtbar" id="wtBar" hidden><label>เกณฑ์ Workload <input type="number" id="wtCap" value="30" min="1" step="1" inputmode="numeric" oninput="wtCapSet(this.value)" aria-label="เกณฑ์ Workload ชั่วโมงต่อคนต่อเดือน"> ชม./คน/เดือน</label><span class="wthint">ข้อมูลสมมติ · จำนวนคนต่อทีมต้องเก็บจริงในระบบ</span></div>
+        <div class="wtbar" id="wtBar" hidden><span class="wtcapro">เกณฑ์ Workload <b class="num" id="wtCapVal">30</b> ชม./คน/เดือน <small>(จากหน้าตั้งค่า)</small><a id="wtCapLink" class="wtcaplink" href="settings.html" hidden>แก้เกณฑ์</a></span><span class="wthint">ข้อมูลสมมติ · จำนวนคนต่อทีมมาจากหน้าตั้งค่าทีม</span></div>
         <div class="tmch dense wtch" id="wtCharts" hidden></div>
         <div class="tablewrap" id="wtTable"></div>
         <div class="note"><span class="ic">ℹ</span><span>เวลาทำงานจริง = เวลาออก − เวลาเข้า ของแต่ละครั้งที่เข้า · <b>ถ้าเข้าพร้อมหลายทีม นับเวลาเต็มให้ทุกทีม</b> (ยอด “รวมทุกทีม” จึงมากกว่าเวลาจริงของงานได้) · ตัวเลขในตารางนี้เป็น <b>ข้อมูลตัวอย่าง (สมมติ)</b> เพื่อดูหน้าตา</span></div>
@@ -2072,7 +2072,7 @@ function matSetMode(m){
   root.innerHTML=MAT_BASE_HTML;MAT_SORT={col:-1,rev:false};
   MAT_COLL={};
   if(m==='full')matBuildFull(root);else matRenderTable(MAT_BASE,'รวมเขต 1');
-  matLabels();matCap();matSortApply();matHeat();matDeltas();matAlerts();
+  matLabels();matCap();matSortApply();matHeat();matDeltas();matAlerts();wtCapRole();
 }
 function matBuildFull(root){
   var D=MAT_CENTRAL.map(function(n,k){var o=Math.round((150+((k*37)%420))/10)*10,i=Math.round((1200+((k*211)%3300))/10)*10,p=20+((k*53)%210),w=Math.round((150+((k*97)%520))/10)*10;var rate=20+((k*7)%9)+(k%7===3?13:0);return {n:n,o:o,i:i,p:p,g:Math.round(p*0.3),w:w,b:Math.max(1,Math.round(i/rate))}});
@@ -2143,7 +2143,9 @@ function wtTrendData(team){
 document.addEventListener('focusin',function(e){var t=e.target.closest&&e.target.closest('#wtCharts [data-tip]');if(t&&t.classList.contains('wthelp')){var q=t.getBoundingClientRect();tmTipShow(q.left,q.bottom,t.getAttribute('data-tip'))}});
 document.addEventListener('focusout',function(e){if(e.target.classList&&e.target.classList.contains('wthelp'))tmTipHide()});
 document.addEventListener('click',function(e){var t=e.target.closest&&e.target.closest('#wtCharts [data-tip]');if(t&&matchMedia('(hover:none)').matches)tmTipShow(e.clientX,e.clientY,t.getAttribute('data-tip'))});
-function wtCapSet(v){var n=parseFloat(v);if(!(n>0))return;WT_CAP=n;wtCharts();matAlerts()}
+/* เกณฑ์ Workload อ่านจากหน้าตั้งค่า (ค่าเดียวทั้งระบบ · ค่าเริ่มต้น 30) — mockup ใช้ค่าคงที่ WT_CAP · เฉพาะ Host เห็นลิงก์ "แก้เกณฑ์" */
+function wtCapRole(){var l=$('wtCapLink');if(l)l.hidden=(msRole()!=='host');var v=$('wtCapVal');if(v)v.textContent=WT_CAP}
+var _srCap=setRole;setRole=function(r){_srCap(r);wtCapRole()};
 function wtTrendSet(v){WT_TREND_TEAM=v;wtCharts()}
 function wtCharts(again){
   var box=$('wtCharts'),bar=$('wtBar');if(!box)return;
@@ -3471,7 +3473,7 @@ function tmRender(){
 }
 document.addEventListener('click',function(e){var nb3=e.target.closest&&e.target.closest('[data-tmnote]');if(nb3){var q=nb3.getAttribute('data-tmnote').split('_'),xx=TM[+q[0]].miss[+q[1]],cn=msCan();msDlgOpen('<h3 id="msT" style="margin:0 0 4px;font-size:16px">หมายเหตุตกบริการ</h3><div class="lab">'+esc(xx.n)+' · '+esc(TM[+q[0]].team)+' · ต.ค. 2026</div>'+'<div class="field"><label for="tmNote">ตกบริการเพราะอะไร</label><textarea id="tmNote" maxlength="200" placeholder="เช่น ลูกค้าปิดอาคาร / ติดต่อไม่ได้"'+(cn?'':' disabled')+'>'+esc(xx.note||'')+'</textarea>'+(xx.by?'<span class="lab">บันทึกล่าสุดโดย '+esc(xx.by)+'</span>':'')+'</div>'+'<div class="acts"><button class="btn" data-ms="close">'+(cn?'ยกเลิก':'ปิด')+'</button>'+(cn?'<button class="btn primary" data-tmsave="'+q[0]+'_'+q[1]+'">บันทึก</button>':'')+'</div>',nb3);return}var sv=e.target.closest&&e.target.closest('[data-tmsave]');if(sv){var p=sv.getAttribute('data-tmsave').split('_'),x=TM[+p[0]].miss[+p[1]],inp=$('tmNote');x.note=inp.value.trim();msDlgClose(true);x.by=({host:'Host',recorder:'หัวหน้างาน'}[msRole()]||msRole())+' · '+msDateTh(TODAY_ISO);tmRender();toast('บันทึกหมายเหตุตกบริการแล้ว');var n2=document.querySelector('[data-tmnote="'+p[0]+'_'+p[1]+'"]');if(n2)n2.focus();return}var bb=e.target.closest&&e.target.closest('[data-tmb]');if(bb){var j=bb.getAttribute('data-tmb');tmBr[j]=!tmBr[j];tmRender();var nb2=document.querySelector('[data-tmb="'+j+'"]');if(nb2)nb2.focus();return}});
 tmRender();
-[].forEach.call(document.querySelectorAll('#matMat tbody tr'),function(r,i){r.setAttribute('data-o',i)});matRenderTable(MAT_BASE,'รวมเขต 1');matInitSort();matLabels();matCap();matHeat();matDeltas();matAlerts();
+[].forEach.call(document.querySelectorAll('#matMat tbody tr'),function(r,i){r.setAttribute('data-o',i)});matRenderTable(MAT_BASE,'รวมเขต 1');matInitSort();matLabels();matCap();matHeat();matDeltas();matAlerts();wtCapRole();
 /* ===== #todo: เตือนเมื่อเข้าเดือนใหม่แต่ยังปิดงานเดือนก่อนไม่เสร็จ (เจ้าของสั่ง 14 พ.ย. 2026) =====
    หน้านี้แสดง "เดือนที่ยังไม่ปิดเก่าสุด" (TM_VIEW) · ถ้าเดือนนั้นเก่ากว่าเดือนปัจจุบันตามวันที่จริง (เขตเวลาไทย)
    → เปิดหน้าจอเตือนครั้งเดียวต่อการเปิดหน้าเว็บ · ปุ่ม "ไปกรอกข้อมูลต่อ" พาไปหน้ากรอกผลบริการ + ลิงก์ไปหน้า "ส่งข้อมูล และสรุปงานประจำเดือน" (เฉพาะ host/หัวหน้างาน · admin เห็นแค่ปุ่มรับทราบ) */
