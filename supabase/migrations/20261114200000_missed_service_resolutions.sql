@@ -47,7 +47,8 @@
 --     · MS007 ไฟล์หลักฐานไม่ถูกต้อง · MS008 เลยเพดานเวลาไปชดเชย (recorder) · MS009 สัญญายกเลิกแล้ว
 --     · MS010 เดือนนั้นตัดสินว่าไม่ชดเชยแล้ว · MS011 สัญญาต่อแล้ว (2.47) · MS012 ไม่มี "ไม่ชดเชย" ให้เปิดกลับ
 --     · (MS003 เลิกใช้ — เดิมคือเดือนชดเชยที่เลือกล่วงหน้า)
---   * DECISIONS 2.47 สัญญาที่ลูกค้าต่อแล้ว (มีสัญญาอื่น renewed_from_contract_id = สัญญานี้ · `contract_is_renewed`):
+--   * DECISIONS 2.47 สัญญาที่ลูกค้าต่อแล้ว (มีสัญญาอื่น renewed_from_contract_id = สัญญานี้ ที่ยังไม่ถูกยกเลิก — 2.48
+--     · `contract_is_renewed`):
 --     ตกบริการที่ยังรอตัดสิน = "โมฆะ (ต่อสัญญาแล้ว)" (คำนวณ ไม่มีแถว) · ไม่ขึ้นในรายการรอตัดสิน · บันทึกชดเชย /
 --     ไม่ชดเชย / เปิดเรื่องกลับไม่ได้ (MS011) · ที่ชดเชยแล้ว/ไม่ชดเชยแล้วก่อนต่อสัญญาคงไว้
 --   * DECISIONS 2.46 เปิดเรื่องกลับ: `reopen_missed_service` — host หรือ recorder ในขอบเขต ลบแถว waived → รอตัดสิน
@@ -81,7 +82,9 @@ AS $$
          END
 $$;
 
--- DECISIONS 2.47: สัญญานี้ลูกค้าต่อแล้ว = มีสัญญาอื่นที่ renewed_from_contract_id = สัญญานี้ (ตรงกับ isRenewed ใน lib/rules)
+-- DECISIONS 2.47 + 2.48: สัญญานี้ลูกค้าต่อแล้ว = มีสัญญาอื่นที่ renewed_from_contract_id = สัญญานี้ และสัญญาใหม่นั้น
+--   ยังไม่ถูกยกเลิก (สัญญาใหม่ถูกยกเลิก → ตกบริการค้างของสัญญาเดิมกลับเป็นรอตัดสิน · MS011 ปลดล็อก)
+--   ตรงกับ isRenewed ใน lib/rules (ดู cancelledAt — L3 ทำให้ status กับ cancelled_at ตรงกันเสมอ)
 --   SECURITY INVOKER: อ่านตาม RLS ของผู้เรียก (ผู้เรียกในไฟล์นี้เป็น DEFINER / host·admin·recorder ที่อ่าน contracts ได้)
 CREATE FUNCTION public.contract_is_renewed(p_contract_id uuid)
 RETURNS boolean
@@ -90,7 +93,8 @@ STABLE
 SET search_path = public, pg_temp
 AS $$
   SELECT EXISTS (SELECT 1 FROM contracts n
-                  WHERE n.renewed_from_contract_id = p_contract_id AND n.id <> p_contract_id)
+                  WHERE n.renewed_from_contract_id = p_contract_id AND n.id <> p_contract_id
+                    AND n.status <> 'cancelled' AND n.cancelled_at IS NULL)
 $$;
 
 -- =====================================================================
@@ -719,7 +723,8 @@ BEGIN
       JOIN customers cu ON cu.id = ct.customer_id
      WHERE ct.status <> 'cancelled' AND ct.cancelled_at IS NULL
        AND NOT EXISTS (SELECT 1 FROM contracts n                    -- 2.47 ต่อแล้ว (= contract_is_renewed)
-                        WHERE n.renewed_from_contract_id = ct.id AND n.id <> ct.id)
+                        WHERE n.renewed_from_contract_id = ct.id AND n.id <> ct.id
+                          AND n.status <> 'cancelled' AND n.cancelled_at IS NULL)
        AND ct.stations_initialized_at IS NOT NULL
        AND (p_branch_id IS NULL OR cu.branch_id = p_branch_id)
        AND (v_role <> 'recorder' OR contract_in_scope(ct.id))

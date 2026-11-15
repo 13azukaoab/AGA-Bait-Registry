@@ -161,6 +161,13 @@ describe("ต่อสัญญาแล้ว → ตกบริการท�
   it("ชดเชยไปแล้วก่อนต่อสัญญา → คง made_up", () => {
     expect(missedResolutionStatus(c, "2026-05", undefined, [routine("2026-09-12", "2026-05")], true)).toBe("made_up");
   });
+  it("สัญญาใหม่ (ที่ต่อมา) ถูกยกเลิก → ไม่นับว่าต่อแล้ว → กลับเป็นรอตัดสิน (DECISIONS 2.48)", () => {
+    const cancelledRenewal = { ...renewal, cancelledAt: "2027-02-10" };
+    expect(isRenewed(c, [c, cancelledRenewal])).toBe(false);
+    expect(isRenewed(c, [c, cancelledRenewal, { ...renewal, id: "c3" }])).toBe(true);
+    const renewed = isRenewed(c, [c, cancelledRenewal]);
+    expect(missedResolutionStatus(c, "2026-05", undefined, [], renewed)).toBe("pending");
+  });
   it("ไม่ชดเชยไปแล้วก่อนต่อสัญญา → คง waived", () => {
     expect(missedResolutionStatus(c, "2026-05", waived, [], true)).toBe("waived");
   });

@@ -8,7 +8,7 @@
 --   dr = สัญญาที่ลูกค้าต่อแล้ว (สัญญาใหม่ dn ใส่ระหว่างเทส — 2.47)
 --   da / db / dc = ชุดตาราง host×recorder × ภายใน/เลยเพดาน × waived/makeup × ปิด/ยกเลิก (da ภายใน · db เลย · dc ปิด)
 BEGIN;
-SELECT plan(167);
+SELECT plan(174);
 
 INSERT INTO auth.users (id, instance_id, aud, role, email) VALUES
   ('00000000-0000-0000-0000-0000000000a1', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'host@test.local'),
@@ -454,6 +454,24 @@ SELECT throws_ok($$UPDATE contracts SET cancelled_at = NULL WHERE id = pg_temp.i
   '23514', NULL, 'clearing the date of a cancelled contract is refused (the cancel month never moves silently)');
 SELECT throws_ok($$UPDATE contracts SET status = 'active', cancelled_at = now() - interval '1 day' WHERE id = pg_temp.id('0e')$$,
   '23514', NULL, 'un-cancelling while setting a new date is refused (no guessing)');
+
+-- 2.48: สัญญาใหม่ (de) ถูกยกเลิก → dd ไม่นับว่าต่อแล้ว → ตกบริการค้างกลับมารอตัดสิน · ผลเดิมคงไว้ · ปลดล็อก MS011
+RESET ROLE;
+UPDATE contracts SET status = 'cancelled' WHERE id = pg_temp.id('de');
+SELECT ok(NOT public.contract_is_renewed(pg_temp.id('dd')), 'a cancelled renewal does not count as renewed');
+SET LOCAL ROLE authenticated;
+SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a3', true);
+SELECT ok(pg_temp.m(-12) = ANY (pg_temp.pending('dd')), 'open missed months of the old contract are pending again');
+SELECT ok(NOT (pg_temp.m(-13) = ANY (pg_temp.pending('dd'))) AND NOT (pg_temp.m(-14) = ANY (pg_temp.pending('dd'))),
+  'made-up and waived months recorded before stay closed');
+RESET ROLE;
+SELECT is(pg_temp.res('dd', pg_temp.m(-13)), 'makeup|' || pg_temp.m(-1)::text, 'the earlier make-up is still made up');
+SET LOCAL ROLE authenticated;
+SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a3', true);
+SELECT lives_ok(pg_temp.rs('dd', pg_temp.m(-12), 'ยินยอม'), 'waiving is unlocked again');
+SELECT lives_ok(pg_temp.ro('dd', pg_temp.m(-12)), 'reopening is unlocked again');
+SELECT lives_ok(pg_temp.mk('12', 'dd', pg_temp.td(), pg_temp.m(-12)), 'recording a make-up is unlocked again');
+RESET ROLE;
 
 -- สัญญาที่ยกเลิกหลังชดเชยแล้ว: เลิกผูกไม่ได้ (ผลคงไว้)
 SET LOCAL ROLE authenticated;

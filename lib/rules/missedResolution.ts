@@ -58,9 +58,14 @@ export function linkedMakeupVisit(
   );
 }
 
-/** ต่อสัญญาแล้ว = มีสัญญาอื่นที่ renewedFromContractId = สัญญานี้ (DECISIONS 2.47 — ตรงกับ SQL `contract_is_renewed`) */
+/**
+ * ต่อสัญญาแล้ว = มีสัญญาอื่นที่ renewedFromContractId = สัญญานี้ และสัญญาใหม่นั้น **ยังไม่ถูกยกเลิก**
+ * (DECISIONS 2.47 + 2.48: สัญญาใหม่ถูกยกเลิก → ตกบริการค้างของสัญญาเดิมกลับเป็นรอตัดสิน) — ตรงกับ SQL `contract_is_renewed`
+ */
 export function isRenewed(contract: Contract, contracts: Contract[]): boolean {
-  return contracts.some((o) => o.id !== contract.id && o.renewedFromContractId === contract.id);
+  return contracts.some(
+    (o) => o.id !== contract.id && o.renewedFromContractId === contract.id && !o.cancelledAt,
+  );
 }
 
 /**
