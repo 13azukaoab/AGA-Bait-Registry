@@ -508,6 +508,7 @@ tfoot td{padding:10px 12px;font-weight:700;background:var(--surface-2);border-to
 .clbar i{display:block;height:100%}.clbar .ok,.cllg .ok{background:var(--ok)}.clbar .sk,.cllg .sk{background:var(--fg-faint)}.clbar .rm,.cllg .rm{background:var(--danger)}
 .cllg{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:12.5px;color:var(--fg-muted)}
 .cllg i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+#clBody tr.clfin td{background:var(--surface-2)}#clBody tr.clfin td>b,#clBody tr.clfin td .num{color:var(--fg-muted)}
 .clsub{display:block;color:var(--fg-muted);font-size:12px;margin-top:2px}
 #s-collect td{vertical-align:top;white-space:normal}
 #s-collect td .chip{margin-top:4px}
@@ -2733,7 +2734,7 @@ function clFind(id){for(var i=0;i<CL.length;i++){if(CL[i].id===id)return CL[i]}r
 function clRender(){
   var body=$('clBody');if(!body)return;
   var can=msCan(),q=norm(($('clQ')||{value:''}).value),all=($('clStatus')||{value:'open'}).value==='all';
-  var rows=CL.filter(function(r){return (all||clRem(r)>0||!r.closed)&&(!q||norm(r.name).indexOf(q)>=0||norm(r.ct).indexOf(q)>=0)});
+  var rows=CL.filter(function(r){return (all||clRem(r)>0||!r.closed||r.fin===MS_CUR)&&(!q||norm(r.name).indexOf(q)>=0||norm(r.ct).indexOf(q)>=0)});
   var wait=CL.filter(function(r){return clRem(r)>0}),rem=0,got=0,skip=0,tot=0;
   CL.forEach(function(r){rem+=clRem(r);got+=r.got;skip+=r.skip;tot+=r.ig});
   var tc=$('clStat');if(tc){tc.className='stat '+(wait.length?'warn':'ok');tc.innerHTML='<div class="lab"><span class="dot" style="background:var(--'+(wait.length?'warn':'ok')+')"></span> ลูกค้ารอเก็บสถานี</div><div class="val num">'+wait.length+' <span style="font-size:14px;font-weight:500;color:var(--fg-muted)">ราย</span></div><div class="sub">IG เหลือ '+rem+' สถานี · <a href="#collect" onclick="go(\'collect\');return false">ดูรายการ →</a></div>'}
@@ -2757,12 +2758,13 @@ function clRender(){
              (r.closed?'':'<button class="btn sm" data-cl="close" data-id="'+r.id+'"'+dis+'>ปิดสัญญา</button>');
     /* ตาราง 5 คอลัมน์ (เจ้าของเลือกแบบ A · 15 พ.ย. 2026): ลูกค้า·สาขา | สัญญา (เลขที่+ระยะ+สถานะ) | IG แถบ+ตัวเลข (รวม IC) | วันที่เก็บ | ปุ่ม */
     var pg=r.ig?r.got*100/r.ig:0,ps=r.ig?r.skip*100/r.ig:0,pr=r.ig?rm*100/r.ig:0;
-    return '<tr><td><b>'+esc(r.name)+'</b><a class="rowlk" href="'+custHref(r.name,r.id.slice(1))+'" aria-label="ดูรายละเอียดลูกค้า '+esc(r.name)+'">↗</a><small class="clsub">'+esc(clBranch(r))+'</small></td>'+
+    var fin=rm===0,finTxt=fin?'<span class="chip '+(r.skip?'na':'ok')+'">'+(r.skip?'ลูกค้าไม่ให้เก็บ '+r.skip+' สถานี':'เก็บครบแล้ว')+(r.fin?' · '+msMonthTh(r.fin):'')+'</span>':'';
+    return '<tr'+(fin?' class="clfin"':'')+'><td><b>'+esc(r.name)+'</b><a class="rowlk" href="'+custHref(r.name,r.id.slice(1))+'" aria-label="ดูรายละเอียดลูกค้า '+esc(r.name)+'">↗</a><small class="clsub">'+esc(clBranch(r))+'</small></td>'+
       '<td><span class="num">'+esc(r.ct)+'</span><small class="clsub num">'+clTerm(r)+'</small>'+chip+'</td>'+
       '<td><span class="num"><b>'+r.got+'</b> / '+r.ig+' สถานี</span><div class="clbar clbar-sm" role="img" aria-label="เก็บแล้ว '+r.got+' · ไม่เก็บ '+r.skip+' · เหลือ '+rm+'"><i class="ok" style="width:'+pg+'%"></i><i class="sk" style="width:'+ps+'%"></i><i class="rm" style="width:'+pr+'%"></i></div>'+
-        '<small class="clsub">'+(rm>0?'<span style="color:var(--danger);font-weight:600">เหลือ '+rm+'</span>':'เก็บครบ')+(r.skip?' · ไม่เก็บ '+r.skip:'')+' · IC '+r.ic+' มอบลูกค้า</small></td>'+
+        '<small class="clsub">'+(rm>0?'<span style="color:var(--danger);font-weight:600">เหลือ '+rm+'</span>'+(r.skip?' · ไม่เก็บ '+r.skip:''):(r.skip?'ไม่เหลือให้เก็บ · ไม่เก็บ '+r.skip:'เก็บครบ'))+' · IC '+r.ic+' มอบลูกค้า</small></td>'+
       '<td class="num">'+(r.last?msDateTh(r.last.date)+'<small class="clsub">ทีม '+esc(r.last.team)+(r.last.kind==='skip'?' · ลูกค้าไม่ให้เก็บ':'')+'</small>':'<span class="tmdash">-</span>')+'</td>'+
-      '<td class="r">'+acts+'</td></tr>';
+      '<td class="r">'+(acts||finTxt)+(acts&&fin?'<div style="margin-top:6px">'+finTxt+'</div>':'')+'</td></tr>';
   }).join(''):'<tr><td colspan="5" class="empty">ไม่มีลูกค้าตามตัวกรองนี้</td></tr>';
   var hold=MS.filter(function(it){return msOpen(it)&&it.end<MS_CUR+'-01'});
   $('clHold').innerHTML=hold.length?'<div class="note" style="margin-top:12px"><span class="ic">ℹ</span><span><b>ยังไม่ขึ้นรายการเก็บสถานี</b> (มีเรื่องรอชดเชย): '+hold.map(function(it){return esc(it.name)+' · รอชดเชย '+msMonthTh(it.missed)}).join(' · ')+' — จะขึ้นรายการหลังบันทึกบริการชดเชย หรือกดไม่ชดเชย</span></div>':'';
