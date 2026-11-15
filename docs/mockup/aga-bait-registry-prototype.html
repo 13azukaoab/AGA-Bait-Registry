@@ -560,6 +560,7 @@ tfoot td{padding:10px 12px;font-weight:700;background:var(--surface-2);border-to
 @media (prefers-reduced-motion:reduce){.rb-ripple{transition:none}}
 @media (max-width:860px){.magrid{padding:10px}.macard{flex-wrap:wrap}.rbtn{width:100%}.malg{margin-left:0;width:100%}}
 .chip.wait{background:var(--accent-soft);color:var(--accent)}
+#regSortHint{order:99;flex:1 1 100%!important;margin-top:-4px}
 #s-registry .tablewrap{max-height:calc(100vh - 230px);overflow:auto}
 #s-registry thead th{position:sticky;top:0;z-index:2;background:var(--surface-2);box-shadow:inset 0 -1px 0 var(--border)}
 #s-registry tbody tr:hover td{background:color-mix(in srgb,var(--accent) 5%,transparent)}
@@ -1098,6 +1099,8 @@ i.wr,rect.wr{background:var(--accent);fill:var(--accent)}i.wf,rect.wf{background
       <div class="toolbar">
         <div class="field"><label for="rgZone">เขต</label><select id="rgZone" onchange="rgFltZone()"></select></div>
         <div class="field"><label for="rgBranch">สาขา</label><select id="rgBranch" onchange="rgFltApply()"></select></div>
+        <div class="field"><label for="rgSize">ขนาด (Tier)</label><select id="rgSize" onchange="rgFltApply()"><option value="">ทุกขนาด</option><option value="s">S</option><option value="m">M</option><option value="l">L</option><option value="xl">XL</option></select></div>
+        <div class="field"><label for="rgYears">ปีสัญญา</label><select id="rgYears" onchange="rgFltApply()"><option value="">ทุกแบบ</option><option value="1">1 ปี</option><option value="3">3 ปี</option></select></div>
         <div class="field"><label for="rgStatus">สถานะ</label><select id="rgStatus" onchange="rgFltApply()"><option value="">ทั้งหมด</option><option>Active</option><option>ใกล้หมด</option><option>รอเก็บสถานี</option><option>หมดสัญญา</option></select></div>
         <div class="field"><label for="rgSearch">ค้นหา</label><input id="rgSearch" type="search" placeholder="ชื่อลูกค้า / เลขที่สัญญา" oninput="rgFltApply()" autocomplete="off"></div>
         <button class="btn sm" type="button" id="rgClear" onclick="rgFltReset()" hidden>✕ ล้างตัวกรอง</button>
@@ -2986,6 +2989,8 @@ function rgFltInit(){
 function rgFltMatch(tr,f){
   if(f.zone && tr.dataset.zone!==f.zone) return false;
   if(f.branch && tr.dataset.br!==f.branch) return false;
+  if(f.size && String(tr.dataset.tier||'').replace(/\d/g,'')!==f.size) return false;
+  if(f.years && String(tr.dataset.tier||'').replace(/\D/g,'')!==f.years) return false;
   if(f.status){ var ch=tr.cells[6].querySelector('.chip'); if((ch?ch.textContent:tr.cells[6].textContent).trim()!==f.status) return false; }
   if(f.q){
     var b=tr.cells[1].querySelector('b');
@@ -2995,10 +3000,10 @@ function rgFltMatch(tr,f){
 }
 function rgFltApply(){
   if(!rgEl('rgZone')) return;
-  var f={zone:rgEl('rgZone').value, branch:rgEl('rgBranch').value, status:rgEl('rgStatus').value, q:rgNorm(rgEl('rgSearch').value)};
+  var f={zone:rgEl('rgZone').value, branch:rgEl('rgBranch').value, size:rgEl('rgSize').value, years:rgEl('rgYears').value, status:rgEl('rgStatus').value, q:rgNorm(rgEl('rgSearch').value)};
   var rows=document.querySelectorAll('#s-registry tbody tr'), shown=0;
   [].forEach.call(rows,function(tr){ var ok=rgFltMatch(tr,f); tr.hidden=!ok; if(ok) shown++; });
-  rgEl('rgClear').hidden=!(f.zone||f.branch||f.status||f.q);
+  rgEl('rgClear').hidden=!(f.zone||f.branch||f.size||f.years||f.status||f.q);
   rgEl('rgShown').textContent='แสดง '+shown+' จาก '+rows.length+' แถว';
   var nr=rgEl('rgNoRes');
   if(shown){ nr.hidden=true; nr.innerHTML=''; }
@@ -3006,7 +3011,7 @@ function rgFltApply(){
 }
 function rgFltZone(){ rgBranchOpts(rgEl('rgZone').value); rgFltApply(); }
 function rgFltReset(){
-  ['rgZone','rgStatus'].forEach(function(id){ rgEl(id).value=''; });
+  ['rgZone','rgSize','rgYears','rgStatus'].forEach(function(id){ rgEl(id).value=''; });
   rgEl('rgSearch').value=''; rgBranchOpts(''); rgFltApply();
 }
 /* ปุ่มประวัติ: ต่อท้ายลิงก์ ↗ (หรือชื่อ) ในคอลัมน์ชื่อลูกค้า — เรียงลำดับอ่านจาก <b> จึงไม่กระทบ */
