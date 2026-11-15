@@ -260,7 +260,8 @@ td.r,th.r{text-align:right} td.c,th.c{text-align:center}
 .usefill.pow{background:var(--pow)} .usefill.wood{background:var(--wood)}
 #s-material .cards{grid-template-columns:repeat(auto-fit,minmax(min(100%,370px),1fr))}
 .matbars .userow{grid-template-columns:78px minmax(60px,1fr) 118px}
-.cards.matbars .userow{min-height:39px}
+.cards.matbars .userow{min-height:36px}
+.cards.matbars .usebars{gap:2px}
 .matbars .usetrack{border-radius:4px;overflow:visible}
 /* hover บนแท่ง → โชว์ตัวเลขของส่วนนั้น (ไม่ต้องพึ่งสีอย่างเดียว) */
 .matbars [data-tip]{position:relative;cursor:default}
@@ -538,7 +539,6 @@ tfoot td{padding:10px 12px;font-weight:700;background:var(--surface-2);border-to
 #matMat td.ch{padding-left:26px}.mhact{display:inline-flex;gap:6px;margin-left:14px}.mhact .btn{min-height:30px}
 @media (min-width:861px){#matMat .tablewrap{max-width:1040px}}
 @media (max-width:860px){#matMat .sep{border-left:0}#matMat td.ch{padding-left:0}#matMat tr.zr{background:var(--accent-soft)!important}#matMat tr.zr td:first-child{justify-content:space-between}}
-.matsep{color:var(--fg-faint);margin:0 4px}.matcut{margin-top:6px;color:var(--accent)}
 .matmode{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:0 0 12px;font-size:12.5px;color:var(--fg-muted)}.matmode .segbtn{border:1px solid var(--border);min-height:34px}
 .tmmode{display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:10px 16px 0;font-size:12.5px;color:var(--fg-muted)}.tmmode .segbtn{border:1px solid var(--border);min-height:34px}
 .tmch{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px;padding:0 16px 14px}
@@ -932,7 +932,7 @@ i.wr,rect.wr{background:var(--accent);fill:var(--accent)}i.wf,rect.wf{background
         <button class="btn sm" type="button" id="matExport" onclick="exportMaterialXL()" title="ส่งออกสรุปการใช้วัสดุ + ตารางแยกสาขา เป็น .xlsx">↓ ส่งออก Excel</button>
       </div>
       <div class="note" id="matPeriodNote" hidden><span class="ic">ℹ</span><span>ตัวอย่างนี้แสดงข้อมูลสมมติของ <b>ต.ค. 2026</b> เท่านั้น · ของจริงตัวเลขจะรวมตามช่วงเวลาที่เลือก (ตัวกรองเขต/สาขา/ทีม/ชนิดวัสดุเอาออกแล้ว — แยกสาขาดูในตาราง แยกชนิดดูจากการ์ด)</span></div>
-      <div class="matmode" id="matMode" role="group" aria-label="ข้อมูลตัวอย่าง"><span>ข้อมูลตัวอย่าง:</span><button type="button" class="segbtn on" data-matmode="base" aria-pressed="true">3 สาขา</button><button type="button" class="segbtn" data-matmode="full" aria-pressed="false">เต็ม 24 สาขาส่วนกลาง</button><span class="matsep">·</span><button type="button" class="segbtn" id="matHDemo" aria-pressed="false" onclick="matHeightDemo()">ลองลดความสูงการ์ด (−25% / −50% / −75%)</button></div>
+      <div class="matmode" id="matMode" role="group" aria-label="ข้อมูลตัวอย่าง"><span>ข้อมูลตัวอย่าง:</span><button type="button" class="segbtn on" data-matmode="base" aria-pressed="true">3 สาขา</button><button type="button" class="segbtn" data-matmode="full" aria-pressed="false">เต็ม 24 สาขาส่วนกลาง</button></div>
       <div id="matMat">
       <div class="stats">
         <div class="stat matn"><div class="lab"><span class="dot" style="background:var(--nem)"></span> NEMESIS (เหยื่อ) ที่ใช้</div><div class="val num">10,000 <span style="font-size:14px;color:var(--fg-muted)">ก.</span></div><div class="nembar" role="img" aria-label="สถานีภายนอก 12.5% · กล่อง AG 87.5%"><i style="width:12.5%;background:var(--nem-out)"></i><i style="width:87.5%;background:var(--nem)"></i></div><div class="nemsplit"><div><small><span class="sw" style="background:var(--nem-out)"></span> สถานีภายนอก (IG+IC)</small><b class="num">1,250 ก.</b><em class="num">12.5%</em></div><div><small><span class="sw" style="background:var(--nem)"></span> กล่อง AG (ภายใน)</small><b class="num">8,750 ก.</b><em class="num">87.5%</em></div></div></div>
@@ -2017,32 +2017,12 @@ function matApplyColl(){
   [].forEach.call(document.querySelectorAll('#matMat tr.zr'),function(r){var z=r.getAttribute('data-z'),c=!!MAT_COLL[z];var bt=r.querySelector('.zbtn');bt.setAttribute('aria-expanded',!c);bt.querySelector('.zar').textContent=c?'▸':'▾'});
   [].forEach.call(document.querySelectorAll('#matMat tr.zc'),function(r){r.hidden=!!MAT_COLL[r.getAttribute('data-z')]})
 }
-/* ตัวอย่างเทียบความสูงการ์ด (เจ้าของสั่ง 15 พ.ย. 2026): NEMESIS −25% · เคมีผง −50% · ไม้ล่อ −75% จากความสูงปกติ
-   ปรับระยะห่างแถวให้พอดี 10 แถว — ถ้าเล็กกว่าเนื้อหาจริง การ์ดจะไม่เล็กไปกว่าที่ใส่ได้ (ขั้นต่ำแถวละ 14px) · ใช้ดูตัวอย่างเท่านั้น */
-var MAT_HD=false;
-function matHeightDemo(){
-  MAT_HD=!MAT_HD;var b=$('matHDemo');if(b){b.classList.toggle('on',MAT_HD);b.setAttribute('aria-pressed',MAT_HD?'true':'false')}
-  var cards=document.querySelector('#matMat .cards.matbars');if(!cards)return;
-  var ps=cards.querySelectorAll('.panel'),cut=[.25,.5,.75];
-  cards.style.alignItems=MAT_HD?'start':'';
-  [].forEach.call(ps,function(p,i){
-    var ub=p.querySelector('.usebars'),rows=[].filter.call(ub.querySelectorAll('.userow'),function(r){return !r.hidden});
-    rows.forEach(function(r){r.style.minHeight=''});ub.style.gap='';p.style.height='';p.style.overflow='';
-    var info=p.querySelector('.matcut');if(info)info.remove();
-    if(!MAT_HD)return;
-    var H0=p.getBoundingClientRect().height,rowsH0=ub.getBoundingClientRect().height,fixed=H0-rowsH0;
-    var target=H0*(1-cut[i]),area=target-fixed,gap=2,pitch=Math.max(14,(area-gap*(rows.length-1))/rows.length);
-    ub.style.gap=gap+'px';rows.forEach(function(r){r.style.minHeight=pitch+'px'});
-    var tag=document.createElement('div');tag.className='matcut hint';tag.textContent='ลด '+Math.round(cut[i]*100)+'% (เป้า '+Math.round(target)+'px · จริง '+Math.round(p.getBoundingClientRect().height)+'px)';p.querySelector('.body').appendChild(tag)
-  })
-}
 function matSetMode(m){
   var root=$('matMat');if(!root)return;
   if(MAT_BASE_HTML===null)MAT_BASE_HTML=root.innerHTML;
   MAT_MODE=m;
   [].forEach.call(document.querySelectorAll('[data-matmode]'),function(b){var on=b.getAttribute('data-matmode')===m;b.classList.toggle('on',on);b.setAttribute('aria-pressed',on?'true':'false')});
   root.innerHTML=MAT_BASE_HTML;MAT_SORT={col:-1,rev:false};
-  MAT_HD=false;var hb=$('matHDemo');if(hb){hb.classList.remove('on');hb.setAttribute('aria-pressed','false')}
   MAT_COLL={};
   if(m==='full')matBuildFull(root);else matRenderTable(MAT_BASE,'รวมเขต 1');
   matLabels();matCap();matSortApply();matHeat();
