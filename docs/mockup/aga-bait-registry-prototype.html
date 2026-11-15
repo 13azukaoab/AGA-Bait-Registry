@@ -529,6 +529,26 @@ tfoot td{padding:10px 12px;font-weight:700;background:var(--surface-2);border-to
   #clBody td.r .btn{margin:0 6px 6px 0;min-height:40px}
   .clrbtn{min-height:40px;padding:0 12px}
 }
+/* #material (เจ้าของสั่ง 15 พ.ย. 2026) */
+#matMat .stats{grid-template-columns:minmax(0,2fr) minmax(0,1fr) minmax(0,1fr)}
+.nembar{display:flex;height:8px;border-radius:999px;overflow:hidden;background:var(--surface-3);margin:8px 0}.nembar i{display:block;height:100%}
+.nemsplit{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.nemsplit>div{background:var(--surface-2);border-radius:8px;padding:8px 10px}
+.nemsplit small{display:block;font-size:12px;color:var(--fg-muted)}.nemsplit b{font-size:16px;font-weight:600}.nemsplit em{font-style:normal;font-size:12px;color:var(--fg-muted);margin-left:6px}
+.nemsplit .sw{display:inline-block;width:9px;height:9px;border-radius:2px;vertical-align:-1px}
+@media (max-width:860px){
+  #matMat .stats{grid-template-columns:1fr}
+  #s-material .btn.sm,#s-material .segbtn{min-height:40px}
+  #s-material .toolbar select,#s-material .toolbar input{min-height:40px}
+  #s-material .tablewrap{overflow:visible;background:none;border:0;box-shadow:none}
+  #s-material table,#s-material tbody,#s-material tfoot,#s-material tr,#s-material td{display:block;width:100%}
+  #s-material thead{display:none}
+  #s-material tbody tr,#s-material tfoot tr{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:10px 14px;margin-bottom:8px}
+  #s-material td{display:flex;justify-content:space-between;gap:10px;border:0;padding:3px 0;text-align:right}
+  #s-material td::before{content:attr(data-label);color:var(--fg-muted);text-align:left}
+  #s-material td:first-child{font-weight:600;justify-content:flex-start;text-align:left}
+  #s-material td:first-child::before{display:none}
+}
 .clrow2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .clrow3 .field{min-width:0}.clrow3 input,.clrow3 select{width:100%;min-width:0;max-width:100%;box-sizing:border-box}
 .clrow3{display:grid;grid-template-columns:minmax(0,.8fr) minmax(0,1.2fr) minmax(0,1fr);gap:10px}
@@ -821,23 +841,21 @@ tfoot td{padding:10px 12px;font-weight:700;background:var(--surface-2);border-to
     <!-- ========== สรุปวัสดุ (internal: host/admin/recorder) ========== -->
     <section id="s-material" hidden>
       <div class="page-head"><h1>สรุปงานบริการรายเดือน</h1>
-        <p>สรุปการใช้วัสดุ 3 ชนิด และเวลาทำงานรายทีม แยกสาขา/ช่วงเวลา — สำหรับวางแผนสต็อก/ต้นทุน/กำลังคน <span class="chip pend">🔒 internal เท่านั้น</span></p></div>
+        <p>สรุปวัสดุที่ใช้ (เหยื่อ NEMESIS · เคมีผง · ไม้ล่อ) และเวลาทำงานของทีม ในช่วงที่เลือก — สำหรับวางแผนสต็อก/ต้นทุน/กำลังคน <span class="chip pend">🔒 internal เท่านั้น</span></p></div>
       <div class="seg" role="tablist" aria-label="หัวข้อสรุป">
         <button type="button" class="segbtn on" role="tab" aria-selected="true" id="matTabMat" onclick="matTab('mat')">วัสดุ</button>
         <button type="button" class="segbtn" role="tab" aria-selected="false" id="matTabTime" onclick="matTab('time')">เวลาทำงาน</button>
       </div>
       <div class="toolbar">
-        <div class="field"><label>เขต</label><select><option>เขต 1</option><option>ทุกเขต</option></select></div>
-        <div class="field"><label for="matBranch">สาขา</label><select id="matBranch" onchange="wtSumRender()"><option value="">ทุกสาขา</option><option>พุทธมณฑล</option><option>หัวหิน</option><option>นครปฐม</option></select></div>
-        <div class="field"><label for="matTeam">ทีม</label><select id="matTeam" onchange="wtSumRender()"><option value="">ทุกทีม</option><option>A</option><option>B</option><option>C</option><option>D</option><option>E</option><option>F</option><option>G</option><option>H</option><option>I</option><option>J</option><option>K</option><option>L</option><option>M</option><option>N</option><option>O</option><option>Z</option></select></div>
-        <div class="field" id="matKindField"><label>ชนิดวัสดุ</label><select><option>ทุกชนิด</option><option>NEMESIS</option><option>เคมีผง</option><option>ไม้ล่อ</option></select></div>
-        <div class="field"><label>ช่วงเวลา</label><select><option>ตุลาคม 2026</option><option>Q4 2026</option><option>ปี 2026</option><option>กำหนดช่วงเอง</option></select></div>
+        <div class="field"><label for="matPeriod">ช่วงเวลา</label><select id="matPeriod" onchange="matPeriodChg()"><option value="m">เดือนนี้ (ต.ค. 2026)</option><option value="q">ไตรมาส 4/2026 (ต.ค. – ธ.ค.)</option><option value="y">ปี 2026</option><option value="custom">กำหนดช่วงเอง…</option></select></div>
+        <div class="field" id="matRange" hidden><label for="matFrom">ช่วงเดือน</label><div class="clrng"><input type="month" id="matFrom" onchange="matPeriodChg()" aria-label="ตั้งแต่เดือน"><span>ถึง</span><input type="month" id="matTo" onchange="matPeriodChg()" aria-label="ถึงเดือน"></div></div>
         <div style="flex:1"></div>
         <button class="btn sm" type="button" id="matExport" onclick="exportMaterialXL()" title="ส่งออกสรุปการใช้วัสดุ + ตารางแยกสาขา เป็น .xlsx">↓ ส่งออก Excel</button>
       </div>
+      <div class="note" id="matPeriodNote" hidden><span class="ic">ℹ</span><span>ตัวอย่างนี้แสดงข้อมูลสมมติของ <b>ต.ค. 2026</b> เท่านั้น · ของจริงตัวเลขจะรวมตามช่วงเวลาที่เลือก (ตัวกรองเขต/สาขา/ทีม/ชนิดวัสดุเอาออกแล้ว — แยกสาขาดูในตาราง แยกชนิดดูจากการ์ด)</span></div>
       <div id="matMat">
       <div class="stats">
-        <div class="stat matn"><div class="lab"><span class="dot" style="background:var(--nem)"></span> NEMESIS (เหยื่อ)</div><div class="val num">10,000 <span style="font-size:14px;color:var(--fg-muted)">ก.</span></div><div class="sub">ภายนอก IG+IC 1,250 · ภายใน AG 8,750 ก.</div></div>
+        <div class="stat matn"><div class="lab"><span class="dot" style="background:var(--nem)"></span> NEMESIS (เหยื่อ) ที่ใช้</div><div class="val num">10,000 <span style="font-size:14px;color:var(--fg-muted)">ก.</span></div><div class="nembar" role="img" aria-label="สถานีภายนอก 12.5% · กล่อง AG 87.5%"><i style="width:12.5%;background:var(--nem-out)"></i><i style="width:87.5%;background:var(--nem)"></i></div><div class="nemsplit"><div><small><span class="sw" style="background:var(--nem-out)"></span> สถานีภายนอก (IG+IC)</small><b class="num">1,250 ก.</b><em class="num">12.5%</em></div><div><small><span class="sw" style="background:var(--nem)"></span> กล่อง AG (ภายใน)</small><b class="num">8,750 ก.</b><em class="num">87.5%</em></div></div></div>
         <div class="stat matp"><div class="lab"><span class="dot" style="background:var(--pow)"></span> เคมีผง (ปลวกสวน)</div><div class="val num">420 <span style="font-size:14px;color:var(--fg-muted)">จุด</span></div><div class="sub">≈ 126 ก. (0.3 ก./จุด)</div></div>
         <div class="stat matw"><div class="lab"><span class="dot" style="background:var(--wood)"></span> ไม้ล่อที่เปลี่ยน</div><div class="val num">1,240 <span style="font-size:14px;color:var(--fg-muted)">ชิ้น</span></div><div class="sub">IG 520 จุด×2 + IC 200 จุด×1</div></div>
       </div>
@@ -1808,29 +1826,51 @@ function wtView(v){
 }
 function matTab(t){
   var time=(t==='time');
-  $('matMat').hidden=time; $('matTime').hidden=!time; $('matKindField').hidden=time; $('matExport').hidden=time;
+  $('matMat').hidden=time; $('matTime').hidden=!time; $('matExport').hidden=time;
   [['matTabMat',!time],['matTabTime',time]].forEach(function(p){
     var b=$(p[0]); b.classList.toggle('on',p[1]); b.setAttribute('aria-selected',p[1]?'true':'false');
   });
   if(time) wtSumRender();
 }
+function matPeriodChg(){
+  var p=$('matPeriod').value;$('matRange').hidden=(p!=='custom');
+  var f=$('matFrom'),t=$('matTo');if(p==='custom'&&f.value&&t.value&&f.value>t.value){var x=f.value;f.value=t.value;t.value=x}
+  $('matPeriodNote').hidden=(p==='m');
+}
+/* ใส่ data-label ให้ทุกช่องตาราง ให้มือถือแสดงเป็นการ์ด (ชื่อหัวคอลัมน์ : ค่า) */
+function matLabels(){
+  [].forEach.call(document.querySelectorAll('#s-material table'),function(tb){
+    var hs=[].map.call(tb.querySelectorAll('thead th'),function(h){return h.textContent.replace(/\s+/g,' ').trim()});
+    [].forEach.call(tb.querySelectorAll('tbody tr,tfoot tr'),function(tr){var k=0;[].forEach.call(tr.cells,function(td){if(hs[k])td.setAttribute('data-label',hs[k]);k+=(td.colSpan||1)})});
+  });
+}
+/* กราฟแท่งแยกสาขา: แสดงสูงสุด 8 สาขา ที่เหลือดูในตารางด้านล่าง (ของจริงมีได้ถึง 24 สาขา) */
+function matCap(){
+  [].forEach.call(document.querySelectorAll('#matMat .usebars'),function(u){
+    var rows=u.querySelectorAll('.userow');if(rows.length<=8||u.dataset.capped)return;u.dataset.capped='1';
+    [].forEach.call(rows,function(r,i){if(i>=8)r.hidden=true});
+    var n=document.createElement('div');n.className='hint';n.style.marginTop='6px';n.textContent='แสดง 8 สาขาแรก · อีก '+(rows.length-8)+' สาขาดูในตารางด้านล่าง';u.appendChild(n);
+  });
+}
 function wtSumRender(){
   if(!$('wtTable')) return;
-  var br=$('matBranch').value, tm=$('matTeam').value;
+  var br='', tm='';   /* ตัวกรองสาขา/ทีมเอาออกแล้ว (เจ้าของสั่ง 15 พ.ย. 2026) */
   var rows=wtSampleRows().filter(function(r){return (!br||r.c.branch===br)&&(!tm||r.teams.indexOf(tm)>=0)});
   var tv=0,tm_=0; rows.forEach(function(r){tv+=r.visits; tm_+=r.mins});
+  /* การ์ด + ตารางรายทีม ใช้ชุดข้อมูลเดียวกับสรุปรายทีมในหน้า #todo (TM) เพื่อให้ตัวเลขตรงกัน · มุมมองรายลูกค้าเป็นตัวอย่างบางราย */
+  var tT=0,tV=0;TM.forEach(function(t){tT+=t.min;tV+=t.visits});
   $('wtStats').innerHTML=
-    '<div class="stat"><div class="lab">เวลาทำงานจริงรวม</div><div class="val num">'+Math.floor(tm_/60)+' <span style="font-size:14px;color:var(--fg-muted)">ชม. '+(tm_%60)+' นาที</span></div><div class="sub">'+rows.length+' ราย</div></div>'+
-    '<div class="stat"><div class="lab">จำนวนครั้งที่เข้า</div><div class="val num">'+tv+' <span style="font-size:14px;color:var(--fg-muted)">ครั้ง</span></div></div>'+
-    '<div class="stat"><div class="lab">เฉลี่ยต่อครั้ง</div><div class="val num">'+(tv?wtFmt(Math.round(tm_/tv)):'–')+' <span style="font-size:14px;color:var(--fg-muted)">ชม.:นาที</span></div></div>';
+    '<div class="stat"><div class="lab">เวลาทำงานจริงรวม</div><div class="val num">'+Math.floor(tT/60)+' <span style="font-size:14px;color:var(--fg-muted)">ชม. '+(tT%60)+' นาที</span></div><div class="sub">'+TM.length+' ทีม · เดือน ต.ค. 2026</div></div>'+
+    '<div class="stat"><div class="lab">จำนวนครั้งที่เข้า</div><div class="val num">'+tV+' <span style="font-size:14px;color:var(--fg-muted)">ครั้ง</span></div></div>'+
+    '<div class="stat"><div class="lab">เฉลี่ยต่อครั้ง</div><div class="val num">'+(tV?wtFmt(Math.round(tT/tV)):'–')+' <span style="font-size:14px;color:var(--fg-muted)">ชม.:นาที</span></div></div>';
   var html;
-  if(!rows.length){ $('wtTable').innerHTML='<div class="empty" style="padding:28px 20px">ไม่มีข้อมูลตามตัวกรองนี้ — ลองเปลี่ยนสาขา/ทีม</div>'; return; }
+  if(!rows.length){ $('wtTable').innerHTML='<div class="empty" style="padding:28px 20px">ไม่มีข้อมูลในช่วงที่เลือก</div>'; return; }
   if(WT_VIEW==='team'){
-    /* เข้าพร้อมหลายทีม: นับเวลาเต็มให้ทุกทีมที่เข้า (เจ้าของตัดสิน 12 พ.ย. 2026) */
-    var g={}, tsum=0; rows.forEach(function(r){r.teams.forEach(function(k){if(tm&&k!==tm) return; var o=g[k]||(g[k]={custs:0,visits:0,mins:0}); o.custs++; o.visits+=r.visits; o.mins+=r.mins; tsum+=r.mins})});
+    /* รายทีมจาก TM (หน้า #todo) · ลูกค้า(ราย) = จำนวนที่เข้าบริการ */
+    var ord=TM.slice().sort(function(x,y){return x.team<y.team?-1:x.team>y.team?1:0});
     html='<table><thead><tr><th>ทีม</th><th class="r">ลูกค้า (ราย)</th><th class="r">เข้า (ครั้ง)</th><th class="r">เวลารวม (ชม.:นาที)</th><th class="r">เฉลี่ย/ครั้ง</th></tr></thead><tbody>'+
-      Object.keys(g).sort().map(function(k){var o=g[k]; return '<tr><td><b>ทีม '+esc(k)+'</b></td><td class="r num">'+o.custs+'</td><td class="r num">'+o.visits+'</td><td class="r num">'+wtFmt(o.mins)+'</td><td class="r num" style="color:var(--fg-muted)">'+wtFmt(Math.round(o.mins/o.visits))+'</td></tr>'}).join('')+
-      '</tbody><tfoot><tr><td>รวมทุกทีม</td><td class="r num">'+rows.length+'</td><td class="r num">'+tv+'</td><td class="r num">'+wtFmt(tsum)+'</td><td class="r num">'+wtFmt(Math.round(tsum/Math.max(1,Object.keys(g).reduce(function(a,k){return a+g[k].visits},0))))+'</td></tr></tfoot></table>';
+      ord.map(function(t){return '<tr><td><b>'+esc(t.team)+'</b></td><td class="r num">'+t.visits+'</td><td class="r num">'+t.visits+'</td><td class="r num">'+wtFmt(t.min)+'</td><td class="r num" style="color:var(--fg-muted)">'+wtFmt(Math.round(t.min/t.visits))+'</td></tr>'}).join('')+
+      '</tbody><tfoot><tr><td>รวมทุกทีม</td><td class="r num">'+tV+'</td><td class="r num">'+tV+'</td><td class="r num">'+wtFmt(tT)+'</td><td class="r num">'+wtFmt(Math.round(tT/tV))+'</td></tr></tfoot></table>';
   } else {
     rows.sort(function(a,b){return b.mins-a.mins});
     html='<table><thead><tr><th>ลูกค้า</th><th>เลขที่สัญญา</th><th>สาขา</th><th>ทีม</th><th class="r">เข้า (ครั้ง)</th><th class="r">เวลารวม (ชม.:นาที)</th><th class="r">เฉลี่ย/ครั้ง</th></tr></thead><tbody>'+
@@ -1838,6 +1878,7 @@ function wtSumRender(){
       '</tbody><tfoot><tr><td colspan="4">รวม '+rows.length+' ราย</td><td class="r num">'+tv+'</td><td class="r num">'+wtFmt(tm_)+'</td><td class="r num">'+wtFmt(Math.round(tm_/tv))+'</td></tr></tfoot></table>';
   }
   $('wtTable').innerHTML=html;
+  matLabels();
 }
 var BAIT_OPTS='<option>0 ก.</option><option selected>50 ก.</option><option>100 ก.</option><option>150 ก.</option><option>200 ก.</option>';
 function tmRowHtml(){
@@ -2958,6 +2999,7 @@ function tmRender(){
 }
 document.addEventListener('click',function(e){var nb3=e.target.closest&&e.target.closest('[data-tmnote]');if(nb3){var q=nb3.getAttribute('data-tmnote').split('_'),xx=TM[+q[0]].miss[+q[1]],cn=msCan();msDlgOpen('<h3 id="msT" style="margin:0 0 4px;font-size:16px">หมายเหตุตกบริการ</h3><div class="lab">'+esc(xx.n)+' · '+esc(TM[+q[0]].team)+' · ต.ค. 2026</div>'+'<div class="field"><label for="tmNote">ตกบริการเพราะอะไร</label><textarea id="tmNote" maxlength="200" placeholder="เช่น ลูกค้าปิดอาคาร / ติดต่อไม่ได้"'+(cn?'':' disabled')+'>'+esc(xx.note||'')+'</textarea>'+(xx.by?'<span class="lab">บันทึกล่าสุดโดย '+esc(xx.by)+'</span>':'')+'</div>'+'<div class="acts"><button class="btn" data-ms="close">'+(cn?'ยกเลิก':'ปิด')+'</button>'+(cn?'<button class="btn primary" data-tmsave="'+q[0]+'_'+q[1]+'">บันทึก</button>':'')+'</div>',nb3);return}var sv=e.target.closest&&e.target.closest('[data-tmsave]');if(sv){var p=sv.getAttribute('data-tmsave').split('_'),x=TM[+p[0]].miss[+p[1]],inp=$('tmNote');x.note=inp.value.trim();msDlgClose(true);x.by=({host:'Host',recorder:'หัวหน้างาน'}[msRole()]||msRole())+' · '+msDateTh(TODAY_ISO);tmRender();toast('บันทึกหมายเหตุตกบริการแล้ว');var n2=document.querySelector('[data-tmnote="'+p[0]+'_'+p[1]+'"]');if(n2)n2.focus();return}var bb=e.target.closest&&e.target.closest('[data-tmb]');if(bb){var j=bb.getAttribute('data-tmb');tmBr[j]=!tmBr[j];tmRender();var nb2=document.querySelector('[data-tmb="'+j+'"]');if(nb2)nb2.focus();return}});
 tmRender();
+matLabels();matCap();
 /* ===== #todo: เตือนเมื่อเข้าเดือนใหม่แต่ยังปิดงานเดือนก่อนไม่เสร็จ (เจ้าของสั่ง 14 พ.ย. 2026) =====
    หน้านี้แสดง "เดือนที่ยังไม่ปิดเก่าสุด" (TM_VIEW) · ถ้าเดือนนั้นเก่ากว่าเดือนปัจจุบันตามวันที่จริง (เขตเวลาไทย)
    → เปิดหน้าจอเตือนครั้งเดียวต่อการเปิดหน้าเว็บ · ปุ่ม "ไปกรอกข้อมูลต่อ" พาไปหน้ากรอกผลบริการ + ลิงก์ไปหน้า "ส่งข้อมูล และสรุปงานประจำเดือน" (เฉพาะ host/หัวหน้างาน · admin เห็นแค่ปุ่มรับทราบ) */
