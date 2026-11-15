@@ -560,7 +560,18 @@ tfoot td{padding:10px 12px;font-weight:700;background:var(--surface-2);border-to
 @media (prefers-reduced-motion:reduce){.rb-ripple{transition:none}}
 @media (max-width:860px){.magrid{padding:10px}.macard{flex-wrap:wrap}.rbtn{width:100%}.malg{margin-left:0;width:100%}}
 .chip.wait{background:var(--accent-soft);color:var(--accent)}
-#s-registry td .clsub{display:block}
+#s-registry .tablewrap{max-height:calc(100vh - 230px);overflow:auto}
+#s-registry thead th{position:sticky;top:0;z-index:2;background:var(--surface-2);box-shadow:inset 0 -1px 0 var(--border)}
+#s-registry tbody tr:hover td{background:color-mix(in srgb,var(--accent) 5%,transparent)}
+#s-registry tbody td{vertical-align:middle;padding-top:9px;padding-bottom:9px}
+#s-registry tr.rghl td:first-child{box-shadow:inset 3px 0 0 var(--warn)}
+.rgname{min-width:200px}.rgsub{display:block;font-size:11.5px;color:var(--fg-muted);font-weight:400;margin-top:2px}
+.rgct{font-weight:600}.rgbar{height:5px;max-width:170px;border-radius:3px;background:var(--surface-3);margin-top:6px;overflow:hidden}.rgbar i{display:block;height:100%;border-radius:3px}
+.rgbar.ok i{background:var(--ok)}.rgbar.warn i{background:var(--warn)}.rgbar.end i{background:var(--fg-faint)}
+.rgdays{display:block;font-size:11.5px;color:var(--fg-muted);margin-top:3px;white-space:nowrap}.rgdays.hot{color:var(--warn);font-weight:600}
+.rgbr{white-space:nowrap}.rgbr span{color:var(--fg-muted)}
+.chip.rgst i{width:6px;height:6px;border-radius:50%;background:currentColor;display:inline-block}.chip.rgst{font-weight:600}
+#s-registry .hd-btn{font-size:11px;padding:1px 6px;white-space:nowrap;vertical-align:1px}
 .matmode{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:0 0 12px;font-size:12.5px;color:var(--fg-muted)}.matmode .segbtn{border:1px solid var(--border);min-height:34px}
 .tmmode{display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:10px 16px 0;font-size:12.5px;color:var(--fg-muted)}.tmmode .segbtn{border:1px solid var(--border);min-height:34px}
 .tmch{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px;padding:0 16px 14px}
@@ -1098,9 +1109,7 @@ i.wr,rect.wr{background:var(--accent);fill:var(--accent)}i.wf,rect.wf{background
       <div class="tablewrap">
         <table>
           <thead><tr>
-            <th class="c">#</th><th>ชื่อลูกค้า</th><th>เลขที่สัญญา</th><th>สาขา / เขต</th><th>ทีม</th><th>ประเภท</th>
-            <th>เริ่ม</th><th>สิ้นสุด</th><th class="r">มูลค่าสัญญา</th><th class="r">ต่อปี</th>
-            <th class="c">Tier <span class="auto-tag">อัตโนมัติ</span></th><th class="c">สถานี</th><th class="c">สถานะ</th>
+            <th class="c">#</th><th>ลูกค้า</th><th>สัญญา · ระยะเวลา</th><th>สาขา · เขต</th><th class="c">ทีม</th><th class="r">มูลค่า</th><th class="c">Tier <span class="auto-tag">อัตโนมัติ</span></th><th class="c">สถานะ</th>
           </tr></thead>
           <tbody></tbody>
         </table>
@@ -2840,9 +2849,10 @@ function addCustLinks(){
    • เทียบตามค่าจริง: ตัวเลข (มีคอมมา) · วันที่ dd/mm/yy (พ.ศ. 2 หลัก) · Tier (S<M<L<XL แล้วตามปี) · ที่เหลือเรียงตามตัวอักษรไทย (เลขในข้อความเรียงตามค่า)
    • ช่องว่างอยู่ท้ายเสมอทั้งสองทิศ · เลข # คงเดิม · ส่งออก Excel ตามลำดับที่เห็น
    • ตัวกรอง (เขต/สาขา/ทีม/สถานะ/ค้นหา) ทำงานจริง — ดูหัวข้อ "ตัวกรองตารางทะเบียน" ถัดไป · เรียงกับกรองใช้ร่วมกันได้ (เรียงไม่แตะสถานะซ่อน/แสดงของแถว) */
-var RG={col:-1,dir:0}, RGC=new Intl.Collator('th',{numeric:true,sensitivity:'base'}), RG_TIER_COL=10;
+var RG={col:-1,dir:0}, RGC=new Intl.Collator('th',{numeric:true,sensitivity:'base'}), RG_TIER_COL=6;
 function rgKey(tr,i){
   var c=tr.cells[i]; if(!c) return '';
+  if(c.dataset.k!==undefined) return c.dataset.k;   /* ช่องที่รวมหลายค่า (สัญญา=วันสิ้นสุด · มูลค่า=มูลค่ารวม) เรียงด้วย data-k */
   var t=c.querySelector('.tier'); if(t) return t.textContent.trim();
   var ch=c.querySelector('.chip'); if(ch) return ch.textContent.trim();
   var b=c.querySelector('b'), s=(b?b.textContent:c.textContent).replace(/\s+/g,' ').trim();   /* ชื่อลูกค้า: อ่านจาก <b> ไม่เอาลิงก์ ↗ */
@@ -2941,10 +2951,25 @@ function rgBuild(mode){
     out.push(mk('ลูกค้าตัวอย่าง '+('00'+(i+1)).slice(-3),ct,MAT_CENTRAL[i%24],RG_TEAMS[(i*7)%16],letter,yrs,i,4+(i*11)%90,null))}
   return out;
 }
+/* แถวแบบ A+B (เจ้าของเลือก 15 พ.ย. 2026): 8 คอลัมน์ · ข้อมูลรองเป็นบรรทัดจาง · แถบระยะสัญญา + "เหลือ X วัน" · แถวใกล้หมดมีเส้นเหลืองซ้าย */
+function rgDaysTxt(r){var d=Math.round((new Date(r.e+'T00:00:00Z')-new Date(TODAY_ISO+'T00:00:00Z'))/86400000);
+  if(d<0){var c=null;CL.forEach(function(x){if(x.ct===r.ct)c=x});return {d:d,t:'หมดแล้ว '+(-d)+' วัน'+(c&&r.status==='รอเก็บสถานี'?' · IG เหลือ '+(c.ig-c.got-c.skip):'')}}
+  if(d<=90)return {d:d,t:'เหลือ '+d+' วัน · หมด '+rgFmt(r.e)};
+  var m=Math.floor(d/30.44),y=Math.floor(m/12);m=m%12;return {d:d,t:'เหลือ '+(y?y+' ปี ':'')+(m?m+' เดือน':'')+' · หมด '+rgFmt(r.e)}}
 function rgRowHtml(r,i){
   var z=RG_BR[r.br]||'',cls={'Active':'ok','ใกล้หมด':'pend','รอเก็บสถานี':'wait','หมดสัญญา':'na'}[r.status];
   var link=r.cid?'<a class="rowlk" href="'+custHref(r.n,r.cid)+'" title="ดูรายละเอียดลูกค้า" aria-label="ดูรายละเอียดลูกค้า '+esc(r.n)+'">↗</a>':'';
-  return '<tr data-zone="'+esc(z)+'" data-br="'+esc(r.br)+'"><td class="c num">'+(i+1)+'</td><td><b>'+esc(r.n)+'</b>'+link+'</td><td class="num">'+r.ct+'</td><td>'+esc(r.br)+'<small class="clsub">'+esc(z)+'</small></td><td>'+r.team+'</td><td>'+esc(r.type)+'</td><td class="num">'+rgFmt(r.s)+'</td><td class="num">'+rgFmt(r.e)+'</td><td class="r num">'+matFmt(r.v)+'</td><td class="r num">'+matFmt(r.a)+'</td><td class="c">'+tierBadge(r.tier)+'</td><td class="c num">'+r.st+'</td><td class="c"><span class="chip '+cls+'">'+r.status+'</span></td></tr>'}
+  var t0=new Date(r.s+'T00:00:00Z'),t1=new Date(r.e+'T00:00:00Z'),tn=new Date(TODAY_ISO+'T00:00:00Z'),pct=Math.max(0,Math.min(100,(tn-t0)*100/(t1-t0))),dd=rgDaysTxt(r);
+  var tone=r.status==='ใกล้หมด'?'warn':(dd.d<0?'end':'ok');
+  return '<tr class="'+(r.status==='ใกล้หมด'?'rghl':'')+'" data-zone="'+esc(z)+'" data-br="'+esc(r.br)+'" data-ct="'+r.ct+'" data-name="'+esc(r.n)+'" data-type="'+esc(r.type)+'" data-s="'+r.s+'" data-e="'+r.e+'" data-v="'+r.v+'" data-a="'+r.a+'" data-tier="'+r.tier+'" data-st="'+r.st+'" data-team="'+r.team+'" data-status="'+r.status+'">'+
+    '<td class="c num">'+(i+1)+'</td>'+
+    '<td class="rgname"><b>'+esc(r.n)+'</b>'+link+'<small class="rgsub">'+esc(r.type)+' · '+r.st+' สถานี</small></td>'+
+    '<td data-k="'+r.e.replace(/-/g,'')+'"><span class="num rgct">'+r.ct+'</span><div class="rgbar '+tone+'" role="img" aria-label="ผ่านไป '+Math.round(pct)+'% ของสัญญา"><i style="width:'+pct.toFixed(1)+'%"></i></div><small class="rgdays '+(tone==='warn'?'hot':'')+'">'+dd.t+'</small></td>'+
+    '<td class="rgbr">'+esc(r.br)+' <span>· '+esc(z)+'</span></td>'+
+    '<td class="c">'+r.team+'</td>'+
+    '<td class="r num" data-k="'+r.v+'"><b>'+matFmt(r.v)+'</b><small class="rgsub">'+matFmt(r.a)+'/ปี</small></td>'+
+    '<td class="c">'+tierBadge(r.tier)+'</td>'+
+    '<td class="c"><span class="chip rgst '+cls+'"><i aria-hidden="true"></i>'+r.status+'</span></td></tr>'}
 function rgSetMode(m){
   RG_MODE=m;var tb=document.querySelector('#s-registry tbody');if(!tb)return;
   [].forEach.call(document.querySelectorAll('[data-rgmode]'),function(b){var on=b.getAttribute('data-rgmode')===m;b.classList.toggle('on',on);b.setAttribute('aria-pressed',on?'true':'false')});
@@ -2964,7 +2989,7 @@ function rgFltMatch(tr,f){
   if(f.zone && tr.dataset.zone!==f.zone) return false;
   if(f.branch && tr.dataset.br!==f.branch) return false;
   if(f.team && tr.cells[4].textContent.trim()!==f.team) return false;
-  if(f.status){ var ch=tr.cells[12].querySelector('.chip'); if((ch?ch.textContent:tr.cells[12].textContent).trim()!==f.status) return false; }
+  if(f.status){ var ch=tr.cells[7].querySelector('.chip'); if((ch?ch.textContent:tr.cells[7].textContent).trim()!==f.status) return false; }
   if(f.q){
     var b=tr.cells[1].querySelector('b');
     if(rgNorm(b?b.textContent:tr.cells[1].textContent).indexOf(f.q)<0 && rgNorm(tr.cells[2].textContent).indexOf(f.q)<0) return false;
@@ -2991,7 +3016,7 @@ function rgFltReset(){
 function rgAddHist(){
   [].forEach.call(document.querySelectorAll('#s-registry tbody tr'),function(tr){
     var b=tr.querySelector('td:nth-child(2) b'), no=tr.cells[2]; if(!b||!no||tr.querySelector('.hd-btn')) return;
-    (tr.querySelector('.rowlk')||b).insertAdjacentHTML('afterend',' '+HD.btn(no.textContent.trim(),b.textContent.trim()));
+    (tr.querySelector('.rowlk')||b).insertAdjacentHTML('afterend',' '+HD.btn((tr.dataset.ct||no.textContent).trim(),b.textContent.trim()));
   });
 }
 
@@ -3019,8 +3044,10 @@ function xlRows(wb,name,rows){ XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to
 
 function exportRegistryXL(){
   if(!xlReady()) return;
-  var wb=XLSX.utils.book_new();
-  xlTable(wb,'ทะเบียนลูกค้า-สัญญา',document.querySelector('#s-registry table'));
+  var wb=XLSX.utils.book_new(),rows=[['#','ชื่อลูกค้า','เลขที่สัญญา','สาขา','เขต','ทีม','ประเภท','เริ่ม','สิ้นสุด','มูลค่าสัญญา','ต่อปี','Tier','สถานี','สถานะ']];
+  [].forEach.call(document.querySelectorAll('#s-registry tbody tr'),function(tr,i){var d=tr.dataset;
+    rows.push([i+1,d.name,d.ct,d.br,d.zone,d.team,d.type,rgFmt(d.s),rgFmt(d.e),+d.v,+d.a,String(d.tier).toUpperCase(),+d.st,d.status])});
+  xlRows(wb,'ทะเบียนลูกค้า-สัญญา',rows);
   XLSX.writeFile(wb,'AGA-ทะเบียนลูกค้า-สัญญา.xlsx');
 }
 function exportMaterialXL(){
