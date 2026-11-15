@@ -8,11 +8,11 @@ SELECT col_is_pk('public', 'positions', 'code', 'positions PK is code');
 SELECT col_type_is('public', 'positions', 'role', 'public', 'user_role', 'positions.role is user_role');
 SELECT col_not_null('public', 'positions', 'name_th', 'positions.name_th NOT NULL');
 SELECT results_eq(
-  $$SELECT code, name_th, role::text FROM positions ORDER BY sort_order$$,
-  $$VALUES ('job_admin', 'Admin (เปิดงาน)', 'admin'),
-           ('supervisor', 'หัวหน้างาน', 'recorder'),
-           ('pm', 'Project Manager', 'host'),
-           ('om', 'OM', 'host')$$,
+  $$SELECT code, name_th, role::text FROM positions WHERE assignable ORDER BY sort_order$$,  -- M21: ชื่อใหม่ · เจ้าของ (assignable=false) ตรวจในเทส 37
+  $$VALUES ('job_admin', 'แอดมิน (Admin)', 'admin'),
+           ('supervisor', 'หัวหน้างาน (Supervisor)', 'recorder'),
+           ('pm', 'Project Manager (PM)', 'host'),
+           ('om', 'Operation Manager (OM)', 'host')$$,
   'seed: 4 positions mapped to permission levels (PM = OM = host, D3)');
 
 -- ---------- profiles columns ----------
@@ -109,7 +109,7 @@ SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a3
 SELECT throws_ok(
   $$INSERT INTO positions (code, name_th, role) VALUES ('x', 'X', 'admin')$$,
   '42501', NULL, 'recorder cannot add positions');
-SELECT is((SELECT count(*)::int FROM positions), 4, 'signed-in users read positions');
+SELECT is((SELECT count(*)::int FROM positions), 5, 'signed-in users read positions');  -- M21: + เจ้าของ
 RESET ROLE;
 SET LOCAL ROLE anon;
 -- anon ถูกปฏิเสธตั้งแต่ชั้นสิทธิ์ (SQLSTATE 42501) ไม่ใช่แค่ถูก RLS กรองจนเหลือ 0 แถว
