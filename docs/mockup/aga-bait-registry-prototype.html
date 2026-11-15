@@ -921,7 +921,7 @@ tfoot td{padding:10px 12px;font-weight:700;background:var(--surface-2);border-to
         <p>สัญญาหมดแล้ว — เก็บสถานี <b>IG</b> คืนบริษัท · ปิดสัญญาได้ทันทีแม้ IG ยังไม่เก็บ แต่ IG ที่เหลือยังอยู่ในรายการนี้จนกด "เก็บแล้ว" หรือ "ไม่เก็บ"</p></div>
       <div class="toolbar">
         <div class="field"><label for="clMonth">หมดสัญญาเดือน</label><select id="clMonth" onchange="clRender()"><option value="">ทุกเดือน</option></select></div>
-        <div class="field"><label for="clStatus">สถานะ</label><select id="clStatus" onchange="clRender()"><option value="open">ยังเก็บไม่ครบ</option><option value="all">ทั้งหมด</option></select></div>
+        <div class="field"><label for="clStatus">สถานะ</label><select id="clStatus" onchange="clRender()"><option value="open">ค้าง + ปิดเรื่องเดือนนี้</option><option value="wait">ยังเก็บไม่ครบ</option><option value="done">เก็บครบแล้ว</option><option value="skip">ลูกค้าไม่ให้เก็บ</option><option value="all">ทั้งหมด</option></select></div>
         <div class="field" style="flex:1;min-width:180px"><label for="clQ">ค้นหาลูกค้า</label><input id="clQ" oninput="clRender()" placeholder="ชื่อลูกค้า / เลขที่สัญญา" style="width:100%"></div>
       </div>
       <div class="stats" id="clStats"></div>
@@ -2736,11 +2736,11 @@ function clRem(r){return r.ig-r.got-r.skip}
 function clFind(id){for(var i=0;i<CL.length;i++){if(CL[i].id===id)return CL[i]}return null}
 function clRender(){
   var body=$('clBody');if(!body)return;
-  var can=msCan(),q=norm(($('clQ')||{value:''}).value),all=($('clStatus')||{value:'open'}).value==='all';
+  var can=msCan(),q=norm(($('clQ')||{value:''}).value),stv=($('clStatus')||{value:'open'}).value;
   /* ตัวกรองเดือน (เจ้าของสั่ง 15 พ.ย. 2026 แทน เขต/สาขา/ทีม): เดือนที่หมดสัญญา · ตัวเลือกสร้างจากข้อมูล เรียงใหม่→เก่า */
   var mSel=$('clMonth'),mVal=mSel?mSel.value:'';
   if(mSel&&mSel.options.length<2){var ms={};CL.forEach(function(r){ms[r.end.slice(0,7)]=1});Object.keys(ms).sort().reverse().forEach(function(m){var o=document.createElement('option');o.value=m;o.textContent=msMonthTh(m);mSel.appendChild(o)})}
-  var rows=CL.filter(function(r){return (!mVal||r.end.slice(0,7)===mVal)&&(all||clRem(r)>0||!r.closed||r.fin===MS_CUR)&&(!q||norm(r.name).indexOf(q)>=0||norm(r.ct).indexOf(q)>=0)});
+  var rows=CL.filter(function(r){return (!mVal||r.end.slice(0,7)===mVal)&&(function(){var rm0=clRem(r);if(stv==='all')return true;if(stv==='wait')return rm0>0;if(stv==='done')return rm0===0&&!r.skip;if(stv==='skip')return r.skip>0;return rm0>0||!r.closed||r.fin===MS_CUR})()&&(!q||norm(r.name).indexOf(q)>=0||norm(r.ct).indexOf(q)>=0)});
   var wait=CL.filter(function(r){return clRem(r)>0}),rem=0,got=0,skip=0,tot=0;
   CL.forEach(function(r){rem+=clRem(r);got+=r.got;skip+=r.skip;tot+=r.ig});
   var tc=$('clStat');if(tc){tc.className='stat '+(wait.length?'warn':'ok');tc.innerHTML='<div class="lab"><span class="dot" style="background:var(--'+(wait.length?'warn':'ok')+')"></span> ลูกค้ารอเก็บสถานี</div><div class="val num">'+wait.length+' <span style="font-size:14px;font-weight:500;color:var(--fg-muted)">ราย</span></div><div class="sub">IG เหลือ '+rem+' สถานี · <a href="#collect" onclick="go(\'collect\');return false">ดูรายการ →</a></div>'}
