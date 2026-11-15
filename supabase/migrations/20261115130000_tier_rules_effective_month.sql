@@ -12,8 +12,10 @@
 --      · max ของแถวหนึ่ง = min ของแถวถัดไป − 0.01 (ไม่มีช่องว่าง/ซ้อนทับ) · XL ไม่มี max · ทั้งตารางต้องเหลืออย่างน้อย 1 ชุด
 --      → TR004 · RPC สั่ง SET CONSTRAINTS ... IMMEDIATE ให้ error ขึ้นทันที (ไม่ไปโผล่ตอน COMMIT)
 --   4. เดือนที่ปิดแล้วคงเกณฑ์เดิม (2.31 ข้อ ก) — trigger `tier_rules_closed_month_guard` (ทุกทาง: RPC หรือเขียนตรง):
---      เพิ่ม/แก้/ลบชุดที่ effective_month <= เดือนที่มีแถวใน month_closures (scope ใดก็ได้) ไม่ได้ → TR002
---      (ชุดนั้นจะไปเปลี่ยนเกณฑ์ของเดือนที่ปิดแล้ว) · UPDATE ที่ค่าไม่เปลี่ยนผ่านได้
+--      เพิ่ม/แก้/ลบชุดที่ช่วงมีผล [effective_month, ชุดถัดไป) ครอบเดือนที่มีแถวใน month_closures (scope ใดก็ได้)
+--      ไม่ได้ → TR002 (จะเปลี่ยนเกณฑ์ของเดือนที่ปิดแล้ว) · UPDATE ที่ค่าไม่เปลี่ยนผ่านได้
+--      · trigger ล็อก month_closures (SHARE) เอง → ปิดเดือนแทรกระหว่างตรวจไม่ได้ ทั้งทาง RPC และเขียนตรง
+--      · ชุดตั้งต้น (เดือนแรกสุด) ลบ/ย้ายเดือนไม่ได้ → TR004 (กันเดือนเก่าไม่มีเกณฑ์)
 --      · ข้อจำกัด: เดือน legacy (JAN.25–SEP.26) ที่ไม่มีแถวใน month_closures ไม่ถูกกัน — รอเจ้าของตัดสิน (ดูรายงาน M20)
 --   5. บันทึกชุดใหม่: RPC `save_tier_rule_set(p jsonb)` — **host เท่านั้น** (SPEC §5 + mockup settings data-roles="host")
 --      · รับ effective_month + จุดเริ่ม M/L/XL + เหตุผล → สร้าง 4 แถว (S = 0, max คำนวณให้) · เดือนเดิมซ้ำ = แทนชุดเดิม
@@ -133,21 +135,40 @@ SECURITY DEFINER
 SET search_path = public, pg_temp
 AS $$
 DECLARE
-  v_month  date;
-  v_closed text;
+  v_month    date;
+  v_next     date;
+  v_baseline date;
+  v_closed   text;
 BEGIN
   IF TG_OP = 'UPDATE' AND NEW IS NOT DISTINCT FROM OLD THEN
     RETURN NEW;
   END IF;
 
+  -- กันปิดเดือนแทรกระหว่างตรวจ (ทุกทาง ไม่ใช่แค่ RPC) — ปิดเดือนรอจนรายการนี้ commit
+  LOCK TABLE public.month_closures IN SHARE MODE;
+
+  -- ชุดตั้งต้น (เดือนแรกสุด) ลบหรือย้ายเดือนไม่ได้ — ไม่งั้นเดือนเก่าไม่มีเกณฑ์ (แก้ค่าได้ถ้าไม่กระทบเดือนที่ปิด)
+  IF TG_OP <> 'INSERT' THEN
+    SELECT min(effective_month) INTO v_baseline FROM tier_rules;
+    IF OLD.effective_month = v_baseline
+       AND (TG_OP = 'DELETE' OR NEW.effective_month <> OLD.effective_month) THEN
+      RAISE EXCEPTION 'ชุดเกณฑ์ตั้งต้น (%) ลบหรือย้ายเดือนไม่ได้', to_char(v_baseline, 'YYYY-MM')
+        USING ERRCODE = 'TR004';
+    END IF;
+  END IF;
+
+  -- ช่วงที่ชุดนี้มีผล = ตั้งแต่ effective_month ถึงก่อนชุดถัดไป
+  -- (ทั้งตอนเพิ่ม/แก้ และตอนลบ — ลบแล้วช่วงนี้กลับไปใช้ชุดก่อนหน้า)
   FOREACH v_month IN ARRAY ARRAY[
     CASE WHEN TG_OP <> 'INSERT' THEN OLD.effective_month END,
     CASE WHEN TG_OP <> 'DELETE' THEN NEW.effective_month END
   ] LOOP
     CONTINUE WHEN v_month IS NULL;
+    SELECT min(effective_month) INTO v_next FROM tier_rules WHERE effective_month > v_month;
     SELECT max(public.normalize_month_key(mc.month_key)) INTO v_closed
       FROM month_closures mc
-     WHERE public.normalize_month_key(mc.month_key) >= to_char(v_month, 'YYYY-MM');
+     WHERE public.normalize_month_key(mc.month_key) >= to_char(v_month, 'YYYY-MM')
+       AND (v_next IS NULL OR public.normalize_month_key(mc.month_key) < to_char(v_next, 'YYYY-MM'));
     IF v_closed IS NOT NULL THEN
       RAISE EXCEPTION 'เกณฑ์ที่เริ่มใช้ % จะกระทบเดือน % ที่ปิดแล้ว — เลือกเดือนเริ่มใช้หลังเดือนที่ปิดล่าสุด',
         to_char(v_month, 'YYYY-MM'), v_closed USING ERRCODE = 'TR002';
@@ -240,8 +261,9 @@ BEGIN
     END IF;
     v_mins := v_mins || v_val;
   END LOOP;
-  IF NOT (v_mins[1] < v_mins[2] AND v_mins[2] < v_mins[3]) THEN
-    RAISE EXCEPTION 'จุดเริ่ม M < L < XL ต้องเรียงจากน้อยไปมาก' USING ERRCODE = 'TR001';
+  -- ห่างกันอย่างน้อย 0.02 (และ M >= 0.02) — ไม่งั้นปลายช่วง (= จุดเริ่มถัดไป − 0.01) ไม่มากกว่าจุดเริ่มของตัวเอง
+  IF NOT (v_mins[1] >= 0.02 AND v_mins[2] - v_mins[1] >= 0.02 AND v_mins[3] - v_mins[2] >= 0.02) THEN
+    RAISE EXCEPTION 'จุดเริ่ม M < L < XL ต้องเรียงจากน้อยไปมาก (ห่างกันอย่างน้อย 0.02)' USING ERRCODE = 'TR001';
   END IF;
 
   IF v_reason = '' THEN
@@ -251,9 +273,8 @@ BEGIN
     RAISE EXCEPTION 'เหตุผลยาวได้ไม่เกิน 500 ตัวอักษร' USING ERRCODE = 'TR001';
   END IF;
 
-  -- กันบันทึกชนกัน + กันปิดเดือนแทรกระหว่างตรวจ (ปิดเดือนรอจนบันทึกเสร็จ)
+  -- กันบันทึกชนกัน (การล็อก month_closures อยู่ใน trigger guard)
   LOCK TABLE public.tier_rules IN SHARE ROW EXCLUSIVE MODE;
-  LOCK TABLE public.month_closures IN SHARE MODE;
 
   SELECT min(effective_month) INTO v_baseline FROM tier_rules;
   IF v_baseline IS NOT NULL AND v_month <= v_baseline THEN
@@ -271,6 +292,8 @@ BEGIN
         max_annual    = EXCLUDED.max_annual,
         change_reason = EXCLUDED.change_reason;
 
+  -- ให้ TR004 ขึ้นทันที · หมายเหตุ: มีผลกับส่วนที่เหลือของ transaction ผู้เรียกด้วย
+  -- (ผ่าน PostgREST = 1 คำสั่งต่อ transaction ไม่กระทบ)
   SET CONSTRAINTS public.tier_rules_valid_set IMMEDIATE;
 
   RETURN jsonb_build_object(

@@ -4,7 +4,7 @@
 -- เดือนอ้างจาก "เดือนปัจจุบัน" (Asia/Bangkok) ผ่าน pg_temp.m(n) → เทสไม่พังเมื่อเวลาผ่านไป
 -- ชุดเกณฑ์ใหม่ในไฟล์นี้ (40,000 / 60,000 / 120,000 ฯลฯ) เป็น **ข้อมูลสมมติ** ใช้ทดสอบเท่านั้น
 BEGIN;
-SELECT plan(58);
+SELECT plan(65);
 
 INSERT INTO auth.users (id, instance_id, aud, role, email) VALUES
   ('00000000-0000-0000-0000-0000000000a1', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'host@test.local'),
@@ -86,9 +86,8 @@ SELECT throws_ok(
   $$INSERT INTO tier_rules (effective_month, tier, min_annual) VALUES ('2030-01-01', 'S', 0)$$,
   '42501', NULL, 'viewer เขียน tier_rules ตรงไม่ได้');
 SELECT pg_temp.as_user('a3');
-SELECT is(
-  (SELECT count(*)::int FROM (UPDATE tier_rules SET change_reason = 'x' RETURNING 1) u), 0,
-  'recorder แก้ tier_rules ตรงไม่ได้ (RLS เห็น 0 แถว)');
+WITH u AS (UPDATE tier_rules SET change_reason = 'x' RETURNING 1)
+SELECT is(count(*)::int, 0, 'recorder แก้ tier_rules ตรงไม่ได้ (RLS เห็น 0 แถว)') FROM u;
 RESET ROLE;
 
 -- ================= 6. host บันทึกชุดใหม่ =================
@@ -158,6 +157,7 @@ SELECT throws_ok(pg_temp.set(3, 40000.005, 60000, 120000), 'TR001', NULL, 'ท�
 SELECT throws_ok(pg_temp.set(3, 60000, 40000, 120000), 'TR001', NULL, 'จุดเริ่มไม่เรียง → TR001');
 SELECT throws_ok(pg_temp.set(3, 40000, 40000, 120000), 'TR001', NULL, 'จุดเริ่มซ้ำ → TR001');
 SELECT throws_ok(pg_temp.set(3, 0, 60000, 120000), 'TR001', NULL, 'จุดเริ่ม M = 0 → TR001');
+SELECT throws_ok(pg_temp.set(3, 0.01, 60000, 120000), 'TR001', NULL, 'จุดเริ่ม M = 0.01 (S ไม่มีช่วง) → TR001 ไม่ใช่ 23514');
 SELECT throws_ok(pg_temp.set(3, 40000, 60000, 120000, '   '), 'TR003', NULL, 'ไม่มีเหตุผล → TR003');
 SELECT throws_ok(
   pg_temp.save('{"effective_month": "2030-13", "min_m": 1, "min_l": 2, "min_xl": 3, "reason": "x"}'),
@@ -198,6 +198,12 @@ SELECT lives_ok(
   'host เขียนตรงชุดที่ครบและต่อกันได้ (กติกาเดียวกับ RPC)');
 SELECT lives_ok(format($$DELETE FROM tier_rules WHERE effective_month = %L$$, pg_temp.m(4)),
   'ลบทั้งชุดของเดือนที่ยังไม่ปิดได้');
+SELECT throws_ok($$DELETE FROM tier_rules WHERE effective_month = '2000-01-01'$$,
+  'TR004', NULL, 'ลบชุดตั้งต้นไม่ได้ (เดือนเก่าจะไม่มีเกณฑ์)');
+SELECT throws_ok($$UPDATE tier_rules SET effective_month = '2001-01-01' WHERE effective_month = '2000-01-01'$$,
+  'TR004', NULL, 'ย้ายเดือนของชุดตั้งต้นไม่ได้');
+-- ชุดก่อนเดือนที่จะปิด (ใช้ทดสอบช่วงมีผลในข้อ 10)
+SELECT lives_ok(pg_temp.set(-4, 40000, 60000, 120000), 'บันทึกย้อนหลังเดือนที่ยังไม่ปิดได้');
 RESET ROLE;
 
 -- ================= 10. เดือนที่ปิดแล้วคงเกณฑ์เดิม (2.31) =================
@@ -207,15 +213,20 @@ SELECT pg_temp.as_user('a1');
 SELECT throws_ok(pg_temp.set(-2, 40000, 60000, 120000), 'TR002', NULL, 'เริ่มใช้ในเดือนที่ปิดแล้ว → TR002');
 SELECT throws_ok(pg_temp.set(-3, 40000, 60000, 120000), 'TR002', NULL, 'เริ่มใช้ก่อนเดือนที่ปิดแล้ว (จะกระทบเดือนที่ปิด) → TR002');
 SELECT lives_ok(pg_temp.set(-1, 40000, 60000, 120000), 'เริ่มใช้หลังเดือนที่ปิดล่าสุดได้ (ย้อนหลังเดือนที่ยังเปิด)');
-SELECT throws_ok($$UPDATE tier_rules SET change_reason = 'แก้ชุดตั้งต้น' WHERE effective_month = '2000-01-01'$$,
+SELECT throws_ok(format($$UPDATE tier_rules SET change_reason = 'แก้' WHERE effective_month = %L$$, pg_temp.m(-4)),
   'TR002', NULL, 'แก้ชุดที่ครอบเดือนที่ปิดแล้วตรงๆ ก็ไม่ได้ → TR002');
+SELECT throws_ok(format($$DELETE FROM tier_rules WHERE effective_month = %L$$, pg_temp.m(-4)),
+  'TR002', NULL, 'ลบชุดที่ครอบเดือนที่ปิดแล้วไม่ได้ → TR002');
+SELECT lives_ok(pg_temp.set(-6, 35000, 55000, 110000), 'ชุดที่ช่วงมีผลจบก่อนเดือนที่ปิด บันทึกได้');
+SELECT lives_ok($$UPDATE tier_rules SET change_reason = 'แก้ชุดตั้งต้น' WHERE effective_month = '2000-01-01'$$,
+  'แก้ชุดตั้งต้นได้ถ้าช่วงมีผลไม่ครอบเดือนที่ปิด');
 SELECT lives_ok($$UPDATE tier_rules SET max_annual = max_annual WHERE effective_month = '2000-01-01' AND tier = 'S'$$,
   'UPDATE ที่ค่าไม่เปลี่ยนผ่านได้ (08_rls เดิม)');
 RESET ROLE;
 SELECT results_eq(
   $$SELECT min_annual::numeric FROM tier_rules_for_month(pg_temp.m(-2))$$,
-  $$VALUES (0::numeric), (30000), (50000), (100000)$$,
-  'เดือนที่ปิดแล้วยังได้ชุดเดิม');
+  $$VALUES (0::numeric), (40000), (60000), (120000)$$,
+  'เดือนที่ปิดแล้วยังได้ชุดเดิม (ชุด m(-4) ที่บันทึกก่อนปิด)');
 
 SELECT * FROM finish();
 ROLLBACK;

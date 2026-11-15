@@ -1,5 +1,5 @@
 import type { BranchRef, Contract, SnapshotRow, TierRule, Visit } from "./types";
-import { annualValue, tierOf } from "./tier";
+import { annualValue, rulesForMonth, tierOf } from "./tier";
 import { serviceMonths } from "./serviceMonths";
 import { monthOf } from "./date";
 import { lastServiceMonth, trackingStartMonth } from "./missedResolution";
@@ -33,6 +33,9 @@ export function buildBranchSnapshot(
     cust: 0, vS: 0, vM: 0, vL: 0, vXL: 0, value: 0, value_annual: 0,
   };
 
+  // M20: เลือกชุดเกณฑ์ของเดือนนี้ครั้งเดียว (DECISIONS 2.31)
+  const monthRules = rulesForMonth(rules, month);
+
   for (const c of contracts) {
     if (c.cancelledAt && monthOf(c.cancelledAt) <= month) continue;
     const inService = serviceMonths(c.startDate, c.termYears).includes(month);
@@ -65,7 +68,7 @@ export function buildBranchSnapshot(
     if (!inService && !countsAsMakeup) continue;
 
     const av = annualValue(c.valueTotal, c.termYears);
-    const tier = tierOf(av, rules, month); // M20: เกณฑ์ของเดือนที่คำนวณ (DECISIONS 2.31)
+    const tier = tierOf(av, monthRules);
 
     const countKey = `${tier.toLowerCase()}${c.termYears}` as
       | "s1" | "s3" | "m1" | "m3" | "l1" | "l3" | "xl1" | "xl3";
