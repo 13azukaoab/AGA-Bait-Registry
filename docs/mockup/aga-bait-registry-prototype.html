@@ -508,6 +508,7 @@ tfoot td{padding:10px 12px;font-weight:700;background:var(--surface-2);border-to
 .clbar i{display:block;height:100%}.clbar .ok,.cllg .ok{background:var(--ok)}.clbar .sk,.cllg .sk{background:var(--fg-faint)}.clbar .rm,.cllg .rm{background:var(--danger)}
 .cllg{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:12.5px;color:var(--fg-muted)}
 .cllg i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+.clrow2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .msclosed{border-top:1px solid var(--border);background:var(--surface-2)}
 .msclbtn{display:block;width:100%;text-align:left;background:none;border:0;padding:10px 14px;min-height:40px;font:inherit;font-size:12.5px;color:var(--fg-muted);cursor:pointer}
 .msclbtn:hover{color:var(--accent)}
@@ -2756,11 +2757,17 @@ function clRender(){
 function clOpen(kind,r,opener){
   var rm=clRem(r),head='<div class="lab">'+esc(r.name)+' · สัญญา '+esc(r.ct)+' · IG คงเหลือ <b class="num">'+rm+'</b> สถานี · IC '+r.ic+' จุด มอบให้ลูกค้า (ไม่ต้องเก็บ)</div>';
   var nField='<div class="field"><label for="clN">จำนวน IG</label><input type="number" id="clN" class="num" min="1" max="'+rm+'" value="'+rm+'" inputmode="numeric"></div>';
-  if(kind==='got')msDlgOpen('<h3 id="msT" style="margin:0 0 4px;font-size:16px">เก็บ IG คืนแล้ว</h3>'+head+nField+'<div class="field"><label for="clD">วันที่เก็บ</label><input type="date" id="clD" value="'+TODAY_ISO+'"></div><div class="err" id="msErr" role="alert" hidden></div>'+
+  /* วันที่ + ทีม (เจ้าของขอ 15 พ.ย. 2026) — ใช้แยกยอดรายเดือน/รายทีม · ค่าเริ่มต้น = ทีมประจำของลูกค้า */
+  var base=null;CUSTOMERS.forEach(function(c){if(c.ct===r.ct&&!c.mkOf)base=c});var defT=base?base.team:'';
+  var dtField='<div class="clrow2"><div class="field"><label for="clD">'+(kind==='got'?'วันที่เก็บ':'วันที่เข้าไป (ลูกค้าไม่ให้เก็บ)')+'</label><input type="date" id="clD" value="'+TODAY_ISO+'" max="'+TODAY_ISO+'"></div>'+
+    '<div class="field"><label for="clT">ทีมที่เข้า</label><select id="clT"><option value="">— เลือกทีม —</option>'+['A','B','C','D','E','F'].map(function(x){return '<option value="'+x+'"'+(x===defT?' selected':'')+'>ทีม '+x+'</option>'}).join('')+'</select></div></div>';
+  if(kind==='got')msDlgOpen('<h3 id="msT" style="margin:0 0 4px;font-size:16px">เก็บ IG คืนแล้ว</h3>'+head+nField+dtField+'<div class="err" id="msErr" role="alert" hidden></div>'+
     '<div class="acts"><button class="btn" data-ms="close">ยกเลิก</button><button class="btn primary" data-cl="savegot" data-id="'+r.id+'">บันทึก เก็บแล้ว</button></div>',opener);
-  else msDlgOpen('<h3 id="msT" style="margin:0 0 4px;font-size:16px">ไม่เก็บ IG</h3>'+head+nField+'<div class="field"><label for="clR">เหตุผล (บังคับ)</label><textarea id="clR" maxlength="300" placeholder="เช่น ลูกค้าไม่สะดวกให้เข้าพื้นที่ / ฝังใต้พื้นคอนกรีต"></textarea></div><div class="err" id="msErr" role="alert" hidden></div>'+
+  else msDlgOpen('<h3 id="msT" style="margin:0 0 4px;font-size:16px">ไม่เก็บ IG</h3>'+head+nField+dtField+'<div class="field"><label for="clR">เหตุผล (บังคับ)</label><textarea id="clR" maxlength="300" placeholder="เช่น ลูกค้าไม่สะดวกให้เข้าพื้นที่ / ฝังใต้พื้นคอนกรีต"></textarea></div><div class="err" id="msErr" role="alert" hidden></div>'+
     '<div class="acts" id="msStep"><button class="btn" data-ms="close">ยกเลิก</button><button class="btn primary" data-cl="confirmskip" data-id="'+r.id+'">ไม่เก็บ</button></div>',opener);
 }
+function clDT(){var d=$('clD').value,t=$('clT').value;if(!d){msErr('กรุณาเลือกวันที่');$('clD').focus();return null}if(d>TODAY_ISO){msErr('วันที่ต้องไม่เกินวันนี้');$('clD').focus();return null}if(!t){msErr('กรุณาเลือกทีมที่เข้า');$('clT').focus();return null}return {d:d,t:t}}
+function clLog(r,kind,n,dt,reason){(r.log=r.log||[]).push({kind:kind,n:n,date:dt.d,team:dt.t,reason:reason||'',by:msRole()});var inM=dt.d.slice(0,7)===MS_CUR;if(kind==='got'){r.got+=n;if(inM)r.gotM=(r.gotM||0)+n}else{r.skip+=n;if(inM)r.skipM=(r.skipM||0)+n}if(clRem(r)===0)r.fin=dt.d.slice(0,7)}
 function clN(r){var n=+($('clN').value);if(!(n>=1&&n<=clRem(r)&&n%1===0)){msErr('ใส่จำนวนตั้งแต่ 1 ถึง '+clRem(r)+' สถานี');return 0}return n}
 /* ---- #service: แถวชดเชย (โคลนจากลูกค้าเดิม — 1 ลูกค้ามี 2 แถวได้: ปกติ + ชดเชย) · ฟอร์มเต็มเหมือนบริการปกติ (พบปลวก/เปลี่ยนไม้/งานซ่อม/กล่อง AG) ---- */
 function svSyncMakeup(){
@@ -2822,13 +2829,13 @@ document.addEventListener('click',function(e){
   var cl=t.dataset.cl,r=id&&clFind(id);
   if(cl==='got'&&r&&msCan()){clOpen('got',r,t);return}
   if(cl==='skip'&&r&&msCan()){clOpen('skip',r,t);return}
-  if(cl==='savegot'&&r){var n=clN(r);if(!n)return;r.got+=n;r.gotM=(r.gotM||0)+n;if(clRem(r)===0)r.fin=MS_CUR;msDlgClose(true);clRender();toast('บันทึกเก็บ IG คืน '+n+' สถานีแล้ว ('+r.name+')');return}
+  if(cl==='savegot'&&r){var n=clN(r);if(!n)return;var dt=clDT();if(!dt)return;clLog(r,'got',n,dt);msDlgClose(true);clRender();toast('บันทึกเก็บ IG คืน '+n+' สถานีแล้ว ('+r.name+' · ทีม '+dt.t+' · '+msDateTh(dt.d)+')');return}
   if(cl==='confirmskip'&&r){
-    var n2=clN(r);if(!n2)return;var rr=$('clR').value.trim();if(!rr){msErr('กรุณาพิมพ์เหตุผลที่ไม่เก็บ');$('clR').focus();return}
+    var n2=clN(r);if(!n2)return;if(!clDT())return;var rr=$('clR').value.trim();if(!rr){msErr('กรุณาพิมพ์เหตุผลที่ไม่เก็บ');$('clR').focus();return}
     $('msErr').hidden=true;$('msStep').innerHTML='<span class="lab" style="margin-right:auto">ไม่เก็บ IG '+n2+' สถานีนี้อีก?</span><button class="btn" data-cl="backskip" data-id="'+r.id+'">กลับไปแก้</button><button class="btn danger" data-cl="doskip" data-id="'+r.id+'" data-n="'+n2+'">ยืนยัน ไม่เก็บ</button>';
     var dk=$('msStep').querySelector('.danger');if(dk)dk.focus();return}
   if(cl==='backskip'&&r){$('msStep').innerHTML='<button class="btn" data-ms="close">ยกเลิก</button><button class="btn primary" data-cl="confirmskip" data-id="'+r.id+'">ไม่เก็บ</button>';return}
-  if(cl==='doskip'&&r){var n3=+t.dataset.n;r.skip+=n3;r.skipM=(r.skipM||0)+n3;if(clRem(r)===0)r.fin=MS_CUR;msDlgClose(true);clRender();toast('บันทึก ไม่เก็บ IG '+n3+' สถานี แล้ว — นับเป็น "IG ที่ทิ้งไว้สะสม" (ลง audit_log)');return}
+  if(cl==='doskip'&&r){var n3=+t.dataset.n;clLog(r,'skip',n3,{d:$('clD').value,t:$('clT').value},$('clR').value.trim());msDlgClose(true);clRender();toast('บันทึก ไม่เก็บ IG '+n3+' สถานี แล้ว — นับเป็น "IG ที่ทิ้งไว้สะสม" (ลง audit_log)');return}
   if(cl==='close'&&r&&msCan()){
     var rm=clRem(r);msDlgOpen('<h3 id="msT" style="margin:0 0 4px;font-size:16px">ปิดสัญญา '+esc(r.ct)+'</h3><div class="lab">'+esc(r.name)+(rm>0?' · มี IG ยังไม่เก็บ '+rm+' สถานี — ปิดสัญญาได้ และ IG เหล่านี้ยังอยู่ในรายการรอเก็บจนกด "เก็บแล้ว" หรือ "ไม่เก็บ"':' · IG เก็บครบแล้ว')+'</div><div class="acts"><button class="btn" data-ms="close">ยกเลิก</button><button class="btn primary" data-cl="doclose" data-id="'+r.id+'">ยืนยัน ปิดสัญญา</button></div>',t);return}
   if(cl==='doclose'&&r){r.closed=true;msDlgClose(true);clRender();toast('ปิดสัญญา '+r.ct+' แล้ว'+(clRem(r)>0?' · IG ที่เหลือ '+clRem(r)+' สถานียังอยู่ในรายการรอเก็บ':''));return}
