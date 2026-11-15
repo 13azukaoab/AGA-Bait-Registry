@@ -3047,7 +3047,7 @@ var TM=[
   {team:'ทีม E',newN:["ร้านเบเกอรี่นนทบุรี"],renN:[],tiers:[22,14,9,3],zone:'เขต 2',br:'นนทบุรี',min:2160,visits:44,plan:48,newc:1,renew:0,miss:[{n:'ร้านกาแฟบ้านไร่'}]},
   /* ตัวอย่าง 1 ทีมวิ่งหลายสาขา (เขต 2 มี 4 สาขา + ข้ามไปช่วยปทุมธานี เขต 3) · ยอดทีม = ผลรวมทุกสาขา · นับไว้ใต้เขตบ้านของทีม (รอเจ้าของตัดสิน) */
   {team:'ทีม F',newN:["โกดังสินค้าปทุมวัน","ร้านอาหารพระราม 4"],renN:["อาคารสำนักงานสาทรทาวเวอร์"],tiers:[38,18,10,4],zone:'เขต 2',br:'หลายสาขา',min:3300,visits:58,plan:70,newc:2,renew:1,miss:[{n:'โรงงานสยามฟู้ด',br:'ปทุมวัน'}],
-   brs:[{br:'สาทร',min:900,visits:16,plan:18},{br:'ปทุมวัน',min:780,visits:14,plan:16,miss:1},{br:'พระราม 4',min:600,visits:10,plan:14},{br:'นนทบุรี',min:540,visits:10,plan:12},{br:'ปทุมธานี',zone:'เขต 3',min:480,visits:8,plan:10}]}
+   brs:[{br:'สาทร',tiers:[8,5,3,2],min:900,visits:16,plan:18},{br:'ปทุมวัน',tiers:[8,4,3,1],min:780,visits:14,plan:16,miss:1},{br:'พระราม 4',tiers:[8,4,2,0],min:600,visits:10,plan:14},{br:'นนทบุรี',tiers:[7,3,2,0],min:540,visits:10,plan:12},{br:'ปทุมธานี',zone:'เขต 3',tiers:[7,2,0,1],min:480,visits:8,plan:10}]}
 ];
 var tmOpen={},tmBr={};
 function tmHm(m){return Math.floor(m/60)+':'+('0'+(m%60)).slice(-2)}
@@ -3172,8 +3172,8 @@ function tmRender(){
          '<td class="c" data-label="เข้าบริการ"><span class="num"><b>'+t.visits+'</b>/'+t.plan+' ราย</span><div class="tmbar" style="min-width:80px" role="img" aria-label="ทำแล้ว '+dp+'%"><i style="width:'+dp+'%;background:var(--ok)"></i></div></td>'+
          '<td class="tmmcell" data-label="ตกบริการ (ต.ค.)">'+tmMissCell(i)+'</td>'+
          '<td class="c num" data-label="New">'+tmNR(i,'new')+'</td><td class="c num" data-label="Renew">'+tmNR(i,'ren')+'</td></tr>';
-      if(bo)t.brs.forEach(function(x){var p=Math.round(x.visits*100/x.plan);
-        h+='<tr class="tmsub"><td data-label="สาขา">└ '+esc(x.br)+'</td><td class="r"><span class="tmdash">-</span></td><td class="r"><span class="tmdash">-</span></td><td class="r num" data-label="ชั่วโมงทำงาน">'+(x.min/60).toFixed(1)+' ชม.<small class="clsub">เฉลี่ย '+tmHm(Math.round(x.min/x.visits))+'/ราย</small></td>'+
+      if(bo)t.brs.forEach(function(x){var p=Math.round(x.visits*100/x.plan),mb=tmMet({tiers:x.tiers,min:x.min,miss:[]});
+        h+='<tr class="tmsub"><td data-label="สาขา">└ '+esc(x.br)+'</td><td class="r num" data-label="มูลค่า (ล้านบาท)">'+(mb.val/1e6).toFixed(1)+'</td><td class="r num" data-label="สถานี">'+mb.st.toLocaleString('en-US')+'<small class="clsub">'+mb.n+' ราย</small></td><td class="r num" data-label="ชั่วโมงทำงาน">'+(x.min/60).toFixed(1)+' ชม.<small class="clsub">เฉลี่ย '+tmHm(Math.round(x.min/x.visits))+'/ราย</small></td>'+
            '<td class="c num" data-label="เข้าบริการ">'+x.visits+'/'+x.plan+' ราย <span style="color:var(--fg-muted)">('+p+'%)</span></td><td class="tmmcell" data-label="ตกบริการ">'+tmMissCell(i,x.br)+'</td><td class="c num" data-label="New">'+tmNR(i,'new',x.br)+'</td><td class="c num" data-label="Renew">'+tmNR(i,'ren',x.br)+'</td></tr>'
 });
 
