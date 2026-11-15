@@ -918,7 +918,7 @@ tfoot td{padding:10px 12px;font-weight:700;background:var(--surface-2);border-to
       </div>
       <div class="stats" id="clStats"></div>
       <div class="tablewrap"><table>
-        <thead><tr><th>ลูกค้า</th><th>เลขที่สัญญา</th><th>ระยะสัญญา</th><th>วันที่เก็บ</th><th class="c">สัญญา</th><th class="c">IG ทั้งหมด</th><th class="c">เก็บแล้ว</th><th class="c">ไม่เก็บ</th><th class="c">คงเหลือ</th><th class="c">IC</th><th></th></tr></thead>
+        <thead><tr><th>สาขา</th><th>ลูกค้า</th><th>เลขที่สัญญา</th><th>ระยะสัญญา</th><th>วันที่เก็บ</th><th class="c">สัญญา</th><th class="c">IG ทั้งหมด</th><th class="c">เก็บแล้ว</th><th class="c">ไม่เก็บ</th><th class="c">คงเหลือ</th><th class="c">IC</th><th></th></tr></thead>
         <tbody id="clBody"></tbody>
       </table></div>
       <div id="clHold"></div>
@@ -2723,6 +2723,7 @@ var CL=[
 /* ระยะสัญญา DD/MM/YYYY – DD/MM/YYYY · start ไม่ระบุ = สัญญา 1 ปี (เริ่ม = สิ้นสุด − 1 ปี + 1 วัน · ข้อมูลสมมติ) */
 function clDmy(d){return d.slice(8,10)+'/'+d.slice(5,7)+'/'+d.slice(0,4)}
 function clTerm(r){var st=r.start;if(!st){var x=new Date(r.end+'T00:00:00');x.setFullYear(x.getFullYear()-1);x.setDate(x.getDate()+1);st=x.getFullYear()+'-'+('0'+(x.getMonth()+1)).slice(-2)+'-'+('0'+x.getDate()).slice(-2)}return clDmy(st)+' – '+clDmy(r.end)}
+function clBranch(r){var b='';CUSTOMERS.forEach(function(c){if(c.ct===r.ct&&!c.mkOf)b=c.branch});return b||'-'}   /* สาขาของสัญญา (ของจริงอ่านจาก contracts.branch) */
 function clRem(r){return r.ig-r.got-r.skip}
 function clFind(id){for(var i=0;i<CL.length;i++){if(CL[i].id===id)return CL[i]}return null}
 function clRender(){
@@ -2750,10 +2751,10 @@ function clRender(){
     var rm=clRem(r),chip=r.closed?'<span class="chip na">ปิดสัญญาแล้ว</span>':'<span class="chip pend">หมดสัญญา · ยังไม่ปิด</span>';
     var acts=(rm>0?'<button class="btn sm primary" data-cl="got" data-id="'+r.id+'"'+dis+'>เก็บแล้ว</button> <button class="btn sm" data-cl="skip" data-id="'+r.id+'"'+dis+'>ไม่เก็บ</button> ':'')+
              (r.closed?'':'<button class="btn sm" data-cl="close" data-id="'+r.id+'"'+dis+'>ปิดสัญญา</button>');
-    return '<tr><td><b>'+esc(r.name)+'</b><a class="rowlk" href="'+custHref(r.name,r.id.slice(1))+'" aria-label="ดูรายละเอียดลูกค้า '+esc(r.name)+'">↗</a></td><td class="num">'+esc(r.ct)+'</td><td class="num" style="white-space:nowrap">'+clTerm(r)+'</td><td class="num">'+(r.last?msDateTh(r.last.date)+'<small style="display:block;color:var(--fg-muted);font-size:12px">ทีม '+esc(r.last.team)+(r.last.kind==='skip'?' · ลูกค้าไม่ให้เก็บ':'')+'</small>':'<span class="tmdash">-</span>')+'</td><td class="c">'+chip+'</td>'+
+    return '<tr><td>'+esc(clBranch(r))+'</td><td><b>'+esc(r.name)+'</b><a class="rowlk" href="'+custHref(r.name,r.id.slice(1))+'" aria-label="ดูรายละเอียดลูกค้า '+esc(r.name)+'">↗</a></td><td class="num">'+esc(r.ct)+'</td><td class="num" style="white-space:nowrap">'+clTerm(r)+'</td><td class="num">'+(r.last?msDateTh(r.last.date)+'<small style="display:block;color:var(--fg-muted);font-size:12px">ทีม '+esc(r.last.team)+(r.last.kind==='skip'?' · ลูกค้าไม่ให้เก็บ':'')+'</small>':'<span class="tmdash">-</span>')+'</td><td class="c">'+chip+'</td>'+
       '<td class="c num">'+r.ig+'</td><td class="c num">'+r.got+'</td><td class="c num">'+r.skip+'</td><td class="c num" style="'+(rm>0?'color:var(--danger)':'')+'">'+rm+'</td>'+
       '<td class="c"><span class="chip na num" title="IC แบบปูน มอบให้ลูกค้า ไม่ต้องเก็บ">'+r.ic+' มอบลูกค้า</span></td><td class="r">'+acts+'</td></tr>';
-  }).join(''):'<tr><td colspan="11" class="empty">ไม่มีลูกค้าตามตัวกรองนี้</td></tr>';
+  }).join(''):'<tr><td colspan="12" class="empty">ไม่มีลูกค้าตามตัวกรองนี้</td></tr>';
   var hold=MS.filter(function(it){return msOpen(it)&&it.end<MS_CUR+'-01'});
   $('clHold').innerHTML=hold.length?'<div class="note" style="margin-top:12px"><span class="ic">ℹ</span><span><b>ยังไม่ขึ้นรายการเก็บสถานี</b> (มีเรื่องรอชดเชย): '+hold.map(function(it){return esc(it.name)+' · รอชดเชย '+msMonthTh(it.missed)}).join(' · ')+' — จะขึ้นรายการหลังบันทึกบริการชดเชย หรือกดไม่ชดเชย</span></div>':'';
 }
