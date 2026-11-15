@@ -8,7 +8,7 @@
 --   dr = สัญญาที่ลูกค้าต่อแล้ว (สัญญาใหม่ dn ใส่ระหว่างเทส — 2.47)
 --   da / db / dc = ชุดตาราง host×recorder × ภายใน/เลยเพดาน × waived/makeup × ปิด/ยกเลิก (da ภายใน · db เลย · dc ปิด)
 BEGIN;
-SELECT plan(164);
+SELECT plan(167);
 
 INSERT INTO auth.users (id, instance_id, aud, role, email) VALUES
   ('00000000-0000-0000-0000-0000000000a1', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'host@test.local'),
@@ -450,6 +450,10 @@ RESET ROLE;
 SELECT ok((SELECT cancelled_at IS NULL FROM contracts WHERE id = pg_temp.id('df')), 'un-cancelling clears cancelled_at');
 SELECT throws_ok($$UPDATE contracts SET cancelled_at = now() WHERE id = pg_temp.id('df')$$,
   '23514', NULL, 'setting cancelled_at alone on an active contract is refused');
+SELECT throws_ok($$UPDATE contracts SET cancelled_at = NULL WHERE id = pg_temp.id('0e')$$,
+  '23514', NULL, 'clearing the date of a cancelled contract is refused (the cancel month never moves silently)');
+SELECT throws_ok($$UPDATE contracts SET status = 'active', cancelled_at = now() - interval '1 day' WHERE id = pg_temp.id('0e')$$,
+  '23514', NULL, 'un-cancelling while setting a new date is refused (no guessing)');
 
 -- สัญญาที่ยกเลิกหลังชดเชยแล้ว: เลิกผูกไม่ได้ (ผลคงไว้)
 SET LOCAL ROLE authenticated;
@@ -461,6 +465,8 @@ SET LOCAL ROLE authenticated;
 SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a1', true);
 SELECT throws_ok(pg_temp.mk('11', '10', pg_temp.td(), NULL), 'MS009', NULL,
   'a make-up on a cancelled contract cannot be unlinked (outcome kept)');
+SELECT throws_ok(pg_temp.old('11', '10', pg_temp.m(-1) + 5), 'MS009', NULL,
+  'a kept make-up on a cancelled contract cannot be moved to another month (host too)');
 RESET ROLE;
 
 -- =====================================================================

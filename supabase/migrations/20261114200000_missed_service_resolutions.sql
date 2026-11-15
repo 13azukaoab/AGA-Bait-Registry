@@ -97,6 +97,7 @@ $$;
 -- 0b. (L3) status = 'cancelled' ⇔ cancelled_at มีค่า — ให้ SQL (ดู status) กับ TS (ดู cancelledAt) ตรงกันเสมอ
 --   * trigger `contracts_cancelled_at_sync` (BEFORE INSERT / UPDATE OF status, cancelled_at):
 --       - เปลี่ยนเป็น cancelled โดยไม่ระบุวันที่ → เติม cancelled_at = now()
+--       - ล้าง cancelled_at ของสัญญาที่ยกเลิกอยู่แล้ว → ไม่เติมใหม่ (CHECK ปฏิเสธ 23514 · กันเดือนยกเลิกเลื่อนเงียบๆ)
 --       - เปลี่ยนจาก cancelled กลับเป็นสถานะอื่น (Host แก้กดผิด — M12/3.11 ยังอนุญาต) โดยไม่แตะ cancelled_at → ล้างเป็น NULL
 --         (เลือก "ล้าง" แทน "ห้ามเปลี่ยนกลับ" เพราะขัดกับสิทธิ์ Host แก้สัญญายกเลิกตาม 3.11)
 --       - ตั้ง cancelled_at ให้สัญญาที่ไม่ได้ยกเลิก → ไม่แก้ให้ ปล่อยให้ CHECK ปฏิเสธ (23514) ไม่เดาค่า
@@ -121,7 +122,10 @@ LANGUAGE plpgsql
 SET search_path = public, pg_temp
 AS $$
 BEGIN
-  IF NEW.status = 'cancelled' AND NEW.cancelled_at IS NULL THEN
+  -- เติมวันที่เฉพาะตอน "เปลี่ยนเป็น" cancelled (หรือ INSERT) — ล้างวันที่ของสัญญาที่ยกเลิกอยู่แล้ว
+  -- ไม่เติมใหม่ (จะย้ายเดือนยกเลิกแบบเงียบๆ) → ปล่อยให้ CHECK ปฏิเสธ 23514
+  IF NEW.status = 'cancelled' AND NEW.cancelled_at IS NULL
+     AND (TG_OP = 'INSERT' OR OLD.status IS DISTINCT FROM 'cancelled') THEN
     NEW.cancelled_at := now();
   ELSIF TG_OP = 'UPDATE' AND NEW.status <> 'cancelled' AND OLD.status = 'cancelled'
         AND NEW.cancelled_at IS NOT DISTINCT FROM OLD.cancelled_at THEN
@@ -229,8 +233,9 @@ BEGIN
 
   -- เลิกผูก / ย้ายการผูกของการเข้าเดิม: สัญญายกเลิก (MS009) / ต่อแล้ว (MS011) ห้าม — ผลที่บันทึกไว้ต้องคงไว้ (2.47)
   IF TG_OP = 'UPDATE' AND v_link_change AND OLD.makeup_for_month IS NOT NULL THEN
+    -- FOR SHARE: กันแข่งกับการยกเลิกสัญญาที่กำลังเกิดพร้อมกัน (การยกเลิกไม่ถือ advisory lock)
     IF EXISTS (SELECT 1 FROM contracts c WHERE c.id = OLD.contract_id
-                AND (c.status = 'cancelled' OR c.cancelled_at IS NOT NULL)) THEN
+                AND (c.status = 'cancelled' OR c.cancelled_at IS NOT NULL) FOR SHARE) THEN
       RAISE EXCEPTION 'the contract is cancelled' USING ERRCODE = 'MS009';
     END IF;
     IF contract_is_renewed(OLD.contract_id) THEN
