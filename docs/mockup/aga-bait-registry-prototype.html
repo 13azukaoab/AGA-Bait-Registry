@@ -2765,7 +2765,7 @@ function clRender(){
       '<td><span class="num">'+esc(r.ct)+'</span><small class="clsub num">'+clTerm(r)+'</small>'+chip+'</td>'+
       '<td><span class="num"><b>'+r.got+'</b> / '+r.ig+' สถานี</span><div class="clbar clbar-sm" role="img" aria-label="เก็บแล้ว '+r.got+' · ไม่เก็บ '+r.skip+' · เหลือ '+rm+'"><i class="ok" style="width:'+pg+'%"></i><i class="sk" style="width:'+ps+'%"></i><i class="rm" style="width:'+pr+'%"></i></div>'+
         '<small class="clsub">'+(rm>0?'<span style="color:var(--danger);font-weight:600">เหลือ '+rm+'</span>'+(r.skip?' · ไม่เก็บ '+r.skip:''):(r.skip?'ไม่เหลือให้เก็บ · ไม่เก็บ '+r.skip:'เก็บครบ'))+'</small></td>'+
-      '<td class="num">'+(r.last?msDateTh(r.last.date)+'<small class="clsub">ทีม '+esc(r.last.team)+(r.last.kind==='skip'?' · ลูกค้าไม่ให้เก็บ'+(r.last.reason?' <button type="button" class="clrbtn" data-clreason="'+r.id+'" aria-label="ดูเหตุผลที่ลูกค้าไม่ให้เก็บ '+esc(r.name)+'" title="ดูเหตุผล">เหตุผล</button>':''):'')+'</small>':'<span class="tmdash">-</span>')+'</td>'+
+      '<td class="num">'+(r.last?msDateTh(r.last.date)+'<small class="clsub">ทีม '+esc(r.last.team)+(r.last.kind==='skip'?' · ลูกค้าไม่ให้เก็บ'+(r.last.reason?' <button type="button" class="clrbtn" data-clreason="'+r.id+'" aria-label="ดูเหตุผลที่ลูกค้าไม่ให้เก็บ '+esc(r.name)+'" title="เหตุผล: '+esc(r.last.reason)+' (กดเพื่อดูรายละเอียด)">เหตุผล</button>':''):'')+'</small>':'<span class="tmdash">-</span>')+'</td>'+
       '<td class="r">'+(acts||finTxt)+(acts&&fin?'<div style="margin-top:6px">'+finTxt+'</div>':'')+'</td></tr>';
   }).join(''):'<tr><td colspan="5" class="empty">ไม่มีลูกค้าตามตัวกรองนี้</td></tr>';
   var hold=MS.filter(function(it){return msOpen(it)&&it.end<MS_CUR+'-01'});
