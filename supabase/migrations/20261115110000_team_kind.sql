@@ -9,7 +9,7 @@
 --      - ใช้ text + CHECK (ไม่ใช่ enum) → เพิ่มประเภทภายหลังได้ด้วย migration ธรรมดา
 --      - ชื่อทีม Z ที่ยังเป็นค่าเริ่มต้นเดิม 'ทีม Z (ติดตั้งงานใหม่)' → 'ทีม Z (ติดตั้ง)' (mockup FINAL)
 --   2. `teams.is_system` = ทีมระบบ (ตอนนี้มีทีมเดียวคือ Sup) — ลบไม่ได้ · เปลี่ยนรหัส/ประเภท/สาขาไม่ได้
---      (แก้ชื่อได้) · ตั้งทีมอื่นเป็นทีมระบบผ่าน API ไม่ได้ → trigger `teams_system_guard` (TM002)
+--      (แก้ชื่อได้ · เปลี่ยน id ไม่ได้) · ตั้งทีมอื่นเป็นทีมระบบผ่าน API ไม่ได้ → trigger `teams_system_guard` (TM002)
 --      - ด่านทำงานกับผู้เรียกผ่าน API (authenticated) · migration / service_role ไม่ติด (แบบเดียวกับด่าน M15)
 --   3. `save_service_visit`: ด่านทีม (SV006) เช็กจาก `kind IN ('service','install')` แทนรหัส `^[A-O]$` / `Z`
 --      → ทีมใหม่ที่เพิ่มจากหน้าตั้งค่า (เช่น P) บันทึกบริการได้ · ทีมหัวหน้างานยังถูกปฏิเสธเหมือน Sup เดิม
@@ -18,12 +18,12 @@
 --        (ล่าสุด 20261112180000) · ด่าน visits ทั้งหมด · `save_makeup_service_visit` (M18 เรียก save_service_visit
 --        จึงได้ด่านใหม่ไปเอง) · `visits_makeup_link_guard` (ไม่แตะทีม)
 --   4. `delete_team(p_team_id)` — host เท่านั้น (ตรง RLS `teams_host_write`) · SECURITY INVOKER
---      - ทีมที่ยังมีงานผูก (contract_teams / visit_teams / visits.team_id / profiles.team_id) → TM001 ข้อความไทย
+--      - ทีมที่ยังมีงานผูก (contract_teams / visit_teams / profiles.team_id) → TM001 ข้อความไทย
 --        + DETAIL เป็น JSON จำนวนที่ผูก · FK เดิม (RESTRICT) เป็นตาข่ายชั้นสุดท้าย — ไม่มี ON DELETE CASCADE
 --      - ทีมระบบ → TM002 · ไม่พบทีม → AG004 · ไม่ใช่ host → 42501
 --   5. `reorder_customer_types(p_codes text[])` — host เท่านั้น · ส่ง "รหัสทุกตัวตามลำดับใหม่" ทั้งชุดในครั้งเดียว
---      - sort_order เป็น UNIQUE แบบไม่ deferrable (Postgres ตรวจทีละแถว) → สลับ 2 ขั้นใน transaction เดียว:
---        ตั้งเป็นค่าติดลบ (−ลำดับใหม่) ก่อน แล้วค่อยกลับเป็นบวก → ไม่ชนกันระหว่างทาง
+--      - sort_order เป็น UNIQUE แบบไม่ deferrable (Postgres ตรวจทีละแถว) → เขียน 2 ขั้นใน transaction เดียว:
+--        ย้ายไปค่าชั่วคราว (offset + ลำดับใหม่ · offset ≥ ค่าเดิมสูงสุดและ ≥ n) แล้วค่อยลงค่าจริง 1..n → ไม่ชนกันระหว่างทาง
 --      - ล็อกตาราง (SHARE ROW EXCLUSIVE: อ่านได้ เขียนพร้อมกันไม่ได้) แล้วตรวจว่ารายการครบทุกรหัส ไม่ซ้ำ ไม่มีรหัสแปลก
 --        → ไม่ตรง = CT001 (ข้อความไทย) ไม่แก้อะไรเลย
 --   * error ใหม่: TM001 (ทีมมีงานผูก) · TM002 (ทีมระบบ) · CT001 (รายการจัดเรียงไม่ตรงกับข้อมูลปัจจุบัน)
@@ -97,7 +97,8 @@ BEGIN
   IF NEW.is_system IS DISTINCT FROM OLD.is_system THEN
     RAISE EXCEPTION 'เปลี่ยนสถานะทีมระบบจากหน้าจอไม่ได้' USING ERRCODE = 'TM002';
   END IF;
-  IF OLD.is_system AND (NEW.code, NEW.kind, NEW.branch_id) IS DISTINCT FROM (OLD.code, OLD.kind, OLD.branch_id) THEN
+  IF OLD.is_system AND (NEW.id, NEW.code, NEW.kind, NEW.branch_id)
+                       IS DISTINCT FROM (OLD.id, OLD.code, OLD.kind, OLD.branch_id) THEN
     RAISE EXCEPTION 'ทีม % เป็นทีมระบบ เปลี่ยนรหัส ประเภท หรือสาขาไม่ได้ (แก้ชื่อได้)', OLD.code USING ERRCODE = 'TM002';
   END IF;
   RETURN NEW;
@@ -451,9 +452,8 @@ BEGIN
   END IF;
 
   SELECT count(*) INTO v_contracts FROM contract_teams ct WHERE ct.team_id = p_team_id;
-  SELECT count(*) INTO v_visits FROM visits vi
-   WHERE vi.team_id = p_team_id
-      OR EXISTS (SELECT 1 FROM visit_teams vt WHERE vt.visit_id = vi.id AND vt.team_id = p_team_id);
+  -- ทีมที่เข้าบริการอยู่ใน visit_teams เท่านั้น (visits.team_id ถูกลบไปแล้วใน 20261112120000)
+  SELECT count(DISTINCT vt.visit_id) INTO v_visits FROM visit_teams vt WHERE vt.team_id = p_team_id;
   SELECT count(*) INTO v_users FROM profiles pr WHERE pr.team_id = p_team_id;
 
   IF v_contracts + v_visits + v_users > 0 THEN
@@ -488,6 +488,7 @@ AS $$
 DECLARE
   v_total   int;
   v_updated int;
+  v_offset  int;
 BEGIN
   IF NOT is_host() THEN
     RAISE EXCEPTION 'not allowed to reorder customer types' USING ERRCODE = '42501';
@@ -512,16 +513,18 @@ BEGIN
       USING ERRCODE = 'CT001';
   END IF;
 
-  -- ขั้น 1: ลำดับใหม่แบบติดลบ (ค่าเดิมเป็นบวกทั้งหมด จึงไม่ชนกันระหว่างทาง)
-  UPDATE customer_types ct SET sort_order = -x.ord::int
+  -- ขั้น 1: ย้ายทุกแถวไปค่าชั่วคราว offset + ลำดับใหม่ · offset ≥ ค่าสูงสุดเดิม และ ≥ n
+  --         → ค่าชั่วคราวไม่ชนค่าเดิม (ทุกค่าเดิม ≤ offset) และไม่ชนกันเอง ไม่ว่าค่าเดิมจะเป็นอะไร (รวมค่า ≤ 0)
+  SELECT greatest(coalesce(max(ct.sort_order), 0), v_total) INTO v_offset FROM customer_types ct;
+  UPDATE customer_types ct SET sort_order = v_offset + x.ord::int
     FROM unnest(p_codes) WITH ORDINALITY AS x(code, ord)
    WHERE ct.code = x.code;
   GET DIAGNOSTICS v_updated = ROW_COUNT;
   IF v_updated <> v_total THEN
     RAISE EXCEPTION 'not allowed to reorder customer types' USING ERRCODE = '42501';
   END IF;
-  -- ขั้น 2: กลับเป็นบวก = 1..n ตามลำดับที่ส่งมา
-  UPDATE customer_types ct SET sort_order = -ct.sort_order WHERE ct.sort_order < 0;
+  -- ขั้น 2: ลงค่าจริง 1..n ตามลำดับที่ส่งมา (ทุกค่าชั่วคราว > offset ≥ n จึงไม่ชนกันระหว่างทาง)
+  UPDATE customer_types ct SET sort_order = ct.sort_order - v_offset;
 END;
 $$;
 

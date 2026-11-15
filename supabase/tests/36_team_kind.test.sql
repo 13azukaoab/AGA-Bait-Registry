@@ -2,7 +2,7 @@
 -- Role simulation: seed as postgres, then SET LOCAL ROLE authenticated and set
 -- request.jwt.claim.sub (what auth.uid() reads). RESET ROLE to inspect as superuser.
 BEGIN;
-SELECT plan(66);
+SELECT plan(67);
 
 -- =====================================================================
 -- โครงสร้าง + backfill
@@ -53,7 +53,7 @@ INSERT INTO contracts (id, customer_id, contract_no, start_date, term_years, val
 INSERT INTO stations (id, contract_id, type, station_no) VALUES
   ('00000000-0000-0000-0000-0000000000e1', '00000000-0000-0000-0000-0000000000d1', 'IG', 1);
 
--- ทีมทดสอบ (เพิ่มเป็น postgres): Q หัวหน้างาน · U ผูกสัญญา · V ผูกผู้ใช้ · W ผูก visits.team_id เดิม · X ว่าง
+-- ทีมทดสอบ (เพิ่มเป็น postgres): Q หัวหน้างาน · U ผูกสัญญา · V ผูกผู้ใช้ · W ผูกการเข้า (ทีมที่ 2 ของการเข้า f2) · X ว่าง
 INSERT INTO teams (id, code, name, kind) VALUES
   ('00000000-0000-0000-0000-0000000000b2', 'Q', 'ทีม Q', 'supervisor'),
   ('00000000-0000-0000-0000-0000000000b3', 'U', 'ทีม U', 'service'),
@@ -143,8 +143,9 @@ SELECT lives_ok($$SELECT public.save_service_visit(pg_temp.payload('00000000-000
   'P as an install team records again');
 RESET ROLE;
 
--- การเข้าเดิมที่ผูกทีม W ผ่านช่อง visits.team_id (ก่อนมี visit_teams)
-UPDATE visits SET team_id = '00000000-0000-0000-0000-0000000000b5' WHERE id = '00000000-0000-0000-0000-0000000000f2';
+-- ทีม W เป็นทีมที่ 2 ของการเข้า f2 (คู่กับ Z)
+INSERT INTO visit_teams (visit_id, team_id)
+VALUES ('00000000-0000-0000-0000-0000000000f2', '00000000-0000-0000-0000-0000000000b5');
 
 -- =====================================================================
 -- ลบทีม
@@ -169,7 +170,7 @@ SELECT throws_ok($$SELECT public.delete_team('00000000-0000-0000-0000-0000000000
   'a team set on a user profile cannot be deleted (TM001)');
 SELECT throws_ok($$SELECT public.delete_team('00000000-0000-0000-0000-0000000000b5')$$,
   'TM001', 'ลบทีม W ไม่ได้ เพราะยังมีงานผูกอยู่ (สัญญา 0 · การเข้าบริการ 1 · ผู้ใช้ 0)',
-  'a team on the legacy visits.team_id cannot be deleted (TM001)');
+  'a team that joined a visit with another team cannot be deleted (TM001)');
 SELECT throws_ok($$SELECT public.delete_team((SELECT sup FROM _t))$$,
   'TM002', 'ทีม Sup เป็นทีมระบบ ลบไม่ได้', 'the system team Sup cannot be deleted (TM002)');
 SELECT throws_ok($$SELECT public.delete_team('00000000-0000-0000-0000-00000000dead')$$,
@@ -185,6 +186,8 @@ SELECT throws_ok($$UPDATE teams SET kind = 'service' WHERE code = 'Sup'$$,
   'TM002', NULL, 'the system team kind cannot change');
 SELECT throws_ok($$UPDATE teams SET code = 'SUP2' WHERE code = 'Sup'$$,
   'TM002', NULL, 'the system team code cannot change');
+SELECT throws_ok($$UPDATE teams SET id = gen_random_uuid() WHERE code = 'Sup'$$,
+  'TM002', NULL, 'the system team id cannot change');
 SELECT lives_ok($$UPDATE teams SET name = 'หัวหน้างาน (Supervisor)' WHERE code = 'Sup'$$,
   'the system team can be renamed');
 
