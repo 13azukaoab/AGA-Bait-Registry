@@ -913,7 +913,7 @@ tfoot td{padding:10px 12px;font-weight:700;background:var(--surface-2);border-to
     <!-- ========== COLLECT STATIONS (expired contracts) ========== -->
     <section id="s-collect" hidden>
       <div class="page-head"><h1>ลูกค้ารอเก็บสถานี</h1>
-        <p>สัญญาหมดแล้ว — เก็บสถานี <b>IG</b> คืนบริษัท · <b>IC (แบบปูน) มอบให้ลูกค้า</b> ไม่ต้องเก็บ · ปิดสัญญาได้ทันทีแม้ IG ยังไม่เก็บ แต่ IG ที่เหลือยังอยู่ในรายการนี้จนกด "เก็บแล้ว" หรือ "ไม่เก็บ"</p></div>
+        <p>สัญญาหมดแล้ว — เก็บสถานี <b>IG</b> คืนบริษัท · ปิดสัญญาได้ทันทีแม้ IG ยังไม่เก็บ แต่ IG ที่เหลือยังอยู่ในรายการนี้จนกด "เก็บแล้ว" หรือ "ไม่เก็บ"</p></div>
       <div class="toolbar">
         <div class="field"><label>เขต</label><select><option>เขต 1</option><option>ทุกเขต</option></select></div>
         <div class="field"><label>สาขา</label><select><option>พุทธมณฑล</option><option>ทุกสาขา</option></select></div>
@@ -927,7 +927,7 @@ tfoot td{padding:10px 12px;font-weight:700;background:var(--surface-2);border-to
         <tbody id="clBody"></tbody>
       </table></div>
       <div id="clHold"></div>
-      <div class="note"><span class="ic">ℹ</span><span>หมดสัญญาแล้วระบบ <b>ไม่ลบลูกค้าออกอัตโนมัติ</b> · เก็บคืนเฉพาะ <b>IG</b> (IC มอบให้ลูกค้า · กล่อง AG ที่ค้างไม่ต้องเก็บและไม่ขวางการปิดสัญญา) · IG ที่ "ไม่เก็บ" ต้องมีเหตุผล และนับเป็น "IG ที่ทิ้งไว้สะสม" เพื่อดูต้นทุน · สถานะนี้เห็น <b>เฉพาะภายใน</b> (Admin / Recorder / Host) ไม่ส่งเข้า Dashboard สาธารณะ (viewer)</span></div>
+      <div class="note"><span class="ic">ℹ</span><span>หมดสัญญาแล้วระบบ <b>ไม่ลบลูกค้าออกอัตโนมัติ</b> · เก็บคืนเฉพาะ <b>IG</b> (กล่อง AG ที่ค้างไม่ต้องเก็บและไม่ขวางการปิดสัญญา) · IG ที่ "ไม่เก็บ" ต้องมีเหตุผล และนับเป็น "IG ที่ทิ้งไว้สะสม" เพื่อดูต้นทุน · สถานะนี้เห็น <b>เฉพาะภายใน</b> (Admin / Recorder / Host) ไม่ส่งเข้า Dashboard สาธารณะ (viewer)</span></div>
     </section>
 
     <!-- ========== 4. REGISTRY ========== -->
@@ -2762,7 +2762,7 @@ function clRender(){
     return '<tr'+(fin?' class="clfin"':'')+'><td><b>'+esc(r.name)+'</b><a class="rowlk" href="'+custHref(r.name,r.id.slice(1))+'" aria-label="ดูรายละเอียดลูกค้า '+esc(r.name)+'">↗</a><small class="clsub">'+esc(clBranch(r))+'</small></td>'+
       '<td><span class="num">'+esc(r.ct)+'</span><small class="clsub num">'+clTerm(r)+'</small>'+chip+'</td>'+
       '<td><span class="num"><b>'+r.got+'</b> / '+r.ig+' สถานี</span><div class="clbar clbar-sm" role="img" aria-label="เก็บแล้ว '+r.got+' · ไม่เก็บ '+r.skip+' · เหลือ '+rm+'"><i class="ok" style="width:'+pg+'%"></i><i class="sk" style="width:'+ps+'%"></i><i class="rm" style="width:'+pr+'%"></i></div>'+
-        '<small class="clsub">'+(rm>0?'<span style="color:var(--danger);font-weight:600">เหลือ '+rm+'</span>'+(r.skip?' · ไม่เก็บ '+r.skip:''):(r.skip?'ไม่เหลือให้เก็บ · ไม่เก็บ '+r.skip:'เก็บครบ'))+' · IC '+r.ic+' มอบลูกค้า</small></td>'+
+        '<small class="clsub">'+(rm>0?'<span style="color:var(--danger);font-weight:600">เหลือ '+rm+'</span>'+(r.skip?' · ไม่เก็บ '+r.skip:''):(r.skip?'ไม่เหลือให้เก็บ · ไม่เก็บ '+r.skip:'เก็บครบ'))+'</small></td>'+
       '<td class="num">'+(r.last?msDateTh(r.last.date)+'<small class="clsub">ทีม '+esc(r.last.team)+(r.last.kind==='skip'?' · ลูกค้าไม่ให้เก็บ':'')+'</small>':'<span class="tmdash">-</span>')+'</td>'+
       '<td class="r">'+(acts||finTxt)+(acts&&fin?'<div style="margin-top:6px">'+finTxt+'</div>':'')+'</td></tr>';
   }).join(''):'<tr><td colspan="5" class="empty">ไม่มีลูกค้าตามตัวกรองนี้</td></tr>';
@@ -2770,7 +2770,7 @@ function clRender(){
   $('clHold').innerHTML=hold.length?'<div class="note" style="margin-top:12px"><span class="ic">ℹ</span><span><b>ยังไม่ขึ้นรายการเก็บสถานี</b> (มีเรื่องรอชดเชย): '+hold.map(function(it){return esc(it.name)+' · รอชดเชย '+msMonthTh(it.missed)}).join(' · ')+' — จะขึ้นรายการหลังบันทึกบริการชดเชย หรือกดไม่ชดเชย</span></div>':'';
 }
 function clOpen(kind,r,opener){
-  var rm=clRem(r),head='<div class="lab">'+esc(r.name)+' · สัญญา '+esc(r.ct)+' · IG คงเหลือ <b class="num">'+rm+'</b> สถานี · IC '+r.ic+' จุด มอบให้ลูกค้า (ไม่ต้องเก็บ)</div>';
+  var rm=clRem(r),head='<div class="lab">'+esc(r.name)+' · สัญญา '+esc(r.ct)+' · IG คงเหลือ <b class="num">'+rm+'</b> สถานี</div>';
   var nField='<div class="field"><label for="clN">จำนวน IG</label><input type="number" id="clN" class="num" min="1" max="'+rm+'" value="'+rm+'" inputmode="numeric"></div>';
   /* วันที่ + ทีม (เจ้าของขอ 15 พ.ย. 2026) — ใช้แยกยอดรายเดือน/รายทีม · ค่าเริ่มต้น = ทีมประจำของลูกค้า */
   var base=null;CUSTOMERS.forEach(function(c){if(c.ct===r.ct&&!c.mkOf)base=c});var defT=base?base.team:'';
