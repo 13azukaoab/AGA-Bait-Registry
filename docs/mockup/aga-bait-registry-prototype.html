@@ -502,6 +502,12 @@ tfoot td{padding:10px 12px;font-weight:700;background:var(--surface-2);border-to
 .msrow .acts{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
 .msnote{padding:9px 14px;border-top:1px solid var(--border);font-size:12px;color:var(--fg-muted)}
 @media (max-width:860px){.msrow{grid-template-columns:1fr}.msrow .acts{justify-content:flex-start}}
+#clStats{grid-template-columns:repeat(2,minmax(0,1fr))}
+.clcard .clu{font-size:13px;font-weight:500;color:var(--fg-muted)}
+.clbar{display:flex;height:10px;border-radius:999px;overflow:hidden;background:var(--surface-3);margin:10px 0 8px}
+.clbar i{display:block;height:100%}.clbar .ok,.cllg .ok{background:var(--ok)}.clbar .sk,.cllg .sk{background:var(--fg-faint)}.clbar .rm,.cllg .rm{background:var(--danger)}
+.cllg{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:12.5px;color:var(--fg-muted)}
+.cllg i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
 .msclosed{border-top:1px solid var(--border);background:var(--surface-2)}
 .msclbtn{display:block;width:100%;text-align:left;background:none;border:0;padding:10px 14px;min-height:40px;font:inherit;font-size:12.5px;color:var(--fg-muted);cursor:pointer}
 .msclbtn:hover{color:var(--accent)}
@@ -2711,7 +2717,7 @@ var CL=[
   {id:'k2',name:'ตลาดสดบางแค',ct:'CT24-0000102',end:'2026-09-30',closed:false,ig:30,got:30,skip:0,ic:16},
   {id:'k3',name:'ร้านเสริมสวยบ้านดอกไม้',ct:'CT26-0000266',end:'2026-09-06',closed:true,ig:4,got:0,skip:0,ic:0},
   {id:'k4',name:'ร้านกาแฟบ้านไร่',ct:'CT25-0000120',end:'2026-08-31',closed:false,ig:6,got:4,skip:0,ic:4},
-  {id:'k5',name:'หจก. รุ่งเรืองพาณิชย์',ct:'CT25-0000077',end:'2026-08-20',closed:true,ig:10,got:0,skip:3,ic:4}
+  {id:'k5',name:'หจก. รุ่งเรืองพาณิชย์',ct:'CT25-0000077',end:'2026-08-20',closed:true,ig:10,got:7,skip:3,ic:4}
 ];
 function clRem(r){return r.ig-r.got-r.skip}
 function clFind(id){for(var i=0;i<CL.length;i++){if(CL[i].id===id)return CL[i]}return null}
@@ -2722,13 +2728,17 @@ function clRender(){
   var wait=CL.filter(function(r){return clRem(r)>0}),rem=0,got=0,skip=0,tot=0;
   CL.forEach(function(r){rem+=clRem(r);got+=r.got;skip+=r.skip;tot+=r.ig});
   var tc=$('clStat');if(tc){tc.className='stat '+(wait.length?'warn':'ok');tc.innerHTML='<div class="lab"><span class="dot" style="background:var(--'+(wait.length?'warn':'ok')+')"></span> ลูกค้ารอเก็บสถานี</div><div class="val num">'+wait.length+' <span style="font-size:14px;font-weight:500;color:var(--fg-muted)">ราย</span></div><div class="sub">IG เหลือ '+rem+' สถานี · <a href="#collect" onclick="go(\'collect\');return false">ดูรายการ →</a></div>'}
-  /* การ์ด 4 ใบ (เจ้าของขอ 15 พ.ย. 2026): ยังไม่เก็บ ราย/สถานี · เก็บแล้ว ราย/สถานี — มีหน่วยกำกับทุกตัวเลข */
-  var doneC=CL.filter(function(r){return clRem(r)===0}).length;
+  /* การ์ด 2 ใบแถวเดียว (เจ้าของเลือกแบบ A · 15 พ.ย. 2026): ลูกค้า (ราย) / สถานี IG — แถบ 3 สี เก็บแล้ว · ไม่เก็บ (ลูกค้าไม่ให้เก็บ) · ยังต้องเข้าเก็บ
+     ลูกค้า: เก็บครบ = ไม่เหลือ IG และไม่มีที่ไม่เก็บ · ไม่ให้เก็บ = ไม่เหลือ IG แต่มีบางสถานีกด "ไม่เก็บ" · ยังต้องเข้าเก็บ = ยังเหลือ IG */
+  var cDone=0,cSkip=0,cWait=0;CL.forEach(function(r){if(clRem(r)>0)cWait++;else if(r.skip>0)cSkip++;else cDone++});
+  var nC=CL.length||1,nS=tot||1;
+  function bar(a,b,c,n){return '<div class="clbar" role="img" aria-label="เก็บแล้ว '+a+' · ไม่เก็บ '+b+' · ยังต้องเข้าเก็บ '+c+'"><i class="ok" style="width:'+(a*100/n)+'%"></i><i class="sk" style="width:'+(b*100/n)+'%"></i><i class="rm" style="width:'+(c*100/n)+'%"></i></div>'}
+  function lg(a,b,c,u){return '<div class="cllg"><span><i class="ok"></i>'+a+'</span><span><i class="sk"></i>'+b+'</span><span><i class="rm"></i>'+c+'</span></div>'}
   $('clStats').innerHTML=
-    '<div class="stat warn"><div class="lab">ลูกค้าที่ยังเก็บไม่ครบ</div><div class="val num">'+wait.length+' <span style="font-size:14px;font-weight:500;color:var(--fg-muted)">ราย</span></div><div class="sub">ยังมี IG เหลือให้เก็บ (รวมที่ปิดสัญญาแล้ว)</div></div>'+
-    '<div class="stat danger"><div class="lab">IG ที่ยังไม่ได้เก็บ</div><div class="val num">'+rem+' <span style="font-size:14px;font-weight:500;color:var(--fg-muted)">สถานี</span></div><div class="sub">ไม่นับ IC (มอบให้ลูกค้า) · ไม่เก็บ/ทิ้งไว้สะสม '+skip+' สถานี</div></div>'+
-    '<div class="stat ok"><div class="lab">ลูกค้าที่เก็บครบแล้ว</div><div class="val num">'+doneC+' <span style="font-size:14px;font-weight:500;color:var(--fg-muted)">ราย</span></div><div class="sub">จากทั้งหมด '+CL.length+' ราย</div></div>'+
-    '<div class="stat ok"><div class="lab">IG ที่เก็บคืนแล้ว</div><div class="val num">'+got+' <span style="font-size:14px;font-weight:500;color:var(--fg-muted)">สถานี</span></div><div class="sub">'+(tot?Math.round(got*100/tot):0)+'% ของ IG ทั้งหมด '+tot+' สถานี</div></div>';
+    '<div class="stat clcard"><div class="lab">ลูกค้า (ราย)</div><div class="val num">'+cDone+' <span class="clu">/ '+CL.length+' ราย เก็บครบแล้ว</span></div>'+bar(cDone,cSkip,cWait,nC)+
+      lg('เก็บครบ '+cDone+' ราย','ลูกค้าไม่ให้เก็บ '+cSkip+' ราย','ยังต้องเข้าเก็บ '+cWait+' ราย')+'</div>'+
+    '<div class="stat clcard"><div class="lab">สถานี IG</div><div class="val num">'+got+' <span class="clu">/ '+tot+' สถานี เก็บคืนแล้ว ('+Math.round(got*100/nS)+'%)</span></div>'+bar(got,skip,rem,nS)+
+      lg('เก็บแล้ว '+got+' สถานี','ไม่เก็บ (ลูกค้าไม่ให้) '+skip+' สถานี','ยังไม่ได้เก็บ '+rem+' สถานี')+'</div>';
   var dis=can?'':' disabled title="เฉพาะหัวหน้างาน/host"';
   body.innerHTML=rows.length?rows.map(function(r){
     var rm=clRem(r),chip=r.closed?'<span class="chip na">ปิดสัญญาแล้ว</span>':'<span class="chip pend">หมดสัญญา · ยังไม่ปิด</span>';
