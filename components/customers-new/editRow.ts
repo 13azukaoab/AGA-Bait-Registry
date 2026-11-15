@@ -4,10 +4,11 @@
  * Logic summary:
  *   * กดปุ่ม "แก้" → แปลงสัญญาที่บันทึกแล้ว (`SavedContract`) เป็นแถวร่าง (`DraftRow`) เพื่อใช้ช่องกรอก/ตัวตรวจ/
  *     ตัวคำนวณ Tier ชุดเดียวกับแถวใหม่ · กดบันทึก → `saveDraft(..., { contractId })` = RPC `save_job_opening` โหมดแก้
- *   * แก้ได้: เลขที่สัญญา · ประเภทงาน · ผู้ขาย/ตำแหน่ง · วันที่รับ Mail · วัน/เวลานัดบริการ · ทีม · ระยะ/มูลค่า ·
- *     วันเริ่ม/สิ้นสุด · เบิกด่วน · หมายเหตุ · ผูก Renew
+ *   * แก้ได้: เลขที่สัญญา · ผู้ขาย/ตำแหน่ง · วันที่รับ Mail · วัน/เวลานัดบริการ · ทีม · ระยะ/มูลค่า ·
+ *     วันเริ่ม/สิ้นสุด · เบิกด่วน · หมายเหตุ
  *   * ล็อก: สาขา (AG006 — เปลี่ยนไม่ได้ ถ้าลงผิดสาขาให้ลบแล้วเปิดใหม่) · ชื่อลูกค้า (ลูกค้า 1 คนมีหลายสัญญา) ·
- *     ประเภทลูกค้า (เป็นของลูกค้า RPC ไม่เขียนทับ)
+ *     ประเภทลูกค้า (เป็นของลูกค้า RPC ไม่เขียนทับ) · ประเภทงาน New/Renew และสัญญาเก่าที่ผูก (M23 / AG009 —
+ *     DB ล็อก `renewed_from_contract_id` หลังสร้าง · ตอนบันทึกส่งค่าเดิมกลับเสมอ ดู `buildSaveParams`)
  *   * สัญญา `closed` / `cancelled` → admin/role อื่นปิดปุ่มแก้ · host แก้ได้ (DECISIONS 3.11 · DB บังคับใน M12)
  *   * วันสิ้นสุด: ถ้าค่าที่บันทึกไว้ตรงสูตร (วันเริ่ม + N ปี − 1 วัน) → ให้คำนวณใหม่ตามวันเริ่ม/ระยะต่อ
  *     ถ้าเคยตั้งเองต่างจากสูตร → คงค่าเดิม (endTouched)
@@ -50,6 +51,10 @@ export const EDIT_LOCK_REASONS = {
   customerName:
     "แก้ชื่อลูกค้าในหน้านี้ไม่ได้ — ลูกค้า 1 คนมีได้หลายสัญญา การแก้ชื่อจะกระทบทุกสัญญาของลูกค้าคนนี้",
   customerType: "ประเภทลูกค้าเป็นของลูกค้า ไม่ใช่ของสัญญา — แก้ในหน้านี้ไม่ได้",
+  saleType:
+    "สลับ New/Renew ไม่ได้หลังบันทึก — ถ้าลงผิดประเภท ให้ลบสัญญานี้แล้วเปิดงานใหม่ (หรือแจ้งผู้ดูแลระบบ)",
+  renewal:
+    'แก้ช่อง "ต่อมาจากสัญญาไหน" ไม่ได้หลังบันทึก — ถ้าผูกผิด ให้แจ้งผู้ดูแลระบบ',
 } as const;
 
 /** สร้างแถวร่างสำหรับแก้จากสัญญาที่บันทึกแล้ว (ค่าตรงกับที่ผู้ใช้เห็นในตาราง) */
@@ -121,28 +126,6 @@ function editableSnapshot(d: DraftRow): string {
 /** แถวที่แก้ยังเหมือนค่าเดิมทุกช่อง (ไม่มีอะไรให้บันทึก) */
 export function isEditUnchanged(original: DraftRow, current: DraftRow): boolean {
   return editableSnapshot(original) === editableSnapshot(current);
-}
-
-export type RenewalEditCheck = { ok: true } | { ok: false; error: string };
-
-/**
- * ตรวจสัญญาเก่าที่เลือกผูก Renew ตอนแก้แถว: ต้องเป็นสัญญาของลูกค้าคนเดียวกัน และไม่ใช่ตัวมันเอง
- * (ตอนแก้ ลูกค้าของสัญญาล็อกอยู่ — การเลือกสัญญาเก่าของคนอื่นจะย้ายลูกค้า ซึ่งหน้านี้ไม่ทำ)
- */
-export function checkRenewalPickForEdit(
-  link: RenewalLink,
-  editing: { contractId: string; customerId: string; customerName: string },
-): RenewalEditCheck {
-  if (link.contractId === editing.contractId) {
-    return { ok: false, error: "สัญญาผูกกับตัวเองไม่ได้ เลือกสัญญาเก่าอีกใบ" };
-  }
-  if (link.customerId !== editing.customerId) {
-    return {
-      ok: false,
-      error: `Renew ต้องผูกกับสัญญาเก่าของลูกค้าคนเดียวกัน — สัญญานี้เป็นของ "${editing.customerName}" แต่สัญญา ${link.contractNo} เป็นของ "${link.customerName}"`,
-    };
-  }
-  return { ok: true };
 }
 
 /** เดือน 'YYYY-MM' ของวันที่ 'YYYY-MM-DD' (ใช้บอกว่าแก้วันเริ่มแล้วสัญญาย้ายไปเดือนอื่น) */

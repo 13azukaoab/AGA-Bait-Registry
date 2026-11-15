@@ -42,7 +42,6 @@ import { buildDeleteConfirmText, contractDeleteBlockReason } from "./deleteRules
 import { loadContractById } from "./data";
 import {
   EDIT_LOCK_REASONS,
-  checkRenewalPickForEdit,
   contractEditBlockReason,
   contractFileBlockReason,
   draftFromSaved,
@@ -100,7 +99,8 @@ function isNewer(a: string, b: string): boolean {
   return !Number.isNaN(ta) && (Number.isNaN(tb) || ta > tb);
 }
 
-type RenewalTarget = { kind: "draft"; key: string } | { kind: "edit"; contractId: string };
+/** กล่องค้นหาสัญญาเก่าเปิดได้เฉพาะแถวใหม่ — แถวที่บันทึกแล้วล็อกการผูก (M23 / AG009) */
+type RenewalTarget = { kind: "draft"; key: string };
 
 type FileTarget =
   | { kind: "saved"; contractId: string }
@@ -338,6 +338,8 @@ export function NewContractsClient({
     const res = await saveDraft(supabase, edit.draft, check, {
       contractId: s.contractId,
       expectedUpdatedAt: edit.expectedUpdatedAt,
+      // M23 / AG009: ช่อง "ต่อมาจากสัญญาไหน" ล็อกหลังสร้าง — ส่งค่าเดิมจากฐานข้อมูลกลับเสมอ
+      renewedFromContractId: s.renewedFrom?.contractId ?? null,
     });
     setSavingEditId(null);
     if (!res.ok) {
@@ -739,7 +741,7 @@ export function NewContractsClient({
                     }}
                     onPatch={(patch) => patchEdit(s.contractId, patch)}
                     onFile={() => setFileTarget({ kind: "saved", contractId: s.contractId })}
-                    onRenewal={() => setRenewalFor({ kind: "edit", contractId: s.contractId })}
+                    onRenewal={() => undefined}
                     onRemove={() => cancelEdit(s.contractId)}
                   />
                 );
@@ -998,24 +1000,13 @@ export function NewContractsClient({
           onPick={(link: RenewalLink) => {
             const target = renewalFor;
             setRenewalFor(null);
-            if (target.kind === "draft") {
-              // ลูกค้าเดิม: ใช้ชื่อ/สาขาของลูกค้านั้น (ไม่สร้างลูกค้าใหม่ตอนบันทึก)
-              patchDraft(target.key, {
-                renewal: link,
-                customerName: link.customerName,
-                branchText: branchById.get(link.branchId)?.name ?? "",
-              });
-              return;
-            }
-            // แก้แถวที่บันทึกแล้ว: ลูกค้า/สาขาล็อกอยู่ — ผูกได้เฉพาะสัญญาเก่าของลูกค้าคนเดียวกัน
-            const s = saved.find((x) => x.contractId === target.contractId);
-            if (!s) return;
-            const verdict = checkRenewalPickForEdit(link, s);
-            if (!verdict.ok) {
-              setEditError(target.contractId, verdict.error);
-              return;
-            }
-            patchEdit(target.contractId, { renewal: link });
+            // ลูกค้าเดิม: ใช้ชื่อ/สาขาของลูกค้านั้น (ไม่สร้างลูกค้าใหม่ตอนบันทึก)
+            // (แถวที่บันทึกแล้วผูก/เปลี่ยนสัญญาเก่าไม่ได้ — M23 / AG009 จึงมีแต่แถวใหม่ที่เปิดกล่องนี้)
+            patchDraft(target.key, {
+              renewal: link,
+              customerName: link.customerName,
+              branchText: branchById.get(link.branchId)?.name ?? "",
+            });
           }}
         />
       ) : null}
@@ -1205,16 +1196,27 @@ function DraftTableRow({
           />
         </td>
         <td className={TD}>
-          <div role="group" aria-label="ประเภทงาน" className="inline-flex overflow-hidden rounded-md border border-border-strong text-[12px]">
+          <div
+            role="group"
+            aria-label="ประเภทงาน"
+            title={isEdit ? EDIT_LOCK_REASONS.saleType : ""}
+            className="inline-flex overflow-hidden rounded-md border border-border-strong text-[12px]"
+          >
             {(["new", "renew"] as const).map((t) => (
               <button
                 key={t}
                 type="button"
                 aria-pressed={d.saleType === t}
+                disabled={isEdit}
                 onClick={() => onPatch(t === "new" ? { saleType: t, renewal: null } : { saleType: t })}
                 className={cx(
-                  "cursor-pointer px-2 py-1 focus-visible:outline-2 focus-visible:outline-accent",
-                  d.saleType === t ? "bg-accent text-accent-fg" : "bg-surface text-fg-muted hover:bg-surface-2",
+                  "px-2 py-1 focus-visible:outline-2 focus-visible:outline-accent",
+                  isEdit ? "cursor-not-allowed" : "cursor-pointer",
+                  d.saleType === t
+                    ? isEdit
+                      ? "bg-surface-3 text-fg"
+                      : "bg-accent text-accent-fg"
+                    : cx("bg-surface text-fg-muted", !isEdit && "hover:bg-surface-2"),
                 )}
               >
                 {t === "new" ? "New" : "Renew"}
@@ -1227,16 +1229,29 @@ function DraftTableRow({
             <Chip tone="na">— งานใหม่ —</Chip>
           ) : (
             <div className="flex items-center gap-1">
-              <Chip tone={d.renewal ? "ok" : "miss"} onClick={onRenewal}>
-                {d.renewal ? (
-                  <>
-                    🔗 <span className="num">{d.renewal.contractNo}</span>
-                  </>
-                ) : (
-                  "⚠ ยังไม่ผูก · ค้นหา"
-                )}
-              </Chip>
-              {d.renewal ? (
+              {isEdit ? (
+                // M23 / AG009: แถวที่บันทึกแล้ว แสดงสัญญาเก่าแบบอ่านอย่างเดียว (กดไม่ได้ ไม่มีปุ่มเลิกผูก)
+                <span title={EDIT_LOCK_REASONS.renewal} className="inline-flex items-center gap-1 text-fg-muted">
+                  {d.renewal ? (
+                    <>
+                      🔗 <span className="num">{d.renewal.contractNo}</span>
+                    </>
+                  ) : (
+                    "ไม่ได้ผูกสัญญาเก่า"
+                  )}
+                </span>
+              ) : (
+                <Chip tone={d.renewal ? "ok" : "miss"} onClick={onRenewal}>
+                  {d.renewal ? (
+                    <>
+                      🔗 <span className="num">{d.renewal.contractNo}</span>
+                    </>
+                  ) : (
+                    "⚠ ยังไม่ผูก · ค้นหา"
+                  )}
+                </Chip>
+              )}
+              {d.renewal && !isEdit ? (
                 <button
                   type="button"
                   aria-label="เลิกผูกลูกค้าเดิม"
