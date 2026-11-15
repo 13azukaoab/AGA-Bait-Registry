@@ -539,6 +539,13 @@ tfoot td{padding:10px 12px;font-weight:700;background:var(--surface-2);border-to
 #matMat td.ch{padding-left:26px}.mhact{display:inline-flex;gap:6px;margin-left:14px}.mhact .btn{min-height:30px}
 @media (min-width:861px){#matMat .tablewrap{max-width:1040px}}
 @media (max-width:860px){#matMat .sep{border-left:0}#matMat td.ch{padding-left:0}#matMat tr.zr{background:var(--accent-soft)!important}#matMat tr.zr td:first-child{justify-content:space-between}}
+.matstat{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;padding:6px 12px;border-radius:999px;background:var(--warn-soft);color:var(--warn);align-self:center}.matstat i{width:8px;height:8px;border-radius:50%;background:var(--warn)}.matstat b{font-weight:700}
+.matalert{margin:0 0 14px;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface);overflow:hidden}.mahd{display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--surface-2);font-size:13px}.mact{color:var(--fg-muted);font-size:12px}
+.matalert ul{list-style:none;margin:0;padding:0}.matalert li{display:flex;align-items:center;gap:10px;padding:8px 14px;border-top:1px solid var(--border);font-size:13px}.matalert li span{flex:1;min-width:0}.matalert li i{width:8px;height:8px;border-radius:50%;flex:none}
+.matalert li.danger i{background:var(--danger)}.matalert li.warn i{background:var(--warn)}.matalert li.info i{background:var(--accent)}.matalert li.danger{background:color-mix(in srgb,var(--danger) 5%,transparent)}.mok{padding:10px 14px;font-size:13px;color:var(--ok)}
+.mdelta{margin-top:6px;font-size:12px;color:var(--fg-muted)}.mdelta .mdv{font-weight:700;color:var(--fg)}.mdelta.big .mdv{padding:1px 8px;border-radius:999px;background:var(--warn-soft);color:var(--warn)}.mdelta .mdp{color:var(--fg-faint)}
+.rflag{display:inline-block;margin-left:4px;padding:1px 7px;border-radius:999px;background:var(--warn-soft);color:var(--warn);font-size:11px;font-weight:700;white-space:nowrap}
+@media (max-width:860px){.matalert li{flex-wrap:wrap}.matalert li .btn{min-height:36px}.matstat{white-space:normal;border-radius:12px}}
 .matmode{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:0 0 12px;font-size:12.5px;color:var(--fg-muted)}.matmode .segbtn{border:1px solid var(--border);min-height:34px}
 .tmmode{display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:10px 16px 0;font-size:12.5px;color:var(--fg-muted)}.tmmode .segbtn{border:1px solid var(--border);min-height:34px}
 .tmch{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px;padding:0 16px 14px}
@@ -919,6 +926,7 @@ i.wr,rect.wr{background:var(--accent);fill:var(--accent)}i.wf,rect.wf{background
     <section id="s-material" hidden>
       <div class="page-head"><h1>สรุปงานบริการรายเดือน</h1>
         <p>สรุปการใช้อุปกรณ์ (เหยื่อ NEMESIS · เคมีผง · ไม้ล่อ) เวลาทำงาน สรุปรายทีม และลูกค้าใกล้หมดสัญญา — สำหรับวางแผนสต็อก/ต้นทุน/กำลังคน <span class="chip pend">🔒 internal เท่านั้น</span></p></div>
+      <div class="matalert" id="matAlerts" role="region" aria-label="ต้องดูเดือนนี้"></div>
       <div class="seg" role="tablist" aria-label="หัวข้อสรุป">
         <button type="button" class="segbtn on" role="tab" aria-selected="true" id="matTabMat" onclick="matTab('mat')">การใช้อุปกรณ์</button>
         <button type="button" class="segbtn" role="tab" aria-selected="false" id="matTabTeam" onclick="matTab('team')">สรุปรายทีม</button>
@@ -928,6 +936,7 @@ i.wr,rect.wr{background:var(--accent);fill:var(--accent)}i.wf,rect.wf{background
       <div class="toolbar">
         <div class="field"><label for="matPeriod">ช่วงเวลา</label><select id="matPeriod" onchange="matPeriodChg()"><option value="m">เดือนนี้ (ต.ค. 2026)</option><option value="q">ไตรมาส 4/2026 (ต.ค. – ธ.ค.)</option><option value="y">ปี 2026</option><option value="custom">กำหนดช่วงเอง…</option></select></div>
         <div class="field" id="matRange" hidden><label for="matFrom">ช่วงเดือน</label><div class="clrng"><input type="month" id="matFrom" onchange="matPeriodChg()" aria-label="ตั้งแต่เดือน"><span>ถึง</span><input type="month" id="matTo" onchange="matPeriodChg()" aria-label="ถึงเดือน"></div></div>
+        <span class="matstat" id="matStat" role="status" title="ตัวเลขเดือนนี้ยังไม่ครบจนกว่าจะปิดเดือน"><i aria-hidden="true"></i>ต.ค. 2026 · เดือนยังไม่ปิด · กรอกผลแล้ว <b>188/206</b> ราย (91%)</span>
         <div style="flex:1"></div>
         <button class="btn sm" type="button" id="matExport" onclick="exportMaterialXL()" title="ส่งออกสรุปการใช้วัสดุ + ตารางแยกสาขา เป็น .xlsx">↓ ส่งออก Excel</button>
       </div>
@@ -970,10 +979,10 @@ i.wr,rect.wr{background:var(--accent);fill:var(--accent)}i.wf,rect.wf{background
       </div>
 
       <div style="font-size:12.5px;color:var(--fg-muted);font-weight:600;margin:20px 0 10px">ตารางรวมทุกวัสดุ แยกสาขา <span style="font-weight:400">(กดหัวคอลัมน์เพื่อเรียง)</span><span class="mhlg">แรเงา = อันดับ 1–5 ของแต่ละคอลัมน์ <i class="mhs mh1">1</i><i class="mhs mh2">2</i><i class="mhs mh3">3</i><i class="mhs mh4">4</i><i class="mhs mh5">5</i></span><span class="mhact"><button type="button" class="btn sm" data-matzall="0">พับทุกเขต</button><button type="button" class="btn sm" data-matzall="1">ขยายทั้งหมด</button></span></div>
-      <div class="tmsortm"><label for="matSortSel">เรียงตาม</label><select id="matSortSel" onchange="matSortSel(this.value)"><option value="-1">ลำดับเดิม</option><option value="0">ชื่อสาขา</option><option value="1">NEMESIS นอก</option><option value="2">NEMESIS ใน</option><option value="3">NEMESIS รวม</option><option value="4">เคมีผง (จุด)</option><option value="5">เคมีผง (กรัม)</option><option value="6">ไม้ล่อ (ชิ้น)</option></select></div>
+      <div class="tmsortm"><label for="matSortSel">เรียงตาม</label><select id="matSortSel" onchange="matSortSel(this.value)"><option value="-1">ลำดับเดิม</option><option value="0">ชื่อสาขา</option><option value="1">NEMESIS นอก</option><option value="2">NEMESIS ใน</option><option value="3">NEMESIS รวม</option><option value="4">เคมีผง (จุด)</option><option value="5">เคมีผง (กรัม)</option><option value="6">ไม้ล่อ (ชิ้น)</option><option value="7">อัตราใช้ ก./กล่อง AG</option></select></div>
       <div class="tablewrap">
         <table>
-          <thead><tr class="gh"><th></th><th colspan="3" class="sep">NEMESIS (ก.)</th><th colspan="2" class="sep">เคมีผง</th><th class="sep">ไม้ล่อ</th></tr><tr class="sub"><th>สาขา</th><th class="r sep">นอก (IG+IC)</th><th class="r">ใน (AG)</th><th class="r">รวม</th><th class="r sep">จุด</th><th class="r">กรัม</th><th class="r sep">ชิ้น</th></tr></thead>
+          <thead><tr class="gh"><th></th><th colspan="3" class="sep">NEMESIS (ก.)</th><th colspan="2" class="sep">เคมีผง</th><th class="sep">ไม้ล่อ</th><th class="sep">อัตราใช้</th></tr><tr class="sub"><th>สาขา</th><th class="r sep">นอก (IG+IC)</th><th class="r">ใน (AG)</th><th class="r">รวม</th><th class="r sep">จุด</th><th class="r">กรัม</th><th class="r sep">ชิ้น</th><th class="r sep">ก./กล่อง AG</th></tr></thead>
           <tbody>
             <tr><td><b>พุทธมณฑล</b></td><td class="r num">600</td><td class="r num">4,300</td><td class="r num">230</td><td class="r num" style="color:var(--fg-muted)">69</td><td class="r num">620</td></tr>
             <tr><td><b>หัวหิน</b></td><td class="r num">400</td><td class="r num">2,850</td><td class="r num">110</td><td class="r num" style="color:var(--fg-muted)">33</td><td class="r num">360</td></tr>
@@ -1921,6 +1930,7 @@ function matTab(t){
   });
   if(time) wtSumRender();
   if(t==='exp') expRender();
+  matAlerts();
 }
 /* ===== #material › สัญญาใกล้หมด (ย้ายมาจาก #todo) =====
    สัญญาที่หมดภายใน 90 วันนับจากวันนี้ (TODAY_ISO) เรียงใกล้หมดสุดก่อน · tone: ≤30 วัน แดง · ≤60 เหลือง · อื่นๆ ปกติ
@@ -1979,20 +1989,22 @@ function matHeat(){
 }
 /* ตารางแยกสาขา: จัดกลุ่มตามเขต + แถวรวมต่อเขต (พับ/ขยายได้) + คอลัมน์ NEMESIS รวม */
 var MAT_ZONE={'พุทธมณฑล':1,'นครปฐม':1,'หัวหิน':1,'สาทร':2,'ปทุมวัน':2,'พระราม 4':2,'นนทบุรี':2,'ปทุมธานี':3,'รามอินทรา':3,'อยุธยา':3,'ลาดพร้าว':4,'พัฒนาการ':4,'สุวินทวงศ์':4,'ประชาชื่น':4,'สมุทรปราการ':5,'พัทยา':5,'ระยอง':5,'สุขุมวิท':6,'ปากน้ำ':6,'ชลบุรี':6,'ปากช่อง':9,'สระบุรี':9,'พระราม 2':13,'ปราจีนบุรี':13};
-var MAT_BASE=[{n:'พุทธมณฑล',o:600,i:4300,p:230,g:69,w:620},{n:'หัวหิน',o:400,i:2850,p:110,g:33,w:360},{n:'นครปฐม',o:250,i:1600,p:80,g:24,w:260}];
+var MAT_BASE=[{n:'พุทธมณฑล',o:600,i:4300,p:230,g:69,w:620,b:190},{n:'หัวหิน',o:400,i:2850,p:110,g:33,w:360,b:125},{n:'นครปฐม',o:250,i:1600,p:80,g:24,w:260,b:52}];
 var MAT_COLL={};
 function matRenderTable(D,label){
   var tb=document.querySelector('#matMat tbody'),tf=document.querySelector('#matMat tfoot');if(!tb||!tf)return;
   var Z=[],by={};D.forEach(function(d){var z=MAT_ZONE[d.n]||1;if(!by[z]){by[z]=[];Z.push(z)}by[z].push(d)});
   Z.sort(function(a,b){return a-b});
-  var h='',k=0,T={o:0,i:0,p:0,g:0,w:0};
-  function cells(d,tot){return '<td class="r num sep">'+matFmt(d.o)+'</td><td class="r num">'+matFmt(d.i)+'</td><td class="r num tot">'+matFmt(d.o+d.i)+'</td><td class="r num sep">'+matFmt(d.p)+'</td><td class="r num" style="color:var(--fg-muted)">'+matFmt(d.g)+'</td><td class="r num sep">'+matFmt(d.w)+'</td>'}
-  Z.forEach(function(z){var g=by[z],S={o:0,i:0,p:0,g:0,w:0};g.forEach(function(d){['o','i','p','g','w'].forEach(function(x){S[x]+=d[x];T[x]+=d[x]})});
+  var h='',k=0,T={o:0,i:0,p:0,g:0,w:0,b:0};
+  var rates=D.filter(function(d){return d.b}).map(function(d){return d.i/d.b}).sort(function(a,b){return a-b}),med=rates.length?rates[Math.floor(rates.length/2)]:0;MAT_FLAGS=[];
+  function cells(d,tot){var rt=d.b?d.i/d.b:0,fl=!!(d.n&&med&&rt>med*1.25);if(fl)MAT_FLAGS.push(d.n+' ('+rt.toFixed(1)+')');return '<td class="r num sep">'+matFmt(d.o)+'</td><td class="r num">'+matFmt(d.i)+'</td><td class="r num tot">'+matFmt(d.o+d.i)+'</td><td class="r num sep">'+matFmt(d.p)+'</td><td class="r num" style="color:var(--fg-muted)">'+matFmt(d.g)+'</td><td class="r num sep">'+matFmt(d.w)+'</td><td class="r num sep">'+(d.b?rt.toFixed(1):'–')+(fl?' <span class="rflag" title="สูงกว่าค่ากลางของทุกสาขามากกว่า 25% (ค่ากลาง '+med.toFixed(1)+' ก./กล่อง)">⚑ สูง</span>':'')+'</td>'}
+  Z.forEach(function(z){var g=by[z],S={o:0,i:0,p:0,g:0,w:0,b:0};g.forEach(function(d){['o','i','p','g','w','b'].forEach(function(x){S[x]+=d[x];T[x]+=d[x]})});
     var col=!!MAT_COLL[z];
     h+='<tr class="zr" data-z="'+z+'"><td><button type="button" class="zbtn" data-matz="'+z+'" aria-expanded="'+(!col)+'"><span class="zar">'+(col?'▸':'▾')+'</span> เขต '+z+' <small>'+g.length+' สาขา</small></button></td>'+cells(S)+'</tr>';
     g.forEach(function(d){h+='<tr class="zc" data-z="'+z+'" data-o="'+(k++)+'"'+(col?' hidden':'')+'><td class="ch"><b>'+esc(d.n)+'</b></td>'+cells(d)+'</tr>'})});
   tb.innerHTML=h;
   tf.innerHTML='<tr><td>'+(label||('รวม '+D.length+' สาขา'))+'</td>'+cells(T)+'</tr>';
+  MAT_TOT={n:T.o+T.i,p:T.p,g:T.g,w:T.w};
   matLabels();matHeat();
 }
 document.addEventListener('click',function(e){
@@ -2005,6 +2017,39 @@ function matApplyColl(){
   [].forEach.call(document.querySelectorAll('#matMat tr.zr'),function(r){var z=r.getAttribute('data-z'),c=!!MAT_COLL[z];var bt=r.querySelector('.zbtn');bt.setAttribute('aria-expanded',!c);bt.querySelector('.zar').textContent=c?'▸':'▾'});
   [].forEach.call(document.querySelectorAll('#matMat tr.zc'),function(r){r.hidden=!!MAT_COLL[r.getAttribute('data-z')]})
 }
+/* ===== เพิ่มชั้น "อะไรเปลี่ยน / ต้องดูอะไร" ให้หน้าสรุปงานบริการรายเดือน (เจ้าของสั่ง 15 พ.ย. 2026 — กลุ่ม A) =====
+   1) การ์ดสรุปวัสดุ: เทียบเดือนก่อน (ก.ย. 2026) · เปลี่ยน ≥10% ใช้ป้ายเหลือง   2) ป้ายสถานะข้อมูล "เดือนยังไม่ปิด" ที่แถบเครื่องมือ
+   3) คอลัมน์ "ก./กล่อง AG" ในตารางแยกสาขา + ธง ⚑ เมื่อสูงกว่าค่ากลางทุกสาขา >25%   4) แถบ "ต้องดูเดือนนี้" รวมเรื่องผิดปกติจากทุกแท็บ
+   ข้อมูลเทียบเดือนก่อน/จำนวนกล่องต่อสาขาเป็นข้อมูลสมมติ — ของจริงต้องมี snapshot เดือนก่อน (monthly_branch_snapshots) และจำนวนกล่อง AG ต่อสาขา */
+var MAT_FLAGS=[],MAT_TOT={n:0,p:0,g:0,w:0};
+var MAT_MOM={base:{n:.064,p:-.032,w:.112},full:{n:.081,p:-.046,w:.124}};
+function matDeltas(){
+  var st=document.querySelectorAll('#matMat .stats .stat');if(st.length<3)return;
+  var pc=MAT_MOM[MAT_MODE]||MAT_MOM.base,units=[' ก.',' จุด',' ชิ้น'],cur=[MAT_TOT.n,MAT_TOT.p,MAT_TOT.w],keys=['n','p','w'];
+  [].forEach.call(st,function(c,i){var old=c.querySelector('.mdelta');if(old)old.remove();
+    var p=pc[keys[i]],prev=cur[i]/(1+p),big=Math.abs(p)>=0.10,d=document.createElement('div');
+    d.className='mdelta'+(big?' big':'');d.innerHTML='<span class="mdv">'+(p>=0?'▲':'▼')+' '+Math.abs(p*100).toFixed(1)+'%</span> จาก ก.ย. <span class="mdp">('+matFmt(prev)+units[i]+')</span>';
+    d.title='เดือนก่อน (ก.ย. 2026): '+matFmt(prev)+units[i];c.appendChild(d)})
+}
+function matAlerts(){
+  var box=$('matAlerts');if(!box)return;var A=[];
+  /* ตกบริการ + ใกล้หมดสัญญา = สีแดง */
+  if(typeof TM!=='undefined'&&TM.length){var mn=0,mt=0;TM.forEach(function(t){if(t.miss&&t.miss.length){mn+=t.miss.length;mt++}});
+    if(mn)A.push({k:'danger',t:'ลูกค้าตกบริการ <b>'+mn+' ราย</b> ใน '+mt+' ทีม',go:'team',b:'ดูรายทีม'})}
+  if(typeof EXP!=='undefined'){var e30=0,e60=0;EXP.forEach(function(x){var d=expDays(x.end);if(d>=0&&d<=30)e30++;else if(d>30&&d<=60)e60++});
+    if(e30)A.push({k:'danger',t:'สัญญาหมดภายใน 30 วัน <b>'+e30+' ราย</b>'+(e60?' (อีก '+e60+' รายใน 60 วัน)':''),go:'exp',b:'ดูรายชื่อ'})}
+  /* Workload + อัตราใช้ผิดปกติ = เหลือง */
+  if(typeof TM!=='undefined'&&TM.length&&typeof wtSplit==='function'){var ov=TM.filter(function(t){return t.min/60/wtSplit(t).heads>WT_CAP}).map(function(t){return t.team});
+    if(ov.length)A.push({k:'warn',t:'<b>'+ov.length+' ทีม</b>เกินเกณฑ์ Workload ('+WT_CAP+' ชม./คน): '+ov.slice(0,3).map(esc).join(', ')+(ov.length>3?' +'+(ov.length-3):''),go:'time',b:'ดูเวลาทำงาน'})}
+  if(MAT_FLAGS.length)A.push({k:'warn',t:'NEMESIS ต่อกล่อง AG สูงกว่าปกติ <b>'+MAT_FLAGS.length+' สาขา</b>: '+MAT_FLAGS.slice(0,3).map(esc).join(', ')+(MAT_FLAGS.length>3?' +'+(MAT_FLAGS.length-3):''),go:'mat',b:'ดูตาราง',flag:1})
+  /* เปลี่ยนจากเดือนก่อน ≥10% = ฟ้า */
+  var pc=MAT_MOM[MAT_MODE]||MAT_MOM.base,nm={n:'NEMESIS',p:'เคมีผง',w:'ไม้ล่อ'};
+  ['n','p','w'].forEach(function(k){if(Math.abs(pc[k])>=0.10)A.push({k:'info',t:nm[k]+(pc[k]>0?' เพิ่มขึ้น ':' ลดลง ')+'<b>'+Math.abs(pc[k]*100).toFixed(1)+'%</b> จากเดือนก่อน',go:'mat',b:'ดูวัสดุ'})});
+  var ord={danger:0,warn:1,info:2};A.sort(function(a,b){return ord[a.k]-ord[b.k]});
+  box.innerHTML='<div class="mahd"><b>ต้องดูเดือนนี้</b><span class="mact">'+A.length+' เรื่อง</span></div>'+(A.length?'<ul>'+A.map(function(a,i){return '<li class="'+a.k+'"><i aria-hidden="true"></i><span>'+a.t+'</span><button type="button" class="btn sm" data-matgo="'+a.go+'"'+(a.flag?' data-matflag="1"':'')+'>'+a.b+' →</button></li>'}).join('')+'</ul>':'<div class="mok">ไม่มีเรื่องผิดปกติเดือนนี้ ✓</div>')
+}
+document.addEventListener('click',function(e){var b=e.target.closest&&e.target.closest('[data-matgo]');if(!b)return;matTab(b.getAttribute('data-matgo'));
+  if(b.getAttribute('data-matflag')){var t=document.querySelector('#matMat .tablewrap');if(t)t.scrollIntoView({behavior:'smooth',block:'start'})}});
 function matSetMode(m){
   var root=$('matMat');if(!root)return;
   if(MAT_BASE_HTML===null)MAT_BASE_HTML=root.innerHTML;
@@ -2013,10 +2058,10 @@ function matSetMode(m){
   root.innerHTML=MAT_BASE_HTML;MAT_SORT={col:-1,rev:false};
   MAT_COLL={};
   if(m==='full')matBuildFull(root);else matRenderTable(MAT_BASE,'รวมเขต 1');
-  matLabels();matCap();matSortApply();matHeat();
+  matLabels();matCap();matSortApply();matHeat();matDeltas();matAlerts();
 }
 function matBuildFull(root){
-  var D=MAT_CENTRAL.map(function(n,k){var o=Math.round((150+((k*37)%420))/10)*10,i=Math.round((1200+((k*211)%3300))/10)*10,p=20+((k*53)%210),w=Math.round((150+((k*97)%520))/10)*10;return {n:n,o:o,i:i,p:p,g:Math.round(p*0.3),w:w}});
+  var D=MAT_CENTRAL.map(function(n,k){var o=Math.round((150+((k*37)%420))/10)*10,i=Math.round((1200+((k*211)%3300))/10)*10,p=20+((k*53)%210),w=Math.round((150+((k*97)%520))/10)*10;var rate=20+((k*7)%9)+(k%7===3?13:0);return {n:n,o:o,i:i,p:p,g:Math.round(p*0.3),w:w,b:Math.max(1,Math.round(i/rate))}});
   function sum(k){return D.reduce(function(a,d){return a+d[k]},0)}
   var T={o:sum('o'),i:sum('i'),p:sum('p'),g:sum('g'),w:sum('w')},NT=T.o+T.i;
   /* การ์ดสรุป */
@@ -2084,7 +2129,7 @@ function wtTrendData(team){
 document.addEventListener('focusin',function(e){var t=e.target.closest&&e.target.closest('#wtCharts [data-tip]');if(t&&t.classList.contains('wthelp')){var q=t.getBoundingClientRect();tmTipShow(q.left,q.bottom,t.getAttribute('data-tip'))}});
 document.addEventListener('focusout',function(e){if(e.target.classList&&e.target.classList.contains('wthelp'))tmTipHide()});
 document.addEventListener('click',function(e){var t=e.target.closest&&e.target.closest('#wtCharts [data-tip]');if(t&&matchMedia('(hover:none)').matches)tmTipShow(e.clientX,e.clientY,t.getAttribute('data-tip'))});
-function wtCapSet(v){var n=parseFloat(v);if(!(n>0))return;WT_CAP=n;wtCharts()}
+function wtCapSet(v){var n=parseFloat(v);if(!(n>0))return;WT_CAP=n;wtCharts();matAlerts()}
 function wtTrendSet(v){WT_TREND_TEAM=v;wtCharts()}
 function wtCharts(again){
   var box=$('wtCharts'),bar=$('wtBar');if(!box)return;
@@ -3366,6 +3411,7 @@ document.addEventListener('change',function(e){var c=e.target.closest&&e.target.
   tmCmpRender()});
 document.addEventListener('click',function(e){var x=e.target.closest&&e.target.closest('[data-tmcmpx]');if(x){var i=TM_CMP.indexOf(x.getAttribute('data-tmcmpx'));if(i>=0)TM_CMP.splice(i,1);tmCmpRender();return}
   if(e.target.closest&&e.target.closest('[data-tmcmpclear]')){TM_CMP=[];tmCmpRender()}});
+var _tsm=tmSetMode;tmSetMode=function(m){_tsm(m);matAlerts()};
 var _tmRenderBase=tmRender;tmRender=function(){_tmRenderBase();tmCmpRender()};
 function tmRender(){
   var body=$('tmBody');if(!body)return;
@@ -3411,7 +3457,7 @@ function tmRender(){
 }
 document.addEventListener('click',function(e){var nb3=e.target.closest&&e.target.closest('[data-tmnote]');if(nb3){var q=nb3.getAttribute('data-tmnote').split('_'),xx=TM[+q[0]].miss[+q[1]],cn=msCan();msDlgOpen('<h3 id="msT" style="margin:0 0 4px;font-size:16px">หมายเหตุตกบริการ</h3><div class="lab">'+esc(xx.n)+' · '+esc(TM[+q[0]].team)+' · ต.ค. 2026</div>'+'<div class="field"><label for="tmNote">ตกบริการเพราะอะไร</label><textarea id="tmNote" maxlength="200" placeholder="เช่น ลูกค้าปิดอาคาร / ติดต่อไม่ได้"'+(cn?'':' disabled')+'>'+esc(xx.note||'')+'</textarea>'+(xx.by?'<span class="lab">บันทึกล่าสุดโดย '+esc(xx.by)+'</span>':'')+'</div>'+'<div class="acts"><button class="btn" data-ms="close">'+(cn?'ยกเลิก':'ปิด')+'</button>'+(cn?'<button class="btn primary" data-tmsave="'+q[0]+'_'+q[1]+'">บันทึก</button>':'')+'</div>',nb3);return}var sv=e.target.closest&&e.target.closest('[data-tmsave]');if(sv){var p=sv.getAttribute('data-tmsave').split('_'),x=TM[+p[0]].miss[+p[1]],inp=$('tmNote');x.note=inp.value.trim();msDlgClose(true);x.by=({host:'Host',recorder:'หัวหน้างาน'}[msRole()]||msRole())+' · '+msDateTh(TODAY_ISO);tmRender();toast('บันทึกหมายเหตุตกบริการแล้ว');var n2=document.querySelector('[data-tmnote="'+p[0]+'_'+p[1]+'"]');if(n2)n2.focus();return}var bb=e.target.closest&&e.target.closest('[data-tmb]');if(bb){var j=bb.getAttribute('data-tmb');tmBr[j]=!tmBr[j];tmRender();var nb2=document.querySelector('[data-tmb="'+j+'"]');if(nb2)nb2.focus();return}});
 tmRender();
-[].forEach.call(document.querySelectorAll('#matMat tbody tr'),function(r,i){r.setAttribute('data-o',i)});matRenderTable(MAT_BASE,'รวมเขต 1');matInitSort();matLabels();matCap();matHeat();
+[].forEach.call(document.querySelectorAll('#matMat tbody tr'),function(r,i){r.setAttribute('data-o',i)});matRenderTable(MAT_BASE,'รวมเขต 1');matInitSort();matLabels();matCap();matHeat();matDeltas();matAlerts();
 /* ===== #todo: เตือนเมื่อเข้าเดือนใหม่แต่ยังปิดงานเดือนก่อนไม่เสร็จ (เจ้าของสั่ง 14 พ.ย. 2026) =====
    หน้านี้แสดง "เดือนที่ยังไม่ปิดเก่าสุด" (TM_VIEW) · ถ้าเดือนนั้นเก่ากว่าเดือนปัจจุบันตามวันที่จริง (เขตเวลาไทย)
    → เปิดหน้าจอเตือนครั้งเดียวต่อการเปิดหน้าเว็บ · ปุ่ม "ไปกรอกข้อมูลต่อ" พาไปหน้ากรอกผลบริการ + ลิงก์ไปหน้า "ส่งข้อมูล และสรุปงานประจำเดือน" (เฉพาะ host/หัวหน้างาน · admin เห็นแค่ปุ่มรับทราบ) */
