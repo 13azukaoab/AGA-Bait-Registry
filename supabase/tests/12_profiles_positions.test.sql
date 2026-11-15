@@ -8,11 +8,11 @@ SELECT col_is_pk('public', 'positions', 'code', 'positions PK is code');
 SELECT col_type_is('public', 'positions', 'role', 'public', 'user_role', 'positions.role is user_role');
 SELECT col_not_null('public', 'positions', 'name_th', 'positions.name_th NOT NULL');
 SELECT results_eq(
-  $$SELECT code, name_th, role::text FROM positions ORDER BY sort_order$$,
-  $$VALUES ('job_admin', 'Admin (เปิดงาน)', 'admin'),
-           ('supervisor', 'หัวหน้างาน', 'recorder'),
-           ('pm', 'Project Manager', 'host'),
-           ('om', 'OM', 'host')$$,
+  $$SELECT code, name_th, role::text FROM positions WHERE assignable ORDER BY sort_order$$,  -- M21: ชื่อใหม่ · เจ้าของ (assignable=false) ตรวจในเทส 37
+  $$VALUES ('job_admin', 'แอดมิน (Admin)', 'admin'),
+           ('supervisor', 'หัวหน้างาน (Supervisor)', 'recorder'),
+           ('pm', 'Project Manager (PM)', 'host'),
+           ('om', 'Operation Manager (OM)', 'host')$$,
   'seed: 4 positions mapped to permission levels (PM = OM = host, D3)');
 
 -- ---------- profiles columns ----------
