@@ -540,6 +540,7 @@ tfoot td{padding:10px 12px;font-weight:700;background:var(--surface-2);border-to
 i.wr,rect.wr{background:var(--accent);fill:var(--accent)}i.wf,rect.wf{background:color-mix(in srgb,var(--accent) 38%,var(--surface));fill:color-mix(in srgb,var(--accent) 38%,var(--surface))}i.wp,rect.wp{background:var(--fg-muted);fill:var(--fg-muted)}
 .tmlg i.wr,.tmlg i.wf,.tmlg i.wp{width:10px;height:10px}
 .tmcs .avgl.cap{border-left-color:var(--danger)}.wtth{display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px}.wtsel{font-size:12.5px;font-weight:400;color:var(--fg-muted)}.wtsel select{min-height:32px;font:inherit}.wtsub{font-size:12px;color:var(--fg-muted);margin:2px 0 6px}
+.wthelp{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;margin-left:4px;border-radius:50%;background:var(--surface-3);color:var(--fg-muted);font-size:11px;font-weight:700;cursor:help;vertical-align:1px}.wthelp:hover,.wthelp:focus-visible{background:var(--accent);color:var(--accent-fg);outline:0}
 .wtsvg{display:block;width:100%;flex:1 1 auto;min-height:170px;height:100%}.wtch .tmcp:nth-child(4){display:flex;flex-direction:column}@media (max-width:860px){.wtsvg{flex:none;height:210px}}.wtgrid{stroke:var(--border);stroke-width:1}.wtax{font-size:10px;fill:var(--fg-muted)}.wtax.b{font-weight:700;fill:var(--fg)}.wtinsight{font-size:12.5px;color:var(--fg-muted);margin-top:4px}.wtch{padding:0;margin:14px 0}.chip.warn{background:var(--warn-soft);color:var(--warn);font-weight:700}
 .tmcs .avgl{position:absolute;top:-4px;bottom:-4px;border-left:2px dashed var(--fg-muted)}
 .tmch.dense .tmcb{height:13px}.tmch.dense .tmct{display:none}.tmch.dense .tmcs{height:11px}.tmch.dense .tmlg{margin-bottom:2px}
@@ -1985,6 +1986,8 @@ function matCap(){
    • เทรนด์ 6 เดือน: แท่งซ้อนรายเดือน (ทุกทีม หรือเลือกทีม) ดูว่างานนอกแผนโตขึ้นไหม
    ฟิลด์ใหม่ที่ต้องมีจริง (แจ้ง FE): จำนวนคนภาคสนามต่อทีม (teams.headcount) */
 var WT_SW=340,WT_SH=170;
+var WT_HELP='<b>งานนอกแผน คืออะไร</b><br>งานที่ไม่ได้อยู่ในรอบบริการประจำเดือน ได้แก่ <b>แก้ปัญหา</b> และ <b>ติดตามผล</b><br>% = เวลาสองอย่างนี้ ÷ เวลาทำงานรวมของทีม<br>ถ้าสูงขึ้นเรื่อยๆ งานประจำจะถูกเบียด → ใช้ประกอบการตัดสินเรื่องกำลังคน';
+function wtHelp(){return '<span class="wthelp" tabindex="0" role="note" aria-label="งานนอกแผน = แก้ปัญหา + ติดตามผล" data-tip="'+WT_HELP+'">?</span>'}
 var WT_MONTHS=['พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.'],WT_CAP=30,WT_TREND_TEAM='';
 function wtSplit(t){
   if(t._sp)return t._sp;
@@ -1995,6 +1998,9 @@ function wtTrendData(team){
   var RF=[.88,.9,.93,.95,.97,1],PF=[.62,.72,.8,.88,.95,1],FF=[.8,.85,.9,.92,.96,1],out=[];
   WT_MONTHS.forEach(function(m,i){var r=0,p=0,f=0;TM.forEach(function(t){if(team&&t.team!==team)return;var s=wtSplit(t);r+=s.r*RF[i];p+=s.p*PF[i];f+=s.f*FF[i]});out.push({m:m,r:r/60,p:p/60,f:f/60})});
   return out}
+document.addEventListener('focusin',function(e){var t=e.target.closest&&e.target.closest('#wtCharts [data-tip]');if(t&&t.classList.contains('wthelp')){var q=t.getBoundingClientRect();tmTipShow(q.left,q.bottom,t.getAttribute('data-tip'))}});
+document.addEventListener('focusout',function(e){if(e.target.classList&&e.target.classList.contains('wthelp'))tmTipHide()});
+document.addEventListener('click',function(e){var t=e.target.closest&&e.target.closest('#wtCharts [data-tip]');if(t&&matchMedia('(hover:none)').matches)tmTipShow(e.clientX,e.clientY,t.getAttribute('data-tip'))});
 function wtCapSet(v){var n=parseFloat(v);if(!(n>0))return;WT_CAP=n;wtCharts()}
 function wtTrendSet(v){WT_TREND_TEAM=v;wtCharts()}
 function wtCharts(again){
@@ -2010,7 +2016,7 @@ function wtCharts(again){
   function seg(cls,v,tot,lab){return v>0?'<i class="'+cls+'" style="width:'+(v*100/tot)+'%" data-tip="'+lab+'"></i>':''}
   var g1=byH.map(function(d){var m=d.t.min,s=d.sp,nm=esc(d.t.team);
     var tip=function(l,v){return '<b>'+nm+' · '+l+'</b><br>'+(v/60).toFixed(1)+' ชม. ('+Math.round(v*100/m)+'% ของทีม)<br>ทั้งหมด '+d.h.toFixed(1)+' ชม.'};
-    return row(d.t.team,'<div class="tmcb wtstack" style="width:'+(d.h/maxH*100)+'%">'+seg('wr',s.r,m,tip('ประจำเดือน',s.r))+seg('wf',s.f,m,tip('ติดตามผล',s.f))+seg('wp',s.p,m,tip('แก้ปัญหา',s.p))+'</div>','<b>'+d.h.toFixed(1)+'</b> ชม. <span class="chip '+(d.off>=14?'warn':'na')+'" title="สัดส่วนงานนอกแผน (แก้ปัญหา + ติดตามผล)">'+Math.round(d.off)+'%</span>')}).join('');
+    return row(d.t.team,'<div class="tmcb wtstack" style="width:'+(d.h/maxH*100)+'%">'+seg('wr',s.r,m,tip('ประจำเดือน',s.r))+seg('wf',s.f,m,tip('ติดตามผล',s.f))+seg('wp',s.p,m,tip('แก้ปัญหา',s.p))+'</div>','<b>'+d.h.toFixed(1)+'</b> ชม. <span class="chip '+(d.off>=14?'warn':'na')+'" data-tip="<b>'+nm+' · งานนอกแผน '+Math.round(d.off)+'%</b><br>แก้ปัญหา '+(s.p/60).toFixed(1)+' ชม. + ติดตามผล '+(s.f/60).toFixed(1)+' ชม.<br>จากเวลารวม '+d.h.toFixed(1)+' ชม.<br>(งานนอกแผน = งานที่ไม่ใช่รอบประจำเดือน)">'+Math.round(d.off)+'%</span>')}).join('');
   var over=0;
   var g3=byP.map(function(d){var ov=d.pp>WT_CAP;if(ov)over++;
     return row(d.t.team,'<div class="tmcs"><i class="'+(ov?'warn':'')+'" style="width:'+(d.pp/maxP*100)+'%" data-tip="<b>'+esc(d.t.team)+'</b><br>'+d.h.toFixed(1)+' ชม. ÷ '+d.sp.heads+' คน = '+d.pp.toFixed(1)+' ชม./คน<br>เกณฑ์ Workload '+WT_CAP+' ชม./คน"></i><span class="avgl cap" style="left:'+(WT_CAP/maxP*100)+'%"></span></div>','<b>'+d.pp.toFixed(1)+'</b> '+(ov?'<span class="chip warn">เกินเกณฑ์</span>':''))}).join('');
@@ -2026,10 +2032,10 @@ function wtCharts(again){
   var f0=(T[0].p+T[0].f)*100/(T[0].r+T[0].p+T[0].f),f5=(T[5].p+T[5].f)*100/(T[5].r+T[5].p+T[5].f);
   var sw=function(c,l){return '<span><i class="'+c+'"></i>'+l+'</span>'};
   box.innerHTML=
-    '<div class="tmcp"><h4>เวลาทำงานรวมต่อทีม แยกประเภทงาน <small>(ชั่วโมง · % = งานนอกแผน)</small></h4><div class="tmlg">'+sw('wr','ประจำเดือน')+sw('wf','ติดตามผล')+sw('wp','แก้ปัญหา')+'</div>'+g1+'</div>'+
+    '<div class="tmcp"><h4>เวลาทำงานรวมต่อทีม แยกประเภทงาน <small>(ชั่วโมง · % = งานนอกแผน'+wtHelp()+')</small></h4><div class="tmlg">'+sw('wr','ประจำเดือน')+sw('wf','ติดตามผล')+sw('wp','แก้ปัญหา')+'</div>'+g1+'</div>'+
     '<div class="tmcp"><h4>ชั่วโมงต่อคนในทีม <small>(เทียบเกณฑ์ Workload '+WT_CAP+' ชม./คน · '+totHeads+' คน)</small></h4><div class="tmlg"><span><i style="background:var(--accent)"></i>ปกติ</span><span><i style="background:var(--warn)"></i>เกินเกณฑ์ ('+over+' ทีม)</span><span><i class="dash"></i>เกณฑ์ '+WT_CAP+'</span></div>'+g3+'</div>'+
     '<div class="tmcp"><h4>เฉลี่ยต่อครั้ง <small>(ชม.:นาที)</small></h4><div class="tmlg"><span><i style="background:var(--accent)"></i>ปกติ</span><span><i style="background:var(--warn)"></i>สูงกว่าเฉลี่ยเกิน 10% ('+hi+' ทีม)</span><span><i class="dash"></i>เฉลี่ยทุกทีม '+wtFmt(Math.round(avgA))+'</span></div>'+g2+'</div>'+
-    '<div class="tmcp"><h4 class="wtth">เทรนด์ 6 เดือน <label class="wtsel">ดูของ <select id="wtTrendSel" onchange="wtTrendSet(this.value)" aria-label="เลือกทีมที่จะดูเทรนด์">'+topts+'</select></label></h4><div class="wtsub">ชั่วโมงทำงานรายเดือน · ตัวเลข % บนแท่ง = สัดส่วนงานนอกแผน (แก้ปัญหา + ติดตามผล)</div><div class="tmlg">'+sw('wr','ประจำเดือน')+sw('wf','ติดตามผล')+sw('wp','แก้ปัญหา')+'</div><svg viewBox="0 0 '+W+' '+H+'" class="wtsvg" role="img" aria-label="เทรนด์ชั่วโมงทำงานรายเดือน งานนอกแผนจาก '+Math.round(f0)+'% เป็น '+Math.round(f5)+'%">'+ticks+cols+'</svg><div class="wtinsight">งานนอกแผน '+Math.round(f0)+'% → <b>'+Math.round(f5)+'%</b> ใน 6 เดือน '+(f5>f0+1?'(เพิ่มขึ้น — ควรจับตาเรื่องกำลังคน)':'(ทรงตัว)')+'</div></div>';
+    '<div class="tmcp"><h4 class="wtth">เทรนด์ 6 เดือน <label class="wtsel">ดูของ <select id="wtTrendSel" onchange="wtTrendSet(this.value)" aria-label="เลือกทีมที่จะดูเทรนด์">'+topts+'</select></label></h4><div class="wtsub">ชั่วโมงทำงานรายเดือน · ตัวเลข % บนแท่ง = สัดส่วนงานนอกแผน (แก้ปัญหา + ติดตามผล)'+wtHelp()+'</div><div class="tmlg">'+sw('wr','ประจำเดือน')+sw('wf','ติดตามผล')+sw('wp','แก้ปัญหา')+'</div><svg viewBox="0 0 '+W+' '+H+'" class="wtsvg" role="img" aria-label="เทรนด์ชั่วโมงทำงานรายเดือน งานนอกแผนจาก '+Math.round(f0)+'% เป็น '+Math.round(f5)+'%">'+ticks+cols+'</svg><div class="wtinsight">งานนอกแผน'+wtHelp()+' '+Math.round(f0)+'% → <b>'+Math.round(f5)+'%</b> ใน 6 เดือน '+(f5>f0+1?'(เพิ่มขึ้น — ควรจับตาเรื่องกำลังคน)':'(ทรงตัว)')+'</div></div>';
   /* ยืดกราฟเทรนด์ให้สูงเท่าแผงข้างเคียง: วัดพื้นที่จริงของ SVG แล้ววาดใหม่ 1 รอบ (พิกเซลต่อพิกเซล ตัวหนังสือไม่เพี้ยน) */
   var sv=box.querySelector('.wtsvg');if(sv&&!again){var q=sv.getBoundingClientRect(),nw=Math.round(q.width),nh=Math.round(q.height);if(nw>120&&nh>120&&(Math.abs(nw-WT_SW)>3||Math.abs(nh-WT_SH)>3)){WT_SW=nw;WT_SH=nh;wtCharts(true)}}
 }
