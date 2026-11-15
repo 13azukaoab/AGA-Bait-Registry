@@ -4,8 +4,10 @@
  *
  * Logic summary: รูปแบบ 'YYYY-MM' (ค.ศ.) · ป้ายเป็นเดือนไทย + ปี ค.ศ. ("ตุลาคม 2026") · ช่วงเลือกได้ = เดือนหน้า ถึงย้อนหลัง 24 เดือน
  * · เดือนปัจจุบันอิง Asia/Bangkok (ไม่พึ่งเขตเวลาของเครื่อง/เซิร์ฟเวอร์) · ค่า `?month=` ผิดรูปแบบ/นอกช่วง ใช้เดือนปัจจุบัน
- * · `serviceTeams` = ทีม A–O ก่อนแล้ว Z (ฐานข้อมูลรับเฉพาะ A–O, Z — SV006)
+ * · `serviceTeams` = ทีมประเภท service ก่อน install (อ่านจาก `teams.kind` — ฐานข้อมูลรับเฉพาะสองประเภทนี้ SV006 · M22)
  */
+
+import { canRecordService, sortTeamsByKind, type TeamKind } from "./teamKind";
 
 const THAI_MONTHS = [
   "มกราคม",
@@ -78,10 +80,10 @@ export function monthRange(month: string): { from: string; toExclusive: string }
   return { from: `${month}-01`, toExclusive: `${shiftMonth(month, 1)}-01` };
 }
 
-/** ทีม A–O ก่อน แล้ว Z — กรองทีมอื่น (เช่น Sup) ออก เพราะฐานข้อมูลรับเฉพาะ A–O, Z (SV006) */
-export function serviceTeams<T extends { code: string }>(teams: readonly T[]): T[] {
-  const rank = (code: string) => (/^[A-O]$/.test(code) ? 0 : code === "Z" ? 1 : -1);
-  return teams
-    .filter((t) => rank(t.code) >= 0)
-    .sort((a, b) => rank(a.code) - rank(b.code) || a.code.localeCompare(b.code));
+/**
+ * ทีมที่เลือกบันทึกบริการได้ = ประเภท `service` / `install` (เรียงบริการก่อนติดตั้ง แล้วตามรหัส)
+ * กรองทีมหัวหน้างาน (`supervisor` เช่น Sup) ออก เพราะฐานข้อมูลปฏิเสธ (SV006 · M22 เช็กจาก teams.kind ไม่ใช่รหัสทีม)
+ */
+export function serviceTeams<T extends { code: string; kind: TeamKind }>(teams: readonly T[]): T[] {
+  return sortTeamsByKind(teams.filter((t) => canRecordService(t.kind)));
 }
