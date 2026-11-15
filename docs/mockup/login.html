@@ -11,19 +11,21 @@
   หน้าเข้าสู่ระบบ (SPEC §8 หน้า 1) — mockup แบบ A "การ์ดกลางจอ" (เจ้าของเลือก 6 พ.ย. 2026)
 
   สรุป logic (สำหรับทีมพัฒนา: นัท / Jane / Toon)
-  - ผู้ใช้ที่มีบัญชี (Admin / หัวหน้างาน / PM / OM — SPEC §5.1) เข้าด้วย username + รหัสผ่านที่ผู้ดูแลระบบ (PM / OM) สร้างให้
-    หน้าจอไม่แสดงคำว่า host/admin/recorder และไม่มีคำว่า "ตำแหน่ง" (DECISIONS 2.32) — ตำแหน่งแสดงที่แถบบนหลังเข้าระบบ
+  - ผู้ใช้ที่มีบัญชี (Admin / หัวหน้างาน / PM / OM — SPEC §5.1) เข้าด้วย รหัสพนักงาน (เช่น AG-01234) + รหัสผ่านที่ผู้ดูแลระบบ (PM / OM) สร้างให้
+    หน้าจอไม่แสดงคำว่า host/admin/recorder และฟอร์มเข้าสู่ระบบไม่มีคำว่า "ตำแหน่ง" (DECISIONS 2.32) — ตำแหน่งแสดงที่แถบบนหลังเข้าระบบ
   - บัญชีใหม่/ถูกรีเซ็ต (must_change_password=true) → ขั้นที่ 2 ตั้งรหัสผ่านใหม่ก่อนเข้า (DECISIONS 1.8) · กติการหัสใน mockup (≥8 ตัว, ไม่ซ้ำรหัสชั่วคราว) เป็นค่าสมมติ รอเจ้าของยืนยัน
   - ไม่มีหน้าสมัครเอง / ไม่มี "ลืมรหัสผ่านแบบรีเซ็ตเอง" → ให้ติดต่อ Host
   - viewer ไม่ต้อง login → ลิงก์ "ดูหน้าสรุป (ไม่ต้องเข้าสู่ระบบ)" ไปหน้า public (§8 หน้า 13)
-  - ข้อความ error: "ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง" ใช้ข้อความเดียวกันทั้งกรณีผิด username/ผิดรหัส
-    (ไม่บอกว่า username นี้มีอยู่จริงหรือไม่ → กันการเดาชื่อผู้ใช้)
+  - ข้อความ error: "รหัสพนักงานหรือรหัสผ่านไม่ถูกต้อง" ใช้ข้อความเดียวกันทั้งกรณีผิดรหัสพนักงาน/ผิดรหัสผ่าน
+    (ไม่บอกว่ารหัสพนักงานนี้มีอยู่จริงหรือไม่ → กันการเดา)
   - บัญชีถูกปิด (profiles ปิดใช้งาน) แสดงเมื่อ "ยืนยันตัวตนผ่านแล้วแต่บัญชีถูกปิด" เท่านั้น
-  - ตอน build: Supabase Auth ใช้ email → map username เป็น "<username>@aga.local" ฝั่ง server (ตัดสินตอน build)
+  - ตอน build: Supabase Auth ใช้ email → map รหัสพนักงาน (เก็บตัวพิมพ์ใหญ่ แปลงเป็นตัวเล็กตอนส่ง) เป็น "<รหัส>@aga.local" ฝั่ง server (ตัดสินตอน build)
   - สิทธิ์จริงบังคับที่ RLS — หน้านี้เป็นแค่ทางเข้า ไม่ได้เป็นด่านป้องกัน
 
   แผงสีเหลือง "เฉพาะ mockup" ท้ายหน้า = เครื่องมือเดโมสลับสถานะ (ของจริงไม่มี)
-  บัญชีเดโม (ชื่อสมมติ): somying / wipa / somchai รหัส Demo#1234 · napa.new + Temp#1234 = ต้องเปลี่ยนรหัส · anucha = บัญชีปิด
+  - ถูกเปลี่ยนตำแหน่ง (เจ้าของสั่ง 15 พ.ย. 2026): ล็อกอินสำเร็จครั้งแรกหลังถูกเปลี่ยน → ขั้นแจ้ง "ตำแหน่งของคุณถูกเปลี่ยน จาก→เป็น โดยใคร เมื่อไหร่" กด "รับทราบ" แล้วเข้าระบบ
+    (ขั้นนี้อยู่หลังยืนยันตัวตนแล้ว จึงใช้คำว่า "ตำแหน่ง" ได้) · ของจริงอ่านจากตารางการแจ้งที่ยังไม่อ่าน
+  บัญชีเดโม (ชื่อสมมติ): AG-01001 (PM) / AG-01003 (แอดมิน) / AG-01006 (หัวหน้างาน) รหัส Demo#1234 · AG-01007 = ถูกเปลี่ยนตำแหน่ง · AG-01099 + Temp#1234 = ต้องเปลี่ยนรหัส · AG-01009 = บัญชีปิด
 -->
 <style>
 /* Tokens: ชุดเดียวกับ prototype หลัก (สี Tier ไม่ได้ใช้ในหน้านี้) · ห้าม hardcode hex นอก :root */
@@ -174,10 +176,10 @@ footer{padding:8px 0 20px;text-align:center;font-size:12px;color:var(--fg-faint)
       <div id="stepLogin">
       <form id="f" novalidate>
         <div class="field">
-          <label for="u">ชื่อผู้ใช้</label>
+          <label for="u">รหัสพนักงาน</label>
           <div class="inwrap">
-            <input id="u" name="username" type="text" autocomplete="username" autocapitalize="none" spellcheck="false"
-                   placeholder="เช่น somsri.k" aria-describedby="uh">
+            <input id="u" name="username" type="text" autocomplete="username" autocapitalize="characters" spellcheck="false"
+                   placeholder="เช่น AG-01234" aria-describedby="uh">
           </div>
           <div class="hint bad" id="uh" hidden></div>
         </div>
@@ -203,6 +205,12 @@ footer{padding:8px 0 20px;text-align:center;font-size:12px;color:var(--fg-faint)
         <span aria-hidden="true">▦</span> ดูหน้าสรุป (ไม่ต้องเข้าสู่ระบบ)
       </a>
       <p class="public-note">เห็นเฉพาะตัวเลขสรุปรายสาขา/เขต — ไม่มีข้อมูลลูกค้า</p>
+      </div>
+
+      <!-- ขั้นแจ้ง: ถูกเปลี่ยนตำแหน่ง -->
+      <div id="stepNotice" hidden>
+        <button class="btn" id="goNotice" type="button"><span id="goNoticeTxt">รับทราบ และเข้าสู่ระบบ</span></button>
+        <p class="help">ข้อมูลนี้ดูย้อนหลังได้จากผู้ดูแลระบบ (PM / OM)</p>
       </div>
 
       <!-- ขั้นที่ 2: บัญชีใหม่/ถูกรีเซ็ต ต้องตั้งรหัสผ่านใหม่ก่อนเข้า (DECISIONS 1.8) -->
@@ -240,9 +248,10 @@ footer{padding:8px 0 20px;text-align:center;font-size:12px;color:var(--fg-faint)
       <button type="button" data-st="network">เครือข่ายขัดข้อง</button>
       <button type="button" data-st="ok">เข้าสำเร็จ</button>
       <button type="button" data-st="must">ต้องเปลี่ยนรหัส</button>
+      <button type="button" data-st="notice">ถูกเปลี่ยนตำแหน่ง</button>
     </div>
-    <div style="margin-top:7px">เข้าได้ (ชื่อสมมติ รหัส <code>Demo#1234</code>): <code>somying</code> (Project Manager) · <code>wipa</code> (Admin) · <code>somchai</code> (หัวหน้างาน)<br>
-      บัญชีใหม่ต้องเปลี่ยนรหัส: <code>napa.new</code> + รหัสชั่วคราว <code>Temp#1234</code> · บัญชีปิด: <code>anucha</code></div>
+    <div style="margin-top:7px">เข้าได้ (ชื่อสมมติ รหัส <code>Demo#1234</code>): <code>AG-01001</code> (Project Manager) · <code>AG-01003</code> (แอดมิน) · <code>AG-01006</code> (หัวหน้างาน)<br>
+      ถูกเปลี่ยนตำแหน่ง: <code>AG-01007</code> · บัญชีใหม่ต้องเปลี่ยนรหัส: <code>AG-01099</code> + รหัสชั่วคราว <code>Temp#1234</code> · บัญชีปิด: <code>AG-01009</code></div>
   </div>
 
   <footer>© Advance Group Asia (AGA) · ระบบภายใน · เปิดใช้งานผ่านเบราว์เซอร์หรือติดตั้งเป็นแอป (PWA)</footer>
@@ -283,10 +292,11 @@ footer{padding:8px 0 20px;text-align:center;font-size:12px;color:var(--fg-faint)
 
   /* ---------- แถบแจ้งเตือน ---------- */
   var ALERTS={
-    wrong:{cls:'danger',ic:'⚠',t:'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง',s:'ตรวจสอบตัวพิมพ์เล็ก/ใหญ่แล้วลองอีกครั้ง หากยังเข้าไม่ได้ให้ติดต่อผู้ดูแลระบบ (PM / OM)'},
+    wrong:{cls:'danger',ic:'⚠',t:'รหัสพนักงานหรือรหัสผ่านไม่ถูกต้อง',s:'ตรวจสอบตัวพิมพ์เล็ก/ใหญ่แล้วลองอีกครั้ง หากยังเข้าไม่ได้ให้ติดต่อผู้ดูแลระบบ (PM / OM)'},
     disabled:{cls:'warn',ic:'⛔',t:'บัญชีนี้ถูกปิดใช้งาน',s:'ติดต่อผู้ดูแลระบบ (PM / OM) เพื่อขอเปิดใช้งานบัญชีอีกครั้ง'},
     network:{cls:'danger',ic:'⚠',t:'เชื่อมต่อเซิร์ฟเวอร์ไม่ได้',s:'ตรวจสอบอินเทอร์เน็ตแล้วลองอีกครั้ง'},
     ok:{cls:'ok',ic:'✓',t:'เข้าสู่ระบบสำเร็จ',s:'กำลังพาเข้าสู่ระบบ … (ปุ่ม "เข้าสำเร็จ" ในแผงเดโมด้านล่างแสดงแค่ข้อความ ไม่เปลี่ยนหน้า)'},
+    notice:{cls:'warn',ic:'🔔',t:'ตำแหน่งของคุณถูกเปลี่ยนแล้ว',s:'จาก หัวหน้างาน (Supervisor) เป็น แอดมิน (Admin) โดย สมหญิง ใจดี (PM) · 14 พ.ย. 2026 14:20 · เมนูและสิทธิ์ของคุณเปลี่ยนตามตำแหน่งใหม่'},
     must:{cls:'warn',ic:'🔑',t:'บัญชีนี้ต้องตั้งรหัสผ่านใหม่ก่อนใช้งาน',s:'ตั้งรหัสผ่านที่จำง่ายสำหรับคุณ แล้วใช้รหัสนี้เข้าสู่ระบบครั้งต่อไป'},
     pwdone:{cls:'ok',ic:'✓',t:'ตั้งรหัสผ่านใหม่แล้ว',s:'กำลังพาเข้าสู่ระบบ …'}
   };
@@ -313,13 +323,15 @@ footer{padding:8px 0 20px;text-align:center;font-size:12px;color:var(--fg-faint)
 
   /* ---------- จำลองการยืนยันตัวตน (ของจริงเรียก Supabase Auth) ---------- */
   /* ชื่อสมมติ → หน้าแรกหลังเข้า (ตามตำแหน่ง): PM/หัวหน้างาน = สถานะทะเบียนบริการ · Admin (เปิดงาน) = เปิดงานเข้าทะเบียนบริการ */
-  var OK_USERS={somying:'aga-bait-registry-prototype.html#todo',somchai:'aga-bait-registry-prototype.html#todo',wipa:'admin-add-customer.html'};
-  var OK_PASS='Demo#1234', DISABLED={'anucha':1};
-  var MUST_USER='napa.new', MUST_PASS='Temp#1234'; /* บัญชีใหม่/ถูกรีเซ็ต: must_change_password = true */
+  var OK_USERS={'ag-01001':'aga-bait-registry-prototype.html#todo','ag-01006':'aga-bait-registry-prototype.html#todo','ag-01003':'admin-add-customer.html','ag-01007':'admin-add-customer.html'};
+  var OK_PASS='Demo#1234', DISABLED={'ag-01009':1};
+  var NOTICE={'ag-01007':1}; /* ถูกเปลี่ยนตำแหน่ง รอแจ้ง */
+  var MUST_USER='AG-01099', MUST_PASS='Temp#1234'; /* บัญชีใหม่/ถูกรีเซ็ต: must_change_password = true */
   function fakeAuth(user,pass){
     var name=user.trim().toLowerCase();
-    if(name===MUST_USER && pass===MUST_PASS) return 'must';
+    if(name===MUST_USER.toLowerCase() && pass===MUST_PASS) return 'must';
     if(DISABLED[name] && pass===OK_PASS) return 'disabled'; /* ปิดบัญชี: บอกเมื่อรหัสถูกเท่านั้น */
+    if(NOTICE[name] && pass===OK_PASS) return 'notice';
     if(OK_USERS[name] && pass===OK_PASS) return 'ok';
     return 'wrong';
   }
@@ -331,8 +343,14 @@ footer{padding:8px 0 20px;text-align:center;font-size:12px;color:var(--fg-faint)
     $('sub').textContent='ตั้งรหัสผ่านใหม่ก่อนเข้าใช้งานครั้งแรก';
     showAlert('must'); np.focus();
   }
+  function showNoticeStep(dest){
+    $('stepLogin').hidden=true; $('stepPw').hidden=true; $('stepNotice').hidden=false;
+    $('sub').textContent='มีการเปลี่ยนแปลงกับบัญชีของคุณ';
+    showAlert('notice');
+    $('goNotice').onclick=function(){ location.href=dest; }; $('goNotice').focus();
+  }
   function showLoginStep(){
-    $('stepPw').hidden=true; $('stepLogin').hidden=false;
+    $('stepNotice').hidden=true; $('stepPw').hidden=true; $('stepLogin').hidden=false;
     $('sub').textContent='เข้าสู่ระบบด้วยบัญชีที่ผู้ดูแลระบบ (PM / OM) สร้างให้';
     np.value='';cp.value='';fieldErr(np,nph,'');fieldErr(cp,cph,'');
   }
@@ -367,13 +385,14 @@ footer{padding:8px 0 20px;text-align:center;font-size:12px;color:var(--fg-faint)
     e.preventDefault(); if(busy) return;
     clearAll();
     var bad=false;
-    if(!u.value.trim()){fieldErr(u,uh,'กรอกชื่อผู้ใช้');bad=true;}
+    if(!u.value.trim()){fieldErr(u,uh,'กรอกรหัสพนักงาน');bad=true;}
     if(!p.value){fieldErr(p,ph,'กรอกรหัสผ่าน');bad=true;}
     if(bad){(u.value.trim()?p:u).focus();return;}
     setBusy(true);
     setTimeout(function(){
       setBusy(false);
       var r=fakeAuth(u.value,p.value);
+      if(r==='notice'){ p.value=''; showNoticeStep(OK_USERS[u.value.trim().toLowerCase()]); return; }
       showAlert(r);
       if(r==='wrong'){markBad(u);markBad(p);p.value='';p.focus();}
       if(r==='disabled'){markBad(u);p.value='';u.focus();}
@@ -393,9 +412,10 @@ footer{padding:8px 0 20px;text-align:center;font-size:12px;color:var(--fg-faint)
     b.addEventListener('click',function(){
       var s=b.getAttribute('data-st'); clearAll(); showLoginStep();
       if(s==='normal'){u.value='';p.value='';return;}
-      if(s==='wrong'){u.value='somsri.k';p.value='';markBad(u);markBad(p);}
-      if(s==='disabled'){u.value='anucha';p.value='';markBad(u);}
-      if(s==='ok'){u.value='somchai';}
+      if(s==='wrong'){u.value='AG-09999';p.value='';markBad(u);markBad(p);}
+      if(s==='disabled'){u.value='AG-01009';p.value='';markBad(u);}
+      if(s==='ok'){u.value='AG-01006';}
+      if(s==='notice'){u.value='AG-01007'; showNoticeStep('admin-add-customer.html'); return;}
       if(s==='must'){u.value=MUST_USER; showPwStep(); return;}
       showAlert(s);
     });
