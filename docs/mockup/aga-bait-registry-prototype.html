@@ -540,14 +540,14 @@ tfoot td{padding:10px 12px;font-weight:700;background:var(--surface-2);border-to
   #matMat .stats{grid-template-columns:1fr}
   #s-material .btn.sm,#s-material .segbtn{min-height:40px}
   #s-material .toolbar select,#s-material .toolbar input{min-height:40px}
-  #s-material .tablewrap{overflow:visible;background:none;border:0;box-shadow:none}
-  #s-material table,#s-material tbody,#s-material tfoot,#s-material tr,#s-material td{display:block;width:100%}
-  #s-material thead{display:none}
-  #s-material tbody tr,#s-material tfoot tr{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:10px 14px;margin-bottom:8px}
-  #s-material td{display:flex;justify-content:space-between;gap:10px;border:0;padding:3px 0;text-align:right}
-  #s-material td::before{content:attr(data-label);color:var(--fg-muted);text-align:left}
-  #s-material td:first-child{font-weight:600;justify-content:flex-start;text-align:left}
-  #s-material td:first-child::before{display:none}
+  #matMat .tablewrap,#matTime .tablewrap{overflow:visible;background:none;border:0;box-shadow:none}
+  #matMat table,#matTime table,#matMat tbody,#matTime tbody,#matMat tfoot,#matTime tfoot,#matMat tr,#matTime tr,#matMat td,#matTime td{display:block;width:100%}
+  #matMat thead,#matTime thead{display:none}
+  #matMat tbody tr,#matTime tbody tr,#matMat tfoot tr,#matTime tfoot tr{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:10px 14px;margin-bottom:8px}
+  #matMat td,#matTime td{display:flex;justify-content:space-between;gap:10px;border:0;padding:3px 0;text-align:right}
+  #matMat td::before,#matTime td::before{content:attr(data-label);color:var(--fg-muted);text-align:left}
+  #matMat td:first-child,#matTime td:first-child{font-weight:600;justify-content:flex-start;text-align:left}
+  #matMat td:first-child::before,#matTime td:first-child::before{display:none}
 }
 .clrow2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .clrow3 .field{min-width:0}.clrow3 input,.clrow3 select{width:100%;min-width:0;max-width:100%;box-sizing:border-box}
@@ -768,7 +768,7 @@ tfoot td{padding:10px 12px;font-weight:700;background:var(--surface-2);border-to
     <!-- ========== 1. TODO ========== -->
     <section id="s-todo">
       <div class="page-head"><h1>สถานะทะเบียนบริการ</h1>
-        <p>ภาพรวมทีมบริการของเดือน — ความคืบหน้าการกรอกผล งานที่ต้องตัดสิน/ตามต่อ และสรุปรายทีม (เวลาบริการ · ตกบริการ · New/Renew)</p></div>
+        <p>งานที่ต้องทำของเดือน — ความคืบหน้าการกรอกผล เรื่องตกบริการที่ต้องตัดสิน สัญญาใกล้หมด และกล่องเหยื่อรอถอด · <a href="#material" onclick="go('material');matTab('team');return false">ดูสรุปรายทีม →</a> (อยู่ในหน้าสรุปงานบริการรายเดือน)</p></div>
       <div class="card" style="margin-bottom:18px">
         <h3><span class="dot" style="background:var(--accent)"></span> สถานะงานกรอกผล · ต.ค. 2026 <small style="font-size:12px;font-weight:400;color:var(--fg-muted)">เดือนที่ยังไม่ปิดเก่าสุด · ปิดเดือนแล้วหน้านี้เลื่อนไปเดือนถัดไปเอง</small></h3>
         <div class="body" style="padding:15px 16px">
@@ -788,14 +788,6 @@ tfoot td{padding:10px 12px;font-weight:700;background:var(--surface-2);border-to
         <div class="stat accent"><div class="lab"><span class="dot" style="background:var(--accent)"></span> กล่องเหยื่อรอถอด</div><div class="val num">12</div><div class="sub">พบปลวกตายแล้ว · รอถอด</div></div>
       </div>
       <div id="msTodo"></div>
-      <div class="tmsec" id="tmSec">
-        <h3><span class="dot" style="background:var(--accent)"></span> สรุปรายทีม · ต.ค. 2026 <small>เวลาบริการ · ตกบริการ · ลูกค้าเพิ่ม (ข้อมูลสมมติ)</small></h3>
-        <div class="tmk" id="tmKpi"></div>
-        <div class="tablewrap"><table>
-          <thead><tr><th>ทีม</th><th>เขต · สาขา</th><th>เวลาบริการ (รวม · เฉลี่ยต่อราย)</th><th class="c">เข้าบริการ (ทำแล้ว/ทั้งหมด)</th><th>ตกบริการ (ต.ค.) · หมายเหตุ</th><th class="c">New</th><th class="c">Renew</th></tr></thead>
-          <tbody id="tmBody"></tbody>
-        </table></div>
-      </div>
       <div class="cards">
         <div class="card">
           <h3><span class="dot" style="background:var(--danger)"></span> ยังไม่มีข้อมูล (ยังไม่กรอก) <span class="count badge-danger">18</span></h3>
@@ -841,10 +833,11 @@ tfoot td{padding:10px 12px;font-weight:700;background:var(--surface-2);border-to
     <!-- ========== สรุปวัสดุ (internal: host/admin/recorder) ========== -->
     <section id="s-material" hidden>
       <div class="page-head"><h1>สรุปงานบริการรายเดือน</h1>
-        <p>สรุปวัสดุที่ใช้ (เหยื่อ NEMESIS · เคมีผง · ไม้ล่อ) และเวลาทำงานของทีม ในช่วงที่เลือก — สำหรับวางแผนสต็อก/ต้นทุน/กำลังคน <span class="chip pend">🔒 internal เท่านั้น</span></p></div>
+        <p>สรุปวัสดุที่ใช้ (เหยื่อ NEMESIS · เคมีผง · ไม้ล่อ) เวลาทำงาน และสรุปรายทีม ในช่วงที่เลือก — สำหรับวางแผนสต็อก/ต้นทุน/กำลังคน <span class="chip pend">🔒 internal เท่านั้น</span></p></div>
       <div class="seg" role="tablist" aria-label="หัวข้อสรุป">
         <button type="button" class="segbtn on" role="tab" aria-selected="true" id="matTabMat" onclick="matTab('mat')">วัสดุ</button>
         <button type="button" class="segbtn" role="tab" aria-selected="false" id="matTabTime" onclick="matTab('time')">เวลาทำงาน</button>
+        <button type="button" class="segbtn" role="tab" aria-selected="false" id="matTabTeam" onclick="matTab('team')">สรุปรายทีม</button>
       </div>
       <div class="toolbar">
         <div class="field"><label for="matPeriod">ช่วงเวลา</label><select id="matPeriod" onchange="matPeriodChg()"><option value="m">เดือนนี้ (ต.ค. 2026)</option><option value="q">ไตรมาส 4/2026 (ต.ค. – ธ.ค.)</option><option value="y">ปี 2026</option><option value="custom">กำหนดช่วงเอง…</option></select></div>
@@ -924,6 +917,17 @@ tfoot td{padding:10px 12px;font-weight:700;background:var(--surface-2);border-to
       </div><!-- /matMat -->
 
       <!-- สรุปเวลาทำงานจริง: คำนวณจากเวลาเข้า–เวลาจบในหน้ากรอกข้อมูลทำบริการ · ข้อมูลในตารางเป็นตัวอย่างสมมติ -->
+      <div id="matTeam" hidden>
+        <!-- ย้ายมาจากหน้า #todo (เจ้าของสั่ง 15 พ.ย. 2026): เป็นสรุปทั้งเดือน ไม่ใช่งานค้าง -->
+      <div class="tmsec" id="tmSec">
+        <h3><span class="dot" style="background:var(--accent)"></span> สรุปรายทีม · ต.ค. 2026 <small>เวลาบริการ · ตกบริการ · ลูกค้าเพิ่ม (ข้อมูลสมมติ)</small></h3>
+        <div class="tmk" id="tmKpi"></div>
+        <div class="tablewrap"><table>
+          <thead><tr><th>ทีม</th><th>เขต · สาขา</th><th>เวลาบริการ (รวม · เฉลี่ยต่อราย)</th><th class="c">เข้าบริการ (ทำแล้ว/ทั้งหมด)</th><th>ตกบริการ (ต.ค.) · หมายเหตุ</th><th class="c">New</th><th class="c">Renew</th></tr></thead>
+          <tbody id="tmBody"></tbody>
+        </table></div>
+      </div>
+      </div>
       <div id="matTime" hidden>
         <div class="stats" id="wtStats"></div>
         <div class="seg" role="tablist" aria-label="มุมมองเวลาทำงาน">
@@ -1826,9 +1830,9 @@ function wtView(v){
 }
 function matTab(t){
   var time=(t==='time');
-  $('matMat').hidden=time; $('matTime').hidden=!time; $('matExport').hidden=time;
-  [['matTabMat',!time],['matTabTime',time]].forEach(function(p){
-    var b=$(p[0]); b.classList.toggle('on',p[1]); b.setAttribute('aria-selected',p[1]?'true':'false');
+  $('matMat').hidden=(t!=='mat'); $('matTime').hidden=!time; $('matTeam').hidden=(t!=='team'); $('matExport').hidden=(t!=='mat');
+  [['matTabMat','mat'],['matTabTime','time'],['matTabTeam','team']].forEach(function(p){
+    var b=$(p[0]); b.classList.toggle('on',p[1]===t); b.setAttribute('aria-selected',p[1]===t?'true':'false');
   });
   if(time) wtSumRender();
 }
@@ -1839,7 +1843,7 @@ function matPeriodChg(){
 }
 /* ใส่ data-label ให้ทุกช่องตาราง ให้มือถือแสดงเป็นการ์ด (ชื่อหัวคอลัมน์ : ค่า) */
 function matLabels(){
-  [].forEach.call(document.querySelectorAll('#s-material table'),function(tb){
+  [].forEach.call(document.querySelectorAll('#matMat table,#matTime table'),function(tb){
     var hs=[].map.call(tb.querySelectorAll('thead th'),function(h){return h.textContent.replace(/\s+/g,' ').trim()});
     [].forEach.call(tb.querySelectorAll('tbody tr,tfoot tr'),function(tr){var k=0;[].forEach.call(tr.cells,function(td){if(hs[k])td.setAttribute('data-label',hs[k]);k+=(td.colSpan||1)})});
   });
