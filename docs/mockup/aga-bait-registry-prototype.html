@@ -481,14 +481,15 @@ tfoot td{padding:10px 12px;font-weight:700;background:var(--surface-2);border-to
 .tmmc{display:flex;align-items:center;gap:6px;justify-content:space-between}
 .tmmc .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12.5px;color:var(--danger);font-weight:600;text-align:left}
 .tmmc .tmnbtn{width:30px;height:30px}
-.tmsort{display:flex;align-items:center;flex-wrap:wrap;gap:8px 12px;padding:8px 14px}
-.tmsl{font-size:12.5px;font-weight:600;color:var(--fg-muted)}
-.tmsegc{display:inline-flex;flex-wrap:wrap;gap:2px;padding:3px;border:1px solid var(--border);border-radius:10px;background:var(--surface-2)}
-.tmrd{position:relative;display:inline-flex;align-items:center;min-height:34px;padding:0 14px;border-radius:7px;font-size:12.5px;color:var(--fg-muted);cursor:pointer;white-space:nowrap;transition:background .15s,color .15s}
-.tmrd input{position:absolute;opacity:0;inset:0;margin:0;cursor:pointer}
-.tmrd:hover{background:var(--surface-3);color:var(--fg)}
-.tmrd:has(input:checked){background:var(--accent);color:var(--accent-fg);font-weight:600;box-shadow:var(--shadow)}
-.tmrd:has(input:focus-visible){outline:2px solid var(--accent);outline-offset:2px}
+.tmmx{display:block}
+.tmmr5{display:grid;grid-template-columns:70px repeat(4,minmax(0,1fr));gap:8px;align-items:center;padding:6px 10px;font-size:12.5px;border-radius:6px;border-top:1px solid var(--border)}
+.tmmr5.hd{border-top:0;border-bottom:1px solid var(--border);border-radius:0;padding-top:2px;padding-bottom:2px}
+.tmmr5 .r{text-align:right}.tmmr5 small{display:block;font-size:11.5px;font-weight:400;color:var(--fg-muted)}
+.tmmr5[data-tmteam]{cursor:pointer}.tmmr5[data-tmteam]:hover{background:var(--surface-2)}.tmmr5.dim{opacity:.35}.tmmr5.sel{background:var(--accent-soft)}.tmmr5:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.tmth{display:inline-flex;align-items:center;gap:4px;min-height:36px;padding:0 6px;border:0;border-radius:6px;background:none;font:inherit;font-size:12px;font-weight:600;color:var(--fg-muted);cursor:pointer;white-space:nowrap}
+.tmth.r{justify-content:flex-end}.tmth i{font-style:normal;font-size:10px;opacity:.55}
+.tmth:hover{background:var(--surface-2);color:var(--fg)}.tmth.on{color:var(--accent)}.tmth.on i{opacity:1}.tmth:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+@media (max-width:860px){.tmmr5{grid-template-columns:44px repeat(4,minmax(0,1fr));gap:4px;padding:6px 4px;font-size:12px}.tmth{padding:0 2px;font-size:11px;white-space:normal;text-align:right;line-height:1.2}.tmmr5 small{font-size:10.5px}.tmmr5 span:nth-child(4) small{display:none}}
 /* แถวกราฟสูงเท่ากันทุกแถวทุกกราฟ → แท่งห่างเท่ากันและตรงกันข้ามกราฟ */
 .tmch{--rh:46px}.tmch.dense{--rh:30px}
 .tmch .tmcr{height:var(--rh);margin:1px 0;align-content:center;row-gap:1px}.tmcr .tmct{margin:0;line-height:1.15}
@@ -3065,9 +3066,9 @@ function tmTipShow(x,y,html){
   if(px+w>innerWidth-8)px=x-w-14;if(py+h>innerHeight-8)py=y-h-14;t.style.left=Math.max(8,px)+'px';t.style.top=Math.max(8,py)+'px'}
 function tmTipHide(){var t=$('tmTip');if(t)t.style.display='none'}
 /* เรียงทีม (เจ้าของสั่ง 15 พ.ย. 2026): ปุ่มเรียงใช้กับกราฟทั้งหมด ตัวชี้วัด และตารางด้านล่าง — มูลค่า/สถานี คิดตามตัวกรองขนาดที่เลือก · ชั่วโมงทำงาน = เวลารวมของทีม (คนละอย่างกับ สถานี/ชม.) */
-var TM_SORT='team',TM_SORTS=[['team','ชื่อทีม'],['val','มูลค่าสูงสุด'],['st','สถานีสูงสุด'],['hours','ชั่วโมงทำงานสูงสุด'],['miss','ตกบริการมากสุด']];
+var TM_SORT='team',TM_REV=false;   /* เรียงจากหัวคอลัมน์ในตาราง (เจ้าของสั่ง 15 พ.ย. 2026) · กดซ้ำ = สลับทิศ · ใช้กับกราฟและตารางรายทีมด้วย */
 function tmMet(t){var n=0,st=0,val=0;t.tiers.forEach(function(v,i){if(!TM_F.on[i])return;n+=v;st+=v*TM_ST[i];val+=v*TM_VAL[i]});return {n:n,st:st,val:val,hours:t.min/60,miss:t.miss.length}}
-function tmSortFn(){var k=TM_SORT;return function(a,b){if(k!=='team'){var d=tmMet(b)[k]-tmMet(a)[k];if(d)return d}return a.team.localeCompare(b.team,'th')}}
+function tmSortFn(){var k=TM_SORT,rev=TM_REV;return function(a,b){var c;if(k==='team')c=a.team.localeCompare(b.team,'th');else{c=tmMet(b)[k]-tmMet(a)[k];if(!c)c=a.team.localeCompare(b.team,'th')}return rev?-c:c}}
 function tmCharts(){
   var box=$('tmCharts');if(!box)return;
   var ord=TM.slice().sort(tmSortFn());
@@ -3078,25 +3079,25 @@ function tmCharts(){
   var g1=D.map(function(d){return row(d,'<div class="tmcb" style="width:'+(d.n/maxN*100)+'%">'+d.t.tiers.map(function(v,i){if(!v||!TM_F.on[i])return '';var p=v*100/d.n;
       return '<i class="tier '+TM_TIER[i][1]+'3" style="width:'+p+'%" data-tip="<b>'+esc(d.t.team)+' · ขนาด '+TM_TIER[i][0]+'</b><br>'+v+' ราย ('+Math.round(p)+'% ของทีม)<br>'+(v*TM_ST[i]).toLocaleString('en-US')+' สถานี · '+((v*TM_VAL[i])/1e6).toFixed(1)+' ล้านบาท">'+(p>=11?TM_TIER[i][0]:'')+'</i>'}).join('')+'</div><span class="num"><b>'+d.n+'</b> ราย</span><small class="tmct">'+d.t.tiers.map(function(v,i){return TM_F.on[i]?TM_TIER[i][0]+' '+v:''}).filter(Boolean).join(' · ')+'</small>')}).join('');
   var g2=D.map(function(d){var p=avg?Math.round((d.st/avg-1)*100):0;return row(d,'<div class="tmcs"><i style="width:'+(d.st/maxS*100)+'%" data-tip="<b>'+esc(d.t.team)+'</b><br>'+d.st.toLocaleString('en-US')+' สถานี จาก '+d.n+' ราย<br>เฉลี่ยทุกทีม '+Math.round(avg).toLocaleString('en-US')+' ('+(p>0?'+':'')+p+'%)"></i><span class="avgl" style="left:'+(avg/maxS*100)+'%"></span></div><span class="num"><b>'+d.st.toLocaleString('en-US')+'</b> <span class="chip '+(p>10?'miss':p<-10?'ok':'na')+'">'+(p>0?'+':'')+p+'%</span></span>')}).join('');
-  var g3=D.map(function(d){var sel=TM_F.team===d.t.team;return '<div class="tmm'+(TM_F.team&&!sel?' dim':'')+'" data-tmteam="'+esc(d.t.team)+'" role="button" tabindex="0" aria-pressed="'+sel+'"><b>'+esc(d.t.team)+'</b><div><span>มูลค่าสัญญา</span><b class="num">'+(d.val/1e6).toFixed(1)+' ล้าน</b></div><div><span>สถานี / ชม.ทำงาน</span><b class="num">'+d.sph.toFixed(1)+'</b></div><div><span>อัตราตกบริการ</span><b class="num" style="'+(d.mr>=3?'color:var(--danger)':'')+'">'+d.mr.toFixed(1)+'%</b></div></div>'}).join('');
   var lg1='<div class="tmlg">'+TM_TIER.map(function(x,i){return '<button type="button" class="tmlgb tier '+x[1]+'3'+(TM_F.on[i]?'':' off')+'" aria-pressed="'+(TM_F.on[i]?'true':'false')+'" data-tmtier="'+i+'" title="'+(TM_F.on[i]?'กดเพื่อซ่อนขนาด ':'กดเพื่อแสดงขนาด ')+x[0]+'">'+x[0]+'</button>'}).join('')+'<span class="tmhint">กดขนาดเพื่อเปิด/ปิด · กดแถวทีมเพื่อกรองตาราง</span></div>';
   /* ข้อมูลเยอะ (>8 ทีม): โหมดกระชับ — แถวเตี้ย ซ่อนบรรทัดตัวเลขใต้แท่ง (ดูในกล่องที่ชี้) และตัวชี้วัดเป็นตาราง 2 คอลัมน์ */
   var dense=D.length>8;box.classList.toggle('dense',dense);
-  function mc(list){return '<div class="tmmcol"><div class="tmmr hd"><span>ทีม</span><span class="r">มูลค่า</span><span class="r">สถานี/ชม.</span><span class="r">ตกบริการ</span></div>'+list.map(function(d){var sel=TM_F.team===d.t.team;return '<div class="tmmr'+(TM_F.team&&!sel?' dim':'')+(sel?' sel':'')+'" role="button" tabindex="0" aria-pressed="'+sel+'" data-tmteam="'+esc(d.t.team)+'"><b>'+esc(d.t.team)+'</b><span class="num r">'+(d.val/1e6).toFixed(1)+' ล้าน</span><span class="num r">'+d.sph.toFixed(1)+'</span><span class="num r" style="'+(d.mr>=3?'color:var(--danger);font-weight:600':'')+'">'+d.mr.toFixed(1)+'%</span></div>'}).join('')+'</div>'}
-  var half=Math.ceil(D.length/2),g3d='<div class="tmmd">'+mc(D.slice(0,half))+mc(D.slice(half))+'</div>';
-  var srt='<div class="tmcp tmcfull tmsort"><span class="tmsl">เรียงตาม</span><div class="tmsegc" role="radiogroup" aria-label="เรียงทีมตาม">'+TM_SORTS.map(function(x){return '<label class="tmrd"><input type="radio" name="tmsort" value="'+x[0]+'"'+(TM_SORT===x[0]?' checked':'')+'><span>'+x[1]+'</span></label>'}).join('')+'</div></div>';
+  /* ตารางตัวชี้วัด: คอลัมน์ ทีม · มูลค่า · สถานี · ชั่วโมงทำงาน · ตกบริการ — กดหัวคอลัมน์เพื่อเรียง (ลูกศรบอกทิศ) · กดแถวเพื่อกรองทีม */
+  function hth(k,lab,cls){var on=TM_SORT===k,asc=(k==='team')?!TM_REV:TM_REV,ar=on?(asc?'▲':'▼'):'↕';return '<button type="button" class="tmth'+(on?' on':'')+' '+cls+'" data-tmsort="'+k+'" aria-label="เรียงตาม'+lab+(on?' (ตอนนี้'+(asc?'น้อยไปมาก':'มากไปน้อย')+')':'')+'">'+lab+' <i aria-hidden="true">'+ar+'</i></button>'}
+  var g3d='<div class="tmmx" role="table" aria-label="ตัวชี้วัดต่อทีม"><div class="tmmr5 hd" role="row">'+hth('team','ทีม','l')+hth('val','มูลค่า (ล้านบาท)','r')+hth('st','สถานี','r')+hth('hours','ชั่วโมงทำงาน','r')+hth('miss','ตกบริการ','r')+'</div>'+
+    D.map(function(d){var sel=TM_F.team===d.t.team,hr=d.t.min/60;return '<div class="tmmr5'+(TM_F.team&&!sel?' dim':'')+(sel?' sel':'')+'" role="row" tabindex="0" aria-pressed="'+sel+'" data-tmteam="'+esc(d.t.team)+'"><b>'+esc(d.t.team)+'</b><span class="num r">'+(d.val/1e6).toFixed(1)+'</span><span class="num r">'+d.st.toLocaleString('en-US')+'<small>'+d.n+' ราย</small></span><span class="num r">'+hr.toFixed(1)+' ชม.<small>'+d.sph.toFixed(1)+' สถานี/ชม.</small></span><span class="num r" style="'+(d.mr>=3?'color:var(--danger);font-weight:600':'')+'">'+d.t.miss.length+' ราย<small>'+d.mr.toFixed(1)+'%</small></span></div>'}).join('')+'</div>';
   box.innerHTML=
-    srt+(filt?'<div class="tmcp tmcfull tmfl"><span>กำลังกรอง: '+(offN?'ขนาด '+TM_TIER.filter(function(x,i){return TM_F.on[i]}).map(function(x){return x[0]}).join('/'):'')+(offN&&TM_F.team?' · ':'')+(TM_F.team?esc(TM_F.team):'')+'</span><button type="button" class="btn sm" data-tmreset>ล้างตัวกรอง ✕</button></div>':'')+
+    (filt?'<div class="tmcp tmcfull tmfl"><span>กำลังกรอง: '+(offN?'ขนาด '+TM_TIER.filter(function(x,i){return TM_F.on[i]}).map(function(x){return x[0]}).join('/'):'')+(offN&&TM_F.team?' · ':'')+(TM_F.team?esc(TM_F.team):'')+'</span><button type="button" class="btn sm" data-tmreset>ล้างตัวกรอง ✕</button></div>':'')+
     '<div class="tmcp"><h4>ลูกค้าที่ดูแลต่อทีม แยกขนาด (Tier)</h4>'+lg1+g1+'</div>'+
     '<div class="tmcp"><h4>สถานีที่ดูแลต่อทีม</h4><div class="tmlg"><span><i style="background:var(--accent)"></i>จำนวนสถานี</span><span><i class="dash"></i>ค่าเฉลี่ย '+Math.round(avg).toLocaleString('en-US')+'</span><span>ป้าย = สูง/ต่ำกว่าค่าเฉลี่ย</span></div>'+g2+'</div>'+
-    '<div class="tmcp tmcfull"><h4>ตัวชี้วัดเพิ่มต่อทีม'+(offN?' <small>(ตามขนาดที่เลือก)</small>':'')+'</h4>'+(dense?g3d:'<div class="tmmg">'+g3+'</div>')+'</div>';
+    '<div class="tmcp tmcfull"><h4>เปรียบเทียบรายทีม <small>(กดหัวคอลัมน์เพื่อเรียง)</small>'+(offN?' <small>(ตามขนาดที่เลือก)</small>':'')+'</h4>'+g3d+'</div>';
 }
-document.addEventListener('change',function(e){var t=e.target;if(t&&t.name==='tmsort'&&t.closest&&t.closest('#tmCharts')){TM_SORT=t.value;tmRender()}});
 (function(){
   var box=document.getElementById('tmCharts')||document;
   document.addEventListener('mousemove',function(e){var t=e.target.closest&&e.target.closest('#tmCharts [data-tip]');if(t)tmTipShow(e.clientX,e.clientY,t.getAttribute('data-tip'));else tmTipHide()});
   document.addEventListener('click',function(e){
     var c=e.target.closest&&e.target.closest('#tmCharts');if(!c)return;
+    var sh=e.target.closest('[data-tmsort]');if(sh){var k=sh.getAttribute('data-tmsort');if(TM_SORT===k)TM_REV=!TM_REV;else{TM_SORT=k;TM_REV=false}tmRender();var nh=document.querySelector('#tmCharts [data-tmsort="'+k+'"]');if(nh)nh.focus();return}
     var tg=e.target.closest('[data-tmtier]');
     if(tg){var i=+tg.getAttribute('data-tmtier');TM_F.on[i]=TM_F.on[i]?0:1;if(!TM_F.on.some(function(v){return v}))TM_F.on[i]=1;tmRender();return}
     if(e.target.closest('[data-tmreset]')){TM_F={on:[1,1,1,1],team:''};tmRender();return}
