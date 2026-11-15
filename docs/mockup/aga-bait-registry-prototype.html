@@ -952,11 +952,11 @@ i.wr,rect.wr{background:var(--accent);fill:var(--accent)}i.wf,rect.wf{background
           </div>
         </div>
         <div class="panel">
-          <h3><span class="dot" style="background:var(--pow)"></span> เคมีผง แยกสาขา <span class="num" style="margin-left:auto;font-weight:700;color:var(--pow)">420 จุด</span></h3>
-          <div class="body"><div class="leg"><span><span class="sw" style="background:var(--pow)"></span> เคมีผง (จุดที่พบปลวกสวน)</span></div><div class="usebars">
-            <div class="userow"><span>พุทธมณฑล</span><div class="usetrack"><div class="usefill pow" style="width:100%" data-tip="เคมีผง · 230 จุด · 69 ก. · 55% ของเขต"></div></div><span class="v num">230 จุด</span></div>
-            <div class="userow"><span>หัวหิน</span><div class="usetrack"><div class="usefill pow" style="width:47.8%" data-tip="เคมีผง · 110 จุด · 33 ก. · 26% ของเขต"></div></div><span class="v num">110 จุด</span></div>
-            <div class="userow"><span>นครปฐม</span><div class="usetrack"><div class="usefill pow" style="width:34.8%" data-tip="เคมีผง · 80 จุด · 24 ก. · 19% ของเขต"></div></div><span class="v num">80 จุด</span></div>
+          <h3><span class="dot" style="background:var(--pow)"></span> เคมีผง แยกสาขา <span class="num" style="margin-left:auto;font-weight:700;color:var(--pow)">420 จุด · ≈126 ก.</span></h3>
+          <div class="body"><div class="leg"><span><span class="sw" style="background:var(--pow)"></span> เคมีผง (จุดที่พบปลวกสวน · 0.3 ก./จุด)</span></div><div class="usebars">
+            <div class="userow"><span>พุทธมณฑล</span><div class="usetrack"><div class="usefill pow" style="width:100%" data-tip="เคมีผง · 230 จุด · 69 ก. · 55% ของเขต"></div></div><span class="v num">230 จุด · 69 ก.</span></div>
+            <div class="userow"><span>หัวหิน</span><div class="usetrack"><div class="usefill pow" style="width:47.8%" data-tip="เคมีผง · 110 จุด · 33 ก. · 26% ของเขต"></div></div><span class="v num">110 จุด · 33 ก.</span></div>
+            <div class="userow"><span>นครปฐม</span><div class="usetrack"><div class="usefill pow" style="width:34.8%" data-tip="เคมีผง · 80 จุด · 24 ก. · 19% ของเขต"></div></div><span class="v num">80 จุด · 24 ก.</span></div>
           </div></div>
         </div>
         <div class="panel">
@@ -983,19 +983,7 @@ i.wr,rect.wr{background:var(--accent);fill:var(--accent)}i.wf,rect.wf{background
         </table>
       </div>
 
-      <div class="panel" style="margin-top:18px">
-        <h3><span class="dot" style="background:var(--pow)"></span> สรุปเคมีผง (เฉพาะจุดปลวกสวน) <span class="num" style="margin-left:auto;font-weight:700;color:var(--pow)">420 จุด · ≈126 ก.</span></h3>
-        <div class="body matbars">
-          <div class="hint">เคมีผงใช้กับ <b>จุดที่พบปลวกสวน</b> (ไม่ใส่เหยื่อ) · มาตรฐานล็อก <b>0.3 ก./จุด</b> → กรัมคำนวณอัตโนมัติ ผู้ใช้กรอกแค่ "จำนวนจุด"</div>
-          <div class="usebars">
-            <div class="userow"><span>พุทธมณฑล</span><div class="usetrack"><div class="usefill pow" style="width:100%" data-tip="230 จุด × 0.3 = 69 ก."></div></div><span class="v num">230 จุด · 69 ก.</span></div>
-            <div class="userow"><span>หัวหิน</span><div class="usetrack"><div class="usefill pow" style="width:47.8%" data-tip="110 จุด × 0.3 = 33 ก."></div></div><span class="v num">110 จุด · 33 ก.</span></div>
-            <div class="userow"><span>นครปฐม</span><div class="usetrack"><div class="usefill pow" style="width:34.8%" data-tip="80 จุด × 0.3 = 24 ก."></div></div><span class="v num">80 จุด · 24 ก.</span></div>
-          </div>
-          <div class="note"><span class="ic">ℹ</span><span>ข้อมูลเคมีผงมาจากช่อง "จำนวนจุด" ในหน้ากรอกผลบริการ (จุดที่ระบุชนิด = ปลวกสวน)</span></div>
-        </div>
-      </div>
-      </div><!-- /matMat -->
+            </div><!-- /matMat -->
 
       <!-- สรุปเวลาทำงานจริง: คำนวณจากเวลาเข้า–เวลาจบในหน้ากรอกข้อมูลทำบริการ · ข้อมูลในตารางเป็นตัวอย่างสมมติ -->
       <div id="matTeam" hidden>
@@ -2042,18 +2030,14 @@ function matBuildFull(root){
   /* กราฟแท่ง (เรียงมากไปน้อย) */
   var panels=root.querySelectorAll('.cards.matbars .panel');
   function setTot(p,txt){p.querySelector('h3 .num').textContent=txt}
-  setTot(panels[0],matFmt(NT)+' ก.');setTot(panels[1],matFmt(T.p)+' จุด');setTot(panels[2],matFmt(T.w)+' ชิ้น');
+  setTot(panels[0],matFmt(NT)+' ก.');setTot(panels[1],matFmt(T.p)+' จุด · ≈'+matFmt(T.g)+' ก.');setTot(panels[2],matFmt(T.w)+' ชิ้น');
   var byN=D.slice().sort(function(a,b){return (b.o+b.i)-(a.o+a.i)}),mxN=byN[0].o+byN[0].i;
   panels[0].querySelector('.usebars').innerHTML=byN.map(function(d){var t=d.o+d.i;return '<div class="userow"><span>'+esc(d.n)+'</span><div class="usetrack stk"><div class="mseg out" style="width:'+(d.o/mxN*100)+'%" data-tip="ภายนอก (IG+IC) · '+matFmt(d.o)+' ก. · '+Math.round(d.o*100/t)+'%"></div><div class="mseg in" style="width:'+(d.i/mxN*100)+'%" data-tip="ภายใน (AG) · '+matFmt(d.i)+' ก. · '+Math.round(d.i*100/t)+'%"></div></div><span class="v num">'+matFmt(t)+' ก.<small>นอก '+matFmt(d.o)+' · ใน '+matFmt(d.i)+'</small></span></div>'}).join('');
   var byP=D.slice().sort(function(a,b){return b.p-a.p}),mxP=byP[0].p;
-  panels[1].querySelector('.usebars').innerHTML=byP.map(function(d){return '<div class="userow"><span>'+esc(d.n)+'</span><div class="usetrack"><div class="usefill pow" style="width:'+(d.p/mxP*100)+'%" data-tip="เคมีผง · '+d.p+' จุด · '+d.g+' ก. · '+Math.round(d.p*100/T.p)+'% ของส่วนกลาง"></div></div><span class="v num">'+d.p+' จุด</span></div>'}).join('');
+  panels[1].querySelector('.usebars').innerHTML=byP.map(function(d){return '<div class="userow"><span>'+esc(d.n)+'</span><div class="usetrack"><div class="usefill pow" style="width:'+(d.p/mxP*100)+'%" data-tip="เคมีผง · '+d.p+' จุด · '+d.g+' ก. · '+Math.round(d.p*100/T.p)+'% ของส่วนกลาง"></div></div><span class="v num">'+d.p+' จุด · '+d.g+' ก.</span></div>'}).join('');
   var byW=D.slice().sort(function(a,b){return b.w-a.w}),mxW=byW[0].w;
   panels[2].querySelector('.usebars').innerHTML=byW.map(function(d){return '<div class="userow"><span>'+esc(d.n)+'</span><div class="usetrack"><div class="usefill wood" style="width:'+(d.w/mxW*100)+'%" data-tip="ไม้ล่อ · '+matFmt(d.w)+' ชิ้น · '+Math.round(d.w*100/T.w)+'% ของส่วนกลาง"></div></div><span class="v num">'+matFmt(d.w)+' ชิ้น</span></div>'}).join('');
   matRenderTable(D,'รวมส่วนกลาง ('+D.length+' สาขา)');
-  /* สรุปเคมีผง */
-  var cp=root.querySelector(':scope > .panel');
-  cp.querySelector('h3 .num').textContent=matFmt(T.p)+' จุด · ≈'+matFmt(T.g)+' ก.';
-  cp.querySelector('.usebars').innerHTML=byP.map(function(d){return '<div class="userow"><span>'+esc(d.n)+'</span><div class="usetrack"><div class="usefill pow" style="width:'+(d.p/mxP*100)+'%" data-tip="'+d.p+' จุด × 0.3 = '+d.g+' ก."></div></div><span class="v num">'+d.p+' จุด · '+d.g+' ก.</span></div>'}).join('');
 }
 document.addEventListener('click',function(e){var b=e.target.closest&&e.target.closest('[data-matmode]');if(b)matSetMode(b.getAttribute('data-matmode'))});
 function matPeriodChg(){
