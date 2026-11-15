@@ -481,6 +481,9 @@ tfoot td{padding:10px 12px;font-weight:700;background:var(--surface-2);border-to
 .tmmc{display:flex;align-items:center;gap:6px;justify-content:space-between}
 .tmmc .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12.5px;color:var(--danger);font-weight:600;text-align:left}
 .tmmc .tmnbtn{width:30px;height:30px}
+.tmsort{display:flex;align-items:center;flex-wrap:wrap;gap:6px 14px;padding:8px 14px;font-size:12.5px;color:var(--fg-muted)}
+.tmrd{display:inline-flex;align-items:center;gap:6px;min-height:32px;padding:0 10px;border:1px solid var(--border);border-radius:999px;color:var(--fg);cursor:pointer;background:var(--surface)}
+.tmrd input{accent-color:var(--accent);margin:0}.tmrd:has(input:checked){background:var(--accent-soft);border-color:var(--accent);font-weight:600}.tmrd:has(input:focus-visible){outline:2px solid var(--accent);outline-offset:2px}
 .tmlgb{font:inherit;font-size:12px;font-weight:700;min-width:36px;min-height:30px;padding:0 10px;border:0;border-radius:6px;cursor:pointer}
 .tmlgb.off{opacity:.35;text-decoration:line-through}.tmlgb:focus-visible,.tmcr:focus-visible,.tmm:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .tmhint{font-size:12px;color:var(--fg-faint);align-self:center}
@@ -3050,9 +3053,13 @@ function tmTipShow(x,y,html){
   t.innerHTML=html;t.style.display='block';var w=t.offsetWidth,h=t.offsetHeight,px=x+14,py=y+14;
   if(px+w>innerWidth-8)px=x-w-14;if(py+h>innerHeight-8)py=y-h-14;t.style.left=Math.max(8,px)+'px';t.style.top=Math.max(8,py)+'px'}
 function tmTipHide(){var t=$('tmTip');if(t)t.style.display='none'}
+/* เรียงทีม (เจ้าของสั่ง 15 พ.ย. 2026): ปุ่มเรียงใช้กับกราฟทั้งหมด ตัวชี้วัด และตารางด้านล่าง — มูลค่า/สถานี คิดตามตัวกรองขนาดที่เลือก · ชั่วโมงทำงาน = เวลารวมของทีม (คนละอย่างกับ สถานี/ชม.) */
+var TM_SORT='team',TM_SORTS=[['team','ชื่อทีม'],['val','มูลค่าสูงสุด'],['st','สถานีสูงสุด'],['hours','ชั่วโมงทำงานสูงสุด'],['miss','ตกบริการมากสุด']];
+function tmMet(t){var n=0,st=0,val=0;t.tiers.forEach(function(v,i){if(!TM_F.on[i])return;n+=v;st+=v*TM_ST[i];val+=v*TM_VAL[i]});return {n:n,st:st,val:val,hours:t.min/60,miss:t.miss.length}}
+function tmSortFn(){var k=TM_SORT;return function(a,b){if(k!=='team'){var d=tmMet(b)[k]-tmMet(a)[k];if(d)return d}return a.team.localeCompare(b.team,'th')}}
 function tmCharts(){
   var box=$('tmCharts');if(!box)return;
-  var ord=TM.slice().sort(function(a,b){return a.team<b.team?-1:1});
+  var ord=TM.slice().sort(tmSortFn());
   var D=ord.map(function(t){var n=0,st=0,val=0;t.tiers.forEach(function(v,i){if(!TM_F.on[i])return;n+=v;st+=v*TM_ST[i];val+=v*TM_VAL[i]});return {t:t,n:n,st:st,val:val,sph:t.min?st/(t.min/60):0,mr:n?t.miss.length*100/n:0}});
   var maxN=Math.max.apply(0,D.map(function(d){return d.n}))||1,maxS=Math.max.apply(0,D.map(function(d){return d.st}))||1,avg=D.reduce(function(a,d){return a+d.st},0)/D.length;
   var offN=TM_F.on.filter(function(v){return !v}).length,filt=offN>0||!!TM_F.team;
@@ -3066,12 +3073,14 @@ function tmCharts(){
   var dense=D.length>8;box.classList.toggle('dense',dense);
   function mc(list){return '<div class="tmmcol"><div class="tmmr hd"><span>ทีม</span><span class="r">มูลค่า</span><span class="r">สถานี/ชม.</span><span class="r">ตกบริการ</span></div>'+list.map(function(d){var sel=TM_F.team===d.t.team;return '<div class="tmmr'+(TM_F.team&&!sel?' dim':'')+(sel?' sel':'')+'" role="button" tabindex="0" aria-pressed="'+sel+'" data-tmteam="'+esc(d.t.team)+'"><b>'+esc(d.t.team)+'</b><span class="num r">'+(d.val/1e6).toFixed(1)+' ล้าน</span><span class="num r">'+d.sph.toFixed(1)+'</span><span class="num r" style="'+(d.mr>=3?'color:var(--danger);font-weight:600':'')+'">'+d.mr.toFixed(1)+'%</span></div>'}).join('')+'</div>'}
   var half=Math.ceil(D.length/2),g3d='<div class="tmmd">'+mc(D.slice(0,half))+mc(D.slice(half))+'</div>';
+  var srt='<div class="tmcp tmcfull tmsort" role="radiogroup" aria-label="เรียงทีมตาม"><span>เรียงตาม:</span>'+TM_SORTS.map(function(x){return '<label class="tmrd"><input type="radio" name="tmsort" value="'+x[0]+'"'+(TM_SORT===x[0]?' checked':'')+'><span>'+x[1]+'</span></label>'}).join('')+'</div>';
   box.innerHTML=
-    (filt?'<div class="tmcp tmcfull tmfl"><span>กำลังกรอง: '+(offN?'ขนาด '+TM_TIER.filter(function(x,i){return TM_F.on[i]}).map(function(x){return x[0]}).join('/'):'')+(offN&&TM_F.team?' · ':'')+(TM_F.team?esc(TM_F.team):'')+'</span><button type="button" class="btn sm" data-tmreset>ล้างตัวกรอง ✕</button></div>':'')+
+    srt+(filt?'<div class="tmcp tmcfull tmfl"><span>กำลังกรอง: '+(offN?'ขนาด '+TM_TIER.filter(function(x,i){return TM_F.on[i]}).map(function(x){return x[0]}).join('/'):'')+(offN&&TM_F.team?' · ':'')+(TM_F.team?esc(TM_F.team):'')+'</span><button type="button" class="btn sm" data-tmreset>ล้างตัวกรอง ✕</button></div>':'')+
     '<div class="tmcp"><h4>ลูกค้าที่ดูแลต่อทีม แยกขนาด (Tier)</h4>'+lg1+g1+'</div>'+
     '<div class="tmcp"><h4>สถานีที่ดูแลต่อทีม</h4><div class="tmlg"><span><i style="background:var(--accent)"></i>จำนวนสถานี</span><span><i class="dash"></i>ค่าเฉลี่ย '+Math.round(avg).toLocaleString('en-US')+'</span><span>ป้าย = สูง/ต่ำกว่าค่าเฉลี่ย</span></div>'+g2+'</div>'+
     '<div class="tmcp tmcfull"><h4>ตัวชี้วัดเพิ่มต่อทีม'+(offN?' <small>(ตามขนาดที่เลือก)</small>':'')+'</h4>'+(dense?g3d:'<div class="tmmg">'+g3+'</div>')+'</div>';
 }
+document.addEventListener('change',function(e){var t=e.target;if(t&&t.name==='tmsort'&&t.closest&&t.closest('#tmCharts')){TM_SORT=t.value;tmRender()}});
 (function(){
   var box=document.getElementById('tmCharts')||document;
   document.addEventListener('mousemove',function(e){var t=e.target.closest&&e.target.closest('#tmCharts [data-tip]');if(t)tmTipShow(e.clientX,e.clientY,t.getAttribute('data-tip'));else tmTipHide()});
@@ -3128,7 +3137,7 @@ function tmRender(){
     '<div><div class="lab">เวลาบริการรวม</div><div class="val num">'+Math.round(tMin/60)+' <span style="font-size:14px;color:var(--fg-muted)">ชม.</span></div><div class="sub">'+tV+' ครั้ง · เฉลี่ย '+tmHm(Math.round(tMin/tV))+' ชม.:นาที</div></div>'+
     '<div><div class="lab">ตกบริการเดือนนี้ (ต.ค.)</div><div class="val num" style="color:var(--'+(tMiss?'danger':'ok')+')">'+tMiss+'</div><div class="sub">ทุกทีม · รายชื่อ+หมายเหตุในตาราง</div></div>';
   /* แสดงรายทีม (ไม่มีแถวหัวเขต) · เรียงตามชื่อทีม · ทุกช่องมี data-label ให้จอมือถือแสดงเป็นการ์ด */
-  var order=TM.map(function(t,i){return i}).sort(function(x,y){return TM[x].team.localeCompare(TM[y].team,'th')});
+  var sf=tmSortFn(),order=TM.map(function(t,i){return i}).sort(function(x,y){return sf(TM[x],TM[y])});
   var h='';
   [order].forEach(function(items){
     items.forEach(function(i){
