@@ -6,6 +6,7 @@
  *   * `contractId` ว่าง = เปิดงานใหม่ · มีค่า = แก้สัญญาเดิม (RPC แก้ได้เฉพาะสัญญา + ทีม · ไม่แก้ชื่อลูกค้า
  *     และเปลี่ยนสาขาไม่ได้ → AG006)
  *   * โหมดแก้ (`contractId`): ไม่ส่ง `p_customer_id` เองจาก Renew — ลูกค้าคงเดิมตามสัญญา
+ *   * โหมดแก้: `p_renewed_from_contract_id` = ค่าเดิมที่บันทึกไว้ (`options.renewedFromContractId`) — DB ล็อกช่องนี้ (AG009)
  *   * ลูกค้า (เปิดงานใหม่): Renew ที่ผูกสัญญาเก่า → `p_customer_id` = ลูกค้าของสัญญานั้น + `p_renewed_from_contract_id`
  *     · ผู้ใช้เลือก "ใช้รายเดิม" จากกล่อง AG001 → `p_customer_id` ที่เลือก (ชนะ Renew)
  *     · ผู้ใช้เลือก "คนละราย" → `p_confirm_new_customer: true`
@@ -38,6 +39,12 @@ export interface SaveOptions {
    * (Date ตัดไมโครวินาทีทิ้ง — DB เทียบที่ระดับมิลลิวินาทีเองแล้ว)
    */
   expectedUpdatedAt?: string | null;
+  /**
+   * โหมดแก้: สัญญาเก่าที่สัญญานี้ "ต่อมาจาก" ตามที่บันทึกไว้ในฐานข้อมูล (null = ไม่ได้ผูก) — M23 / AG009
+   * DB ล็อกช่องนี้หลังสร้างสัญญา: ส่งค่าที่ต่างจากเดิม (รวมถึงล้างเป็น NULL) = AG009 จึงต้องส่งค่าเดิมกลับเสมอ
+   * ไม่ส่ง (undefined) = ใช้ค่าจากแถวร่าง ซึ่งหน้าจอล็อกไว้ให้เท่าค่าเดิมอยู่แล้ว
+   */
+  renewedFromContractId?: string | null;
 }
 
 export interface SaveJobOpeningParams {
@@ -89,7 +96,13 @@ export function buildSaveParams(
     p_sale_name: draft.sellerRole === "sale" && sellerName ? sellerName : null,
     p_am_name: draft.sellerRole === "am" && sellerName ? sellerName : null,
     p_is_urgent: draft.isUrgent,
-    p_renewed_from_contract_id: renewal ? renewal.contractId : null,
+    // โหมดแก้ (M23/AG009): ใช้ค่าเดิมจากฐานข้อมูลเสมอ ไม่ว่าแถวร่างจะถูกสลับ New/ล้างลิงก์ไปแล้วหรือไม่
+    p_renewed_from_contract_id:
+      options.contractId && options.renewedFromContractId !== undefined
+        ? options.renewedFromContractId
+        : renewal
+          ? renewal.contractId
+          : null,
     p_mail_received_date: draft.mailReceivedDate || null,
     p_first_service_date: hasServiceDate ? draft.firstServiceDate : null,
     p_first_service_time: hasServiceDate && draft.firstServiceTime ? draft.firstServiceTime : null,

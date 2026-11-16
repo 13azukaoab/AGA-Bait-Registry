@@ -17,6 +17,7 @@ import type { UserRole } from "@/lib/db/types";
 import type { BranchOption } from "./branchMatch";
 import type { ContractFileKind } from "./fileRules";
 import { monthRange } from "@/lib/service/months";
+import { sortTeamsByKind, type TeamKind } from "@/lib/service/teamKind";
 import type { ContractFileRow, ContractStatus, MasterData, SaleType, SavedContract } from "./types";
 
 /** ขอบบนของจำนวนสัญญาต่อเดือนที่ดึง (ไฟล์จริง ~133/เดือน) */
@@ -85,7 +86,7 @@ export async function loadMasterData(
       .eq("is_active", true)
       .order("name"),
     // ทีมส่วนกลาง (branch_id ว่าง) — เฟส 1 ใช้ชุดนี้ชุดเดียว
-    supabase.from("teams").select("id, code, branch_id").is("branch_id", null).order("code"),
+    supabase.from("teams").select("id, code, kind, branch_id").is("branch_id", null).order("code"),
     supabase
       .from("customer_types")
       .select("code, label, group_label, sort_order")
@@ -116,7 +117,13 @@ export async function loadMasterData(
     master: {
       zones: zoneRows.map((z) => ({ id: z.id, name: z.name })),
       branches: branchOptions,
-      teams: sortTeams((teams.data ?? []) as { id: string; code: string }[]),
+      teams: sortTeams(
+        ((teams.data ?? []) as { id: string; code: string; kind: TeamKind }[]).map((t) => ({
+          id: t.id,
+          code: t.code,
+          kind: t.kind,
+        })),
+      ),
       customerTypes: (
         (types.data ?? []) as { code: string; label: string; group_label: string }[]
       ).map((t) => ({ code: t.code, label: t.label, groupLabel: t.group_label })),
@@ -126,10 +133,9 @@ export async function loadMasterData(
   };
 }
 
-/** ทีม A–O ก่อน แล้ว Z แล้วที่เหลือ (Sup) */
-export function sortTeams<T extends { code: string }>(teams: T[]): T[] {
-  const rank = (code: string) => (/^[A-O]$/.test(code) ? 0 : code === "Z" ? 1 : 2);
-  return [...teams].sort((a, b) => rank(a.code) - rank(b.code) || a.code.localeCompare(b.code));
+/** เรียงทีมตามประเภท (teams.kind — M22): บริการ → ติดตั้ง → หัวหน้างาน แล้วตามรหัส */
+export function sortTeams<T extends { code: string; kind: TeamKind }>(teams: T[]): T[] {
+  return sortTeamsByKind(teams);
 }
 
 type ContractRowDb = {

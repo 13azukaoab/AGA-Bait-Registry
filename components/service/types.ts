@@ -7,6 +7,7 @@
  *   * เลขสถานีในฟอร์มเป็นข้อความ (พิมพ์เอง) — แปลงเป็น station id ตอนสร้าง payload จากสถานีที่โหลดมา
  */
 import type { Tier } from "@/lib/rules";
+import type { TeamKind } from "@/lib/service/teamKind";
 
 export type StationType = "IG" | "IC" | "AG";
 export type VisitType = "routine" | "problem" | "follow_up";
@@ -27,10 +28,11 @@ export function isInUse(status: StationStatus): boolean {
   return IN_USE_STATUSES.includes(status);
 }
 
-/** ทีมที่เลือกได้ในหน้านี้ = A–O และ Z เท่านั้น (ทีม Sup ฐานข้อมูลปฏิเสธ SV006) */
+/** ทีมที่เลือกได้ในหน้านี้ = ประเภท service / install เท่านั้น (ทีมหัวหน้างานฐานข้อมูลปฏิเสธ SV006 — M22 อ่านจาก teams.kind) */
 export interface TeamOption {
   id: string;
   code: string;
+  kind: TeamKind;
 }
 export interface ZoneOption {
   id: string;

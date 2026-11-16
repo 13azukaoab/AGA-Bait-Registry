@@ -121,4 +121,6 @@ export interface ImportResult {
 export interface ImportOptions {
   /** เดือนที่กำลังกรอก ('YYYY-MM') — ถ้าระบุ จะเตือนเมื่อวันบริการอยู่นอกเดือนนี้ */
   entryMonth?: string;
+  /** รหัสทีมที่มีอยู่จริงในตาราง `teams` (M22: ทีมใหม่เพิ่มได้) — ไม่ระบุ = ชุดตั้งต้น A–O, Z, Sup */
+  teamCodes?: readonly string[];
 }
