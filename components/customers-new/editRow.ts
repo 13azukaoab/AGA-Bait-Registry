@@ -84,6 +84,7 @@ export function draftFromSaved(s: SavedContract, master: Pick<MasterData, "branc
     saleName: s.sellerName,
     isUrgent: s.isUrgent,
     renewal,
+    renewUnlinkedReason: s.renewUnlinkedReason ?? "",
     mailReceivedDate: s.mailReceivedDate,
     firstServiceDate: s.firstServiceDate,
     firstServiceTime: s.firstServiceTime,

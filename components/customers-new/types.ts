@@ -24,6 +24,11 @@ export interface RenewalLink {
   customerId: string;
   customerName: string;
   branchId: string;
+  /**
+   * วันที่ของสัญญาเก่า (M28) — ใช้ตรวจกฎช่องว่าง 2 เดือนฝั่งหน้าจอ · ไม่มี = ตรวจไม่ได้ (DB ตรวจซ้ำเสมอ: AG010)
+   * แถวที่บันทึกแล้ว (โหมดแก้) สร้างลิงก์จาก `SavedContract.renewedFrom` ซึ่งไม่มีวันที่ จึงไม่ใส่
+   */
+  oldDates?: { startDate: string; endDate?: string; termYears: TermYears };
 }
 
 export interface TeamOption {
@@ -47,6 +52,18 @@ export interface MasterData {
   customerTypes: CustomerTypeOption[];
   /** เกณฑ์ Tier จากตาราง tier_rules (ห้าม hardcode) */
   tierRules: TierRule[];
+  /** M28: นโยบาย Renew ที่ไม่ผูกสัญญาเก่า (อ่านจาก DB ตอนโหลดหน้า) */
+  renewPolicy: RenewPolicy;
+}
+
+/**
+ * M28 รอบ 2: Renew ที่ไม่ผูกสัญญาเก่าเปิดได้เฉพาะช่วงแรกหลังเปิดระบบ
+ * `unlinkedOpen` มาจาก RPC `unlinked_renew_open()` (ตัดสินด้วยนาฬิกาของ DB) · อ่านไม่ได้ = false (DB ตัดสินซ้ำตอนบันทึก: AG013)
+ * `unlinkedUntil` = วันแรกที่ "ไม่ได้แล้ว" ('YYYY-MM-DD') ใช้แสดงข้อความอย่างเดียว
+ */
+export interface RenewPolicy {
+  unlinkedOpen: boolean;
+  unlinkedUntil: string | null;
 }
 
 /** แถวไฟล์แนบ (ตาราง contract_files) */
@@ -79,6 +96,8 @@ export interface SavedContract {
   isUrgent: boolean;
   /** contractNo = null เมื่ออ่านเลขที่สัญญาเก่าไม่ได้ (query ล้ม/ไม่มีสิทธิ์ดู) — แสดง "โหลดไม่ได้" */
   renewedFrom: { contractId: string; contractNo: string | null } | null;
+  /** M28: เหตุผลของ Renew ที่ไม่ผูกสัญญาเก่า (null = ไม่ใช่กรณีนั้น หรือแถวเก่าที่ไม่มีเหตุผล) */
+  renewUnlinkedReason: string | null;
   mailReceivedDate: string;
   /** วันที่นัดบริการครั้งแรก — ว่าง = "รอนัดบริการ" */
   firstServiceDate: string;
@@ -110,6 +129,8 @@ export interface DraftRow {
   isUrgent: boolean;
   /** Renew: ลูกค้าเดิม/สัญญาเก่าที่เลือก (null = ยังไม่ผูก) */
   renewal: RenewalLink | null;
+  /** M28: เหตุผลที่ Renew ไม่ผูกสัญญาเก่า (ใช้เฉพาะ Renew ที่ไม่ผูก · ว่างได้เมื่อเป็น New/ผูกแล้ว) */
+  renewUnlinkedReason: string;
   mailReceivedDate: string;
   firstServiceDate: string;
   firstServiceTime: string;

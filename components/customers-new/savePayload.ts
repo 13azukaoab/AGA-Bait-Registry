@@ -10,6 +10,8 @@
  *   * ลูกค้า (เปิดงานใหม่): Renew ที่ผูกสัญญาเก่า → `p_customer_id` = ลูกค้าของสัญญานั้น + `p_renewed_from_contract_id`
  *     · ผู้ใช้เลือก "ใช้รายเดิม" จากกล่อง AG001 → `p_customer_id` ที่เลือก (ชนะ Renew)
  *     · ผู้ใช้เลือก "คนละราย" → `p_confirm_new_customer: true`
+ *   * M28: Renew ที่ไม่ผูกสัญญาเก่า → `p_renew_unlinked_reason` (ต้องมีเหตุผล — หน้าจอบล็อกก่อน · DB บังคับ AG012)
+ *     โหมดแก้ส่งเหตุผลเดิมกลับเสมอ (RPC เขียนทับด้วยค่าที่ส่ง) · New/ผูกแล้วไม่ส่ง
  *   * ตำแหน่งผู้ขาย: Sale → `p_sale_name` · AM → `p_am_name` (ไม่มีคอลัมน์ตำแหน่ง)
  *   * วันที่/เวลาที่ว่างส่งเป็น null · เวลาบริการส่งเฉพาะเมื่อมีวันที่บริการ (constraint ของ DB)
  *   * โหมดแก้ส่ง `p_expected_updated_at` เสมอ (M12 กันเขียนทับ) · RPC คืน `updated_at` ใหม่ให้เก็บไว้ใช้ครั้งต่อไป
@@ -67,6 +69,8 @@ export interface SaveJobOpeningParams {
   p_first_service_time: string | null;
   p_note: string | null;
   p_confirm_new_customer: boolean;
+  /** M28: เหตุผลของ Renew ที่ไม่ผูกสัญญาเก่า — ส่งเฉพาะกรณีนั้นและเมื่อมีข้อความ (อย่างอื่นไม่ส่ง = DB เก็บ NULL เอง) */
+  p_renew_unlinked_reason?: string;
   p_contract_id?: string;
   p_customer_id?: string;
   /** เฉพาะโหมดแก้ (ดู `SaveOptions.expectedUpdatedAt`) */
@@ -112,6 +116,13 @@ export function buildSaveParams(
 
   // โหมดแก้: ลูกค้าคงเดิม (RPC ใช้ลูกค้าของสัญญาเอง) — ห้ามส่ง customer_id จาก Renew มิฉะนั้นการเลือก
   // สัญญาเก่าของคนอื่นจะย้ายสัญญาไปลูกค้าอื่นเงียบๆ · ถ้าคนละลูกค้า trigger M9 จะปฏิเสธ (P0001)
+  // M28: Renew ที่ไม่ผูกสัญญาเก่า (ดูจากค่าที่จะส่งจริง — โหมดแก้ใช้ลิงก์เดิมจาก DB) ส่งเหตุผลไปด้วย
+  //   โหมดแก้ต้องส่งเหตุผลเดิมกลับเสมอ: RPC เขียนทับด้วยค่าที่ส่ง · ว่าง + ของเดิมมีค่า = AG012
+  const unlinkedReason = draft.renewUnlinkedReason.trim();
+  if (draft.saleType === "renew" && params.p_renewed_from_contract_id === null && unlinkedReason) {
+    params.p_renew_unlinked_reason = unlinkedReason;
+  }
+
   const customerId = options.contractId
     ? (options.customerId ?? null)
     : (options.customerId ?? renewal?.customerId ?? null);

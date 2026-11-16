@@ -46,6 +46,7 @@ function saved(over: Partial<SavedContract> = {}): SavedContract {
     sellerRole: "sale",
     isUrgent: false,
     renewedFrom: null,
+    renewUnlinkedReason: null,
     mailReceivedDate: "2026-10-01",
     firstServiceDate: "2026-10-10",
     firstServiceTime: "09:30",

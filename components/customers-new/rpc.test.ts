@@ -36,6 +36,7 @@ const baseDraft = {
   saleName: " ขาย ",
   isUrgent: true,
   renewal: null,
+  renewUnlinkedReason: "",
   mailReceivedDate: "",
   firstServiceDate: "",
   firstServiceTime: "09:30",

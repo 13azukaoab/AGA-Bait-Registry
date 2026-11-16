@@ -191,16 +191,21 @@ export function NewContractsClient({
     const editMap = new Map(
       editedSaved.map((s, i) => [
         s.contractId,
-        checkDraft(edits[s.contractId]!.draft, master.branches, noErrors.get(fixedNos.length + i)),
+        checkDraft(edits[s.contractId]!.draft, master.branches, noErrors.get(fixedNos.length + i), {
+          policy: master.renewPolicy,
+          isEdit: true,
+        }),
       ]),
     );
     return {
       draftChecks: drafts.map((d, i) =>
-        checkDraft(d, master.branches, noErrors.get(fixedNos.length + editNos.length + i)),
+        checkDraft(d, master.branches, noErrors.get(fixedNos.length + editNos.length + i), {
+          policy: master.renewPolicy,
+        }),
       ),
       editChecks: editMap,
     };
-  }, [drafts, saved, edits, editedSaved, master.branches]);
+  }, [drafts, saved, edits, editedSaved, master.branches, master.renewPolicy]);
 
   // ---------- แถวที่บันทึกแล้ว: คำนวณเพื่อกรอง/แสดง ----------
   const savedView = useMemo(
@@ -997,6 +1002,7 @@ export function NewContractsClient({
         <RenewalDialog
           supabase={supabase}
           branchNameOf={(id) => branchById.get(id)?.name ?? ""}
+          startDate={drafts.find((d) => d.key === renewalFor.key)?.startDate ?? ""}
           onClose={() => setRenewalFor(null)}
           onPick={(link: RenewalLink) => {
             const target = renewalFor;
@@ -1054,6 +1060,8 @@ type DraftErr = (
     | "endDate"
     | "mailDate"
     | "serviceDate"
+    | "renewLink"
+    | "renewReason"
     | "value",
 ) => boolean;
 
@@ -1209,7 +1217,7 @@ function DraftTableRow({
                 type="button"
                 aria-pressed={d.saleType === t}
                 disabled={isEdit}
-                onClick={() => onPatch(t === "new" ? { saleType: t, renewal: null } : { saleType: t })}
+                onClick={() => onPatch(t === "new" ? { saleType: t, renewal: null, renewUnlinkedReason: "" } : { saleType: t })}
                 className={cx(
                   "px-2 py-1 focus-visible:outline-2 focus-visible:outline-accent",
                   isEdit ? "cursor-not-allowed" : "cursor-pointer",
@@ -1229,6 +1237,7 @@ function DraftTableRow({
           {d.saleType === "new" ? (
             <Chip tone="na">— งานใหม่ —</Chip>
           ) : (
+            <div className="flex flex-col gap-1">
             <div className="flex items-center gap-1">
               {isEdit ? (
                 // M23 / AG009: แถวที่บันทึกแล้ว แสดงสัญญาเก่าแบบอ่านอย่างเดียว (กดไม่ได้ ไม่มีปุ่มเลิกผูก)
@@ -1263,6 +1272,31 @@ function DraftTableRow({
                   ✕
                 </button>
               ) : null}
+            </div>
+            {/* M28: Renew ที่ไม่ผูกสัญญาเก่า — ช่วงแรกกรอกเหตุผลได้ (บังคับ) · พ้นช่วงแล้วล็อกให้ผูกสัญญาเก่า/เปิดเป็น New */}
+            {isEdit && !d.renewal && d.renewUnlinkedReason ? (
+              <span className="text-[12px] text-fg-muted" title="เหตุผลที่ไม่ผูกสัญญาเก่า (แก้ไม่ได้หลังบันทึก)">
+                เหตุผล: {d.renewUnlinkedReason}
+              </span>
+            ) : null}
+            {!isEdit && !d.renewal && master.renewPolicy.unlinkedOpen ? (
+              <input
+                aria-label="เหตุผลที่ไม่ผูกสัญญาเก่า"
+                value={d.renewUnlinkedReason}
+                autoComplete="off"
+                placeholder="เหตุผลที่ไม่ผูกสัญญาเก่า (บังคับ)"
+                onChange={(e) => onPatch({ renewUnlinkedReason: e.target.value })}
+                className={cx(INPUT, border(err("renewReason")))}
+              />
+            ) : null}
+            {!isEdit && !d.renewal && !master.renewPolicy.unlinkedOpen ? (
+              <span className="text-[12px] text-fg-muted">🔒 ช่วงเปิด Renew แบบไม่ผูกสิ้นสุดแล้ว — ต้องผูกสัญญาเก่า หรือเปิดเป็น New</span>
+            ) : null}
+            {!isEdit && c.errors.renewLink && (d.renewal || master.renewPolicy.unlinkedOpen) ? (
+              <span className="text-[12px] text-danger" role="alert">
+                🔒 {c.errors.renewLink}
+              </span>
+            ) : null}
             </div>
           )}
         </td>
