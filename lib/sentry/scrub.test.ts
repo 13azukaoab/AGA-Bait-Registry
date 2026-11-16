@@ -20,6 +20,19 @@ describe("stripUrlQuery", () => {
   });
 });
 
+describe("stripUrlQuery — ความปลอดภัย/ประสิทธิภาพ", () => {
+  it("ข้อความยาวมากไม่ทำให้ค้าง (linear)", () => {
+    const t0 = Date.now();
+    stripUrlQuery("a/".repeat(100_000));
+    expect(Date.now() - t0).toBeLessThan(500);
+  });
+  it("ปิดชื่อไฟล์ใน Storage path", () => {
+    expect(stripUrlQuery("https://x.supabase.co/storage/v1/object/contracts/12/tok-somchai_contract.pdf?t=1")).toBe(
+      "https://x.supabase.co/storage/v1/object/[redacted]",
+    );
+  });
+});
+
 describe("scrubEvent", () => {
   const dirty: Event = {
     message: "boom",
@@ -130,6 +143,14 @@ describe("scrubBreadcrumb", () => {
     };
     const out = scrubBreadcrumb(b);
     expect(out?.data).toEqual({ url: "/api/customers", method: "POST" });
+  });
+
+  it("ตัดค่า [aria-label/title/name] ออกจากข้อความ ui.click", () => {
+    const out = scrubBreadcrumb({
+      category: "ui.click",
+      message: 'td > button[aria-label="สัญญา C-123"] > span[title="หมายเหตุ ลูกค้าสมชาย"]',
+    });
+    expect(out?.message).toBe("td > button > span");
   });
 
   it("ตัด query ของ navigation (from/to)", () => {

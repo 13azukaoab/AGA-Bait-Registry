@@ -9,7 +9,8 @@
  *     — headers, cookies, body, query, ตัวแปรใน stack) จึง**ปิดทุกข้อใน `DATA_COLLECTION_OFF` ชัดเจน**
  *     แล้วผ่านตัวกรอง `scrubEvent` / `scrubBreadcrumb` ทุกครั้ง,
  *     ไม่เปิด Session Replay / profiling / feedback widget
- *   - โควตาฟรี: ปิด tracing (`tracesSampleRate: 0`) เก็บเฉพาะ error
+ *   - โควตาฟรี: ไม่ตั้ง `tracesSampleRate` (= ปิด tracing จริง — ถ้าตั้งเป็น 0 SDK ยังโหลด tracing) เก็บเฉพาะ error
+ *   - ล็อก logs / metrics ของ SDK v11 ด้วย `beforeSendLog` / `beforeSendMetric` คืน null (ข้ามตัวกรอง event)
  */
 import type { BrowserOptions } from "@sentry/nextjs";
 
@@ -21,9 +22,6 @@ export type SentryEnvInput = {
   /** "production" | "preview" | "development" | ""  (ค่าจาก VERCEL_ENV) */
   vercelEnv?: string | undefined;
 };
-
-/** ปิด tracing ไว้ก่อน — เก็บเฉพาะ error เพื่อไม่กินโควตาฟรีและลดพื้นผิวข้อมูลส่วนบุคคล */
-export const TRACES_SAMPLE_RATE = 0;
 
 /**
  * ปิดการเก็บข้อมูลอัตโนมัติของ SDK v11 ทุกหมวด (ค่าเริ่มต้นของ SDK คือเก็บทั้งหมด)
@@ -55,7 +53,8 @@ export function resolveSentryOptions(input: SentryEnvInput) {
     dsn: input.dsn,
     environment: "production",
     dataCollection: DATA_COLLECTION_OFF,
-    tracesSampleRate: TRACES_SAMPLE_RATE,
+    beforeSendLog: () => null,
+    beforeSendMetric: () => null,
     maxBreadcrumbs: 30,
     beforeSend: (event) => scrubEvent(event),
     beforeSendTransaction: (event) => scrubEvent(event),

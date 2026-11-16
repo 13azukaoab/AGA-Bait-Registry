@@ -20,10 +20,27 @@ export const MAX_MESSAGE_LENGTH = 200;
 /** contexts ที่ปลอดภัย (ไม่มีข้อมูลบุคคล) — ที่เหลือถูกตัดทิ้ง */
 const SAFE_CONTEXT_KEYS = new Set(["browser", "os", "device", "runtime", "app", "trace"]);
 
-/** ตัด query string + fragment ออกจาก URL (รองรับ URL เต็ม, path สัมพัทธ์ และข้อความที่มี URL ปน เช่น "GET https://x/y?a=1") */
+/** ข้อความยาวสุดที่ยอมให้ตรวจ/ตัด URL (กันข้อความยักษ์ทำให้ช้า) */
+const MAX_SCAN_LENGTH = 2000;
+
+/**
+ * ตัด query string + fragment ออกจาก URL และปิดชื่อไฟล์ใน Supabase Storage path
+ * (รองรับ URL เต็ม, path สัมพัทธ์ และข้อความที่มี URL ปน เช่น "GET https://x/y?a=1")
+ * ทำงานแบบเส้นตรงทีละ token (ไม่ใช้ regex ที่ backtrack ได้ — กัน ReDoS)
+ */
 export function stripUrlQuery(value: string): string {
-  // ต้องมี "/" ในส่วนหน้า ? หรือ # จึงนับเป็น URL (กัน "Error #5" ถูกตัด)
-  return value.replace(/([^\s?#]*\/[^\s?#]*)[?#]\S*/g, "$1");
+  return value
+    .slice(0, MAX_SCAN_LENGTH)
+    .split(/(\s+)/)
+    .map((token) => {
+      // ต้องมี "/" นำหน้า ? หรือ # จึงนับเป็น URL (กัน "Error #5" ถูกตัด)
+      const cut = token.search(/[?#]/);
+      const clean = cut > 0 && token.slice(0, cut).includes("/") ? token.slice(0, cut) : token;
+      // ชื่อไฟล์แนบอาจมีชื่อลูกค้า: /storage/v1/object/<...> → ปิดส่วนท้ายทั้งหมด
+      const at = clean.indexOf("/storage/v1/object/");
+      return at >= 0 ? `${clean.slice(0, at)}/storage/v1/object/[redacted]` : clean;
+    })
+    .join("");
 }
 
 function truncate(text: string): string {
@@ -60,7 +77,14 @@ export function scrubBreadcrumb(breadcrumb: Breadcrumb): Breadcrumb | null {
   if (breadcrumb.category === "console") return null;
 
   const cleaned: Breadcrumb = { ...breadcrumb };
-  if (typeof cleaned.message === "string") cleaned.message = cleanMessage(cleaned.message);
+  if (typeof cleaned.message === "string") {
+    // ข้อความ ui.click/ui.input สร้างจาก selector ของ element รวมค่า [aria-label="…"] [title="…"] [name="…"] [alt="…"]
+    // ซึ่งในแอปนี้มีเลขสัญญา/หมายเหตุลูกค้า → ตัดส่วน [attr="…"] ทิ้ง
+    const msg = cleaned.category?.startsWith("ui.")
+      ? cleaned.message.slice(0, MAX_SCAN_LENGTH).replace(/\[[\w-]+="[^"]*"\]/g, "")
+      : cleaned.message;
+    cleaned.message = cleanMessage(msg);
+  }
   if (cleaned.data) cleaned.data = scrubDataBag(cleaned.data);
   return cleaned;
 }

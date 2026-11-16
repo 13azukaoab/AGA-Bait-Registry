@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { DATA_COLLECTION_OFF, isSentryEnabled, resolveSentryOptions, TRACES_SAMPLE_RATE } from "./options";
+import { DATA_COLLECTION_OFF, isSentryEnabled, resolveSentryOptions } from "./options";
 
 const DSN = "https://abc@o1.ingest.de.sentry.io/1";
 
@@ -23,7 +23,9 @@ describe("resolveSentryOptions", () => {
     expect(options).not.toBeNull();
     expect(options?.dataCollection).toEqual(DATA_COLLECTION_OFF);
     expect(options).not.toHaveProperty("sendDefaultPii", true);
-    expect(options?.tracesSampleRate).toBe(TRACES_SAMPLE_RATE);
+    expect(options).not.toHaveProperty("tracesSampleRate");
+    expect(options?.beforeSendLog?.()).toBeNull();
+    expect(options?.beforeSendMetric?.()).toBeNull();
     expect(options?.environment).toBe("production");
     // ห้ามเปิด Replay / profiling
     expect(options).not.toHaveProperty("integrations");
