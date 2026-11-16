@@ -5,6 +5,7 @@
  *   * ค้นด้วยเลขที่สัญญา หรือชื่อลูกค้า (ไม่สนตัวพิมพ์) · อ่านผ่าน RLS ของผู้ใช้ (host/admin อ่านได้ทุกสาขา)
  *   * ผลลัพธ์ 1 แถว = 1 สัญญาเก่า → ใช้ลูกค้าของสัญญานั้นเป็นลูกค้าของสัญญาใหม่ (ไม่สร้างลูกค้าใหม่)
  *     UI จึงเลือกสัญญาเก่าของลูกค้าคนละคนไม่ได้ (DB บังคับซ้ำด้วย trigger — M9)
+ *   * อ่านวันเริ่ม/สิ้นสุด/ระยะของสัญญาเก่ามาด้วย (`oldDates`) ให้กล่องค้นล็อกใบที่เกินช่วง Renew 2 เดือน (M28)
  *   * ตัดอักขระพิเศษของตัวกรอง PostgREST/LIKE (% , ( ) *) ออกจากคำค้น กันตัวกรองเพี้ยน
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -22,10 +23,13 @@ type ContractWithCustomer = {
   id: string;
   contract_no: string;
   customer_id: string;
+  start_date: string;
+  end_date: string | null;
+  term_years: number;
   customers: { name: string; branch_id: string } | null;
 };
 
-const COLUMNS = "id, contract_no, customer_id, customers ( name, branch_id )";
+const COLUMNS = "id, contract_no, customer_id, start_date, end_date, term_years, customers ( name, branch_id )";
 
 function toLink(r: ContractWithCustomer): RenewalLink | null {
   if (!r.customers) return null;
@@ -35,6 +39,12 @@ function toLink(r: ContractWithCustomer): RenewalLink | null {
     customerId: r.customer_id,
     customerName: r.customers.name,
     branchId: r.customers.branch_id,
+    // M28: วันที่ของสัญญาเก่า — ใช้ตรวจกฎช่องว่าง 2 เดือนฝั่งหน้าจอ (ตัวตัดสินจริงคือ DB)
+    oldDates: {
+      startDate: r.start_date,
+      endDate: r.end_date ?? undefined,
+      termYears: r.term_years === 3 ? 3 : 1,
+    },
   };
 }
 

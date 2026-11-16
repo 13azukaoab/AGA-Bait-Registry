@@ -13,8 +13,9 @@ import type { TermYears } from "@/lib/rules";
 
 import { resolveBranch, type BranchOption } from "./branchMatch";
 import { normalizeContractNo } from "./contractNo";
+import { checkRenewDraft, DEFAULT_RENEW_POLICY } from "./renewRules";
 import { autoEndDate, endDateWarning, isPlausibleDate, parseMoney } from "./rowCalc";
-import type { DraftRow } from "./types";
+import type { DraftRow, RenewPolicy } from "./types";
 
 export type DraftField =
   | "contractNo"
@@ -25,7 +26,9 @@ export type DraftField =
   | "endDate"
   | "mailDate"
   | "serviceDate"
-  | "value";
+  | "value"
+  | "renewLink"
+  | "renewReason";
 
 export interface DraftCheck {
   /** ช่องที่ผิด → ข้อความไทย (มีรายการ = บันทึกแถวนี้ไม่ได้) */
@@ -65,6 +68,7 @@ export function createDraft(): DraftRow {
     saleName: "",
     isUrgent: false,
     renewal: null,
+    renewUnlinkedReason: "",
     mailReceivedDate: "",
     firstServiceDate: "",
     firstServiceTime: "",
@@ -108,6 +112,8 @@ export function checkDraft(
   branches: readonly BranchOption[],
   /** ข้อความ error ของเลขที่สัญญาจาก `checkContractNos` (ซ้ำ/รูปแบบ) ถ้ามี */
   contractNoError: string | undefined,
+  /** M28: นโยบาย Renew ไม่ผูก + โหมดแก้ (ไม่ส่ง = เปิด/แถวใหม่ — โค้ดจริงของหน้าจอส่งเสมอ) */
+  renewCtx: { policy?: RenewPolicy; isEdit?: boolean } = {},
 ): DraftCheck {
   const errors: Partial<Record<DraftField, string>> = {};
   const warnings: string[] = [];
@@ -158,9 +164,8 @@ export function checkDraft(
     // ตรงกับ constraint ของ DB: มีเวลาต้องมีวันที่
     errors.serviceDate = "เลือกวันที่บริการก่อนใส่เวลา";
   }
-  if (draft.saleType === "renew" && !draft.renewal) {
-    warnings.push("Renew ยังไม่ผูกลูกค้าเดิม");
-  }
+  // M28: กฎช่องว่าง 2 เดือน + Renew ไม่ผูก (เหตุผล/ช่วงเปิด) — บล็อกการบันทึก
+  Object.assign(errors, checkRenewDraft(draft, renewCtx.policy ?? DEFAULT_RENEW_POLICY, renewCtx.isEdit === true));
   if (!draft.pendingPdf) warnings.push("ยังไม่แนบไฟล์สัญญา + Site plan");
 
   return {
@@ -191,6 +196,8 @@ export function missingLabel(check: DraftCheck): string {
     mailDate: "วันที่รับ Mail",
     serviceDate: "วันที่บริการ",
     value: "มูลค่า",
+    renewLink: "ผูกสัญญาเก่า/ช่วง Renew",
+    renewReason: "เหตุผลที่ไม่ผูกสัญญาเก่า",
   };
   const missing = (Object.keys(check.errors) as DraftField[]).map((f) => names[f]);
   return missing.length ? `ขาด ${missing.join(" · ")}` : "";

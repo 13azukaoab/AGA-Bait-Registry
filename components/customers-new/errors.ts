@@ -6,10 +6,15 @@
  *   * 42501 / "row-level security" / "permission denied" → ไม่มีสิทธิ์
  *   * 23505 unique → เลขที่สัญญาซ้ำ (หรือไฟล์ซ้ำ) · 23503 FK → ลบไม่ได้เพราะมีผลบริการ
  *   * P0001 = กฎของ trigger (เช่น สัญญาปิดแล้วไฟล์ล็อก · ต้องแนบ PDF ก่อนเพิ่ม Site plan)
+ *   * AG010–AG014 (M28 กฎ Renew 2 เดือน) = มี DETAIL ต้องใส่ในข้อความ: AG010 DETAIL = เดือนสุดท้ายที่ยังเลือก Renew ได้
+ *     ('YYYY-MM') · AG013 DETAIL = วันแรกที่เปิด Renew แบบไม่ผูกสัญญาเก่าไม่ได้แล้ว ('YYYY-MM-DD') ·
+ *     AG010 มี 3 สาเหตุ แยกจากข้อความภาษาอังกฤษของ DB: เกินช่วง 2 เดือน / เริ่มไม่หลังสัญญาเก่า / แก้วันของสัญญาเก่าจนสัญญาที่ต่อหลุดช่วง
  *   * AG001–AG008 = error ของ RPC บันทึก/ลบสัญญา (ชื่อลูกค้าซ้ำ · ลูกค้าไม่อยู่สาขา · ลบไม่ได้ · ไม่พบ ·
  *     สัญญาปิด · เปลี่ยนสาขาไม่ได้ · AG007 สัญญาปิด/ยกเลิกแก้ได้เฉพาะ host · AG008 มีคนแก้ไปก่อน) · 22004 = หน้าจอลืมส่ง expected — AG001 หน้าจอส่วนใหญ่จับก่อนแล้วขึ้นกล่องถาม ข้อความนี้เป็นตัวสำรอง
  *   * ไม่รู้จัก = ข้อความทั่วไป (ไม่โชว์ข้อความดิบของฐานข้อมูลให้ผู้ใช้)
  */
+
+import { monthLabel } from "@/lib/service/months";
 
 export interface DbErrorLike {
   code?: string | null;
@@ -30,12 +35,44 @@ const RPC_ERRORS: Record<string, string> = {
   AG006: "เปลี่ยนสาขาของสัญญาที่บันทึกแล้วไม่ได้",
   AG007: "สัญญาปิด/ยกเลิกแล้ว แก้ได้เฉพาะผู้ดูแลระบบ (Host)",
   AG008: "มีคนแก้สัญญานี้ไปก่อนแล้ว กรุณาโหลดใหม่",
+  AG011: "สัญญาที่ผูกสัญญาเก่าต้องเป็นประเภท Renew — ถ้าเป็นลูกค้าใหม่ให้เลือก New แล้วไม่ต้องผูกสัญญาเก่า",
+  AG012: "Renew ที่ไม่ผูกสัญญาเก่าต้องใส่เหตุผล (เช่น สัญญาเก่าไม่อยู่ในระบบ)",
+  AG014: "ผูกสัญญาเก่าย้อนหลังได้เฉพาะสัญญา Renew ที่ยังไม่ได้ผูกสัญญาเก่า",
   AG009: 'แก้ช่อง "ต่อมาจากสัญญาไหน" ไม่ได้ — กำหนดได้ตอนเปิดงานต่อสัญญาเท่านั้น (ถ้าผูกผิด ให้แจ้งผู้ดูแลระบบ)',
   // M22 — ทีม / ประเภทลูกค้า (หน้าตั้งค่าใช้ข้อความเดียวกัน)
   TM001: "ลบทีมนี้ไม่ได้ เพราะยังมีงานผูกอยู่ (สัญญา / การเข้าบริการ / ผู้ใช้)",
   TM002: "ทีมระบบ ลบหรือเปลี่ยนรหัส ประเภท สาขาไม่ได้ (แก้ชื่อได้)",
   CT001: "รายการจัดเรียงประเภทลูกค้าไม่ตรงกับข้อมูลปัจจุบัน — โหลดหน้าใหม่แล้วลองอีกครั้ง",
 };
+
+/** เดือน 'YYYY-MM' (DETAIL ของ AG010) → "มีนาคม 2027" · รูปแบบแปลก = null (ไม่เดา) */
+function detailMonth(details: string | null | undefined): string | null {
+  const m = /^(\d{4})-(0[1-9]|1[0-2])$/.exec((details ?? "").trim());
+  return m ? monthLabel(`${m[1]}-${m[2]}`) : null;
+}
+
+/** วันที่ 'YYYY-MM-DD' (DETAIL ของ AG013) → "1 เมษายน 2027" · รูปแบบแปลก = null */
+function detailDate(details: string | null | undefined): string | null {
+  const m = /^(\d{4})-(0[1-9]|1[0-2])-(\d{2})$/.exec((details ?? "").trim());
+  return m ? `${Number(m[3])} ${monthLabel(`${m[1]}-${m[2]}`)}` : null;
+}
+
+/** AG010 (M28): เลือก 1 ใน 3 สาเหตุจากข้อความของ DB แล้วใส่เดือนสุดท้ายที่ Renew ได้ (DETAIL) */
+function describeGapError(error: DbErrorLike): string {
+  const msg = (error.message ?? "").toLowerCase();
+  const until = detailMonth(error.details);
+  if (msg.includes("after the old contract starts")) {
+    return "วันเริ่มสัญญาใหม่ต้องอยู่หลังวันเริ่มสัญญาเก่า — ตรวจวันที่ หรือเปิดเป็นลูกค้าใหม่ (New)";
+  }
+  if (msg.includes("linked renewal")) {
+    return until
+      ? `แก้วันที่ของสัญญานี้ไม่ได้ — สัญญาที่ต่อ (Renew) จากสัญญานี้จะเริ่มเกินช่วง (ต้องเริ่มไม่เกิน ${until})`
+      : "แก้วันที่ของสัญญานี้ไม่ได้ — สัญญาที่ต่อ (Renew) จากสัญญานี้จะเริ่มเกิน 2 เดือนหลังสัญญาจบ";
+  }
+  return until
+    ? `สัญญาใหม่เริ่มเกิน 2 เดือนหลังสัญญาเก่าจบ — Renew ได้ถึง ${until} เท่านั้น ถ้าเริ่มหลังจากนั้นให้เปิดเป็นลูกค้าใหม่ (New)`
+    : "สัญญาใหม่เริ่มเกิน 2 เดือนหลังสัญญาเก่าจบ — ให้เปิดเป็นลูกค้าใหม่ (New)";
+}
 
 /** AG008 = มีคนแก้สัญญานี้ไปก่อน (กันเขียนทับ M12) — หน้าจอแสดงปุ่ม "โหลดแถวใหม่" */
 export const CONFLICT_ERROR_CODE = "AG008";
@@ -49,7 +86,14 @@ export function describeDbError(error: DbErrorLike, context: ErrorContext = "sav
   const msg = (error.message ?? "").toLowerCase();
   const status = String(error.statusCode ?? "");
 
-  // รหัสของ RPC บันทึก/ลบสัญญา (AG001–AG006) — ตรวจก่อน เพราะ PostgREST ตอบ HTTP 400
+  // M28: สองรหัสนี้ต้องใช้ DETAIL ใส่ในข้อความ จึงตรวจก่อนตารางข้อความตายตัว
+  if (code === "AG010") return describeGapError(error);
+  if (code === "AG013") {
+    const from = detailDate(error.details);
+    return `หมดช่วงที่เปิด Renew แบบไม่ผูกสัญญาเก่าแล้ว${from ? ` (ตั้งแต่ ${from})` : ""} — ผูกสัญญาเก่าที่ต่อมา หรือเปิดเป็นลูกค้าใหม่ (New)`;
+  }
+
+  // รหัสของ RPC บันทึก/ลบสัญญา (AG001–AG014) — ตรวจก่อน เพราะ PostgREST ตอบ HTTP 400
   const rpcMessage = RPC_ERRORS[code];
   if (rpcMessage) return rpcMessage;
   if (code === "22004") return MISSING_EXPECTED_MESSAGE;
