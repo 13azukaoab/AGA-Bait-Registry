@@ -205,8 +205,8 @@ SELECT throws_ok(format('SELECT public.save_missed_service_note(%L::jsonb)',
   '22004', NULL, 'missing note key is refused (no silent delete)');
 SELECT is(pg_temp.note('d1', pg_temp.m(-6)), 'parity', 'note kept after a payload without the note key');
 SELECT is((SELECT (public.save_missed_service_note(jsonb_build_object(
-             'contract_id', pg_temp.id('d1'), 'missed_month', pg_temp.m(-2), 'note', E'\t\n  ')) ->> 'deleted')),
-  'false', 'tab / newline / NBSP only note counts as blank (no row stored)');
+             'contract_id', pg_temp.id('d1'), 'missed_month', pg_temp.m(-2), 'note', E'\t\r\n\u00a0\u200b ')) ->> 'deleted')),
+  'false', 'tab / CR / newline / NBSP / zero-width only note counts as blank (no row stored)');
 
 -- =====================================================================
 -- 1b. หมายเหตุ: recorder ในขอบเขต / นอกขอบเขต · admin · viewer

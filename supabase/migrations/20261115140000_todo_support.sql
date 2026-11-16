@@ -56,7 +56,7 @@ CREATE TABLE public.missed_service_notes (
   recorded_at  timestamptz NOT NULL DEFAULT now(),
   CONSTRAINT missed_service_notes_contract_month_key UNIQUE (contract_id, missed_month),
   CONSTRAINT missed_service_notes_month_first_day CHECK (missed_month = date_trunc('month', missed_month)::date),
-  CONSTRAINT missed_service_notes_note_not_blank CHECK (btrim(note, E' \t\r\n ') <> ''),
+  CONSTRAINT missed_service_notes_note_not_blank CHECK (btrim(note, E' \t\r\n\u00a0\u200b') <> ''),
   CONSTRAINT missed_service_notes_note_length CHECK (char_length(note) <= 200)
 );
 
@@ -116,8 +116,8 @@ BEGIN
   END IF;
   v_contract := (p ->> 'contract_id')::uuid;
   v_missed   := (p ->> 'missed_month')::date;
-  -- ตัดช่องว่าง/tab/ขึ้นบรรทัด/NBSP หัวท้าย (ชุดเดียวกับ CHECK ของตาราง)
-  v_note     := nullif(btrim(p ->> 'note', E' \t\r\n '), '');
+  -- ตัดช่องว่าง/tab/ขึ้นบรรทัด/NBSP/zero-width space หัวท้าย (ชุดเดียวกับ CHECK ของตาราง)
+  v_note     := nullif(btrim(p ->> 'note', E' \t\r\n\u00a0\u200b'), '');
 
   -- ---------- สัญญา + ขอบเขต (ก่อนถือ lock) ----------
   IF NOT EXISTS (SELECT 1 FROM contracts c WHERE c.id = v_contract) THEN
