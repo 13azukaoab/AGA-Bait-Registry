@@ -101,6 +101,16 @@ h1{font-size:20px;font-weight:600;margin:0 0 3px}
 .addbtn:hover .addbtn__ic{width:148px;transform:translateX(0)}
 .addbtn:active .addbtn__ic{background:color-mix(in srgb,var(--ok) 70%,var(--fg))}
 .addbtn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+/* ปุ่ม "บันทึกเข้าทะเบียน" แบบแถบสีกวาด (ดีไซน์ใหม่ — เฉพาะหน้านี้) · ใช้สี accent ของระบบ ไม่ใช้ gradient ม่วง/ดำเดิม */
+.savebtn{flex:none;position:relative;overflow:hidden;cursor:pointer;font-family:inherit;font-weight:500;font-size:13px;letter-spacing:.03em;
+  border:none;border-radius:10px;background:var(--accent);color:var(--accent-fg);padding:0;transition:transform .15s}
+.savebtn span{position:relative;z-index:1;display:inline-flex;align-items:center;gap:7px;padding:9px 16px 9px 13px}
+.savebtn svg{width:16px;height:16px;flex:none}
+.savebtn::before{content:"";position:absolute;top:0;left:-10%;width:120%;height:100%;z-index:0;background:var(--accent-strong);
+  transform:skew(30deg);transition:transform .4s cubic-bezier(.3,1,.8,1)}
+.savebtn:hover::before{transform:translate3d(100%,0,0)}
+.savebtn:active{transform:scale(.95)}
+.savebtn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .navtoggle .nt-tx{display:none}
 @media (min-width:861px){ .navtoggle .nt-tx{display:inline} }
 .nav-backdrop{display:none}
@@ -905,7 +915,7 @@ table.xl .teambtn.multi{font-weight:700;color:var(--accent-strong)}
     <button type="button" class="addbtn" onclick="addRow()" aria-label="เพิ่มแถว"><span class="addbtn__tx">เพิ่มแถว</span><span class="addbtn__ic"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span></button>
     <span style="flex:1"></span>
     <span style="font-size:11.5px;color:var(--fg-muted)">บันทึกได้ <b id="footcnt">— จาก — แถว</b> — <span class="chip pend">รอนัดบริการ</span> และ <span class="chip pend">ระยะ 396 วัน</span> เก็บไว้เติม/แก้ทีหลังได้ · แถวแดงขาดข้อมูลจำเป็น</span>
-    <button class="btn sm primary" type="button" onclick="saveOpen()">บันทึกเข้าทะเบียน</button>
+    <button type="button" class="savebtn" onclick="saveOpen()"><span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8M7 3v5h8"/></svg>บันทึกเข้าทะเบียน</span></button>
   </div>
 </div>
 
