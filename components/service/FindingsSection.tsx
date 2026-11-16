@@ -216,7 +216,7 @@ export function FindingsSection({
         </div>
         <div className="mt-2.5">
           <Button
-            size="sm"
+            variant="add"
             onClick={() =>
               onChange({
                 normal: false,
@@ -236,7 +236,7 @@ export function FindingsSection({
               })
             }
           >
-            + เพิ่มจุดที่พบปลวก
+            เพิ่มจุดที่พบปลวก
           </Button>
         </div>
       </section>
@@ -293,12 +293,12 @@ export function FindingsSection({
         </div>
         <div className="mt-2.5">
           <Button
-            size="sm"
+            variant="add"
             onClick={() =>
               onChange({ normal: false, timbers: [...form.timbers, { key: rowKey("t"), type: "IG", noText: "" }] })
             }
           >
-            + เพิ่มสถานีที่เปลี่ยนไม้
+            เพิ่มสถานีที่เปลี่ยนไม้
           </Button>
         </div>
       </section>

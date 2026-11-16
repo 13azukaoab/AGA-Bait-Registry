@@ -364,7 +364,7 @@ export function ServiceForm({
           <Button onClick={onPrev} aria-label="รายก่อนหน้า" title="รายก่อนหน้า" className="min-w-14" disabled={saving}>
             ←
           </Button>
-          <Button variant="primary" onClick={save} loading={saving}>
+          <Button variant="save" onClick={save} loading={saving}>
             บันทึก + รายถัดไป
           </Button>
           <Button onClick={onSkip} disabled={saving}>
