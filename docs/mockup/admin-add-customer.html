@@ -458,6 +458,15 @@ td.nm:has(.hd-btn:not([hidden])) .rowlk{right:98px}
 
 /* ===== modal กลาง (ใช้ร่วม: ผูกลูกค้าเดิม / รอนัดบริการ / ตรวจก่อนบันทึก) ===== */
 table.xl .chip.lk{cursor:pointer}
+/* M28: ส่วนเหตุผล/ฟอร์ม "ไม่มีสัญญาเก่า" ใน modal เชื่อมสัญญาเก่า */
+.lkreason{padding:10px 16px;font-size:12.5px;line-height:1.6;background:var(--warn-soft);border-bottom:1px solid var(--border)}
+.lkreason b{color:var(--warn)}
+.lkform{padding:14px 16px;font-size:12.5px;line-height:1.6}
+.lkform label{display:block;font-weight:500;margin-bottom:5px}
+.lkform textarea{width:100%;min-height:78px;font-family:inherit;font-size:13px;padding:8px 10px;border:1px solid var(--border-strong);border-radius:8px;background:var(--surface);color:var(--fg);resize:vertical}
+.lkform .hint{color:var(--fg-muted);font-size:11.5px;margin-top:6px}
+.lkform .err{color:var(--danger);background:var(--danger-soft);border-radius:8px;padding:6px 9px;margin-top:8px}
+.lkform .err[hidden]{display:none}
 table.xl .chip.fbtn{border:0;font-family:inherit;white-space:nowrap}
 /* ไอคอนไฟล์ PDF (แทน 📎) — สีอ้าง token เพื่อสลับ light/dark · ยังไม่แนบ = ป้ายสีเทา */
 .pdfic{width:16px;height:16px;flex:none;margin-right:4px;vertical-align:-3px}
@@ -631,7 +640,8 @@ table.xl .teambtn.multi{font-weight:700;color:var(--accent-strong)}
   <div class="field"><label for="fBranch">สาขา</label><select id="fBranch" onchange="fltApply()"></select></div>
   <div class="field"><label for="fStatus">สถานะ</label><select id="fStatus" onchange="fltApply()">
     <option value="">ทั้งหมด</option><option value="ok">ครบแล้ว</option><option value="pend">รอนัดบริการ</option><option value="miss">ขาดข้อมูลจำเป็น</option>
-    <option value="nofile">ยังไม่แนบไฟล์</option><option value="warn">มีคำเตือนอื่น (ระยะสัญญา/วันที่)</option></select></div>
+    <option value="nofile">ยังไม่แนบไฟล์</option>
+    <option value="unlinked">Renew ยังไม่เชื่อมสัญญาเก่า (ทุกเดือน)</option><option value="warn">มีคำเตือนอื่น (ระยะสัญญา/วันที่)</option></select></div>
   <div class="field" style="flex:1;min-width:150px"><label for="fSearch">กรองในตารางนี้</label><input id="fSearch" type="search" placeholder="พิมพ์ชื่อลูกค้า / เลขที่สัญญา (เฉพาะเดือนที่เลือก)" title="กรองแถวในตารางเปิดงานของเดือนที่เลือก — ค้นทั้งระบบใช้ช่องค้นหาบนแถบหัว" style="width:100%" oninput="fltApply()" autocomplete="off"></div>
   <button class="btn sm" type="button" id="fClear" onclick="fltReset()" hidden>✕ ล้างตัวกรอง</button>
   <button class="btn sm" type="button" onclick="exportXL()" title="ส่งออกทุกแถวของเดือน (ไม่ขึ้นกับตัวกรองที่เลือกอยู่)">↓ ส่งออก Excel</button>
@@ -646,12 +656,16 @@ table.xl .teambtn.multi{font-weight:700;color:var(--accent-strong)}
   <span class="chip info num">มูลค่ารวม 10,164,043</span>
   <span class="chip pend num">รอนัดบริการ 16</span>
   <span class="chip miss num">⚠ ขาดข้อมูลจำเป็น 1</span>
+  <button type="button" class="chip pend num fchip" id="chipUnl" aria-pressed="false" hidden onclick="fltChip('unlinked')" title="Renew ที่ยังไม่เชื่อมสัญญาเก่า (ทุกเดือน) — คลิกเพื่อกรองในตาราง · host + admin เชื่อมได้">Renew ยังไม่เชื่อมสัญญาเก่า <b id="cUnl">0</b></button>
   <button type="button" class="chip pend num fchip" id="chipNoFile" aria-pressed="false" onclick="fltChip('nofile')"
     title="นับจากแถวที่แสดงในตาราง (เดโมแสดงตัวอย่าง 7 แถว) — คลิกเพื่อกรองเฉพาะแถวที่ยังไม่แนบไฟล์ คลิกอีกครั้งเพื่อยกเลิก"><svg class="pdfic" viewBox="0 0 24 24" aria-hidden="true"><path class="pg" d="M6 1.5h9l5 5V21a1.5 1.5 0 0 1-1.5 1.5h-12A1.5 1.5 0 0 1 4.5 21V3A1.5 1.5 0 0 1 6 1.5z"/><path class="fd" d="M15 1.5v3.5a1.5 1.5 0 0 0 1.5 1.5H20z"/><rect class="lb" x="1.5" y="10" width="16" height="8" rx="1.5"/><text x="9.5" y="16.2" text-anchor="middle">PDF</text></svg>ยังไม่แนบไฟล์ <b id="cNoFile">0</b></button>
   <span class="chip na num" id="fShown" aria-live="polite"></span>
   <span class="sorthint" id="sorthint">คลิกหัวคอลัมน์เพื่อเรียงลำดับ · คลิกซ้ำ = มาก→น้อย · คลิกครั้งที่ 3 = กลับลำดับเดิม</span>
 </div>
 
+<!-- M28 (DECISIONS 2.51): ตัวกรอง "Renew ยังไม่เชื่อมสัญญาเก่า" รวมงานเชื่อมสัญญาเก่าไว้ที่คอลัมน์ "เชื่อมสัญญาเก่า" เดิม (ไม่มีแผงแยก)
+     ของจริง: รายการมาจาก RPC list_unlinked_renewals (host + admin) · เชื่อมด้วย link_renewal_contract (ต้องเปิดสิทธิ์ admin เพิ่ม) -->
+<div class="pendbar" id="unlBar" hidden role="status"><span>กำลังดู <b>Renew ที่ยังไม่เชื่อมสัญญาเก่า</b> ของทุกเดือน · เปิดแบบไม่เชื่อมได้ถึง <b>31 มี.ค. 2027</b> หลังจากนั้นต้องเชื่อมสัญญาเก่าหรือเปิดเป็น New</span><span style="flex:1"></span><button type="button" class="btn sm" onclick="fltChip('unlinked')">ล้างตัวกรองนี้</button></div>
 <div id="noRes" class="nores" hidden role="status"></div>
 <div class="tablewrap">
   <table class="xl">
@@ -819,7 +833,7 @@ table.xl .teambtn.multi{font-weight:700;color:var(--accent-strong)}
         <td class="nm"><input value="คุณลูกค้า หนึ่ง" class="wide" oninput="dupCheck(this)"><a class="rowlk" href="customer-detail.html?c=c3#tab=contracts" title="ดูรายละเอียดลูกค้า (หน้าใหม่)" aria-label="ดูรายละเอียดลูกค้า">↗</a></td>
         <td class="c"><input type="checkbox"></td>
         <td><span class="jobsw" onclick="jobTog(this,event)" role="group" aria-label="ประเภทงาน"><span class="jo">New</span><span class="jo on">Renew</span></span></td>
-        <td><span class="chip miss lk" tabindex="0" role="button" onclick="linkOpen(this)">⚠ ยังไม่ผูก · ค้นหา</span></td>
+        <td><span class="chip miss lk" tabindex="0" role="button" data-unl="open" onclick="linkOpen(this)">⚠ ยังไม่เชื่อม · ค้นหา</span></td>
         <td><input list="sllist" value="พนักงานขาย 20"></td>
         <td><select><option>Sale</option><option selected>AM</option></select></td>
         <td><input class="brsel" list="brlist" value="ลาดพร้าว" placeholder="พิมพ์ชื่อสาขา…" autocomplete="off" onfocus="this.select()" oninput="rowZone(this)" onchange="brFix(this)"></td>
@@ -1691,18 +1705,48 @@ function linkOpen(chip){
   }
 
   var nm=(tr.cells[2].querySelector('input')||{}).value||'';
-  mdOpen('ผูกลูกค้าเดิม (Renew)','สาขา '+lkBranch,
+  var unl=chip.dataset.unl;   // open = ยังไม่มีเหตุผล · wait = มีเหตุผล รอตรวจ
+  var top0=(unl==='wait')?'<div class="lkreason"><b>เหตุผลที่บันทึกไว้:</b> '+lkEsc(chip.dataset.reason||'')+'</div>':'';
+  mdOpen('เชื่อมสัญญาเก่า (Renew)','สาขา '+lkBranch,top0+
     '<div class="mdsearch"><input id="lkq" placeholder="ค้นหาชื่อลูกค้า / เลขที่สัญญาเดิม" '+
       'oninput="linkRender(this.value)" value="'+nm+'">'+
       '<label style="display:flex;align-items:center;gap:6px;margin-top:8px;font-size:11.5px;color:var(--fg-muted)">'+
       '<input type="checkbox" id="lkall" style="width:auto" onchange="lkAll=this.checked;linkRender(document.getElementById(\'lkq\').value)">'+
       'ค้นหาทุกสาขา (ใช้เมื่อลูกค้าย้ายสาขา)</label></div>','',
-    '<span>ไม่พบในฐาน = ยังไม่เคยเป็นลูกค้า</span><span style="flex:1"></span>'+
+    '<span style="flex:1"></span>'+
+    (unl?'<button class="btn sm" type="button" onclick="lkNone()">'+(unl==='wait'?'ยืนยันว่าไม่มีสัญญาเก่า…':'ไม่มีสัญญาเก่าในระบบ…')+'</button>':'')+
     '<button class="btn sm" type="button" onclick="linkAsNew()">เปลี่ยนเป็นงานใหม่ (New)</button>');
   linkRender(nm);
   document.getElementById('lkq').focus();
 }
 
+function lkEsc(t){ return String(t).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
+/* "ไม่มีสัญญาเก่าในระบบ": กรอกเหตุผล (บังคับ — DB AG012) → รอตรวจ · ถ้ามีเหตุผลอยู่แล้ว (รอตรวจ) กดยืนยัน = ปิดรายการ (ตรวจแล้ว)
+   ของจริง: ปิดรายการต้องมีช่อง/RPC ใหม่ใน DB (หมวด 2) · เปิดแบบไม่เชื่อมได้ถึง app_settings.allow_unlinked_renew_until */
+function lkNone(){
+  if(!lkCell) return;
+  var wait=lkCell.dataset.unl==='wait', old=lkCell.dataset.reason||'';
+  document.getElementById('mdttl').textContent=wait?'ยืนยันว่าไม่มีสัญญาเก่า':'ไม่มีสัญญาเก่าในระบบ';
+  document.getElementById('mdtop').innerHTML='';
+  document.getElementById('mdbody').innerHTML='<div class="lkform"><label for="lkWhy">เหตุผล (จำเป็น)</label>'+
+    '<textarea id="lkWhy" placeholder="เช่น สัญญาเก่าอยู่ในไฟล์ Excel เดิม ยังไม่นำเข้าระบบ">'+lkEsc(old)+'</textarea>'+
+    '<div class="hint">'+(wait?'ตรวจแล้วว่าไม่มีสัญญาเก่าจริง → รายการจะถูกปิด (ยังเป็น Renew ตามเดิม) · ถ้าเริ่มเกิน 2 เดือนหลังสัญญาเก่าจบ ให้เปลี่ยนเป็น New แทน'
+      :'บันทึกแล้วขึ้นรายการ "รอตรวจ" ให้ host / admin ตรวจและผูกย้อนหลังได้ · เปิดแบบไม่เชื่อมได้ถึง 31 มี.ค. 2027')+'</div>'+
+    '<div class="err" id="lkWhyErr" role="alert" hidden>ใส่เหตุผลก่อน</div></div>';
+  document.getElementById('mdft').innerHTML='<button class="btn sm" type="button" onclick="linkOpen(lkCell)">← กลับไปค้นหา</button><span style="flex:1"></span>'+
+    '<button class="btn sm primary" type="button" onclick="lkNoneSave()">'+(wait?'ยืนยัน ปิดรายการ':'บันทึกเหตุผล')+'</button>';
+  document.getElementById('lkWhy').focus();
+}
+function lkNoneSave(){
+  var why=document.getElementById('lkWhy').value.trim();
+  if(!why){ document.getElementById('lkWhyErr').hidden=false; return; }
+  var c=lkCell, wait=c.dataset.unl==='wait';
+  c.dataset.reason=why;
+  if(wait){ c.dataset.unl='done'; c.className='chip na lk'; c.textContent='✓ ไม่มีสัญญาเก่า'; lkResolveRow(c.closest('tr')); }
+  else { c.dataset.unl='wait'; c.className='chip pend lk'; c.textContent='⚠ ยังไม่เชื่อม · รอตรวจ'; }
+  c.title='เหตุผล: '+why;
+  fltCounts(); mdClose();
+}
 function goBranch(){
   mdClose();
   if(!lkCell) return;
@@ -1754,19 +1798,22 @@ function dupCheck(inp){
   }
 }
 
-function linkDo(ct){
-  if(!lkCell) return;
-  lkCell.className='chip ok lk';
-  lkCell.textContent='🔗 '+ct;
-  var tr=lkCell.closest('tr');
-  // ล้างสีแถวเฉพาะกรณีที่ "ยังไม่ผูก" เป็นปัญหาเดียวที่ค้าง
+function lkResolveRow(tr){
+  // ล้างสีแถวเฉพาะกรณีที่ "ยังไม่เชื่อม" เป็นปัญหาเดียวที่ค้าง
   // ปัญหาอื่น (เช่น ระยะสัญญา 396 วัน) ยังต้องคาสีไว้
   var st=tr.cells[22].querySelector('.chip');
   if(st && st.textContent.indexOf('ขาด')===0){
     st.className='chip ok'; st.textContent='ครบ';
     tr.classList.remove('badrow','warnrow','pendrow');
   }
-  mdClose();
+}
+function linkDo(ct){
+  if(!lkCell) return;
+  lkCell.className='chip ok lk';
+  lkCell.textContent='🔗 '+ct;
+  delete lkCell.dataset.unl; delete lkCell.dataset.reason; lkCell.removeAttribute('title');
+  lkResolveRow(lkCell.closest('tr'));
+  fltCounts(); mdClose();
 }
 
 function linkAsNew(){
@@ -1776,7 +1823,8 @@ function linkAsNew(){
   lkCell.className='chip na';
   lkCell.textContent='— งานใหม่ —';
   lkCell.removeAttribute('onclick');
-  mdClose();
+  delete lkCell.dataset.unl; delete lkCell.dataset.reason; lkCell.removeAttribute('title');
+  fltCounts(); mdClose();
 }
 
 /* ===== 2) แผงรอนัดบริการ =====
@@ -1854,7 +1902,7 @@ function saveScan(){
     else if(!money.trim()) bad.push('มูลค่า');
 
     var isRenew=(tr.querySelector('.jobsw .jo.on')||{}).textContent==='Renew';
-    if(isRenew && tr.cells[5].textContent.indexOf('ยังไม่ผูก')>=0) warn.push('Renew ยังไม่ผูกลูกค้าเดิม');
+    if(isRenew && tr.cells[5].querySelector('[data-unl=open]')) warn.push('Renew ยังไม่เชื่อมสัญญาเก่า (เลือกสัญญาเก่า หรือระบุว่าไม่มีสัญญาเก่า)');
     if(!val(tr.cells[11])) warn.push('ยังไม่ลงวันที่บริการ');
     var tbn=tr.cells[13].querySelector('.teambtn');
     if(tbn && !(tbn.dataset.teams||'')) warn.push('ยังไม่นัดทีม');
@@ -2763,28 +2811,32 @@ function fltStatus(tr){
   var t=tr.cells[22].textContent.trim();
   return t==='ครบ'?'ok' : t.indexOf('รอนัด')>=0?'pend' : t.indexOf('ขาด')===0?'miss' : 'warn';
 }
+function fltUnl(tr){ var c=tr.cells[5].querySelector('[data-unl]'); return !!c && c.dataset.unl!=='done'; }  // open / wait = ยังต้องจัดการ
 function fltNoFile(tr){ var b=tr.querySelector('.fbtn'); return !!b && !b.dataset.pdf; }
 function fltMatch(tr,f){
   if(f.zone && tr.cells[9].textContent.trim()!==f.zone) return false;
   if(f.branch && rowBranch(tr)!==f.branch) return false;
-  if(f.status){ if(f.status==='nofile'){ if(!fltNoFile(tr)) return false; } else if(fltStatus(tr)!==f.status) return false; }
+  if(f.status){ if(f.status==='nofile'){ if(!fltNoFile(tr)) return false; } else if(f.status==='unlinked'){ if(!fltUnl(tr)) return false; } else if(fltStatus(tr)!==f.status) return false; }
   if(f.q && (fltNorm(val(tr.cells[1])).indexOf(f.q)<0 && fltNorm(val(tr.cells[2])).indexOf(f.q)<0)) return false;
   return true;
 }
 function fltCounts(){
-  var rows=document.querySelectorAll('table.xl tbody tr'), n=0;
-  [].forEach.call(rows,function(tr){ if(fltNoFile(tr)) n++; });
+  var rows=document.querySelectorAll('table.xl tbody tr'), n=0, u=0;
+  [].forEach.call(rows,function(tr){ if(fltNoFile(tr)) n++; if(fltUnl(tr)) u++; });
   var c=document.getElementById('cNoFile'); if(c) c.textContent=n;
+  var cu=document.getElementById('cUnl'), ch=document.getElementById('chipUnl');
+  if(cu) cu.textContent=u; if(ch) ch.hidden=(u===0 && document.getElementById('fStatus').value!=='unlinked');
 }
 function fltApply(){
   var g=function(id){return document.getElementById(id);};
   if(!g('fMonth')) return;
   var f={zone:g('fZone').value, branch:g('fBranch').value, status:g('fStatus').value, q:fltNorm(g('fSearch').value)};
-  var monthOK=(g('fMonth').value===FLT_DEMO_MONTH), rows=document.querySelectorAll('table.xl tbody tr'), shown=0;
+  var monthOK=(g('fMonth').value===FLT_DEMO_MONTH)||f.status==='unlinked',  /* ตัวกรอง Renew ยังไม่เชื่อม = ทุกเดือน (list_unlinked_renewals ไม่แบ่งเดือน) */ rows=document.querySelectorAll('table.xl tbody tr'), shown=0;
   [].forEach.call(rows,function(tr){ var ok=monthOK&&fltMatch(tr,f); tr.hidden=!ok; if(ok) shown++; });
   var active=!!(f.zone||f.branch||f.status||f.q||!monthOK);
   g('fClear').hidden=!active;
   var chip=g('chipNoFile'); chip.setAttribute('aria-pressed',f.status==='nofile'?'true':'false');
+  g('chipUnl').setAttribute('aria-pressed',f.status==='unlinked'?'true':'false'); g('unlBar').hidden=(f.status!=='unlinked');
   fltCounts();
   g('fShown').textContent='แสดง '+shown+' จาก '+rows.length+' แถว (เดโมแสดงตัวอย่าง '+rows.length+' แถว)';
   var nr=g('noRes');

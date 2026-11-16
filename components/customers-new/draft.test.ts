@@ -95,10 +95,11 @@ describe("ช่องเปิดงานใหม่ (M9)", () => {
     expect(checkDraft({ ...filled(), mailReceivedDate: "2026-02-31" }, branches, undefined).errors.mailDate).toBeTruthy();
     expect(checkDraft({ ...filled(), firstServiceDate: "8202-01-01" }, branches, undefined).errors.serviceDate).toBeTruthy();
   });
-  it("Renew ที่ยังไม่ผูกลูกค้าเดิม = เตือน ไม่บล็อก", () => {
+  // M28: เดิมเป็น "เตือน ไม่บล็อก" — ตอนนี้ Renew ไม่ผูกสัญญาเก่าต้องมีเหตุผล (รายละเอียดดู renew.test.ts)
+  it("Renew ที่ยังไม่ผูกสัญญาเก่าและยังไม่ใส่เหตุผล = บล็อกการบันทึก (M28)", () => {
     const c = checkDraft({ ...filled(), saleType: "renew" }, branches, undefined);
-    expect(c.warnings).toContain("Renew ยังไม่ผูกลูกค้าเดิม");
-    expect(canSave(c)).toBe(true);
+    expect(c.errors.renewReason).toBeTruthy();
+    expect(canSave(c)).toBe(false);
   });
   it("ตัวเลือกเวลานัด 08:00–17:30 ทุก 30 นาที", () => {
     expect(SERVICE_TIME_SLOTS[0]).toBe("08:00");

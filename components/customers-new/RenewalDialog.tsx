@@ -3,6 +3,7 @@
 /**
  * RenewalDialog — เลือก "ลูกค้าเดิม" ให้งาน Renew: ค้นสัญญาเก่า (เลขที่สัญญา/ชื่อลูกค้า) แล้วเลือกใบที่จะผูก
  * เลือกแล้วสัญญาใหม่ใช้ลูกค้าคนเดียวกับสัญญาเก่า (ไม่สร้างลูกค้าใหม่) · ค้นแบบหน่วงเวลา 300 ms
+ * M28: ใบที่วันเริ่มสัญญาใหม่ (`startDate` ของแถว) เกินช่วง Renew 2 เดือนหลังสัญญาเก่าจบ = กดเลือกไม่ได้ + บอกเหตุผล
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { useEffect, useState } from "react";
@@ -11,15 +12,19 @@ import { Alert } from "@/components/ui";
 
 import { Modal } from "./Modal";
 import { searchRenewalCandidates } from "./renewal";
+import { renewGapBlockReason } from "./renewRules";
 import type { RenewalLink } from "./types";
 
 export function RenewalDialog({
   supabase,
   branchNameOf,
+  startDate,
   onPick,
   onClose,
 }: {
   supabase: SupabaseClient;
+  /** วันเริ่มของสัญญาใหม่ในแถวที่กำลังเลือก ('YYYY-MM-DD' หรือว่าง) — ใช้ล็อกใบที่เกินช่วง Renew */
+  startDate: string;
   branchNameOf: (branchId: string) => string;
   onPick: (link: RenewalLink) => void;
   onClose: () => void;
@@ -73,19 +78,24 @@ export function RenewalDialog({
         ) : null}
         {results && results.length > 0 ? (
           <ul className="m-0 flex list-none flex-col gap-1 p-0">
-            {results.map((r) => (
-              <li key={r.contractId}>
-                <button
-                  type="button"
-                  onClick={() => onPick(r)}
-                  className="flex w-full cursor-pointer flex-wrap items-center gap-2 rounded-lg border border-border bg-surface px-3 py-2 text-left hover:bg-surface-2 focus-visible:outline-2 focus-visible:outline-accent"
-                >
-                  <span className="num font-semibold">{r.contractNo}</span>
-                  <span className="min-w-0 flex-1 break-words">{r.customerName}</span>
-                  <span className="text-fg-muted">{branchNameOf(r.branchId)}</span>
-                </button>
-              </li>
-            ))}
+            {results.map((r) => {
+              const blocked = renewGapBlockReason(r, startDate);
+              return (
+                <li key={r.contractId}>
+                  <button
+                    type="button"
+                    disabled={blocked !== null}
+                    onClick={() => onPick(r)}
+                    className="flex w-full cursor-pointer flex-wrap items-center gap-2 rounded-lg border border-border bg-surface px-3 py-2 text-left hover:bg-surface-2 focus-visible:outline-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:bg-surface-2 disabled:text-fg-faint disabled:hover:bg-surface-2"
+                  >
+                    <span className="num font-semibold">{r.contractNo}</span>
+                    <span className="min-w-0 flex-1 break-words">{r.customerName}</span>
+                    <span className="text-fg-muted">{branchNameOf(r.branchId)}</span>
+                    {blocked ? <span className="w-full text-[12px] text-danger">🔒 {blocked}</span> : null}
+                  </button>
+                </li>
+              );
+            })}
           </ul>
         ) : null}
       </div>

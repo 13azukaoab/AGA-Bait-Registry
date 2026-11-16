@@ -17,6 +17,7 @@ import type { UserRole } from "@/lib/db/types";
 
 import type { BranchOption } from "./branchMatch";
 import type { ContractFileKind } from "./fileRules";
+import { parseRenewPolicy } from "./renewRules";
 import { monthRange } from "@/lib/service/months";
 import { sortTeamsByKind, type TeamKind } from "@/lib/service/teamKind";
 import type { ContractFileRow, ContractStatus, MasterData, SaleType, SavedContract } from "./types";
@@ -28,7 +29,7 @@ const FILE_COLUMNS =
   "id, kind, version, is_current, storage_path, file_name, size_bytes, was_compressed, reason, uploaded_at";
 
 const CONTRACT_SELECT = `id, customer_id, contract_no, start_date, end_date, term_years, value_total, sale_type, status, sale_name, am_name,
-       is_urgent, renewed_from_contract_id, mail_received_date, first_service_date, first_service_time, note, updated_at,
+       is_urgent, renewed_from_contract_id, renew_unlinked_reason, mail_received_date, first_service_date, first_service_time, note, updated_at,
        customers ( name, customer_type, branch_id ),
        contract_teams ( team_id ),
        contract_files ( ${FILE_COLUMNS} )`;
@@ -79,7 +80,7 @@ export async function fetchContractFiles(
 export async function loadMasterData(
   supabase: SupabaseClient,
 ): Promise<{ master: MasterData | null; error: string | null }> {
-  const [zones, branches, teams, types, tiers] = await Promise.all([
+  const [zones, branches, teams, types, tiers, unlinkedOpen, unlinkedUntil] = await Promise.all([
     supabase.from("zones").select("id, name, sort_order").order("sort_order"),
     supabase
       .from("branches")
@@ -93,6 +94,9 @@ export async function loadMasterData(
       .select("code, label, group_label, sort_order")
       .order("sort_order"),
     supabase.from("tier_rules").select(TIER_RULE_COLUMNS).order("effective_month").order("min_annual"),
+    // M28: นโยบาย Renew ไม่ผูกสัญญาเก่า — ล้ม = ไม่ทำให้หน้าล่ม (ถือว่าปิด · DB ตัดสินซ้ำตอนบันทึก)
+    supabase.rpc("unlinked_renew_open"),
+    supabase.rpc("allow_unlinked_renew_until"),
   ]);
 
   const failed = [zones, branches, teams, types, tiers].find((r) => r.error);
@@ -128,6 +132,7 @@ export async function loadMasterData(
         (types.data ?? []) as { code: string; label: string; group_label: string }[]
       ).map((t) => ({ code: t.code, label: t.label, groupLabel: t.group_label })),
       tierRules,
+      renewPolicy: parseRenewPolicy(unlinkedOpen, unlinkedUntil),
     },
     error: null,
   };
@@ -152,6 +157,7 @@ type ContractRowDb = {
   am_name: string | null;
   is_urgent: boolean;
   renewed_from_contract_id: string | null;
+  renew_unlinked_reason: string | null;
   mail_received_date: string | null;
   first_service_date: string | null;
   first_service_time: string | null;
@@ -237,6 +243,7 @@ async function toSavedContracts(
       renewedFrom: r.renewed_from_contract_id
         ? { contractId: r.renewed_from_contract_id, contractNo: oldNo.get(r.renewed_from_contract_id) ?? null }
         : null,
+      renewUnlinkedReason: r.renew_unlinked_reason?.trim() ? r.renew_unlinked_reason : null,
       mailReceivedDate: r.mail_received_date ?? "",
       firstServiceDate: r.first_service_date ?? "",
       firstServiceTime: (r.first_service_time ?? "").slice(0, 5),
