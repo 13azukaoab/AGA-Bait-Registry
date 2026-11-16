@@ -12,7 +12,7 @@ import { cx } from "@/components/ui/cx";
 
 import { INPUT, INVALID, LABEL, SECTION, SECTION_TITLE, STATION_TYPE_TAG } from "./styles";
 import { describeNumbers } from "./stationIndex";
-import type { InitPlan } from "./setup";
+import { isCollectedIg, type InitPlan } from "./setup";
 import type { SetupState, StationRow } from "./types";
 
 export function StationSetup({
@@ -39,7 +39,10 @@ export function StationSetup({
       excludedOldIds: excluded.has(id) ? setup.excludedOldIds.filter((x) => x !== id) : [...setup.excludedOldIds, id],
     });
 
-  const ofType = (type: "IG" | "IC" | "AG") => oldStations.filter((s) => s.type === type);
+  // IG ที่เก็บแล้วไม่ย้าย (2.50) → ไม่แสดงให้ติ๊ก · แจ้งจำนวนแทน
+  const collectedIgCount = oldStations.filter(isCollectedIg).length;
+  const movable = oldStations.filter((s) => !isCollectedIg(s));
+  const ofType = (type: "IG" | "IC" | "AG") => movable.filter((s) => s.type === type);
   const setAll = (type: "IG" | "IC" | "AG", keep: boolean) => {
     const ids = new Set(ofType(type).map((s) => s.id));
     const rest = setup.excludedOldIds.filter((x) => !ids.has(x));
@@ -63,8 +66,15 @@ export function StationSetup({
 
       {isRenew ? (
         <div className="mt-2.5 flex flex-col gap-3">
-          {oldStations.length === 0 ? (
-            <p className="m-0 text-[12.5px] text-fg-muted">สัญญาเก่าไม่มีสถานีที่ยังใช้งาน — ระบุสถานีใหม่ด้านล่าง</p>
+          {collectedIgCount > 0 ? (
+            <p data-field="setup-collected-ig" className="m-0 text-[12.5px] text-fg-muted">
+              IG เก็บแล้ว <b className="num">{collectedIgCount}</b> สถานี ไม่ย้าย (อยู่กับสัญญาเก่า) — ระบุจำนวน IG ใหม่ของสัญญานี้ด้านล่าง
+            </p>
+          ) : null}
+          {movable.length === 0 ? (
+            <p className="m-0 text-[12.5px] text-fg-muted">
+              {collectedIgCount > 0 ? "ไม่มีสถานีที่ย้ายได้" : "สัญญาเก่าไม่มีสถานีที่ยังใช้งาน"} — ระบุสถานีใหม่ด้านล่าง
+            </p>
           ) : null}
           {(["IG", "IC"] as const).map((type) => {
             const list = ofType(type);
