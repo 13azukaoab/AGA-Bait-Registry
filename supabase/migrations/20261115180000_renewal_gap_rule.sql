@@ -61,7 +61,7 @@
 --        เทียบกับ "วันนี้" (เวลาไทย) ตอนบันทึก ไม่ใช่วันเริ่มสัญญา · **ไม่ใช่ go_live_month** (นั่นคือเดือนเริ่มข้อมูล)
 --        · แก้ได้เฉพาะ session ผู้ดูแลฐานข้อมูล (postgres/supabase_admin) — แทนที่ `app_settings_guard` (M25) → AS001
 --        · ⚠ **ผู้ดูแล DB ต้องปรับค่านี้ตอน go-live จริง** (go-live จริง + 3 เดือน · HQ ลง runbook)
---        · เลยวันแล้ว: Renew ใหม่ที่ไม่ผูก → AG013 · แถวที่เปิดไว้ก่อนหน้า แก้ช่องอื่นต่อได้
+--        · เลยวันแล้ว: Renew ใหม่ที่ไม่ผูก → AG013 · แถวที่เปิดไว้ก่อนหน้า แก้ช่องอื่นต่อได้ · ยกเลิกแล้วกลับมาใช้ = ตรวจใหม่
 --      * Renew ไม่ผูก ข้ามกฎ 2 เดือน (ไม่มีสัญญาเก่าให้เทียบ)
 --      * `save_job_opening` + พารามิเตอร์ `p_renew_unlinked_reason` (signature เปลี่ยน → DROP + CREATE + สิทธิ์ใหม่)
 --        · New / ผูกแล้ว → เก็บเหตุผลเป็น NULL เอง (ไม่ error) · Renew ไม่ผูก → AG012 / AG013 ก่อนเขียน
@@ -222,7 +222,9 @@ BEGIN
   -- ---------- รอบ 2: Renew ไม่ผูกสัญญาเก่า (ข้ามกฎ 2 เดือน · ต้องมีเหตุผล · เปิดได้ถึงวันที่กำหนด) ----------
   IF NEW.sale_type = 'renew' AND NEW.renewed_from_contract_id IS NULL THEN
     IF TG_OP = 'UPDATE' THEN
-      v_was_unlinked := coalesce(OLD.sale_type = 'renew' AND OLD.renewed_from_contract_id IS NULL, false);
+      -- ยกเลิกแล้วกลับมาใช้ (un-cancel) = นับเหมือนเพิ่ง "กลายเป็น" Renew ไม่ผูก → ตรวจเหตุผล + วันกำหนดใหม่ (ผลตรวจ Opus รอบ 2)
+      v_was_unlinked := coalesce(OLD.sale_type = 'renew' AND OLD.renewed_from_contract_id IS NULL
+                                 AND NOT (OLD.status = 'cancelled' AND NEW.status <> 'cancelled'), false);
     END IF;
     IF (NOT v_was_unlinked OR NEW.renew_unlinked_reason IS DISTINCT FROM OLD.renew_unlinked_reason)
        AND coalesce(btrim(NEW.renew_unlinked_reason), '') = '' THEN

@@ -6,7 +6,7 @@
 --   * โมฆะ: contract_is_renewed = Renew ผูกมา หรือ New ของลูกค้าเดียวกันที่เริ่มหลังสัญญานี้จบ · ยกเลิกแล้วไม่นับ
 -- ชุดกฎวันที่ใช้วันที่ตายตัว (ไม่ขึ้นกับวันนี้) · ชุดโมฆะใช้ pg_temp.m(n) = เดือนปัจจุบัน + n (Asia/Bangkok)
 BEGIN;
-SELECT plan(108);
+SELECT plan(115);
 
 INSERT INTO auth.users (id, instance_id, aud, role, email) VALUES
   ('00000000-0000-0000-0000-0000000000a1', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'host@test.local'),
@@ -367,6 +367,23 @@ SELECT throws_ok($$INSERT INTO contracts (customer_id, contract_no, start_date, 
 SELECT throws_ok($$UPDATE contracts SET renew_unlinked_reason = NULL WHERE id = pg_temp.rid('u1')$$,
   'AG012', NULL, 'REST UPDATE: clearing the reason of an unlinked Renew → AG012');
 SELECT lives_ok($$UPDATE contracts SET note = 'ok' WHERE id = pg_temp.rid('u1')$$, 'other fields of an unlinked Renew are editable');
+SELECT lives_ok(pg_temp.unl('u3', 'จะยกเลิก'), 'RPC: another unlinked Renew (u3) inside the period');
+SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a1', true);
+SELECT lives_ok($$UPDATE contracts SET status = 'cancelled' WHERE id = pg_temp.rid('u3')$$, 'host cancels u3 before the cut-off');
+SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a2', true);
+-- โหมดแก้ของ save_job_opening
+CREATE FUNCTION pg_temp.edit_u(p_tag text, p_sale text, p_reason text) RETURNS text LANGUAGE sql AS $$
+  SELECT format($f$
+    SELECT * FROM public.save_job_opening(
+      p_branch_id := pg_temp.br(), p_customer_name := 'Unlinked', p_customer_type := NULL,
+      p_contract_no := %L, p_start_date := %L, p_end_date := NULL, p_term_years := 1, p_value_total := 24000,
+      p_sale_type := %L, p_contract_id := %L, p_customer_id := pg_temp.id('c6'), p_renew_unlinked_reason := %L,
+      p_expected_updated_at := (SELECT updated_at FROM contracts WHERE id = %L))
+  $f$, 'U-' || p_tag, pg_temp.m(-7), p_sale, pg_temp.rid(p_tag), p_reason, pg_temp.rid(p_tag))
+$$;
+GRANT EXECUTE ON FUNCTION pg_temp.edit_u(text, text, text) TO PUBLIC;
+SELECT throws_ok(pg_temp.edit_u('u1', 'renew', NULL), 'AG012', NULL, 'RPC edit: clearing the reason of an unlinked Renew → AG012');
+SELECT lives_ok(pg_temp.edit_u('u1', 'renew', 'สัญญาเก่าอยู่ในกระดาษ ยังไม่นำเข้า'), 'RPC edit: an unlinked Renew with its reason saves');
 
 -- ---------- เลยวันกำหนดแล้ว ----------
 RESET ROLE;
@@ -381,6 +398,14 @@ SELECT throws_ok($$INSERT INTO contracts (customer_id, contract_no, start_date, 
   'AG013', NULL, 'REST INSERT: past the cut-off → AG013');
 SELECT throws_ok($$UPDATE contracts SET sale_type = 'renew', renew_unlinked_reason = 'x' WHERE id = pg_temp.rid('u2')$$,
   'AG013', NULL, 'REST UPDATE: turning a New into an unlinked Renew past the cut-off → AG013');
+SELECT throws_ok(pg_temp.edit_u('u2', 'renew', 'เหตุผล'), 'AG013', NULL,
+  'RPC edit: turning a New into an unlinked Renew past the cut-off → AG013');
+SELECT lives_ok(pg_temp.edit_u('u1', 'renew', 'สัญญาเก่าอยู่ในกระดาษ ยังไม่นำเข้า'),
+  'RPC edit: an unlinked Renew opened before the cut-off can still be saved');
+SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a1', true);
+SELECT throws_ok($$UPDATE contracts SET status = 'active' WHERE id = pg_temp.rid('u3')$$,
+  'AG013', NULL, 'un-cancelling an unlinked Renew past the cut-off → AG013 (counts as a new one)');
+SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a2', true);
 SELECT lives_ok($$UPDATE contracts SET note = 'แก้หลังเลยวัน' WHERE id = pg_temp.rid('u1')$$,
   'an unlinked Renew opened before the cut-off can still be edited');
 SELECT lives_ok($$UPDATE contracts SET renew_unlinked_reason = 'เหตุผลใหม่' WHERE id = pg_temp.rid('u1')$$,
