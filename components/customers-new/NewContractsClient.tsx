@@ -703,7 +703,7 @@ export function NewContractsClient({
             {/* ===== แถวที่บันทึกแล้ว ===== */}
             {visibleSaved.map((v, idx) => {
               const s = v.s;
-              const tier = tierFor(s.valueTotal, s.termYears, master.tierRules);
+              const tier = tierFor(s.valueTotal, s.termYears, master.tierRules, s.startDate);
               const hasPdf = v.hasPdf;
               const spCount = s.files.filter((f) => f.kind === "site_plan").length;
 
@@ -725,7 +725,7 @@ export function NewContractsClient({
                     branchName={v.branch?.zoneName.replace("เขต ", "") ?? ""}
                     branchBad={false}
                     err={(f) => Boolean(editCheck.errors[f])}
-                    tier={tierFor(editCheck.valueTotal, editCheck.termYears, master.tierRules)}
+                    tier={tierFor(editCheck.valueTotal, editCheck.termYears, master.tierRules, ed.startDate)}
                     warn={editWarn}
                     showErrors
                     master={master}
@@ -888,7 +888,7 @@ export function NewContractsClient({
             {drafts.map((d, i) => {
               const c = draftChecks[i]!;
               const branch = resolveBranch(d.branchText, master.branches);
-              const tier = tierFor(c.valueTotal, c.termYears, master.tierRules);
+              const tier = tierFor(c.valueTotal, c.termYears, master.tierRules, d.startDate);
               const warn = c.termYears ? endDateWarning(d.startDate, d.endDate, c.termYears) : null;
               const err = (f: keyof typeof c.errors) => showErrors && Boolean(c.errors[f]);
               const branchBad =
