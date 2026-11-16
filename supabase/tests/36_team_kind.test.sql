@@ -2,7 +2,7 @@
 -- Role simulation: seed as postgres, then SET LOCAL ROLE authenticated and set
 -- request.jwt.claim.sub (what auth.uid() reads). RESET ROLE to inspect as superuser.
 BEGIN;
-SELECT plan(67);
+SELECT plan(68);
 
 -- =====================================================================
 -- โครงสร้าง + backfill
@@ -127,15 +127,18 @@ RESET ROLE;
 SELECT is((SELECT array_agg(t.code) FROM visit_teams vt JOIN teams t ON t.id = vt.team_id
             WHERE vt.visit_id = '00000000-0000-0000-0000-0000000000f1'), ARRAY['P'], 'team P saved on the visit');
 
--- host เปลี่ยนประเภท P เป็นหัวหน้างาน → แก้การเข้าเดิมด้วย P ไม่ได้ · เปลี่ยนกลับได้
+-- M25: P มีงานผูกแล้ว → เปลี่ยนเป็นหัวหน้างานไม่ได้ (TM003) · ทดสอบ "เช็กตามประเภทปัจจุบัน" ด้วยทีม X (ยังว่าง) แทน
 SET LOCAL ROLE authenticated;
 SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a1', true);
-UPDATE teams SET kind = 'supervisor' WHERE code = 'P';
+SELECT throws_ok($$UPDATE teams SET kind = 'supervisor' WHERE code = 'P'$$,
+  'TM003', NULL, 'M25: a team with linked work cannot become a supervisor team (TM003)');
+UPDATE teams SET kind = 'supervisor' WHERE code = 'X';
 SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a3', true);
-SELECT throws_ok($$SELECT public.save_service_visit(pg_temp.payload('00000000-0000-0000-0000-0000000000f1', '2026-01-20',
-                     ARRAY[(SELECT p FROM _t)]))$$,
-  'SV006', NULL, 'the check follows the current kind, not the code (P now supervisor → SV006)');
+SELECT throws_ok($$SELECT public.save_service_visit(pg_temp.payload('00000000-0000-0000-0000-0000000000f3', '2026-03-20',
+                     ARRAY['00000000-0000-0000-0000-0000000000b6'::uuid]))$$,
+  'SV006', NULL, 'the check follows the current kind, not the code (X now supervisor → SV006)');
 SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a1', true);
+UPDATE teams SET kind = 'install' WHERE code = 'X';
 UPDATE teams SET kind = 'install' WHERE code = 'P';
 SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a3', true);
 SELECT lives_ok($$SELECT public.save_service_visit(pg_temp.payload('00000000-0000-0000-0000-0000000000f1', '2026-01-20',

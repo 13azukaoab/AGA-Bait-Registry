@@ -1,6 +1,6 @@
 -- M24 (20261115140000): ฐานข้อมูลของหน้า #todo
 --   1. missed_service_notes + save_missed_service_note (RLS / สิทธิ์ / เดือนต้องตกจริงและรอตัดสิน / audit)
---   2. oldest_open_month() (floor = go-live จาก legacy · เดือนที่ข้าม · ปิดครบ → เดือนปัจจุบัน · ส่วนที่มองเห็น)
+--   2. oldest_open_month() (floor = go_live_month() ของ app_settings — M25 · เดือนที่ข้าม · ปิดครบ → เดือนปัจจุบัน · ส่วนที่มองเห็น)
 --   3. list_team_new_renew(p_month) (New/Renew · ทีมข้ามเขตนับตามสาขาลูกค้า · หลายทีม · ไม่มีทีม · ขอบเขต recorder)
 -- วันที่ทั้งหมดอ้างจากเดือนปัจจุบัน (Asia/Bangkok) ผ่าน pg_temp.m(n) → เทสไม่พังเมื่อเวลาผ่านไป
 --   n1 (สาขา X ส่วนกลาง) เริ่ม m(-6) ตั้งสถานี m(-6): m(-5) มี routine · m(-4) ชดเชยแล้ว · m(-1) ไม่ชดเชย
@@ -260,34 +260,38 @@ RESET ROLE;
 -- =====================================================================
 -- 2. oldest_open_month
 -- =====================================================================
+-- M25: floor = go_live_month() (app_settings) แทนการเดาจากแถว legacy · ตั้งค่าเป็น postgres แบบอิงเดือนปัจจุบัน
+UPDATE app_settings SET go_live_month = pg_temp.m(0);
 SET LOCAL ROLE authenticated;
 SELECT pg_temp.as_user('a1');
 SELECT is((SELECT array_agg(scope::text || '|' || oldest_open_month || '|' || is_behind ORDER BY scope) FROM public.oldest_open_month()),
   ARRAY['central|' || pg_temp.m(0) || '|false', 'province|' || pg_temp.m(0) || '|false'],
-  'no legacy, no closure → current month for both scopes, not behind');
+  'go-live = this month, no closure → current month for both scopes, not behind');
 RESET ROLE;
 
--- ปิดส่วนกลาง m(-3) + m(-1) (ข้าม m(-2))
+-- ปิดส่วนกลาง m(-3) + m(-1) (ข้าม m(-2)) · go-live m(-3)
 INSERT INTO month_closures (month_key, scope) VALUES
   (to_char(pg_temp.m(-3), 'YYYY-MM'), 'central'),
   (to_char(pg_temp.m(-1), 'YYYY-MM'), 'central');
+UPDATE app_settings SET go_live_month = pg_temp.m(-3);
 SET LOCAL ROLE authenticated;
 SELECT pg_temp.as_user('a1');
 SELECT is((SELECT oldest_open_month FROM public.oldest_open_month() WHERE scope = 'central'), pg_temp.m(-2),
   'a skipped month between closures is the oldest open month');
 SELECT is((SELECT is_behind FROM public.oldest_open_month() WHERE scope = 'central'), true, 'central is behind');
-SELECT is((SELECT oldest_open_month FROM public.oldest_open_month() WHERE scope = 'province'), pg_temp.m(0),
-  'province with no closure and no legacy → current month');
+SELECT is((SELECT oldest_open_month FROM public.oldest_open_month() WHERE scope = 'province'), pg_temp.m(-3),
+  'province with no closure → go-live month is the oldest open month');
 RESET ROLE;
 
--- legacy เดือนล่าสุด m(-5) (key แบบ Dashboard 'MMM.YY') → go-live m(-4)
+-- แถว legacy ไม่มีผลแล้ว (M25) · go-live m(-4) → นับจาก m(-4)
 INSERT INTO monthly_branch_snapshots (month_key, branch_id, source) VALUES
   (upper(to_char(pg_temp.m(-6), 'MON.YY')), (SELECT x FROM _b), 'legacy'),
   (upper(to_char(pg_temp.m(-5), 'MON.YY')), (SELECT x FROM _b), 'legacy');
+UPDATE app_settings SET go_live_month = pg_temp.m(-4);
 SET LOCAL ROLE authenticated;
 SELECT pg_temp.as_user('a1');
 SELECT is((SELECT oldest_open_month FROM public.oldest_open_month() WHERE scope = 'central'), pg_temp.m(-4),
-  'go-live month (after the last legacy month) is open → oldest open');
+  'go-live month (from app_settings) is open → oldest open');
 SELECT is((SELECT oldest_open_month FROM public.oldest_open_month() WHERE scope = 'province'), pg_temp.m(-4),
   'province counts from go-live too');
 RESET ROLE;

@@ -5,6 +5,11 @@
  *   * import ได้เฉพาะไฟล์ใต้ `app/api/**` หรือโค้ดที่รันฝั่ง server · ห้าม import จาก client component
  *   * ค่าคีย์อยู่ใน env ของ Vercel / `.env.local` เท่านั้น (CLAUDE.md ข้อ 8) · ไม่มีค่า = โยน error
  *   * ใช้กับงานเบื้องหลังที่ผู้ใช้ทำเองไม่ได้ เช่น ลบไฟล์ตามคิว (`lib/storage/cleanup.ts`)
+ *
+ * 🔒 กฎ import (M21b — บังคับด้วยเทส `lib/admin/noAdminImportBypass.test.ts`):
+ *   import ไฟล์นี้ได้เฉพาะ `lib/admin/**` และ `app/api/cron/**` เท่านั้น
+ *   งานกับบัญชีผู้ใช้ (`auth.admin.*`: สร้าง/รีเซ็ตรหัส/แบน/ลบ) ต้องผ่าน `lib/admin/userAdmin.ts`
+ *   เพราะ DB กัน `updateUserById` ของบัญชีเจ้าของไม่ได้ — ด่านตรวจอยู่ที่ userAdmin
  */
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
