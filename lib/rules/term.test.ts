@@ -183,6 +183,15 @@ describe("annualValueForTerm (มูลค่าจัด Tier)", () => {
     expect(serviceMonthsForTerm("2026-04-03", 36)).toEqual(serviceMonths("2026-04-03", 3));
     expect(defaultEndDateForTerm("2026-04-03", 36)).toBe(defaultEndDate("2026-04-03", 3));
   });
+  it("Custom 13–35 เดือนไม่เพี้ยนใต้เส้นเกณฑ์ (ทศนิยม)", () => {
+    expect(annualValueForTerm(35000, 14)).toBe(30000);
+    expect(annualValueForTerm(62500, 25)).toBe(30000);
+    expect(annualValueForTerm(70000, 28)).toBe(30000);
+    expect(tierOf(annualValueForTerm(35000, 14), TIER_RULES)).toBe("M");
+    for (let m = 13; m <= 35; m++) {
+      expect(annualValueForTerm(50000 * (m / 12), m)).toBeCloseTo(50000, 6);
+    }
+  });
   it("ระยะนอก 1–36 → throw", () => {
     expect(() => annualValueForTerm(1000, 0)).toThrow();
     expect(() => annualValueForTerm(1000, 37)).toThrow();

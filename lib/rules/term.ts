@@ -68,9 +68,14 @@ export function defaultEndDateForTerm(startDate: string, termMonths: number): st
 
 /**
  * มูลค่าจัด Tier (SPEC §7.1 · 2.53)
- * m ≥ 12 → มูลค่า ÷ (m/12) (12 → ÷1 · 36 → ÷3 ได้ค่าเท่าสูตรปีเดิมทุกตัว) · m < 12 → มูลค่าจริง
+ * m ≥ 12 → มูลค่า ÷ (m/12) · m < 12 → มูลค่าจริง
+ * คิดเป็น มูลค่า × 12 ÷ m (กันทศนิยมเพี้ยนใต้เส้นเกณฑ์: 35,000 / 14 เดือน ต้องได้ 30,000 พอดี ไม่ใช่ 29,999.999…)
+ * 12 / 36 ใช้สูตรปีเดิมตรงๆ (÷1 · ÷3) เพื่อให้ค่าเท่าเดิมทุกบิต
  */
 export function annualValueForTerm(valueTotal: number, termMonths: number): number {
   assertTermMonths(termMonths, "annualValueForTerm");
-  return termMonths >= 12 ? valueTotal / (termMonths / 12) : valueTotal;
+  if (termMonths < 12) return valueTotal;
+  if (termMonths === 12) return valueTotal;
+  if (termMonths === 36) return valueTotal / 3;
+  return (valueTotal * 12) / termMonths;
 }
