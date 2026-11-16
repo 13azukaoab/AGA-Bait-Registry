@@ -50,6 +50,12 @@
   --tier-l-soft: #fbf0db;
   --tier-xl-soft: #fce6da;
 
+  /* ตัวหนังสือป้ายอ่อน (1 ปี) — ให้อ่านชัด WCAG 4.5:1 (DECISIONS 2.55) */
+  --tier-s-ink: #1f5fa8;
+  --tier-m-ink: #157a50;
+  --tier-l-ink: #976106;
+  --tier-xl-ink: #ab4c1b;
+
   /* ตัวหนังสือบนพื้นเข้ม (สัญญา 3 ปี) */
   --on-tier: #ffffff;
 
@@ -97,6 +103,12 @@
     --tier-l-soft: #332713;
     --tier-xl-soft: #3a2016;
 
+    /* ตัวหนังสือป้ายอ่อน (1 ปี) — ให้อ่านชัด WCAG 4.5:1 (DECISIONS 2.55) */
+    --tier-s-ink: #5c9bdd;
+    --tier-m-ink: #3bb183;
+    --tier-l-ink: #d99b3e;
+    --tier-xl-ink: #e07a4e;
+
     --on-tier: #0b1420;
 
     --shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
@@ -138,6 +150,12 @@
   --tier-m-soft: #133227;
   --tier-l-soft: #332713;
   --tier-xl-soft: #3a2016;
+
+  /* ตัวหนังสือป้ายอ่อน (1 ปี) — ให้อ่านชัด WCAG 4.5:1 (DECISIONS 2.55) */
+  --tier-s-ink: #5c9bdd;
+  --tier-m-ink: #3bb183;
+  --tier-l-ink: #d99b3e;
+  --tier-xl-ink: #e07a4e;
 
   --on-tier: #0b1420;
 
@@ -207,13 +225,13 @@ body {
   font-weight: 600;
   line-height: 1.4;
 }
-.tier.s1 { background: var(--tier-s-soft); color: var(--tier-s); }
+.tier.s1 { background: var(--tier-s-soft); color: var(--tier-s-ink); }
 .tier.s3 { background: var(--tier-s); color: var(--on-tier); }
-.tier.m1 { background: var(--tier-m-soft); color: var(--tier-m); }
+.tier.m1 { background: var(--tier-m-soft); color: var(--tier-m-ink); }
 .tier.m3 { background: var(--tier-m); color: var(--on-tier); }
-.tier.l1 { background: var(--tier-l-soft); color: var(--tier-l); }
+.tier.l1 { background: var(--tier-l-soft); color: var(--tier-l-ink); }
 .tier.l3 { background: var(--tier-l); color: var(--on-tier); }
-.tier.xl1 { background: var(--tier-xl-soft); color: var(--tier-xl); }
+.tier.xl1 { background: var(--tier-xl-soft); color: var(--tier-xl-ink); }
 .tier.xl3 { background: var(--tier-xl); color: var(--on-tier); }
 
 /* โครงหน้าจอชั่วคราว (scaffold) — จะถูกแทนด้วยหน้าจริงภายหลัง */
@@ -232,7 +250,7 @@ body {
   padding: 2px 10px;
   border-radius: 999px;
   background: var(--tier-s-soft);
-  color: var(--tier-s);
+  color: var(--tier-s-ink);
   font-size: 0.8rem;
   font-weight: 600;
 }
@@ -246,7 +264,7 @@ body {
   padding: 8px 14px;
   border-radius: 8px;
   background: var(--tier-s-soft);
-  color: var(--tier-s);
+  color: var(--tier-s-ink);
   text-decoration: none;
   font-weight: 600;
 }

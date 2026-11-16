@@ -48,16 +48,16 @@ const DIVISION_TABS: readonly { id: Division | "all"; label: string }[] = [
 
 /** สีของปุ่มกรอง Tier — ใช้กลุ่มสีของ tier (ไม่ระบุปี) ตาม CLAUDE.md */
 const TIER_CHIP: Record<Tier, string> = {
-  S: "bg-[var(--tier-s-soft)] text-[var(--tier-s)]",
-  M: "bg-[var(--tier-m-soft)] text-[var(--tier-m)]",
-  L: "bg-[var(--tier-l-soft)] text-[var(--tier-l)]",
-  XL: "bg-[var(--tier-xl-soft)] text-[var(--tier-xl)]",
+  S: "bg-[var(--tier-s-soft)] text-[var(--tier-s-ink)]",
+  M: "bg-[var(--tier-m-soft)] text-[var(--tier-m-ink)]",
+  L: "bg-[var(--tier-l-soft)] text-[var(--tier-l-ink)]",
+  XL: "bg-[var(--tier-xl-soft)] text-[var(--tier-xl-ink)]",
 };
 
 const RANK_BADGE = [
   "bg-warn text-accent-fg",
   "bg-border-strong text-fg",
-  "bg-[var(--tier-xl-soft)] text-[var(--tier-xl)]",
+  "bg-[var(--tier-xl-soft)] text-[var(--tier-xl-ink)]",
 ];
 
 const RANK_PREVIEW = 10;
