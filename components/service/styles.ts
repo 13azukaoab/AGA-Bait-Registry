@@ -20,7 +20,7 @@ export const ERROR_TEXT = "m-0 text-[11.5px] text-danger";
 /** ป้าย "ไม่ได้ตรวจ" สีส้ม (DECISIONS: แดงใช้เฉพาะขาด/ผิด) */
 export const CHIP_UNCHECKED =
   "inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-0.5 text-[11.5px] " +
-  "bg-[var(--tier-xl-soft)] text-[var(--tier-xl)]";
+  "bg-[var(--tier-xl-soft)] text-[var(--tier-xl-ink)]";
 
 /** ชิป "ปลวกใต้ดิน" สีฟ้า (DECISIONS 2.13) */
 export const CHIP_SUBTERRANEAN =
