@@ -34,6 +34,10 @@ next-env.d.ts
 *[Ss]ecret*
 *[Kk]ey*.env*
 
+# === Sentry (M32 — token ห้าม commit) ===
+.sentryclirc
+.env.sentry-build-plugin
+
 # === Supabase local ===
 /supabase/.branches
 /supabase/.temp
