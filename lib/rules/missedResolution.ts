@@ -20,6 +20,7 @@ import type { Contract, MissedResolutionStatus, MissedServiceResolution, Visit }
 import { serviceMonths } from "./serviceMonths";
 import { isMissedService } from "./missedService";
 import { listMonths, monthOf } from "./date";
+import { effectiveEndDate } from "./renewalGap";
 
 /**
  * เดือนแรกที่นับตกบริการ (เจ้าของยืนยัน — DECISIONS 2.46) = เดือนที่ตั้งสถานีในระบบ (เวลาไทย) แต่ไม่ก่อนเดือนเริ่มสัญญา
@@ -59,8 +60,9 @@ export function linkedMakeupVisit(
 }
 
 /**
- * ต่อสัญญาแล้ว = มีสัญญาอื่นที่ renewedFromContractId = สัญญานี้ และสัญญาใหม่นั้น **ยังไม่ถูกยกเลิก**
- * (DECISIONS 2.47 + 2.48: สัญญาใหม่ถูกยกเลิก → ตกบริการค้างของสัญญาเดิมกลับเป็นรอตัดสิน) — ตรงกับ SQL `contract_is_renewed`
+ * ต่อสัญญาแล้ว (เฉพาะทาง Renew) = มีสัญญาอื่นที่ renewedFromContractId = สัญญานี้ และสัญญาใหม่นั้น **ยังไม่ถูกยกเลิก**
+ * (DECISIONS 2.47 + 2.48: สัญญาใหม่ถูกยกเลิก → ตกบริการค้างของสัญญาเดิมกลับเป็นรอตัดสิน)
+ * ⚠ ตั้งแต่ M28 SQL `contract_is_renewed` = `isSuperseded` (รวมกรณี New) — ใช้ isSuperseded ตัดสินโมฆะ
  */
 export function isRenewed(contract: Contract, contracts: Contract[]): boolean {
   return contracts.some(
@@ -69,8 +71,28 @@ export function isRenewed(contract: Contract, contracts: Contract[]): boolean {
 }
 
 /**
+ * M28 (DECISIONS 2.51 ขยาย 2.47): สัญญานี้ "ถูกแทนแล้ว" → ตกบริการที่ค้างเป็นโมฆะ เมื่อมีสัญญาอื่นที่ยังไม่ถูกยกเลิก (2.48 ②) และ
+ *   (ก) ผูก Renew มาที่สัญญานี้ (isRenewed) หรือ
+ *   (ข) เป็น New (ไม่ผูกสัญญาไหน) ของลูกค้าคนเดียวกัน ที่เริ่ม **หลัง** วันจบของสัญญานี้ (effectiveEndDate)
+ * ตรงกับ SQL `contract_is_renewed` (20261115180000) · ไม่รู้ customerId → ใช้ได้เฉพาะ (ก)
+ */
+export function isSuperseded(contract: Contract, contracts: Contract[]): boolean {
+  if (isRenewed(contract, contracts)) return true;
+  if (!contract.customerId) return false;
+  const end = effectiveEndDate(contract);
+  return contracts.some(
+    (o) =>
+      o.id !== contract.id &&
+      !o.cancelledAt &&
+      !o.renewedFromContractId &&
+      o.customerId === contract.customerId &&
+      o.startDate.slice(0, 10) > end,
+  );
+}
+
+/**
  * สถานะการแก้ไขของ 1 เดือนที่ตก (4 แบบ)
- * renewed = สัญญานี้ต่อแล้ว (isRenewed) → ที่ยังรอตัดสินกลายเป็นโมฆะ · ชดเชยแล้ว / ไม่ชดเชย คงไว้ (2.47)
+ * renewed = สัญญานี้ถูกแทนแล้ว (isSuperseded) → ที่ยังรอตัดสินกลายเป็นโมฆะ · ชดเชยแล้ว / ไม่ชดเชย คงไว้ (2.47)
  */
 export function missedResolutionStatus(
   contract: Contract,
