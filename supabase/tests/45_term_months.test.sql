@@ -7,7 +7,7 @@
 --   G. list_unlinked_renewals คืน term_months
 -- ข้อมูลทั้งหมดเป็นข้อมูลสมมติ
 BEGIN;
-SELECT plan(76);
+SELECT plan(75);
 
 INSERT INTO auth.users (id, instance_id, aud, role, email) VALUES
   ('00000000-0000-0000-0000-0000000000a1', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'host@test.local'),
@@ -62,8 +62,6 @@ SELECT ok(has_function_privilege('authenticated',
   'save_job_opening (new signature): authenticated yes, anon no');
 SELECT is((SELECT count(*)::int FROM pg_proc WHERE proname = 'save_job_opening' AND pronamespace = 'public'::regnamespace),
   1, 'exactly one save_job_opening (old signature dropped)');
-SELECT is((SELECT count(*)::int FROM contracts WHERE term_months IS DISTINCT FROM term_years * 12), 0,
-  'backfill: every existing contract has term_months = term_years × 12');
 
 -- =====================================================================
 -- B. CHECK + กระจก (เขียนตรงด้วย postgres)

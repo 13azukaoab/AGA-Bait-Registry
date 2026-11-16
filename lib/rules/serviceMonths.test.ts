@@ -24,3 +24,12 @@ describe("defaultEndDate", () => {
     expect(defaultEndDate("2026-01-01", 3)).toBe("2028-12-31");
   });
 });
+
+describe("serviceMonths (ปี · @deprecated) กับ term_years = NULL ของสัญญา Custom (M30)", () => {
+  it("ปีว่าง/ผิด → [] เหมือนก่อน M30 (ไม่ throw ทั้งรายการ)", () => {
+    expect(serviceMonths("2026-01-01", null)).toEqual([]);
+    expect(serviceMonths("2026-01-01", undefined)).toEqual([]);
+    expect(serviceMonths("2026-01-01", 0)).toEqual([]);
+    expect(serviceMonths("2026-01-01", 1)).toHaveLength(12);
+  });
+});
