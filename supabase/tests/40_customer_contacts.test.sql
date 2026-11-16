@@ -2,7 +2,7 @@
 -- Role simulation: seed as postgres, then SET LOCAL ROLE authenticated/anon and set
 -- request.jwt.claim.sub (what auth.uid() reads). RESET ROLE to inspect as superuser.
 BEGIN;
-SELECT plan(71);
+SELECT plan(83);
 
 -- =====================================================================
 -- โครงสร้าง + สิทธิ์ระดับ GRANT / function
@@ -39,14 +39,16 @@ INSERT INTO auth.users (id, instance_id, aud, role, email) VALUES
   ('00000000-0000-0000-0000-0000000019a3', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'ra@m19a.local'),
   ('00000000-0000-0000-0000-0000000019a4', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'rb@m19a.local'),
   ('00000000-0000-0000-0000-0000000019a5', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'ro@m19a.local'),
-  ('00000000-0000-0000-0000-0000000019a6', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'v@m19a.local');
+  ('00000000-0000-0000-0000-0000000019a6', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'v@m19a.local'),
+  ('00000000-0000-0000-0000-0000000019a7', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'rn@m19a.local');
 INSERT INTO profiles (user_id, display_name, username, role, division_scope, team_id) VALUES
   ('00000000-0000-0000-0000-0000000019a1', 'host',  'm19a_h',  'host',     '{central,province}', NULL),
   ('00000000-0000-0000-0000-0000000019a2', 'admin', 'm19a_ad', 'admin',    '{central}',          NULL),
   ('00000000-0000-0000-0000-0000000019a3', 'recA',  'm19a_ra', 'recorder', '{central}',          (SELECT id FROM teams WHERE code = 'A')),
   ('00000000-0000-0000-0000-0000000019a4', 'recB',  'm19a_rb', 'recorder', '{central}',          (SELECT id FROM teams WHERE code = 'B')),
   ('00000000-0000-0000-0000-0000000019a5', 'recO',  'm19a_ro', 'recorder', '{province}',         (SELECT id FROM teams WHERE code = 'A')),
-  ('00000000-0000-0000-0000-0000000019a6', 'view',  'm19a_v',  'viewer',   '{}',                 NULL);
+  ('00000000-0000-0000-0000-0000000019a6', 'view',  'm19a_v',  'viewer',   '{}',                 NULL),
+  ('00000000-0000-0000-0000-0000000019a7', 'recN',  'm19a_rn', 'recorder', '{central}',          NULL);
 
 INSERT INTO customers (id, branch_id, name, contact_name) VALUES
   ('00000000-0000-0000-0000-0000000019c1', (SELECT id FROM branches WHERE division = 'central' ORDER BY name LIMIT 1), 'C1', 'คุณเดิม'),
@@ -292,6 +294,68 @@ SELECT matches(pg_get_functiondef('public.audit_trigger()'::regprocedure), 'acto
   'audit_trigger keeps the M21 actor_position_code');
 SELECT matches(pg_get_functiondef('public.audit_trigger()'::regprocedure), 'missed_service_notes',
   'audit_trigger is the M19a body (has missed_service_notes)');
+
+-- =====================================================================
+-- เพิ่มจากผลตรวจ Opus
+-- =====================================================================
+SET LOCAL ROLE authenticated;
+SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000019a2', true);
+SELECT throws_ok($$SELECT public.save_customer_contact(jsonb_build_object(
+                    'customer_id', '00000000-0000-0000-0000-0000000019c3', 'note', 'นอกขอบเขต'))$$,
+  '42501', NULL, 'out-of-scope admin is refused by the RPC');
+SELECT lives_ok($$INSERT INTO customers (id, branch_id, name, contact_cross_team, contact_updated_by, contact_updated_at)
+                  VALUES ('00000000-0000-0000-0000-0000000019c4',
+                          (SELECT id FROM branches WHERE division = 'central' ORDER BY name LIMIT 1), 'C4', true,
+                          '00000000-0000-0000-0000-0000000019a4', now())$$,
+  'admin inserts a customer directly');
+SELECT throws_ok($$SELECT public.save_customer_contact(jsonb_build_object(
+                    'customer_id', '00000000-0000-0000-0000-0000000019c1', 'confirm_cross_team', true))$$,
+  '22023', NULL, 'an empty save (nothing to change) is refused');
+SELECT throws_ok($$SELECT public.save_customer_contact(jsonb_build_object(
+                    'customer_id', '00000000-0000-0000-0000-0000000019c1', 'confirm_cross_team', 'yes', 'note', 'x'))$$,
+  '22023', NULL, 'confirm_cross_team must be a boolean');
+SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000019a3', true);
+SELECT throws_ok($$SELECT public.save_customer_contact(jsonb_build_object(
+                    'customer_id', '00000000-0000-0000-0000-0000000019c1',
+                    'phones_upsert', jsonb_build_array(jsonb_build_object('phone', E'081
+234	5678'))))$$,
+  'CC002', NULL, 'tab / newline inside a phone is refused');
+SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000019a7', true);
+SELECT is(public.customer_contact_is_cross_team('00000000-0000-0000-0000-0000000019c1'), true,
+  'recorder without a team: a customer with a team is cross-team');
+SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000019a4', true);
+SELECT throws_ok($$SELECT public.save_customer_contact(jsonb_build_object(
+                    'customer_id', '00000000-0000-0000-0000-0000000019c1',
+                    'phones_upsert', jsonb_build_array(jsonb_build_object('phone', '02-888-8888'))))$$,
+  'CC001', NULL, 'cross-team phone add without confirmation is refused');
+RESET ROLE;
+SELECT is((SELECT count(*)::int FROM customer_phones WHERE phone = '02-888-8888'), 0,
+  'refused cross-team phone add left no phone');
+SELECT results_eq(
+  $$SELECT contact_cross_team, contact_updated_by, contact_updated_at FROM customers
+     WHERE id = '00000000-0000-0000-0000-0000000019c4'$$,
+  $$VALUES (false, NULL::uuid, NULL::timestamptz)$$,
+  'direct INSERT cannot plant contact_* values');
+
+-- ทีมจากการเข้าครั้งล่าสุดเท่านั้น (c2 ไม่มี contract_teams) + บริบท audit ของ visits (WHEN เดิมยังทำงาน)
+INSERT INTO contracts (id, customer_id, contract_no, start_date, term_years, value_total) VALUES
+  ('00000000-0000-0000-0000-0000000019d2', '00000000-0000-0000-0000-0000000019c2', 'M19A-2', '2026-01-15', 1, 50000);
+INSERT INTO visits (id, contract_id, visit_date, visit_type, start_time, end_time) VALUES
+  ('00000000-0000-0000-0000-0000000019b1', '00000000-0000-0000-0000-0000000019d2', '2026-02-10', 'routine', '09:00', '10:00');
+INSERT INTO visit_teams (visit_id, team_id) VALUES
+  ('00000000-0000-0000-0000-0000000019b1', (SELECT id FROM teams WHERE code = 'B'));
+UPDATE visits SET visit_date = '2026-02-11' WHERE id = '00000000-0000-0000-0000-0000000019b1';  -- INSERT ไม่ลง audit (20261111090100)
+SELECT is((SELECT month_key FROM audit_log WHERE table_name = 'visits' AND action = 'update'
+            AND row_id = '00000000-0000-0000-0000-0000000019b1'),
+  '2026-02', 'existing WHEN branch still works (visits → month_key)');
+SET LOCAL ROLE authenticated;
+SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000019a3', true);
+SELECT is(public.customer_contact_is_cross_team('00000000-0000-0000-0000-0000000019c2'), true,
+  'team from the latest visit only: team A recorder is cross-team');
+SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000019a4', true);
+SELECT is(public.customer_contact_is_cross_team('00000000-0000-0000-0000-0000000019c2'), false,
+  'team from the latest visit only: team B recorder is own team');
+RESET ROLE;
 
 SELECT * FROM finish();
 ROLLBACK;

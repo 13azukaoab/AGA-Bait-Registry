@@ -4,10 +4,15 @@
 -- Logic summary (สำหรับทีม):
 --   1. customers.note (ไม่บังคับ · ≤ 300 ตัวอักษร ตาม mockup)
 --   2. ตารางใหม่ customer_phones = เบอร์โทรหลายเบอร์ต่อลูกค้า (เบอร์ + ชื่อ/หน้าที่ ไม่บังคับ)
---      * เบอร์: ตัวเลข เว้นวรรค - + ( ) , / . ยาว 8–40 ตัว (กติกาเดียวกับ mockup) · ชื่อ/หน้าที่ ≤ 40
+--      * เบอร์: ตัวเลข เว้นวรรค (ช่องว่างธรรมดาเท่านั้น ไม่รับ tab/ขึ้นบรรทัด) - + ( ) , / . ยาว 8–40 ตัว
+--        (กติกาเดียวกับ mockup) · ชื่อ/หน้าที่ ≤ 40
 --      * เบอร์ซ้ำในลูกค้าเดียวกันไม่ได้ (เทียบเฉพาะตัวเลข: "02-123 4567" = "021234567") → CC003
 --      * sort_order ไม่ UNIQUE (เรียงด้วย sort_order, created_at) — กันปัญหาสลับลำดับแบบ M22
 --      * ลบลูกค้า → เบอร์ถูกลบตาม (CASCADE) และลง audit ทีละแถว · ย้ายเบอร์ไปลูกค้าอื่นไม่ได้ (customer_id แก้ไม่ได้)
+--      ⚠ แถว audit ของเบอร์ที่ลบตาม CASCADE ได้ branch_id = NULL (แถวลูกค้าหายไปก่อน) — ประวัติยังอยู่ที่แถว
+--      audit การลบลูกค้า (มี branch_id) · ยอมรับข้อจำกัดนี้
+--    * host/admin เขียนเบอร์ตรงผ่าน REST ได้ (ตามสิทธิ์เดิม) แต่ทางนั้นไม่ล็อกลูกค้า ไม่กันลบเบอร์สุดท้าย (CC004)
+--      และไม่ประทับ contact_updated_* — หน้าจอควรใช้ RPC save_customer_contact ทุกบทบาท
 --      * DB ไม่บังคับ "ต้องมีอย่างน้อย 1 เบอร์" (ลูกค้าใหม่/นำเข้ายังไม่มีเบอร์) — RPC กันลบเบอร์สุดท้าย (CC004)
 --      * audit: trigger audit_customer_phones เรียก public.audit_trigger() · audit_log.branch_id = สาขาของลูกค้า
 --        (กรณี 'customer_phones' เพิ่มใน audit_trigger ข้อ 7)
@@ -83,7 +88,7 @@ CREATE TABLE public.customer_phones (
   sort_order  integer NOT NULL DEFAULT 0,
   created_at  timestamptz NOT NULL DEFAULT now(),
   updated_at  timestamptz NOT NULL DEFAULT now(),
-  CONSTRAINT customer_phones_phone_format CHECK (phone ~ '^[0-9+()\s,/.-]{8,40}$'),
+  CONSTRAINT customer_phones_phone_format CHECK (phone ~ '^[0-9+() ,/.-]{8,40}$'),
   CONSTRAINT customer_phones_phone_has_digit CHECK (phone ~ '[0-9]'),
   CONSTRAINT customer_phones_label_length CHECK (label IS NULL OR char_length(label) <= 40)
 );
@@ -281,6 +286,12 @@ BEGIN
   IF coalesce(jsonb_array_length(p -> 'phones_upsert'), 0) + coalesce(jsonb_array_length(p -> 'phones_delete'), 0) > 50 THEN
     RAISE EXCEPTION 'too many items in one save' USING ERRCODE = '22023';
   END IF;
+  -- ไม่มีอะไรให้บันทึก → ปฏิเสธ (กันประทับ "แก้ไขล่าสุด/ข้ามทีม" ทั้งที่ข้อมูลไม่เปลี่ยน — ผลตรวจ Opus ข้อ 1)
+  IF NOT (p ? 'contact_name' OR p ? 'note'
+          OR coalesce(jsonb_array_length(p -> 'phones_upsert'), 0) > 0
+          OR coalesce(jsonb_array_length(p -> 'phones_delete'), 0) > 0) THEN
+    RAISE EXCEPTION 'nothing to save' USING ERRCODE = '22023';
+  END IF;
   BEGIN
     v_customer_id := (p ->> 'customer_id')::uuid;
   EXCEPTION WHEN invalid_text_representation THEN
@@ -365,7 +376,7 @@ BEGIN
     END IF;
     v_phone := btrim(v_item ->> 'phone');
     v_label := nullif(btrim(v_item ->> 'label'), '');
-    IF v_phone IS NULL OR v_phone !~ '^[0-9+()\s,/.-]{8,40}$' OR v_phone !~ '[0-9]' THEN
+    IF v_phone IS NULL OR v_phone !~ '^[0-9+() ,/.-]{8,40}$' OR v_phone !~ '[0-9]' THEN
       RAISE EXCEPTION 'เบอร์โทรไม่ถูกต้อง — ใช้ตัวเลข เว้นวรรค - + ( ) ได้ อย่างน้อย 8 ตัว' USING ERRCODE = 'CC002';
     END IF;
     IF char_length(v_label) > 40 THEN
