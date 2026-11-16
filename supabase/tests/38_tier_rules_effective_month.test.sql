@@ -33,6 +33,10 @@ CREATE FUNCTION pg_temp.as_user(p text) RETURNS void LANGUAGE sql AS
   $$ SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000' || p, true) $$;
 GRANT EXECUTE ON FUNCTION pg_temp.as_user(text) TO PUBLIC;
 
+-- M25 (M20b): เกณฑ์ห้ามย้อนก่อน go_live_month() → เลื่อนเดือนเริ่มใช้ระบบไปก่อนเดือนที่ไฟล์นี้ใช้ (ทำในฐานะ postgres
+-- · rollback ตอนจบเทส) ให้ทดสอบตรรกะ M20 แบบอิงเดือนปัจจุบันได้ต่อ · ด่าน go-live ทดสอบใน 42
+UPDATE app_settings SET go_live_month = pg_temp.m(-12);
+
 -- ================= 1. โครงสร้าง + ชุดตั้งต้น =================
 SELECT has_column('public', 'tier_rules', 'effective_month', 'tier_rules.effective_month มีแล้ว');
 SELECT col_not_null('public', 'tier_rules', 'effective_month', 'effective_month NOT NULL');
