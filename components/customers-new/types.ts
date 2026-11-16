@@ -3,7 +3,7 @@
  *
  * ชื่อฟิลด์ในฐานข้อมูลเป็น snake_case — แปลงเป็น camelCase ที่ `data.ts` ที่เดียว
  */
-import type { TermYears, TierRule } from "@/lib/rules";
+import type { TierRule } from "@/lib/rules";
 import type { TeamKind } from "@/lib/service/teamKind";
 
 import type { BranchOption } from "./branchMatch";
@@ -28,7 +28,7 @@ export interface RenewalLink {
    * วันที่ของสัญญาเก่า (M28) — ใช้ตรวจกฎช่องว่าง 2 เดือนฝั่งหน้าจอ · ไม่มี = ตรวจไม่ได้ (DB ตรวจซ้ำเสมอ: AG010)
    * แถวที่บันทึกแล้ว (โหมดแก้) สร้างลิงก์จาก `SavedContract.renewedFrom` ซึ่งไม่มีวันที่ จึงไม่ใส่
    */
-  oldDates?: { startDate: string; endDate?: string; termYears: TermYears };
+  oldDates?: { startDate: string; endDate?: string; termMonths: number };
 }
 
 export interface TeamOption {
@@ -108,7 +108,8 @@ export interface SavedContract {
   note: string;
   startDate: string;
   endDate: string;
-  termYears: TermYears;
+  /** ระยะสัญญา (เดือน 1–36 · M30) — 12 = 1 ปี · 36 = 3 ปี · อื่น = Custom */
+  termMonths: number;
   valueTotal: number;
   teamIds: string[];
   /** เวลาแก้ล่าสุด (`contracts.updated_at` ตามที่ DB คืน) — ส่งกลับเป็น `p_expected_updated_at` ตอนแก้ (M12) */
@@ -146,6 +147,11 @@ export interface DraftRow {
   endTouched: boolean;
   value1y: string;
   value3y: string;
+  /**
+   * M30: จำนวนเดือนของสัญญา Custom (1–35 ที่ไม่ใช่ 12) · null = ระยะตามช่องมูลค่า (ช่อง 1 ปี = 12 · ช่อง 3 ปี = 36)
+   * Custom เก็บมูลค่าไว้ในช่อง "1 ปี" (กลุ่มสีเดียวกัน) · แถวที่แก้จากสัญญา Custom ต้องคงค่านี้ไว้ ไม่งั้นระยะถูกเปลี่ยนเป็น 12 เงียบๆ
+   */
+  customTermMonths: number | null;
   /** ไฟล์ PDF สัญญาที่เลือกไว้ รออัปโหลดหลังบันทึกแถว */
   pendingPdf: PendingFile | null;
   /** ผลบันทึกรอบล่าสุดของแถวนี้ (error ภาษาไทย) */

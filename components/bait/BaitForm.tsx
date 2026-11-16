@@ -157,7 +157,7 @@ export function BaitForm({
           งานกล่องนอกรอบประจำเดือน{form.isExisting ? ` · แก้การเข้าวันที่ ${fmtDmy(form.visitDate)}` : log.length ? ` · รายการที่ ${log.length + 1}` : ""}
         </span>
         <b className="text-[16px]">{item.customerName}</b>
-        <TierBadge tier={item.tier} years={item.termYears} />
+        <TierBadge tier={item.tier} termMonths={item.termMonths} />
         <Chip tone="na">สัญญา {item.contractNo}</Chip>
         <Chip tone={agPending ? "pend" : "na"}>
           <span className="inline-block rounded bg-surface-3 px-1.5 py-px text-[11px] font-semibold text-fg-muted">AG</span> {agPending}

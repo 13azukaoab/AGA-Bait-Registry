@@ -52,8 +52,8 @@ const baseDraft = {
   pendingPdf: null,
   saveError: null,
 } as unknown as DraftRow;
-const check = { branch, termYears: 1, valueTotal: 50000, endDate: "2026-12-31" } as never;
-const values = { branchId: "b1", termYears: 1, valueTotal: 50000, endDate: "2026-12-31" };
+const check = { branch, termMonths: 12, valueTotal: 50000, endDate: "2026-12-31" } as never;
+const values = { branchId: "b1", termMonths: 12, valueTotal: 50000, endDate: "2026-12-31" };
 
 describe("buildSaveParams — แปลงแถวร่างเป็นพารามิเตอร์ RPC", () => {
   it("เปิดงานใหม่: ตัดช่องว่าง · ตำแหน่ง Sale → p_sale_name · ว่าง → null · ไม่ส่ง id", () => {
@@ -65,7 +65,7 @@ describe("buildSaveParams — แปลงแถวร่างเป็นพ�
       p_contract_no: "A-1",
       p_start_date: "2026-01-15",
       p_end_date: "2026-12-31",
-      p_term_years: 1,
+      p_term_months: 12,
       p_value_total: 50000,
       p_sale_type: "new",
       p_team_ids: ["t1", "t2"],

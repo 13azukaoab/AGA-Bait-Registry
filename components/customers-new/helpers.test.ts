@@ -64,36 +64,36 @@ describe("branchMatch", () => {
 
 describe("rowCalc", () => {
   it("Tier ตามกรณีบังคับของ SPEC (เกณฑ์รับจาก tier_rules)", () => {
-    expect(tierFor(50000, 3, TIER_RULES)?.label).toBe("S3");
-    expect(tierFor(150000, 1, TIER_RULES)?.label).toBe("XL1");
-    expect(tierFor(150000, 3, TIER_RULES)?.label).toBe("L3");
-    expect(tierFor(29999.5, 1, TIER_RULES)?.label).toBe("S1");
-    expect(tierFor(150000, 3, TIER_RULES)?.key).toBe("l3");
+    expect(tierFor(50000, 36, TIER_RULES)?.label).toBe("S3");
+    expect(tierFor(150000, 12, TIER_RULES)?.label).toBe("XL1");
+    expect(tierFor(150000, 36, TIER_RULES)?.label).toBe("L3");
+    expect(tierFor(29999.5, 12, TIER_RULES)?.label).toBe("S1");
+    expect(tierFor(150000, 36, TIER_RULES)?.key).toBe("l3");
   });
   it("ข้อมูลไม่ครบ/ไม่มีเกณฑ์ = null", () => {
-    expect(tierFor(null, 1, TIER_RULES)).toBeNull();
+    expect(tierFor(null, 12, TIER_RULES)).toBeNull();
     expect(tierFor(1000, null, TIER_RULES)).toBeNull();
-    expect(tierFor(1000, 1, [])).toBeNull();
+    expect(tierFor(1000, 12, [])).toBeNull();
   });
   it("วันสิ้นสุดอัตโนมัติ", () => {
-    expect(autoEndDate("2026-01-15", 1)).toBe("2027-01-14");
-    expect(autoEndDate("2026-04-03", 1)).toBe("2027-04-02");
-    expect(autoEndDate("2026-01-01", 3)).toBe("2028-12-31");
-    expect(autoEndDate("2026-02-31", 1)).toBeNull();
+    expect(autoEndDate("2026-01-15", 12)).toBe("2027-01-14");
+    expect(autoEndDate("2026-04-03", 12)).toBe("2027-04-02");
+    expect(autoEndDate("2026-01-01", 36)).toBe("2028-12-31");
+    expect(autoEndDate("2026-02-31", 12)).toBeNull();
   });
   it("เดือนบริการ = เดือนเริ่ม + ปี×12", () => {
-    const m = monthsOf("2026-01-01", 3);
+    const m = monthsOf("2026-01-01", 36);
     expect(m).toHaveLength(36);
     expect(m[0]).toBe("2026-01");
     expect(m[35]).toBe("2028-12");
-    expect(monthsOf("2026-04-03", 1)[11]).toBe("2027-03");
+    expect(monthsOf("2026-04-03", 12)[11]).toBe("2027-03");
   });
   it("คำเตือนวันสิ้นสุด", () => {
-    expect(endDateWarning("2026-10-01", "2027-09-30", 1)).toBeNull();
-    expect(endDateWarning("2026-10-01", "2027-10-31", 1)).toBe("ระยะ 396 วัน");
-    expect(endDateWarning("2026-10-01", "2026-09-01", 1)).toMatch(/ก่อนวันเริ่ม/);
-    expect(endDateWarning("2026-10-01", "8202-10-15", 1)).toMatch(/ไม่ถูกต้อง/);
-    expect(endDateWarning("2026-10-01", "", 1)).toBeNull();
+    expect(endDateWarning("2026-10-01", "2027-09-30", 12)).toBeNull();
+    expect(endDateWarning("2026-10-01", "2027-10-31", 12)).toBe("ระยะ 396 วัน");
+    expect(endDateWarning("2026-10-01", "2026-09-01", 12)).toMatch(/ก่อนวันเริ่ม/);
+    expect(endDateWarning("2026-10-01", "8202-10-15", 12)).toMatch(/ไม่ถูกต้อง/);
+    expect(endDateWarning("2026-10-01", "", 12)).toBeNull();
   });
   it("วันที่/จำนวนวัน", () => {
     expect(isPlausibleDate("8202-10-15")).toBe(false);

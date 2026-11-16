@@ -10,10 +10,12 @@
  *     ประเภทลูกค้า (เป็นของลูกค้า RPC ไม่เขียนทับ) · ประเภทงาน New/Renew และสัญญาเก่าที่ผูก (M23 / AG009 —
  *     DB ล็อก `renewed_from_contract_id` หลังสร้าง · ตอนบันทึกส่งค่าเดิมกลับเสมอ ดู `buildSaveParams`)
  *   * สัญญา `closed` / `cancelled` → admin/role อื่นปิดปุ่มแก้ · host แก้ได้ (DECISIONS 3.11 · DB บังคับใน M12)
- *   * วันสิ้นสุด: ถ้าค่าที่บันทึกไว้ตรงสูตร (วันเริ่ม + N ปี − 1 วัน) → ให้คำนวณใหม่ตามวันเริ่ม/ระยะต่อ
+ *   * วันสิ้นสุด: ถ้าค่าที่บันทึกไว้ตรงสูตร (วันเริ่ม + N เดือน − 1 วัน) → ให้คำนวณใหม่ตามวันเริ่ม/ระยะต่อ
  *     ถ้าเคยตั้งเองต่างจากสูตร → คงค่าเดิม (endTouched)
  */
 import type { UserRole } from "@/lib/db/types";
+
+import { isCustomTerm } from "@/lib/rules";
 
 import { autoEndDate, formatMoney } from "./rowCalc";
 import type { ContractStatus, DraftRow, MasterData, RenewalLink, SavedContract } from "./types";
@@ -60,7 +62,9 @@ export const EDIT_LOCK_REASONS = {
 /** สร้างแถวร่างสำหรับแก้จากสัญญาที่บันทึกแล้ว (ค่าตรงกับที่ผู้ใช้เห็นในตาราง) */
 export function draftFromSaved(s: SavedContract, master: Pick<MasterData, "branches">): DraftRow {
   const branch = master.branches.find((b) => b.id === s.branchId) ?? null;
-  const has3 = s.termYears === 3;
+  const has3 = s.termMonths === 36;
+  // M30: Custom (ไม่ใช่ 12/36) คงจำนวนเดือนไว้ในแถวแก้ — ไม่งั้นบันทึกแล้วระยะกลายเป็น 12 เงียบๆ (AG017 กันฝั่ง DB)
+  const customTermMonths = isCustomTerm(s.termMonths) ? s.termMonths : null;
   const money = formatMoney(s.valueTotal);
 
   const renewal: RenewalLink | null = s.renewedFrom
@@ -74,7 +78,7 @@ export function draftFromSaved(s: SavedContract, master: Pick<MasterData, "branc
       }
     : null;
 
-  const auto = s.endDate ? autoEndDate(s.startDate, s.termYears) : null;
+  const auto = s.endDate ? autoEndDate(s.startDate, s.termMonths) : null;
   return {
     key: `edit-${s.contractId}`,
     contractNo: s.contractNo,
@@ -98,6 +102,7 @@ export function draftFromSaved(s: SavedContract, master: Pick<MasterData, "branc
     endTouched: s.endDate !== "" && auto !== s.endDate,
     value1y: has3 ? "" : money,
     value3y: has3 ? money : "",
+    customTermMonths,
     pendingPdf: null,
     saveError: null,
   };
@@ -121,6 +126,7 @@ function editableSnapshot(d: DraftRow): string {
     d.endDate,
     d.value1y.trim(),
     d.value3y.trim(),
+    d.customTermMonths,
   ]);
 }
 

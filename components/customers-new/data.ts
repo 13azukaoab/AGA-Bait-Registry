@@ -11,7 +11,8 @@
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-import type { TermYears, TierRule } from "@/lib/rules";
+import type { TierRule } from "@/lib/rules";
+import { termMonthsOf } from "@/lib/service/termMonths";
 import { TIER_RULE_COLUMNS, toTierRules, type TierRuleRow } from "@/lib/tierRules";
 import type { UserRole } from "@/lib/db/types";
 
@@ -28,7 +29,7 @@ export const MONTH_ROW_LIMIT = 1000;
 const FILE_COLUMNS =
   "id, kind, version, is_current, storage_path, file_name, size_bytes, was_compressed, reason, uploaded_at";
 
-const CONTRACT_SELECT = `id, customer_id, contract_no, start_date, end_date, term_years, value_total, sale_type, status, sale_name, am_name,
+const CONTRACT_SELECT = `id, customer_id, contract_no, start_date, end_date, term_months, value_total, sale_type, status, sale_name, am_name,
        is_urgent, renewed_from_contract_id, renew_unlinked_reason, mail_received_date, first_service_date, first_service_time, note, updated_at,
        customers ( name, customer_type, branch_id ),
        contract_teams ( team_id ),
@@ -150,7 +151,7 @@ type ContractRowDb = {
   contract_no: string;
   start_date: string;
   end_date: string | null;
-  term_years: number;
+  term_months: number;
   value_total: number | string;
   sale_type: SaleType | null;
   status: ContractStatus;
@@ -251,7 +252,7 @@ async function toSavedContracts(
       note: r.note ?? "",
       startDate: r.start_date,
       endDate: r.end_date ?? "",
-      termYears: (r.term_years === 3 ? 3 : 1) as TermYears,
+      termMonths: termMonthsOf(r.term_months),
       valueTotal: Number(r.value_total),
       teamIds: (r.contract_teams ?? []).map((t) => t.team_id),
       updatedAt: r.updated_at,

@@ -15,13 +15,14 @@
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-import { annualValue, serviceMonths, tierOf, type TierRule } from "@/lib/rules";
+import { annualValueForTerm, serviceMonthsForTerm, tierOf, type TierRule } from "@/lib/rules";
 import { monthOf } from "@/lib/rules/date";
 import { TIER_RULE_COLUMNS, toTierRules, type TierRuleRow } from "@/lib/tierRules";
 
 import { contractMonthTag } from "./contractTag";
 import { monthRange, serviceTeams } from "@/lib/service/months";
 import type { TeamKind } from "@/lib/service/teamKind";
+import { termMonthsOf } from "@/lib/service/termMonths";
 import { trimDbTime } from "./timeInput";
 import type {
   AgHistory,
@@ -95,7 +96,7 @@ type ContractDb = {
   contract_no: string;
   customer_id: string;
   start_date: string;
-  term_years: number;
+  term_months: number;
   value_total: number | string;
   status: ContractStatus;
   renewed_from_contract_id: string | null;
@@ -161,7 +162,7 @@ export async function loadContractList(
   const { data, error } = await supabase
     .from("contracts")
     .select(
-      `id, contract_no, customer_id, start_date, term_years, value_total, status, renewed_from_contract_id,
+      `id, contract_no, customer_id, start_date, term_months, value_total, status, renewed_from_contract_id,
        stations_initialized_at, customers!inner ( name, branch_id )`,
     )
     .in("customers.branch_id", [...branchIds])
@@ -172,7 +173,7 @@ export async function loadContractList(
   if (error) return { items: [], truncated: false, error: error.message };
 
   const withCustomer = ((data ?? []) as unknown as ContractDb[]).filter((c) => c.customers);
-  const coversMonth = (c: ContractDb) => serviceMonths(c.start_date, c.term_years).includes(month);
+  const coversMonth = (c: ContractDb) => serviceMonthsForTerm(c.start_date, termMonthsOf(c.term_months)).includes(month);
   const raw = options.includeAgOutsideMonth ? withCustomer : withCustomer.filter(coversMonth);
   const ids = raw.map((c) => c.id);
 
@@ -211,7 +212,7 @@ export async function loadContractList(
 
   const kept = options.includeAgOutsideMonth ? raw.filter((c) => coversMonth(c) || (agCount.get(c.id) ?? 0) > 0) : raw;
   const items: ContractListItem[] = kept.map((c) => {
-    const years = (c.term_years === 3 ? 3 : 1) as 1 | 3;
+    const termMonths = termMonthsOf(c.term_months);
     return {
       contractId: c.id,
       contractNo: c.contract_no,
@@ -220,8 +221,8 @@ export async function loadContractList(
       branchId: c.customers?.branch_id ?? "",
       status: c.status,
       // 2.49: ป้ายตามเกณฑ์ของเดือนเริ่มสัญญา (คงที่ตลอดอายุสัญญา)
-      tier: tierOf(annualValue(Number(c.value_total), years), [...tierRules], monthOf(c.start_date)),
-      termYears: years,
+      tier: tierOf(annualValueForTerm(Number(c.value_total), termMonths), [...tierRules], monthOf(c.start_date)),
+      termMonths,
       renewedFromContractId: c.renewed_from_contract_id,
       stationsInitialized: c.stations_initialized_at !== null,
       agCount: agCount.get(c.id) ?? 0,

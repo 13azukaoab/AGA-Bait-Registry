@@ -50,8 +50,8 @@ export async function saveDraft(
   check: DraftCheck,
   options: SaveOptions = {},
 ): Promise<SaveResult> {
-  const { branch, termYears, valueTotal } = check;
-  if (!branch || !termYears || valueTotal === null) {
+  const { branch, termMonths, valueTotal } = check;
+  if (!branch || !termMonths || valueTotal === null) {
     return { ok: false, error: "ข้อมูลไม่ครบ ตรวจช่องที่ขึ้นแดง" };
   }
 
@@ -62,7 +62,7 @@ export async function saveDraft(
 
   const params = buildSaveParams(
     draft,
-    { branchId: branch.id, termYears, valueTotal, endDate: check.endDate },
+    { branchId: branch.id, termMonths, valueTotal, endDate: check.endDate },
     options,
   );
   const { data, error } = await supabase.rpc("save_job_opening", params);

@@ -38,7 +38,7 @@ const saved: SavedContract = {
   note: "",
   startDate: "2026-10-01",
   endDate: "2027-09-30",
-  termYears: 1,
+  termMonths: 12,
   valueTotal: 99510,
   teamIds: [A.id, OLD.id, SUP.id],
   files: [],
@@ -47,7 +47,7 @@ const saved: SavedContract = {
   auditCountFailed: false,
 };
 
-const values = { branchId: "b1", termYears: 1, valueTotal: 99510, endDate: "2027-09-30" };
+const values = { branchId: "b1", termMonths: 12, valueTotal: 99510, endDate: "2027-09-30" };
 
 describe("หน้าเปิดงาน — งานเก่าที่มีทีมปิด/Sup", () => {
   it("แถวใหม่: ตัวเลือกไม่มีทีมปิดและ Sup", () => {
