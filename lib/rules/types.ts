@@ -24,6 +24,10 @@ export interface Contract {
   stationsInitializedAt?: string; // 'YYYY-MM-DD' หรือ timestamptz (monthOf แปลงเป็นเวลาไทยให้)
   /** M18 / 2.47: สัญญานี้ต่อมาจากสัญญาไหน (contracts.renewed_from_contract_id) */
   renewedFromContractId?: string;
+  /** M28 / 2.51: ลูกค้าของสัญญา (contracts.customer_id) — ใช้ตรวจ "มีสัญญา New ที่ใหม่กว่า" (isSuperseded) */
+  customerId?: string;
+  /** M28 / 2.51: วันสิ้นสุด 'YYYY-MM-DD' (contracts.end_date · ว่าง = วันเริ่ม + N ปี − 1 วัน) */
+  endDate?: string;
 }
 
 export interface Visit {

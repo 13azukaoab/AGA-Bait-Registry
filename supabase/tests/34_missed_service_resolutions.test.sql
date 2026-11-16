@@ -22,7 +22,11 @@ INSERT INTO profiles (user_id, display_name, username, role, division_scope) VAL
   ('00000000-0000-0000-0000-0000000000a4', 'viewer',   'user_a4', 'viewer',   '{central}');
 INSERT INTO customers (id, branch_id, name) VALUES
   ('00000000-0000-0000-0000-0000000000c1', (SELECT id FROM branches WHERE division = 'central' ORDER BY name LIMIT 1), 'Central'),
-  ('00000000-0000-0000-0000-0000000000c2', (SELECT id FROM branches WHERE division = 'province' ORDER BY name LIMIT 1), 'Province');
+  ('00000000-0000-0000-0000-0000000000c2', (SELECT id FROM branches WHERE division = 'province' ORDER BY name LIMIT 1), 'Province'),
+  -- M28 (2.51): สัญญา New ที่เริ่มหลังสัญญาเก่าจบ ทำให้สัญญาเก่าของลูกค้าเดียวกันโมฆะ → แยกลูกค้าตามรุ่นสัญญา
+  --   c3 = d3 (เริ่ม m(-6)) · c4 = d7/db (เริ่ม m(-30)) ไม่ให้ไปโมฆะ/ถูกโมฆะกับกลุ่ม m(-18) ของ c1
+  ('00000000-0000-0000-0000-0000000000c3', (SELECT id FROM branches WHERE division = 'central' ORDER BY name LIMIT 1), 'Central new'),
+  ('00000000-0000-0000-0000-0000000000c4', (SELECT id FROM branches WHERE division = 'central' ORDER BY name LIMIT 1), 'Central old');
 
 CREATE FUNCTION pg_temp.m(n int) RETURNS date LANGUAGE sql STABLE AS
   $$ SELECT (date_trunc('month', (now() AT TIME ZONE 'Asia/Bangkok')) + make_interval(months => n))::date $$;
@@ -38,14 +42,14 @@ INSERT INTO contracts (id, customer_id, contract_no, start_date, term_years, val
                        status, cancelled_at) VALUES
   (pg_temp.id('d1'), pg_temp.id('c1'), 'M-1', pg_temp.m(-18), 1, 150000, pg_temp.m(-18), 'active', NULL),
   (pg_temp.id('d2'), pg_temp.id('c2'), 'M-2', pg_temp.m(-18), 1, 50000,  pg_temp.m(-18), 'active', NULL),
-  (pg_temp.id('d3'), pg_temp.id('c1'), 'M-3', pg_temp.m(-6),  1, 24000,  pg_temp.m(-6),  'active', NULL),
+  (pg_temp.id('d3'), pg_temp.id('c3'), 'M-3', pg_temp.m(-6),  1, 24000,  pg_temp.m(-6),  'active', NULL),
   (pg_temp.id('d4'), pg_temp.id('c1'), 'M-4', pg_temp.m(-18), 1, 24000,  pg_temp.m(-18), 'cancelled', pg_temp.m(-10)),
   (pg_temp.id('d5'), pg_temp.id('c1'), 'M-5', pg_temp.m(-18), 1, 24000,  NULL,           'active', NULL),
   (pg_temp.id('d6'), pg_temp.id('c1'), 'M-6', pg_temp.m(-18), 1, 24000,  pg_temp.m(-18), 'closed', NULL),
-  (pg_temp.id('d7'), pg_temp.id('c1'), 'M-7', pg_temp.m(-30), 1, 24000,  pg_temp.m(-30), 'active', NULL),
+  (pg_temp.id('d7'), pg_temp.id('c4'), 'M-7', pg_temp.m(-30), 1, 24000,  pg_temp.m(-30), 'active', NULL),
   (pg_temp.id('d8'), pg_temp.id('c1'), 'M-8', pg_temp.m(-18), 1, 24000,  pg_temp.m(-10), 'active', NULL),
   (pg_temp.id('da'), pg_temp.id('c1'), 'M-A', pg_temp.m(-18), 1, 24000,  pg_temp.m(-18), 'active', NULL),
-  (pg_temp.id('db'), pg_temp.id('c1'), 'M-B', pg_temp.m(-30), 1, 24000,  pg_temp.m(-30), 'active', NULL),
+  (pg_temp.id('db'), pg_temp.id('c4'), 'M-B', pg_temp.m(-30), 1, 24000,  pg_temp.m(-30), 'active', NULL),
   (pg_temp.id('dc'), pg_temp.id('c1'), 'M-C', pg_temp.m(-18), 1, 24000,  pg_temp.m(-18), 'closed', NULL),
   (pg_temp.id('dd'), pg_temp.id('c1'), 'M-R', pg_temp.m(-18), 1, 24000,  pg_temp.m(-18), 'active', NULL),
   (pg_temp.id('df'), pg_temp.id('c1'), 'M-F', pg_temp.m(-18), 1, 24000,  pg_temp.m(-18), 'active', NULL),
