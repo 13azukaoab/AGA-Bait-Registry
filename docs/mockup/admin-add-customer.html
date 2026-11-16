@@ -16,6 +16,7 @@
   --ok:#1a8a5c; --ok-soft:#e3f4ec; --warn:#b4740a; --warn-soft:#fbf0db; --danger:#c23b2e; --danger-soft:#fbe8e5;
   --tier-s:#1f5fa8; --tier-s-soft:#e6f0fb; --tier-m:#157a50; --tier-m-soft:#e3f4ec;
   --tier-l:#a86c07; --tier-l-soft:#fbf0db; --tier-xl:#c2561f; --tier-xl-soft:#fce6da; --on-tier:#ffffff;
+  --tier-s-ink:#1f5fa8; --tier-m-ink:#157a50; --tier-l-ink:#976106; --tier-xl-ink:#ab4c1b;
   --new:#6d47b8; --new-soft:#efeafa;
   --radius:10px; --shadow:0 1px 2px rgba(20,40,70,.06),0 1px 3px rgba(20,40,70,.05);
   color-scheme:light;
@@ -28,6 +29,7 @@
   --ok:#3bb183; --ok-soft:#133227; --warn:#d99b3e; --warn-soft:#332713; --danger:#e26657; --danger-soft:#331a16;
   --tier-s:#4a90d9; --tier-s-soft:#16304a; --tier-m:#3bb183; --tier-m-soft:#133227;
   --tier-l:#d99b3e; --tier-l-soft:#332713; --tier-xl:#e07a4e; --tier-xl-soft:#3a2016; --on-tier:#0b1420;
+  --tier-s-ink:#5c9bdd; --tier-m-ink:#3bb183; --tier-l-ink:#d99b3e; --tier-xl-ink:#e07a4e;
   --new:#a98be0; --new-soft:#2a2040;
   --shadow:0 1px 2px rgba(0,0,0,.3);
   color-scheme:dark;
@@ -40,6 +42,7 @@
   --ok:#3bb183; --ok-soft:#133227; --warn:#d99b3e; --warn-soft:#332713; --danger:#e26657; --danger-soft:#331a16;
   --tier-s:#4a90d9; --tier-s-soft:#16304a; --tier-m:#3bb183; --tier-m-soft:#133227;
   --tier-l:#d99b3e; --tier-l-soft:#332713; --tier-xl:#e07a4e; --tier-xl-soft:#3a2016; --on-tier:#0b1420;
+  --tier-s-ink:#5c9bdd; --tier-m-ink:#3bb183; --tier-l-ink:#d99b3e; --tier-xl-ink:#e07a4e;
   --new:#a98be0; --new-soft:#2a2040;
   --shadow:0 1px 2px rgba(0,0,0,.3);
   color-scheme:dark;
@@ -214,13 +217,13 @@ a.avatar:hover,a.avatar:focus-visible{box-shadow:0 0 0 2px var(--accent);color:v
 .tier.l{background:var(--tier-l-soft);color:var(--tier-l)} .tier.xl{background:var(--tier-xl-soft);color:var(--tier-xl)}
 /* สี Tier ตามกฎโปรเจกต์: S=ฟ้า/น้ำเงิน · M=เขียว · L=เหลือง · XL=ส้ม
    เลข 1 (สัญญา 1 ปี) = เฉดอ่อน · เลข 3 (สัญญา 3 ปี) = เฉดเข้มทึบ */
-.tier.s1{background:var(--tier-s-soft);color:var(--tier-s)}
+.tier.s1{background:var(--tier-s-soft);color:var(--tier-s-ink)}
 .tier.s3{background:var(--tier-s);color:var(--on-tier)}
-.tier.m1{background:var(--tier-m-soft);color:var(--tier-m)}
+.tier.m1{background:var(--tier-m-soft);color:var(--tier-m-ink)}
 .tier.m3{background:var(--tier-m);color:var(--on-tier)}
-.tier.l1{background:var(--tier-l-soft);color:var(--tier-l)}
+.tier.l1{background:var(--tier-l-soft);color:var(--tier-l-ink)}
 .tier.l3{background:var(--tier-l);color:var(--on-tier)}
-.tier.xl1{background:var(--tier-xl-soft);color:var(--tier-xl)}
+.tier.xl1{background:var(--tier-xl-soft);color:var(--tier-xl-ink)}
 .tier.xl3{background:var(--tier-xl);color:var(--on-tier)}
 
 .tablewrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);overflow-x:auto}
