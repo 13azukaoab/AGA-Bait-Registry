@@ -5,7 +5,7 @@
 -- เดือนอ้างจากเดือนปัจจุบัน (Asia/Bangkok) ผ่าน pg_temp.m(n) → เทสไม่พังเมื่อเวลาผ่านไป
 -- ตัวเลขเกณฑ์ Tier / กล่อง AG ในไฟล์นี้เป็น **ข้อมูลสมมติ** ใช้ทดสอบเท่านั้น
 BEGIN;
-SELECT plan(86);
+SELECT plan(87);
 
 INSERT INTO auth.users (id, instance_id, aud, role, email) VALUES
   ('00000000-0000-0000-0000-0000000000a1', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'host@test.local'),
@@ -84,7 +84,7 @@ RESET ROLE;
 
 SET LOCAL ROLE service_role;
 SELECT throws_ok($$UPDATE app_settings SET go_live_month = '2026-01-01'$$, '42501', NULL,
-  'service_role cannot change go_live_month');
+  'service_role cannot change go_live_month (GRANT layer — the session_user trigger layer cannot be exercised here because pgTAP runs as postgres)');
 SELECT is(public.workload_hours_per_person(), 30::numeric, 'service_role reads workload through the helper');
 RESET ROLE;
 
@@ -118,11 +118,15 @@ SET LOCAL ROLE service_role;
 SELECT throws_ok($$SELECT public.save_workload_threshold(40)$$, '42501', NULL, 'service_role cannot call the workload RPC');
 RESET ROLE;
 
-SELECT is((SELECT count(*)::int FROM audit_log WHERE table_name = 'app_settings'), 1,
-  'one audit row for the workload change (no row for the no-op save)');
+SELECT is((SELECT count(*)::int FROM audit_log WHERE table_name = 'app_settings' AND changed_by IS NULL), 2,
+  'the two postgres go_live_month changes above are audited too (changed_by NULL)');
+SELECT is((SELECT count(*)::int FROM audit_log WHERE table_name = 'app_settings'
+            AND changed_by = '00000000-0000-0000-0000-0000000000a1'), 1,
+  'one audit row for the host workload change (no row for the no-op save)');
 SELECT is((SELECT (old_data ->> 'workload_hours_per_person') || '→' || (new_data ->> 'workload_hours_per_person')
                   || '|' || action::text || '|' || changed_by::text
-             FROM audit_log WHERE table_name = 'app_settings'),
+             FROM audit_log WHERE table_name = 'app_settings'
+              AND changed_by = '00000000-0000-0000-0000-0000000000a1'),
   '30.00→35.50|update|00000000-0000-0000-0000-0000000000a1', 'audit row has old/new value, action and the host');
 SELECT is((SELECT updated_by FROM app_settings), '00000000-0000-0000-0000-0000000000a1'::uuid, 'updated_by = host');
 SELECT is((SELECT go_live_month FROM app_settings), DATE '2026-10-01', 'the workload RPC does not touch go_live_month');

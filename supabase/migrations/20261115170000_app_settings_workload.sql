@@ -194,15 +194,6 @@ BEGIN
     RETURN NEW;
   END IF;
 
-  -- M25 (M20b · DECISIONS 2.49 ①): เดือนเริ่มใช้ต้องไม่ก่อนเดือนเริ่มใช้ระบบ — ชุดตั้งต้น 2000-01-01 ยกเว้น
-  IF TG_OP <> 'DELETE' AND NEW.effective_month <> DATE '2000-01-01' THEN
-    v_go_live := public.go_live_month();
-    IF NEW.effective_month < v_go_live THEN
-      RAISE EXCEPTION 'เกณฑ์ Tier ต้องเริ่มใช้ตั้งแต่เดือนเริ่มใช้ระบบ (%) เป็นต้นไป', to_char(v_go_live, 'YYYY-MM')
-        USING ERRCODE = 'TR005';
-    END IF;
-  END IF;
-
   -- กันปิดเดือนแทรกระหว่างตรวจ (ทุกทาง ไม่ใช่แค่ RPC) — ปิดเดือนรอจนรายการนี้ commit
   LOCK TABLE public.month_closures IN SHARE MODE;
 
@@ -213,6 +204,16 @@ BEGIN
        AND (TG_OP = 'DELETE' OR NEW.effective_month <> OLD.effective_month) THEN
       RAISE EXCEPTION 'ชุดเกณฑ์ตั้งต้น (%) ลบหรือย้ายเดือนไม่ได้', to_char(v_baseline, 'YYYY-MM')
         USING ERRCODE = 'TR004';
+    END IF;
+  END IF;
+
+  -- M25 (M20b · DECISIONS 2.49 ①): เดือนเริ่มใช้ต้องไม่ก่อนเดือนเริ่มใช้ระบบ — ชุดตั้งต้น 2000-01-01 ยกเว้น
+  -- (อยู่หลังด่านชุดตั้งต้นของ M20 → การย้าย/ลบชุดตั้งต้นยังได้ TR004 ตามเดิม)
+  IF TG_OP <> 'DELETE' AND NEW.effective_month <> DATE '2000-01-01' THEN
+    v_go_live := public.go_live_month();
+    IF NEW.effective_month < v_go_live THEN
+      RAISE EXCEPTION 'เกณฑ์ Tier ต้องเริ่มใช้ตั้งแต่เดือนเริ่มใช้ระบบ (%) เป็นต้นไป', to_char(v_go_live, 'YYYY-MM')
+        USING ERRCODE = 'TR005';
     END IF;
   END IF;
 
@@ -269,13 +270,6 @@ BEGIN
   END IF;
   v_month := to_date(left(v_month_txt, 7) || '-01', 'YYYY-MM-DD');
 
-  -- M25 (M20b · DECISIONS 2.49 ①): ห้ามตั้งเกณฑ์ใหม่ก่อนเดือนเริ่มใช้ระบบ
-  v_go_live := public.go_live_month();
-  IF v_month < v_go_live THEN
-    RAISE EXCEPTION 'เกณฑ์ Tier ต้องเริ่มใช้ตั้งแต่เดือนเริ่มใช้ระบบ (%) เป็นต้นไป', to_char(v_go_live, 'YYYY-MM')
-      USING ERRCODE = 'TR005';
-  END IF;
-
   FOREACH k IN ARRAY v_keys LOOP
     IF jsonb_typeof(p -> k) IS DISTINCT FROM 'number' THEN
       RAISE EXCEPTION 'ต้องระบุ % เป็นตัวเลข', k USING ERRCODE = 'TR001';
@@ -309,6 +303,13 @@ BEGIN
     RAISE EXCEPTION 'เดือนเริ่มใช้ต้องหลังชุดตั้งต้น (%)', to_char(v_baseline, 'YYYY-MM') USING ERRCODE = 'TR001';
   END IF;
 
+  -- M25 (M20b · DECISIONS 2.49 ①): ห้ามตั้งเกณฑ์ใหม่ก่อนเดือนเริ่มใช้ระบบ (หลังด่านชุดตั้งต้นของ M20 — TR001 เดิมคงอยู่)
+  v_go_live := public.go_live_month();
+  IF v_month < v_go_live THEN
+    RAISE EXCEPTION 'เกณฑ์ Tier ต้องเริ่มใช้ตั้งแต่เดือนเริ่มใช้ระบบ (%) เป็นต้นไป', to_char(v_go_live, 'YYYY-MM')
+      USING ERRCODE = 'TR005';
+  END IF;
+
   INSERT INTO tier_rules AS t (effective_month, tier, min_annual, max_annual, change_reason)
   VALUES
     (v_month, 'S',  0,          v_mins[1] - 0.01, v_reason),
@@ -330,6 +331,20 @@ BEGIN
                                                   'max_annual', max_annual) ORDER BY min_annual)
                 FROM tier_rules WHERE effective_month = v_month)
   );
+END;
+$$;
+
+-- 2.3 ข้อมูลเดิมต้องไม่มีชุดเกณฑ์ระหว่างชุดตั้งต้นกับ go-live (ถ้ามี = แก้ไม่ได้แต่ลบได้ → หยุด ให้เจ้าของตัดสินก่อน)
+DO $$
+DECLARE
+  v_bad text;
+BEGIN
+  SELECT string_agg(DISTINCT to_char(effective_month, 'YYYY-MM'), ', ') INTO v_bad
+    FROM public.tier_rules
+   WHERE effective_month <> DATE '2000-01-01' AND effective_month < public.go_live_month();
+  IF v_bad IS NOT NULL THEN
+    RAISE EXCEPTION 'M25: tier rule sets dated before go_live_month exist (%) — resolve with the owner first', v_bad;
+  END IF;
 END;
 $$;
 
@@ -417,7 +432,8 @@ BEGIN
   END IF;
 
   -- ล็อกแถวทีมแรงสุด: การผูกงานที่ยังไม่ commit (FK ถือ KEY SHARE) ต้องจบก่อน แล้วการนับข้างล่างเห็นแถวนั้น
-  -- และการผูกงานใหม่ต้องรอจนรายการนี้จบ
+  -- (READ COMMITTED แบบ PostgREST) · การผูกงานใหม่ระหว่างนี้แค่ "รอ" แล้วผ่านได้ — ด่านนี้กันทิศเดียว
+  -- (ผูกงานกับทีมที่เป็น supervisor อยู่แล้วผ่าน REST ตรง ยังไม่มีด่าน — ดูรายงาน M25)
   PERFORM 1 FROM teams t WHERE t.id = OLD.id FOR UPDATE;
 
   SELECT count(*) INTO v_contracts FROM contract_teams ct WHERE ct.team_id = OLD.id;
