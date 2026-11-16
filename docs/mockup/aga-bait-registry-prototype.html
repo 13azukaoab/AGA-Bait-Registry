@@ -75,6 +75,41 @@ body{margin:0;background:var(--bg);color:var(--fg);
 .navtoggle{display:none;align-items:center;justify-content:center;border:1px solid var(--border);
   background:var(--surface-2);color:var(--fg);border-radius:8px;width:36px;height:34px;font-size:18px;line-height:1;cursor:pointer;flex:none}
 .navtoggle:focus-visible,.nav a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+/* ===== ปุ่มมาตรฐาน 3 แบบ (เจ้าของเลือก 16 พ.ย. 2026 — ใช้ทุกหน้า · แหล่งจริง = _shell/shell.css) =====
+   1) .navtoggle ปุ่มเมนู  2) .addbtn ปุ่มเพิ่ม (ไอคอนสไลด์ สี --ok)  3) .savebtn ปุ่มบันทึกหลัก (แถบสีกวาด สี --accent)
+   ปุ่มรอง/ปุ่มใน modal/ปุ่มอันตราย ใช้ .btn เดิม */
+.navtoggle{width:auto;height:36px;padding:0 14px 0 12px;gap:9px;border:none;border-radius:6px;background:var(--fg);color:var(--bg);
+  font-family:inherit;font-size:13px;font-weight:600;letter-spacing:.06em;transition:box-shadow .3s ease-in-out,transform .15s}
+.navtoggle .nt-ic{fill:currentColor;flex:none;transition:transform .3s}
+.navtoggle:hover{box-shadow:0 0 14px 0 var(--border-strong)}
+.navtoggle:hover .nt-ic{transform:scale(1.08)}
+.navtoggle:active{transform:scale(.97)}
+.navtoggle .nt-tx{display:none}
+@media (min-width:861px){ .navtoggle .nt-tx{display:inline} }
+.addbtn{flex:none;position:relative;height:38px;box-sizing:border-box;cursor:pointer;display:inline-flex;align-items:center;overflow:hidden;font-family:inherit;font-size:13px;
+  border:1px solid var(--ok);border-radius:8px;background:var(--ok);color:var(--accent-fg);padding:0}
+.addbtn,.addbtn__ic,.addbtn__tx{transition:all .3s}
+.addbtn__tx{padding:0 51px 0 16px;font-weight:600;white-space:nowrap}
+.addbtn__ic{position:absolute;top:0;right:0;height:100%;width:39px;display:flex;align-items:center;justify-content:center;
+  background:color-mix(in srgb,var(--ok) 82%,var(--fg))}
+.addbtn:hover .addbtn__tx{color:transparent}
+.addbtn:hover .addbtn__ic{width:100%}
+.addbtn:active .addbtn__ic{background:color-mix(in srgb,var(--ok) 70%,var(--fg))}
+.addbtn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.addbtn[disabled],.savebtn[disabled]{opacity:.5;cursor:not-allowed}
+.savebtn{flex:none;position:relative;overflow:hidden;height:38px;box-sizing:border-box;cursor:pointer;font-family:inherit;font-weight:500;font-size:13px;letter-spacing:.03em;
+  border:none;border-radius:10px;background:var(--accent);color:var(--accent-fg);padding:0;transition:transform .15s}
+.savebtn span{position:relative;z-index:1;display:inline-flex;align-items:center;gap:7px;height:100%;padding:0 16px 0 13px}
+.savebtn svg{width:16px;height:16px;flex:none}
+.savebtn::before{content:"";position:absolute;top:0;left:-10%;width:120%;height:100%;z-index:0;background:var(--accent-strong);
+  transform:skew(30deg);transition:transform .4s cubic-bezier(.3,1,.8,1)}
+.savebtn:hover::before{transform:translate3d(100%,0,0)}
+.savebtn:active{transform:scale(.95)}
+.savebtn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+@media (prefers-reduced-motion:reduce){
+  .navtoggle,.navtoggle .nt-ic,.addbtn,.addbtn__ic,.addbtn__tx,.savebtn,.savebtn::before{transition:none}
+  .navtoggle:hover .nt-ic,.navtoggle:active,.savebtn:active{transform:none}
+}
 .nav-backdrop{display:none}
 
 /* เมนูซ้าย */
@@ -860,7 +895,7 @@ i.wr,rect.wr{background:var(--accent);fill:var(--accent)}i.wf,rect.wf{background
 
 <div class="topbar">
   <!-- AGA-SHELL v1 : topbar ฝั่งซ้าย (ปุ่ม ☰ + โลโก้) — ฝั่งขวา (เดือน/บทบาท/ธีม/avatar) เป็นของแต่ละหน้า -->
-  <button class="navtoggle" id="navToggle" aria-label="เปิด/ปิดเมนู" aria-expanded="false" aria-controls="nav" onclick="toggleNav()">☰</button>
+  <button class="navtoggle" id="navToggle" aria-label="เปิด/ปิดเมนู" aria-expanded="false" aria-controls="nav" onclick="toggleNav()"><svg class="nt-ic" viewBox="0 0 80 75" width="20" height="19" aria-hidden="true"><rect width="80" height="15" rx="7.5"/><rect y="30" width="80" height="15" rx="7.5"/><rect y="60" width="80" height="15" rx="7.5"/></svg><span class="nt-tx">MENU</span></button>
   <a class="tb-brand" href="aga-bait-registry-prototype.html#todo">
     <span class="tb-logo" role="img" aria-label="Advance Group Asia (AGA)"></span>
     <span class="tb-title"><b>ข้อมูลหลังบ้านระบบเหยื่อ</b><span>ส่วนกลาง</span></span>
@@ -1812,7 +1847,7 @@ function agHtml(ctx){
   var exist=m.pts.filter(function(p){return p.kind==='F'}).length;
   var need=m.tried?agMissing(ctx).need:{};
   var h='<div class="agsec-h"><b>กล่องเหยื่อ AG</b>'+(exist?'<span class="chip pend">ค้างติดตาม '+exist+' จุด</span>':'<span class="chip na">ยังไม่มีกล่องค้างติดตาม</span>')+
-    '<button type="button" class="btn sm primary" data-ag="add" data-ctx="'+ctx+'">+ ติดกล่องใหม่ (S)</button></div>'+
+    '<button type="button" class="addbtn" data-ag="add" data-ctx="'+ctx+'"><span class="addbtn__tx">ติดกล่องใหม่ (S)</span><span class="addbtn__ic"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span></button></div>'+
     '<div class="hint" style="margin-top:0">เลขรอบ F ระบบนับให้เอง · เหยื่อเลือกจากรายการ (เกิน 200 ก. เลือก “มากกว่า 200” แล้วพิมพ์เอง ต้องหาร 50 ลงตัว) · เลือกสัดส่วนปลวกและสถานะของแต่ละจุด</div>';
   if(!m.pts.length) h+='<div class="empty" style="padding:10px 2px;text-align:left">ยังไม่มีจุดกล่อง — กด “+ ติดกล่องใหม่ (S)” เพื่อเพิ่มจุดแรก</div>';
   m.pts.forEach(function(p){h+=agPointHtml(ctx,m,p,!!need[p.k])});
@@ -2349,7 +2384,7 @@ function rpDeltas(){
 function tableSec(secId,bodyId,title,head,addAct,addLabel,hint,chipsId,extraBtn){
   return '<div class="fsec" id="'+secId+'" hidden><div class="fsec-h">'+title+'</div>'+(chipsId?'<div class="sumchips" id="'+chipsId+'"></div>':'')+
     '<div class="st-tbl"><div class="tablewrap"><table><thead><tr>'+head+'<th class="c"></th></tr></thead><tbody id="'+bodyId+'"></tbody></table></div>'+
-    '<div class="rowadd"><button type="button" class="btn sm" data-act="'+addAct+'">'+addLabel+'</button>'+(extraBtn||'')+'</div></div>'+
+    '<div class="rowadd"><button type="button" class="addbtn" data-act="'+addAct+'"><span class="addbtn__tx">'+addLabel+'</span><span class="addbtn__ic"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span></button>'+(extraBtn||'')+'</div></div>'+
     '<div class="hint">'+hint+'</div></div>';
 }
 /* ลูกค้าใหม่จาก "เปิดงาน" ยังไม่มีจำนวนสถานี → หัวหน้างานระบุ IG/IC ครั้งเดียวในเดือนแรก (บังคับก่อนบันทึก)
@@ -2382,14 +2417,14 @@ function svRenderForm(){
     '<button type="button" class="bigok" id="svNormal" data-act="svNormal" aria-pressed="false"><span class="cbox" aria-hidden="true"><svg viewBox="0 0 20 20"><path d="M3 10.5l4.5 4.5L17 5"/></svg></span><span class="txt">IG / IC ปกติทั้งหมด<small>ไม่พบปลวก ไม่เปลี่ยนไม้ ไม่มีงานซ่อม · ไม่รวมกล่อง AG</small></span><span class="state"><span class="off">ยังไม่ได้กด</span><span class="on">กดแล้ว ✓</span></span></button>'+
     '<div class="fbtns" role="group" aria-label="สิ่งที่พบ">'+
       [['tm','พบปลวก',''],['wd','เปลี่ยนไม้',''],['rp','งานซ่อม / ฝังเพิ่ม','(เปลี่ยนฝา, หาย, ถอนออก, ฝังเพิ่ม)'],['ag','กล่อง AG','']].map(function(s){return '<button type="button" class="fbtn" data-act="sec" data-sec="'+s[0]+'" aria-pressed="false"><span class="fl">'+s[1]+(s[2]?'<small>'+s[2]+'</small>':'')+'</span> <span class="n" id="svN_'+s[0]+'">0</span></button>'}).join('')+'</div>'+
-    tableSec('svSecTm','svTmBody','พบปลวก','<th>หมายเลขสถานี</th><th>ชนิดปลวก</th><th>เหยื่อ / เคมีผง</th>','addTm','+ เพิ่มจุดที่พบปลวก','ตั้งต้นว่าจุดอื่นปกติ — เพิ่มเฉพาะจุดที่พบ: เลือก IG/IC + พิมพ์เลขสถานี (ระบบตรวจว่ามีจริง) แล้วเลือกชนิดปลวก · <b>ใต้ดิน</b> = ใส่เหยื่อ · <b>สวน</b> = เคมีผง กรอกจำนวนจุด แปลงกรัมอัตโนมัติ 0.3 ก./จุด','svTmChips')+
-    tableSec('svSecWd','svWdBody','เปลี่ยนไม้ล่อ','<th>หมายเลขสถานี</th><th>ชนิด (IG/IC)</th><th>จำนวนไม้</th>','addWd','+ เพิ่มสถานีที่เปลี่ยนไม้','จำนวนไม้เติมอัตโนมัติตามชนิด (IG = 2 ชิ้น · IC = 1 ชิ้น)','svWdChips')+
-    tableSec('svSecRp','svRpBody','งานซ่อม และ ฝังเพิ่มสถานี','<th colspan="4">รายการ — ประเภทงาน · IG/IC · หมายเลขสถานี · รายละเอียด</th>','addRp','+ เพิ่มงานซ่อม','<b>ฝังสถานีใหม่</b> พิมพ์หมายเลขสถานีใหม่ที่ฝัง ต่อจากเลขเดิม (เช่น <b>81-85</b> หรือ <b>81, 82, 90</b>) ระบบนับจำนวนและเพิ่มสถานีของลูกค้าให้เอง · <b>สถานีหาย / ถอนออก</b> เลือก IG/IC แล้วใส่เลขสถานีเดิมได้หลายเลขในแถวเดียว (เช่น <b>3, 5, 8-12</b> = 7 สถานี) ระบบหักออกจากจำนวนที่ใช้งาน · ถ้าสถานีหายแต่รอบนี้ซ่อมไม่ได้ (เช่น อุปกรณ์ไม่พอ) เขียนเหตุผลในช่องรายละเอียด · “อื่นๆ” ต้องระบุว่าเกิดอะไรขึ้น','svRpChips','<button type="button" class="btn sm" data-act="addRpNew">+ ฝังสถานีเพิ่ม</button>')+
+    tableSec('svSecTm','svTmBody','พบปลวก','<th>หมายเลขสถานี</th><th>ชนิดปลวก</th><th>เหยื่อ / เคมีผง</th>','addTm','เพิ่มจุดที่พบปลวก','ตั้งต้นว่าจุดอื่นปกติ — เพิ่มเฉพาะจุดที่พบ: เลือก IG/IC + พิมพ์เลขสถานี (ระบบตรวจว่ามีจริง) แล้วเลือกชนิดปลวก · <b>ใต้ดิน</b> = ใส่เหยื่อ · <b>สวน</b> = เคมีผง กรอกจำนวนจุด แปลงกรัมอัตโนมัติ 0.3 ก./จุด','svTmChips')+
+    tableSec('svSecWd','svWdBody','เปลี่ยนไม้ล่อ','<th>หมายเลขสถานี</th><th>ชนิด (IG/IC)</th><th>จำนวนไม้</th>','addWd','เพิ่มสถานีที่เปลี่ยนไม้','จำนวนไม้เติมอัตโนมัติตามชนิด (IG = 2 ชิ้น · IC = 1 ชิ้น)','svWdChips')+
+    tableSec('svSecRp','svRpBody','งานซ่อม และ ฝังเพิ่มสถานี','<th colspan="4">รายการ — ประเภทงาน · IG/IC · หมายเลขสถานี · รายละเอียด</th>','addRp','เพิ่มงานซ่อม','<b>ฝังสถานีใหม่</b> พิมพ์หมายเลขสถานีใหม่ที่ฝัง ต่อจากเลขเดิม (เช่น <b>81-85</b> หรือ <b>81, 82, 90</b>) ระบบนับจำนวนและเพิ่มสถานีของลูกค้าให้เอง · <b>สถานีหาย / ถอนออก</b> เลือก IG/IC แล้วใส่เลขสถานีเดิมได้หลายเลขในแถวเดียว (เช่น <b>3, 5, 8-12</b> = 7 สถานี) ระบบหักออกจากจำนวนที่ใช้งาน · ถ้าสถานีหายแต่รอบนี้ซ่อมไม่ได้ (เช่น อุปกรณ์ไม่พอ) เขียนเหตุผลในช่องรายละเอียด · “อื่นๆ” ต้องระบุว่าเกิดอะไรขึ้น','svRpChips','<button type="button" class="btn sm" data-act="addRpNew">+ ฝังสถานีเพิ่ม</button>')+
     '<div class="agsec" id="svSecAg" hidden><div id="svAgBox"></div></div>'+
   '</div>'+
   '<div class="savebar"><div class="savemsg" id="svMsg" role="alert" hidden></div>'+
     '<button type="button" class="btn" data-act="svPrev" aria-label="รายก่อนหน้า" title="รายก่อนหน้า" style="min-width:56px">←</button>'+
-    '<button type="button" class="btn primary" data-act="svSave">บันทึก + รายถัดไป</button>'+
+    '<button type="button" class="savebtn" data-act="svSave"><span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8M7 3v5h8"/></svg>บันทึก + รายถัดไป</span></button>'+
     '<button type="button" class="btn" data-act="svSkip">ข้าม</button></div>';
   agRender('sv');
   svSyncUi();
@@ -2625,7 +2660,7 @@ function bxRenderForm(again){
     '<div class="agsec" style="margin-top:0"><div id="bxAgBox"></div></div>'+logHtml+
     '<div class="hint" style="margin-top:10px">วันที่เข้าพร้อมรอบบริการประจำเดือน ให้กรอกที่หน้า "ลงข้อมูลทำบริการประจำเดือน" · กรอกเรียงจากวันที่เก่าไปใหม่</div></div>'+
     '<div class="savebar"><div class="savemsg" id="bxMsg" role="alert" hidden></div>'+
-    '<button type="button" class="btn primary" data-act="bxSave">บันทึกงานกล่อง</button>'+
+    '<button type="button" class="savebtn" data-act="bxSave"><span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8M7 3v5h8"/></svg>บันทึกงานกล่อง</span></button>'+
     '<button type="button" class="btn" data-act="bxSaveMore">บันทึกแล้วเพิ่มอีกวัน</button>'+
     '<button type="button" class="btn" data-act="bxCancel">ยกเลิก</button></div>';
   agRender('bx');
