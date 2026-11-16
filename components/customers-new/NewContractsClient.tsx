@@ -1140,7 +1140,7 @@ function DraftTableRow({
         value={value}
         placeholder={lock ? "" : "ยังไม่ใส่"}
         onChange={(e) =>
-          onPatch(term === 1 ? { value1y: e.target.value } : { value3y: e.target.value })
+          onPatch(term === 1 ? { value1y: e.target.value } : { value3y: e.target.value, customTermMonths: null })
         }
         onBlur={() => {
           const raw = value.replace(/[,\s]/g, "");
@@ -1438,7 +1438,45 @@ function DraftTableRow({
             className={cx(INPUT, "num", err("endDate") ? "border-danger" : warn ? "border-warn" : "border-border-strong")}
           />
         </td>
-        <td className={TD}>{money(d.value1y, 1)}</td>
+        <td className={TD}>
+          {money(d.value1y, 1)}
+          {/* M30: ระยะ Custom (1–35 เดือน) — ลิงก์ใต้ช่อง 1 ปี ไม่เพิ่มคอลัมน์ (เจ้าของเลือกแบบ ข · 16 พ.ย. 2026) */}
+          {d.customTermMonths !== null ? (
+            <div className="mt-1 flex items-center gap-1 text-xs text-fg-muted">
+              <input
+                type="number"
+                inputMode="numeric"
+                min={1}
+                max={35}
+                step={1}
+                aria-label="ระยะสัญญา Custom (เดือน)"
+                value={d.customTermMonths > 0 ? d.customTermMonths : ""}
+                placeholder="เดือน"
+                onChange={(e) => {
+                  const n = Math.trunc(Number(e.target.value));
+                  onPatch({ customTermMonths: Number.isFinite(n) && n > 0 ? n : 0 });
+                }}
+                className={cx(INPUT, "num w-14 text-right", border(err("value")))}
+              />
+              <span>เดือน (1–35)</span>
+              <button
+                type="button"
+                className="ml-auto text-accent underline"
+                onClick={() => onPatch({ customTermMonths: null })}
+              >
+                กลับเป็น 1 ปี
+              </button>
+            </div>
+          ) : !termLocked1 ? (
+            <button
+              type="button"
+              className="mt-1 block text-xs text-accent underline"
+              onClick={() => onPatch({ customTermMonths: 0 })}
+            >
+              Custom…
+            </button>
+          ) : null}
+        </td>
         <td className={TD}>{money(d.value3y, 3)}</td>
         <td className={cx(TD, "text-center")}>
           {tier && c.termMonths ? (
