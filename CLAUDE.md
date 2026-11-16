@@ -93,6 +93,7 @@ git revert <commit-hash>   # ย้อน commit นั้น (ปลอดภ�
 - Auto Sync ใช้ Vercel Cron (SPEC §9.2): `0 23 * * *` UTC = 06:00 ไทย
 - หลัง push/deploy ให้แจ้งเจ้าของว่าสำเร็จหรือล้มเหลว (พร้อม error ถ้ามี)
 - **Next.js server และ Vercel cron ห้ามต่อฐานข้อมูลด้วย role `postgres`** — ต่อผ่าน PostgREST ด้วย anon / authenticated / service_role เท่านั้น (ด่านกันแก้ `app_settings.go_live_month` · M25 พึ่งข้อนี้) · ค่าที่แก้ได้เฉพาะ postgres (เช่น go_live_month) ให้ผู้ดูแลฐานข้อมูลแก้ตาม runbook · เลื่อน go_live_month ทีหลัง ระบบไม่ตรวจ tier_rules ที่มีอยู่ซ้ำ ต้องตรวจเอง
+- **runbook go-live (ผู้ดูแลฐานข้อมูล):** ปรับ `app_settings.allow_unlinked_renew_until` = วัน go-live จริง + 3 เดือน (M28 · ค่าเริ่มต้น 2027-04-01) · ตรวจ `go_live_month` · เช็กด่าน AS001 บน cloud ด้วยมือ (pgTAP ทดสอบไม่ได้)
 - **migration ถึงก่อนโค้ด:** ส่ง migration ขึ้น cloud ให้สำเร็จก่อน git push เสมอ (Vercel deploy ทันทีหลัง push · โค้ดใหม่ที่ต้องใช้ schema ใหม่จะพังถ้าฐานข้อมูลยังไม่อัปเดต)
 
 ## Debugging
