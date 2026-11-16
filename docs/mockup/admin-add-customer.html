@@ -91,20 +91,21 @@ h1{font-size:20px;font-weight:600;margin:0 0 3px}
 .navtoggle:hover .nt-ic{transform:scale(1.08)}
 .navtoggle:active{transform:scale(.97)}
 /* ปุ่ม "เพิ่มแถว" แบบสไลด์ (ดีไซน์ใหม่ — เฉพาะหน้านี้) · สีเขียวใช้ --ok · ไอคอนสไลด์เต็มปุ่มตอนชี้ */
-.addbtn{flex:none;position:relative;height:36px;cursor:pointer;display:inline-flex;align-items:center;overflow:hidden;font-family:inherit;font-size:13px;
+.addbtn{flex:none;position:relative;height:38px;box-sizing:border-box;cursor:pointer;display:inline-flex;align-items:center;overflow:hidden;font-family:inherit;font-size:13px;
   border:1px solid var(--ok);border-radius:8px;background:var(--ok);color:var(--accent-fg);padding:0}
 .addbtn,.addbtn__ic,.addbtn__tx{transition:all .3s}
-.addbtn__tx{padding:0 49px 0 16px;font-weight:600;white-space:nowrap}
-.addbtn__ic{position:absolute;top:0;right:0;height:100%;width:37px;display:flex;align-items:center;justify-content:center;
+.addbtn__tx{padding:0 51px 0 16px;font-weight:600;white-space:nowrap}
+.addbtn__ic{position:absolute;top:0;right:0;height:100%;width:39px;display:flex;align-items:center;justify-content:center;
   background:color-mix(in srgb,var(--ok) 82%,var(--fg))}
 .addbtn:hover .addbtn__tx{color:transparent}
 .addbtn:hover .addbtn__ic{width:100%}
 .addbtn:active .addbtn__ic{background:color-mix(in srgb,var(--ok) 70%,var(--fg))}
+.foot .addbtn,.foot .savebtn{align-self:center;margin:0}
 .addbtn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 /* ปุ่ม "บันทึกเข้าทะเบียน" แบบแถบสีกวาด (ดีไซน์ใหม่ — เฉพาะหน้านี้) · ใช้สี accent ของระบบ ไม่ใช้ gradient ม่วง/ดำเดิม */
-.savebtn{flex:none;position:relative;overflow:hidden;cursor:pointer;font-family:inherit;font-weight:500;font-size:13px;letter-spacing:.03em;
+.savebtn{flex:none;position:relative;overflow:hidden;height:38px;box-sizing:border-box;cursor:pointer;font-family:inherit;font-weight:500;font-size:13px;letter-spacing:.03em;
   border:none;border-radius:10px;background:var(--accent);color:var(--accent-fg);padding:0;transition:transform .15s}
-.savebtn span{position:relative;z-index:1;display:inline-flex;align-items:center;gap:7px;padding:9px 16px 9px 13px}
+.savebtn span{position:relative;z-index:1;display:inline-flex;align-items:center;gap:7px;height:100%;padding:0 16px 0 13px}
 .savebtn svg{width:16px;height:16px;flex:none}
 .savebtn::before{content:"";position:absolute;top:0;left:-10%;width:120%;height:100%;z-index:0;background:var(--accent-strong);
   transform:skew(30deg);transition:transform .4s cubic-bezier(.3,1,.8,1)}
