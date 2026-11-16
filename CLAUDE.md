@@ -24,7 +24,7 @@
 2. **role `viewer` ห้ามอ่านตาราง `customers`, `contracts`, `stations`, `visits`, `station_checks`** (PDPA) ให้อ่านได้เฉพาะ `monthly_branch_snapshots` / view สรุป
 3. **ห้าม hardcode เกณฑ์ Tier** — อ่านจาก `tier_rules` เสมอ
 4. **รูปแบบ `dashboard_data.json` ห้ามเปลี่ยน** (key เดือน `MMM.YY`, 16 ฟิลด์ต่อแถว, ครบ 43 สาขาทุกเดือน, ชื่อสาขาสะกดตรงกับ Dashboard)
-5. **เดือนบริการ = เดือนเริ่ม + (ปี × 12) เดือน** ไม่คำนวณจากวันสิ้นสุด (SPEC §7.2)
+5. **เดือนบริการ = เดือนเริ่ม + จำนวนเดือนของสัญญา (`term_months`: 12 = 1 ปี · 36 = 3 ปี · อื่น 1–35 = Custom)** ไม่คำนวณจากวันสิ้นสุด (SPEC §7.2 · DECISIONS 2.53 · M30) · มูลค่าจัด Tier: ≥ 12 เดือน = มูลค่า ÷ (เดือน/12) · < 12 เดือน = มูลค่าจริง · Custom นับกลุ่มสี/Dashboard "1 ปี"
 6. **F1–F10 นับต่อสถานี** ไม่ใช่ต่อลูกค้า และคำนวณอัตโนมัติ ไม่ให้ผู้ใช้กรอก (SPEC §7.5)
 7. เดือนที่ปิดแล้ว (`month_closures`) **ไม่ล็อกข้อมูล** (เจ้าของตัดสิน 6 พ.ย. 2026, SPEC v1.2 §7.7) — เฉพาะ `host`/`recorder` แก้ผลบริการย้อนหลังได้ role อื่นแก้ไม่ได้ (RLS) · **ทุกการแก้ต้องลง `audit_log` ด้วย trigger** · snapshot ที่ส่ง Dashboard คงค่าเดิมจนกว่าสั่ง "คำนวณ snapshot ใหม่" · ห้ามให้ Auto Sync คำนวณเดือนที่ปิดแล้วใหม่เอง (รอเจ้าของยืนยัน SPEC §14 ข้อ 9)
 8. ห้าม commit secret (Supabase service key, GitHub token) — ใช้ env ของ Vercel เท่านั้น
@@ -32,10 +32,10 @@
 
 ## ตรรกะหลักที่ต้องมี unit test
 อยู่ใน `lib/rules/` เป็น pure function แยกจาก UI/DB เพื่อทดสอบได้ง่าย
-- `annualValue(valueTotal, termYears)`
+- `annualValue(valueTotal, termMonths)` (M30 · เดิมรับปี)
 - `tierOf(annualValue, rules)` → `S | M | L | XL`
-- `serviceMonths(startDate, termYears)` → รายการ `YYYY-MM`
-- `defaultEndDate(startDate, termYears)` = วันเริ่ม + N ปี − 1 วัน
+- `serviceMonths(startDate, termMonths)` → รายการ `YYYY-MM` (M30)
+- `defaultEndDate(startDate, termMonths)` = วันเริ่ม + N เดือน − 1 วัน · วันเริ่มปลายเดือนที่เดือนปลายทางสั้นกว่า → วันสุดท้ายของเดือน (31 ม.ค. + 1 เดือน → 28 ก.พ.)
 - `isMissedService(contract, month, visits)` (SPEC §7.4)
 - `buildBranchSnapshot(contracts, month, rules)` → แถวรูปแบบ Dashboard
 - `monthKey(date)` → `SEP.26`
@@ -46,6 +46,7 @@
 - 03/04/2026, 1 ปี → Apr 2026 – Mar 2027
 - 01/01/2026, 3 ปี → Jan 2026 – Dec 2028 (36 เดือน)
 - สถานี A ติด ม.ค., สถานี B ติด มี.ค. → ตรวจเดือน พ.ค. ได้ F ของแต่ละสถานีแยกกัน
+- (M30) 15/01/2026, 5 เดือน → Jan–May 2026 · จบ 14/06/2026 · 50,000 / 5 เดือน → L1 (มูลค่าจริง ไม่ขยายต่อปี) · 12 เดือน ≡ 1 ปี · 36 เดือน ≡ 3 ปี
 
 ## ข้อมูลอ้างอิง (fixtures)
 - `fixtures/dashboard_data.json` — ข้อมูล Dashboard เดิม JAN.25–SEP.26 ใช้นำเข้า legacy และเทียบรูปแบบ
