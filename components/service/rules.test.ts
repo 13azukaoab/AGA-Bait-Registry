@@ -4,7 +4,7 @@ import { baitToSelect, resolveBait, resolvePowder } from "./bait";
 import { describeServiceError } from "./errors";
 import { serviceTeams } from "@/lib/service/months";
 import { searchContracts } from "./search";
-import { buildInitPlan, emptySetup, parseCount } from "./setup";
+import { buildInitPlan, emptySetup, isCollectedIg, parseCount } from "./setup";
 import { baselineIndex, describeNumbers, inUseIndex, nextAgNumber } from "./stationIndex";
 import type { AgPointState, FormState, StationRow, WorkRow, WorkRowDb } from "./types";
 import { validateForm, type ValidationContext } from "./validate";
@@ -47,7 +47,7 @@ describe("bait", () => {
 
 describe("errors", () => {
   it("แปล SV001–SV010 / AG004 / AG007 เป็นไทย ไม่ใช่บั๊กหน้าจอ", () => {
-    for (const code of ["SV001", "SV002", "SV003", "SV004", "SV005", "SV006", "SV007", "SV008", "SV009", "SV010", "AG004", "AG007"]) {
+    for (const code of ["SV001", "SV002", "SV003", "SV004", "SV005", "SV006", "SV007", "SV008", "SV009", "SV010", "SV011", "CL001", "CL002", "CL003", "CL004", "CL005", "AG004", "AG007"]) {
       const r = describeServiceError({ code, message: "raw" });
       expect(r.isBug).toBe(false);
       expect(r.message).toMatch(/[ก-๙]/);
@@ -149,6 +149,33 @@ describe("setup", () => {
     expect(plan.icNos).toEqual([2]);
     expect(plan.index.IG.has(2)).toBe(false);
     expect(plan.index.AG.has(1)).toBe(true);
+  });
+  it("Renew (2.50): IG เก็บแล้วไม่ย้าย · IG ไม่เก็บย้ายตามปกติ · ค่าเริ่มต้นเลือกเฉพาะที่ไม่เก็บ", () => {
+    const collected = { ...st("c1", "IG", 1), collectedAt: "2026-11-01T00:00:00+07:00" };
+    const skipped = st("s2", "IG", 2); // ไม่เก็บ = collectedAt ว่าง
+    const plan = buildInitPlan({ ...emptySetup(), extraIg: "1" }, true, [collected, skipped, st("d", "IC", 1)]);
+    expect(plan.transferIds.sort()).toEqual(["d", "s2"]);
+    expect(plan.index.IG.has(1)).toBe(false);
+    expect(plan.igNos).toEqual([3]);
+  });
+  it("Renew (2.50): มีแต่ IG เก็บแล้ว ไม่เพิ่มใหม่ = ผิด (ไม่ส่งไป DB ให้ตอบ SV008)", () => {
+    const collected = { ...st("c1", "IG", 1), collectedAt: "2026-11-01T00:00:00+07:00" };
+    const plan = buildInitPlan(emptySetup(), true, [collected]);
+    expect(plan.transferIds).toEqual([]);
+    expect(plan.errors.length).toBe(1);
+  });
+  it("isCollectedIg: เฉพาะ IG ที่มี collectedAt", () => {
+    expect(isCollectedIg({ ...st("a", "IG", 1), collectedAt: "2026-11-01T00:00:00+07:00" })).toBe(true);
+    expect(isCollectedIg({ ...st("a", "IG", 1), collectedAt: null })).toBe(false);
+    expect(isCollectedIg({ ...st("a", "IC", 1), collectedAt: "2026-11-01T00:00:00+07:00" })).toBe(false);
+  });
+  it("map SV008 / SV011 / CL001–CL005 เป็นข้อความไทย ไม่ใช่บั๊ก", () => {
+    for (const code of ["SV008", "SV011", "CL001", "CL002", "CL003", "CL004", "CL005"]) {
+      const r = describeServiceError({ code });
+      expect(r.isBug).toBe(false);
+      expect(r.message).toMatch(/[ก-๙]/);
+    }
+    expect(describeServiceError({ code: "SV008" }).message).toContain("เก็บแล้ว");
   });
   it("Renew: ไม่ย้ายและไม่เพิ่มเลย = ผิด", () => {
     const plan = buildInitPlan({ ...emptySetup(), excludedOldIds: ["a"] }, true, [st("a", "IG", 1)]);

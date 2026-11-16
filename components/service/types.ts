@@ -79,6 +79,8 @@ export interface StationRow {
   installBaitG: number | null;
   /** วันติดตั้งของสถานี 'YYYY-MM-DD' (null = ไม่มีข้อมูล เช่น สถานีที่นำเข้า) */
   installedAt: string | null;
+  /** วันเวลาที่ "เก็บ" สถานี IG แล้ว (ISO) · null/ไม่มี = ยังไม่เก็บ หรือ "ไม่เก็บ" (DECISIONS 2.50) — อ่านอย่างเดียว เขียนผ่าน RPC เท่านั้น */
+  collectedAt?: string | null;
 }
 
 export interface CheckRow {
