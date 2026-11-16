@@ -100,6 +100,8 @@ export interface SavedContract {
   renewedFrom: { contractId: string; contractNo: string | null } | null;
   /** M28: เหตุผลของ Renew ที่ไม่ผูกสัญญาเก่า (null = ไม่ใช่กรณีนั้น หรือแถวเก่าที่ไม่มีเหตุผล) */
   renewUnlinkedReason: string | null;
+  /** M28b: เวลาที่ host/admin ปิดรายการ "ไม่มีสัญญาเก่าในระบบ" (null/ไม่มี = ยังไม่ปิด) */
+  unlinkedClosedAt?: string | null;
   mailReceivedDate: string;
   /** วันที่นัดบริการครั้งแรก — ว่าง = "รอนัดบริการ" */
   firstServiceDate: string;
