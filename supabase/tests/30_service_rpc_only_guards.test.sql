@@ -93,8 +93,8 @@ SELECT throws_ok($$UPDATE stations SET status = 'active' WHERE id = '00000000-00
   '42501', NULL, 'recorder cannot change an eliminated station directly');
 SELECT lives_ok($$UPDATE stations SET point_label = 'kitchen' WHERE id = '00000000-0000-0000-0000-0000000000e1'$$,
   'recorder can still change the point label of a removed box');
-SELECT lives_ok($$UPDATE stations SET collected_at = now() WHERE id = '00000000-0000-0000-0000-0000000000e1'$$,
-  'recorder can still set collected_at of a removed box');
+SELECT throws_ok($$UPDATE stations SET collected_at = now() WHERE id = '00000000-0000-0000-0000-0000000000e1'$$,
+  '42501', NULL, 'recorder cannot set collected_at directly any more (M19b: collection goes through collect_ig_stations)');
 SELECT lives_ok($$UPDATE stations SET status = 'pending_removal' WHERE id = '00000000-0000-0000-0000-0000000000e2'$$,
   'recorder can still change a box that is in use (active → pending_removal)');
 SELECT lives_ok($$UPDATE stations SET status = 'active' WHERE id = '00000000-0000-0000-0000-0000000000e2'$$,
