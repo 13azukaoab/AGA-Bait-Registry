@@ -149,6 +149,7 @@
 
 ## บันทึกประจำวัน (Changelog)
 
+> - ✅ **16 พ.ย.: FE หน้าเปิดงานตามกฎ Renew 2 เดือน + เหตุผล Renew ไม่ผูก (M28) รวม main** (`8fbc921` · vitest 669 · build ผ่าน · ยังไม่ push) · mockup "Renew ที่ไม่ผูกสัญญาเก่า" อยู่ใน `admin-add-customer.html` (71af1f2) **รอเจ้าของดู/final** · Sentry: HQ เปิดหน้า Vercel env + Sentry DSN ให้ · รอเจ้าของล็อกอิน Vercel
 > - ✅ **16 พ.ย.: ส่ง cloud + push ชุด M25 · M28 · M21b · M31 · M32 · FE (Renew IG · เมนูเดือน)** — dry run → push 2 migration · **cloud 52/52** · ตรวจ: app_settings (go_live 2026-10-01 · workload 30 · unlinked renew ถึง 2027-04-01) · RLS เปิด · anon อ่านไม่ได้ · authenticated แก้ตรงไม่ได้ · guard มี AS001 · advisors รายการเดิม + RPC ใหม่ (ตั้งใจ) · push `fc3799c` · Vercel success · **/api/health = ok (DB ok)** · /login 200 · เจ้าของต้อง: ตั้ง env Sentry ใน Vercel + Redeploy · GitHub Actions uptime: ตั้งรับอีเมล + กด Run workflow จากบัญชีตัวเอง
 > - ✅ **16 พ.ย.: M32 ติดตั้ง Sentry รวม main** (ตัดข้อมูลลูกค้า · ส่งเฉพาะ production · vitest 647 · build ผ่าน) · รอเจ้าของใส่ env ใน Vercel · **นครปฐม OCT.26 เจ้าของแก้ไฟล์แล้ว = 31 ราย / 1,972,860.07** (= SPEC 30 / 1,737,860 + สัญญาใหม่ ต.ค. 235,000 · ตัวเลข 2,140,000 เดิมพิมพ์ผิด)
 > - ✅ **16 พ.ย.: M28 กฎ Renew/New 2 เดือน + Renew ไม่ผูกสัญญาเก่า (ช่วงแรก) รวม main** — ศูนย์กลางรัน: db test 1933/1933 · tsc 0 · eslint 0 error · vitest 624 · build ผ่าน · ยังไม่ส่ง cloud (ชุดรอส่ง: M25 + M28 + FE Renew IG/เมนูเดือน) · ถัดไป BE: M26/33 → M30 · FE: หน้าเปิดงาน + mockup หน้าใหม่ Host ตรวจ Renew ไม่ผูก
