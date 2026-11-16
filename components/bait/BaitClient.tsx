@@ -20,6 +20,7 @@ import { ContractList, type ListView } from "@/components/service/ContractList";
 import { loadContractCounts, loadContractDetail, loadVisit, type ServiceMaster } from "@/components/service/data";
 import { defaultVisitDate, formFromVisit, newId } from "@/components/service/formState";
 import { monthLabel, todayBangkok } from "@/lib/service/months";
+import { assignableTeamIds, isTeamAssignableToVisit } from "@/lib/service/teamKind";
 import type { ContractDetail, ContractListItem, FormState, LoadedVisit } from "@/components/service/types";
 import { Alert, Toast } from "@/components/ui";
 import { createClient } from "@/lib/supabase/client";
@@ -88,19 +89,21 @@ export function BaitClient({
         return false;
       }
       if (logRes.error) setLoadError(`โหลดรายการที่บันทึกแล้วไม่ได้: ${logRes.error}`);
-      const detail = detailRes.detail;
+      // ทีมที่ปิด/ไม่ใช่บริการ-ติดตั้ง เติมให้การเข้าใหม่ไม่ได้ (TM004) — กรองออกก่อนเป็นค่าตั้งต้น
+      const keep = (ids: readonly string[]) => assignableTeamIds(ids, master.teams, isTeamAssignableToVisit);
+      const detail = { ...detailRes.detail, lastTeamIds: keep(detailRes.detail.lastTeamIds) };
       const date = opts.dateEmpty ? "" : defaultVisitDate(month, todayBangkok());
       setOpen({
         itemId: item.contractId,
         detail,
         log: logRes.items,
         loadedVisit: null,
-        form: newBaitForm(detail, newId(), date, opts.teamIds ?? detail.lastTeamIds),
+        form: newBaitForm(detail, newId(), date, opts.teamIds ? keep(opts.teamIds) : detail.lastTeamIds),
         focusDate: Boolean(opts.dateEmpty),
       });
       return true;
     },
-    [supabase, month],
+    [supabase, month, master.teams],
   );
 
   const select = useCallback(

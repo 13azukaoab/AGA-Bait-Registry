@@ -33,6 +33,8 @@ export interface TeamOption {
   id: string;
   code: string;
   kind: TeamKind;
+  /** ทีมเปิดใช้งานอยู่ไหม (teams.is_active — M33) · ปิดแล้วเลือกให้การเข้าใหม่ไม่ได้ (TM004) · การเข้าเก่าที่มีทีมนี้ยังแสดงชื่อ */
+  isActive: boolean;
 }
 export interface ZoneOption {
   id: string;

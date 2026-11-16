@@ -7,6 +7,10 @@
  *   * ห้ามเดาประเภทจากรหัสทีม (เดิมเขียน A–O = บริการ, Z = ติดตั้ง ตายตัว) — ทีมใหม่เช่น P ใช้งานได้ทันทีตาม kind
  *   * หน้ากรอกบริการ (/service) เลือกได้เฉพาะ `service` + `install` (ตรงด่าน SV006 ใน `save_service_visit`)
  *   * ลำดับแสดง: บริการ → ติดตั้ง → หัวหน้างาน แล้วเรียงตามรหัสทีม
+ *   * M26/M33 — ทีมที่ "เลือกเพิ่มให้งานใหม่ได้" ต้องเปิดใช้งาน (`teams.is_active`) และไม่ใช่หัวหน้างาน (สัญญา) /
+ *     เป็นบริการหรือติดตั้ง (การเข้าบริการ) · DB ปฏิเสธด้วย TM004 (ทีมปิด) / TM005 (หัวหน้างาน) เฉพาะทีมที่ "เพิ่มใหม่"
+ *     งานเก่าที่มีทีมปิด/Sup อยู่แล้วต้องยังแสดงชื่อ และส่งชุดเดิมกลับได้ → `teamsForPicker` คงทีมเดิมไว้ในรายการ
+ *     (ติ๊กออกได้ แต่ติ๊กกลับเข้าไม่ได้) · ค่าตั้งต้นของงานใหม่ (เช่น ทีมครั้งก่อน) กรองด้วย `assignableTeamIds`
  */
 
 export type TeamKind = "service" | "install" | "supervisor";
@@ -53,4 +57,53 @@ export function describeTeamsByKind(teams: readonly { code: string; kind: TeamKi
   })
     .filter((s): s is string => s !== null)
     .join(" · ");
+}
+
+
+/** ข้อมูลทีมที่ใช้ตัดสินว่าเลือกให้งานใหม่ได้ไหม (`is_active` + `kind`) */
+export interface TeamAvailability {
+  kind: TeamKind;
+  isActive: boolean;
+}
+
+/** ทีมที่ผูกกับ "สัญญา" ใหม่ได้ = เปิดใช้งาน และไม่ใช่หัวหน้างาน (ตรง TM004/TM005 ของ `save_job_opening`) */
+export function isTeamAssignableToContract(team: TeamAvailability): boolean {
+  return team.isActive && team.kind !== "supervisor";
+}
+
+/** ทีมที่ผูกกับ "การเข้าบริการ" ใหม่ได้ = เปิดใช้งาน และเป็นบริการ/ติดตั้ง (ตรง TM004 + SV006 ของ `save_service_visit`) */
+export function isTeamAssignableToVisit(team: TeamAvailability): boolean {
+  return team.isActive && canRecordService(team.kind);
+}
+
+/**
+ * รายการทีมที่โชว์ในตัวเลือก = ทีมที่เลือกเพิ่มได้ + ทีมที่ถูกเลือกอยู่แล้ว (ทีมเดิมของงานเก่าที่ปิด/Sup)
+ * — ทีมเดิมต้องไม่หายไปเงียบๆ · ผู้ใช้ติ๊กออกได้ แต่พอติ๊กออกแล้วจะไม่ขึ้นให้ติ๊กกลับ (เพิ่มทีมแบบนี้ใหม่ไม่ได้)
+ */
+export function teamsForPicker<T extends TeamAvailability & { id: string }>(
+  teams: readonly T[],
+  value: readonly string[],
+  isAssignable: (team: TeamAvailability) => boolean,
+): T[] {
+  return teams.filter((t) => isAssignable(t) || value.includes(t.id));
+}
+
+/** คำอธิบายสั้นๆ ของทีมที่เลือกเพิ่มไม่ได้ (ใช้ติดท้ายรหัสทีมในตัวเลือก) · เลือกได้ปกติ = null */
+export function teamUnavailableNote(team: TeamAvailability): string | null {
+  if (!team.isActive) return "ปิดใช้งาน";
+  if (team.kind === "supervisor") return "หัวหน้างาน";
+  return null;
+}
+
+/**
+ * กรอง id ทีมให้เหลือเฉพาะที่เลือกให้งาน "ใหม่" ได้ — ใช้กับค่าตั้งต้นที่หยิบจากงานเก่า (เช่น ทีมของการเข้าครั้งก่อน)
+ * กันส่งทีมปิด/Sup เข้าไปเป็นทีมที่ "เพิ่มใหม่" แล้วโดน TM004/TM005 โดยผู้ใช้ไม่ได้ทำผิด · id ที่ไม่รู้จักถูกตัดทิ้ง
+ */
+export function assignableTeamIds<T extends TeamAvailability & { id: string }>(
+  ids: readonly string[],
+  teams: readonly T[],
+  isAssignable: (team: TeamAvailability) => boolean,
+): string[] {
+  const ok = new Set(teams.filter(isAssignable).map((t) => t.id));
+  return ids.filter((id) => ok.has(id));
 }

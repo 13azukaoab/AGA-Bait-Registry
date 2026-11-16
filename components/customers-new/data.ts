@@ -87,8 +87,8 @@ export async function loadMasterData(
       .select("id, name, zone_id, division, is_active")
       .eq("is_active", true)
       .order("name"),
-    // ทีมส่วนกลาง (branch_id ว่าง) — เฟส 1 ใช้ชุดนี้ชุดเดียว
-    supabase.from("teams").select("id, code, kind, branch_id").is("branch_id", null).order("code"),
+    // ทีมส่วนกลาง (branch_id ว่าง) — เฟส 1 ใช้ชุดนี้ชุดเดียว · อ่านทีมที่ปิด/Sup ด้วย (งานเก่ายังต้องโชว์ชื่อ) — ตัวเลือกของงานใหม่กรองที่ TeamPicker
+    supabase.from("teams").select("id, code, kind, is_active, branch_id").is("branch_id", null).order("code"),
     supabase
       .from("customer_types")
       .select("code, label, group_label, sort_order")
@@ -122,10 +122,11 @@ export async function loadMasterData(
       zones: zoneRows.map((z) => ({ id: z.id, name: z.name })),
       branches: branchOptions,
       teams: sortTeams(
-        ((teams.data ?? []) as { id: string; code: string; kind: TeamKind }[]).map((t) => ({
+        ((teams.data ?? []) as { id: string; code: string; kind: TeamKind; is_active: boolean }[]).map((t) => ({
           id: t.id,
           code: t.code,
           kind: t.kind,
+          isActive: t.is_active,
         })),
       ),
       customerTypes: (

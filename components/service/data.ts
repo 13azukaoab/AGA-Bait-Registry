@@ -60,7 +60,7 @@ export async function loadServiceMaster(
   const [zones, branches, teams, tiers] = await Promise.all([
     supabase.from("zones").select("id, name, sort_order").order("sort_order"),
     supabase.from("branches").select("id, name, zone_id, is_active").eq("is_active", true).order("name"),
-    supabase.from("teams").select("id, code, kind, branch_id").is("branch_id", null).order("code"),
+    supabase.from("teams").select("id, code, kind, is_active, branch_id").is("branch_id", null).order("code"),
     supabase.from("tier_rules").select(TIER_RULE_COLUMNS).order("effective_month").order("min_annual"),
   ]);
   const failed = [zones, branches, teams, tiers].find((r) => r.error);
@@ -74,12 +74,14 @@ export async function loadServiceMaster(
         name: b.name,
         zoneId: b.zone_id,
       })),
-      // เฉพาะทีมประเภท service / install (อ่านจาก teams.kind — M22) · ทีมใหม่ที่ไม่ใช่รหัส A–O/Z ก็ขึ้นตามประเภท
+      // เฉพาะทีมประเภท service / install (อ่านจาก teams.kind — M22) · รวมทีมที่ปิดใช้งานด้วย (การเข้าเก่ายังโชว์ชื่อ)
+      // ตัวเลือกของการเข้าใหม่ซ่อนทีมปิดที่ TeamSelect (isTeamAssignableToVisit)
       teams: serviceTeams(
-        ((teams.data ?? []) as { id: string; code: string; kind: TeamKind }[]).map((t) => ({
+        ((teams.data ?? []) as { id: string; code: string; kind: TeamKind; is_active: boolean }[]).map((t) => ({
           id: t.id,
           code: t.code,
           kind: t.kind,
+          isActive: t.is_active,
         })),
       ),
       tierRules: toTierRules((tiers.data ?? []) as TierRuleRow[]),
