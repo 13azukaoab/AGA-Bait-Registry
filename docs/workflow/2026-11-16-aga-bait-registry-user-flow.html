@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<title>AGA Bait Registry — User flow</title>
+<!--
+  User flow แยกตามตำแหน่ง (คู่กับ 2026-11-11-aga-bait-registry-workflow.png)
+  ที่มา: SPEC v1.9 §5 บทบาท · §5.1 ชื่อตำแหน่ง · §7.7 ปิดเดือน · §7.8 เก็บสถานี · §8 หน้าจอ · DECISIONS 2.51/2.53
+  สร้างไฟล์ภาพใหม่: เปิดไฟล์นี้ด้วย Edge/Chrome headless (ดูคำสั่งใน docs/workflow/README.md)
+-->
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --brand:#26837c; --brand-strong:#11695f; --brand-soft:#e6f2f0;
+    --fg:#1c2733; --muted:#55657a; --line:#c9d3dd; --lane:#f4f6f8; --card:#ffffff;
+    --warn:#a86c07; --warn-soft:#fbf0db; --sys-soft:#e6f2f0;
+  }
+  @page{size:1450px 1025px;margin:0}
+  *{box-sizing:border-box}
+  body{margin:0;background:#fff;color:var(--fg);font-family:'Noto Sans Thai',sans-serif;width:1450px}
+  .page{padding:44px 50px 40px}
+  header{display:flex;justify-content:space-between;align-items:flex-start;gap:24px;margin-bottom:22px}
+  h1{margin:0;font-size:38px;line-height:1.15;color:var(--brand);font-weight:700}
+  .sub{margin:8px 0 0;font-size:15.5px;color:var(--muted);max-width:900px;line-height:1.55}
+  .legend{border:1px solid var(--line);border-radius:12px;padding:12px 16px;font-size:13px;line-height:1.7;min-width:330px}
+  .legend b{display:block;font-size:14px;margin-bottom:2px}
+  .lg{display:flex;align-items:center;gap:8px}
+  .sw{display:inline-block;width:14px;height:14px;border-radius:4px;border:1px solid var(--line)}
+
+  .entry{display:flex;align-items:center;gap:10px;margin:0 0 14px;padding:14px 18px;border-radius:12px;background:var(--brand-soft);border:1px solid #bcdcd7}
+  .entry .tag{font-size:13px;font-weight:600;color:var(--brand-strong);min-width:150px}
+
+  .lane{display:grid;grid-template-columns:190px minmax(0,1fr);gap:16px;background:var(--lane);border-radius:10px;padding:14px 18px;margin-bottom:10px}
+  .who b{display:block;font-size:17px}
+  .who span{display:block;font-size:12.5px;color:var(--muted);line-height:1.55}
+  .flow{display:flex;align-items:stretch;gap:8px;flex-wrap:nowrap}
+  .step{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:9px 11px;font-size:12.5px;line-height:1.5;flex:1 1 0;min-width:0}
+  .step h3{margin:0 0 2px;font-size:13.5px;font-weight:600}
+  .step p{margin:0;color:var(--muted)}
+  .step.sys{background:var(--sys-soft);border-color:#9fcdc6}
+  .step.out{background:var(--brand);border-color:var(--brand);color:#fff}
+  .step.out p{color:#e3f3f0}
+  .step.opt{border-style:dashed}
+  .ar{align-self:center;color:#7a8a9c;font-size:18px;flex:none}
+  .note{font-size:11.5px;color:var(--warn);background:var(--warn-soft);border-radius:6px;padding:1px 6px;display:inline-block;margin-top:4px}
+
+  .cycle{margin-top:18px}
+  .cycle h2{margin:0 0 10px;font-size:22px}
+  .tl{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+  .tl div{border:1px solid var(--line);border-radius:10px;padding:10px 13px;font-size:12.5px;line-height:1.55}
+  .tl b{display:block;font-size:14px;color:var(--brand-strong)}
+  footer{margin-top:14px;font-size:11.5px;color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="page">
+  <header>
+    <div>
+      <h1>AGA Bait Registry — User flow แยกตามตำแหน่ง</h1>
+      <p class="sub">แต่ละตำแหน่งเข้าระบบแล้วทำอะไร ไปหน้าไหนต่อ — ทุกคนเริ่มที่หน้า "ต้องทำ" · สิทธิ์บังคับที่ฐานข้อมูล (RLS) ไม่ใช่แค่ซ่อนปุ่ม · ทีมบริการหน้างานไม่มีบัญชีในเฟส 1 (ส่งสรุปงานให้หัวหน้างานกรอก)</p>
+    </div>
+    <div class="legend">
+      <b>สัญลักษณ์</b>
+      <div class="lg"><span class="sw" style="background:#fff"></span> หน้าจอที่ผู้ใช้ทำงาน</div>
+      <div class="lg"><span class="sw" style="background:var(--sys-soft);border-color:#9fcdc6"></span> ระบบทำให้อัตโนมัติ</div>
+      <div class="lg"><span class="sw" style="background:#fff;border-style:dashed"></span> ทำเมื่อมีงาน (ไม่ใช่ทุกครั้ง)</div>
+      <div class="lg"><span class="sw" style="background:var(--brand);border-color:var(--brand)"></span> ผลลัพธ์ปลายทาง</div>
+    </div>
+  </header>
+
+  <div class="entry">
+    <span class="tag">เข้าระบบ (ทุกตำแหน่ง)</span>
+    <div class="flow" style="flex:1">
+      <div class="step"><h3>1. เข้าสู่ระบบ</h3><p>รหัสพนักงาน AG-xxxxx + รหัสผ่านที่ PM/OM สร้างให้</p></div>
+      <span class="ar">→</span>
+      <div class="step opt"><h3>2. เปลี่ยนรหัสผ่าน</h3><p>บังคับครั้งแรก / หลังถูกรีเซ็ต</p></div>
+      <span class="ar">→</span>
+      <div class="step opt"><h3>3. สอนใช้งานครั้งแรก</h3><p>พาทำตามตำแหน่ง · ข้ามได้ทุกขั้น</p></div>
+      <span class="ar">→</span>
+      <div class="step sys"><h3>4. หน้า "ต้องทำ"</h3><p>งานค้างเดือนนี้ · สัญญาใกล้หมด 90 วัน · กล่องรอถอด</p></div>
+    </div>
+  </div>
+
+  <div class="lane">
+    <div class="who"><b>หัวหน้างาน</b><span>Supervisor<br>กรอกผลบริการ · ปิดเดือนส่วนกลาง</span></div>
+    <div class="flow">
+      <div class="step"><h3>รับสรุปงาน</h3><p>จากทีมบริการหน้างาน (นอกระบบ)</p></div>
+      <span class="ar">→</span>
+      <div class="step"><h3>ลงข้อมูลบริการประจำเดือน</h3><p>เลือกเขต/สาขา/เดือน → เลือกลูกค้า → ทีม · วัน · เวลาเข้า-ออก</p></div>
+      <span class="ar">→</span>
+      <div class="step"><h3>กรอกผล</h3><p>"IG / IC ปกติทั้งหมด" หรือกรอกเฉพาะที่ผิดปกติ: พบปลวก · เปลี่ยนไม้ · งานซ่อม/ฝังเพิ่ม · กล่อง AG</p></div>
+      <span class="ar">→</span>
+      <div class="step"><h3>บันทึก + รายถัดไป</h3><p>วนจนครบทุกราย · แถบความคืบหน้า</p></div>
+      <span class="ar">→</span>
+      <div class="step opt"><h3>กล่อง AG นอกรอบ / รอเก็บสถานี</h3><p>งานกล่องที่ไม่ได้เข้าพร้อมรอบ · เก็บ IG คืนเมื่อหมดสัญญา</p></div>
+      <span class="ar">→</span>
+      <div class="step"><h3>ปิดเดือนส่วนกลาง</h3><p>ตรวจความครบ → ทบทวนตกบริการ → พิมพ์ key เดือน (เช่น OCT.26)</p></div>
+    </div>
+  </div>
+
+  <div class="lane">
+    <div class="who"><b>แอดมิน (Admin)</b><span>เปิดงาน · ดูแลข้อมูลลูกค้า/สัญญา</span></div>
+    <div class="flow">
+      <div class="step"><h3>เปิดงาน</h3><p>ตารางแบบ Excel · เพิ่มแถวต่อ 1 สัญญา</p></div>
+      <span class="ar">→</span>
+      <div class="step"><h3>เลือก New / Renew</h3><p>ต่อสัญญาภายใน 2 เดือน = Renew · เกิน = New นับหนึ่งใหม่</p></div>
+      <span class="ar">→</span>
+      <div class="step sys"><h3>ระบบคำนวณให้</h3><p>Tier (มูลค่าต่อปี) · วันสิ้นสุด · เดือนบริการ · 1 ปี / 3 ปี / Custom</p></div>
+      <span class="ar">→</span>
+      <div class="step"><h3>แนบไฟล์ + บันทึกเข้าทะเบียน</h3><p>สัญญา PDF + Site plan · แถวแดง = ขาดข้อมูลจำเป็น</p></div>
+      <span class="ar">→</span>
+      <div class="step opt"><h3>รายละเอียดลูกค้า</h3><p>แก้ผู้ติดต่อ/เบอร์โทร · ดูประวัติ · ลบได้เฉพาะรายการที่ยังไม่มีผลบริการ</p></div>
+    </div>
+  </div>
+
+  <div class="lane">
+    <div class="who"><b>Project Manager / OM</b><span>สิทธิ์สูงสุด (เท่ากัน)<br>ทำได้ทุกอย่างของ 2 ตำแหน่งบน</span></div>
+    <div class="flow">
+      <div class="step opt"><h3>จัดการผู้ใช้</h3><p>สร้าง/ปิดบัญชี · ตั้งตำแหน่ง · รีเซ็ตรหัสผ่าน</p></div>
+      <span class="ar">→</span>
+      <div class="step opt"><h3>ตั้งค่า</h3><p>เกณฑ์ Tier (มีผลตามเดือน) · ประเภทลูกค้า · ทีม เปิด/ปิด</p></div>
+      <span class="ar">→</span>
+      <div class="step"><h3>อัพเดท port ต่างจังหวัด</h3><p>19 สาขา · 8 Tier × จำนวน/มูลค่า · วางจาก Excel ได้</p></div>
+      <span class="ar">→</span>
+      <div class="step"><h3>ปิดเดือนต่างจังหวัด</h3><p>ตรวจครบ N/19 → ยืนยันปิด</p></div>
+      <span class="ar">→</span>
+      <div class="step opt"><h3>ตรวจสอบ</h3><p>ประวัติการแก้ไข · สถานะส่ง Dashboard · คำนวณ snapshot ใหม่</p></div>
+    </div>
+  </div>
+
+  <div class="lane">
+    <div class="who"><b>ผู้บริหาร / ผู้ชม</b><span>ไม่มีบัญชี · ไม่ต้องล็อกอิน</span></div>
+    <div class="flow">
+      <div class="step"><h3>เปิดลิงก์หน้าสรุป</h3><p>ตัวเลขรายสาขา/เขต · ไม่มีข้อมูลรายลูกค้า (PDPA)</p></div>
+      <span class="ar">→</span>
+      <div class="step sys"><h3>ส่งข้อมูลอัตโนมัติ</h3><p>หลังปิดเดือน + ทุกวัน 06:00 น. · ครบ 43 สาขา</p></div>
+      <span class="ar">→</span>
+      <div class="step out"><h3>AGA Bait Dashboard</h3><p>มูลค่าและ Tier ล่าสุด โดยไม่ต้องคีย์ซ้ำ</p></div>
+    </div>
+  </div>
+
+  <section class="cycle">
+    <h2>รอบการทำงาน 1 เดือน</h2>
+    <div class="tl">
+      <div><b>ต้นเดือน</b>แอดมินเปิดงานลูกค้าใหม่/ต่อสัญญา · หน้า "ต้องทำ" แสดงรายที่ต้องเข้าบริการเดือนนี้</div>
+      <div><b>ระหว่างเดือน</b>หัวหน้างานลงผลบริการตามสรุปงานจากทีม · งานกล่อง AG นอกรอบ · เก็บสถานีสัญญาที่หมด</div>
+      <div><b>สิ้นเดือน</b>หัวหน้างาน/PM/OM ปิดเดือนส่วนกลาง 24 สาขา · PM/OM อัพเดท port + ปิดต่างจังหวัด 19 สาขา</div>
+      <div><b>หลังปิด</b>ระบบส่ง Dashboard ทันที + ส่งซ้ำ 06:00 น. · แก้ย้อนหลังได้ (ลงประวัติ) แล้วกดคำนวณ snapshot ใหม่</div>
+    </div>
+  </section>
+
+  <footer>อ้างอิง SPEC v1.9 (§5, §5.1, §7.7, §7.8, §8) · DECISIONS 2.51, 2.53 · ฉบับ 16 พ.ย. 2026 · คู่กับภาพ Workflow 11 พ.ย. 2026</footer>
+</div>
+</body>
+</html>
