@@ -1442,30 +1442,40 @@ function DraftTableRow({
           {money(d.value1y, 1)}
           {/* M30: ระยะ Custom (1–35 เดือน) — ลิงก์ใต้ช่อง 1 ปี ไม่เพิ่มคอลัมน์ (เจ้าของเลือกแบบ ข · 16 พ.ย. 2026) */}
           {d.customTermMonths !== null ? (
-            <div className="mt-1 flex items-center gap-1 text-xs text-fg-muted">
-              <input
-                type="number"
-                inputMode="numeric"
-                min={1}
-                max={35}
-                step={1}
-                aria-label="ระยะสัญญา Custom (เดือน)"
-                value={d.customTermMonths > 0 ? d.customTermMonths : ""}
-                placeholder="เดือน"
-                onChange={(e) => {
-                  const n = Math.trunc(Number(e.target.value));
-                  onPatch({ customTermMonths: Number.isFinite(n) && n > 0 ? n : 0 });
-                }}
-                className={cx(INPUT, "num w-14 text-right", border(err("value")))}
-              />
-              <span>เดือน (1–35)</span>
-              <button
-                type="button"
-                className="ml-auto text-accent underline"
-                onClick={() => onPatch({ customTermMonths: null })}
-              >
-                กลับเป็น 1 ปี
-              </button>
+            <div className="mt-1 flex flex-col gap-0.5 text-xs text-fg-muted">
+              <div className="flex items-center gap-1.5 whitespace-nowrap">
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  min={1}
+                  max={35}
+                  step={1}
+                  aria-label="ระยะสัญญา Custom (เดือน)"
+                  value={d.customTermMonths > 0 ? d.customTermMonths : ""}
+                  placeholder="เดือน"
+                  onChange={(e) => {
+                    const n = Math.trunc(Number(e.target.value));
+                    onPatch({ customTermMonths: Number.isFinite(n) && n > 0 ? n : 0 });
+                  }}
+                  className={cx(
+                    INPUT,
+                    "num w-[4.5rem]! shrink-0 text-right text-base! md:text-[13px]!",
+                    "[appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none",
+                    border(err("value")),
+                  )}
+                />
+                <span>เดือน</span>
+              </div>
+              <div className="whitespace-nowrap">
+                <span>1–35 เดือน · </span>
+                <button
+                  type="button"
+                  className="text-accent underline"
+                  onClick={() => onPatch({ customTermMonths: null })}
+                >
+                  กลับเป็น 1 ปี
+                </button>
+              </div>
             </div>
           ) : !termLocked1 ? (
             <button
