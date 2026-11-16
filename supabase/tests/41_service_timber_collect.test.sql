@@ -148,7 +148,8 @@ SELECT throws_ok($$SELECT public.save_service_visit(pg_temp.payload('00000000-00
 RESET ROLE;
 INSERT INTO station_checks (visit_id, station_id, bait_added_g)
 VALUES ('00000000-0000-0000-0000-0000000000f3', '00000000-0000-0000-0000-0000000002e1', 50)
-ON CONFLICT (visit_id, station_id) DO NOTHING;
+-- skip_all_ag ใส่แถว "ไม่ได้ตรวจ" ให้ AG-1 ไว้แล้ว → ปรับเป็นตรวจจริง (ไม่งั้น CHECK แถวไม่ได้ตรวจ ขวางคู่ควบคุม)
+ON CONFLICT (visit_id, station_id) DO UPDATE SET checked = true, bait_added_g = 50;
 SET LOCAL ROLE authenticated;
 SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a3', true);
 SELECT throws_ok($$UPDATE station_checks SET timber_replaced = true
