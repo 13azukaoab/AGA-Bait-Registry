@@ -88,9 +88,10 @@ export async function middleware(request: NextRequest) {
 /**
  * ไม่ต้องวิ่งผ่าน middleware: ไฟล์ static, รูป, service worker, manifest
  * และ `/api/cron/*` ที่มีด่านของตัวเอง (`CRON_SECRET` · SPEC §9.2)
+ * และ `/api/health` (⚠ matcher ตรงแบบ prefix — ข้าม `/api/health*` ทุกเส้นทาง อย่าตั้งชื่อ route อื่นขึ้นต้นด้วย `health` · เปิดสาธารณะ ไม่ใช้ session — ตัวเฝ้าดูเว็บล่ม M31)
  */
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|api/cron|favicon.ico|manifest.webmanifest|sw.js|icons/).*)",
+    "/((?!_next/static|_next/image|api/cron|api/health|favicon.ico|manifest.webmanifest|sw.js|icons/).*)",
   ],
 };
