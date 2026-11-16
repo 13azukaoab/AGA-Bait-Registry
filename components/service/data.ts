@@ -238,6 +238,7 @@ type StationDb = {
   point_label: string | null;
   install_bait_g: number | null;
   installed_at: string | null;
+  collected_at: string | null;
 };
 
 const toStation = (s: StationDb): StationRow => ({
@@ -248,9 +249,10 @@ const toStation = (s: StationDb): StationRow => ({
   pointLabel: s.point_label ?? "",
   installBaitG: s.install_bait_g,
   installedAt: s.installed_at,
+  collectedAt: s.collected_at,
 });
 
-const STATION_COLUMNS = "id, type, station_no, status, point_label, install_bait_g, installed_at";
+const STATION_COLUMNS = "id, type, station_no, status, point_label, install_bait_g, installed_at, collected_at";
 
 export async function loadStations(
   supabase: SupabaseClient,

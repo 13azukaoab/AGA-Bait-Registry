@@ -56,7 +56,7 @@ export function todayBangkok(now: Date = new Date()): string {
   }).format(now);
 }
 
-function shiftMonth(month: string, delta: number): string {
+export function shiftMonth(month: string, delta: number): string {
   const total = Number(month.slice(0, 4)) * 12 + (Number(month.slice(5, 7)) - 1) + delta;
   const y = Math.floor(total / 12);
   const m = (total % 12) + 1;

@@ -4,6 +4,7 @@
  * Logic summary:
  *   * ลูกค้าใหม่: กรอกจำนวน IG / IC → หน้าจอสร้างเลข 1..n (ไม่มีช่องว่าง)
  *   * Renew: เสนอสถานีที่ยังใช้งานของสัญญาเก่าทั้งหมด (ติ๊กไว้ก่อน) ผู้ใช้ติ๊กออกได้ + เพิ่มสถานีใหม่ได้
+ *       - ยกเว้น IG ที่ "เก็บแล้ว" (collected_at) — ไม่เสนอ ไม่ย้าย อยู่กับสัญญาเก่า (DECISIONS 2.50 · DB: SV008)
  *       - สถานีที่ย้ายยังใช้ "เลขเดิม" (F ของกล่อง AG นับต่อ) · เลขใหม่ต่อจากเลขสูงสุดของชนิดนั้นที่ย้ายมา
  *         (ไม่ชนกัน → ไม่เกิด SV009)
  *       - ย้ายได้ทุกชนิด รวม AG (RPC รองรับ)
@@ -13,6 +14,14 @@ import type { NumberIndex } from "./stationIndex";
 import { emptyIndex } from "./stationIndex";
 import type { SetupState, StationRow } from "./types";
 import { isInUse } from "./types";
+
+/**
+ * IG ที่ "เก็บแล้ว" ในสัญญาเก่า = ไม่ย้ายไปสัญญาใหม่ (DECISIONS 2.50 ①) — DB ตอบ SV008 ถ้าเลือกแต่สถานีพวกนี้
+ * IG ที่ "ไม่เก็บ" (ทิ้งไว้หน้างาน) ยังย้ายได้ · IC/AG ไม่ใช้กฎนี้
+ */
+export function isCollectedIg(s: StationRow): boolean {
+  return s.type === "IG" && s.collectedAt != null;
+}
 
 export const MAX_SETUP_COUNT = 500;
 
@@ -56,7 +65,7 @@ export function buildInitPlan(
   if (isRenew) {
     const excluded = new Set(setup.excludedOldIds);
     for (const s of oldStations) {
-      if (!isInUse(s.status) || s.no === null || excluded.has(s.id)) continue;
+      if (!isInUse(s.status) || s.no === null || excluded.has(s.id) || isCollectedIg(s)) continue;
       transferIds.push(s.id);
       index[s.type].add(s.no);
     }
