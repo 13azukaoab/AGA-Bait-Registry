@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { buildBranchSnapshot } from "./snapshot";
-import { TIER_RULES } from "./__fixtures__/tierRules";
+import { CHANGE_MONTH, TIER_RULES, TIER_RULE_VERSIONS } from "./__fixtures__/tierRules";
 import type { Contract, BranchRef, Visit } from "./types";
 
 const branch: BranchRef = { area: "เขต 1", branch: "นครปฐม" };
@@ -150,5 +150,37 @@ describe("buildBranchSnapshot + การเข้าชดเชย", () => {
   it("เดือนจาก DB แบบ 'YYYY-MM-01' นับได้เหมือนกัน", () => {
     const row = buildBranchSnapshot(branch, [c1], "2027-01", TIER_RULES, [mkVisit("2027-01-12", "2026-05-01")]);
     expect(row.cust).toBe(1);
+  });
+});
+
+// M20 (DECISIONS 2.31): snapshot ใช้เกณฑ์ของเดือนที่คำนวณ · สัญญาเดียวกันเปลี่ยน Tier ได้เมื่อข้ามเดือนที่เปลี่ยนเกณฑ์
+describe("buildBranchSnapshot + เกณฑ์ตามเดือน (M20)", () => {
+  // 3 ปี 105,000 → 35,000/ปี: เกณฑ์เดิม M3 · เกณฑ์ใหม่ (สมมติ M เริ่ม 40,000) S3
+  const c: Contract = { id: "v1", startDate: "2026-06-01", termYears: 3, valueTotal: 105000 };
+
+  it("เดือนก่อนเปลี่ยนเกณฑ์ → นับเป็น M3", () => {
+    const row = buildBranchSnapshot(branch, [c], "2026-12", TIER_RULE_VERSIONS);
+    expect(row.m3).toBe(1);
+    expect(row.s3).toBe(0);
+    expect(row.vM).toBe(105000);
+  });
+
+  it("ตั้งแต่เดือนที่เปลี่ยนเกณฑ์ → นับเป็น S3 (มูลค่าเท่าเดิม)", () => {
+    const row = buildBranchSnapshot(branch, [c], CHANGE_MONTH, TIER_RULE_VERSIONS);
+    expect(row.s3).toBe(1);
+    expect(row.m3).toBe(0);
+    expect(row.vS).toBe(105000);
+    expect(row.value).toBe(105000);
+  });
+
+  it("กรณีบังคับจาก SPEC ยังผ่านเมื่อส่งเกณฑ์หลายชุด", () => {
+    const contracts: Contract[] = [
+      { id: "a", startDate: "2026-01-01", termYears: 3, valueTotal: 50000 }, // S3
+      { id: "b", startDate: "2026-01-01", termYears: 1, valueTotal: 150000 }, // XL1
+      { id: "c", startDate: "2026-01-01", termYears: 3, valueTotal: 150000 }, // L3
+      { id: "d", startDate: "2026-01-01", termYears: 1, valueTotal: 29999.5 }, // S1
+    ];
+    const row = buildBranchSnapshot(branch, contracts, "2026-03", TIER_RULE_VERSIONS);
+    expect([row.s3, row.xl1, row.l3, row.s1]).toEqual([1, 1, 1, 1]);
   });
 });
