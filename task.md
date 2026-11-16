@@ -149,6 +149,7 @@
 
 ## บันทึกประจำวัน (Changelog)
 
+> - ✅ **16 พ.ย.: FE หน้าจริง M20 ส่วน A (ป้าย Tier ตามเดือนเริ่มสัญญา · อ่านเกณฑ์ทุกชุด) รวม main** (`3ea8054` เท่านั้น · ส่วน B เมนูยังทำต่อ) — ศูนย์กลางรัน: tsc 0 · eslint 0 error · vitest 537/537 · build ผ่าน · **พร้อมส่ง cloud ชุด M20–M24 (migration 44–48) รอเจ้าของสั่ง**
 > - ✅ **16 พ.ย.: M24 (#todo: หมายเหตุตกบริการ · เดือนค้างปิดเก่าสุด · New/Renew รายทีม) + FE หน้าจริง AG009/teams.kind รวม main ในเครื่อง** (`fde25b1` · `32487e9`) — **ศูนย์กลางรันเองบน main: db test 1555/1555 · tsc 0 · eslint 0 error · vitest 533/533 · build ผ่าน** · ยังไม่ส่ง cloud (รอ FE M20 ส่วน A + M21b) · DB local → M19a · DECISIONS 2.50–2.52 (IG ตอน Renew · เกิน 2 เดือน = New · พักสัญญา) · phase 4: 58 → 60
 > - ✅ **16 พ.ย.: M20 เกณฑ์ Tier ตามเดือน รวม main ในเครื่อง (`63346d9`)** — **ศูนย์กลางรันเองบน main: db test 1465/1465 · tsc 0 · eslint 0 error · vitest 522/522** · DECISIONS 2.49 (ห้ามย้อนก่อนเริ่มใช้ระบบ · ป้าย Tier ตามเดือนเริ่มสัญญา) · ยังไม่ส่ง cloud (FE ต้องอ่าน v_tier_rules_current ก่อน) · DB local → M24 · phase 5: 57 → 58
 > - ✅ **16 พ.ย.: M21 ตำแหน่ง/audit ผู้แก้/แจ้งเตือน รวม main ในเครื่อง (`8e41b49` · ตัด M21-report.md)** — **ศูนย์กลางรันเองบน main: db test 1400/1400 · tsc 0 · eslint 0 error · vitest 506/506** · ยังไม่ส่ง cloud (รอ route ผู้ใช้เช็ก assignable + การ์ด FE ①) · DB local → M20 · admin ที่หน้าเก็บสถานี = ดูอย่างเดียว (เจ้าของ · SPEC แก้แล้ว)
