@@ -1,6 +1,6 @@
 import type { BranchRef, Contract, SnapshotRow, TierRule, Visit } from "./types";
-import { annualValue, rulesForMonth, tierOf } from "./tier";
-import { serviceMonths } from "./serviceMonths";
+import { rulesForMonth, tierOf } from "./tier";
+import { annualValueForTerm, serviceMonthsForTerm, tierKey } from "./term";
 import { monthOf } from "./date";
 import { lastServiceMonth, trackingStartMonth } from "./missedResolution";
 import { isMissedService } from "./missedService";
@@ -10,6 +10,7 @@ import { isMissedService } from "./missedService";
  * นับสัญญาเมื่อ: month อยู่ในเดือนบริการ หรือ (M18 · DECISIONS 2.45) month อยู่หลังสัญญาจบ
  * และมีการเข้าชดเชยจริงในเดือนนั้น · ไม่ถูกยกเลิกก่อน/ในเดือนนั้น · นับต่อสัญญาไม่เกิน 1 ครั้งต่อเดือน
  * · Tier/มูลค่าเดิมของสัญญา
+ * M30: ระยะเป็นเดือน (termMonths) · สัญญา Custom (ไม่ใช่ 12/36) นับในกลุ่ม 1 ปี (s1/m1/l1/xl1)
  *
  * ⚠ สำหรับคนต่อ Dashboard Sync (ผลตรวจ M2): loader ต้องส่ง
  *   (1) visits = การเข้า **ทั้งหมด** ของสัญญา พร้อม makeupForMonth (visits.makeup_for_month)
@@ -38,7 +39,7 @@ export function buildBranchSnapshot(
 
   for (const c of contracts) {
     if (c.cancelledAt && monthOf(c.cancelledAt) <= month) continue;
-    const inService = serviceMonths(c.startDate, c.termYears).includes(month);
+    const inService = serviceMonthsForTerm(c.startDate, c.termMonths).includes(month);
     // เดือนชดเชยในช่วงสัญญานับอยู่แล้ว ไม่นับซ้ำ · หลังสัญญาจบนับเมื่อมีการเข้าชดเชยจริงในเดือนนี้
     // เดือนที่ผูกต้องไม่ก่อนเดือนเริ่มนับตกบริการ (ตั้งสถานี) — เกณฑ์เดียวกับ DB (กันสัญญาเก่าดันตัวเลข)
     const trackFrom = trackingStartMonth(c);
@@ -47,7 +48,7 @@ export function buildBranchSnapshot(
       (o) =>
         o.renewedFromContractId === c.id &&
         !(o.cancelledAt && monthOf(o.cancelledAt) <= month) &&
-        serviceMonths(o.startDate, o.termYears).includes(month),
+        serviceMonthsForTerm(o.startDate, o.termMonths).includes(month),
     );
     const countsAsMakeup =
       !inService &&
@@ -67,11 +68,11 @@ export function buildBranchSnapshot(
       );
     if (!inService && !countsAsMakeup) continue;
 
-    const av = annualValue(c.valueTotal, c.termYears);
+    // M30: มูลค่าจัด Tier ตามเดือน (< 12 เดือน = มูลค่าจริง) · คีย์ = tier + กลุ่มสี (36 → 3 · อื่น → 1)
+    const av = annualValueForTerm(c.valueTotal, c.termMonths);
     const tier = tierOf(av, monthRules);
 
-    const countKey = `${tier.toLowerCase()}${c.termYears}` as
-      | "s1" | "s3" | "m1" | "m3" | "l1" | "l3" | "xl1" | "xl3";
+    const countKey = tierKey(tier, c.termMonths);
     row[countKey] = row[countKey] + 1;
 
     const valueKey = `v${tier}` as "vS" | "vM" | "vL" | "vXL";

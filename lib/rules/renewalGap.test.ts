@@ -11,7 +11,7 @@ const old: Contract = {
   customerId: "cu1",
   startDate: "2026-01-01",
   endDate: "2026-12-31",
-  termYears: 1,
+  termMonths: 12,
   valueTotal: 24000,
 };
 
@@ -23,7 +23,7 @@ describe("effectiveEndDate", () => {
   it("end_date ว่าง → วันเริ่ม + N ปี − 1 วัน", () => {
     expect(effectiveEndDate({ ...old, endDate: undefined })).toBe("2026-12-31");
     expect(effectiveEndDate({ ...old, startDate: "2026-01-15", endDate: undefined })).toBe("2027-01-14");
-    expect(effectiveEndDate({ ...old, termYears: 3, endDate: undefined })).toBe("2028-12-31");
+    expect(effectiveEndDate({ ...old, termMonths: 36, endDate: undefined })).toBe("2028-12-31");
   });
 });
 
@@ -113,5 +113,23 @@ describe("unlinkedRenewAllowed (M28 รอบ 2 — Renew ไม่ผูกส�
   });
   it("รับค่า timestamp ได้ (ตัดเหลือวันที่)", () => {
     expect(unlinkedRenewAllowed("2026-11-16T10:00:00", "2027-04-01")).toBe(true);
+  });
+});
+
+describe("M30 — ระยะสัญญาเป็นเดือน (ข้อ 7)", () => {
+  const short: Contract = { id: "s", customerId: "cu1", startDate: "2026-01-15", termMonths: 5, valueTotal: 20000 };
+  it("end_date ว่าง → เริ่ม + m เดือน − 1 วัน (5 เดือน: 15/01 → 14/06)", () => {
+    expect(effectiveEndDate(short)).toBe("2026-06-14");
+    expect(effectiveEndDate({ ...short, startDate: "2026-01-31", termMonths: 1 })).toBe("2026-02-28");
+  });
+  it("Renew ของสัญญา 5 เดือน: จบ มิ.ย. → ได้ถึง ส.ค. 2026 · ก.ย. ต้องเป็น New", () => {
+    expect(latestRenewStartMonth(short)).toBe("2026-08");
+    expect(renewalGapOk(short, "2026-08-31")).toBe(true);
+    expect(renewalGapOk(short, "2026-09-01")).toBe(false);
+  });
+  it("New ที่เริ่มหลังวันจบจริงของสัญญาสั้น → สัญญาสั้นถูกแทน (isSuperseded)", () => {
+    const next: Contract = { id: "n", customerId: "cu1", startDate: "2026-06-15", termMonths: 12, valueTotal: 24000 };
+    expect(isSuperseded(short, [short, next])).toBe(true);
+    expect(isSuperseded(short, [short, { ...next, startDate: "2026-06-14" }])).toBe(false);
   });
 });

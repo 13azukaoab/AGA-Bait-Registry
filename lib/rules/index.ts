@@ -1,5 +1,6 @@
 export * from "./types";
 export * from "./tier";
+export * from "./term";
 export * from "./monthKey";
 export * from "./serviceMonths";
 export * from "./missedService";

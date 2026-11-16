@@ -15,7 +15,7 @@ import type { Contract, MissedServiceResolution, Visit } from "./types";
 const c: Contract = {
   id: "c1",
   startDate: "2026-01-01",
-  termYears: 1,
+  termMonths: 12,
   valueTotal: 24000,
   stationsInitializedAt: "2026-01-05",
 };
@@ -142,12 +142,12 @@ describe("lastServiceMonth", () => {
   it("เดือนบริการสุดท้าย = เดือนเริ่ม + ปี×12 − 1 (ไม่ใช้ end_date)", () => {
     expect(lastServiceMonth(c)).toBe("2026-12");
     expect(lastServiceMonth({ ...c, startDate: "2026-04-03" })).toBe("2027-03");
-    expect(lastServiceMonth({ ...c, termYears: 3 })).toBe("2028-12");
+    expect(lastServiceMonth({ ...c, termMonths: 36 })).toBe("2028-12");
   });
 });
 
 describe("ต่อสัญญาแล้ว → ตกบริการที่ค้างเป็นโมฆะ (DECISIONS 2.47)", () => {
-  const renewal: Contract = { id: "c2", startDate: "2027-01-01", termYears: 1, valueTotal: 24000, renewedFromContractId: "c1" };
+  const renewal: Contract = { id: "c2", startDate: "2027-01-01", termMonths: 12, valueTotal: 24000, renewedFromContractId: "c1" };
   it("isRenewed = มีสัญญาอื่นที่ renewedFromContractId = สัญญานี้", () => {
     expect(isRenewed(c, [c, renewal])).toBe(true);
     expect(isRenewed(renewal, [c, renewal])).toBe(false);
@@ -183,5 +183,29 @@ describe("normalise เดือนจาก DB (L2)", () => {
   it("stationsInitializedAt แบบ timestamptz → เดือนตามเวลาไทย", () => {
     expect(trackingStartMonth({ ...c, stationsInitializedAt: "2026-03-31T18:00:00Z" })).toBe("2026-04");
     expect(trackingStartMonth({ ...c, stationsInitializedAt: "2026-03-31T16:00:00+00:00" })).toBe("2026-03");
+  });
+});
+
+describe("M30 — ตกบริการของสัญญาสั้น (ข้อ 7)", () => {
+  const short: Contract = {
+    id: "c1",
+    startDate: "2026-01-15",
+    termMonths: 5,
+    valueTotal: 20000,
+    stationsInitializedAt: "2026-01-20",
+  };
+  it("เดือนบริการ = 5 เดือนจริง · เดือนบริการสุดท้าย = พ.ค. 2026", () => {
+    expect(lastServiceMonth(short)).toBe("2026-05");
+    expect(missedMonths(short, [routine("2026-02-10")], "2026-09")).toEqual([
+      "2026-01", "2026-03", "2026-04", "2026-05",
+    ]);
+  });
+  it("หลังสัญญาจบ (มิ.ย.) ไม่นับตกบริการ", () => {
+    expect(isMissedService(short, "2026-06", [])).toBe(false);
+    expect(isMissedService(short, "2026-05", [])).toBe(true);
+  });
+  it("ข้อ 5: 12 เดือน ≡ 1 ปีเดิม (เดือนบริการสุดท้าย ธ.ค.)", () => {
+    expect(lastServiceMonth({ ...short, startDate: "2026-01-01", termMonths: 12 })).toBe("2026-12");
+    expect(lastServiceMonth({ ...short, startDate: "2026-01-01", termMonths: 36 })).toBe("2028-12");
   });
 });

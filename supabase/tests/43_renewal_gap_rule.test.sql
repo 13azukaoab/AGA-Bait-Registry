@@ -77,19 +77,19 @@ SELECT ok(has_function_privilege('authenticated', 'public.renewal_gap_ok(date, d
 -- =====================================================================
 -- ตัวช่วย (ตรงกับ lib/rules/renewalGap.ts)
 -- =====================================================================
-SELECT ok(renewal_gap_ok('2026-01-01', '2026-12-31', 1, '2027-01-01'), 'end 31 Dec → start Jan is Renew');
-SELECT ok(renewal_gap_ok('2026-01-01', '2026-12-31', 1, '2027-02-28'), 'end 31 Dec → start end of Feb is Renew');
-SELECT ok(NOT renewal_gap_ok('2026-01-01', '2026-12-31', 1, '2027-03-01'), 'end 31 Dec → start 1 Mar must be New');
-SELECT is(contract_effective_end_date('2026-01-15', NULL, 1), '2027-01-14'::date, 'no end_date → start + 1 year − 1 day');
-SELECT ok(renewal_gap_ok('2026-01-15', NULL, 1, '2027-03-31') AND NOT renewal_gap_ok('2026-01-15', NULL, 1, '2027-04-01'),
+SELECT ok(renewal_gap_ok('2026-01-01', '2026-12-31', 12, '2027-01-01'), 'end 31 Dec → start Jan is Renew');
+SELECT ok(renewal_gap_ok('2026-01-01', '2026-12-31', 12, '2027-02-28'), 'end 31 Dec → start end of Feb is Renew');
+SELECT ok(NOT renewal_gap_ok('2026-01-01', '2026-12-31', 12, '2027-03-01'), 'end 31 Dec → start 1 Mar must be New');
+SELECT is(contract_effective_end_date('2026-01-15', NULL, 12), '2027-01-14'::date, 'no end_date → start + 1 year − 1 day');
+SELECT ok(renewal_gap_ok('2026-01-15', NULL, 12, '2027-03-31') AND NOT renewal_gap_ok('2026-01-15', NULL, 12, '2027-04-01'),
   'mid-month end (14 Jan) → Renew allowed through Mar, not Apr');
-SELECT is(contract_effective_end_date('2024-02-29', NULL, 1), '2025-02-28'::date,
+SELECT is(contract_effective_end_date('2024-02-29', NULL, 12), '2025-02-28'::date,
   'leap day: same result as lib/rules addYearsMinusDay (28 Feb)');
-SELECT ok(renewal_gap_ok('2026-01-01', '2026-12-31', 1, '2026-06-01'), 'overlap (new starts before old ends) is Renew');
-SELECT ok(NOT renewal_gap_ok('2026-01-01', '2026-12-31', 1, '2026-01-01')
-          AND NOT renewal_gap_ok('2026-01-01', '2026-12-31', 1, '2025-12-01'),
+SELECT ok(renewal_gap_ok('2026-01-01', '2026-12-31', 12, '2026-06-01'), 'overlap (new starts before old ends) is Renew');
+SELECT ok(NOT renewal_gap_ok('2026-01-01', '2026-12-31', 12, '2026-01-01')
+          AND NOT renewal_gap_ok('2026-01-01', '2026-12-31', 12, '2025-12-01'),
   'starting on or before the old start is not a renewal');
-SELECT is(renewal_latest_start_month('2026-01-01', '2026-11-30', 1), '2027-01-01'::date, 'latest Renew month crosses the year');
+SELECT is(renewal_latest_start_month('2026-01-01', '2026-11-30', 12), '2027-01-01'::date, 'latest Renew month crosses the year');
 SELECT ok(NOT renewal_gap_ok(NULL, NULL, NULL, '2027-01-01'), 'NULL input → false (never silently allowed)');
 
 -- =====================================================================

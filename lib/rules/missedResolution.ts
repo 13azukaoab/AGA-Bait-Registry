@@ -17,9 +17,9 @@
  * ค่าเดือน/วันที่จาก DB ('YYYY-MM-01' · timestamptz) ส่งเข้ามาได้ตรงๆ — normalise ด้วย monthOf (เวลาไทย)
  */
 import type { Contract, MissedResolutionStatus, MissedServiceResolution, Visit } from "./types";
-import { serviceMonths } from "./serviceMonths";
+import { serviceMonthsForTerm } from "./term";
 import { isMissedService } from "./missedService";
-import { listMonths, monthOf } from "./date";
+import { monthOf } from "./date";
 import { effectiveEndDate } from "./renewalGap";
 
 /**
@@ -37,7 +37,7 @@ export function trackingStartMonth(contract: Contract): string | null {
 export function missedMonths(contract: Contract, visits: Visit[], currentMonth: string): string[] {
   const from = trackingStartMonth(contract);
   if (from === null || contract.cancelledAt) return [];
-  return serviceMonths(contract.startDate, contract.termYears).filter(
+  return serviceMonthsForTerm(contract.startDate, contract.termMonths).filter(
     (m) => m >= from && m < currentMonth && isMissedService(contract, m, visits),
   );
 }
@@ -116,7 +116,7 @@ export function needsDecision(status: MissedResolutionStatus): boolean {
   return status === "pending";
 }
 
-/** เดือนบริการสุดท้าย 'YYYY-MM' (เดือนเริ่ม + ปี×12 − 1 — กฎข้อ 5 ไม่ใช้ end_date) */
+/** เดือนบริการสุดท้าย 'YYYY-MM' (เดือนเริ่ม + จำนวนเดือน − 1 — กฎข้อ 5 / M30 ไม่ใช้ end_date) */
 export function lastServiceMonth(contract: Contract): string {
-  return listMonths(monthOf(contract.startDate), contract.termYears * 12).at(-1) as string;
+  return serviceMonthsForTerm(contract.startDate, contract.termMonths).at(-1) as string;
 }

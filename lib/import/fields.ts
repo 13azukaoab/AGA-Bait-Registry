@@ -1,4 +1,4 @@
-import type { TermYears } from "../rules/types";
+import { isValidTermMonths } from "../rules/term";
 
 /**
  * ตัวล้าง/ตรวจระดับฟิลด์ (pure) สำหรับการนำเข้าสัญญาจาก Excel
@@ -173,7 +173,8 @@ export function normalizeTeams(raw: string, knownCodes: readonly string[] = DEFA
 
 // ---------- ระยะสัญญา + มูลค่า ----------
 export interface TermValueResult {
-  termYears: TermYears | null;
+  /** ระยะตามช่องมูลค่า: "1 ปี" → 12 · "3 ปี" → 36 (สัญญาสั้น/Custom ตัดสินต่อใน importContracts · M30) */
+  termMonths: 12 | 36 | null;
   valueTotal: number | null;
   error?: string;
 }
@@ -199,16 +200,36 @@ export function resolveTermValue(
   const v3 = parseAmount(value3y);
 
   if (v1 === null && v3 === null) {
-    return { termYears: null, valueTotal: null, error: "ไม่มีมูลค่า" };
+    return { termMonths: null, valueTotal: null, error: "ไม่มีมูลค่า" };
   }
   if (v1 !== null && v3 !== null) {
     return {
-      termYears: null,
+      termMonths: null,
       valueTotal: null,
       error: "มูลค่าอยู่ทั้งช่อง 1 ปี และ 3 ปี — เลือกช่องเดียว",
     };
   }
   return v1 !== null
-    ? { termYears: 1, valueTotal: v1 }
-    : { termYears: 3, valueTotal: v3 };
+    ? { termMonths: 12, valueTotal: v1 }
+    : { termMonths: 36, valueTotal: v3 };
+}
+
+// ---------- จำนวนเดือน (M30) ----------
+export interface TermMonthsResult {
+  months: number | null;
+  error?: string;
+}
+
+/**
+ * คอลัมน์ "จำนวนเดือน" (ไม่บังคับ · DECISIONS 2.53): ว่าง → null · จำนวนเต็ม 1–36 → ค่านั้น
+ * รับรูป "9" หรือ "9 เดือน" · อื่นๆ (0, 37, ทศนิยม, ตัวอักษร) → error
+ */
+export function parseTermMonths(raw: string): TermMonthsResult {
+  const s = (raw ?? "").trim().replace(/\s*เดือน$/, "");
+  if (!s) return { months: null };
+  const n = /^\d+$/.test(s) ? Number(s) : Number.NaN;
+  if (!isValidTermMonths(n)) {
+    return { months: null, error: `จำนวนเดือน "${raw.trim()}" ไม่ถูกต้อง (ต้องเป็นจำนวนเต็ม 1–36)` };
+  }
+  return { months: n };
 }

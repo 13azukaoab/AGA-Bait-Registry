@@ -5,7 +5,7 @@ import type { Contract, Visit } from "./types";
 const base: Contract = {
   id: "c1",
   startDate: "2026-01-01",
-  termYears: 1,
+  termMonths: 12,
   valueTotal: 24000,
 };
 
@@ -34,7 +34,7 @@ describe("isMissedService", () => {
   });
 
   it("รับเดือนแบบ 'YYYY-MM-01' จาก DB ได้", () => {
-    const c = { id: "x", startDate: "2026-01-01", termYears: 1 as const, valueTotal: 1 };
+    const c = { id: "x", startDate: "2026-01-01", termMonths: 12 as const, valueTotal: 1 };
     expect(isMissedService(c, "2026-05-01", [])).toBe(true);
     expect(isMissedService(c, "2026-05-01", [{ contractId: "x", visitDate: "2026-05-09", visitType: "routine" }])).toBe(false);
   });
