@@ -50,6 +50,13 @@ describe("rolesForPath / canAccessPath", () => {
     expect(canAccessPath("recorder", "/customers/new")).toBe(false);
   });
 
+  it("หน้าลูกค้ารอเก็บสถานี: host, admin, recorder เข้าดูได้ · viewer ไม่ได้ (สิทธิ์ปุ่มบันทึกแยกต่างหาก รอเจ้าของตัดสิน)", () => {
+    expect(canAccessPath("host", "/collection")).toBe(true);
+    expect(canAccessPath("admin", "/collection")).toBe(true);
+    expect(canAccessPath("recorder", "/collection")).toBe(true);
+    expect(canAccessPath("viewer", "/collection")).toBe(false);
+  });
+
   it("หน้ากรอกผลบริการ: host, recorder เข้าได้ · admin เข้าไม่ได้", () => {
     expect(canAccessPath("host", "/service")).toBe(true);
     expect(canAccessPath("recorder", "/service")).toBe(true);

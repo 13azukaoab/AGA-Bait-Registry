@@ -94,9 +94,11 @@ export function isAppPath(pathname: string): boolean {
 
 /**
  * หน้าแรกของแต่ละตำแหน่ง = เมนูรายการแรกที่ตำแหน่งนั้นเห็นและอยู่ในกลุ่มที่ต้องล็อกอิน
- * (host/recorder → `/todo` · admin → `/customers`) · ถ้าไม่มีเลย (viewer) → หน้าสรุป public
+ * (host/recorder → `/todo` · admin → `/customers` กำหนดตายตัว) · ถ้าไม่มีเลย (viewer) → หน้าสรุป public
  */
 export function homeForRole(role: UserRole): string {
+  // admin เห็นเมนู "ลูกค้ารอเก็บสถานี" (กลุ่มงานประจำวัน) แต่หน้าแรกยังเป็นทะเบียนลูกค้า (mockup/SPEC) — ไม่ใช้ "เมนูแรก"
+  if (role === "admin") return "/customers";
   for (const group of NAV_GROUPS) {
     for (const item of group.items) {
       if ((item.roles as readonly UserRole[]).includes(role) && isAppPath(item.href)) {

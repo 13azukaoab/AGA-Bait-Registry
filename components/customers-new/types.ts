@@ -4,6 +4,7 @@
  * ชื่อฟิลด์ในฐานข้อมูลเป็น snake_case — แปลงเป็น camelCase ที่ `data.ts` ที่เดียว
  */
 import type { TermYears, TierRule } from "@/lib/rules";
+import type { TeamKind } from "@/lib/service/teamKind";
 
 import type { BranchOption } from "./branchMatch";
 import type { ContractFileKind } from "./fileRules";
@@ -28,6 +29,8 @@ export interface RenewalLink {
 export interface TeamOption {
   id: string;
   code: string;
+  /** ประเภททีมจาก teams.kind (M22) — ห้ามเดาจากรหัสทีม */
+  kind: TeamKind;
 }
 
 export interface CustomerTypeOption {

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { TIER_RULES } from "../rules/__fixtures__/tierRules";
+import { CHANGE_MONTH, TIER_RULES, TIER_RULE_VERSIONS } from "../rules/__fixtures__/tierRules";
 import {
   buildManualRow,
   buildManualSnapshotRow,
@@ -202,5 +202,33 @@ describe("buildManualSnapshotRow — รวมคำนวณ + ตรวจ", (
     );
     expect(res.warnings).toEqual([]);
     expect(res.ok).toBe(true);
+  });
+});
+
+// M20 (DECISIONS 2.31): ตรวจ band ด้วยเกณฑ์ของเดือนที่กรอก
+describe("checkTierBands / buildManualSnapshotRow ตามเดือน (M20)", () => {
+  // M1 35,000/ปี: เกณฑ์เดิมอยู่ใน M · เกณฑ์ใหม่ (สมมติ M เริ่ม 40,000) หลุดเป็น S
+  const m1Only: ManualTierInput = { ...EMPTY, m1: 1, v_m1: 35000 };
+
+  it("เดือนก่อนเปลี่ยนเกณฑ์ → ไม่เตือน", () => {
+    expect(checkTierBands(m1Only, TIER_RULE_VERSIONS, "2026-12")).toEqual([]);
+  });
+
+  it("ตั้งแต่เดือนที่เปลี่ยนเกณฑ์ → เตือนว่าเข้าเกณฑ์ S", () => {
+    const warnings = checkTierBands(m1Only, TIER_RULE_VERSIONS, CHANGE_MONTH);
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0]).toMatch(/M1/);
+    expect(warnings[0]).toMatch(/เกณฑ์ S/);
+  });
+
+  it("buildManualSnapshotRow ส่งเดือนต่อให้การตรวจ band", () => {
+    const before = buildManualSnapshotRow("ลพบุรี", m1Only, {}, TIER_RULE_VERSIONS, "2026-12");
+    const after = buildManualSnapshotRow("ลพบุรี", m1Only, {}, TIER_RULE_VERSIONS, CHANGE_MONTH);
+    expect(before.warnings.some((w) => /เกณฑ์ S/.test(w))).toBe(false);
+    expect(after.warnings.some((w) => /เกณฑ์ S/.test(w))).toBe(true);
+  });
+
+  it("เกณฑ์หลายชุดแต่ไม่ส่งเดือน → throw (ไม่ตรวจด้วยเกณฑ์ปนกัน)", () => {
+    expect(() => checkTierBands(m1Only, TIER_RULE_VERSIONS)).toThrow(/ระบุเดือน/);
   });
 });

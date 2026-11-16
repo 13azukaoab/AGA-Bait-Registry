@@ -3,7 +3,7 @@
  *
  * Logic summary:
  *   * รับ Supabase client ของผู้ใช้จริง — **ไม่ใช้ service role** · RLS ทำงานตามสิทธิ์ · ทุก select ระบุคอลัมน์ ไม่ใช้ `select('*')`
- *   * ฝั่ง server (page.tsx): master (เขต/สาขา/ทีม A–O+Z/เกณฑ์ Tier) + รายชื่อสัญญาของ "เดือนที่เลือก" ตามสาขา
+ *   * ฝั่ง server (page.tsx): master (เขต/สาขา/ทีมบริการ+ติดตั้งตาม teams.kind/เกณฑ์ Tier) + รายชื่อสัญญาของ "เดือนที่เลือก" ตามสาขา
  *       - รายชื่อ = สัญญา active / รอเก็บสถานี ที่ `serviceMonths` ครอบเดือนนั้น (ปิดแล้ว/ยกเลิก = ซ่อน — AG007)
  *       - Tier คำนวณด้วย `tierOf` + `tier_rules` (ห้าม hardcode)
  *       - "กรอกแล้ว" = มีการเข้าแบบบริการประจำเดือน (`routine`) ในเดือนนั้นอย่างน้อย 1 ครั้ง (DECISIONS 2.23 · ตรงกฎตกบริการ
@@ -16,9 +16,12 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { annualValue, serviceMonths, tierOf, type TierRule } from "@/lib/rules";
+import { monthOf } from "@/lib/rules/date";
+import { TIER_RULE_COLUMNS, toTierRules, type TierRuleRow } from "@/lib/tierRules";
 
 import { contractMonthTag } from "./contractTag";
 import { monthRange, serviceTeams } from "@/lib/service/months";
+import type { TeamKind } from "@/lib/service/teamKind";
 import { trimDbTime } from "./timeInput";
 import type {
   AgHistory,
@@ -57,8 +60,8 @@ export async function loadServiceMaster(
   const [zones, branches, teams, tiers] = await Promise.all([
     supabase.from("zones").select("id, name, sort_order").order("sort_order"),
     supabase.from("branches").select("id, name, zone_id, is_active").eq("is_active", true).order("name"),
-    supabase.from("teams").select("id, code, branch_id").is("branch_id", null).order("code"),
-    supabase.from("tier_rules").select("tier, min_annual").order("min_annual"),
+    supabase.from("teams").select("id, code, kind, branch_id").is("branch_id", null).order("code"),
+    supabase.from("tier_rules").select(TIER_RULE_COLUMNS).order("effective_month").order("min_annual"),
   ]);
   const failed = [zones, branches, teams, tiers].find((r) => r.error);
   if (failed?.error) return { master: null, error: failed.error.message };
@@ -71,11 +74,15 @@ export async function loadServiceMaster(
         name: b.name,
         zoneId: b.zone_id,
       })),
-      teams: serviceTeams((teams.data ?? []) as { id: string; code: string }[]),
-      tierRules: ((tiers.data ?? []) as { tier: TierRule["tier"]; min_annual: number | string }[]).map((t) => ({
-        tier: t.tier,
-        minAnnual: Number(t.min_annual),
-      })),
+      // เฉพาะทีมประเภท service / install (อ่านจาก teams.kind — M22) · ทีมใหม่ที่ไม่ใช่รหัส A–O/Z ก็ขึ้นตามประเภท
+      teams: serviceTeams(
+        ((teams.data ?? []) as { id: string; code: string; kind: TeamKind }[]).map((t) => ({
+          id: t.id,
+          code: t.code,
+          kind: t.kind,
+        })),
+      ),
+      tierRules: toTierRules((tiers.data ?? []) as TierRuleRow[]),
     },
     error: null,
   };
@@ -210,7 +217,8 @@ export async function loadContractList(
       customerName: c.customers?.name ?? "",
       branchId: c.customers?.branch_id ?? "",
       status: c.status,
-      tier: tierOf(annualValue(Number(c.value_total), years), [...tierRules]),
+      // 2.49: ป้ายตามเกณฑ์ของเดือนเริ่มสัญญา (คงที่ตลอดอายุสัญญา)
+      tier: tierOf(annualValue(Number(c.value_total), years), [...tierRules], monthOf(c.start_date)),
       termYears: years,
       renewedFromContractId: c.renewed_from_contract_id,
       stationsInitialized: c.stations_initialized_at !== null,

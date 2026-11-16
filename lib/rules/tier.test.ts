@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { annualValue, tierOf } from "./tier";
-import { TIER_RULES } from "./__fixtures__/tierRules";
+import { annualValue, rulesForMonth, tierOf } from "./tier";
+import { CHANGE_MONTH, TIER_RULES, TIER_RULE_VERSIONS } from "./__fixtures__/tierRules";
 
 describe("annualValue", () => {
   it("= มูลค่าสัญญา ÷ จำนวนปี", () => {
@@ -25,5 +25,63 @@ describe("tierOf", () => {
     expect(t(50000)).toBe("L");
     expect(t(99999.99)).toBe("L");
     expect(t(100000)).toBe("XL");
+  });
+});
+
+// M20 (DECISIONS 2.31): เกณฑ์มีหลายชุด แต่ละชุดมีเดือนที่เริ่มใช้ → ใช้ชุดล่าสุดที่เริ่มใช้ไม่เกินเดือนที่คำนวณ
+describe("rulesForMonth / tierOf ตามเดือน (M20)", () => {
+  it("กรณีบังคับจาก SPEC ผ่านทั้งชุดตั้งต้นแบบมีเดือน", () => {
+    const t = (annual: number) => tierOf(annual, TIER_RULE_VERSIONS, "2026-11");
+    expect(t(annualValue(50000, 3))).toBe("S"); // S3
+    expect(t(annualValue(150000, 1))).toBe("XL"); // XL1
+    expect(t(annualValue(150000, 3))).toBe("L"); // L3
+    expect(t(annualValue(29999.5, 1))).toBe("S"); // S1
+  });
+
+  it("เดือนก่อนเปลี่ยนเกณฑ์ใช้ชุดเดิม · ตั้งแต่เดือนที่เปลี่ยนใช้ชุดใหม่", () => {
+    // 35,000/ปี: เกณฑ์เดิม = M · เกณฑ์ใหม่ (สมมติ M เริ่ม 40,000) = S
+    expect(tierOf(35000, TIER_RULE_VERSIONS, "2026-12")).toBe("M");
+    expect(tierOf(35000, TIER_RULE_VERSIONS, CHANGE_MONTH)).toBe("S");
+    expect(tierOf(35000, TIER_RULE_VERSIONS, "2027-06")).toBe("S");
+    // 110,000/ปี: เดิม XL · ใหม่ L
+    expect(tierOf(110000, TIER_RULE_VERSIONS, "2026-12")).toBe("XL");
+    expect(tierOf(110000, TIER_RULE_VERSIONS, CHANGE_MONTH)).toBe("L");
+  });
+
+  it("รับเดือนรูปแบบจาก DB ('YYYY-MM-01') ได้ทั้งเดือนที่คำนวณและ effectiveMonth", () => {
+    const fromDb = TIER_RULE_VERSIONS.map((r) => ({ ...r, effectiveMonth: `${r.effectiveMonth}-01` }));
+    expect(tierOf(35000, fromDb, "2027-01-01")).toBe("S");
+    expect(tierOf(35000, fromDb, "2026-12-01")).toBe("M");
+  });
+
+  it("rulesForMonth คืนเฉพาะชุดที่ใช้ เรียงตาม minAnnual", () => {
+    const set = rulesForMonth(TIER_RULE_VERSIONS, "2027-03");
+    expect(set.map((r) => [r.tier, r.minAnnual])).toEqual([
+      ["S", 0], ["M", 40000], ["L", 60000], ["XL", 120000],
+    ]);
+    expect(rulesForMonth(TIER_RULE_VERSIONS, "2026-12").map((r) => r.minAnnual)).toEqual([
+      0, 30000, 50000, 100000,
+    ]);
+  });
+
+  it("เดือนก่อนชุดแรก → throw (ห้ามเดาเกณฑ์)", () => {
+    expect(() => tierOf(35000, TIER_RULE_VERSIONS, "1999-12")).toThrow(/ไม่มีเกณฑ์/);
+  });
+
+  it("หลายชุดแต่ไม่ส่งเดือน → throw (กันใช้เกณฑ์ปนกัน)", () => {
+    expect(() => tierOf(35000, TIER_RULE_VERSIONS)).toThrow(/ระบุเดือน/);
+  });
+
+  it("แถวไม่มีเดือน (แบบเดิม) แต่ tier ซ้ำ → throw (อ่านมาหลายชุดโดยไม่มี effective_month)", () => {
+    const flat = TIER_RULE_VERSIONS.map(({ tier, minAnnual }) => ({ tier, minAnnual }));
+    expect(() => tierOf(35000, flat)).toThrow(/ซ้ำ/);
+  });
+
+  it("ชุดเดียวแบบเดิม ส่งเดือนมาด้วยก็ใช้ได้ (ไม่มีเดือน = ใช้ได้ทุกเดือน)", () => {
+    expect(tierOf(35000, TIER_RULES, "2026-03")).toBe("M");
+  });
+
+  it("ปนแถวมีเดือนกับไม่มีเดือน → throw", () => {
+    expect(() => tierOf(35000, [...TIER_RULES, ...TIER_RULE_VERSIONS], "2026-03")).toThrow(/ปน/);
   });
 });

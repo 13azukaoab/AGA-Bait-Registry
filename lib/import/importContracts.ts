@@ -117,7 +117,7 @@ function checkRow(
   addFix(type.fix);
 
   // ทีม
-  const team = normalizeTeams(get(COL.team));
+  const team = normalizeTeams(get(COL.team), opts.teamCodes);
   if (team.error) errors.push(team.error);
   team.fixes.forEach(addFix);
 

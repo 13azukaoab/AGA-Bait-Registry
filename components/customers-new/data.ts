@@ -12,11 +12,13 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import type { TermYears, TierRule } from "@/lib/rules";
+import { TIER_RULE_COLUMNS, toTierRules, type TierRuleRow } from "@/lib/tierRules";
 import type { UserRole } from "@/lib/db/types";
 
 import type { BranchOption } from "./branchMatch";
 import type { ContractFileKind } from "./fileRules";
 import { monthRange } from "@/lib/service/months";
+import { sortTeamsByKind, type TeamKind } from "@/lib/service/teamKind";
 import type { ContractFileRow, ContractStatus, MasterData, SaleType, SavedContract } from "./types";
 
 /** ขอบบนของจำนวนสัญญาต่อเดือนที่ดึง (ไฟล์จริง ~133/เดือน) */
@@ -85,12 +87,12 @@ export async function loadMasterData(
       .eq("is_active", true)
       .order("name"),
     // ทีมส่วนกลาง (branch_id ว่าง) — เฟส 1 ใช้ชุดนี้ชุดเดียว
-    supabase.from("teams").select("id, code, branch_id").is("branch_id", null).order("code"),
+    supabase.from("teams").select("id, code, kind, branch_id").is("branch_id", null).order("code"),
     supabase
       .from("customer_types")
       .select("code, label, group_label, sort_order")
       .order("sort_order"),
-    supabase.from("tier_rules").select("tier, min_annual").order("min_annual"),
+    supabase.from("tier_rules").select(TIER_RULE_COLUMNS).order("effective_month").order("min_annual"),
   ]);
 
   const failed = [zones, branches, teams, types, tiers].find((r) => r.error);
@@ -108,15 +110,20 @@ export async function loadMasterData(
     zoneName: zoneName.get(b.zone_id) ?? "",
   }));
 
-  const tierRules: TierRule[] = (
-    (tiers.data ?? []) as { tier: TierRule["tier"]; min_annual: number | string }[]
-  ).map((t) => ({ tier: t.tier, minAnnual: Number(t.min_annual) }));
+  // M20: อ่านทุกชุดพร้อม effective_month — ป้าย Tier เลือกชุดตามเดือนเริ่มสัญญาที่ rowCalc.tierFor
+  const tierRules: TierRule[] = toTierRules((tiers.data ?? []) as TierRuleRow[]);
 
   return {
     master: {
       zones: zoneRows.map((z) => ({ id: z.id, name: z.name })),
       branches: branchOptions,
-      teams: sortTeams((teams.data ?? []) as { id: string; code: string }[]),
+      teams: sortTeams(
+        ((teams.data ?? []) as { id: string; code: string; kind: TeamKind }[]).map((t) => ({
+          id: t.id,
+          code: t.code,
+          kind: t.kind,
+        })),
+      ),
       customerTypes: (
         (types.data ?? []) as { code: string; label: string; group_label: string }[]
       ).map((t) => ({ code: t.code, label: t.label, groupLabel: t.group_label })),
@@ -126,10 +133,9 @@ export async function loadMasterData(
   };
 }
 
-/** ทีม A–O ก่อน แล้ว Z แล้วที่เหลือ (Sup) */
-export function sortTeams<T extends { code: string }>(teams: T[]): T[] {
-  const rank = (code: string) => (/^[A-O]$/.test(code) ? 0 : code === "Z" ? 1 : 2);
-  return [...teams].sort((a, b) => rank(a.code) - rank(b.code) || a.code.localeCompare(b.code));
+/** เรียงทีมตามประเภท (teams.kind — M22): บริการ → ติดตั้ง → หัวหน้างาน แล้วตามรหัส */
+export function sortTeams<T extends { code: string; kind: TeamKind }>(teams: T[]): T[] {
+  return sortTeamsByKind(teams);
 }
 
 type ContractRowDb = {

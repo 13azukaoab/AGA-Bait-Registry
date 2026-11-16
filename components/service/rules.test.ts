@@ -98,9 +98,27 @@ describe("search", () => {
 });
 
 describe("serviceTeams", () => {
-  it("เหลือ A–O และ Z เรียง A–O ก่อน Z (ตัด Sup)", () => {
-    const r = serviceTeams([{ code: "Z" }, { code: "Sup" }, { code: "B" }, { code: "A" }, { code: "P" }]);
+  it("เหลือประเภท service/install เรียง service ก่อน install (ตัด supervisor เช่น Sup)", () => {
+    const r = serviceTeams([
+      { code: "Z", kind: "install" as const },
+      { code: "Sup", kind: "supervisor" as const },
+      { code: "B", kind: "service" as const },
+      { code: "A", kind: "service" as const },
+    ]);
     expect(r.map((t) => t.code)).toEqual(["A", "B", "Z"]);
+  });
+  it("ทีมใหม่ที่ไม่ใช่รหัส A–O/Z (เช่น P, X1) ใช้ได้ตาม kind", () => {
+    const r = serviceTeams([
+      { code: "Z", kind: "install" as const },
+      { code: "X1", kind: "install" as const },
+      { code: "P", kind: "service" as const },
+      { code: "A", kind: "service" as const },
+      { code: "Q", kind: "supervisor" as const },
+    ]);
+    expect(r.map((t) => t.code)).toEqual(["A", "P", "X1", "Z"]);
+  });
+  it("ทีมรหัส Z แต่ประเภท supervisor ไม่ถูกเลือก (ไม่เดาจากรหัส)", () => {
+    expect(serviceTeams([{ code: "Z", kind: "supervisor" as const }])).toEqual([]);
   });
 });
 
