@@ -37,10 +37,10 @@
 <style>
 :root{
   --bg:#eef2f7; --surface:#ffffff; --surface-2:#f4f7fb; --surface-3:#e9eff6;
-  --fg:#17212e; --fg-muted:#5a6b7e; --fg-faint:#6b7a8c;
+  --fg:#17212e; --fg-muted:#5a6b7e; --fg-faint:#626c77;
   --border:#d8e0ea; --border-strong:#c3cedb;
   --accent:#1f5fa8; --accent-strong:#164a85; --accent-fg:#ffffff; --accent-soft:#e6f0fb;
-  --ok:#1a8a5c; --ok-soft:#e3f4ec; --warn:#b4740a; --warn-soft:#fbf0db; --danger:#c23b2e; --danger-soft:#fbe8e5;
+  --ok:#177a51; --ok-soft:#e3f4ec; --warn:#935f08; --warn-soft:#fbf0db; --danger:#be392d; --danger-soft:#fbe8e5;
   --new:#6d47b8; --new-soft:#efeafa;
   --radius:10px; --shadow:0 1px 2px rgba(20,40,70,.06),0 1px 3px rgba(20,40,70,.05);
   --overlay:rgba(14,26,40,.45); --on-danger:#ffffff;
@@ -48,20 +48,20 @@
 }
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
   --bg:#0e1621; --surface:#16202c; --surface-2:#1b2733; --surface-3:#222f3d;
-  --fg:#e7eef5; --fg-muted:#9fb0c1; --fg-faint:#8394a6;
+  --fg:#e7eef5; --fg-muted:#9fb0c1; --fg-faint:#8798a9;
   --border:#2a3744; --border-strong:#36485a;
   --accent:#4a90d9; --accent-strong:#5fa0e3; --accent-fg:#0b1420; --accent-soft:#16304a;
-  --ok:#3bb183; --ok-soft:#133227; --warn:#d99b3e; --warn-soft:#332713; --danger:#e26657; --danger-soft:#331a16;
+  --ok:#3bb183; --ok-soft:#133227; --warn:#d99b3e; --warn-soft:#332713; --danger:#e57466; --danger-soft:#331a16;
   --new:#a98be0; --new-soft:#2a2040;
   --shadow:0 1px 2px rgba(0,0,0,.3); --overlay:rgba(0,0,0,.6); --on-danger:#0b1420;
   color-scheme:dark;
 }}
 :root[data-theme="dark"]{
   --bg:#0e1621; --surface:#16202c; --surface-2:#1b2733; --surface-3:#222f3d;
-  --fg:#e7eef5; --fg-muted:#9fb0c1; --fg-faint:#8394a6;
+  --fg:#e7eef5; --fg-muted:#9fb0c1; --fg-faint:#8798a9;
   --border:#2a3744; --border-strong:#36485a;
   --accent:#4a90d9; --accent-strong:#5fa0e3; --accent-fg:#0b1420; --accent-soft:#16304a;
-  --ok:#3bb183; --ok-soft:#133227; --warn:#d99b3e; --warn-soft:#332713; --danger:#e26657; --danger-soft:#331a16;
+  --ok:#3bb183; --ok-soft:#133227; --warn:#d99b3e; --warn-soft:#332713; --danger:#e57466; --danger-soft:#331a16;
   --new:#a98be0; --new-soft:#2a2040;
   --shadow:0 1px 2px rgba(0,0,0,.3); --overlay:rgba(0,0,0,.6); --on-danger:#0b1420;
   color-scheme:dark;
@@ -96,7 +96,7 @@ button{font-family:inherit}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .tb-logo{filter:brightness(0) invert(.93)}}
 .tb-title{min-width:0;padding-left:12px;border-left:1px solid var(--border)}
 .tb-title b{display:block;font-size:14.5px;font-weight:600;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.tb-title span{display:block;font-size:11.5px;color:var(--fg-muted);white-space:nowrap}
+.tb-title span{display:block;font-size:12px;color:var(--fg-muted);white-space:nowrap}
 .navtoggle{display:none;align-items:center;justify-content:center;border:1px solid var(--border);
   background:var(--surface-2);color:var(--fg);border-radius:8px;width:36px;height:34px;font-size:18px;line-height:1;cursor:pointer;flex:none}
 .navtoggle:focus-visible,.nav a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
@@ -140,7 +140,7 @@ button{font-family:inherit}
 /* เมนูซ้าย */
 .shell{display:flex;align-items:flex-start;min-height:calc(100vh - 57px);max-width:1760px;margin-inline:auto}
 .nav{width:238px;flex:none;padding:14px 10px;border-right:1px solid var(--border);background:var(--surface);align-self:stretch}
-.nav .group{font-size:11px;letter-spacing:.06em;color:var(--fg-faint);padding:12px 10px 5px}
+.nav .group{font-size:12px;letter-spacing:.06em;color:var(--fg-faint);padding:12px 10px 5px}
 .nav a{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;color:var(--fg-muted);
   text-decoration:none;font-size:13.5px;cursor:pointer;margin-bottom:1px}
 .nav a .ic{width:17px;height:17px;display:inline-flex;align-items:center;justify-content:center;flex:none;opacity:.85}
@@ -186,6 +186,18 @@ button{font-family:inherit}
 @media (prefers-reduced-motion:reduce){body.nav-mini .nav{transition:none}}
 /* ตอนโหลดหน้า: ตั้งสถานะเมนูทันทีโดยไม่เล่นแอนิเมชันหุบ (ใส่/ถอดโดย init ใน JS) */
 body.nav-noanim .nav{transition:none!important}
+/* ===== UX เร่งด่วน (เจ้าของอนุมัติ 16 พ.ย. 2026 · HQ วัดค่าจริง) =====
+   1) ไอคอนเส้น .ixs แทนอีโมจิ/สัญลักษณ์ในปุ่ม (ขนาดตามตัวอักษร สี currentColor)
+   2) จอ ≤767px: ช่องกรอก 16px (iPhone ไม่ซูมเอง) · ปุ่ม/ตัวควบคุมสูง ≥44px · จอคอมคงเดิม
+   ใช้ !important เฉพาะ font-size ช่องกรอก เพราะแต่ละหน้ามี selector เฉพาะที่ specificity สูงกว่า */
+small{font-size:max(12px,.85em)} /* <small> ของเบราว์เซอร์ย่อเหลือ ~10.8px · ขั้นต่ำ 12px */
+.ixs{width:1em;height:1em;vertical-align:-.14em;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
+@media (max-width:767px){
+  input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]):not([type=hidden]):not([type=color]),select,textarea{font-size:16px !important}
+  button,.btn,a.btn,select,summary,.navtoggle,.addbtn,.savebtn,.theme-btn,.nav a,.seg button,button.chip,a.chip,.chip[role=button]{min-height:44px !important}
+  .chip[role=button]{display:inline-flex;align-items:center}
+  .navtoggle{min-width:44px}
+}
 /* ===== /AGA-SHELL v1 ===== */
 
 .pill{display:inline-flex;align-items:center;gap:6px;padding:5px 11px;border:1px solid var(--border);
@@ -216,7 +228,7 @@ main{flex:1;min-width:0;padding:20px 24px 48px}
 .btn.link.bad{color:var(--danger)}
 @media (pointer:coarse),(max-width:600px){.btn.sm{min-height:40px;padding:8px 12px}}
 .btn:focus-visible,input:focus-visible,select:focus-visible,.stat:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-.chip{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;padding:2px 9px;border-radius:999px;white-space:nowrap}
+.chip{display:inline-flex;align-items:center;gap:5px;font-size:12px;padding:2px 9px;border-radius:999px;white-space:nowrap}
 .chip.ok{background:var(--ok-soft);color:var(--ok)}
 .chip.off{background:var(--surface-3);color:var(--fg-muted)}
 .chip.warn{background:var(--warn-soft);color:var(--warn)}
@@ -233,12 +245,12 @@ main{flex:1;min-width:0;padding:20px 24px 48px}
 .stat.on{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
 .stat .lab{font-size:12px;color:var(--fg-muted)}
 .stat .val{font-size:26px;font-weight:700;line-height:1.15;margin-top:3px}
-.stat .sub{font-size:11.5px;color:var(--fg-muted);margin-top:2px}
+.stat .sub{font-size:12px;color:var(--fg-muted);margin-top:2px}
 
 /* ฟิลเตอร์ */
 .toolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin:0 0 12px}
 .field{display:flex;flex-direction:column;gap:3px}
-.field label{font-size:11.5px;color:var(--fg-muted)}
+.field label{font-size:12px;color:var(--fg-muted)}
 .field select,.field input,.fld select,.fld input{font-family:inherit;font-size:13px;color:var(--fg);background:var(--surface);
   border:1px solid var(--border-strong);border-radius:8px;padding:7px 10px;min-width:140px;width:100%}
 .field.grow{flex:1;min-width:180px}
@@ -246,7 +258,7 @@ main{flex:1;min-width:0;padding:20px 24px 48px}
 /* ตาราง */
 .tablewrap{position:relative;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);overflow-x:auto}
 table{border-collapse:collapse;width:100%;font-size:13px}
-thead th{background:var(--surface-2);color:var(--fg-muted);font-weight:600;font-size:11.5px;text-align:left;
+thead th{background:var(--surface-2);color:var(--fg-muted);font-weight:600;font-size:12px;text-align:left;
   padding:9px 12px;border-bottom:1px solid var(--border);white-space:nowrap}
 tbody td{padding:9px 12px;border-bottom:1px solid var(--border);vertical-align:middle}
 tbody tr:last-child td{border-bottom:0}
@@ -259,7 +271,7 @@ tbody tr.flash td{animation:flash 1.6s ease}
 td.act{white-space:nowrap;text-align:right}
 tbody td:first-child{min-width:170px}
 .nm{font-weight:600}
-.un{font-size:11.5px;color:var(--fg-muted);font-family:ui-monospace,Consolas,monospace}
+.un{font-size:12px;color:var(--fg-muted);font-family:ui-monospace,Consolas,monospace}
 .empty{padding:34px 16px;text-align:center;color:var(--fg-muted)}
 .foot{padding:9px 14px;border-top:1px solid var(--border);background:var(--surface-2);font-size:12px;color:var(--fg-muted);display:flex;gap:10px;flex-wrap:wrap}
 
@@ -287,8 +299,8 @@ tbody td:first-child{min-width:170px}
 .fld{display:flex;flex-direction:column;gap:3px;margin:0 0 12px}
 .fld label{font-size:12px;color:var(--fg-muted)}
 .fld input[readonly],.fld select:disabled{background:var(--surface-3);color:var(--fg-muted);border-style:dashed;cursor:not-allowed}
-.fld .hint{font-size:11.5px;color:var(--fg-muted)}
-.fld .err{font-size:11.5px;color:var(--danger);min-height:0}
+.fld .hint{font-size:12px;color:var(--fg-muted)}
+.fld .err{font-size:12px;color:var(--danger);min-height:0}
 .fld.bad input,.fld.bad select{border-color:var(--danger)}
 .two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 @media (max-width:520px){.two{grid-template-columns:1fr}}
@@ -351,7 +363,7 @@ ul.plain{margin:6px 0 0;padding-left:18px;font-size:12.5px;color:var(--fg-muted)
     <div class="page-head" style="display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap">
       <div style="flex:1;min-width:240px">
         <h1>จัดการผู้ใช้</h1>
-        <p>สร้างบัญชีให้ทีมงานและกำหนดตำแหน่ง — ไม่มีหน้าสมัครเอง · <span class="chip warn">🔒 เฉพาะผู้ดูแลระบบ (PM / OM / เจ้าของ)</span></p>
+        <p>สร้างบัญชีให้ทีมงานและกำหนดตำแหน่ง — ไม่มีหน้าสมัครเอง · <span class="chip warn"><svg class="ixs" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg> เฉพาะผู้ดูแลระบบ (PM / OM / เจ้าของ)</span></p>
       </div>
       <button type="button" class="addbtn" onclick="openCreate()"><span class="addbtn__tx">สร้างบัญชี</span><span class="addbtn__ic"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span></button>
     </div>

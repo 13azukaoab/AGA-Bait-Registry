@@ -31,28 +31,28 @@
 <style>
 :root{
   --bg:#eef2f7; --surface:#ffffff; --surface-2:#f4f7fb; --surface-3:#e9eff6;
-  --fg:#17212e; --fg-muted:#5a6b7e; --fg-faint:#8a98a8;
+  --fg:#17212e; --fg-muted:#5a6b7e; --fg-faint:#626c77;
   --border:#d8e0ea; --border-strong:#c3cedb;
   --accent:#1f5fa8; --accent-strong:#164a85; --accent-fg:#ffffff; --accent-soft:#e6f0fb;
-  --ok:#1a8a5c; --ok-soft:#e3f4ec; --warn:#b4740a; --warn-soft:#fbf0db; --danger:#c23b2e; --danger-soft:#fbe8e5;
+  --ok:#177a51; --ok-soft:#e3f4ec; --warn:#935f08; --warn-soft:#fbf0db; --danger:#be392d; --danger-soft:#fbe8e5;
   --radius:10px; --shadow:0 1px 2px rgba(20,40,70,.06),0 1px 3px rgba(20,40,70,.05);
   color-scheme:light;
 }
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
   --bg:#0e1621; --surface:#16202c; --surface-2:#1b2733; --surface-3:#222f3d;
-  --fg:#e7eef5; --fg-muted:#9fb0c1; --fg-faint:#718394;
+  --fg:#e7eef5; --fg-muted:#9fb0c1; --fg-faint:#8798a9;
   --border:#2a3744; --border-strong:#36485a;
   --accent:#4a90d9; --accent-strong:#5fa0e3; --accent-fg:#0b1420; --accent-soft:#16304a;
-  --ok:#3bb183; --ok-soft:#133227; --warn:#d99b3e; --warn-soft:#332713; --danger:#e26657; --danger-soft:#331a16;
+  --ok:#3bb183; --ok-soft:#133227; --warn:#d99b3e; --warn-soft:#332713; --danger:#e57466; --danger-soft:#331a16;
   --shadow:0 1px 2px rgba(0,0,0,.3);
   color-scheme:dark;
 }}
 :root[data-theme="dark"]{
   --bg:#0e1621; --surface:#16202c; --surface-2:#1b2733; --surface-3:#222f3d;
-  --fg:#e7eef5; --fg-muted:#9fb0c1; --fg-faint:#718394;
+  --fg:#e7eef5; --fg-muted:#9fb0c1; --fg-faint:#8798a9;
   --border:#2a3744; --border-strong:#36485a;
   --accent:#4a90d9; --accent-strong:#5fa0e3; --accent-fg:#0b1420; --accent-soft:#16304a;
-  --ok:#3bb183; --ok-soft:#133227; --warn:#d99b3e; --warn-soft:#332713; --danger:#e26657; --danger-soft:#331a16;
+  --ok:#3bb183; --ok-soft:#133227; --warn:#d99b3e; --warn-soft:#332713; --danger:#e57466; --danger-soft:#331a16;
   --shadow:0 1px 2px rgba(0,0,0,.3);
   color-scheme:dark;
 }
@@ -88,7 +88,7 @@ body{margin:0;background:var(--bg);color:var(--fg);font-family:"Noto Sans Thai",
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .tb-logo{filter:brightness(0) invert(.93)}}
 .tb-title{min-width:0;padding-left:12px;border-left:1px solid var(--border)}
 .tb-title b{display:block;font-size:14.5px;font-weight:600;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.tb-title span{display:block;font-size:11.5px;color:var(--fg-muted);white-space:nowrap}
+.tb-title span{display:block;font-size:12px;color:var(--fg-muted);white-space:nowrap}
 .navtoggle{display:none;align-items:center;justify-content:center;border:1px solid var(--border);
   background:var(--surface-2);color:var(--fg);border-radius:8px;width:36px;height:34px;font-size:18px;line-height:1;cursor:pointer;flex:none}
 .navtoggle:focus-visible,.nav a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
@@ -132,7 +132,7 @@ body{margin:0;background:var(--bg);color:var(--fg);font-family:"Noto Sans Thai",
 /* เมนูซ้าย */
 .shell{display:flex;align-items:flex-start;min-height:calc(100vh - 57px);max-width:1760px;margin-inline:auto}
 .nav{width:238px;flex:none;padding:14px 10px;border-right:1px solid var(--border);background:var(--surface);align-self:stretch}
-.nav .group{font-size:11px;letter-spacing:.06em;color:var(--fg-faint);padding:12px 10px 5px}
+.nav .group{font-size:12px;letter-spacing:.06em;color:var(--fg-faint);padding:12px 10px 5px}
 .nav a{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;color:var(--fg-muted);
   text-decoration:none;font-size:13.5px;cursor:pointer;margin-bottom:1px}
 .nav a .ic{width:17px;height:17px;display:inline-flex;align-items:center;justify-content:center;flex:none;opacity:.85}
@@ -178,6 +178,18 @@ body{margin:0;background:var(--bg);color:var(--fg);font-family:"Noto Sans Thai",
 @media (prefers-reduced-motion:reduce){body.nav-mini .nav{transition:none}}
 /* ตอนโหลดหน้า: ตั้งสถานะเมนูทันทีโดยไม่เล่นแอนิเมชันหุบ (ใส่/ถอดโดย init ใน JS) */
 body.nav-noanim .nav{transition:none!important}
+/* ===== UX เร่งด่วน (เจ้าของอนุมัติ 16 พ.ย. 2026 · HQ วัดค่าจริง) =====
+   1) ไอคอนเส้น .ixs แทนอีโมจิ/สัญลักษณ์ในปุ่ม (ขนาดตามตัวอักษร สี currentColor)
+   2) จอ ≤767px: ช่องกรอก 16px (iPhone ไม่ซูมเอง) · ปุ่ม/ตัวควบคุมสูง ≥44px · จอคอมคงเดิม
+   ใช้ !important เฉพาะ font-size ช่องกรอก เพราะแต่ละหน้ามี selector เฉพาะที่ specificity สูงกว่า */
+small{font-size:max(12px,.85em)} /* <small> ของเบราว์เซอร์ย่อเหลือ ~10.8px · ขั้นต่ำ 12px */
+.ixs{width:1em;height:1em;vertical-align:-.14em;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
+@media (max-width:767px){
+  input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]):not([type=hidden]):not([type=color]),select,textarea{font-size:16px !important}
+  button,.btn,a.btn,select,summary,.navtoggle,.addbtn,.savebtn,.theme-btn,.nav a,.seg button,button.chip,a.chip,.chip[role=button]{min-height:44px !important}
+  .chip[role=button]{display:inline-flex;align-items:center}
+  .navtoggle{min-width:44px}
+}
 /* ===== /AGA-SHELL v1 ===== */
 
 .pill{display:inline-flex;align-items:center;gap:6px;padding:5px 11px;border:1px solid var(--border);border-radius:999px;background:var(--surface-2);font-size:12.5px;color:var(--fg-muted);white-space:nowrap}
@@ -195,11 +207,11 @@ main{flex:1;min-width:0;padding:20px 24px 48px}
 .btn{font-family:inherit;font-size:13px;font-weight:500;border-radius:8px;padding:8px 14px;cursor:pointer;border:1px solid var(--border-strong);background:var(--surface);color:var(--fg)}
 .btn:hover{filter:brightness(.97)}
 .btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-fg)}
-.btn.danger-solid{background:var(--danger);border-color:var(--danger);color:#fff}
+.btn.danger-solid{background:var(--danger);border-color:var(--danger);color:var(--accent-fg)}
 .btn.ghost{background:transparent;border-color:transparent;color:var(--accent-strong)}
 .btn.sm{padding:5px 10px;font-size:12px}
 .btn[aria-disabled="true"]{opacity:.5;cursor:not-allowed}
-.chip{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;padding:2px 9px;border-radius:999px;white-space:nowrap}
+.chip{display:inline-flex;align-items:center;gap:5px;font-size:12px;padding:2px 9px;border-radius:999px;white-space:nowrap}
 .chip.ok{background:var(--ok-soft);color:var(--ok)} .chip.miss{background:var(--danger-soft);color:var(--danger)}
 .chip.pend{background:var(--warn-soft);color:var(--warn)} .chip.na{background:var(--surface-3);color:var(--fg-muted)}
 .chip.info{background:var(--accent-soft);color:var(--accent-strong)}
@@ -209,16 +221,16 @@ main{flex:1;min-width:0;padding:20px 24px 48px}
 .alert.warn{background:var(--warn-soft);border-color:var(--warn);color:var(--fg)} .alert.warn .ic{color:var(--warn)}
 .alert.danger{background:var(--danger-soft);border-color:var(--danger);color:var(--fg)} .alert.danger .ic{color:var(--danger)}
 .alert.ok{background:var(--ok-soft);border-color:var(--ok);color:var(--fg)} .alert.ok .ic{color:var(--ok)}
-.alert.info{background:var(--accent-soft);border-color:var(--accent);color:var(--fg)} .alert.info .ic{color:var(--accent)}
+.alert.info{background:var(--accent-soft);border-color:var(--accent);color:var(--fg)} .alert.info .ic{color:var(--accent-strong)}
 .alert b{font-weight:600}
-.alert small{display:block;color:var(--fg-muted);font-size:11.5px;margin-top:2px}
+.alert small{display:block;color:var(--fg-muted);font-size:12px;margin-top:2px}
 
 /* Stats + layout */
 .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin:16px 0 18px}
 .stat{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:13px 16px;box-shadow:var(--shadow)}
 .stat .lab{font-size:12px;color:var(--fg-muted)}
 .stat .val{font-size:24px;font-weight:700;margin-top:5px;line-height:1.1}
-.stat .sub{font-size:11.5px;color:var(--fg-faint);margin-top:4px}
+.stat .sub{font-size:12px;color:var(--fg-faint);margin-top:4px}
 .stat.danger .val{color:var(--danger)} .stat.warn .val{color:var(--warn)} .stat.ok .val{color:var(--ok)} .stat.accent .val{color:var(--accent)}
 .split{display:grid;grid-template-columns:minmax(280px,340px) minmax(0,1fr);gap:16px;align-items:start}
 .panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow)}
@@ -233,7 +245,7 @@ main{flex:1;min-width:0;padding:20px 24px 48px}
 .mrow[aria-current="true"]{background:var(--accent-soft)}
 .mrow .nm{flex:1;min-width:0}
 .mrow .nm b{display:block;font-weight:600}
-.mrow .nm small{display:block;color:var(--fg-muted);font-size:11.5px}
+.mrow .nm small{display:block;color:var(--fg-muted);font-size:12px}
 .mrow.legacy{cursor:default;color:var(--fg-muted)}
 .mrow.legacy:hover{background:transparent}
 .mrow .scs{display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex:none}
@@ -251,11 +263,11 @@ main{flex:1;min-width:0;padding:20px 24px 48px}
 .steps{display:flex;gap:8px;list-style:none;margin:0 0 16px;padding:0}
 .steps li{flex:1}
 .steps button{width:100%;font-family:inherit;font-size:12.5px;text-align:center;padding:8px 6px;border-radius:9px;border:1px solid var(--border);background:var(--surface-2);color:var(--fg-muted);cursor:pointer}
-.steps button .n{display:inline-grid;place-items:center;width:20px;height:20px;border-radius:50%;background:var(--surface-3);font-size:11px;font-weight:700;margin-right:6px}
+.steps button .n{display:inline-grid;place-items:center;width:20px;height:20px;border-radius:50%;background:var(--surface-3);font-size:12px;font-weight:700;margin-right:6px}
 .steps button[aria-current="step"]{background:var(--accent-soft);border-color:var(--accent);color:var(--accent-strong);font-weight:600}
 .steps button[aria-current="step"] .n{background:var(--accent);color:var(--accent-fg)}
 .steps button.done{background:var(--ok-soft);border-color:transparent;color:var(--ok)}
-.steps button.done .n{background:var(--ok);color:#fff}
+.steps button.done .n{background:var(--ok);color:var(--accent-fg)}
 .bar{height:8px;border-radius:999px;background:var(--surface-3);overflow:hidden;margin-top:8px}
 .bar>i{display:block;height:100%;background:var(--ok);border-radius:999px}
 .bar.warnbar>i{background:var(--warn)}
@@ -268,20 +280,20 @@ main{flex:1;min-width:0;padding:20px 24px 48px}
 .svcpanel .sp-body{padding:12px 14px;overflow:auto;flex:1}
 .svcpanel .sp-foot{padding:10px 14px;border-top:1px solid var(--border);font-size:12px;color:var(--fg-muted)}
 .svcpanel table{width:100%;border-collapse:collapse;font-size:12.5px}
-.svcpanel th{text-align:left;font-size:11.5px;color:var(--fg-muted);font-weight:600;padding:6px 6px;border-bottom:1px solid var(--border)}
+.svcpanel th{text-align:left;font-size:12px;color:var(--fg-muted);font-weight:600;padding:6px 6px;border-bottom:1px solid var(--border)}
 .svcpanel td.note{min-width:130px;font-size:12px}
 .svcpanel td{padding:7px 6px;border-bottom:1px solid var(--border)}
 @media (max-width:860px){.btn.sm{min-height:40px}.svcpanel #svcClose{min-height:44px;min-width:44px}.svcpanel{left:8px;right:8px;top:auto;height:62vh;width:auto;bottom:8px}}
 .tablewrap{border:1px solid var(--border);border-radius:var(--radius);overflow-x:auto}
 table{border-collapse:collapse;width:100%;font-size:13px;white-space:nowrap}
-thead th{background:var(--surface-2);color:var(--fg-muted);font-weight:600;font-size:11.5px;text-align:left;padding:9px 12px;border-bottom:1px solid var(--border)}
+thead th{background:var(--surface-2);color:var(--fg-muted);font-weight:600;font-size:12px;text-align:left;padding:9px 12px;border-bottom:1px solid var(--border)}
 tbody td{padding:8px 12px;border-bottom:1px solid var(--border)}
 tbody tr:last-child td{border-bottom:0}
 tfoot td{padding:9px 12px;font-weight:700;background:var(--surface-2);border-top:2px solid var(--border-strong)}
 td.r,th.r{text-align:right} td.c,th.c{text-align:center}
 .tools{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin:0 0 10px}
 .field{display:flex;flex-direction:column;gap:3px}
-.field label{font-size:11px;color:var(--fg-muted)}
+.field label{font-size:12px;color:var(--fg-muted)}
 .field select,.field input{font-family:inherit;font-size:13px;color:var(--fg);background:var(--surface);border:1px solid var(--border-strong);border-radius:8px;padding:7px 10px}
 .err{color:var(--danger);font-size:12px;margin-top:4px;min-height:1em}
 .confirmbox{border:1px solid var(--border-strong);border-radius:10px;padding:14px;background:var(--surface-2)}
@@ -291,7 +303,7 @@ td.r,th.r{text-align:right} td.c,th.c{text-align:center}
 .navbtns{display:flex;justify-content:space-between;gap:10px;margin-top:16px;flex-wrap:wrap}
 .kvs{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:0 0 14px}
 .kv{background:var(--surface-2);border:1px solid var(--border);border-radius:9px;padding:10px 12px}
-.kv span{display:block;font-size:11.5px;color:var(--fg-muted)} .kv b{display:block;font-size:15px;margin-top:2px}
+.kv span{display:block;font-size:12px;color:var(--fg-muted)} .kv b{display:block;font-size:15px;margin-top:2px}
 .hist{list-style:none;margin:0;padding:0}
 .hist li{display:flex;gap:10px;padding:9px 0;border-top:1px solid var(--border);font-size:12.5px}
 .hist li:first-child{border-top:0}
@@ -299,8 +311,8 @@ td.r,th.r{text-align:right} td.c,th.c{text-align:center}
 .prog{list-style:none;margin:0;padding:0}
 .prog li{display:flex;align-items:center;gap:10px;padding:9px 0;font-size:13.5px;color:var(--fg-faint)}
 .prog li.on{color:var(--fg)} .prog li.ok{color:var(--ok)}
-.prog .d{width:20px;height:20px;border-radius:50%;border:2px solid var(--border-strong);display:grid;place-items:center;font-size:11px;flex:none}
-.prog li.ok .d{background:var(--ok);border-color:var(--ok);color:#fff}
+.prog .d{width:20px;height:20px;border-radius:50%;border:2px solid var(--border-strong);display:grid;place-items:center;font-size:12px;flex:none}
+.prog li.ok .d{background:var(--ok);border-color:var(--ok);color:var(--accent-fg)}
 .prog li.on .d{border-color:var(--accent);border-top-color:transparent;animation:spin .8s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 .note{font-size:12px;color:var(--fg-muted);margin-top:14px;display:flex;gap:8px;align-items:flex-start}
@@ -594,12 +606,12 @@ function step1(){
   var pb=Math.round(BR_FULL/BR.length*100), pc=Math.round((TOT-MISS)/TOT*100);
   var rows=BR.filter(function(b){return showAllBr||b[3]>0}).map(function(b){
     var ok=b[3]===0;
-    return '<tr><td><b>'+b[0]+'</b> <span style="color:var(--fg-faint);font-size:11.5px">'+b[1]+'</span></td><td class="r num">'+fmt(b[2])+'</td><td class="r num">'+fmt(b[2]-b[3])+'</td><td class="r num" style="color:'+(ok?'inherit':'var(--danger)')+'">'+b[3]+'</td><td class="c">'+(ok?'<span class="chip ok">ครบ</span>':'<span class="chip miss">ไม่ครบ</span>')+'</td></tr>';
+    return '<tr><td><b>'+b[0]+'</b> <span style="color:var(--fg-faint);font-size:12px">'+b[1]+'</span></td><td class="r num">'+fmt(b[2])+'</td><td class="r num">'+fmt(b[2]-b[3])+'</td><td class="r num" style="color:'+(ok?'inherit':'var(--danger)')+'">'+b[3]+'</td><td class="c">'+(ok?'<span class="chip ok">ครบ</span>':'<span class="chip miss">ไม่ครบ</span>')+'</td></tr>';
   }).join("");
   return '<div class="kvs">'+
    '<div class="kv"><span>สาขากรอกครบ</span><b class="num">'+BR_FULL+' / '+BR.length+'</b><div class="bar" aria-hidden="true"><i style="width:'+pb+'%"></i></div></div>'+
    '<div class="kv"><span>สัญญากรอกครบ</span><b class="num">'+fmt(TOT-MISS)+' / '+fmt(TOT)+'</b><div class="bar" aria-hidden="true"><i style="width:'+pc+'%"></i></div></div>'+
-   '<div class="kv"><span>ตกบริการ</span><b class="num" style="color:var(--danger)">'+MISS+' ราย</b><small style="color:var(--fg-muted);font-size:11px">ใน '+(BR.length-BR_FULL)+' สาขา</small></div></div>'+
+   '<div class="kv"><span>ตกบริการ</span><b class="num" style="color:var(--danger)">'+MISS+' ราย</b><small style="color:var(--fg-muted);font-size:12px">ใน '+(BR.length-BR_FULL)+' สาขา</small></div></div>'+
    '<div class="hint"><b>ตกบริการ</b> = สัญญาที่เดือนนี้อยู่ในเดือนบริการ (ไม่ยกเลิก) แต่ <b>ไม่มีรอบประจำเดือน (routine)</b> · "กรอกครบ" = สัญญาที่มี routine ในเดือนนั้นแล้ว (SPEC §7.4)</div>'+
    '<div class="tools"><div class="field"><label for="brView">แสดง</label><select id="brView" onchange="showAllBr=this.value===\'all\';renderDetail()"><option value="bad"'+(showAllBr?'':' selected')+'>เฉพาะสาขาที่ยังไม่ครบ ('+(BR.length-BR_FULL)+')</option><option value="all"'+(showAllBr?' selected':'')+'>ทั้ง 24 สาขา (ส่วนกลาง)</option></select></div></div>'+
    '<div class="tablewrap"><table><thead><tr><th>สาขา</th><th class="r">สัญญาในเดือนบริการ</th><th class="r">มีรอบประจำเดือน</th><th class="r">ตกบริการ</th><th class="c">สถานะ</th></tr></thead><tbody>'+rows+'</tbody>'+
@@ -683,7 +695,7 @@ function closedView(m,s,k){
      '<div class="alert info"><span class="ic">✎</span><div><b>เดือนนี้แก้ข้อมูลย้อนหลังได้ตามปกติ</b><small>OM/PM และหัวหน้างาน กรอก/แก้ผลบริการเดือนนี้ได้เลย ไม่ต้องปลดล็อก · ทุกการแก้บันทึกใน audit log · ตัวเลขบน Dashboard จะเปลี่ยนเมื่อกด "คำนวณ snapshot ใหม่" เท่านั้น</small><div style="margin-top:8px"><a class="btn sm" href="aga-bait-registry-prototype.html" style="text-decoration:none;display:inline-block">ไปหน้ากรอกผลบริการ →</a></div></div></div>';
   } else {
     var cr=(s.carried||[]);
-    out+='<div class="kvs"><div class="kv"><span>อัปเดตแล้วตอนปิด</span><b class="num">'+(PROV_N-cr.length)+' / '+PROV_N+'</b></div><div class="kv"><span>ปิดโดยใช้ค่ายกมา</span><b class="num" style="color:'+(cr.length?'var(--warn)':'var(--ok)')+'">'+cr.length+' สาขา</b>'+(cr.length?'<small style="color:var(--fg-muted);font-size:11px">'+cr.join(", ")+'</small>':'')+'</div></div>'+
+    out+='<div class="kvs"><div class="kv"><span>อัปเดตแล้วตอนปิด</span><b class="num">'+(PROV_N-cr.length)+' / '+PROV_N+'</b></div><div class="kv"><span>ปิดโดยใช้ค่ายกมา</span><b class="num" style="color:'+(cr.length?'var(--warn)':'var(--ok)')+'">'+cr.length+' สาขา</b>'+(cr.length?'<small style="color:var(--fg-muted);font-size:12px">'+cr.join(", ")+'</small>':'')+'</div></div>'+
      '<div class="alert info"><span class="ic">✎</span><div><b>แก้ข้อมูลต่างจังหวัดย้อนหลังได้ที่หน้า port (เฉพาะ OM/PM)</b><small>ทุกการแก้บันทึกใน audit log · ตัวเลขบน Dashboard จะเปลี่ยนเมื่อกด "คำนวณ snapshot ใหม่" เท่านั้น</small><div style="margin-top:8px"><a class="btn sm" href="provincial-port-update.html" style="text-decoration:none;display:inline-block">ไปหน้า port ต่างจังหวัด →</a></div></div></div>';
   }
   out+='<div class="sech" style="font-weight:600;margin:20px 0 6px">ประวัติการปิดเดือนและการแก้ไข (audit log) · '+nm+'</div><ul class="hist">'+
@@ -751,7 +763,7 @@ function svcBody(x){
 function openSvc(i,btn){
   var x=MISSED[i], p=svcPanel(); svcOpener=btn||null;
   p.innerHTML='<div class="sp-head"><div style="flex:1"><h3>'+x.cust+'</h3><small>'+x.no+' · '+x.br+' · ทีม '+x.team+' · เดือนที่ '+x.mth+' ของสัญญา '+x.term+' เดือน</small></div>'+
-    '<button class="btn ghost sm" id="svcClose" onclick="closeSvc()" aria-label="ปิดประวัติบริการ">✕ ปิด</button></div>'+
+    '<button class="btn ghost sm" id="svcClose" onclick="closeSvc()" aria-label="ปิดประวัติบริการ"><svg class="ixs" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 6l12 12M18 6L6 18"/></svg> ปิด</button></div>'+
     '<div class="sp-body">'+svcBody(x)+'</div>'+
     '<div class="sp-foot">หมายเหตุ = เหตุผลที่หัวหน้างานกรอกไว้ตอนตกบริการ · ข้อมูลตัวอย่าง · ดูครบทุกครั้งได้ที่ <a href="customer-detail.html#tab=visits">หน้ารายละเอียดลูกค้า ↗</a> · หน้านี้ยังเลื่อนและกดได้ตามปกติ</div>';
   p.hidden=false; document.getElementById("svcClose").focus();

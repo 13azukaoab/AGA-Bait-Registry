@@ -16,6 +16,19 @@ a.card:hover{border-color:var(--accent)}
 .thumb{height:170px;overflow:hidden;position:relative;border-bottom:1px solid var(--line);background:var(--bg)}
 .thumb iframe{width:1280px;height:850px;border:0;transform:scale(.2);transform-origin:0 0;pointer-events:none}
 .t{padding:10px 12px}.t b{display:block;font-size:14px}.t span{font-size:12px;color:var(--muted)}
+
+/* ===== UX เร่งด่วน (เจ้าของอนุมัติ 16 พ.ย. 2026 · HQ วัดค่าจริง) =====
+   1) ไอคอนเส้น .ixs แทนอีโมจิ/สัญลักษณ์ในปุ่ม (ขนาดตามตัวอักษร สี currentColor)
+   2) จอ ≤767px: ช่องกรอก 16px (iPhone ไม่ซูมเอง) · ปุ่ม/ตัวควบคุมสูง ≥44px · จอคอมคงเดิม
+   ใช้ !important เฉพาะ font-size ช่องกรอก เพราะแต่ละหน้ามี selector เฉพาะที่ specificity สูงกว่า */
+small{font-size:max(12px,.85em)} /* <small> ของเบราว์เซอร์ย่อเหลือ ~10.8px · ขั้นต่ำ 12px */
+.ixs{width:1em;height:1em;vertical-align:-.14em;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
+@media (max-width:767px){
+  input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]):not([type=hidden]):not([type=color]),select,textarea{font-size:16px !important}
+  button,.btn,a.btn,select,summary,.navtoggle,.addbtn,.savebtn,.theme-btn,.nav a,.seg button,button.chip,a.chip,.chip[role=button]{min-height:44px !important}
+  .chip[role=button]{display:inline-flex;align-items:center}
+  .navtoggle{min-width:44px}
+}
 </style></head><body>
 <header><h1>รวม mockup ทุกหน้า — AGA Bait Registry</h1><p>กดการ์ดเพื่อเปิดหน้าเต็ม · ภาพย่อเป็นหน้าจริงจากไฟล์ใน <code>docs/mockup/</code></p></header>
 <main id="m"></main>

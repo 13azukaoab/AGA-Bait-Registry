@@ -31,10 +31,10 @@
    ============================================================================ */
 :root{
   --bg:#eef2f7; --surface:#ffffff; --surface-2:#f4f7fb; --surface-3:#e9eff6;
-  --fg:#17212e; --fg-muted:#5a6b7e; --fg-faint:#8a98a8;
+  --fg:#17212e; --fg-muted:#5a6b7e; --fg-faint:#626c77;
   --border:#d8e0ea; --border-strong:#c3cedb;
   --accent:#1f5fa8; --accent-strong:#164a85; --accent-fg:#ffffff; --accent-soft:#e6f0fb;
-  --ok:#1a8a5c; --ok-soft:#e3f4ec; --warn:#b4740a; --warn-soft:#fbf0db; --danger:#c23b2e; --danger-soft:#fbe8e5;
+  --ok:#177a51; --ok-soft:#e3f4ec; --warn:#935f08; --warn-soft:#fbf0db; --danger:#be392d; --danger-soft:#fbe8e5;
   --tier-s:#1f5fa8; --tier-s-soft:#e6f0fb; --tier-m:#157a50; --tier-m-soft:#e3f4ec;
   --tier-l:#a86c07; --tier-l-soft:#fbf0db; --tier-xl:#c2561f; --tier-xl-soft:#fce6da; --on-tier:#ffffff;
   --tier-s-ink:#1f5fa8; --tier-m-ink:#157a50; --tier-l-ink:#976106; --tier-xl-ink:#ab4c1b;
@@ -44,10 +44,10 @@
 }
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
   --bg:#0e1621; --surface:#16202c; --surface-2:#1b2733; --surface-3:#222f3d;
-  --fg:#e7eef5; --fg-muted:#9fb0c1; --fg-faint:#718394;
+  --fg:#e7eef5; --fg-muted:#9fb0c1; --fg-faint:#8798a9;
   --border:#2a3744; --border-strong:#36485a;
   --accent:#4a90d9; --accent-strong:#5fa0e3; --accent-fg:#0b1420; --accent-soft:#16304a;
-  --ok:#3bb183; --ok-soft:#133227; --warn:#d99b3e; --warn-soft:#332713; --danger:#e26657; --danger-soft:#331a16;
+  --ok:#3bb183; --ok-soft:#133227; --warn:#d99b3e; --warn-soft:#332713; --danger:#e57466; --danger-soft:#331a16;
   --tier-s:#4a90d9; --tier-s-soft:#16304a; --tier-m:#3bb183; --tier-m-soft:#133227;
   --tier-l:#d99b3e; --tier-l-soft:#332713; --tier-xl:#e07a4e; --tier-xl-soft:#3a2016; --on-tier:#0b1420;
   --tier-s-ink:#5c9bdd; --tier-m-ink:#3bb183; --tier-l-ink:#d99b3e; --tier-xl-ink:#e07a4e;
@@ -56,10 +56,10 @@
 }}
 :root[data-theme="dark"]{
   --bg:#0e1621; --surface:#16202c; --surface-2:#1b2733; --surface-3:#222f3d;
-  --fg:#e7eef5; --fg-muted:#9fb0c1; --fg-faint:#718394;
+  --fg:#e7eef5; --fg-muted:#9fb0c1; --fg-faint:#8798a9;
   --border:#2a3744; --border-strong:#36485a;
   --accent:#4a90d9; --accent-strong:#5fa0e3; --accent-fg:#0b1420; --accent-soft:#16304a;
-  --ok:#3bb183; --ok-soft:#133227; --warn:#d99b3e; --warn-soft:#332713; --danger:#e26657; --danger-soft:#331a16;
+  --ok:#3bb183; --ok-soft:#133227; --warn:#d99b3e; --warn-soft:#332713; --danger:#e57466; --danger-soft:#331a16;
   --tier-s:#4a90d9; --tier-s-soft:#16304a; --tier-m:#3bb183; --tier-m-soft:#133227;
   --tier-l:#d99b3e; --tier-l-soft:#332713; --tier-xl:#e07a4e; --tier-xl-soft:#3a2016; --on-tier:#0b1420;
   --tier-s-ink:#5c9bdd; --tier-m-ink:#3bb183; --tier-l-ink:#d99b3e; --tier-xl-ink:#e07a4e;
@@ -99,7 +99,7 @@ button{font-family:inherit}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .tb-logo{filter:brightness(0) invert(.93)}}
 .tb-title{min-width:0;padding-left:12px;border-left:1px solid var(--border)}
 .tb-title b{display:block;font-size:14.5px;font-weight:600;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.tb-title span{display:block;font-size:11.5px;color:var(--fg-muted);white-space:nowrap}
+.tb-title span{display:block;font-size:12px;color:var(--fg-muted);white-space:nowrap}
 .navtoggle{display:none;align-items:center;justify-content:center;border:1px solid var(--border);
   background:var(--surface-2);color:var(--fg);border-radius:8px;width:36px;height:34px;font-size:18px;line-height:1;cursor:pointer;flex:none}
 .navtoggle:focus-visible,.nav a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
@@ -143,7 +143,7 @@ button{font-family:inherit}
 /* เมนูซ้าย */
 .shell{display:flex;align-items:flex-start;min-height:calc(100vh - 57px);max-width:1760px;margin-inline:auto}
 .nav{width:238px;flex:none;padding:14px 10px;border-right:1px solid var(--border);background:var(--surface);align-self:stretch}
-.nav .group{font-size:11px;letter-spacing:.06em;color:var(--fg-faint);padding:12px 10px 5px}
+.nav .group{font-size:12px;letter-spacing:.06em;color:var(--fg-faint);padding:12px 10px 5px}
 .nav a{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;color:var(--fg-muted);
   text-decoration:none;font-size:13.5px;cursor:pointer;margin-bottom:1px}
 .nav a .ic{width:17px;height:17px;display:inline-flex;align-items:center;justify-content:center;flex:none;opacity:.85}
@@ -189,6 +189,18 @@ button{font-family:inherit}
 @media (prefers-reduced-motion:reduce){body.nav-mini .nav{transition:none}}
 /* ตอนโหลดหน้า: ตั้งสถานะเมนูทันทีโดยไม่เล่นแอนิเมชันหุบ (ใส่/ถอดโดย init ใน JS) */
 body.nav-noanim .nav{transition:none!important}
+/* ===== UX เร่งด่วน (เจ้าของอนุมัติ 16 พ.ย. 2026 · HQ วัดค่าจริง) =====
+   1) ไอคอนเส้น .ixs แทนอีโมจิ/สัญลักษณ์ในปุ่ม (ขนาดตามตัวอักษร สี currentColor)
+   2) จอ ≤767px: ช่องกรอก 16px (iPhone ไม่ซูมเอง) · ปุ่ม/ตัวควบคุมสูง ≥44px · จอคอมคงเดิม
+   ใช้ !important เฉพาะ font-size ช่องกรอก เพราะแต่ละหน้ามี selector เฉพาะที่ specificity สูงกว่า */
+small{font-size:max(12px,.85em)} /* <small> ของเบราว์เซอร์ย่อเหลือ ~10.8px · ขั้นต่ำ 12px */
+.ixs{width:1em;height:1em;vertical-align:-.14em;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
+@media (max-width:767px){
+  input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]):not([type=hidden]):not([type=color]),select,textarea{font-size:16px !important}
+  button,.btn,a.btn,select,summary,.navtoggle,.addbtn,.savebtn,.theme-btn,.nav a,.seg button,button.chip,a.chip,.chip[role=button]{min-height:44px !important}
+  .chip[role=button]{display:inline-flex;align-items:center}
+  .navtoggle{min-width:44px}
+}
 /* ===== /AGA-SHELL v1 ===== */
 
 .pill{display:inline-flex;align-items:center;gap:6px;padding:5px 11px;border:1px solid var(--border);
@@ -221,7 +233,7 @@ main{flex:1;min-width:0;padding:20px 24px 64px}
   display:inline-flex;align-items:center;gap:8px}
 .tab:hover{color:var(--fg)}
 .tab[aria-selected="true"]{color:var(--accent-strong);border-bottom-color:var(--accent);font-weight:600}
-.tab .cnt{font-size:11.5px;font-weight:600;padding:1px 8px;border-radius:999px;background:var(--surface-3);color:var(--fg-muted)}
+.tab .cnt{font-size:12px;font-weight:600;padding:1px 8px;border-radius:999px;background:var(--surface-3);color:var(--fg-muted)}
 .tab .unsaved{width:8px;height:8px;border-radius:50%;background:var(--warn)}
 
 .cols{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:16px;align-items:start}
@@ -257,13 +269,13 @@ main{flex:1;min-width:0;padding:20px 24px 64px}
 .btn.icon{padding:3px 8px;font-size:12px;line-height:1.4}
 .btn:hover{filter:brightness(.97)}
 
-.chip{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;padding:2px 9px;border-radius:999px;white-space:nowrap}
+.chip{display:inline-flex;align-items:center;gap:5px;font-size:12px;padding:2px 9px;border-radius:999px;white-space:nowrap}
 .chip.ok{background:var(--ok-soft);color:var(--ok)} .chip.warn{background:var(--warn-soft);color:var(--warn)}
 .chip.miss{background:var(--danger-soft);color:var(--danger)} .chip.neutral{background:var(--surface-3);color:var(--fg-muted)}
 .chip.accent{background:var(--accent-soft);color:var(--accent-strong)}
 
 /* ป้าย Tier: สีตาม tier + จำนวนปีสัญญา (บังคับตาม CLAUDE.md) */
-.tier{display:inline-block;font-size:11.5px;font-weight:700;padding:2px 8px;border-radius:6px;letter-spacing:.3px}
+.tier{display:inline-block;font-size:12px;font-weight:700;padding:2px 8px;border-radius:6px;letter-spacing:.3px}
 .tier.s{background:var(--tier-s-soft);color:var(--tier-s-ink)} .tier.m{background:var(--tier-m-soft);color:var(--tier-m-ink)}
 .tier.l{background:var(--tier-l-soft);color:var(--tier-l-ink)} .tier.xl{background:var(--tier-xl-soft);color:var(--tier-xl-ink)}
 .tier.s1{background:var(--tier-s-soft);color:var(--tier-s-ink)} .tier.s3{background:var(--tier-s);color:var(--on-tier)}
@@ -279,9 +291,9 @@ main{flex:1;min-width:0;padding:20px 24px 64px}
   font-family:inherit;font-size:13px;color:var(--fg);background:var(--surface);
   border:1px solid var(--border-strong);border-radius:8px;padding:7px 10px;width:100%}
 .fld textarea{resize:vertical;min-height:64px}
-.fld .note{font-size:11.5px;color:var(--fg-faint)}
+.fld .note{font-size:12px;color:var(--fg-faint)}
 input[aria-invalid="true"]{border-color:var(--danger)!important;background:var(--danger-soft)}
-.err{font-size:11.5px;color:var(--danger);min-height:0}
+.err{font-size:12px;color:var(--danger);min-height:0}
 .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .check{display:flex;align-items:center;gap:8px;font-size:13px;margin-bottom:12px}
 
@@ -294,7 +306,7 @@ input[aria-invalid="true"]{border-color:var(--danger)!important;background:var(-
 
 /* ---------- แท็บเกณฑ์ Tier ---------- */
 table{border-collapse:collapse;width:100%;font-size:13px}
-thead th{background:var(--surface-2);color:var(--fg-muted);font-weight:600;font-size:11.5px;text-align:left;
+thead th{background:var(--surface-2);color:var(--fg-muted);font-weight:600;font-size:12px;text-align:left;
   padding:10px 12px;border-bottom:1px solid var(--border);white-space:nowrap}
 tbody td{padding:11px 12px;border-bottom:1px solid var(--border);vertical-align:middle}
 tbody tr:last-child td{border-bottom:0}
@@ -303,20 +315,20 @@ td.r,th.r{text-align:right}
 .inp-money{display:flex;align-items:center;gap:6px}
 .inp-money input{width:128px;text-align:right}
 .inp-money .unit{font-size:12px;color:var(--fg-muted)}
-.was{font-size:11.5px;color:var(--warn);margin-top:3px}
+.was{font-size:12px;color:var(--warn);margin-top:3px}
 .fixed{color:var(--fg-muted)}
 .scale{display:flex;height:34px;border-radius:8px;overflow:hidden;border:1px solid var(--border)}
 .scale>div{display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;min-width:0;overflow:hidden}
 .scale .sS{background:var(--tier-s-soft);color:var(--tier-s-ink)} .scale .sM{background:var(--tier-m-soft);color:var(--tier-m-ink)}
 .scale .sL{background:var(--tier-l-soft);color:var(--tier-l-ink)} .scale .sXL{background:var(--tier-xl-soft);color:var(--tier-xl-ink)}
-.scale-axis{position:relative;height:20px;margin-top:5px;font-size:11px;color:var(--fg-muted)}
+.scale-axis{position:relative;height:20px;margin-top:5px;font-size:12px;color:var(--fg-muted)}
 .scale-axis span{position:absolute;transform:translateX(-50%);white-space:nowrap}
 .savebar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:12px 16px;border-top:1px solid var(--border);background:var(--surface-2)}
 .savebar .push{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap}
 .sample{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px}
 .sample:last-child{border-bottom:0}
 .sample .v{flex:1;min-width:0}
-.sample .v small{display:block;color:var(--fg-muted);font-size:11.5px}
+.sample .v small{display:block;color:var(--fg-muted);font-size:12px}
 .imp td,.imp th{padding:8px 12px}
 .diffpos{color:var(--ok);font-weight:600} .diffneg{color:var(--danger);font-weight:600}
 .hist{list-style:none;margin:0;padding:0}
@@ -337,7 +349,7 @@ details.dev ul{margin:8px 0 0;padding-left:20px}
 .titem:first-of-type{border-top:0}
 .titem .nm{flex:1;min-width:0}
 .titem .nm b{font-weight:500;font-size:13.5px}
-.titem .nm small{display:block;color:var(--fg-muted);font-size:11.5px;line-height:1.35}
+.titem .nm small{display:block;color:var(--fg-muted);font-size:12px;line-height:1.35}
 .titem.off .nm b{color:var(--fg-faint);text-decoration:line-through}
 .titem .use{font-size:12px;color:var(--fg-muted);white-space:nowrap;min-width:78px;text-align:right}
 .titem .acts{display:flex;gap:4px;align-items:center}

@@ -31,28 +31,28 @@
 /* Tokens: ชุดเดียวกับ prototype หลัก (สี Tier ไม่ได้ใช้ในหน้านี้) · ห้าม hardcode hex นอก :root */
 :root{
   --bg:#eef2f7; --surface:#ffffff; --surface-2:#f4f7fb; --surface-3:#e9eff6;
-  --fg:#17212e; --fg-muted:#5a6b7e; --fg-faint:#8a98a8;
+  --fg:#17212e; --fg-muted:#5a6b7e; --fg-faint:#626c77;
   --border:#d8e0ea; --border-strong:#c3cedb;
   --accent:#1f5fa8; --accent-strong:#164a85; --accent-fg:#ffffff; --accent-soft:#e6f0fb;
-  --ok:#1a8a5c; --ok-soft:#e3f4ec; --warn:#b4740a; --warn-soft:#fbf0db; --danger:#c23b2e; --danger-soft:#fbe8e5;
+  --ok:#177a51; --ok-soft:#e3f4ec; --warn:#935f08; --warn-soft:#fbf0db; --danger:#be392d; --danger-soft:#fbe8e5;
   --radius:10px; --shadow:0 1px 2px rgba(20,40,70,.06),0 8px 24px rgba(20,40,70,.07);
   color-scheme:light;
 }
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
   --bg:#0e1621; --surface:#16202c; --surface-2:#1b2733; --surface-3:#222f3d;
-  --fg:#e7eef5; --fg-muted:#9fb0c1; --fg-faint:#718394;
+  --fg:#e7eef5; --fg-muted:#9fb0c1; --fg-faint:#8798a9;
   --border:#2a3744; --border-strong:#36485a;
   --accent:#4a90d9; --accent-strong:#5fa0e3; --accent-fg:#0b1420; --accent-soft:#16304a;
-  --ok:#3bb183; --ok-soft:#133227; --warn:#d99b3e; --warn-soft:#332713; --danger:#e26657; --danger-soft:#331a16;
+  --ok:#3bb183; --ok-soft:#133227; --warn:#d99b3e; --warn-soft:#332713; --danger:#e57466; --danger-soft:#331a16;
   --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.3);
   color-scheme:dark;
 }}
 :root[data-theme="dark"]{
   --bg:#0e1621; --surface:#16202c; --surface-2:#1b2733; --surface-3:#222f3d;
-  --fg:#e7eef5; --fg-muted:#9fb0c1; --fg-faint:#718394;
+  --fg:#e7eef5; --fg-muted:#9fb0c1; --fg-faint:#8798a9;
   --border:#2a3744; --border-strong:#36485a;
   --accent:#4a90d9; --accent-strong:#5fa0e3; --accent-fg:#0b1420; --accent-soft:#16304a;
-  --ok:#3bb183; --ok-soft:#133227; --warn:#d99b3e; --warn-soft:#332713; --danger:#e26657; --danger-soft:#331a16;
+  --ok:#3bb183; --ok-soft:#133227; --warn:#d99b3e; --warn-soft:#332713; --danger:#e57466; --danger-soft:#331a16;
   --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.3);
   color-scheme:dark;
 }
@@ -142,7 +142,7 @@ footer{padding:8px 0 20px;text-align:center;font-size:12px;color:var(--fg-faint)
 .mk button{font-family:inherit;font-size:12px;border:1px solid var(--warn);background:var(--surface);color:var(--fg);
   border-radius:7px;padding:4px 9px;cursor:pointer}
 .mk button:hover{background:var(--surface-3)}
-.mk code{font-family:ui-monospace,Consolas,monospace;font-size:11.5px;background:var(--surface);color:var(--fg);padding:0 5px;border-radius:4px}
+.mk code{font-family:ui-monospace,Consolas,monospace;font-size:12px;background:var(--surface);color:var(--fg);padding:0 5px;border-radius:4px}
 
 @media (max-width:440px){
   .card{padding:24px 18px 20px;border-radius:12px}
@@ -153,6 +153,19 @@ footer{padding:8px 0 20px;text-align:center;font-size:12px;color:var(--fg-faint)
 /* โลโก้ Advance Group Asia (ครอปจาก docs/mockup/Logo Advance Group Asia.png · ฝังเป็น data URI ให้ไฟล์เดียวใช้ได้) 
    โหมดมืด = ใช้ filter ทำเป็นโลโก้สีขาว เพราะสีเขียวเข้มเดิมมองไม่เห็นบนพื้นมืด */
 :root{--logo-img:url(data:image/png;base64,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)}
+
+/* ===== UX เร่งด่วน (เจ้าของอนุมัติ 16 พ.ย. 2026 · HQ วัดค่าจริง) =====
+   1) ไอคอนเส้น .ixs แทนอีโมจิ/สัญลักษณ์ในปุ่ม (ขนาดตามตัวอักษร สี currentColor)
+   2) จอ ≤767px: ช่องกรอก 16px (iPhone ไม่ซูมเอง) · ปุ่ม/ตัวควบคุมสูง ≥44px · จอคอมคงเดิม
+   ใช้ !important เฉพาะ font-size ช่องกรอก เพราะแต่ละหน้ามี selector เฉพาะที่ specificity สูงกว่า */
+small{font-size:max(12px,.85em)} /* <small> ของเบราว์เซอร์ย่อเหลือ ~10.8px · ขั้นต่ำ 12px */
+.ixs{width:1em;height:1em;vertical-align:-.14em;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
+@media (max-width:767px){
+  input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]):not([type=hidden]):not([type=color]),select,textarea{font-size:16px !important}
+  button,.btn,a.btn,select,summary,.navtoggle,.addbtn,.savebtn,.theme-btn,.nav a,.seg button,button.chip,a.chip,.chip[role=button]{min-height:44px !important}
+  .chip[role=button]{display:inline-flex;align-items:center}
+  .navtoggle{min-width:44px}
+}
 </style>
 </head>
 <body>
@@ -188,7 +201,7 @@ footer{padding:8px 0 20px;text-align:center;font-size:12px;color:var(--fg-faint)
           <label for="p">รหัสผ่าน</label>
           <div class="inwrap has-eye">
             <input id="p" name="password" type="password" autocomplete="current-password" placeholder="••••••••" aria-describedby="ph">
-            <button class="eye" id="eye" type="button" aria-label="แสดงรหัสผ่าน" aria-pressed="false" title="แสดง/ซ่อนรหัสผ่าน">👁</button>
+            <button class="eye" id="eye" type="button" aria-label="แสดงรหัสผ่าน" aria-pressed="false" title="แสดง/ซ่อนรหัสผ่าน"><svg class="ixs" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></button>
           </div>
           <div class="hint bad" id="ph" hidden></div>
           <div class="caps" id="caps" role="status">⚠ Caps Lock เปิดอยู่</div>
@@ -220,7 +233,7 @@ footer{padding:8px 0 20px;text-align:center;font-size:12px;color:var(--fg-faint)
             <label for="np">รหัสผ่านใหม่</label>
             <div class="inwrap has-eye">
               <input id="np" type="password" autocomplete="new-password" placeholder="อย่างน้อย 8 ตัวอักษร" aria-describedby="nph">
-              <button class="eye" id="eye2" type="button" aria-label="แสดงรหัสผ่าน" aria-pressed="false" title="แสดง/ซ่อนรหัสผ่าน">👁</button>
+              <button class="eye" id="eye2" type="button" aria-label="แสดงรหัสผ่าน" aria-pressed="false" title="แสดง/ซ่อนรหัสผ่าน"><svg class="ixs" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></button>
             </div>
             <div class="hint bad" id="nph" hidden></div>
           </div>
@@ -281,7 +294,7 @@ footer{padding:8px 0 20px;text-align:center;font-size:12px;color:var(--fg-faint)
     p.type=show?'text':'password';
     this.setAttribute('aria-pressed',show);
     this.setAttribute('aria-label',show?'ซ่อนรหัสผ่าน':'แสดงรหัสผ่าน');
-    this.textContent=show?'🙈':'👁';
+    this.innerHTML=show?'<svg class="ixs" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/><path d="M4 4l16 16"/></svg>':'<svg class="ixs" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>';
     p.focus();
   });
 
@@ -359,7 +372,7 @@ footer{padding:8px 0 20px;text-align:center;font-size:12px;color:var(--fg-faint)
     np.type=show?'text':'password'; cp.type=np.type;
     this.setAttribute('aria-pressed',show);
     this.setAttribute('aria-label',show?'ซ่อนรหัสผ่าน':'แสดงรหัสผ่าน');
-    this.textContent=show?'🙈':'👁'; np.focus();
+    this.innerHTML=show?'<svg class="ixs" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/><path d="M4 4l16 16"/></svg>':'<svg class="ixs" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>'; np.focus();
   });
   $('fp').addEventListener('submit',function(e){
     e.preventDefault(); if(busy) return;

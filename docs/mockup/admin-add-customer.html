@@ -10,10 +10,10 @@
 <style>
 :root{
   --bg:#eef2f7; --surface:#ffffff; --surface-2:#f4f7fb; --surface-3:#e9eff6;
-  --fg:#17212e; --fg-muted:#5a6b7e; --fg-faint:#8a98a8;
+  --fg:#17212e; --fg-muted:#5a6b7e; --fg-faint:#626c77;
   --border:#d8e0ea; --border-strong:#c3cedb;
   --accent:#1f5fa8; --accent-strong:#164a85; --accent-fg:#fff; --accent-soft:#e6f0fb;
-  --ok:#1a8a5c; --ok-soft:#e3f4ec; --warn:#b4740a; --warn-soft:#fbf0db; --danger:#c23b2e; --danger-soft:#fbe8e5;
+  --ok:#177a51; --ok-soft:#e3f4ec; --warn:#935f08; --warn-soft:#fbf0db; --danger:#be392d; --danger-soft:#fbe8e5;
   --tier-s:#1f5fa8; --tier-s-soft:#e6f0fb; --tier-m:#157a50; --tier-m-soft:#e3f4ec;
   --tier-l:#a86c07; --tier-l-soft:#fbf0db; --tier-xl:#c2561f; --tier-xl-soft:#fce6da; --on-tier:#ffffff;
   --tier-s-ink:#1f5fa8; --tier-m-ink:#157a50; --tier-l-ink:#976106; --tier-xl-ink:#ab4c1b;
@@ -23,10 +23,10 @@
 }
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
   --bg:#0e1621; --surface:#16202c; --surface-2:#1b2733; --surface-3:#222f3d;
-  --fg:#e7eef5; --fg-muted:#9fb0c1; --fg-faint:#718394;
+  --fg:#e7eef5; --fg-muted:#9fb0c1; --fg-faint:#8798a9;
   --border:#2a3744; --border-strong:#36485a;
   --accent:#4a90d9; --accent-strong:#5fa0e3; --accent-fg:#0b1420; --accent-soft:#16304a;
-  --ok:#3bb183; --ok-soft:#133227; --warn:#d99b3e; --warn-soft:#332713; --danger:#e26657; --danger-soft:#331a16;
+  --ok:#3bb183; --ok-soft:#133227; --warn:#d99b3e; --warn-soft:#332713; --danger:#e57466; --danger-soft:#331a16;
   --tier-s:#4a90d9; --tier-s-soft:#16304a; --tier-m:#3bb183; --tier-m-soft:#133227;
   --tier-l:#d99b3e; --tier-l-soft:#332713; --tier-xl:#e07a4e; --tier-xl-soft:#3a2016; --on-tier:#0b1420;
   --tier-s-ink:#5c9bdd; --tier-m-ink:#3bb183; --tier-l-ink:#d99b3e; --tier-xl-ink:#e07a4e;
@@ -36,10 +36,10 @@
 }}
 :root[data-theme="dark"]{
   --bg:#0e1621; --surface:#16202c; --surface-2:#1b2733; --surface-3:#222f3d;
-  --fg:#e7eef5; --fg-muted:#9fb0c1; --fg-faint:#718394;
+  --fg:#e7eef5; --fg-muted:#9fb0c1; --fg-faint:#8798a9;
   --border:#2a3744; --border-strong:#36485a;
   --accent:#4a90d9; --accent-strong:#5fa0e3; --accent-fg:#0b1420; --accent-soft:#16304a;
-  --ok:#3bb183; --ok-soft:#133227; --warn:#d99b3e; --warn-soft:#332713; --danger:#e26657; --danger-soft:#331a16;
+  --ok:#3bb183; --ok-soft:#133227; --warn:#d99b3e; --warn-soft:#332713; --danger:#e57466; --danger-soft:#331a16;
   --tier-s:#4a90d9; --tier-s-soft:#16304a; --tier-m:#3bb183; --tier-m-soft:#133227;
   --tier-l:#d99b3e; --tier-l-soft:#332713; --tier-xl:#e07a4e; --tier-xl-soft:#3a2016; --on-tier:#0b1420;
   --tier-s-ink:#5c9bdd; --tier-m-ink:#3bb183; --tier-l-ink:#d99b3e; --tier-xl-ink:#e07a4e;
@@ -82,7 +82,7 @@ h1{font-size:20px;font-weight:600;margin:0 0 3px}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .tb-logo{filter:brightness(0) invert(.93)}}
 .tb-title{min-width:0;padding-left:12px;border-left:1px solid var(--border)}
 .tb-title b{display:block;font-size:14.5px;font-weight:600;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.tb-title span{display:block;font-size:11.5px;color:var(--fg-muted);white-space:nowrap}
+.tb-title span{display:block;font-size:12px;color:var(--fg-muted);white-space:nowrap}
 .navtoggle{display:none;align-items:center;justify-content:center;border:1px solid var(--border);
   background:var(--surface-2);color:var(--fg);border-radius:8px;width:36px;height:34px;font-size:18px;line-height:1;cursor:pointer;flex:none}
 .navtoggle:focus-visible,.nav a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
@@ -127,7 +127,7 @@ h1{font-size:20px;font-weight:600;margin:0 0 3px}
 /* เมนูซ้าย */
 .shell{display:flex;align-items:flex-start;min-height:calc(100vh - 57px);max-width:1760px;margin-inline:auto}
 .nav{width:238px;flex:none;padding:14px 10px;border-right:1px solid var(--border);background:var(--surface);align-self:stretch}
-.nav .group{font-size:11px;letter-spacing:.06em;color:var(--fg-faint);padding:12px 10px 5px}
+.nav .group{font-size:12px;letter-spacing:.06em;color:var(--fg-faint);padding:12px 10px 5px}
 .nav a{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;color:var(--fg-muted);
   text-decoration:none;font-size:13.5px;cursor:pointer;margin-bottom:1px}
 .nav a .ic{width:17px;height:17px;display:inline-flex;align-items:center;justify-content:center;flex:none;opacity:.85}
@@ -173,6 +173,18 @@ h1{font-size:20px;font-weight:600;margin:0 0 3px}
 @media (prefers-reduced-motion:reduce){body.nav-mini .nav{transition:none}}
 /* ตอนโหลดหน้า: ตั้งสถานะเมนูทันทีโดยไม่เล่นแอนิเมชันหุบ (ใส่/ถอดโดย init ใน JS) */
 body.nav-noanim .nav{transition:none!important}
+/* ===== UX เร่งด่วน (เจ้าของอนุมัติ 16 พ.ย. 2026 · HQ วัดค่าจริง) =====
+   1) ไอคอนเส้น .ixs แทนอีโมจิ/สัญลักษณ์ในปุ่ม (ขนาดตามตัวอักษร สี currentColor)
+   2) จอ ≤767px: ช่องกรอก 16px (iPhone ไม่ซูมเอง) · ปุ่ม/ตัวควบคุมสูง ≥44px · จอคอมคงเดิม
+   ใช้ !important เฉพาะ font-size ช่องกรอก เพราะแต่ละหน้ามี selector เฉพาะที่ specificity สูงกว่า */
+small{font-size:max(12px,.85em)} /* <small> ของเบราว์เซอร์ย่อเหลือ ~10.8px · ขั้นต่ำ 12px */
+.ixs{width:1em;height:1em;vertical-align:-.14em;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
+@media (max-width:767px){
+  input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]):not([type=hidden]):not([type=color]),select,textarea{font-size:16px !important}
+  button,.btn,a.btn,select,summary,.navtoggle,.addbtn,.savebtn,.theme-btn,.nav a,.seg button,button.chip,a.chip,.chip[role=button]{min-height:44px !important}
+  .chip[role=button]{display:inline-flex;align-items:center}
+  .navtoggle{min-width:44px}
+}
 /* ===== /AGA-SHELL v1 ===== */
 
 
@@ -200,19 +212,19 @@ a.avatar:hover,a.avatar:focus-visible{box-shadow:0 0 0 2px var(--accent);color:v
 .changelog ul{margin:7px 0 0;padding-left:18px} .changelog li{margin:3px 0}
 .toolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin:14px 0 16px}
 .field{display:flex;flex-direction:column;gap:3px}
-.field label{font-size:11px;color:var(--fg-muted)}
+.field label{font-size:12px;color:var(--fg-muted)}
 .field select,.field input{font-family:inherit;font-size:13px;color:var(--fg);background:var(--surface);
   border:1px solid var(--border-strong);border-radius:8px;padding:7px 10px;min-width:140px}
 .btn{font-family:inherit;font-size:13px;font-weight:500;border-radius:8px;padding:8px 14px;cursor:pointer;
   border:1px solid var(--border-strong);background:var(--surface);color:var(--fg)}
 .btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-fg)}
 .btn.sm{padding:5px 10px;font-size:12px}
-.chip{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;padding:2px 9px;border-radius:999px;white-space:nowrap}
+.chip{display:inline-flex;align-items:center;gap:5px;font-size:12px;padding:2px 9px;border-radius:999px;white-space:nowrap}
 .chip.ok{background:var(--ok-soft);color:var(--ok)} .chip.miss{background:var(--danger-soft);color:var(--danger)}
 .chip.pend{background:var(--warn-soft);color:var(--warn)} .chip.na{background:var(--surface-3);color:var(--fg-muted)}
 .chip.info{background:var(--accent-soft);color:var(--accent-strong)}
 .sumchips{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 14px}
-.tier{display:inline-block;font-size:11.5px;font-weight:700;padding:2px 8px;border-radius:6px;letter-spacing:.3px}
+.tier{display:inline-block;font-size:12px;font-weight:700;padding:2px 8px;border-radius:6px;letter-spacing:.3px}
 .tier.s{background:var(--tier-s-soft);color:var(--tier-s-ink)} .tier.m{background:var(--tier-m-soft);color:var(--tier-m-ink)}
 .tier.l{background:var(--tier-l-soft);color:var(--tier-l-ink)} .tier.xl{background:var(--tier-xl-soft);color:var(--tier-xl-ink)}
 /* สี Tier ตามกฎโปรเจกต์: S=ฟ้า/น้ำเงิน · M=เขียว · L=เหลือง · XL=ส้ม
@@ -228,7 +240,7 @@ a.avatar:hover,a.avatar:focus-visible{box-shadow:0 0 0 2px var(--accent);color:v
 
 .tablewrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);overflow-x:auto}
 table{border-collapse:collapse;width:100%;font-size:12.5px;white-space:nowrap}
-thead th{background:var(--surface-2);color:var(--fg-muted);font-weight:600;font-size:11px;text-align:left;
+thead th{background:var(--surface-2);color:var(--fg-muted);font-weight:600;font-size:12px;text-align:left;
   padding:8px 10px;border-bottom:1px solid var(--border);position:sticky;top:0}
 tbody td{padding:6px 10px;border-bottom:1px solid var(--border);vertical-align:middle}
 tbody tr:last-child td{border-bottom:0}
@@ -237,10 +249,10 @@ table select,table input{font-family:inherit;font-size:12px;color:var(--fg);back
   border:1px solid var(--border-strong);border-radius:6px;padding:4px 7px;max-width:120px}
 .auto{background:var(--surface-2);color:var(--fg-muted);border:1px dashed var(--border-strong);border-radius:6px;
   padding:4px 8px;font-size:12px;display:inline-block}
-.auto-tag{font-size:9.5px;color:var(--fg-faint);border:1px dashed var(--border-strong);border-radius:5px;padding:0 4px;margin-left:4px}
+.auto-tag{font-size:12px;color:var(--fg-faint);border:1px dashed var(--border-strong);border-radius:5px;padding:0 4px;margin-left:4px}
 .seg2{display:inline-flex;border:1px solid var(--border-strong);border-radius:7px;overflow:hidden}
-.seg2 span{font-size:11.5px;padding:4px 10px;cursor:pointer;color:var(--fg-muted);background:var(--surface)}
-.seg2 span.on{background:var(--accent);color:#fff;font-weight:600}
+.seg2 span{font-size:12px;padding:4px 10px;cursor:pointer;color:var(--fg-muted);background:var(--surface)}
+.seg2 span.on{background:var(--accent);color:var(--accent-fg);font-weight:600}
 .seg2.v span.on{background:var(--ok)}
 .badrow td{background:var(--danger-soft)}
 .foot{padding:9px 12px;border-top:1px solid var(--border);background:var(--surface-2);display:flex;gap:9px;align-items:center}
@@ -253,35 +265,35 @@ table select,table input{font-family:inherit;font-size:12px;color:var(--fg);back
 .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
 .grid2{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
 .mini{display:flex;flex-direction:column;gap:4px}
-.mini label{font-size:11px;color:var(--fg-muted)}
+.mini label{font-size:12px;color:var(--fg-muted)}
 .mini input,.mini select{font-family:inherit;font-size:13px;color:var(--fg);background:var(--surface);
   border:1px solid var(--border-strong);border-radius:7px;padding:7px 9px;width:100%}
 .mini .ro{background:var(--surface-2);color:var(--fg-muted);border-style:dashed}
 .tiercard{background:var(--accent-soft);border:1px solid var(--accent);border-radius:10px;padding:14px 16px;
   display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-top:14px}
 .tiercard .big{font-size:26px;font-weight:700;color:var(--accent-strong);line-height:1}
-.tiercard .lab{font-size:11.5px;color:var(--fg-muted)}
-.hint{font-size:11.5px;color:var(--fg-muted);background:var(--surface-2);border:1px solid var(--border);
+.tiercard .lab{font-size:12px;color:var(--fg-muted)}
+.hint{font-size:12px;color:var(--fg-muted);background:var(--surface-2);border:1px solid var(--border);
   border-left:3px solid var(--accent);border-radius:0 8px 8px 0;padding:9px 12px;margin:0 0 13px}
 .save{display:flex;gap:9px;margin-top:18px;flex-wrap:wrap}
-.tag-new{font-size:10px;font-weight:700;color:var(--new);background:var(--new-soft);border:1px solid #d8cdf0;border-radius:5px;padding:1px 7px}
+.tag-new{font-size:12px;font-weight:700;color:var(--new);background:var(--new-soft);border:1px solid #d8cdf0;border-radius:5px;padding:1px 7px}
 
 /* ===== โหมดตารางเหมือน Excel ===== */
 table.xl{font-size:12px;width:2504px;table-layout:fixed}
-table.xl thead th{padding:5px 7px;font-size:10.5px;line-height:1.3;vertical-align:bottom;border-right:1px solid var(--border);white-space:normal}
+table.xl thead th{padding:5px 7px;font-size:12px;line-height:1.3;vertical-align:bottom;border-right:1px solid var(--border);white-space:normal}
 table.xl thead th.grp{background:var(--surface-3);color:var(--fg);border-bottom:1px solid var(--border-strong)}
 table.xl thead th.sub{background:var(--surface-3);font-weight:600}
 table.xl tbody td{padding:3px 5px;border-right:1px solid var(--border);overflow:hidden}
 table.xl tbody tr:nth-child(even) td{background:var(--surface-2)}
 table.xl tbody tr:hover td{background:var(--accent-soft)}
-table.xl input,table.xl select{padding:3px 6px;font-size:11.5px;border-radius:5px;width:100%;max-width:none;min-width:0}
+table.xl input,table.xl select{padding:3px 6px;font-size:12px;border-radius:5px;width:100%;max-width:none;min-width:0}
 table.xl input.money{text-align:right}
 table.xl input.money.off{background:var(--surface-3);border-style:dashed;cursor:not-allowed}
 table.xl input.wait,table.xl select.wait{background:var(--warn-soft)}
 table.xl input[type=checkbox]{width:auto}
 table.xl .jobsw{display:inline-flex;background:var(--surface-3);border:1px solid var(--border);
   border-radius:999px;padding:2px;cursor:pointer;user-select:none;max-width:100%}
-table.xl .jobsw .jo{font-size:10.5px;line-height:1.5;padding:2px 9px;border-radius:999px;
+table.xl .jobsw .jo{font-size:12px;line-height:1.5;padding:2px 9px;border-radius:999px;
   color:var(--fg-muted);white-space:nowrap;transition:background-color .14s ease,color .14s ease}
 table.xl .jobsw .jo:not(.on):hover{background:var(--surface);color:var(--fg)}
 table.xl .jobsw .jo.on{cursor:default}
@@ -292,7 +304,7 @@ table.xl .tmwrap{display:flex;align-items:center;gap:3px}
 table.xl select.tmh,table.xl select.tmm{padding:3px 2px 3px 5px}
 table.xl .tmsep{color:var(--fg-muted);font-weight:600;flex:none}
 table.xl .chip{max-width:100%;overflow:hidden;text-overflow:ellipsis}
-tr.pendrow td{background:#fffaf0 !important}
+tr.pendrow td{background:color-mix(in srgb,var(--warn-soft) 60%,var(--surface)) !important}
 tr.warnrow td{background:var(--warn-soft) !important}
 tr.badrow td{background:var(--danger-soft) !important}
 
@@ -301,12 +313,12 @@ tr.badrow td{background:var(--danger-soft) !important}
    align-items:start = ไม่ยืดตารางสั้นให้สูงเท่าตารางเขต (สาเหตุแถวกระจายเดิม) · คอลัมน์ซ้ายติดจอตอนเลื่อนดูตารางเขตที่ยาว */
 .xls-grid{display:grid;grid-template-columns:fit-content(440px) minmax(0,1fr);gap:24px;align-items:start}
 .xls-side{display:flex;flex-direction:column;gap:14px;position:sticky;top:72px}
-.xls-note{font-size:11.5px;color:var(--fg-muted);line-height:1.6;width:0;min-width:100%}
+.xls-note{font-size:12px;color:var(--fg-muted);line-height:1.6;width:0;min-width:100%}
 .xls-main #zoneTbl{width:100%}
 @media (max-width:1100px){.xls-grid{grid-template-columns:minmax(0,1fr)} .xls-side{position:static} .xls-note{width:auto;max-width:640px}}
 .mini-t{width:auto;font-size:12px;border:1px solid var(--border);border-radius:8px;overflow:hidden}
 .miniwrap{overflow-x:auto;max-width:100%;min-width:0}
-.mini-t th{background:var(--surface-2);padding:6px 12px;font-size:11px}
+.mini-t th{background:var(--surface-2);padding:6px 12px;font-size:12px}
 .mini-t td{padding:5px 12px}
 .mini-t tfoot td{background:var(--surface-2);font-weight:700;border-top:1px solid var(--border-strong)}
 /* หัว 2 ชั้นของตารางเมทริกซ์ New/Renew × Tier */
@@ -327,7 +339,7 @@ tr.badrow td{background:var(--danger-soft) !important}
 #zoneTbl td.hm3,.hmsw.hm3{background:var(--accent-soft);background:color-mix(in srgb,var(--accent) 36%,var(--surface))}
 #zoneTbl td.hm4,.hmsw.hm4{background:var(--accent-soft);background:color-mix(in srgb,var(--accent) 26%,var(--surface))}
 #zoneTbl td.hm5,.hmsw.hm5{background:var(--accent-soft);background:color-mix(in srgb,var(--accent) 17%,var(--surface))}
-#zoneTbl td.hmlg{font-weight:400;color:var(--fg-muted);font-size:11px;display:table-cell}
+#zoneTbl td.hmlg{font-weight:400;color:var(--fg-muted);font-size:12px;display:table-cell}
 #zoneTbl td.hmlg>span{margin-right:8px}
 .hmsw{display:inline-block;padding:1px 8px;border-radius:5px;color:var(--fg);font-weight:600}
 #zoneTbl tfoot td{border-top:0}
@@ -345,11 +357,11 @@ tr.badrow td{background:var(--danger-soft) !important}
 table.xl tbody tr[hidden]{display:none}
 
 /* ===== เรียงลำดับ (sort) ทุกคอลัมน์ของตารางเปิดงาน — คลิกหัวคอลัมน์ ===== */
-.sorthint{margin-left:auto;font-size:11.5px;color:var(--fg-muted);align-self:center}
+.sorthint{margin-left:auto;font-size:12px;color:var(--fg-muted);align-self:center}
 table.xl thead th.sortable{cursor:pointer;user-select:none}
 table.xl thead th.sortable:hover{background:var(--surface-3)}
 table.xl thead th.sortable:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
-table.xl thead th.sortable::after{content:"↕";margin-left:3px;font-size:9px;opacity:0;color:var(--fg-muted)}
+table.xl thead th.sortable::after{content:"↕";margin-left:3px;font-size:12px;opacity:0;color:var(--fg-muted)}
 table.xl thead th.sortable:hover::after{opacity:.7}
 table.xl thead th.sortable[aria-sort="ascending"]::after{content:"▲";opacity:1;color:var(--accent-strong)}
 table.xl thead th.sortable[aria-sort="descending"]::after{content:"▼";opacity:1;color:var(--accent-strong)}
@@ -358,9 +370,9 @@ table.xl thead th.sortable[aria-sort="ascending"],table.xl thead th.sortable[ari
 /* ===== Dashboard สรุปการเปิดงาน (แบบ B: KPI + สลับมุมมองทีละกราฟ + ตารางข้อมูลของกราฟ) ===== */
 .dkpi{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:14px}
 .dk{background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px}
-.dk .l{font-size:11.5px;color:var(--fg-muted)}
+.dk .l{font-size:12px;color:var(--fg-muted)}
 .dk .v{font-size:22px;font-weight:700;line-height:1.2;margin-top:2px}
-.dk .s{font-size:11px;color:var(--fg-faint)}
+.dk .s{font-size:12px;color:var(--fg-faint)}
 /* กราฟกินที่ที่เหลือทั้งหมด · คอลัมน์ตารางกว้างเท่าเนื้อตาราง (ไม่เกิน 400px) ชิดขวา
    (เดิม 1.6fr/1fr → คอลัมน์ขวากว้าง ~40% แต่ตารางกว้างแค่เนื้อหา เหลือที่ว่างขวามือ) */
 .dgrid{display:grid;grid-template-columns:minmax(0,1fr) fit-content(400px);gap:20px;align-items:start}
@@ -374,7 +386,7 @@ table.xl thead th.sortable[aria-sort="ascending"],table.xl thead th.sortable[ari
   background:var(--surface);color:var(--fg-muted);cursor:pointer}
 .dtabs button[aria-selected="true"]{background:var(--accent-soft);border-color:var(--accent);color:var(--accent-strong);font-weight:600}
 .dcanvas{position:relative;height:280px}
-.dnote{font-size:11.5px;color:var(--fg-muted);margin-top:8px}
+.dnote{font-size:12px;color:var(--fg-muted);margin-top:8px}
 .dmiss{font-size:12.5px;color:var(--fg-muted);padding:40px 12px;text-align:center}
 /* ลิงก์จากชื่อลูกค้าในตาราง → หน้ารายละเอียดลูกค้า */
 td.nm{position:relative}
@@ -397,19 +409,19 @@ td.nm:has(.hd-btn:not([hidden])) .rowlk{right:98px}
   --heat1:#1b2733;--heat2:#243444;--heat3:#2f4557;--heat4:#3c5870}}
 :root[data-theme="dark"]{--heat1:#1b2733;--heat2:#243444;--heat3:#2f4557;--heat4:#3c5870}
 .hcal{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px}
-.hhead{font-size:11px;color:var(--fg-muted);text-align:center;padding:2px 0 4px;font-weight:600}
+.hhead{font-size:12px;color:var(--fg-muted);text-align:center;padding:2px 0 4px;font-weight:600}
 .hday{border:1px solid var(--border);border-radius:7px;min-height:56px;padding:5px 6px 6px;
   position:relative;display:flex;flex-direction:column;background:var(--heat0)}
 .hday.pad{border:0;background:none}
 .hday.h0{background:var(--heat0)} .hday.h1{background:var(--heat1)}
 .hday.h2{background:var(--heat2)} .hday.h3{background:var(--heat3)} .hday.h4{background:var(--heat4)}
-.hday.we{opacity:.72}
-.hday .d{font-size:11px;color:var(--fg);font-weight:600;opacity:.75}
+.hday.we{border-style:dashed}
+.hday .d{font-size:12px;color:var(--fg);font-weight:600}
 .hday .n{font-size:17px;font-weight:700;line-height:1.1;margin-top:1px}
 /* วันที่ไม่มีงาน span นี้ว่าง -> :not(:empty) กันไม่ให้ขึ้นคำว่า "ราย" ลอยๆ */
-.hday .n:not(:empty)::after{content:" ราย";font-size:11px;font-weight:500;color:var(--fg-muted)}
+.hday .n:not(:empty)::after{content:" ราย";font-size:12px;font-weight:500;color:var(--fg-muted)}
 /* บรรทัดงาน: พื้นอ่อน + แถบซ้ายสี Tier (สีกลุ่ม S/M/L/XL — ปีระบุใน tooltip) */
-.hday .ev{font-size:10px;line-height:1.55;border-radius:4px;padding:0 4px;border-left:3px solid;
+.hday .ev{font-size:12px;line-height:1.55;border-radius:4px;padding:0 4px;border-left:3px solid;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
 .hday .ev b{font-weight:700;font-variant-numeric:tabular-nums;margin-right:3px}
 .hday .ev.s{background:var(--tier-s-soft);color:var(--tier-s-ink);border-left-color:var(--tier-s)}
@@ -418,9 +430,9 @@ td.nm:has(.hd-btn:not([hidden])) .rowlk{right:98px}
 .hday .ev.xl{background:var(--tier-xl-soft);color:var(--tier-xl-ink);border-left-color:var(--tier-xl)}
 .hday[data-tip]:hover{outline:2px solid var(--accent);outline-offset:-1px}
 .hday[data-tip]:hover::after{content:attr(data-tip);position:absolute;left:50%;bottom:calc(100% + 6px);
-  transform:translateX(-50%);background:var(--fg);color:var(--surface);font-size:11px;font-weight:500;
+  transform:translateX(-50%);background:var(--fg);color:var(--surface);font-size:12px;font-weight:500;
   white-space:nowrap;padding:5px 9px;border-radius:6px;z-index:9;pointer-events:none;box-shadow:var(--shadow)}
-.hlegend{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:11.5px;color:var(--fg-muted);margin-bottom:12px}
+.hlegend{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:12px;color:var(--fg-muted);margin-bottom:12px}
 .hlegend .hs{display:inline-flex;gap:2px}
 .hlegend .hs i{width:14px;height:14px;border-radius:3px;border:1px solid var(--border);display:block}
 .hlegend .hs i.h0{background:var(--heat0)} .hlegend .hs i.h1{background:var(--heat1)}
@@ -435,7 +447,7 @@ td.nm:has(.hd-btn:not([hidden])) .rowlk{right:98px}
 /* ตัวกรองปฏิทิน — ปุ่มเลือกแบบแถบ (segmented radio) · ปุ่ม Tier ใช้สีกลุ่ม Tier ของตัวเอง */
 .calfilter{display:flex;flex-wrap:wrap;align-items:center;gap:8px 18px;margin:0 0 12px}
 .calfilter .seg{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-.calfilter .seg-lb{font-size:11.5px;color:var(--fg-muted)}
+.calfilter .seg-lb{font-size:12px;color:var(--fg-muted)}
 .radio-inputs{display:inline-flex;flex-wrap:wrap;gap:2px;border-radius:9px;background:var(--surface-3);
   box-shadow:0 0 0 1px var(--border);padding:3px;font-size:12.5px}
 .radio-inputs .radio{position:relative;margin:0}
@@ -458,7 +470,7 @@ td.nm:has(.hd-btn:not([hidden])) .rowlk{right:98px}
 
 .hday{min-height:108px}
 .hday .hnames{margin-top:4px;display:flex;flex-direction:column;gap:2px;overflow:hidden}
-.hday .hnames .more{font-size:10px;color:var(--fg-faint);padding-left:5px}
+.hday .hnames .more{font-size:12px;color:var(--fg);padding-left:5px}
 .hday[data-tip]:hover::after{white-space:pre;text-align:left;line-height:1.6;max-width:none}
 /* แบบ 4 (เจ้าของเลือก 11 พ.ย. 2026): วันที่ชิดซ้าย + "N ราย" ชิดขวาในแถวเดียวกัน → ได้บรรทัดคืน 1 บรรทัด
    ช่องจึงโชว์รายชื่อได้ 4 ราย (เดิม 3) · ใช้ grid แทน flex: แถว 1 = วันที่ | จำนวน · แถว 2 = รายชื่อเต็มความกว้าง */
@@ -467,7 +479,7 @@ td.nm:has(.hd-btn:not([hidden])) .rowlk{right:98px}
 .hday .n{font-size:15px;line-height:1.35;margin-top:0;justify-self:end;align-self:baseline;white-space:nowrap}
 .hday .hnames{grid-column:1 / -1;margin-top:3px}
 /* จอแคบ (ช่องกว้าง ~38px): วันที่กับจำนวนแถวเดียวกันจะติดกันจนอ่านเป็น "1410" → ให้จำนวนลงบรรทัดใต้วันที่เหมือนเดิม */
-@media (max-width:620px){.hday{min-height:78px} .hday .d{font-size:11px}
+@media (max-width:620px){.hday{min-height:78px} .hday .d{font-size:12px}
   .hday:not(.pad){grid-template-columns:minmax(0,1fr);grid-template-rows:auto auto 1fr}
   .hday .n{font-size:14px;justify-self:start} .hday .hnames{grid-column:1}}
 
@@ -492,7 +504,7 @@ td.nm:has(.hd-btn:not([hidden])) .rowlk{right:98px}
 .daytab .nm{white-space:normal}
 .daytab .br{color:var(--fg-muted)}
 /* ประเภทงาน: ใช้ม่วง/เทา — เลี่ยงสีที่ชนกับ Tier (ฟ้า/เขียว/เหลือง/ส้ม) ในแถวเดียวกัน */
-.daytab .sl{font-size:10.5px;font-weight:700;padding:1px 8px;border-radius:5px;white-space:nowrap}
+.daytab .sl{font-size:12px;font-weight:700;padding:1px 8px;border-radius:5px;white-space:nowrap}
 .daytab .sl.n{background:var(--new-soft);color:var(--new)}
 .daytab .sl.r{background:var(--surface-3);color:var(--fg-muted)}
 
@@ -506,7 +518,7 @@ table.xl .chip.lk{cursor:pointer}
 .lkform{padding:14px 16px;font-size:12.5px;line-height:1.6}
 .lkform label{display:block;font-weight:500;margin-bottom:5px}
 .lkform textarea{width:100%;min-height:78px;font-family:inherit;font-size:13px;padding:8px 10px;border:1px solid var(--border-strong);border-radius:8px;background:var(--surface);color:var(--fg);resize:vertical}
-.lkform .hint{color:var(--fg-muted);font-size:11.5px;margin-top:6px}
+.lkform .hint{color:var(--fg-muted);font-size:12px;margin-top:6px}
 .lkform .err{color:var(--danger);background:var(--danger-soft);border-radius:8px;padding:6px 9px;margin-top:8px}
 .lkform .err[hidden]{display:none}
 table.xl .chip.fbtn{border:0;font-family:inherit;white-space:nowrap}
@@ -519,30 +531,30 @@ table.xl .chip.fbtn{border:0;font-family:inherit;white-space:nowrap}
 .na .pdfic .lb{fill:var(--fg-muted)}
 .fl-row{display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid var(--border)}
 .fl-row .ic{flex:none;width:38px;height:38px;border-radius:8px;background:var(--surface-3);color:var(--fg-muted);
-  font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center}
+  font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center}
 .fl-row .mn{flex:1;min-width:0}
 .fl-row .mn b{display:block;font-size:12.5px}
-.fl-row .mn small{display:block;color:var(--fg-muted);font-size:11.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fl-row .mn small{display:block;color:var(--fg-muted);font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .fl-row .mn small.has{color:var(--ok)}
 .fl-row label.pick{cursor:pointer}
-.fl-note{padding:10px 16px;font-size:11.5px;color:var(--fg-muted);line-height:1.6}
-.fl-err{margin:8px 16px 0;padding:7px 10px;border-radius:6px;background:var(--danger-soft);color:var(--danger);font-size:11.5px}
+.fl-note{padding:10px 16px;font-size:12px;color:var(--fg-muted);line-height:1.6}
+.fl-err{margin:8px 16px 0;padding:7px 10px;border-radius:6px;background:var(--danger-soft);color:var(--danger);font-size:12px}
 /* ไฟล์เกินขนาด: กำลังบีบอัดให้ (warn) · บีบสำเร็จ (ok) */
-.fl-busy,.fl-ok{margin:8px 16px 0;padding:7px 10px;border-radius:6px;font-size:11.5px;display:flex;align-items:center;gap:8px}
+.fl-busy,.fl-ok{margin:8px 16px 0;padding:7px 10px;border-radius:6px;font-size:12px;display:flex;align-items:center;gap:8px}
 .fl-busy{background:var(--warn-soft);color:var(--warn)}
 .fl-ok{background:var(--ok-soft);color:var(--ok)}
 .fl-busy .sp{flex:none;width:13px;height:13px;border-radius:50%;border:2px solid currentColor;border-right-color:transparent;animation:flsp .8s linear infinite}
 @keyframes flsp{to{transform:rotate(360deg)}}
 @media (prefers-reduced-motion:reduce){.fl-busy .sp{animation-duration:2.4s}}
-.fl-demo{margin:10px 16px 0;padding:7px 10px;border:1px dashed var(--border-strong);border-radius:6px;font-size:11.5px;color:var(--fg-muted);display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.fl-demo{margin:10px 16px 0;padding:7px 10px;border:1px dashed var(--border-strong);border-radius:6px;font-size:12px;color:var(--fg-muted);display:flex;align-items:center;gap:6px;flex-wrap:wrap}
 .fl-hd{display:flex;align-items:center;gap:8px;padding:11px 16px 4px;font-size:12.5px;font-weight:600}
 .fl-hist{margin:4px 16px 0;border:1px dashed var(--border-strong);border-radius:9px;background:var(--surface-2)}
 .fl-hist .hr{display:flex;align-items:center;gap:10px;padding:7px 11px;border-top:1px solid var(--border);font-size:12px}
 .fl-hist .hr:first-child{border-top:0}
-.fl-hist .hn{flex:none;width:28px;height:22px;border-radius:6px;background:var(--surface);border:1px solid var(--border);display:grid;place-items:center;font-size:11px;font-weight:600}
+.fl-hist .hn{flex:none;width:28px;height:22px;border-radius:6px;background:var(--surface);border:1px solid var(--border);display:grid;place-items:center;font-size:12px;font-weight:600}
 .fl-hist .hm{flex:1;min-width:0}
-.fl-hist .hm small{display:block;color:var(--fg-muted);font-size:11px}
-.fl-hist .none{padding:9px 12px;font-size:11.5px;color:var(--fg-muted)}
+.fl-hist .hm small{display:block;color:var(--fg-muted);font-size:12px}
+.fl-hist .none{padding:9px 12px;font-size:12px;color:var(--fg-muted)}
 .fl-form{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:10px 16px 4px}
 .fl-form input{flex:1;min-width:200px;font-family:inherit;font-size:12.5px;color:var(--fg);background:var(--surface);border:1px solid var(--border-strong);border-radius:8px;padding:6px 10px}
 .fl-form.off{opacity:.5}
@@ -555,10 +567,10 @@ table.xl .chip.lk:hover{outline:1px solid var(--accent);outline-offset:1px}
 .mdlist tr:last-child td{border-bottom:0}
 .mdlist tr:hover td{background:var(--surface-2)}
 .mdlist .t1{font-weight:600}
-.mdlist .t2{font-size:11px;color:var(--fg-muted)}
+.mdlist .t2{font-size:12px;color:var(--fg-muted)}
 .mdlist .no{padding:22px 16px;text-align:center;color:var(--fg-muted)}
-.mdwarn{font-size:10.5px;color:var(--warn);background:var(--warn-soft);border-radius:5px;padding:1px 7px;margin-left:6px}
-.mdgrp{padding:7px 16px;background:var(--surface-3);font-size:11px;font-weight:700;color:var(--fg-muted);
+.mdwarn{font-size:12px;color:var(--warn);background:var(--warn-soft);border-radius:5px;padding:1px 7px;margin-left:6px}
+.mdgrp{padding:7px 16px;background:var(--surface-3);font-size:12px;font-weight:700;color:var(--fg-muted);
   position:sticky;top:0}
 .mdgrp.bad{background:var(--danger-soft);color:var(--danger)}
 .mdgrp.warn{background:var(--warn-soft);color:var(--warn)}
@@ -571,10 +583,10 @@ table.xl .chip.lk:hover{outline:1px solid var(--accent);outline-offset:1px}
   border:1px solid var(--border-strong);background:var(--surface);color:var(--fg)}
 .mddone td,.mddone{opacity:.5}
 .dayft{padding:10px 16px;border-top:1px solid var(--border);background:var(--surface-2);
-  font-size:11.5px;color:var(--fg-muted);display:flex;align-items:center;gap:9px}
+  font-size:12px;color:var(--fg-muted);display:flex;align-items:center;gap:9px}
 
 /* ===== time picker (popup เลื่อนเลือก ชม./นาที) ===== */
-table.xl .tmbtn{font-family:inherit;font-size:11.5px;color:var(--fg);background:var(--surface);
+table.xl .tmbtn{font-family:inherit;font-size:12px;color:var(--fg);background:var(--surface);
   border:1px solid var(--border-strong);border-radius:5px;padding:3px 8px;cursor:pointer;width:100%;
   text-align:left;font-variant-numeric:tabular-nums}
 table.xl .tmbtn:hover{border-color:var(--accent)}
@@ -587,7 +599,7 @@ table.xl .tmbtn.wait{background:var(--warn-soft);color:var(--warn)}
 .tmcols{display:grid;grid-template-columns:1fr 1fr}
 .tmcol{border-right:1px solid var(--border)}
 .tmcol:last-child{border-right:0}
-.tmclbl{font-size:10.5px;color:var(--fg-muted);text-align:center;padding:5px 0;background:var(--surface-2);
+.tmclbl{font-size:12px;color:var(--fg-muted);text-align:center;padding:5px 0;background:var(--surface-2);
   position:sticky;top:0}
 .tmlist{max-height:198px;overflow-y:auto;overscroll-behavior:contain}
 .tmlist::-webkit-scrollbar{width:9px}
@@ -605,7 +617,7 @@ table.xl .tmbtn.wait{background:var(--warn-soft);color:var(--warn)}
 .tmpop .tmchk:hover{background:var(--surface-2)}
 .tmpop .tmchk input{width:auto;margin:0}
 .tmpop .tmchk.on{background:var(--accent-soft);color:var(--accent-strong);font-weight:600}
-.tmpop .tmhint{padding:6px 12px;font-size:11px;color:var(--fg-muted);background:var(--surface-2)}
+.tmpop .tmhint{padding:6px 12px;font-size:12px;color:var(--fg-muted);background:var(--surface-2)}
 table.xl .teambtn{text-align:center}
 table.xl .teambtn.multi{font-weight:700;color:var(--accent-strong)}
 </style>
@@ -655,7 +667,7 @@ table.xl .teambtn.multi{font-weight:700;color:var(--accent-strong)}
 
 <main>
 <h1>เปิดงาน · เพิ่มลูกค้าเข้าระบบ</h1>
-<p class="sub">admin บันทึกงานที่เปิดใหม่ → ไหลเข้าทะเบียนบริการให้หัวหน้างานใช้ต่อ <span class="chip pend">🔒 สิทธิ์ admin</span></p>
+<p class="sub">admin บันทึกงานที่เปิดใหม่ → ไหลเข้าทะเบียนบริการให้หัวหน้างานใช้ต่อ <span class="chip pend"><svg class="ixs" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg> สิทธิ์ admin</span></p>
 
 <div class="changelog">
   <b>✎ แก้ปัญหาจากไฟล์ Excel เดิมที่ต้นเหตุ</b>
@@ -685,7 +697,7 @@ table.xl .teambtn.multi{font-weight:700;color:var(--accent-strong)}
     <option value="nofile">ยังไม่แนบไฟล์</option>
     <option value="unlinked">Renew ยังไม่เชื่อมสัญญาเก่า (ทุกเดือน)</option><option value="warn">มีคำเตือนอื่น (ระยะสัญญา/วันที่)</option></select></div>
   <div class="field" style="flex:1;min-width:150px"><label for="fSearch">กรองในตารางนี้</label><input id="fSearch" type="search" placeholder="พิมพ์ชื่อลูกค้า / เลขที่สัญญา (เฉพาะเดือนที่เลือก)" title="กรองแถวในตารางเปิดงานของเดือนที่เลือก — ค้นทั้งระบบใช้ช่องค้นหาบนแถบหัว" style="width:100%" oninput="fltApply()" autocomplete="off"></div>
-  <button class="btn sm" type="button" id="fClear" onclick="fltReset()" hidden>✕ ล้างตัวกรอง</button>
+  <button class="btn sm" type="button" id="fClear" onclick="fltReset()" hidden><svg class="ixs" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 6l12 12M18 6L6 18"/></svg> ล้างตัวกรอง</button>
   <button class="btn sm" type="button" onclick="exportXL()" title="ส่งออกทุกแถวของเดือน (ไม่ขึ้นกับตัวกรองที่เลือกอยู่)">↓ ส่งออก Excel</button>
 </div>
 
@@ -749,7 +761,7 @@ table.xl .teambtn.multi{font-weight:700;color:var(--accent-strong)}
         <td class="nm"><input value="บจก. ลูกค้าตัวอย่าง 1" class="wide" oninput="dupCheck(this)"><a class="rowlk" href="customer-detail.html?c=c1#tab=contracts" title="ดูรายละเอียดลูกค้า (หน้าใหม่)" aria-label="ดูรายละเอียดลูกค้า">↗</a></td>
         <td class="c"><input type="checkbox"></td>
         <td><span class="jobsw" onclick="jobTog(this,event)" role="group" aria-label="ประเภทงาน"><span class="jo">New</span><span class="jo on">Renew</span></span></td>
-        <td><span class="chip ok lk" tabindex="0" role="button" onclick="linkOpen(this)">🔗 CT26-9000002</span></td>
+        <td><span class="chip ok lk" tabindex="0" role="button" onclick="linkOpen(this)"><svg class="ixs" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></svg> CT26-9000002</span></td>
         <td><input list="sllist" value="พนักงานขาย 18"></td>
         <td><select><option>Sale</option><option selected>AM</option></select></td>
         <td><input class="brsel" list="brlist" value="สมุทรปราการ" placeholder="พิมพ์ชื่อสาขา…" autocomplete="off" onfocus="this.select()" oninput="rowZone(this)" onchange="brFix(this)"></td>
@@ -774,7 +786,7 @@ table.xl .teambtn.multi{font-weight:700;color:var(--accent-strong)}
         <td class="nm"><input value="บจก. ลูกค้าตัวอย่าง 2" class="wide" oninput="dupCheck(this)"><a class="rowlk" href="customer-detail.html?c=c2#tab=contracts" title="ดูรายละเอียดลูกค้า (หน้าใหม่)" aria-label="ดูรายละเอียดลูกค้า">↗</a></td>
         <td class="c"><input type="checkbox"></td>
         <td><span class="jobsw" onclick="jobTog(this,event)" role="group" aria-label="ประเภทงาน"><span class="jo">New</span><span class="jo on">Renew</span></span></td>
-        <td><span class="chip ok lk" tabindex="0" role="button" onclick="linkOpen(this)">🔗 CT26-9000004</span></td>
+        <td><span class="chip ok lk" tabindex="0" role="button" onclick="linkOpen(this)"><svg class="ixs" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></svg> CT26-9000004</span></td>
         <td><input list="sllist" value="พนักงานขาย 02"></td>
         <td><select><option>Sale</option><option selected>AM</option></select></td>
         <td><input class="brsel" list="brlist" value="นนทบุรี" placeholder="พิมพ์ชื่อสาขา…" autocomplete="off" onfocus="this.select()" oninput="rowZone(this)" onchange="brFix(this)"></td>
@@ -923,19 +935,19 @@ table.xl .teambtn.multi{font-weight:700;color:var(--accent-strong)}
   <div class="foot">
     <button type="button" class="addbtn" onclick="addRow()" aria-label="เพิ่มแถว"><span class="addbtn__tx">เพิ่มแถว</span><span class="addbtn__ic"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span></button>
     <span style="flex:1"></span>
-    <span style="font-size:11.5px;color:var(--fg-muted)">บันทึกได้ <b id="footcnt">— จาก — แถว</b> — <span class="chip pend">รอนัดบริการ</span> และ <span class="chip pend">ระยะ 396 วัน</span> เก็บไว้เติม/แก้ทีหลังได้ · แถวแดงขาดข้อมูลจำเป็น</span>
+    <span style="font-size:12px;color:var(--fg-muted)">บันทึกได้ <b id="footcnt">— จาก — แถว</b> — <span class="chip pend">รอนัดบริการ</span> และ <span class="chip pend">ระยะ 396 วัน</span> เก็บไว้เติม/แก้ทีหลังได้ · แถวแดงขาดข้อมูลจำเป็น</span>
     <button type="button" class="savebtn" onclick="saveOpen()"><span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8M7 3v5h8"/></svg>บันทึกเข้าทะเบียน</span></button>
   </div>
 </div>
 
-<div style="font-size:11px;color:var(--fg-muted);margin:8px 2px 0">ทีม: <b>A–O</b> ทีมบริการประจำ · <b>Z</b> ทีมติดตั้งงานใหม่</div>
+<div style="font-size:12px;color:var(--fg-muted);margin:8px 2px 0">ทีม: <b>A–O</b> ทีมบริการประจำ · <b>Z</b> ทีมติดตั้งงานใหม่</div>
 
 <div class="panel" style="margin-top:16px">
   <h3>ปฏิทินงานรายวัน (ตามวันที่บริการ) <span class="chip na">ต.ค. 2026</span>
     <span id="calTotal" style="margin-left:auto;font-size:12px;color:var(--fg-muted)">รวม 113 งานในเดือนนี้</span></h3>
   <div class="body">
     <div class="pendbar">
-      <span style="font-size:15px">⏳</span>
+      <span style="font-size:15px;display:inline-flex"><svg class="ixs" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M7 4h10M7 20h10M8 4c0 4 4 5 4 8s-4 4-4 8M16 4c0 4-4 5-4 8s4 4 4 8"/></svg></span>
       <span><b>รอนัดบริการ 16 งาน</b> — ยังไม่ลงวันที่บริการ จึงยังไม่ขึ้นในปฏิทินด้านล่าง</span>
       <span style="flex:1"></span>
       <button class="btn sm" type="button" onclick="pendOpen()">ดูรายการ</button>
@@ -1265,7 +1277,7 @@ table.xl .teambtn.multi{font-weight:700;color:var(--accent-strong)}
             <td colspan="2" class="c num gl">New 60</td>
             <td colspan="2" class="c num gl">Renew 72</td>
             <td class="gl"></td></tr>
-          <tr><td colspan="6" style="font-weight:400;color:var(--fg-muted);font-size:11px">
+          <tr><td colspan="6" style="font-weight:400;color:var(--fg-muted);font-size:12px">
             อีก 1 สัญญา (Renew) ยังไม่ได้กรอกมูลค่า จึงยังจัด Tier ไม่ได้ · รวมทั้งเดือน 133 สัญญา</td></tr>
         </tfoot>
       </table>
@@ -1445,7 +1457,7 @@ var HD=(function(){
   function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
   function hash(s){var h=0;for(var i=0;i<s.length;i++)h=(h*31+s.charCodeAt(i))|0;return Math.abs(h);}
   function isHost(){return role==='host';}
-  var css='.hd-btn{display:inline-flex;align-items:center;gap:4px;font:inherit;font-size:11.5px;line-height:1.2;padding:2px 8px;border-radius:999px;'+
+  var css='.hd-btn{display:inline-flex;align-items:center;gap:4px;font:inherit;font-size:12px;line-height:1.2;padding:2px 8px;border-radius:999px;'+
     'border:1px solid var(--border-strong);background:var(--surface);color:var(--accent-strong);cursor:pointer;white-space:nowrap;vertical-align:middle}'+
     '.hd-btn:hover{background:var(--accent-soft);border-color:var(--accent)}.hd-btn[hidden]{display:none}'+
     '.hd-ov{position:fixed;inset:0;background:rgba(10,18,28,.45);z-index:300}.hd-ov[hidden],.hd-panel[hidden]{display:none}'+
@@ -1455,13 +1467,13 @@ var HD=(function(){
     '.hd-head h2{margin:0;font-size:15px;line-height:1.35;flex:1}.hd-head small{display:block;font-weight:400;font-size:12px;color:var(--fg-muted);margin-top:2px}'+
     '.hd-x{font:inherit;font-size:18px;line-height:1;border:0;background:transparent;color:var(--fg-muted);cursor:pointer;padding:4px 8px;border-radius:8px}'+
     '.hd-x:hover{background:var(--surface-3);color:var(--fg)}'+
-    '.hd-body{flex:1;overflow:auto;padding:10px 16px 16px}.hd-note{font-size:11.5px;color:var(--fg-muted);background:var(--surface-2);border:1px solid var(--border);border-radius:8px;padding:7px 10px;margin:0 0 10px;line-height:1.5}'+
+    '.hd-body{flex:1;overflow:auto;padding:10px 16px 16px}.hd-note{font-size:12px;color:var(--fg-muted);background:var(--surface-2);border:1px solid var(--border);border-radius:8px;padding:7px 10px;margin:0 0 10px;line-height:1.5}'+
     '.hd-list{list-style:none;margin:0;padding:0 0 0 16px;border-left:2px solid var(--border)}'+
     '.hd-it{position:relative;padding:5px 0 11px 12px}.hd-it::before{content:"";position:absolute;left:-23px;top:10px;width:10px;height:10px;border-radius:50%;background:var(--surface);border:2px solid var(--accent)}'+
     '.hd-it.ins::before{border-color:var(--ok)}.hd-it.del::before{border-color:var(--danger)}'+
     '.hd-day{font-size:12px;font-weight:600;color:var(--fg-muted);margin:12px 0 6px}.hd-day:first-child{margin-top:0}'+
-    '.hd-row{display:flex;flex-wrap:wrap;gap:4px 8px;align-items:center;font-size:13px}.hd-txt{font-size:13px;margin-top:3px;word-break:break-word}.hd-meta{font-size:11.5px;color:var(--fg-muted);margin-top:2px}'+
-    '.hd-chip{display:inline-block;font-size:11px;padding:1px 8px;border-radius:999px;white-space:nowrap;background:var(--surface-3);color:var(--fg-muted)}'+
+    '.hd-row{display:flex;flex-wrap:wrap;gap:4px 8px;align-items:center;font-size:13px}.hd-txt{font-size:13px;margin-top:3px;word-break:break-word}.hd-meta{font-size:12px;color:var(--fg-muted);margin-top:2px}'+
+    '.hd-chip{display:inline-block;font-size:12px;padding:1px 8px;border-radius:999px;white-space:nowrap;background:var(--surface-3);color:var(--fg-muted)}'+
     '.hd-chip.ok{background:var(--ok-soft);color:var(--ok)}.hd-chip.miss{background:var(--danger-soft);color:var(--danger)}.hd-chip.info{background:var(--accent-soft);color:var(--accent-strong)}.hd-chip.pend{background:var(--warn-soft);color:var(--warn)}'+
     '.hd-foot{padding:10px 16px;border-top:1px solid var(--border);display:flex;flex-wrap:wrap;gap:6px 14px;font-size:12.5px}'+
     '.hd-foot a{color:var(--accent-strong)}.hd-empty{padding:18px 4px;color:var(--fg-muted);font-size:13px}';
@@ -1473,7 +1485,7 @@ var HD=(function(){
     ensureCss();
     el=document.createElement('div');
     el.innerHTML='<div class="hd-ov" id="hdOv" hidden></div><aside class="hd-panel" id="hdPanel" role="dialog" aria-modal="true" aria-labelledby="hdTitle" tabindex="-1" hidden>'+
-      '<div class="hd-head"><h2 id="hdTitle"></h2><button type="button" class="hd-x" id="hdX" aria-label="ปิดประวัติ">✕</button></div>'+
+      '<div class="hd-head"><h2 id="hdTitle"></h2><button type="button" class="hd-x" id="hdX" aria-label="ปิดประวัติ"><svg class="ixs" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>'+
       '<div class="hd-body" id="hdBody"></div><div class="hd-foot" id="hdFoot"></div></aside>';
     document.body.appendChild(el);
     document.getElementById('hdOv').addEventListener('click',close);
@@ -1740,7 +1752,7 @@ function linkOpen(chip){
   if(!lkBranch){
     mdOpen('เลือกสาขาก่อน','','',
       '<div class="mdlist"><div class="no">แถวนี้ยังไม่ได้เลือก<b>สาขา</b><br>'+
-      '<span style="font-size:11.5px">ระบบค้นหาลูกค้าเดิม<b>ภายในสาขา</b>เป็นหลัก เพื่อไม่ให้ไปผูกกับลูกค้าชื่อคล้ายกันของสาขาอื่น</span></div></div>',
+      '<span style="font-size:12px">ระบบค้นหาลูกค้าเดิม<b>ภายในสาขา</b>เป็นหลัก เพื่อไม่ให้ไปผูกกับลูกค้าชื่อคล้ายกันของสาขาอื่น</span></div></div>',
       '<span style="flex:1"></span><button class="btn sm primary" type="button" onclick="goBranch()">ไปเลือกสาขา</button>');
     return;
   }
@@ -1751,7 +1763,7 @@ function linkOpen(chip){
   mdOpen('เชื่อมสัญญาเก่า (Renew)','สาขา '+lkBranch,top0+
     '<div class="mdsearch"><input id="lkq" placeholder="ค้นหาชื่อลูกค้า / เลขที่สัญญาเดิม" '+
       'oninput="linkRender(this.value)" value="'+nm+'">'+
-      '<label style="display:flex;align-items:center;gap:6px;margin-top:8px;font-size:11.5px;color:var(--fg-muted)">'+
+      '<label style="display:flex;align-items:center;gap:6px;margin-top:8px;font-size:12px;color:var(--fg-muted)">'+
       '<input type="checkbox" id="lkall" style="width:auto" onchange="lkAll=this.checked;linkRender(document.getElementById(\'lkq\').value)">'+
       'ค้นหาทุกสาขา (ใช้เมื่อลูกค้าย้ายสาขา)</label></div>','',
     '<span style="flex:1"></span>'+
@@ -1805,7 +1817,7 @@ function linkRender(q){
   if(!hit.length){
     document.getElementById('mdbody').innerHTML=
       '<div class="mdlist"><div class="no">ไม่พบลูกค้าเดิม'+(lkAll?'':'ในสาขา '+lkBranch)+
-      (q?' ที่ตรงกับ "'+q+'"':'')+'<br><span style="font-size:11.5px">'+
+      (q?' ที่ตรงกับ "'+q+'"':'')+'<br><span style="font-size:12px">'+
       (lkAll?'ถ้าเป็นลูกค้าใหม่จริง ให้กด "เปลี่ยนเป็นงานใหม่" ด้านล่าง'
            :'ลองติ๊ก "ค้นหาทุกสาขา" ถ้าลูกค้าย้ายมาจากสาขาอื่น')+'</span></div></div>';
     return;
@@ -1851,7 +1863,7 @@ function lkResolveRow(tr){
 function linkDo(ct){
   if(!lkCell) return;
   lkCell.className='chip ok lk';
-  lkCell.textContent='🔗 '+ct;
+  lkCell.innerHTML='<svg class="ixs" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></svg> '+ct;
   delete lkCell.dataset.unl; delete lkCell.dataset.reason; lkCell.removeAttribute('title');
   lkResolveRow(lkCell.closest('tr'));
   fltCounts(); mdClose();
@@ -2018,7 +2030,7 @@ function saveDo(n){
   mdClose();
   var f=document.querySelector('.tablewrap .foot span');
   if(f) f.innerHTML='<span class="chip ok">✓ บันทึกเข้าทะเบียนแล้ว '+n+' แถว</span> '+
-    '<span style="font-size:11.5px;color:var(--fg-muted)">แถวที่เหลือเก็บเป็นฉบับร่าง แก้ต่อได้</span>';
+    '<span style="font-size:12px;color:var(--fg-muted)">แถวที่เหลือเก็บเป็นฉบับร่าง แก้ต่อได้</span>';
 }
 
 /* สาขา -> เขต (ทะเบียนจริง 24 สาขา ส่วนกลาง) */
@@ -2691,7 +2703,7 @@ function renderZoneTable(){
     '<tr><td colspan="12" class="hmlg"><span>ระบายสี 5 อันดับสูงสุดของช่อง New/Renew × Size × ปี</span>'+
       heat.vals.map(function(v,i){ return '<span class="hmsw hm'+Math.min(i+1,5)+'">'+v+' สัญญา</span>'; }).join('')+
       '<span>('+heat.count+' ช่อง · ค่าเท่ากันได้สีเดียวกัน · ไม่รวมแถวรวม)</span></td></tr>'+
-    '<tr><td colspan="12" style="font-weight:400;color:var(--fg-muted);font-size:11px">อ่านแนวนอน: เขต → New/Renew → Size × 1 ปี/3 ปี · อีก '+DUNCLASSIFIED+' สัญญา (Renew · '+DUNC_ZONE+') ยังไม่ได้กรอกมูลค่า จึงอยู่ช่อง "ยังไม่ระบุ" · ผลรวมทุกเขตตรงกับตาราง Size ด้านบน</td></tr></tfoot>';
+    '<tr><td colspan="12" style="font-weight:400;color:var(--fg-muted);font-size:12px">อ่านแนวนอน: เขต → New/Renew → Size × 1 ปี/3 ปี · อีก '+DUNCLASSIFIED+' สัญญา (Renew · '+DUNC_ZONE+') ยังไม่ได้กรอกมูลค่า จึงอยู่ช่อง "ยังไม่ระบุ" · ผลรวมทุกเขตตรงกับตาราง Size ด้านบน</td></tr></tfoot>';
 }
 
 function miniTable(head,rows,foot){
