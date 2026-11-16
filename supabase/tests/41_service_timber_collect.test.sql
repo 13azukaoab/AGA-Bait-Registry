@@ -6,7 +6,7 @@
 --   C. view ทั้ง 3 ตัว: viewer ไม่เห็นแถว · anon อ่านไม่ได้
 -- Role simulation: seed as postgres, then SET LOCAL ROLE authenticated + request.jwt.claim.sub · RESET ROLE เพื่อตรวจ
 BEGIN;
-SELECT plan(78);
+SELECT plan(84);
 
 -- =====================================================================
 -- โครงสร้าง + สิทธิ์
@@ -60,6 +60,10 @@ INSERT INTO contracts (id, customer_id, contract_no, start_date, term_years, val
   ('00000000-0000-0000-0000-0000000000d1', '00000000-0000-0000-0000-0000000000c1', 'TC-1', '2025-01-15', 1, 50000, now()),
   ('00000000-0000-0000-0000-0000000000d2', '00000000-0000-0000-0000-0000000000c1', 'TC-2', current_date - 400, 3, 90000, now()),
   ('00000000-0000-0000-0000-0000000000d3', '00000000-0000-0000-0000-0000000000c2', 'TC-3', '2025-01-15', 1, 50000, now());
+-- d4 = สัญญา Renew ของ d1 (ยังไม่ตั้งสถานี) — ทดสอบย้ายสถานีที่เก็บแล้ว (ส่วน D)
+INSERT INTO contracts (id, customer_id, contract_no, start_date, term_years, value_total, renewed_from_contract_id) VALUES
+  ('00000000-0000-0000-0000-0000000000d4', '00000000-0000-0000-0000-0000000000c1', 'TC-4', '2026-01-15', 1, 50000,
+   '00000000-0000-0000-0000-0000000000d1');
 INSERT INTO stations (id, contract_id, type, station_no, status) VALUES
   -- d1: IG-1..6 ใช้งาน · IG-7 หาย · IC-1 · AG-1
   ('00000000-0000-0000-0000-0000000001b1', '00000000-0000-0000-0000-0000000000d1', 'IG', 1, 'active'),
@@ -330,6 +334,29 @@ SELECT is((SELECT count(*)::int FROM v_contract_ig_collection WHERE contract_id 
 SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a4', true);
 SELECT is((SELECT count(*)::int FROM v_contract_ig_collection) + (SELECT count(*)::int FROM v_ig_collection_monthly),
   0, 'viewer sees no collection rows');
+
+-- =====================================================================
+-- D. Renew: สถานีที่เก็บ / ไม่เก็บ แล้ว ย้ายไปสัญญาใหม่ไม่ได้ (SV008)
+--    สถานะ d1 ตอนนี้: IG-1,2,5 เก็บแล้ว · IG-3 ไม่เก็บ · IG-4, IG-6 ค้าง
+-- =====================================================================
+SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a3', true);
+SELECT throws_ok($$SELECT public.initialize_contract_stations('00000000-0000-0000-0000-0000000000d4', '{}', '{}',
+                     ARRAY['00000000-0000-0000-0000-0000000001b1'::uuid])$$,
+  'SV008', NULL, 'Renew cannot move a collected IG');
+SELECT throws_ok($$SELECT public.initialize_contract_stations('00000000-0000-0000-0000-0000000000d4', '{}', '{}',
+                     ARRAY['00000000-0000-0000-0000-0000000001b3'::uuid])$$,
+  'SV008', NULL, 'Renew cannot move a not-collected IG');
+SELECT throws_ok($$SELECT public.initialize_contract_stations('00000000-0000-0000-0000-0000000000d4', '{}', '{}',
+                     ARRAY['00000000-0000-0000-0000-0000000001b4'::uuid, '00000000-0000-0000-0000-0000000001b2'::uuid])$$,
+  'SV008', NULL, 'one collected IG in the list blocks the whole move (nothing moves)');
+SELECT is((SELECT contract_id FROM stations WHERE id = '00000000-0000-0000-0000-0000000001b4'),
+  '00000000-0000-0000-0000-0000000000d1'::uuid, 'IG-4 stayed on the old contract after the refused move');
+SELECT is(public.initialize_contract_stations('00000000-0000-0000-0000-0000000000d4', ARRAY[10], '{}',
+                     ARRAY['00000000-0000-0000-0000-0000000001b4'::uuid, '00000000-0000-0000-0000-0000000001c1'::uuid]),
+  3, 'Renew still moves a not-yet-collected IG (IG-4) and IC-1, plus new IG-10');
+SELECT is((SELECT jsonb_build_array(ig_total, collected, not_collected, remaining)
+             FROM v_contract_ig_collection WHERE contract_id = '00000000-0000-0000-0000-0000000000d1'),
+  '[5, 3, 1, 1]'::jsonb, 'old contract: the moved IG-4 leaves the list, collected counts unchanged');
 
 -- anon อ่าน view ไม่ได้
 RESET ROLE;

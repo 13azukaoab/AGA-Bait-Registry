@@ -35,6 +35,8 @@
 --      - view `v_contract_ig_collection` (ค้างทั้งหมด ต่อสัญญา) · `v_ig_collection_monthly` (ทำในเดือนไหน ทีมไหน)
 --        → หน้าจอแยก "ทำเดือนนี้" (กรองเดือน) จาก "ค้างทั้งหมด" (remaining)
 --   C. view ทั้ง 3 ตัวเป็น security_invoker → RLS ของตารางต้นทางทำงาน: viewer / anon ไม่เห็น (PDPA กฎข้อ 2)
+--   D. Renew (`initialize_contract_stations`): สถานีที่กด "เก็บแล้ว" / "ไม่เก็บ" ย้ายไปสัญญาใหม่ไม่ได้ → SV008
+--      (DETAIL ภาษาไทย) · ล็อกแถวที่จะย้ายก่อนตรวจ กันชนกับการกดเก็บพร้อมกัน
 --   * ไม่แตะ: save_service_visit (M22) · delete_service_visit · audit_trigger (M21 กำลังแก้) ·
 --     stations_recorder_guard · stations_finished_status_guard · customers / customer_phones (M19a)
 --   * error ใหม่ (MESSAGE ภาษาไทย แสดงผู้ใช้ได้ตรง):
@@ -408,3 +410,128 @@ REVOKE ALL ON public.v_ig_collection_monthly   FROM PUBLIC, anon;
 GRANT SELECT ON public.v_contract_monthly_timber TO authenticated, service_role;
 GRANT SELECT ON public.v_contract_ig_collection  TO authenticated, service_role;
 GRANT SELECT ON public.v_ig_collection_monthly   TO authenticated, service_role;
+
+-- =====================================================================
+-- D. Renew: ห้ามย้ายสถานีที่บันทึกเก็บ / ไม่เก็บ แล้ว (BE + เจ้าของเลือกแบบ ก · 16 พ.ย. 2026)
+--    เนื้อเดิมจาก 20261112130100 (นิยามเดียว — ไม่มี migration อื่นแทนที่) แก้เฉพาะบล็อก SV008 ที่ติดป้าย "M19b"
+--    ไม่ทำแล้ว IG ที่เก็บแล้วยังเป็น active ถูกย้ายไปสัญญาใหม่ได้ (ติดค่าเก็บไปด้วย · ตัวเลขสัญญาเก่าหาย)
+-- =====================================================================
+CREATE OR REPLACE FUNCTION public.initialize_contract_stations(
+  p_contract_id          uuid,
+  p_ig_nos               int[]  DEFAULT '{}',
+  p_ic_nos               int[]  DEFAULT '{}',
+  p_transfer_station_ids uuid[] DEFAULT '{}'
+)
+RETURNS int
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_role        public.user_role := public.current_app_role();
+  v_initialized timestamptz;
+  v_old         uuid;
+  v_status      public.contract_status;
+  v_ig          int[] := coalesce(p_ig_nos, '{}');
+  v_ic          int[] := coalesce(p_ic_nos, '{}');
+  v_moves       uuid[] := ARRAY(SELECT DISTINCT s FROM unnest(coalesce(p_transfer_station_ids, '{}')) s
+                                 WHERE s IS NOT NULL);
+  v_count       int;
+BEGIN
+  -- สิทธิ์ (function นี้ข้าม RLS จึงตรวจเองทุกข้อ)
+  IF v_role IS NULL OR v_role NOT IN ('host', 'recorder') THEN
+    RAISE EXCEPTION 'not allowed' USING ERRCODE = '42501';
+  END IF;
+
+  SELECT c.stations_initialized_at, c.renewed_from_contract_id, c.status
+    INTO v_initialized, v_old, v_status
+    FROM public.contracts c WHERE c.id = p_contract_id
+     FOR UPDATE;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'contract not found' USING ERRCODE = 'AG004';
+  END IF;
+  IF v_role <> 'host' AND NOT public.contract_in_scope(p_contract_id) THEN
+    RAISE EXCEPTION 'not allowed' USING ERRCODE = '42501';
+  END IF;
+  -- สัญญาปิด/ยกเลิก: เฉพาะ host (สอดคล้อง DECISIONS 3.11)
+  IF v_status IN ('closed', 'cancelled') AND v_role <> 'host' THEN
+    RAISE EXCEPTION 'a closed or cancelled contract can be changed by host only' USING ERRCODE = 'AG007';
+  END IF;
+  IF v_initialized IS NOT NULL THEN
+    RAISE EXCEPTION 'stations of this contract are already set' USING ERRCODE = 'SV007';
+  END IF;
+
+  -- เลขสถานีใหม่: บวก · ไม่ซ้ำในชุดเดียวกัน
+  IF EXISTS (SELECT 1 FROM unnest(v_ig) n WHERE n IS NULL OR n <= 0)
+     OR EXISTS (SELECT 1 FROM unnest(v_ic) n WHERE n IS NULL OR n <= 0)
+     OR cardinality(v_ig) <> (SELECT count(DISTINCT n) FROM unnest(v_ig) n)
+     OR cardinality(v_ic) <> (SELECT count(DISTINCT n) FROM unnest(v_ic) n) THEN
+    RAISE EXCEPTION 'invalid or duplicate station numbers' USING ERRCODE = 'SV009';
+  END IF;
+
+  -- สถานีที่จะย้ายต้องเป็นของสัญญาเก่าที่ผูกไว้ (Renew) และยังใช้งาน — ตรวจก่อนเรื่องเลขชน
+  IF cardinality(v_moves) > 0 THEN
+    -- M19b: ล็อกแถวที่จะย้ายก่อนตรวจ → กด "เก็บ/ไม่เก็บ" (ig_collection_apply · FOR UPDATE) พร้อมกันไม่หลุดผ่าน
+    PERFORM 1 FROM public.stations s WHERE s.id = ANY (v_moves) ORDER BY s.id FOR UPDATE;
+    IF v_old IS NULL
+       OR (SELECT count(*) FROM public.stations s
+            WHERE s.id = ANY (v_moves) AND s.contract_id = v_old
+              AND s.status IN ('active', 'eliminated', 'pending_removal')) <> cardinality(v_moves) THEN
+      RAISE EXCEPTION 'station cannot be moved to this contract' USING ERRCODE = 'SV008';
+    END IF;
+    -- M19b (2.42): สถานีที่กด "เก็บแล้ว" / "ไม่เก็บ" ในสัญญาเก่าแล้ว ย้ายไปสัญญาใหม่ไม่ได้
+    IF EXISTS (SELECT 1 FROM public.stations s
+                WHERE s.id = ANY (v_moves)
+                  AND (s.collected_at IS NOT NULL OR s.not_collected_on IS NOT NULL)) THEN
+      RAISE EXCEPTION 'station cannot be moved to this contract'
+        USING ERRCODE = 'SV008',
+              DETAIL = 'สถานีนี้บันทึกเก็บคืน / ไม่เก็บ ในสัญญาเดิมแล้ว ย้ายไปสัญญาใหม่ไม่ได้';
+    END IF;
+  END IF;
+
+  -- เลขใหม่/เลขที่ย้ายมา ต้องไม่ชนกับสถานีที่ใช้งานอยู่แล้วในสัญญาปลายทาง (แจ้ง SV009 แทน 23505)
+  IF EXISTS (SELECT 1 FROM public.stations s
+              WHERE s.contract_id = p_contract_id
+                AND s.status IN ('active', 'eliminated', 'pending_removal')
+                AND NOT (s.id = ANY (v_moves))
+                AND ((s.type = 'IG' AND s.station_no = ANY (v_ig))
+                  OR (s.type = 'IC' AND s.station_no = ANY (v_ic))
+                  OR EXISTS (SELECT 1 FROM public.stations m
+                              WHERE m.id = ANY (v_moves) AND m.type = s.type AND m.station_no = s.station_no))) THEN
+    RAISE EXCEPTION 'station number already used on this contract' USING ERRCODE = 'SV009';
+  END IF;
+
+  -- ย้ายสถานีจากสัญญาเก่า (Renew): ต้องเป็นของสัญญาเก่าที่ผูกไว้ และยังใช้งาน
+  IF cardinality(v_moves) > 0 THEN
+
+    -- เลขที่ย้ายมาต้องไม่ชนกับเลขใหม่ที่จะสร้าง
+    IF EXISTS (SELECT 1 FROM public.stations s
+                WHERE s.id = ANY (v_moves)
+                  AND ((s.type = 'IG' AND s.station_no = ANY (v_ig))
+                    OR (s.type = 'IC' AND s.station_no = ANY (v_ic)))) THEN
+      RAISE EXCEPTION 'station number already used by a moved station' USING ERRCODE = 'SV009';
+    END IF;
+
+    UPDATE public.stations s SET contract_id = p_contract_id, updated_at = now()
+     WHERE s.id = ANY (v_moves);
+
+    INSERT INTO public.station_transfers (station_id, from_contract_id, to_contract_id)
+    SELECT m, v_old, p_contract_id FROM unnest(v_moves) m;
+  END IF;
+
+  INSERT INTO public.stations (contract_id, type, station_no, status)
+  SELECT p_contract_id, 'IG'::public.station_type, n, 'active'::public.station_status FROM unnest(v_ig) n
+  UNION ALL
+  SELECT p_contract_id, 'IC'::public.station_type, n, 'active'::public.station_status FROM unnest(v_ic) n;
+
+  UPDATE public.contracts c SET stations_initialized_at = now() WHERE c.id = p_contract_id;
+
+  SELECT count(*) INTO v_count FROM public.stations s
+   WHERE s.contract_id = p_contract_id AND s.status IN ('active', 'eliminated', 'pending_removal');
+  RETURN v_count;
+END;
+$$;
+
+-- แทนที่ด้วย OR REPLACE คงสิทธิ์เดิม — ย้ำอีกครั้งกันพลาด
+REVOKE ALL ON FUNCTION public.initialize_contract_stations(uuid, int[], int[], uuid[]) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.initialize_contract_stations(uuid, int[], int[], uuid[]) TO authenticated;
