@@ -460,12 +460,14 @@ RESET ROLE;
 SET LOCAL ROLE authenticated;
 SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a1', true);
 SELECT ok(pg_temp.pending('a1') > 0, 'before linking: the old contract (overlapping unlinked Renew) still has open months');
+-- M28b: admin ในขอบเขตผูกได้แล้ว (ทดสอบเต็มใน 46) — ที่นี่ยืนยันว่า viewer ผูกไม่ได้ และ GUC ต้องตรงกับแถวที่แก้
+SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a4', true);
+SELECT throws_ok(pg_temp.link('u1', 'a1'), '42501', NULL, 'viewer cannot link afterwards');
 SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a2', true);
-SELECT throws_ok(pg_temp.link('u1', 'a1'), '42501', NULL, 'admin cannot link afterwards');
-SELECT set_config('aga.renewal_link', pg_temp.rid('u1')::text, true);
+SELECT set_config('aga.renewal_link', pg_temp.rid('u3')::text, true);
 SELECT throws_ok($$UPDATE contracts SET renewed_from_contract_id = pg_temp.id('a1'), renew_unlinked_reason = NULL
                     WHERE id = pg_temp.rid('u1')$$,
-  'AG009', NULL, 'admin setting the GUC by hand still gets AG009 (host only)');
+  'AG009', NULL, 'admin setting the GUC by hand for another contract still gets AG009 (GUC must match the row)');
 SELECT set_config('aga.renewal_link', '', true);
 SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a3', true);
 SELECT throws_ok(pg_temp.link('u1', 'a1'), '42501', NULL, 'recorder cannot link afterwards');
