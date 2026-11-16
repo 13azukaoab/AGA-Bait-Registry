@@ -557,6 +557,39 @@ table.xl .tmbtn.wait{background:var(--warn-soft);color:var(--warn)}
 .tmpop .tmhint{padding:6px 12px;font-size:11px;color:var(--fg-muted);background:var(--surface-2)}
 table.xl .teambtn{text-align:center}
 table.xl .teambtn.multi{font-weight:700;color:var(--accent-strong)}
+/* ===== M28 · ส่วนตรวจ Renew ที่ยังไม่ผูกสัญญาเก่า (ur*) ===== */
+.ur{background:var(--surface);border:1px solid var(--border);border-left:4px solid var(--warn);border-radius:0 10px 10px 0;margin:0 0 16px}
+.ur[hidden]{display:none}
+.ur-hd{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:11px 14px;cursor:pointer;border:0;background:none;width:100%;
+  font-family:inherit;color:var(--fg);text-align:left}
+.ur-hd b{font-size:14px}
+.ur-hd .car{transition:transform .15s;color:var(--fg-muted)}
+.ur.open .ur-hd .car{transform:rotate(90deg)}
+.ur-body{border-top:1px solid var(--border);padding:12px 14px}
+.ur-body[hidden]{display:none}
+.ur-note{font-size:12.5px;color:var(--fg-muted);margin:0 0 10px;line-height:1.6}
+.ur-row{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1.2fr) minmax(0,1.6fr);gap:10px 14px;align-items:start;
+  padding:11px 0;border-top:1px solid var(--border);font-size:12.5px}
+.ur-row.first{border-top:0}
+.ur-row small{display:block;color:var(--fg-muted);font-size:11.5px;margin-top:2px}
+.ur-reason{background:var(--surface-2);border-radius:8px;padding:6px 9px;line-height:1.5}
+.ur-reason.none{color:var(--fg-muted);font-style:italic}
+.ur-act{display:flex;flex-direction:column;gap:6px}
+.ur-act select{font-family:inherit;font-size:12.5px;padding:6px 8px;border:1px solid var(--border-strong);border-radius:8px;
+  background:var(--surface);color:var(--fg);width:100%;min-width:0}
+.ur-err{font-size:12px;color:var(--danger);background:var(--danger-soft);border-radius:8px;padding:6px 9px;line-height:1.5}
+.ur-err[hidden]{display:none}
+.ur-done{opacity:.75}
+.ur-empty{font-size:13px;color:var(--fg-muted);padding:14px 0;text-align:center}
+.ur-cmp{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:12px 16px;font-size:12.5px}
+.ur-cmp>div{background:var(--surface-2);border-radius:8px;padding:9px 11px;line-height:1.55}
+.ur-cmp small{display:block;color:var(--fg-muted);font-size:11px}
+.ur-warnlist{margin:0;padding:0 16px 12px 34px;font-size:12.5px;line-height:1.7;color:var(--fg-muted)}
+.ur-nopriv{font-size:13px;color:var(--fg-muted);background:var(--surface-2);border-radius:8px;padding:12px 14px;margin:0 0 16px}
+@media (max-width:700px){
+  .ur-row{grid-template-columns:1fr}
+  .ur-cmp{grid-template-columns:1fr}
+}
 </style>
 
 <div class="topbar">
@@ -570,8 +603,8 @@ table.xl .teambtn.multi{font-weight:700;color:var(--accent-strong)}
   <div class="spacer"></div>
   <span class="pill">เดือน <b>ต.ค. 2026</b></span>
   <select class="role" id="roleSel" aria-label="เลือกบทบาท">
-    <option value="host">host · ส่วนกลาง</option>
-    <option value="admin" selected>admin · แอดมิน</option>
+    <option value="host" selected>host · ส่วนกลาง</option>
+    <option value="admin">admin · แอดมิน</option>
     <option value="recorder">recorder · หัวหน้างาน</option>
     <option value="viewer">viewer · ผู้บริหาร</option>
   </select>
@@ -620,6 +653,42 @@ table.xl .teambtn.multi{font-weight:700;color:var(--accent-strong)}
     <li><b>แนบ "สัญญา + Site plan" เป็น PDF ไฟล์เดียวตอนเปิดงาน</b> (คอลัมน์ "ไฟล์แนบ" <svg class="pdfic" viewBox="0 0 24 24" aria-hidden="true"><path class="pg" d="M6 1.5h9l5 5V21a1.5 1.5 0 0 1-1.5 1.5h-12A1.5 1.5 0 0 1 4.5 21V3A1.5 1.5 0 0 1 6 1.5z"/><path class="fd" d="M15 1.5v3.5a1.5 1.5 0 0 0 1.5 1.5H20z"/><rect class="lb" x="1.5" y="10" width="16" height="8" rx="1.5"/><text x="9.5" y="16.2" text-anchor="middle">PDF</text></svg>) → ไฟล์มากับสัญญาตั้งแต่วันแรก ไม่ต้องไล่หาทีหลัง · ตอนติดตั้งมีแก้ Site plan ใช้ปุ่ม "อัปเดต Site plan" (ใส่เหตุผล เก็บทุกเวอร์ชัน) · ยังไม่แนบ = เตือน บันทึกต่อได้</li>
     <li><b>Tier โชว์สด</b> ทันทีที่ใส่มูลค่า → admin เห็นเลยว่าลูกค้านี้ S/M/L/XL กี่ปี</li>
   </ul>
+</div>
+
+<!-- ============ M28 (DECISIONS 2.51): ตรวจ Renew ที่ยังไม่ผูกสัญญาเก่า ============
+     RPC: list_unlinked_renewals (host + admin อ่าน) · link_renewal_contract (เจ้าของสั่ง 16 พ.ย.: admin ผูกได้ด้วย → ต้องแก้ RPC เป็น host + admin)
+     ช่องที่ RPC คืน: contract_id contract_no customer_id customer_name branch_id start_date end_date term_years status renew_unlinked_reason created_at updated_at
+     ช่องที่ "ไม่ได้มาจาก RPC": ชื่อสาขา (map จาก branch_id) · รายการสัญญาเก่าของลูกค้าให้เลือกผูก (อ่านจากตาราง contracts ตาม RLS) -->
+<div id="urNoPriv" class="ur-nopriv" hidden>ส่วนตรวจ Renew ที่ยังไม่ผูกสัญญาเก่า เห็นเฉพาะ host และ admin</div>
+<section class="ur" id="urBox" aria-labelledby="urTtl" hidden>
+  <button type="button" class="ur-hd" id="urHd" aria-expanded="false" aria-controls="urBody" onclick="urToggle()">
+    <span class="car" aria-hidden="true">▸</span>
+    <b id="urTtl">Renew ที่ยังไม่ผูกสัญญาเก่า</b>
+    <span class="chip pend num" id="urCnt">0 รายการ</span>
+    <span class="chip na">เปิดแบบไม่ผูกได้ถึง 31 มี.ค. 2027</span>
+    <span class="chip info">host + admin ผูกได้</span>
+  </button>
+  <div class="ur-body" id="urBody" hidden>
+    <p class="ur-note">สัญญา Renew ที่บันทึกไว้ตอนหาสัญญาเก่าไม่เจอ (ช่วงแรกหลังเปิดระบบ) · เลือกสัญญาเก่าของลูกค้ารายเดียวกันแล้วกดผูก — ระบบตรวจกฎ 2 เดือนให้ · ผูกแล้วแก้ไม่ได้ <span class="chip na">ข้อมูลในส่วนนี้เป็นข้อมูลสมมติ</span></p>
+    <div id="urList"></div>
+  </div>
+</section>
+
+<div id="urOv" class="dayov" hidden>
+  <div class="daybox" role="dialog" aria-modal="true" aria-labelledby="urDlgTtl">
+    <div class="dayhd"><b id="urDlgTtl">ยืนยันผูกสัญญาเก่า</b><span style="flex:1"></span>
+      <button class="btn sm" type="button" onclick="urClose()">ยกเลิก</button></div>
+    <div class="daybody">
+      <div class="ur-cmp" id="urCmp"></div>
+      <ul class="ur-warnlist">
+        <li>ผูกแล้ว <b>แก้ภายหลังไม่ได้</b> (ถ้าผูกผิดต้องแจ้งผู้ดูแลระบบ)</li>
+        <li>ตกบริการที่ค้างของสัญญาเก่า จะถูกยกเลิก (โมฆะ) ตามกฎสัญญาต่อ</li>
+        <li>เหตุผลที่กรอกไว้จะถูกล้าง · การผูกถูกบันทึกในประวัติการแก้ไข</li>
+      </ul>
+    </div>
+    <div class="dayft"><span id="urDlgErr" class="ur-err" hidden></span><span style="flex:1"></span>
+      <button class="btn sm primary" type="button" onclick="urConfirm()">ยืนยันผูก</button></div>
+  </div>
 </div>
 
 <!-- ============ โหมด 1: ตารางเหมือนไฟล์ต้นฉบับ ============ -->
@@ -2877,7 +2946,95 @@ xlInitSort();
 fltInit(); fltApply();
 renderZoneTable(); renderDash();
 
-/* หน้านี้ fix เป็นมุมมอง host ไม่มี role selector ใช้งานจริง (AGA-SHELL v2) */
-applyNavRole('host');
-HD.sync('host'); hdDecorate();
+/* ===== M28 · ส่วนตรวจ Renew ที่ยังไม่ผูกสัญญาเก่า =====
+   Logic: แสดงรายการที่ list_unlinked_renewals คืน (ข้อมูลสมมติ) · แต่ละแถวเลือก "สัญญาเก่า" จากสัญญาอื่นของลูกค้าเดียวกัน
+   → กดผูก → กล่องยืนยัน → (จำลอง link_renewal_contract) ตรวจกฎ 2 เดือน: วันเริ่มสัญญาใหม่ต้องอยู่หลังวันเริ่มสัญญาเก่า
+   และไม่เกินสิ้นเดือนของ (วันจบสัญญาเก่า + 2 เดือน) ไม่ผ่าน = AG010 แสดงข้อความ HINT ของ DB
+   สิทธิ์: host + admin เห็นและผูกได้ · recorder / viewer ไม่เห็น */
+var UR_BR={nkp:'นครปฐม',hh:'หัวหิน',lp:'ลาดพร้าว',sk:'สมุทรสาคร'};
+var UR=[
+  {id:'n1',no:'CT26-0000412',cust:'บจก. ทองสุขพัฒนา',br:'nkp',start:'2026-01-05',term:1,status:'active',reason:'สัญญาเก่าอยู่ในไฟล์ Excel เดิม ยังไม่นำเข้าระบบ',created:'2026-01-07',
+   old:[{no:'CT25-0000231',start:'2025-01-05',term:1}]},
+  {id:'n2',no:'CT26-0000377',cust:'โรงแรมบ้านสวนรีสอร์ท',br:'hh',start:'2026-02-15',term:3,status:'active',reason:'ลูกค้าเปลี่ยนชื่อบริษัท สัญญาเก่าเป็นชื่อเดิม',created:'2026-02-18',
+   old:[{no:'CT22-0000118',start:'2023-02-15',term:3},{no:'CT19-0000090',start:'2019-02-15',term:1}]},
+  {id:'n3',no:'CT26-0000088',cust:'คุณวิรัช ตั้งมั่น (บ้านพัก)',br:'lp',start:'2026-03-10',term:1,status:'active',reason:'',created:'2026-03-11',
+   old:[{no:'CT25-0000402',start:'2025-03-10',term:1}]},
+  {id:'n4',no:'CT26-0000290',cust:'บมจ. เมืองทองคลังสินค้า',br:'sk',start:'2026-04-01',term:1,status:'cancelled',reason:'หาสัญญาเก่าไม่พบ',created:'2026-04-02',old:[]}
+];
+var urSel=null, urRole='host';
+function urFmt(d){ var p=d.split('-'); return p[2]+'/'+p[1]+'/'+p[0]; }
+/* วันจบ = วันเริ่ม + N ปี − 1 วัน (ตรงกับ contract_effective_end_date) */
+function urEnd(start,term){ var p=start.split('-').map(Number); var d=new Date(Date.UTC(p[0]+term,p[1]-1,p[2]-1)); return d.toISOString().slice(0,10); }
+/* กฎ 2 เดือน (ตรงกับ renewal_gap_ok): เริ่มหลังวันเริ่มเก่า และเดือนเริ่ม ≤ เดือนจบเก่า + 2 */
+function urGapOk(o,nStart){
+  if(!(nStart>o.start)) return false;
+  var e=urEnd(o.start,o.term).split('-').map(Number), lim=new Date(Date.UTC(e[0],e[1]-1+2,1)).toISOString().slice(0,7);
+  return nStart.slice(0,7)<=lim;
+}
+function urRender(){
+  var open=UR.filter(function(r){return !r.linked;}), el=document.getElementById('urList');
+  document.getElementById('urCnt').textContent=open.length+' รายการ';
+  var html='', n=0;
+  UR.forEach(function(r){
+    var cls='ur-row'+(n===0?' first':'')+(r.linked?' ur-done':''); n++;
+    var st=r.status==='cancelled'?' <span class="chip miss">ยกเลิกแล้ว</span>':'';
+    var left='<div><b>'+r.cust+'</b>'+st+'<small class="num">'+r.no+' · สาขา'+UR_BR[r.br]+'</small>'
+      +'<small class="num">เริ่ม '+urFmt(r.start)+' · '+r.term+' ปี (จบ '+urFmt(urEnd(r.start,r.term))+')</small></div>';
+    var mid='<div><div class="ur-reason'+(r.reason?'':' none')+'">'+(r.reason?'เหตุผล: '+r.reason:'ไม่ได้กรอกเหตุผล (ข้อมูลเก่า)')+'</div>'
+      +'<small>บันทึกเมื่อ '+urFmt(r.created)+'</small></div>';
+    var act;
+    if(r.linked){ act='<div class="ur-act"><span class="chip ok">ผูกแล้ว → '+r.linked+'</span></div>'; }
+    else if(!r.old.length){ act='<div class="ur-act"><span class="ur-reason none">ไม่พบสัญญาอื่นของลูกค้ารายนี้ในระบบ · รอนำเข้าสัญญาเก่าก่อน</span></div>'; }
+    else {
+      var opts='<option value="">เลือกสัญญาเก่า…</option>'+r.old.map(function(o,i){
+        return '<option value="'+i+'">'+o.no+' · '+urFmt(o.start)+'–'+urFmt(urEnd(o.start,o.term))+'</option>'; }).join('');
+      act='<div class="ur-act"><select id="urSel_'+r.id+'" aria-label="เลือกสัญญาเก่าของ '+r.cust+'" onchange="urPick(\''+r.id+'\')">'+opts+'</select>'
+        +'<button type="button" class="btn sm primary" id="urBtn_'+r.id+'" onclick="urAsk(\''+r.id+'\')">ผูกสัญญาเก่า…</button>'
+        +'<div class="ur-err" id="urErr_'+r.id+'" role="alert" hidden></div></div>';
+    }
+    html+='<div class="'+cls+'">'+left+mid+act+'</div>';
+  });
+  el.innerHTML=html||'<div class="ur-empty">ไม่มีรายการค้าง</div>';
+  urVis();
+}
+function urVis(){
+  var ok=(urRole==='host'||urRole==='admin');
+  document.getElementById('urBox').hidden=!ok;
+  document.getElementById('urNoPriv').hidden=ok;
+}
+function urToggle(){
+  var b=document.getElementById('urBox'), o=!b.classList.contains('open');
+  b.classList.toggle('open',o); document.getElementById('urBody').hidden=!o;
+  document.getElementById('urHd').setAttribute('aria-expanded',o?'true':'false');
+}
+function urPick(id){ var e=document.getElementById('urErr_'+id); if(e) e.hidden=true; }
+function urAsk(id){
+  var r=UR.filter(function(x){return x.id===id;})[0], s=document.getElementById('urSel_'+id), e=document.getElementById('urErr_'+id);
+  if(s.value===''){ e.textContent='เลือกสัญญาเก่าก่อน'; e.hidden=false; return; }
+  e.hidden=true; urSel={r:r,o:r.old[+s.value]};
+  document.getElementById('urCmp').innerHTML=
+    '<div><small>สัญญาใหม่ (Renew)</small><b>'+r.cust+'</b><br><span class="num">'+r.no+'</span><br><span class="num">เริ่ม '+urFmt(r.start)+' · '+r.term+' ปี</span></div>'
+   +'<div><small>ผูกกับสัญญาเก่า</small><b>ต่อมาจาก</b><br><span class="num">'+urSel.o.no+'</span><br><span class="num">'+urFmt(urSel.o.start)+' – '+urFmt(urEnd(urSel.o.start,urSel.o.term))+'</span></div>';
+  document.getElementById('urDlgErr').hidden=true;
+  document.getElementById('urOv').hidden=false; document.body.style.overflow='hidden';
+}
+function urClose(){ document.getElementById('urOv').hidden=true; document.body.style.overflow=''; }
+function urConfirm(){
+  if(!urSel) return;
+  if(!urGapOk(urSel.o,urSel.r.start)){   /* จำลอง AG010 */
+    var d=document.getElementById('urDlgErr');
+    d.textContent='ผูกไม่ได้ (AG010): สัญญาใหม่เริ่มเกิน 2 เดือนหลังสัญญาเก่าจบ หรือไม่ได้เริ่มหลังสัญญาเก่า — ตรวจสัญญาเก่าที่เลือก หรือเปิดงานเป็นลูกค้าใหม่ (New)';
+    d.hidden=false; return;
+  }
+  urSel.r.linked=urSel.o.no; urSel=null; urClose(); urRender();
+}
+document.getElementById('urOv').addEventListener('mousedown',function(e){ if(e.target===this) urClose(); });
+document.addEventListener('keydown',function(e){ if(e.key==='Escape') urClose(); });
+(function(){
+  var s=document.getElementById('roleSel');
+  function sync(){ urRole=s.value; applyNavRole(urRole); try{HD.sync(urRole);}catch(e){} urVis(); }
+  s.addEventListener('change',sync);
+  urRender(); applyNavRole(s.value); urRole=s.value;
+})();
+HD.sync(document.getElementById('roleSel').value); hdDecorate();
 </script>
