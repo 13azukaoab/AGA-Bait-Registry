@@ -163,11 +163,11 @@ export function WorksSection({
         })}
       </div>
       <div className="mt-2.5 flex flex-wrap gap-2">
-        <Button size="sm" onClick={() => add("cap_replaced")}>
-          + เพิ่มงานซ่อม
+        <Button variant="add" onClick={() => add("cap_replaced")}>
+          เพิ่มงานซ่อม
         </Button>
-        <Button size="sm" onClick={() => add("added")}>
-          + ฝังสถานีเพิ่ม
+        <Button variant="add" onClick={() => add("added")}>
+          ฝังสถานีเพิ่ม
         </Button>
       </div>
     </section>

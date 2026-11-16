@@ -609,8 +609,8 @@ export function NewContractsClient({
             ✕ ล้างตัวกรอง
           </Button>
         ) : null}
-        <Button size="sm" variant="primary" onClick={() => setDrafts((r) => [...r, createDraft()])}>
-          + เพิ่มแถว
+        <Button variant="add" onClick={() => setDrafts((r) => [...r, createDraft()])}>
+          เพิ่มแถว
         </Button>
       </div>
 
@@ -937,8 +937,8 @@ export function NewContractsClient({
         </table>
 
         <div className="flex flex-wrap items-center gap-3 border-t border-border bg-surface px-3 py-2">
-          <Button size="sm" onClick={() => setDrafts((r) => [...r, createDraft()])}>
-            + เพิ่มแถว
+          <Button variant="add" onClick={() => setDrafts((r) => [...r, createDraft()])}>
+            เพิ่มแถว
           </Button>
           <span className="flex-1" />
           <span className="text-[12px] text-fg-muted">
@@ -946,8 +946,7 @@ export function NewContractsClient({
             แถว · แถวขอบแดงขาดข้อมูลจำเป็น · ยังไม่แนบไฟล์ = เตือน แต่บันทึกต่อได้
           </span>
           <Button
-            variant="primary"
-            size="sm"
+            variant="save"
             loading={saving}
             disabled={drafts.length === 0}
             onClick={() => void saveAll()}

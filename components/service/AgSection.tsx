@@ -84,8 +84,8 @@ export function AgSection({
       <div className="flex flex-wrap items-center gap-2">
         <h3 className={SECTION_TITLE}>กล่องเหยื่อ AG</h3>
         {pendingCount > 0 ? <Chip tone="pend">ค้างติดตาม {pendingCount} จุด</Chip> : <Chip tone="na">ยังไม่มีกล่องค้างติดตาม</Chip>}
-        <Button size="sm" variant="primary" className="ml-auto" onClick={addBox}>
-          + ติดกล่องใหม่ (S)
+        <Button variant="add" className="ml-auto" onClick={addBox}>
+          ติดกล่องใหม่ (S)
         </Button>
       </div>
       <p className={HINT}>

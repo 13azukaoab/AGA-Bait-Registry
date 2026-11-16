@@ -4,6 +4,8 @@ import { defineConfig } from "vitest/config";
 // เทส pure function: lib/** (สูตรคำนวณ, auth, dashboard) และตัวช่วยคำนวณของหน้าจอใน components/**
 // alias "@" ให้ตรงกับ tsconfig paths เพื่อให้ไฟล์ที่ import "@/lib/..." รันในเทสได้
 export default defineConfig({
+  // tsconfig ใช้ jsx: preserve (Next.js) — เทส .tsx ให้ esbuild ใช้ automatic runtime ไม่ต้อง import React
+  esbuild: { jsx: "automatic" },
   // เทสเป็น pure function ไม่ใช้ CSS — ปิด postcss กันโหลด Tailwind v4 config (vite อ่าน string plugin ไม่ได้)
   css: {
     postcss: { plugins: [] },
@@ -15,7 +17,7 @@ export default defineConfig({
   },
   test: {
     globals: true,
-    include: ["lib/**/*.test.ts", "components/**/*.test.ts"],
+    include: ["lib/**/*.test.ts", "components/**/*.test.ts", "components/**/*.test.tsx"],
     passWithNoTests: true,
   },
 });

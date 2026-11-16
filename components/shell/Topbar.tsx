@@ -31,7 +31,7 @@ const selectClass =
   "h-[34px] min-w-0 cursor-pointer rounded-lg border border-border-strong bg-surface px-2 text-[13px] text-fg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent";
 
 /**
- * แถบบน: ☰ (จอเล็ก) + โลโก้ AGA ซ้าย · ขวา = เดือน / บทบาท (ชั่วคราว) / ธีม / ออกจากระบบ
+ * แถบบน: ปุ่ม MENU (ไอคอน 3 ขีด · คำ MENU เฉพาะจอ ≥861px) + โลโก้ AGA ซ้าย · ขวา = เดือน / บทบาท (ชั่วคราว) / ธีม / ออกจากระบบ
  * จอ ≤600px: กลุ่มเดือน+บทบาทขึ้นบรรทัดที่สอง เพื่อไม่ให้ล้นจอ 375px
  */
 export const Topbar = forwardRef<HTMLButtonElement, TopbarProps>(function Topbar(
@@ -71,9 +71,22 @@ export const Topbar = forwardRef<HTMLButtonElement, TopbarProps>(function Topbar
           aria-pressed={wide ? mini : undefined}
           aria-expanded={wide ? undefined : navOpen}
           aria-controls={navId}
-          className="inline-flex h-[34px] w-9 shrink-0 cursor-pointer items-center justify-center rounded-lg border border-border bg-surface-2 text-lg leading-none text-fg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+          className="group inline-flex h-9 shrink-0 cursor-pointer items-center justify-center gap-[9px] rounded-md border-0 bg-fg py-0 pr-3.5 pl-3 text-[13px] font-semibold tracking-[0.06em] text-bg transition-[box-shadow,transform] duration-150 hover:shadow-[0_0_14px_0_var(--border-strong)] active:scale-[0.97] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent motion-reduce:transition-none motion-reduce:active:scale-100"
         >
-          <span aria-hidden="true">☰</span>
+          <svg
+            viewBox="0 0 80 75"
+            width="20"
+            height="19"
+            aria-hidden="true"
+            className="flex-none fill-current transition-transform duration-300 group-hover:scale-[1.08] motion-reduce:transition-none motion-reduce:group-hover:scale-100"
+          >
+            <rect width="80" height="15" rx="7.5" />
+            <rect y="30" width="80" height="15" rx="7.5" />
+            <rect y="60" width="80" height="15" rx="7.5" />
+          </svg>
+          <span aria-hidden="true" className="hidden min-[861px]:inline">
+            MENU
+          </span>
         </button>
         <Link
           href="/todo"
