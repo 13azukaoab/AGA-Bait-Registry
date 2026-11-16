@@ -461,6 +461,8 @@ table.xl .chip.lk{cursor:pointer}
 /* M28: ส่วนเหตุผล/ฟอร์ม "ไม่มีสัญญาเก่า" ใน modal เชื่อมสัญญาเก่า */
 .lkreason{padding:10px 16px;font-size:12.5px;line-height:1.6;background:var(--warn-soft);border-bottom:1px solid var(--border)}
 .lkreason b{color:var(--warn)}
+.dayft{flex-wrap:wrap}
+.dayft .btn{white-space:nowrap}
 .lkform{padding:14px 16px;font-size:12.5px;line-height:1.6}
 .lkform label{display:block;font-weight:500;margin-bottom:5px}
 .lkform textarea{width:100%;min-height:78px;font-family:inherit;font-size:13px;padding:8px 10px;border:1px solid var(--border-strong);border-radius:8px;background:var(--surface);color:var(--fg);resize:vertical}
@@ -1713,7 +1715,7 @@ function linkOpen(chip){
       '<input type="checkbox" id="lkall" style="width:auto" onchange="lkAll=this.checked;linkRender(document.getElementById(\'lkq\').value)">'+
       'ค้นหาทุกสาขา (ใช้เมื่อลูกค้าย้ายสาขา)</label></div>','',
     '<span style="flex:1"></span>'+
-    (unl?'<button class="btn sm" type="button" onclick="lkNone()">'+(unl==='wait'?'ยืนยันว่าไม่มีสัญญาเก่า…':'ไม่มีสัญญาเก่าในระบบ…')+'</button>':'')+
+    (unl?'<button class="btn sm" type="button" onclick="lkNone()">'+(unl==='wait'?'ยืนยันว่าไม่มีสัญญาเก่า':'ไม่มีสัญญาเก่าในระบบ')+'</button>':'')+
     '<button class="btn sm" type="button" onclick="linkAsNew()">เปลี่ยนเป็นงานใหม่ (New)</button>');
   linkRender(nm);
   document.getElementById('lkq').focus();
