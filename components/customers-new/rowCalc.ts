@@ -14,7 +14,9 @@ import {
   type TermYears,
   type TierRule,
 } from "@/lib/rules";
+import { monthOf } from "@/lib/rules/date";
 import { defaultEndDate } from "@/lib/rules/serviceMonths";
+import { currentBangkokMonth } from "@/lib/service/months";
 
 /** key ของป้าย Tier 8 แบบ เช่น `s1`, `xl3` (ตรงกับ class `tier s1`) */
 export type TierKey = "s1" | "s3" | "m1" | "m3" | "l1" | "l3" | "xl1" | "xl3";
@@ -59,15 +61,22 @@ export interface TierResult {
   annual: number;
 }
 
-/** Tier + ปี → ป้าย 8 แบบ · ข้อมูลไม่ครบ = null */
+/**
+ * Tier + ปี → ป้าย 8 แบบ · ข้อมูลไม่ครบ = null
+ * M20 / DECISIONS 2.49: ใช้เกณฑ์ของ "เดือนเริ่มสัญญา" · ยังไม่มีวันเริ่ม/วันเริ่มไม่ถูกต้อง = เกณฑ์ของเดือนปัจจุบัน (เวลาไทย)
+ * `now` ไว้ฉีดวันที่ในเทส
+ */
 export function tierFor(
   valueTotal: number | null,
   termYears: TermYears | null,
   rules: TierRule[],
+  startDate?: string | null,
+  now?: Date,
 ): TierResult | null {
   if (valueTotal === null || termYears === null || rules.length === 0) return null;
   const annual = annualValue(valueTotal, termYears);
-  const tier = tierOf(annual, rules);
+  const month = startDate && isPlausibleDate(startDate) ? monthOf(startDate) : currentBangkokMonth(now);
+  const tier = tierOf(annual, rules, month);
   const key = `${tier.toLowerCase()}${termYears}` as TierKey;
   return { tier, key, label: `${tier}${termYears}`, annual };
 }

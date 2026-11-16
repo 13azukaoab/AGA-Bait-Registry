@@ -12,6 +12,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import type { TermYears, TierRule } from "@/lib/rules";
+import { TIER_RULE_COLUMNS, toTierRules, type TierRuleRow } from "@/lib/tierRules";
 import type { UserRole } from "@/lib/db/types";
 
 import type { BranchOption } from "./branchMatch";
@@ -91,7 +92,7 @@ export async function loadMasterData(
       .from("customer_types")
       .select("code, label, group_label, sort_order")
       .order("sort_order"),
-    supabase.from("tier_rules").select("tier, min_annual").order("min_annual"),
+    supabase.from("tier_rules").select(TIER_RULE_COLUMNS).order("effective_month").order("min_annual"),
   ]);
 
   const failed = [zones, branches, teams, types, tiers].find((r) => r.error);
@@ -109,9 +110,8 @@ export async function loadMasterData(
     zoneName: zoneName.get(b.zone_id) ?? "",
   }));
 
-  const tierRules: TierRule[] = (
-    (tiers.data ?? []) as { tier: TierRule["tier"]; min_annual: number | string }[]
-  ).map((t) => ({ tier: t.tier, minAnnual: Number(t.min_annual) }));
+  // M20: อ่านทุกชุดพร้อม effective_month — ป้าย Tier เลือกชุดตามเดือนเริ่มสัญญาที่ rowCalc.tierFor
+  const tierRules: TierRule[] = toTierRules((tiers.data ?? []) as TierRuleRow[]);
 
   return {
     master: {

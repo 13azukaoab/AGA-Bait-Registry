@@ -16,6 +16,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { annualValue, serviceMonths, tierOf, type TierRule } from "@/lib/rules";
+import { monthOf } from "@/lib/rules/date";
+import { TIER_RULE_COLUMNS, toTierRules, type TierRuleRow } from "@/lib/tierRules";
 
 import { contractMonthTag } from "./contractTag";
 import { monthRange, serviceTeams } from "@/lib/service/months";
@@ -59,7 +61,7 @@ export async function loadServiceMaster(
     supabase.from("zones").select("id, name, sort_order").order("sort_order"),
     supabase.from("branches").select("id, name, zone_id, is_active").eq("is_active", true).order("name"),
     supabase.from("teams").select("id, code, kind, branch_id").is("branch_id", null).order("code"),
-    supabase.from("tier_rules").select("tier, min_annual").order("min_annual"),
+    supabase.from("tier_rules").select(TIER_RULE_COLUMNS).order("effective_month").order("min_annual"),
   ]);
   const failed = [zones, branches, teams, tiers].find((r) => r.error);
   if (failed?.error) return { master: null, error: failed.error.message };
@@ -80,10 +82,7 @@ export async function loadServiceMaster(
           kind: t.kind,
         })),
       ),
-      tierRules: ((tiers.data ?? []) as { tier: TierRule["tier"]; min_annual: number | string }[]).map((t) => ({
-        tier: t.tier,
-        minAnnual: Number(t.min_annual),
-      })),
+      tierRules: toTierRules((tiers.data ?? []) as TierRuleRow[]),
     },
     error: null,
   };
@@ -218,7 +217,8 @@ export async function loadContractList(
       customerName: c.customers?.name ?? "",
       branchId: c.customers?.branch_id ?? "",
       status: c.status,
-      tier: tierOf(annualValue(Number(c.value_total), years), [...tierRules]),
+      // 2.49: ป้ายตามเกณฑ์ของเดือนเริ่มสัญญา (คงที่ตลอดอายุสัญญา)
+      tier: tierOf(annualValue(Number(c.value_total), years), [...tierRules], monthOf(c.start_date)),
       termYears: years,
       renewedFromContractId: c.renewed_from_contract_id,
       stationsInitialized: c.stations_initialized_at !== null,
