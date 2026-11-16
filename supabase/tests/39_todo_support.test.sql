@@ -8,7 +8,7 @@
 --   n2 ยกเลิก · n3 ต่อแล้ว (สัญญาใหม่ t3) · n4 ต่างจังหวัด · n5 ยังไม่ตั้งสถานี
 --   t1..t7 = สัญญาสำหรับสรุป New/Renew ของเดือน m(-2)
 BEGIN;
-SELECT plan(85);
+SELECT plan(90);
 
 INSERT INTO auth.users (id, instance_id, aud, role, email) VALUES
   ('00000000-0000-0000-0000-0000000000a1', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'host@test.local'),
@@ -200,6 +200,13 @@ SELECT is(pg_temp.note('d1', pg_temp.m(-2)), NULL, 'note is gone');
 SELECT is((SELECT (public.save_missed_service_note(jsonb_build_object(
              'contract_id', pg_temp.id('d1'), 'missed_month', pg_temp.m(-2), 'note', NULL)) ->> 'deleted')),
   'false', 'null note with no row → deleted false');
+SELECT throws_ok(format('SELECT public.save_missed_service_note(%L::jsonb)',
+                        jsonb_build_object('contract_id', pg_temp.id('d1'), 'missed_month', pg_temp.m(-6))),
+  '22004', NULL, 'missing note key is refused (no silent delete)');
+SELECT is(pg_temp.note('d1', pg_temp.m(-6)), 'parity', 'note kept after a payload without the note key');
+SELECT is((SELECT (public.save_missed_service_note(jsonb_build_object(
+             'contract_id', pg_temp.id('d1'), 'missed_month', pg_temp.m(-2), 'note', E'\t\n  ')) ->> 'deleted')),
+  'false', 'tab / newline / NBSP only note counts as blank (no row stored)');
 
 -- =====================================================================
 -- 1b. หมายเหตุ: recorder ในขอบเขต / นอกขอบเขต · admin · viewer
@@ -297,6 +304,8 @@ SELECT is((SELECT oldest_open_month || '|' || is_behind FROM public.oldest_open_
 SELECT pg_temp.as_user('a3');
 SELECT is((SELECT array_agg(scope::text) FROM public.oldest_open_month()), ARRAY['central'],
   'central recorder sees the central scope only');
+SELECT is((SELECT oldest_open_month FROM public.oldest_open_month()), pg_temp.m(0),
+  'central recorder reads its own closures (all closed → current month)');
 SELECT pg_temp.as_user('a5');
 SELECT is((SELECT array_agg(scope::text || '|' || oldest_open_month) FROM public.oldest_open_month()),
   ARRAY['province|' || pg_temp.m(-4)], 'province recorder sees the province scope only');
@@ -330,6 +339,12 @@ SELECT is((SELECT renew_contract_ids FROM public.list_team_new_renew(pg_temp.m(-
   '{}'::uuid[], 'empty group → empty array, not NULL');
 SELECT is((SELECT sum(new_count + renew_count)::int FROM public.list_team_new_renew(pg_temp.m(-1))), 1,
   'another month counts only its own contracts');
+SELECT is((SELECT sum(new_count + renew_count)::int || '|' ||
+                  (SELECT count(DISTINCT x)::int
+                     FROM public.list_team_new_renew(pg_temp.m(-2)) r2,
+                          unnest(r2.new_contract_ids || r2.renew_contract_ids) x)
+             FROM public.list_team_new_renew(pg_temp.m(-2))),
+  '6|5', 'row sum double-counts multi-team contracts (6); distinct contract ids give the month total (5)');
 
 SELECT pg_temp.as_user('a3');
 SELECT is((SELECT count(*)::int FROM public.list_team_new_renew(pg_temp.m(-2))

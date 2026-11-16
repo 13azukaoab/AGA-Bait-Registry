@@ -35,7 +35,8 @@
 --      · New = `renewed_from_contract_id` ว่าง · Renew = มีค่า (DECISIONS 2.38 ค — ไม่ใช้ sale_type)
 --      · เดือน = เดือนของ `start_date` · ไม่นับสัญญายกเลิก
 --      · ทีมจาก `contract_teams` (สัญญาที่มีหลายทีม นับให้ทุกทีม) · สัญญาที่ไม่มีทีม → แถว team_id = NULL
---        (ยอดรวมทั้งเดือนจะได้ตรงกับจำนวนสัญญา)
+--        ⚠ สัญญาหลายทีมอยู่หลายแถว → **ห้ามบวกทุกแถวเป็นยอดรวมเดือน** (จะเกิน) · ยอดรวมเดือน/สาขา
+--        ให้นับ contract id ไม่ซ้ำจาก new_contract_ids / renew_contract_ids
 --      · **สาขา = สาขาของลูกค้า** (ทีมข้ามเขต นับตามสาขาลูกค้า — เจ้าของ 15 พ.ย.) · หน้าจอรวมแถวของทีมเป็นยอดทีม
 --        แล้วแสดงแถวย่อยรายสาขาใต้ทีม
 --      · คืน contract id ของแต่ละกลุ่ม (หน้าจอแสดงชื่อลูกค้า — อ่านจาก contracts/customers ตาม RLS)
@@ -51,11 +52,11 @@ CREATE TABLE public.missed_service_notes (
   contract_id  uuid NOT NULL REFERENCES public.contracts (id) ON DELETE CASCADE,
   missed_month date NOT NULL,
   note         text NOT NULL,
-  recorded_by  uuid REFERENCES auth.users (id),
+  recorded_by  uuid REFERENCES auth.users (id) ON DELETE SET NULL,
   recorded_at  timestamptz NOT NULL DEFAULT now(),
   CONSTRAINT missed_service_notes_contract_month_key UNIQUE (contract_id, missed_month),
   CONSTRAINT missed_service_notes_month_first_day CHECK (missed_month = date_trunc('month', missed_month)::date),
-  CONSTRAINT missed_service_notes_note_not_blank CHECK (btrim(note) <> ''),
+  CONSTRAINT missed_service_notes_note_not_blank CHECK (btrim(note, E' \t\r\n ') <> ''),
   CONSTRAINT missed_service_notes_note_length CHECK (char_length(note) <= 200)
 );
 
@@ -108,12 +109,15 @@ BEGIN
   END IF;
 
   IF p IS NULL OR jsonb_typeof(p) <> 'object'
-     OR nullif(p ->> 'contract_id', '') IS NULL OR nullif(p ->> 'missed_month', '') IS NULL THEN
-    RAISE EXCEPTION 'contract_id and missed_month are required' USING ERRCODE = '22004';
+     OR nullif(p ->> 'contract_id', '') IS NULL OR nullif(p ->> 'missed_month', '') IS NULL
+     OR NOT (p ? 'note') THEN
+    -- key note บังคับ (ลบ = ส่ง "" หรือ null มาเองชัดๆ) — กัน client ลืมส่งแล้วหมายเหตุหายเงียบ
+    RAISE EXCEPTION 'contract_id, missed_month and note are required' USING ERRCODE = '22004';
   END IF;
   v_contract := (p ->> 'contract_id')::uuid;
   v_missed   := (p ->> 'missed_month')::date;
-  v_note     := nullif(btrim(p ->> 'note'), '');
+  -- ตัดช่องว่าง/tab/ขึ้นบรรทัด/NBSP หัวท้าย (ชุดเดียวกับ CHECK ของตาราง)
+  v_note     := nullif(btrim(p ->> 'note', E' \t\r\n '), '');
 
   -- ---------- สัญญา + ขอบเขต (ก่อนถือ lock) ----------
   IF NOT EXISTS (SELECT 1 FROM contracts c WHERE c.id = v_contract) THEN
@@ -224,9 +228,10 @@ BEGIN
       FROM unnest(enum_range(NULL::closure_scope)) e
      WHERE v_role = 'host' OR e::text = ANY (coalesce(v_divs, '{}'))
   ), closed AS (
-    SELECT mc.scope, to_date(mc.month_key || '-01', 'YYYY-MM-DD') AS m
+    -- trigger month_closures_only_past_months บังคับ 'YYYY-MM' แล้ว · normalize กันแถวเก่ารูปแบบอื่น
+    SELECT mc.scope, to_date(normalize_month_key(mc.month_key) || '-01', 'YYYY-MM-DD') AS m
       FROM month_closures mc
-     WHERE mc.month_key ~ '^\d{4}-(0[1-9]|1[0-2])$'
+     WHERE normalize_month_key(mc.month_key) ~ '^\d{4}-(0[1-9]|1[0-2])$'
   ), fl AS (
     SELECT sc.scope,
            least(coalesce(v_go_live, (SELECT min(cl.m) FROM closed cl WHERE cl.scope = sc.scope), v_now_month),
