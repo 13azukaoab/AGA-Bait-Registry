@@ -377,7 +377,7 @@ FROM (
   SELECT t.from_contract_id, 'moved_to_renewal', NULL::date, NULL::date
     FROM public.station_transfers t
     JOIN public.stations s ON s.id = t.station_id
-   WHERE s.type = 'IG'
+   WHERE s.type = 'IG' AND s.contract_id <> t.from_contract_id   -- กันนับซ้ำถ้าสถานีกลับมาอยู่สัญญาเดิม
 ) x
 GROUP BY x.contract_id;
 
@@ -413,7 +413,7 @@ FROM (
          NULL::text
     FROM public.station_transfers t
     JOIN public.stations s ON s.id = t.station_id
-   WHERE s.type = 'IG'
+   WHERE s.type = 'IG' AND s.contract_id <> t.from_contract_id   -- กันนับซ้ำถ้าสถานีกลับมาอยู่สัญญาเดิม
 ) x
 GROUP BY x.contract_id, x.month, x.kind, x.team_id;
 
@@ -501,7 +501,11 @@ BEGIN
 
   -- สถานีที่จะย้ายต้องเป็นของสัญญาเก่าที่ผูกไว้ (Renew) และยังใช้งาน — ตรวจก่อนเรื่องเลขชน
   IF cardinality(v_moves) > 0 THEN
-    -- M19b: ล็อกแถวที่จะย้ายก่อนตรวจ → กด "เก็บ/ไม่เก็บ" (ig_collection_apply · FOR UPDATE) พร้อมกันไม่หลุดผ่าน
+    -- M19b: ล็อกเดียวกับ ig_collection_apply (ต่อสัญญาเก่า) แล้วล็อกแถวที่จะย้าย ก่อนตรวจ
+    -- → กด "เก็บ/ไม่เก็บ" พร้อมกันไม่หลุดผ่าน และไม่ deadlock (เข้าคิวที่ advisory lock เดียวกัน)
+    IF v_old IS NOT NULL THEN
+      PERFORM pg_advisory_xact_lock(hashtextextended('public.ig_collection:' || v_old::text, 0));
+    END IF;
     PERFORM 1 FROM public.stations s WHERE s.id = ANY (v_moves) ORDER BY s.id FOR UPDATE;
     IF v_old IS NULL
        OR (SELECT count(*) FROM public.stations s
@@ -511,8 +515,15 @@ BEGIN
     END IF;
     -- M19b (DECISIONS 2.50 ①): สถานีที่ "เก็บแล้ว" ในสัญญาเก่า ไม่ย้าย — ข้ามเฉพาะตัวนั้น ที่เหลือย้ายตามปกติ
     -- (อยู่กับสัญญาเก่าเป็น "เก็บแล้ว" · สัญญาใหม่ตั้งสถานีใหม่เอง · หน้าจอควรไม่เสนอ IG ที่เก็บแล้วให้ติ๊กย้าย)
+    -- ข้อมูลเก่าที่ IC/AG มี collected_at (ก่อน M19b เขียนตรงได้) ไม่ถูกข้าม — กฎนี้ใช้กับ IG เท่านั้น
     v_moves := ARRAY(SELECT s.id FROM public.stations s
-                      WHERE s.id = ANY (v_moves) AND s.collected_at IS NULL);
+                      WHERE s.id = ANY (v_moves) AND NOT (s.type = 'IG' AND s.collected_at IS NOT NULL));
+    -- เลือกย้ายมาแต่ทุกตัวเก็บแล้ว และไม่ได้ระบุสถานีใหม่ → ไม่ตั้งสัญญาเป็น "ไม่มีสถานี" (ย้อนไม่ได้ · SV007 ภายหลัง)
+    IF cardinality(v_moves) + cardinality(v_ig) + cardinality(v_ic) = 0 THEN
+      RAISE EXCEPTION 'station cannot be moved to this contract'
+        USING ERRCODE = 'SV008',
+              DETAIL = 'IG ที่เลือกเก็บคืนแล้วทั้งหมด — ระบุจำนวนสถานีใหม่ของสัญญานี้';
+    END IF;
   END IF;
 
   -- เลขใหม่/เลขที่ย้ายมา ต้องไม่ชนกับสถานีที่ใช้งานอยู่แล้วในสัญญาปลายทาง (แจ้ง SV009 แทน 23505)

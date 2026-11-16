@@ -6,7 +6,7 @@
 --   C. view ทั้ง 3 ตัว: viewer ไม่เห็นแถว · anon อ่านไม่ได้
 -- Role simulation: seed as postgres, then SET LOCAL ROLE authenticated + request.jwt.claim.sub · RESET ROLE เพื่อตรวจ
 BEGIN;
-SELECT plan(88);
+SELECT plan(92);
 
 -- =====================================================================
 -- โครงสร้าง + สิทธิ์
@@ -344,6 +344,16 @@ SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a3
 SELECT throws_ok($$SELECT public.initialize_contract_stations('00000000-0000-0000-0000-0000000000d4', '{}', '{}',
                      ARRAY['00000000-0000-0000-0000-0000000001b4'::uuid, '00000000-0000-0000-0000-0000000003b1'::uuid])$$,
   'SV008', NULL, 'control: a station of another contract still cannot be moved (SV008)');
+SELECT throws_ok($$SELECT public.initialize_contract_stations('00000000-0000-0000-0000-0000000000d4', '{}', '{}',
+                     ARRAY['00000000-0000-0000-0000-0000000001b1'::uuid])$$,
+  'SV008', NULL, 'all chosen IG already collected and no new stations → SV008 (contract not left empty)');
+SELECT is((SELECT stations_initialized_at FROM contracts WHERE id = '00000000-0000-0000-0000-0000000000d4'),
+  NULL, 'the refused setup did not mark the new contract as initialized');
+-- ข้อมูลเก่า: IC-1 มี collected_at (เขียนตรงก่อน M19b) → ต้องยังย้ายได้ (กฎ ① ใช้กับ IG เท่านั้น)
+RESET ROLE;
+UPDATE stations SET collected_at = now() WHERE id = '00000000-0000-0000-0000-0000000001c1';
+SET LOCAL ROLE authenticated;
+SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a3', true);
 SELECT is(public.initialize_contract_stations('00000000-0000-0000-0000-0000000000d4', ARRAY[10], '{}',
             ARRAY['00000000-0000-0000-0000-0000000001b1'::uuid,     -- ① เก็บแล้ว
                   '00000000-0000-0000-0000-0000000001b3'::uuid,     -- ② ไม่เก็บ
@@ -377,6 +387,11 @@ SELECT is((SELECT count(*)::int FROM v_ig_collection_monthly
 SELECT is((SELECT jsonb_build_array(ig_total, not_collected, moved_to_renewal, remaining)
              FROM v_contract_ig_collection WHERE contract_id = '00000000-0000-0000-0000-0000000000d4'),
   '[3, 0, 0, 3]'::jsonb, 'new contract: IG-3, IG-4, IG-10 all in use (pending only after it ends)');
+SELECT is((SELECT contract_id FROM stations WHERE id = '00000000-0000-0000-0000-0000000001c1'),
+  '00000000-0000-0000-0000-0000000000d4'::uuid, 'legacy IC with collected_at still moved (skip applies to IG only)');
+SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a4', true);
+SELECT is((SELECT count(*)::int FROM v_contract_ig_collection) + (SELECT count(*)::int FROM v_ig_collection_monthly),
+  0, 'viewer still sees no collection rows after transfers exist (moved branch under RLS)');
 
 -- anon อ่าน view ไม่ได้
 RESET ROLE;
