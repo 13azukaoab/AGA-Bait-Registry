@@ -26,7 +26,7 @@
 --        · IG ที่ "ค้าง" = ชนิด IG · ไม่ใช่ หาย/ถอนออก · ยังไม่เก็บ และยังไม่กด "ไม่เก็บ"
 --        · สัญญาต้องจบแล้ว: status ไม่ใช่ active หรือ วันสิ้นสุด (end_date / เริ่ม + N ปี − 1 วัน) < วันนี้ (ไทย)
 --          (สัญญายกเลิกนับว่าจบ — รอเจ้าของยืนยัน)
---        · วันที่ไม่เกินวันนี้ (Asia/Bangkok) และไม่ก่อนวันเริ่มสัญญา
+--        · วันที่ไม่เกินวันนี้ (Asia/Bangkok) และไม่ก่อนวันที่สัญญาจบ (วันถัดจากวันสิ้นสุด / วันยกเลิก / วันปิด ที่เร็วสุด)
 --        · ทีม: ประเภท service / install (teams.kind — M22 · แบบเดียวกับ SV006) ไม่เช็กจากรหัส
 --        · ล็อกต่อสัญญา (advisory) + FOR UPDATE ที่สถานี → กดพร้อมกัน 2 คนไม่เลือกสถานีซ้ำ
 --      - ด่าน `stations_collection_guard`: ผู้ใช้ผ่าน API (authenticated) ที่ไม่ใช่ host **เขียน 7 ช่องนี้ตรงไม่ได้**
@@ -179,10 +179,11 @@ DECLARE
   v_today   date := (now() AT TIME ZONE 'Asia/Bangkok')::date;
   v_ct      record;
   v_end     date;
+  v_from    date;
   v_nos     int[];
   v_ids     uuid[];
   v_need    int;
-  v_reason  text := nullif(btrim(p_reason), '');
+  v_reason  text := nullif(regexp_replace(p_reason, '^\s+|\s+$', '', 'g'), '');   -- ตัดช่องว่าง/tab/ขึ้นบรรทัด
   v_uid     uuid := auth.uid();
 BEGIN
   IF p_kind NOT IN ('collected', 'not_collected') OR p_contract_id IS NULL THEN
@@ -190,18 +191,20 @@ BEGIN
   END IF;
 
   -- ตำแหน่งก่อน (ไม่ให้คนที่ไม่มีสิทธิ์ถือ lock หรือใช้ลองว่ามีสัญญาอยู่จริงไหม)
-  IF NOT (public.is_host() OR public.current_app_role() = 'recorder') THEN
+  -- coalesce: ผู้ใช้ที่ไม่มีแถว profiles (role = NULL) ต้องถูกปฏิเสธที่นี่ ไม่หลุดไปถึงด่านถัดไป
+  IF NOT coalesce(public.is_host() OR public.current_app_role() = 'recorder', false) THEN
     RAISE EXCEPTION 'ไม่มีสิทธิ์บันทึกการเก็บสถานี' USING ERRCODE = '42501';
   END IF;
 
   PERFORM pg_advisory_xact_lock(hashtextextended('public.ig_collection:' || p_contract_id::text, 0));
 
-  SELECT c.id, c.status, c.start_date, c.end_date, c.term_years INTO v_ct
+  SELECT c.id, c.status, c.start_date, c.end_date, c.term_years, c.cancelled_at, c.closed_at INTO v_ct
     FROM public.contracts c WHERE c.id = p_contract_id;
   IF NOT FOUND THEN
     RAISE EXCEPTION 'ไม่พบสัญญา' USING ERRCODE = 'AG004';
   END IF;
-  IF NOT (public.is_host() OR (public.current_app_role() = 'recorder' AND public.contract_in_scope(p_contract_id))) THEN
+  IF NOT coalesce(public.is_host()
+                  OR (public.current_app_role() = 'recorder' AND public.contract_in_scope(p_contract_id)), false) THEN
     RAISE EXCEPTION 'ไม่มีสิทธิ์บันทึกการเก็บสถานีของสัญญานี้' USING ERRCODE = '42501';
   END IF;
 
@@ -211,8 +214,18 @@ BEGIN
     RAISE EXCEPTION 'สัญญายังไม่หมด — เก็บสถานีได้หลังหมดสัญญา' USING ERRCODE = 'CL001';
   END IF;
 
-  IF p_on IS NULL OR p_on > v_today OR p_on < v_ct.start_date THEN
-    RAISE EXCEPTION 'วันที่ไม่ถูกต้อง (ต้องไม่เกินวันนี้ และไม่ก่อนวันเริ่มสัญญา)' USING ERRCODE = 'CL005';
+  -- วันที่เก็บ/เข้าไป: ไม่เกินวันนี้ และไม่ก่อนวันที่สัญญาจบ (วันถัดจากวันสิ้นสุด · หรือวันยกเลิก/ปิดถ้าเร็วกว่า)
+  -- กันบันทึกย้อนไปเดือนที่สัญญายังใช้งาน (ตัวเลขรายเดือนเพี้ยน)
+  v_from := v_end + 1;
+  IF v_ct.cancelled_at IS NOT NULL THEN
+    v_from := least(v_from, (v_ct.cancelled_at AT TIME ZONE 'Asia/Bangkok')::date);
+  END IF;
+  IF v_ct.closed_at IS NOT NULL THEN
+    v_from := least(v_from, (v_ct.closed_at AT TIME ZONE 'Asia/Bangkok')::date);
+  END IF;
+  v_from := greatest(v_from, v_ct.start_date);
+  IF p_on IS NULL OR p_on > v_today OR p_on < v_from THEN
+    RAISE EXCEPTION 'วันที่ไม่ถูกต้อง (ต้องไม่เกินวันนี้ และไม่ก่อนวันที่สัญญาจบ)' USING ERRCODE = 'CL005';
   END IF;
 
   IF p_team_id IS NULL
@@ -230,6 +243,10 @@ BEGIN
     IF cardinality(v_nos) = 0 OR cardinality(v_nos) <> cardinality(p_station_nos)
        OR cardinality(v_nos) > 2000 OR array_position(v_nos, NULL) IS NOT NULL THEN
       RAISE EXCEPTION 'เลขสถานีไม่ถูกต้องหรือซ้ำ' USING ERRCODE = 'CL002';
+    END IF;
+    -- ส่งทั้งจำนวนและเลข → ต้องตรงกัน (ไม่ทิ้งจำนวนเงียบๆ)
+    IF p_count IS NOT NULL AND p_count <> cardinality(v_nos) THEN
+      RAISE EXCEPTION 'จำนวนไม่ตรงกับเลขสถานีที่ระบุ' USING ERRCODE = 'CL002';
     END IF;
     v_need := cardinality(v_nos);
     v_ids := ARRAY(
@@ -358,14 +375,14 @@ FROM (
          date_trunc('month', s.collected_at AT TIME ZONE 'Asia/Bangkok')::date AS month,
          NULL::text AS reason
     FROM public.stations s
-   WHERE s.type = 'IG' AND s.collected_at IS NOT NULL
+   WHERE s.type = 'IG' AND s.status NOT IN ('lost', 'withdrawn') AND s.collected_at IS NOT NULL
   UNION ALL
   SELECT s.contract_id, 'not_collected', s.not_collected_team_id,
          s.not_collected_on,
          date_trunc('month', s.not_collected_on)::date,
          s.not_collected_reason
     FROM public.stations s
-   WHERE s.type = 'IG' AND s.not_collected_on IS NOT NULL
+   WHERE s.type = 'IG' AND s.status NOT IN ('lost', 'withdrawn') AND s.not_collected_on IS NOT NULL
 ) x
 GROUP BY x.contract_id, x.month, x.kind, x.team_id;
 

@@ -6,7 +6,7 @@
 --   C. view ทั้ง 3 ตัว: viewer ไม่เห็นแถว · anon อ่านไม่ได้
 -- Role simulation: seed as postgres, then SET LOCAL ROLE authenticated + request.jwt.claim.sub · RESET ROLE เพื่อตรวจ
 BEGIN;
-SELECT plan(68);
+SELECT plan(78);
 
 -- =====================================================================
 -- โครงสร้าง + สิทธิ์
@@ -44,7 +44,9 @@ INSERT INTO auth.users (id, instance_id, aud, role, email) VALUES
   ('00000000-0000-0000-0000-0000000000a1', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'host@test.local'),
   ('00000000-0000-0000-0000-0000000000a2', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'admin@test.local'),
   ('00000000-0000-0000-0000-0000000000a3', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'rec@test.local'),
-  ('00000000-0000-0000-0000-0000000000a4', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'viewer@test.local');
+  ('00000000-0000-0000-0000-0000000000a4', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'viewer@test.local'),
+  -- a5: login ได้แต่ไม่มีแถว profiles (role = NULL)
+  ('00000000-0000-0000-0000-0000000000a5', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'noprofile@test.local');
 INSERT INTO profiles (user_id, display_name, username, role, division_scope) VALUES
   ('00000000-0000-0000-0000-0000000000a1', 'host',     'user_a1', 'host',     '{central,province}'),
   ('00000000-0000-0000-0000-0000000000a2', 'admin',    'user_a2', 'admin',    '{central}'),
@@ -82,6 +84,8 @@ CREATE TEMP TABLE _t AS SELECT (SELECT id FROM teams WHERE code = 'A') AS a,
                                (SELECT id FROM teams WHERE kind = 'supervisor' ORDER BY code LIMIT 1) AS sup,
                                (now() AT TIME ZONE 'Asia/Bangkok')::date AS today;
 GRANT SELECT ON _t TO PUBLIC;
+SELECT ok((SELECT a FROM _t) IS NOT NULL AND (SELECT sup FROM _t) IS NOT NULL,
+  'seed: team A and a supervisor team exist (CL003 test is meaningful)');
 
 -- payload ของ d2: ข้ามทุกจุด AG (D10) + checks
 CREATE FUNCTION pg_temp.payload(p_visit uuid, p_date date, p_checks jsonb)
@@ -204,8 +208,9 @@ SET LOCAL ROLE authenticated;
 
 -- B2. ไม่เก็บ: ต้องมีเหตุผล
 SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a3', true);
-SELECT throws_ok($$SELECT public.skip_ig_collection('00000000-0000-0000-0000-0000000000d1', 1, (SELECT today FROM _t), (SELECT a FROM _t), '   ')$$,
-  'CL004', NULL, 'not collected without a reason is rejected (CL004)');
+SELECT throws_ok($$SELECT public.skip_ig_collection('00000000-0000-0000-0000-0000000000d1', 1, (SELECT today FROM _t), (SELECT a FROM _t), E' 	
+ ')$$,
+  'CL004', NULL, 'not collected with a blank (spaces / tab / newline) reason is rejected (CL004)');
 SELECT throws_ok($$SELECT public.skip_ig_collection('00000000-0000-0000-0000-0000000000d1', 1, (SELECT today FROM _t), (SELECT a FROM _t), repeat('ก', 301))$$,
   'CL004', NULL, 'a reason longer than 300 characters is rejected (CL004)');
 SELECT is((public.skip_ig_collection('00000000-0000-0000-0000-0000000000d1', 1, (SELECT today FROM _t) - 1, (SELECT a FROM _t),
@@ -241,6 +246,10 @@ SELECT throws_ok($$SELECT public.collect_ig_stations('00000000-0000-0000-0000-00
   'CL005', NULL, 'a future date is rejected (CL005)');
 SELECT throws_ok($$SELECT public.collect_ig_stations('00000000-0000-0000-0000-0000000000d1', 1, '2024-12-31', (SELECT a FROM _t))$$,
   'CL005', NULL, 'a date before the contract start is rejected (CL005)');
+SELECT throws_ok($$SELECT public.collect_ig_stations('00000000-0000-0000-0000-0000000000d1', 1, '2025-06-01', (SELECT a FROM _t))$$,
+  'CL005', NULL, 'a date while the contract was still running is rejected (CL005)');
+SELECT throws_ok($$SELECT public.collect_ig_stations('00000000-0000-0000-0000-0000000000d1', 2, (SELECT today FROM _t), (SELECT a FROM _t), ARRAY[4])$$,
+  'CL002', NULL, 'count and station numbers that disagree are rejected (CL002)');
 SELECT throws_ok($$SELECT public.collect_ig_stations('00000000-0000-0000-0000-0000000000d2', 1, (SELECT today FROM _t), (SELECT a FROM _t))$$,
   'CL001', NULL, 'an active contract cannot be collected yet (CL001)');
 SELECT throws_ok($$SELECT public.collect_ig_stations('00000000-0000-0000-0000-00000000dead', 1, (SELECT today FROM _t), (SELECT a FROM _t))$$,
@@ -257,6 +266,9 @@ SELECT throws_ok($$SELECT public.skip_ig_collection('00000000-0000-0000-0000-000
 SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a4', true);
 SELECT throws_ok($$SELECT public.collect_ig_stations('00000000-0000-0000-0000-0000000000d1', 1, (SELECT today FROM _t), (SELECT a FROM _t))$$,
   '42501', NULL, 'viewer cannot collect');
+SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a5', true);
+SELECT throws_ok($$SELECT public.collect_ig_stations('00000000-0000-0000-0000-00000000dead', 1, (SELECT today FROM _t), (SELECT a FROM _t))$$,
+  '42501', NULL, 'a user without a profile gets 42501 even for an unknown contract (no AG004 probing)');
 
 -- host เก็บด้วยเลขที่ระบุ (IG-5) ได้ทุกสาขา
 SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a1', true);
@@ -324,6 +336,7 @@ RESET ROLE;
 SET LOCAL ROLE anon;
 SELECT throws_ok($$SELECT 1 FROM v_contract_monthly_timber$$, '42501', NULL, 'anon cannot read the timber view');
 SELECT throws_ok($$SELECT 1 FROM v_contract_ig_collection$$, '42501', NULL, 'anon cannot read the collection view');
+SELECT throws_ok($$SELECT 1 FROM v_ig_collection_monthly$$, '42501', NULL, 'anon cannot read the monthly collection view');
 SELECT throws_ok($$SELECT public.collect_ig_stations('00000000-0000-0000-0000-0000000000d1', 1, current_date, NULL)$$,
   '42501', NULL, 'anon cannot call the collection RPC');
 RESET ROLE;
