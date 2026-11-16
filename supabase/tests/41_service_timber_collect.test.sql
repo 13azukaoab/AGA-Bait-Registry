@@ -6,7 +6,7 @@
 --   C. view ทั้ง 3 ตัว: viewer ไม่เห็นแถว · anon อ่านไม่ได้
 -- Role simulation: seed as postgres, then SET LOCAL ROLE authenticated + request.jwt.claim.sub · RESET ROLE เพื่อตรวจ
 BEGIN;
-SELECT plan(84);
+SELECT plan(88);
 
 -- =====================================================================
 -- โครงสร้าง + สิทธิ์
@@ -336,27 +336,47 @@ SELECT is((SELECT count(*)::int FROM v_contract_ig_collection) + (SELECT count(*
   0, 'viewer sees no collection rows');
 
 -- =====================================================================
--- D. Renew: สถานีที่เก็บ / ไม่เก็บ แล้ว ย้ายไปสัญญาใหม่ไม่ได้ (SV008)
---    สถานะ d1 ตอนนี้: IG-1,2,5 เก็บแล้ว · IG-3 ไม่เก็บ · IG-4, IG-6 ค้าง
+-- D. Renew กับ IG ที่บันทึกแล้ว (DECISIONS 2.50)
+--    ① เก็บแล้ว → ไม่ย้าย (ข้ามเฉพาะตัวนั้น) · ② ไม่เก็บ → ย้ายได้ + สัญญาเก่านับ "ย้ายไปสัญญาใหม่" · ③ ยังไม่บันทึก → ย้าย
+--    สถานะ d1 ตอนนี้: IG-1,2,5 เก็บแล้ว · IG-3 ไม่เก็บ · IG-4, IG-6 ค้าง · IC-1
 -- =====================================================================
 SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a3', true);
 SELECT throws_ok($$SELECT public.initialize_contract_stations('00000000-0000-0000-0000-0000000000d4', '{}', '{}',
-                     ARRAY['00000000-0000-0000-0000-0000000001b1'::uuid])$$,
-  'SV008', NULL, 'Renew cannot move a collected IG');
-SELECT throws_ok($$SELECT public.initialize_contract_stations('00000000-0000-0000-0000-0000000000d4', '{}', '{}',
-                     ARRAY['00000000-0000-0000-0000-0000000001b3'::uuid])$$,
-  'SV008', NULL, 'Renew cannot move a not-collected IG');
-SELECT throws_ok($$SELECT public.initialize_contract_stations('00000000-0000-0000-0000-0000000000d4', '{}', '{}',
-                     ARRAY['00000000-0000-0000-0000-0000000001b4'::uuid, '00000000-0000-0000-0000-0000000001b2'::uuid])$$,
-  'SV008', NULL, 'one collected IG in the list blocks the whole move (nothing moves)');
-SELECT is((SELECT contract_id FROM stations WHERE id = '00000000-0000-0000-0000-0000000001b4'),
-  '00000000-0000-0000-0000-0000000000d1'::uuid, 'IG-4 stayed on the old contract after the refused move');
+                     ARRAY['00000000-0000-0000-0000-0000000001b4'::uuid, '00000000-0000-0000-0000-0000000003b1'::uuid])$$,
+  'SV008', NULL, 'control: a station of another contract still cannot be moved (SV008)');
 SELECT is(public.initialize_contract_stations('00000000-0000-0000-0000-0000000000d4', ARRAY[10], '{}',
-                     ARRAY['00000000-0000-0000-0000-0000000001b4'::uuid, '00000000-0000-0000-0000-0000000001c1'::uuid]),
-  3, 'Renew still moves a not-yet-collected IG (IG-4) and IC-1, plus new IG-10');
-SELECT is((SELECT jsonb_build_array(ig_total, collected, not_collected, remaining)
+            ARRAY['00000000-0000-0000-0000-0000000001b1'::uuid,     -- ① เก็บแล้ว
+                  '00000000-0000-0000-0000-0000000001b3'::uuid,     -- ② ไม่เก็บ
+                  '00000000-0000-0000-0000-0000000001b4'::uuid,     -- ③ ค้าง
+                  '00000000-0000-0000-0000-0000000001c1'::uuid]),   -- IC
+  4, 'Renew succeeds: IG-3, IG-4, IC-1 moved + new IG-10 (collected IG-1 skipped, no error)');
+SELECT is((SELECT jsonb_build_array(contract_id, collected_at IS NOT NULL)
+             FROM stations WHERE id = '00000000-0000-0000-0000-0000000001b1'),
+  jsonb_build_array('00000000-0000-0000-0000-0000000000d1', true),
+  '① collected IG-1 stays on the old contract, still collected');
+SELECT is((SELECT jsonb_build_array(contract_id, not_collected_on, not_collected_reason, not_collected_by, not_collected_team_id)
+             FROM stations WHERE id = '00000000-0000-0000-0000-0000000001b3'),
+  jsonb_build_array('00000000-0000-0000-0000-0000000000d4', NULL::text, NULL::text, NULL::text, NULL::text),
+  '② not-collected IG-3 moved to the new contract and its not-collected fields are cleared');
+SELECT is((SELECT contract_id FROM stations WHERE id = '00000000-0000-0000-0000-0000000001b4'),
+  '00000000-0000-0000-0000-0000000000d4'::uuid, '③ unrecorded IG-4 moved as before');
+SELECT is((SELECT count(*)::int FROM station_transfers
+            WHERE from_contract_id = '00000000-0000-0000-0000-0000000000d1'
+              AND to_contract_id = '00000000-0000-0000-0000-0000000000d4'),
+  3, 'three transfer rows (IG-3, IG-4, IC-1) — none for the skipped IG-1');
+SELECT is((SELECT jsonb_build_array(ig_total, collected, not_collected, moved_to_renewal, remaining)
              FROM v_contract_ig_collection WHERE contract_id = '00000000-0000-0000-0000-0000000000d1'),
-  '[5, 3, 1, 1]'::jsonb, 'old contract: the moved IG-4 leaves the list, collected counts unchanged');
+  '[6, 3, 0, 2, 1]'::jsonb,
+  'old contract: total stays 6 · 3 collected · IG-3 counts as moved (not as not-collected) · 1 remaining (IG-6)');
+SELECT is((SELECT stations FROM v_ig_collection_monthly
+            WHERE contract_id = '00000000-0000-0000-0000-0000000000d1' AND kind = 'moved_to_renewal'),
+  2, 'monthly view shows 2 IG moved to the new contract');
+SELECT is((SELECT count(*)::int FROM v_ig_collection_monthly
+            WHERE contract_id = '00000000-0000-0000-0000-0000000000d1' AND kind = 'not_collected'),
+  0, 'monthly view no longer shows IG-3 as not collected');
+SELECT is((SELECT jsonb_build_array(ig_total, not_collected, moved_to_renewal, remaining)
+             FROM v_contract_ig_collection WHERE contract_id = '00000000-0000-0000-0000-0000000000d4'),
+  '[3, 0, 0, 3]'::jsonb, 'new contract: IG-3, IG-4, IG-10 all in use (pending only after it ends)');
 
 -- anon อ่าน view ไม่ได้
 RESET ROLE;

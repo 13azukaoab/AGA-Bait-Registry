@@ -35,8 +35,12 @@
 --      - view `v_contract_ig_collection` (ค้างทั้งหมด ต่อสัญญา) · `v_ig_collection_monthly` (ทำในเดือนไหน ทีมไหน)
 --        → หน้าจอแยก "ทำเดือนนี้" (กรองเดือน) จาก "ค้างทั้งหมด" (remaining)
 --   C. view ทั้ง 3 ตัวเป็น security_invoker → RLS ของตารางต้นทางทำงาน: viewer / anon ไม่เห็น (PDPA กฎข้อ 2)
---   D. Renew (`initialize_contract_stations`): สถานีที่กด "เก็บแล้ว" / "ไม่เก็บ" ย้ายไปสัญญาใหม่ไม่ได้ → SV008
---      (DETAIL ภาษาไทย) · ล็อกแถวที่จะย้ายก่อนตรวจ กันชนกับการกดเก็บพร้อมกัน
+--   D. Renew (`initialize_contract_stations` · DECISIONS 2.50):
+--      ① IG เก็บแล้ว → ไม่ย้าย (ข้ามเฉพาะตัวนั้นเงียบๆ ที่เหลือย้ายตามปกติ · ค่าที่คืน = จำนวนสถานีใช้งานของสัญญาใหม่)
+--      ② IG ไม่เก็บ → ย้ายได้ · ล้างช่องไม่เก็บ · สัญญาเก่าแสดง "ย้ายไปสัญญาใหม่" จาก station_transfers (M15 เดิม ·
+--         ไม่เพิ่มช่องใหม่) → view นับเป็น moved_to_renewal ไม่ใช่ not_collected · ③ ยังไม่บันทึก → ย้ายตามเดิม
+--      ล็อกแถวที่จะย้ายก่อนตรวจ กันชนกับการกดเก็บพร้อมกัน
+--      ⚠ ตัวถัดไปที่แทน `initialize_contract_stations` (M28) ต้องต่อจากเนื้อในไฟล์นี้ (M19b)
 --   * ไม่แตะ: save_service_visit (M22) · delete_service_visit · audit_trigger (M21 กำลังแก้) ·
 --     stations_recorder_guard · stations_finished_status_guard · customers / customer_phones (M19a)
 --   * error ใหม่ (MESSAGE ภาษาไทย แสดงผู้ใช้ได้ตรง):
@@ -347,22 +351,38 @@ $$;
 -- B5. view สรุปการเก็บ IG
 -- =====================================================================
 -- ค้างทั้งหมด ต่อสัญญา (ทุกสัญญาที่มี IG — หน้าจอกรองสัญญาที่จบแล้วเอง)
+-- ig_total = IG ที่อยู่กับสัญญานี้ (ไม่นับหาย/ถอน) + IG ที่ย้ายออกไปสัญญา Renew (station_transfers)
+--   → ตัวเลขของสัญญาเก่าคงที่หลัง Renew · moved_to_renewal ไม่นับเป็น ไม่เก็บ / ค้าง (DECISIONS 2.50)
 CREATE VIEW public.v_contract_ig_collection
 WITH (security_invoker = true) AS
 SELECT
-  s.contract_id,
-  count(*)::int                                                                   AS ig_total,
-  count(*) FILTER (WHERE s.collected_at IS NOT NULL)::int                         AS collected,
-  count(*) FILTER (WHERE s.not_collected_on IS NOT NULL)::int                     AS not_collected,
-  count(*) FILTER (WHERE s.collected_at IS NULL AND s.not_collected_on IS NULL)::int AS remaining,
-  max((s.collected_at AT TIME ZONE 'Asia/Bangkok')::date)                         AS last_collected_on,
-  max(s.not_collected_on)                                                         AS last_not_collected_on
-FROM public.stations s
-WHERE s.type = 'IG' AND s.status NOT IN ('lost', 'withdrawn')
-GROUP BY s.contract_id;
+  x.contract_id,
+  count(*)::int                                                                     AS ig_total,
+  count(*) FILTER (WHERE x.state = 'collected')::int                                AS collected,
+  count(*) FILTER (WHERE x.state = 'not_collected')::int                            AS not_collected,
+  count(*) FILTER (WHERE x.state = 'moved_to_renewal')::int                         AS moved_to_renewal,
+  count(*) FILTER (WHERE x.state = 'remaining')::int                                AS remaining,
+  max(x.collected_on)                                                               AS last_collected_on,
+  max(x.not_collected_on)                                                           AS last_not_collected_on
+FROM (
+  SELECT s.contract_id,
+         CASE WHEN s.collected_at IS NOT NULL THEN 'collected'
+              WHEN s.not_collected_on IS NOT NULL THEN 'not_collected'
+              ELSE 'remaining' END AS state,
+         (s.collected_at AT TIME ZONE 'Asia/Bangkok')::date AS collected_on,
+         s.not_collected_on
+    FROM public.stations s
+   WHERE s.type = 'IG' AND s.status NOT IN ('lost', 'withdrawn')
+  UNION ALL
+  SELECT t.from_contract_id, 'moved_to_renewal', NULL::date, NULL::date
+    FROM public.station_transfers t
+    JOIN public.stations s ON s.id = t.station_id
+   WHERE s.type = 'IG'
+) x
+GROUP BY x.contract_id;
 
 COMMENT ON VIEW public.v_contract_ig_collection IS
-  'M19b: IG ต่อสัญญา — เก็บแล้ว / ไม่เก็บ / ค้าง (ค้างทั้งหมด) · security_invoker';
+  'M19b: IG ต่อสัญญา — เก็บแล้ว / ไม่เก็บ / ย้ายไปสัญญาใหม่ / ค้าง (ค้างทั้งหมด) · security_invoker';
 
 -- ทำในเดือนไหน ทีมไหน (ทำเดือนนี้ = กรอง month) · reasons = เหตุผลไม่เก็บที่ต่างกันในกลุ่มนั้น
 CREATE VIEW public.v_ig_collection_monthly
@@ -385,11 +405,20 @@ FROM (
          s.not_collected_reason
     FROM public.stations s
    WHERE s.type = 'IG' AND s.status NOT IN ('lost', 'withdrawn') AND s.not_collected_on IS NOT NULL
+  UNION ALL
+  -- ย้ายไปสัญญา Renew (2.50) — เดือนที่ย้าย · ไม่มีทีม
+  SELECT t.from_contract_id, 'moved_to_renewal', NULL::uuid,
+         (t.transferred_at AT TIME ZONE 'Asia/Bangkok')::date,
+         date_trunc('month', t.transferred_at AT TIME ZONE 'Asia/Bangkok')::date,
+         NULL::text
+    FROM public.station_transfers t
+    JOIN public.stations s ON s.id = t.station_id
+   WHERE s.type = 'IG'
 ) x
 GROUP BY x.contract_id, x.month, x.kind, x.team_id;
 
 COMMENT ON VIEW public.v_ig_collection_monthly IS
-  'M19b: การเก็บ IG รายเดือน รายทีม (collected / not_collected) · security_invoker';
+  'M19b: การเก็บ IG รายเดือน รายทีม (collected / not_collected / moved_to_renewal) · security_invoker';
 
 -- =====================================================================
 -- C. สิทธิ์
@@ -412,9 +441,10 @@ GRANT SELECT ON public.v_contract_ig_collection  TO authenticated, service_role;
 GRANT SELECT ON public.v_ig_collection_monthly   TO authenticated, service_role;
 
 -- =====================================================================
--- D. Renew: ห้ามย้ายสถานีที่บันทึกเก็บ / ไม่เก็บ แล้ว (BE + เจ้าของเลือกแบบ ก · 16 พ.ย. 2026)
---    เนื้อเดิมจาก 20261112130100 (นิยามเดียว — ไม่มี migration อื่นแทนที่) แก้เฉพาะบล็อก SV008 ที่ติดป้าย "M19b"
---    ไม่ทำแล้ว IG ที่เก็บแล้วยังเป็น active ถูกย้ายไปสัญญาใหม่ได้ (ติดค่าเก็บไปด้วย · ตัวเลขสัญญาเก่าหาย)
+-- D. Renew กับ IG ที่บันทึกเก็บแล้ว (เจ้าของตัดสิน DECISIONS 2.50 · 16 พ.ย. 2026)
+--    ① เก็บแล้ว → ไม่ย้าย (ข้ามเฉพาะตัวนั้น) · ② ไม่เก็บ → ย้ายได้ ล้างช่องไม่เก็บ · ③ ยังไม่บันทึก → ย้ายตามเดิม
+--    เนื้อเดิมจาก 20261112130100 (นิยามเดียว — ไม่มี migration อื่นแทนที่) แก้เฉพาะจุดที่ติดป้าย "M19b"
+--    ⚠ ตัวถัดไปที่แทน `initialize_contract_stations` (เช่น M28) ต้องต่อจากเนื้อในไฟล์นี้ (M19b) ไม่ใช่ 20261112130100
 -- =====================================================================
 CREATE OR REPLACE FUNCTION public.initialize_contract_stations(
   p_contract_id          uuid,
@@ -479,14 +509,10 @@ BEGIN
               AND s.status IN ('active', 'eliminated', 'pending_removal')) <> cardinality(v_moves) THEN
       RAISE EXCEPTION 'station cannot be moved to this contract' USING ERRCODE = 'SV008';
     END IF;
-    -- M19b (2.42): สถานีที่กด "เก็บแล้ว" / "ไม่เก็บ" ในสัญญาเก่าแล้ว ย้ายไปสัญญาใหม่ไม่ได้
-    IF EXISTS (SELECT 1 FROM public.stations s
-                WHERE s.id = ANY (v_moves)
-                  AND (s.collected_at IS NOT NULL OR s.not_collected_on IS NOT NULL)) THEN
-      RAISE EXCEPTION 'station cannot be moved to this contract'
-        USING ERRCODE = 'SV008',
-              DETAIL = 'สถานีนี้บันทึกเก็บคืน / ไม่เก็บ ในสัญญาเดิมแล้ว ย้ายไปสัญญาใหม่ไม่ได้';
-    END IF;
+    -- M19b (DECISIONS 2.50 ①): สถานีที่ "เก็บแล้ว" ในสัญญาเก่า ไม่ย้าย — ข้ามเฉพาะตัวนั้น ที่เหลือย้ายตามปกติ
+    -- (อยู่กับสัญญาเก่าเป็น "เก็บแล้ว" · สัญญาใหม่ตั้งสถานีใหม่เอง · หน้าจอควรไม่เสนอ IG ที่เก็บแล้วให้ติ๊กย้าย)
+    v_moves := ARRAY(SELECT s.id FROM public.stations s
+                      WHERE s.id = ANY (v_moves) AND s.collected_at IS NULL);
   END IF;
 
   -- เลขใหม่/เลขที่ย้ายมา ต้องไม่ชนกับสถานีที่ใช้งานอยู่แล้วในสัญญาปลายทาง (แจ้ง SV009 แทน 23505)
@@ -512,7 +538,15 @@ BEGIN
       RAISE EXCEPTION 'station number already used by a moved station' USING ERRCODE = 'SV009';
     END IF;
 
-    UPDATE public.stations s SET contract_id = p_contract_id, updated_at = now()
+    -- M19b (2.50 ②): IG ที่ "ไม่เก็บ" (ทิ้งไว้หน้างาน) ย้ายไปใช้ต่อได้ → ล้างช่องไม่เก็บ (กลับเป็นสถานีใช้งานของสัญญาใหม่)
+    -- สัญญาเก่าเห็นเป็น "ย้ายไปสัญญาใหม่" จาก station_transfers (ไม่นับเป็นไม่เก็บ) · ค่าเดิมอยู่ใน audit_log
+    UPDATE public.stations s
+       SET contract_id           = p_contract_id,
+           not_collected_on      = NULL,
+           not_collected_reason  = NULL,
+           not_collected_by      = NULL,
+           not_collected_team_id = NULL,
+           updated_at            = now()
      WHERE s.id = ANY (v_moves);
 
     INSERT INTO public.station_transfers (station_id, from_contract_id, to_contract_id)
