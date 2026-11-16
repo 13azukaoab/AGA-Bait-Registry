@@ -188,10 +188,13 @@ export function checkReportTotals(
  * เตือนเมื่อมูลค่าเฉลี่ยต่อราย (คิดเป็นต่อปี) หลุด band ของ tier นั้น — จับกรณีใส่ผิดช่อง
  * **เกณฑ์มาจาก `tier_rules` เท่านั้น ห้าม hardcode** (CLAUDE.md กฎ 3)
  * เตือนอย่างเดียว ไม่บล็อกการบันทึก (SPEC §6.5)
+ * M20 (DECISIONS 2.31): ส่ง `month` ('YYYY-MM' ของแถวที่กรอก) เพื่อใช้ชุดเกณฑ์ของเดือนนั้น
+ * (เกณฑ์หลายชุดแต่ไม่ส่งเดือน → throw)
  */
 export function checkTierBands(
   input: ManualTierInput,
   rules: TierRule[],
+  month?: string,
 ): string[] {
   const warnings: string[] = [];
   for (const key of MANUAL_TIER_KEYS) {
@@ -201,7 +204,7 @@ export function checkTierBands(
     if (!Number.isFinite(value) || value <= 0) continue;
 
     const annual = annualValue(value / count, termYears(key));
-    const actual = tierOf(annual, rules);
+    const actual = tierOf(annual, rules, month);
     const expected = tierGroup(key);
     if (actual !== expected) {
       warnings.push(
@@ -215,17 +218,19 @@ export function checkTierBands(
 /**
  * คำนวณแถว + ตรวจทุกอย่างในครั้งเดียว (ตัวที่หน้าจอ/ฝั่งบันทึกเรียกใช้)
  * ส่ง `rules` มาด้วยถึงจะตรวจ band ของ tier (ไม่ส่ง = ข้ามการตรวจนั้น)
+ * M20: `month` = เดือนของแถว ('YYYY-MM') ใช้เลือกชุดเกณฑ์ — ต้องส่งเมื่อ `rules` มีหลายชุด
  */
 export function buildManualSnapshotRow(
   branchName: string,
   input: ManualTierInput,
   totals: ManualReportTotals = {},
   rules?: TierRule[],
+  month?: string,
 ): ManualRowResult {
   const row = buildManualRow(branchName, input);
   const field = checkManualInput(input);
   const report = checkReportTotals(row, totals);
-  const bandWarnings = rules ? checkTierBands(input, rules) : [];
+  const bandWarnings = rules ? checkTierBands(input, rules, month) : [];
 
   const errors = [...field.errors, ...report.errors];
   const warnings = [...field.warnings, ...report.warnings, ...bandWarnings];

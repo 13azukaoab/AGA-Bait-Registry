@@ -12,9 +12,9 @@
 | data-nav | ชื่อเดิม | ชื่อใหม่ | data-roles |
 |---|---|---|---|
 | todo | หน้า "ต้องทำ" | สถานะทะเบียนบริการ | host recorder |
-| service | กรอกผลบริการ (IG/IC) | กรอกข้อมูลทำบริการประจำเดือน | host recorder |
-| bait | กล่องเหยื่อ AG นอกรอบ | ติดตามผล AG และติดกล่อง AG (ไม่พร้อมรอบบริการ) | host recorder |
-| collect | รอเก็บสถานี (หมดสัญญา) | ลูกค้ารอเก็บสถานี | host recorder |
+| service | กรอกผลบริการ (IG/IC) | ลงข้อมูลทำบริการประจำเดือน (DECISIONS 2.37) | host recorder |
+| bait | กล่องเหยื่อ AG นอกรอบ | กล่อง AG นอกรอบประจำเดือน (DECISIONS 2.37) | host recorder |
+| collect | รอเก็บสถานี (หมดสัญญา) | ลูกค้ารอเก็บสถานี | host admin recorder (SPEC §หน้า 14) |
 | registry | ทะเบียนลูกค้า/สัญญา | ทะเบียนลูกค้า/สัญญา (คงเดิม) | host admin recorder |
 | new | เปิดงาน (admin) | เปิดงานเข้าทะเบียนบริการ | host admin |
 | material | สรุปวัสดุ | สรุปงานบริการรายเดือน | host admin recorder |
@@ -42,6 +42,11 @@
 | `history-drawer.js` | (A4) ลิ้นชัก "ประวัติ" ใช้ซ้ำ — วางต่อจาก `history-mock.js` · `HD.btn(ct,name)` สร้างปุ่ม (ซ่อนเองถ้าไม่ใช่ host) · `HD.sync(role)` เรียกทุกครั้งที่เปลี่ยน role · `HD.open({title,k})` ปุ่มระดับหน้า · เห็นเฉพาะ host (ของจริงบังคับที่ RLS ของ `audit_log`) |
 
 ค่า `data-nav` ของแต่ละลิงก์ = กุญแจหน้า: `todo service bait collect registry new material summary closure port sync history users settings` (v2 เอา `customer` ออกแล้ว)
+
+## อัปเดต 15 พ.ย. 2026 (HQ อนุมัติ)
+- ชื่อเมนูตาม DECISIONS 2.37: service = "ลงข้อมูลทำบริการประจำเดือน" · bait = "กล่อง AG นอกรอบประจำเดือน" · history = "ประวัติการแก้ไข" (ตารางข้างบนคือชื่อ v2 เดิม ยึดชื่อในข้อนี้)
+- collect เห็นได้ host / admin / recorder
+- ไอคอนเมนูเป็น inline SVG ชุดเดียว (stroke 1.8, 17px, `currentColor`) แทนตัวอักษรเดิม · CSS `.nav a .ic svg` อยู่ใน `shell.css` · ไอคอนอยู่ใน `nav.html`
 
 ## เช็กลิสต์ต่อหน้า
 1. มี `<meta charset="utf-8">` **และ `<meta name="viewport" content="width=device-width, initial-scale=1">`** (prototype กับ admin-add-customer เคยไม่มี viewport → มือถือวาดที่ 980px ทำให้ topbar แน่น)
