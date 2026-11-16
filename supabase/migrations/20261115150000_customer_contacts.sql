@@ -188,7 +188,7 @@ RETURNS uuid[]
 LANGUAGE sql
 STABLE
 SECURITY DEFINER
-SET search_path = public
+SET search_path = public, pg_temp
 AS $$
   SELECT coalesce(array_agg(DISTINCT t.team_id), '{}')
     FROM (
@@ -214,7 +214,7 @@ RETURNS boolean
 LANGUAGE plpgsql
 STABLE
 SECURITY DEFINER
-SET search_path = public
+SET search_path = public, pg_temp
 AS $$
 DECLARE
   v_role  public.user_role := public.current_app_role();
@@ -245,7 +245,7 @@ CREATE FUNCTION public.save_customer_contact(p jsonb)
 RETURNS jsonb
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = public, pg_temp
 AS $$
 DECLARE
   v_role        public.user_role := public.current_app_role();
@@ -286,6 +286,9 @@ BEGIN
   END;
   IF v_customer_id IS NULL THEN
     RAISE EXCEPTION 'customer_id is required' USING ERRCODE = '22023';
+  END IF;
+  IF (p ? 'confirm_cross_team') AND jsonb_typeof(p -> 'confirm_cross_team') NOT IN ('boolean', 'null') THEN
+    RAISE EXCEPTION 'confirm_cross_team must be true or false' USING ERRCODE = '22023';
   END IF;
   v_confirm := coalesce((p ->> 'confirm_cross_team')::boolean, false);
 
@@ -386,20 +389,28 @@ BEGIN
         SELECT coalesce(max(sort_order), 0) + 1 INTO v_sort
           FROM public.customer_phones WHERE customer_id = v_customer_id;
       END IF;
-      INSERT INTO public.customer_phones (customer_id, phone, label, sort_order)
-      VALUES (v_customer_id, v_phone, v_label, v_sort)
-      RETURNING id INTO v_phone_id;
+      BEGIN
+        INSERT INTO public.customer_phones (customer_id, phone, label, sort_order)
+        VALUES (v_customer_id, v_phone, v_label, v_sort)
+        RETURNING id INTO v_phone_id;
+      EXCEPTION WHEN unique_violation THEN   -- เพิ่มพร้อมกันจากทางเขียนตรง (admin/host) → ข้อความเดียวกัน
+        RAISE EXCEPTION 'มีเบอร์นี้อยู่แล้ว' USING ERRCODE = 'CC003';
+      END;
       v_added := v_added || v_phone_id;
     ELSE
       SELECT cp.customer_id INTO v_owner FROM public.customer_phones cp WHERE cp.id = v_phone_id;
       IF v_owner IS NULL OR v_owner <> v_customer_id THEN
         RAISE EXCEPTION 'ไม่พบเบอร์โทรนี้ของลูกค้ารายนี้' USING ERRCODE = 'AG004';
       END IF;
-      UPDATE public.customer_phones cp SET
-        phone      = v_phone,
-        label      = v_label,
-        sort_order = coalesce(v_sort, cp.sort_order)
-      WHERE cp.id = v_phone_id;
+      BEGIN
+        UPDATE public.customer_phones cp SET
+          phone      = v_phone,
+          label      = v_label,
+          sort_order = coalesce(v_sort, cp.sort_order)
+        WHERE cp.id = v_phone_id;
+      EXCEPTION WHEN unique_violation THEN
+        RAISE EXCEPTION 'มีเบอร์นี้อยู่แล้ว' USING ERRCODE = 'CC003';
+      END;
     END IF;
   END LOOP;
 
