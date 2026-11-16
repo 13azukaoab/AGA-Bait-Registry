@@ -1,4 +1,5 @@
-import { addYearsMinusDay, monthOf } from "../rules/date";
+import { monthOf } from "../rules/date";
+import { defaultEndDateForTerm } from "../rules/term";
 import {
   COL,
   SOURCE_COLUMNS,
@@ -17,6 +18,7 @@ import {
   normalizeTeams,
   normalizeTime,
   parseSourceDate,
+  parseTermMonths,
   resolveTermValue,
 } from "./fields";
 
@@ -29,8 +31,18 @@ import {
  */
 
 /** ระยะ (วัน) ที่ยอมให้วันสิ้นสุดคลาดจากที่ควรเป็น ก่อนจะถือว่าเป็น "ระยะอื่น" (must-fix)
- *  ≤ ค่านี้ = แค่เตือน (SPEC §11) · > ค่านี้ = ระยะไม่ใช่ 1/3 ปี (task.md) — ปรับได้ */
+ *  ≤ ค่านี้ = แค่เตือน (SPEC §11) · > ค่านี้ = ระยะไม่ตรง (task.md) — ปรับได้
+ *  M30: สัญญาสั้นกว่า 12 เดือนใช้ค่าแคบกว่า (45 วันกว้างเกิน 1 เดือนของสัญญา 1–2 เดือน) */
 const TERM_TOLERANCE_DAYS = 45;
+const SHORT_TERM_TOLERANCE_DAYS = 7;
+
+/** M30: ช่วงที่ยอมให้คลาดตอน "อนุมาน" สัญญาสั้นจากวันเริ่ม/สิ้นสุด (ไม่มีคอลัมน์จำนวนเดือน) */
+const INFER_TOLERANCE_DAYS = 3;
+
+/** ป้ายระยะสัญญาในข้อความ: 12 → "1 ปี" · 36 → "3 ปี" · อื่น → "N เดือน" */
+function termLabel(months: number): string {
+  return months === 12 || months === 36 ? `${months / 12} ปี` : `${months} เดือน`;
+}
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
@@ -38,6 +50,20 @@ function daysBetween(isoA: string, isoB: string): number {
   const a = Date.UTC(+isoA.slice(0, 4), +isoA.slice(5, 7) - 1, +isoA.slice(8, 10));
   const b = Date.UTC(+isoB.slice(0, 4), +isoB.slice(5, 7) - 1, +isoB.slice(8, 10));
   return Math.round((b - a) / MS_PER_DAY);
+}
+
+/**
+ * M30 (DECISIONS 2.53): Excel เดิมไม่มีคอลัมน์จำนวนเดือน — สัญญาสั้นอยู่ในช่อง "1 ปี" แต่วันที่ครอบคลุม N เดือน
+ * อนุมานเฉพาะ: ช่อง "1 ปี" · 1–11 เดือน · วันสิ้นสุดคลาดไม่เกิน INFER_TOLERANCE_DAYS (เลือกที่ใกล้สุด)
+ * ไม่อนุมาน 13–35 เดือน หรือช่อง "3 ปี" (กำกวม — ให้ใส่คอลัมน์ "จำนวนเดือน") → คืน null
+ */
+function inferShortTerm(startIso: string, endIso: string): number | null {
+  let best: { months: number; diff: number } | null = null;
+  for (let m = 1; m <= 11; m++) {
+    const diff = Math.abs(daysBetween(endIso, defaultEndDateForTerm(startIso, m)));
+    if (diff <= INFER_TOLERANCE_DAYS && (!best || diff < best.diff)) best = { months: m, diff };
+  }
+  return best?.months ?? null;
 }
 
 /** ค่าถือว่า "ติ๊ก" เมื่อไม่ว่างและไม่ใช่ FALSE/0 */
@@ -138,9 +164,21 @@ function checkRow(
   else if (isRenew) saleType = "renew";
   else warnings.push("ไม่ได้ระบุ New/Renew");
 
-  // ระยะสัญญา + มูลค่า
+  // ระยะสัญญา + มูลค่า (ช่องมูลค่าบอก 12/36 · คอลัมน์ "จำนวนเดือน" ชนะ · M30)
   const tv = resolveTermValue(get(COL.value1y), get(COL.value3y));
   if (tv.error) errors.push(tv.error);
+  const tm = parseTermMonths(get(COL.termMonths));
+  if (tm.error) errors.push(tm.error);
+  let termMonths: number | null = tm.months ?? tv.termMonths;
+  if (
+    tm.months !== null &&
+    tv.termMonths !== null &&
+    ((tv.termMonths === 36 && tm.months !== 36) || (tv.termMonths === 12 && tm.months === 36))
+  ) {
+    warnings.push(
+      `จำนวนเดือน ${tm.months} ไม่ตรงช่องมูลค่า (${termLabel(tv.termMonths)}) — ใช้จำนวนเดือน ${tm.months}`,
+    );
+  }
 
   // วันเริ่ม / วันสิ้นสุด (บังคับ)
   const start = parseSourceDate(get(COL.startDate));
@@ -152,16 +190,29 @@ function checkRow(
   if (start.iso && end.iso) {
     if (end.iso < start.iso) {
       errors.push("วันสิ้นสุดก่อนวันเริ่ม");
-    } else if (tv.termYears) {
-      const expectedEnd = addYearsMinusDay(start.iso, tv.termYears);
+    } else if (termMonths !== null && !tm.error) {
+      // ไม่มีคอลัมน์จำนวนเดือน + ช่อง "1 ปี" + วันที่ไม่ใช่ 12 เดือนพอดี → ลองอนุมานสัญญาสั้น (Custom)
+      if (
+        tm.months === null &&
+        tv.termMonths === 12 &&
+        defaultEndDateForTerm(start.iso, 12) !== end.iso
+      ) {
+        const inferred = inferShortTerm(start.iso, end.iso);
+        if (inferred !== null) {
+          termMonths = inferred;
+          warnings.push(`สัญญา ${inferred} เดือน (Custom) — อ่านจากวันเริ่ม/วันสิ้นสุด ตรวจว่าถูกต้อง`);
+        }
+      }
+      const expectedEnd = defaultEndDateForTerm(start.iso, termMonths);
       const diff = Math.abs(daysBetween(end.iso, expectedEnd));
-      if (diff > 0 && diff <= TERM_TOLERANCE_DAYS) {
+      const tolerance = termMonths >= 12 ? TERM_TOLERANCE_DAYS : SHORT_TERM_TOLERANCE_DAYS;
+      if (diff > 0 && diff <= tolerance) {
         warnings.push(
           `ระยะสัญญาไม่ตรงวันที่ (คาดสิ้นสุด ${expectedEnd} แต่ใส่ ${end.iso})`,
         );
-      } else if (diff > TERM_TOLERANCE_DAYS) {
+      } else if (diff > tolerance) {
         errors.push(
-          `ระยะสัญญาไม่ใช่ ${tv.termYears} ปี (ห่างจากที่ควรเป็น ${diff} วัน)`,
+          `ระยะสัญญาไม่ใช่ ${termLabel(termMonths)} (ห่างจากที่ควรเป็น ${diff} วัน)`,
         );
       }
     }
@@ -203,7 +254,7 @@ function checkRow(
       teams: team.teams,
       startDate: start.iso!,
       endDate: end.iso!,
-      termYears: tv.termYears!,
+      termMonths: termMonths!,
       valueTotal: tv.valueTotal!,
       serviceDate: service.iso,
       serviceTime: time.value,

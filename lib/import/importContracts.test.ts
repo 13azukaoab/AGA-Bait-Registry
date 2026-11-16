@@ -57,7 +57,7 @@ describe("importContracts — เดโม 8 แถว", () => {
     expect(r.branch).toBe("นนทบุรี");
     expect(r.zone).toBe("เขต 2");
     expect(r.customerType).toBe("ออฟฟิต");
-    expect(r.termYears).toBe(3);
+    expect(r.termMonths).toBe(36);
     expect(r.valueTotal).toBe(64200);
   });
 
@@ -121,8 +121,9 @@ describe("importContracts — เคสเฉพาะกฎ", () => {
     expect(res.ready[0]!.warnings.join(" ")).toMatch(/ระยะ/);
   });
 
-  it("ระยะต่างจาก term มาก (151 วัน) → ต้องแก้เอง", () => {
-    const res = importContracts([row({ 16: "31/05/2026" })]);
+  // M30: เดิมใช้ 31/05/2026 (= 5 เดือนพอดี → ตอนนี้อนุมานเป็นสัญญาสั้น 5 เดือน) จึงเปลี่ยนเป็นวันที่ไม่ตรงเดือนใด
+  it("ระยะต่างจาก term มาก (199 วัน · ไม่ตรงสัญญาสั้นใดๆ) → ต้องแก้เอง", () => {
+    const res = importContracts([row({ 16: "15/06/2026" })]);
     expect(res.summary.mustFix).toBe(1);
     expect(res.mustFix[0]!.errors.join(" ")).toMatch(/ระยะ/);
   });
@@ -163,5 +164,87 @@ describe("importFromTsv", () => {
     expect(res.summary.ready).toBe(3);
     expect(res.summary.mustFix).toBe(4);
     expect(res.summary.skipped).toBe(1);
+  });
+});
+
+describe("importContracts — ระยะสัญญาเป็นเดือน (M30 · ข้อมูลสมมติ)", () => {
+  /** แถวสมมติ: สาขา สาทร ทีม A · กำหนดวันเริ่ม/สิ้นสุด/มูลค่า/จำนวนเดือนได้ */
+  const row = (start: string, end: string, v1: string, v3: string, months?: string): string[] => {
+    const r = [
+      "1", "CT26-0000010", "ลูกค้าสมมติ", "", "TRUE", "", "ผู้ขายสมมติ", "AM",
+      "สาทร", "", "", "", "", "A", "ออฟฟิต", start, end, v1, v3, "",
+    ];
+    if (months !== undefined) r.push(months);
+    return r;
+  };
+
+  it("คอลัมน์ 'จำนวนเดือน' อยู่ท้ายสุด (ไม่เลื่อนคอลัมน์เดิม)", () => {
+    expect(SOURCE_COLUMNS[20]).toBe("จำนวนเดือน");
+    expect(SOURCE_COLUMNS.length).toBe(21);
+  });
+
+  it("ไม่มีคอลัมน์เดือน + วันที่ครบ 12 เดือน → 12 (เหมือนเดิม)", () => {
+    const r = importContracts([row("01/01/2026", "31/12/2026", "24000", "")]).ready[0]!;
+    expect(r.termMonths).toBe(12);
+    expect(r.warnings.join(" ")).not.toMatch(/เดือน \(Custom\)/);
+  });
+
+  it("ไม่มีคอลัมน์เดือน + ช่อง 1 ปี + วันที่ 9 เดือนพอดี → 9 เดือน (Custom) พร้อมเตือน", () => {
+    const res = importContracts([row("01/03/2026", "30/11/2026", "18000", "")]);
+    const r = res.ready[0]!;
+    expect(r.termMonths).toBe(9);
+    expect(r.valueTotal).toBe(18000);
+    expect(r.warnings.join(" ")).toMatch(/9 เดือน \(Custom\)/);
+  });
+
+  it("อนุมานยอมคลาด ±3 วัน (5 เดือน: 15/01 → 14/06 · ใส่ 16/06 ได้)", () => {
+    const r = importContracts([row("15/01/2026", "16/06/2026", "20000", "")]).ready[0]!;
+    expect(r.termMonths).toBe(5);
+  });
+
+  it("ช่อง 1 ปี + วันที่ 11 เดือน → 11 (ไม่ใช่ 12 ที่คลาด 30 วัน)", () => {
+    const r = importContracts([row("01/01/2026", "30/11/2026", "20000", "")]).ready[0]!;
+    expect(r.termMonths).toBe(11);
+  });
+
+  it("ช่อง 3 ปี ไม่อนุมานเป็นเดือน — วันที่ 12 เดือน = ต้องแก้เอง (เหมือนเดิม)", () => {
+    const res = importContracts([row("01/01/2026", "31/12/2026", "", "60000")]);
+    expect(res.summary.mustFix).toBe(1);
+    expect(res.mustFix[0]!.errors.join(" ")).toMatch(/ไม่ใช่ 3 ปี/);
+  });
+
+  it("ช่อง 1 ปี + วันที่ 18 เดือน (ไม่มีคอลัมน์เดือน) = ต้องแก้เอง (Custom ≥ 12 ต้องระบุจำนวนเดือน)", () => {
+    const res = importContracts([row("01/01/2026", "30/06/2027", "30000", "")]);
+    expect(res.summary.mustFix).toBe(1);
+    expect(res.mustFix[0]!.errors.join(" ")).toMatch(/ไม่ใช่ 1 ปี/);
+  });
+
+  it("มีคอลัมน์เดือน = 18 → 18 เดือน · ตรวจวันที่กับ 18 เดือน", () => {
+    const ok = importContracts([row("01/01/2026", "30/06/2027", "30000", "", "18")]).ready[0]!;
+    expect(ok.termMonths).toBe(18);
+    const bad = importContracts([row("01/01/2026", "31/12/2026", "30000", "", "18")]);
+    expect(bad.mustFix[0]!.errors.join(" ")).toMatch(/ไม่ใช่ 18 เดือน/);
+  });
+
+  it("คอลัมน์เดือนชนะการอนุมาน · 24 เดือนในช่อง 1 ปี ได้ · 12 ในช่อง 3 ปี = เตือนไม่ตรงช่อง", () => {
+    const r = importContracts([row("01/01/2026", "31/12/2027", "50000", "", "24")]).ready[0]!;
+    expect(r.termMonths).toBe(24);
+    const w = importContracts([row("01/01/2026", "31/12/2026", "", "50000", "12")]).ready[0]!;
+    expect(w.termMonths).toBe(12);
+    expect(w.warnings.join(" ")).toMatch(/ไม่ตรงช่องมูลค่า/);
+  });
+
+  it("คอลัมน์เดือนผิด (0 / 37) = ต้องแก้เอง", () => {
+    for (const m of ["0", "37"]) {
+      const res = importContracts([row("01/01/2026", "31/12/2026", "24000", "", m)]);
+      expect(res.mustFix[0]!.errors.join(" ")).toMatch(/1–36/);
+    }
+  });
+
+  it("สัญญาสั้น: วันสิ้นสุดคลาดเกิน 7 วัน = ต้องแก้เอง (ไม่ใช้เกณฑ์ 45 วันของ 1/3 ปี)", () => {
+    const warn = importContracts([row("01/03/2026", "05/12/2026", "18000", "", "9")]);
+    expect(warn.ready[0]!.warnings.join(" ")).toMatch(/ไม่ตรงวันที่/);
+    const bad = importContracts([row("01/03/2026", "20/12/2026", "18000", "", "9")]);
+    expect(bad.mustFix[0]!.errors.join(" ")).toMatch(/ไม่ใช่ 9 เดือน/);
   });
 });

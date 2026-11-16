@@ -1,5 +1,3 @@
-import type { TermYears } from "../rules/types";
-
 /**
  * ชนิดข้อมูลสำหรับ "นำเข้าจาก Excel" (SPEC หน้าจอ 7 / §10, §11)
  * ไฟล์ต้นทาง = ชีท "เปิดงาน" ของ Admin ซึ่งรวมข้อมูลสัญญา + การเข้าบริการครั้งแรกไว้แถวเดียว
@@ -27,6 +25,7 @@ export const SOURCE_COLUMNS = [
   "1 ปี",
   "3 ปี",
   "หมายเหตุ",
+  "จำนวนเดือน", // M30: ไม่บังคับ · ต่อท้ายเพื่อไม่เลื่อนคอลัมน์เดิม (ว่าง = อ่านจากช่องมูลค่า + วันที่)
 ] as const;
 
 export type SourceColumn = (typeof SOURCE_COLUMNS)[number];
@@ -53,6 +52,7 @@ export const COL = {
   value1y: 17,
   value3y: 18,
   note: 19,
+  termMonths: 20,
 } as const;
 
 /** input 1 แถว: array ตามลำดับ SOURCE_COLUMNS หรือ object ที่ key เป็นชื่อหัวคอลัมน์ไทย */
@@ -77,7 +77,8 @@ export interface CleanedRow {
   teams: string[];
   startDate: string; // 'YYYY-MM-DD'
   endDate: string; // 'YYYY-MM-DD'
-  termYears: TermYears;
+  /** M30: ระยะสัญญาเป็นเดือน 1–36 (12 = 1 ปี · 36 = 3 ปี · อื่น = Custom) */
+  termMonths: number;
   valueTotal: number;
   serviceDate: string | null; // 'YYYY-MM-DD' (null = ยังไม่นัด)
   serviceTime: string | null; // 'HH:mm'

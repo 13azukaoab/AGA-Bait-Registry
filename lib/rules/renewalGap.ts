@@ -4,25 +4,25 @@
  * Logic summary:
  *   - Renew ได้เฉพาะเมื่อ เดือนเริ่มของสัญญาใหม่ ≤ เดือนจบของสัญญาเก่า + 2 เดือน
  *     (จบ 31 ธ.ค. 2026 → เริ่ม ม.ค.–ก.พ. 2027 = Renew · มี.ค. 2027 ขึ้นไป = ต้องเปิดเป็น New)
- *   - "เดือนจบ" = เดือนของ end_date (ถ้าว่าง = วันเริ่ม + N ปี − 1 วัน) — ตั้งใจใช้ end_date ไม่ใช่เดือนบริการสุดท้าย
+ *   - "เดือนจบ" = เดือนของ end_date (ถ้าว่าง = วันเริ่ม + N เดือน − 1 วัน ชนปลายเดือน · M30) — ตั้งใจใช้ end_date ไม่ใช่เดือนบริการสุดท้าย
  *     (สัญญาเริ่มกลางเดือน 15 ม.ค. → จบ 14 ม.ค. ปีถัดไป → Renew ได้ถึง มี.ค. · ถ้านับจากเดือนบริการสุดท้าย (ธ.ค.) จะได้แค่ ก.พ.)
  *   - ซ้อนกัน (สัญญาใหม่เริ่มก่อนสัญญาเก่าจบ) = Renew ได้ · แต่ต้องเริ่ม **หลัง** วันเริ่มสัญญาเก่า
  *   - ตรงกับ SQL `contract_effective_end_date` / `renewal_gap_ok` (20261115180000_renewal_gap_rule.sql) —
- *     แก้ฝั่งหนึ่งต้องแก้อีกฝั่งด้วย · M30 (term_months) ต้องแก้ effectiveEndDate ที่นี่จุดเดียว
+ *     แก้ฝั่งหนึ่งต้องแก้อีกฝั่งด้วย · M30 (20261115200000_term_months.sql) เปลี่ยนเป็น term_months แล้ว
  *   - หน้าเปิดงานใช้ `renewalGapOk` / `latestRenewStartMonth` ล็อกตัวเลือก Renew (DB บังคับซ้ำ: AG010)
  */
 import type { Contract } from "./types";
-import { defaultEndDate } from "./serviceMonths";
+import { defaultEndDateForTerm } from "./term";
 import { listMonths, monthOf } from "./date";
 
 /** จำนวนเดือนที่ยอมให้เว้นหลังเดือนจบ แล้วยังนับเป็น Renew (กฎบริษัท 2.51) */
 export const RENEWAL_GAP_MONTHS = 2;
 
-type ContractDates = Pick<Contract, "startDate" | "termYears" | "endDate">;
+type ContractDates = Pick<Contract, "startDate" | "termMonths" | "endDate">;
 
-/** วันจบที่ใช้จริง = end_date ถ้ามี · ว่าง = วันเริ่ม + N ปี − 1 วัน ('YYYY-MM-DD') */
+/** วันจบที่ใช้จริง = end_date ถ้ามี · ว่าง = วันเริ่ม + N เดือน − 1 วัน ชนปลายเดือน ('YYYY-MM-DD' · M30) */
 export function effectiveEndDate(contract: ContractDates): string {
-  return contract.endDate ? contract.endDate.slice(0, 10) : defaultEndDate(contract.startDate, contract.termYears);
+  return contract.endDate ? contract.endDate.slice(0, 10) : defaultEndDateForTerm(contract.startDate, contract.termMonths);
 }
 
 /** เดือนสุดท้าย 'YYYY-MM' ที่สัญญาใหม่ยังเริ่มแบบ Renew ได้ */

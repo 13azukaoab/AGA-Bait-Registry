@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
+  parseTermMonths,
   normalizeContractNo,
   normalizeTime,
   parseSourceDate,
@@ -144,16 +145,16 @@ describe("normalizeTeams", () => {
   });
 });
 
-describe("resolveTermValue (อ่าน 1/3 ปีจากคอลัมน์มูลค่า)", () => {
-  it("มูลค่าอยู่ช่อง 1 ปี → term 1", () => {
+describe("resolveTermValue (อ่าน 12/36 เดือนจากคอลัมน์มูลค่า)", () => {
+  it("มูลค่าอยู่ช่อง 1 ปี → 12 เดือน", () => {
     const r = resolveTermValue("33426.80", "");
-    expect(r.termYears).toBe(1);
+    expect(r.termMonths).toBe(12);
     expect(r.valueTotal).toBe(33426.8);
   });
 
-  it("มูลค่าอยู่ช่อง 3 ปี → term 3", () => {
+  it("มูลค่าอยู่ช่อง 3 ปี → 36 เดือน", () => {
     const r = resolveTermValue("", "64200");
-    expect(r.termYears).toBe(3);
+    expect(r.termMonths).toBe(36);
     expect(r.valueTotal).toBe(64200);
   });
 
@@ -167,5 +168,26 @@ describe("resolveTermValue (อ่าน 1/3 ปีจากคอลัมน�
 
   it("มีมูลค่าทั้งสองช่อง → error (กำกวม)", () => {
     expect(resolveTermValue("100", "200").error).toBeDefined();
+  });
+});
+
+describe("parseTermMonths (คอลัมน์ 'จำนวนเดือน' · M30)", () => {
+  it("ว่าง → null (ให้อ่านจากช่องมูลค่า/วันที่)", () => {
+    expect(parseTermMonths("")).toEqual({ months: null });
+    expect(parseTermMonths("  ")).toEqual({ months: null });
+  });
+  it("จำนวนเต็ม 1–36 → ค่าเดือน (รับ '9 เดือน' ได้)", () => {
+    expect(parseTermMonths("1").months).toBe(1);
+    expect(parseTermMonths("9").months).toBe(9);
+    expect(parseTermMonths("9 เดือน").months).toBe(9);
+    expect(parseTermMonths("24").months).toBe(24);
+    expect(parseTermMonths("36").months).toBe(36);
+  });
+  it("0 / 37 / ทศนิยม / ตัวอักษร → error", () => {
+    for (const raw of ["0", "37", "5.5", "abc", "-3"]) {
+      const r = parseTermMonths(raw);
+      expect(r.months).toBeNull();
+      expect(r.error).toMatch(/1–36/);
+    }
   });
 });

@@ -1,4 +1,5 @@
 export type Tier = "S" | "M" | "L" | "XL";
+/** @deprecated M30 — ระยะแบบปีเดิม (1/3) ใช้ใน components/** ระหว่างย้าย · ข้อมูลจริงใช้ `termMonths` 1–36 */
 export type TermYears = 1 | 3;
 
 /**
@@ -17,7 +18,8 @@ export type VisitType = "routine" | "problem" | "follow_up";
 export interface Contract {
   id: string;
   startDate: string; // 'YYYY-MM-DD'
-  termYears: TermYears;
+  /** M30: ระยะสัญญาเป็นเดือน 1–36 (contracts.term_months · 12 = 1 ปี · 36 = 3 ปี · อื่น = Custom) */
+  termMonths: number;
   valueTotal: number; // มูลค่าสัญญาเต็ม
   cancelledAt?: string; // 'YYYY-MM-DD' | undefined
   /** M18: วันที่ตั้งสถานีในระบบ (contracts.stations_initialized_at) — ใช้เป็นจุดเริ่มนับตกบริการ */
@@ -26,7 +28,7 @@ export interface Contract {
   renewedFromContractId?: string;
   /** M28 / 2.51: ลูกค้าของสัญญา (contracts.customer_id) — ใช้ตรวจ "มีสัญญา New ที่ใหม่กว่า" (isSuperseded) */
   customerId?: string;
-  /** M28 / 2.51: วันสิ้นสุด 'YYYY-MM-DD' (contracts.end_date · ว่าง = วันเริ่ม + N ปี − 1 วัน) */
+  /** M28 / 2.51: วันสิ้นสุด 'YYYY-MM-DD' (contracts.end_date · ว่าง = วันเริ่ม + N เดือน − 1 วัน ชนปลายเดือน) */
   endDate?: string;
 }
 

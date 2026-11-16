@@ -12,7 +12,8 @@
  * - `checkTierBands`         → เตือนเมื่อมูลค่าเฉลี่ยต่อรายหลุด band ของ tier (เกณฑ์จาก `tier_rules` เท่านั้น)
  * - `buildManualSnapshotRow` → รวมทั้งหมดไว้ในครั้งเดียว
  */
-import { annualValue, tierOf } from "../rules/tier";
+import { tierOf } from "../rules/tier";
+import { annualValueForTerm } from "../rules/term";
 import type { Tier, TierRule } from "../rules/types";
 import { BRANCHES } from "./branches";
 import type { DashboardRow } from "./types";
@@ -65,9 +66,10 @@ function tierGroup(key: ManualTierKey): Tier {
   return key.slice(0, -1).toUpperCase() as Tier;
 }
 
-/** จำนวนปีสัญญาของคีย์ เช่น `s3` → 3 */
-function termYears(key: ManualTierKey): number {
-  return key.endsWith("3") ? 3 : 1;
+/** ระยะสัญญา (เดือน) ของคีย์ เช่น `s3` → 36 · `s1` → 12
+ *  (M30: คีย์กลุ่ม 1 รวมสัญญา Custom ด้วย แต่กรอกมือไม่รู้ความยาวจริง → ตรวจแบบ 12 เดือน) */
+function termMonthsOfKey(key: ManualTierKey): number {
+  return key.endsWith("3") ? 36 : 12;
 }
 
 function countOf(input: ManualTierInput, key: ManualTierKey): number {
@@ -203,7 +205,7 @@ export function checkTierBands(
     if (!Number.isInteger(count) || count <= 0) continue;
     if (!Number.isFinite(value) || value <= 0) continue;
 
-    const annual = annualValue(value / count, termYears(key));
+    const annual = annualValueForTerm(value / count, termMonthsOfKey(key));
     const actual = tierOf(annual, rules, month);
     const expected = tierGroup(key);
     if (actual !== expected) {
