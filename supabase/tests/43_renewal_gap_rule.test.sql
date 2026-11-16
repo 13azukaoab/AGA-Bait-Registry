@@ -1,12 +1,12 @@
 -- M28 (20261115180000): กฎช่องว่าง 2 เดือน Renew / New (DECISIONS 2.51)
 --   * ตัวช่วย: contract_effective_end_date · renewal_latest_start_month · renewal_gap_ok
---   * save_job_opening + trigger contracts_renewal_gap_guard: AG010 (เกินช่วง / เริ่มไม่หลังสัญญาเก่า) · AG011 (ผูกแต่ไม่ใช่ renew)
+--   * save_job_opening + trigger contracts_renewed_gap_guard: AG010 (เกินช่วง / เริ่มไม่หลังสัญญาเก่า) · AG011 (ผูกแต่ไม่ใช่ renew)
 --     ทั้ง INSERT / UPDATE ผ่าน REST · ฝั่งสัญญาเก่าแก้วันที่ · ข้อมูลเก่า (postgres) ไม่ติด
 --   * New ย้ายสถานีไม่ได้ (initialize_contract_stations → SV008)
 --   * โมฆะ: contract_is_renewed = Renew ผูกมา หรือ New ของลูกค้าเดียวกันที่เริ่มหลังสัญญานี้จบ · ยกเลิกแล้วไม่นับ
 -- ชุดกฎวันที่ใช้วันที่ตายตัว (ไม่ขึ้นกับวันนี้) · ชุดโมฆะใช้ pg_temp.m(n) = เดือนปัจจุบัน + n (Asia/Bangkok)
 BEGIN;
-SELECT plan(59);
+SELECT plan(64);
 
 INSERT INTO auth.users (id, instance_id, aud, role, email) VALUES
   ('00000000-0000-0000-0000-0000000000a1', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'host@test.local'),
@@ -64,8 +64,8 @@ GRANT EXECUTE ON FUNCTION pg_temp.rid(text) TO PUBLIC;
 -- =====================================================================
 -- โครงสร้าง + สิทธิ์
 -- =====================================================================
-SELECT has_trigger('public', 'contracts', 'contracts_renewal_gap_guard', 'gap guard trigger exists on contracts');
-SELECT ok(NOT has_function_privilege('authenticated', 'public.contracts_renewal_gap_guard()', 'EXECUTE'),
+SELECT has_trigger('public', 'contracts', 'contracts_renewed_gap_guard', 'gap guard trigger exists on contracts');
+SELECT ok(NOT has_function_privilege('authenticated', 'public.contracts_renewed_gap_guard()', 'EXECUTE'),
   'guard function is not callable by authenticated directly');
 SELECT ok(NOT has_function_privilege('anon', 'public.renewal_gap_ok(date, date, integer, date)', 'EXECUTE')
           AND NOT has_function_privilege('anon', 'public.contract_effective_end_date(date, date, integer)', 'EXECUTE')
@@ -176,10 +176,27 @@ SELECT is((SELECT start_date FROM contracts WHERE id = pg_temp.rid('r1')), '2027
 SELECT throws_ok($$UPDATE contracts SET renewed_from_contract_id = pg_temp.id('02') WHERE id = pg_temp.rid('r1')$$,
   'AG009', NULL, 'M23 lock still fires first when the link changes (AG009)');
 
+-- M9 ยังชนะ: ผูกสัญญาของลูกค้าคนอื่น (sale_type ว่าง) → P0001 ไม่ใช่ AG011 (ลำดับ trigger)
+SELECT throws_ok($$INSERT INTO contracts (customer_id, contract_no, start_date, term_years, value_total, renewed_from_contract_id)
+                   VALUES (pg_temp.id('c5'), 'REST-4', '2027-01-01', 1, 24000, pg_temp.id('02'))$$,
+  'P0001', NULL, 'M9 same-customer trigger still fires before the gap guard (P0001)');
+SELECT ok((SELECT array_agg(tgname ORDER BY tgname) FROM pg_trigger
+            WHERE tgrelid = 'public.contracts'::regclass AND tgname IN
+              ('contracts_renewal_same_customer', 'contracts_renewed_from_lock', 'contracts_renewed_gap_guard'))
+          = ARRAY['contracts_renewal_same_customer', 'contracts_renewed_from_lock', 'contracts_renewed_gap_guard']::name[],
+  'the gap guard sorts after the M9 and M23 triggers');
+
 -- host ก็ติดกฎเดียวกัน
 SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a1', true);
 SELECT throws_ok($$UPDATE contracts SET start_date = '2027-04-01' WHERE id = pg_temp.rid('r1')$$,
   'AG010', NULL, 'host: moving a Renew start past the window is refused too');
+
+-- ยกเลิก Renew → ย่อสัญญาเก่า → กลับมาใช้ Renew ไม่ได้ถ้าหลุดช่วง (ผลตรวจ security ข้อ 5)
+SELECT lives_ok($$UPDATE contracts SET status = 'cancelled' WHERE id = pg_temp.rid('r3')$$, 'host cancels Renew r3 (starts 1 Oct 2026)');
+SELECT lives_ok($$UPDATE contracts SET end_date = '2026-06-30' WHERE id = pg_temp.id('03')$$,
+  'a cancelled Renew does not block shortening its old contract');
+SELECT throws_ok($$UPDATE contracts SET status = 'active' WHERE id = pg_temp.rid('r3')$$,
+  'AG010', NULL, 'un-cancelling a Renew that is now outside the window is refused');
 
 -- ข้อมูลเก่า (postgres / นำเข้า) ไม่ติด · แก้ช่องอื่นภายหลังได้
 RESET ROLE;

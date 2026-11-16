@@ -13,7 +13,7 @@
 --      * ผูกสัญญาเก่า (renewed_from_contract_id มีค่า) ⇒ sale_type ต้องเป็น 'renew' (AG011)
 --        ทางกลับไม่บังคับ: sale_type 'renew' ที่ไม่ผูกสัญญาเก่ายังได้ (สัญญาเก่าไม่อยู่ในระบบ / ข้อมูลเก่า ·
 --        2.38 ค นับ New/Renew จากลิงก์ ไม่ใช่ sale_type) — ถามเจ้าของแล้วค่อยบังคับ
---      * บังคับ 2 ชั้น: `save_job_opening` (ตรวจก่อน ข้อความชัด) + trigger `contracts_renewal_gap_guard`
+--      * บังคับ 2 ชั้น: `save_job_opening` (ตรวจก่อน ข้อความชัด) + trigger `contracts_renewed_gap_guard`
 --        บน contracts (INSERT + UPDATE ผ่าน REST ข้ามไม่ได้)
 --          - ฝั่งสัญญาใหม่: INSERT ที่ผูกสัญญาเก่า หรือ UPDATE ที่เปลี่ยน start_date / sale_type / ลิงก์
 --          - ฝั่งสัญญาเก่า: แก้ start_date / end_date / term_years จนสัญญา Renew ที่ผูกอยู่ (ยังไม่ยกเลิก) หลุดช่วง → AG010
@@ -22,8 +22,12 @@
 --        postgres / service_role / migration / นำเข้าข้อมูลเก่า ผ่าน (ข้อมูลเก่าอาจต่อสัญญาก่อนมีกฎนี้)
 --      * trigger เป็น SECURITY INVOKER อ่านสัญญาเก่าตาม RLS ของผู้เขียน — Renew ต้องเป็นลูกค้าเดียวกัน (M9) จึงอยู่สาขา
 --        เดียวกันและมองเห็นเสมอ · มองไม่เห็น/ไม่มีจริง → ปล่อยให้ M9 (P0001) / FK (23503) ปฏิเสธเอง
---      * ชื่อ trigger เรียงหลัง contracts_renewal_same_customer (P0001) และ contracts_renewed_from_lock (AG009)
+--      * ชื่อ trigger `contracts_renewed_gap_guard` เรียงหลัง contracts_renewal_same_customer (P0001) และ
+--        contracts_renewed_from_lock (AG009) — Postgres รัน BEFORE trigger ตามลำดับชื่อ ('renewed_g' > 'renewed_f' > 'renewal_s')
 --        → 2 ตัวนั้นยังชนะก่อน (เทส 21 / 35 พึ่งลำดับนี้) · AG009 ของ M23 ไม่ถูกแตะ
+--      * กันชนพร้อมกัน (ผลตรวจ security): ทั้ง 2 ฝั่งรอ advisory lock ต่อ "สัญญาเก่า" เดียวกัน ก่อนอ่านวันที่
+--        (แก้วันจบสัญญาเก่า กับ เปิด Renew ใหม่ พร้อมกัน จะไม่หลุดช่วงทั้งคู่) · ไม่ใช้ FOR SHARE (RLS อาจซ่อนแถว)
+--      * ยกเลิกสัญญา Renew แล้วกลับมาใช้ (un-cancel) → ตรวจช่วงใหม่ (trigger ดู status / cancelled_at ด้วย)
 --   2. New = นับหนึ่งใหม่: ไม่ผูกสัญญาเก่า → ย้ายสถานีไม่ได้ — `initialize_contract_stations` (M19b) ปฏิเสธอยู่แล้ว
 --      (มีสถานีที่จะย้าย แต่สัญญาไม่มี renewed_from → SV008) → **ไม่แทนที่ function นั้น** · เทส 43 ยืนยัน
 --      สถานีของสัญญาเก่าเก็บ/ไม่เก็บที่สัญญาเก่าเอง (collect_ig_stations รับ contract ของสถานี) ไม่ตามไปสัญญาใหม่
@@ -96,7 +100,7 @@ GRANT EXECUTE ON FUNCTION public.renewal_gap_ok(date, date, integer, date) TO au
 -- =====================================================================
 -- 2. trigger บน contracts (กัน REST ข้าม RPC)
 -- =====================================================================
-CREATE FUNCTION public.contracts_renewal_gap_guard()
+CREATE FUNCTION public.contracts_renewed_gap_guard()
 RETURNS trigger
 LANGUAGE plpgsql
 SECURITY INVOKER
@@ -118,12 +122,15 @@ BEGIN
      AND (TG_OP = 'INSERT'
           OR NEW.start_date IS DISTINCT FROM OLD.start_date
           OR NEW.sale_type IS DISTINCT FROM OLD.sale_type
-          OR NEW.renewed_from_contract_id IS DISTINCT FROM OLD.renewed_from_contract_id) THEN
+          OR NEW.renewed_from_contract_id IS DISTINCT FROM OLD.renewed_from_contract_id
+          OR (OLD.status = 'cancelled' AND NEW.status <> 'cancelled')) THEN
     IF NEW.sale_type IS DISTINCT FROM 'renew' THEN
       RAISE EXCEPTION 'a contract linked to an old contract must have sale_type renew'
         USING ERRCODE = 'AG011',
               HINT = 'สัญญาที่ผูกกับสัญญาเก่าต้องเป็นประเภท Renew — ถ้าเป็นลูกค้าใหม่ (New) ไม่ต้องผูกสัญญาเก่า';
     END IF;
+    -- คิวเดียวกับฝั่งสัญญาเก่า (ด้านล่าง) — อ่านวันที่หลังได้ lock (READ COMMITTED: snapshot ใหม่ต่อคำสั่ง)
+    PERFORM pg_advisory_xact_lock(hashtextextended('public.contracts.renewal:' || NEW.renewed_from_contract_id::text, 0));
     SELECT o.start_date, o.end_date, o.term_years
       INTO v_old_start, v_old_end, v_old_term
       FROM public.contracts o
@@ -145,6 +152,12 @@ BEGIN
   IF TG_OP = 'UPDATE'
      AND (NEW.start_date IS DISTINCT FROM OLD.start_date
           OR NEW.end_date IS DISTINCT FROM OLD.end_date
+          OR NEW.term_years IS DISTINCT FROM OLD.term_years) THEN
+    PERFORM pg_advisory_xact_lock(hashtextextended('public.contracts.renewal:' || NEW.id::text, 0));
+  END IF;
+  IF TG_OP = 'UPDATE'
+     AND (NEW.start_date IS DISTINCT FROM OLD.start_date
+          OR NEW.end_date IS DISTINCT FROM OLD.end_date
           OR NEW.term_years IS DISTINCT FROM OLD.term_years)
      AND EXISTS (SELECT 1 FROM public.contracts r
                   WHERE r.renewed_from_contract_id = NEW.id AND r.id <> NEW.id
@@ -160,12 +173,12 @@ BEGIN
 END;
 $$;
 
-REVOKE ALL ON FUNCTION public.contracts_renewal_gap_guard() FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.contracts_renewed_gap_guard() FROM PUBLIC, anon, authenticated;
 
-CREATE TRIGGER contracts_renewal_gap_guard
-  BEFORE INSERT OR UPDATE OF start_date, end_date, term_years, sale_type, renewed_from_contract_id
+CREATE TRIGGER contracts_renewed_gap_guard
+  BEFORE INSERT OR UPDATE OF start_date, end_date, term_years, sale_type, renewed_from_contract_id, status, cancelled_at
   ON public.contracts
-  FOR EACH ROW EXECUTE FUNCTION public.contracts_renewal_gap_guard();
+  FOR EACH ROW EXECUTE FUNCTION public.contracts_renewed_gap_guard();
 
 -- =====================================================================
 -- 3. โมฆะ: contract_is_renewed = "ถูกแทนแล้ว" (Renew ผูกมา หรือ New ที่เริ่มหลังสัญญานี้จบ)
@@ -352,7 +365,7 @@ BEGIN
 
   -- ---------- M28 / DECISIONS 2.51: Renew ต้องเริ่มไม่เกิน 2 เดือนหลังสัญญาเก่าจบ ----------
   --   ตรวจเมื่อเปิดงานใหม่ที่ผูกสัญญาเก่า หรือโหมดแก้ที่เปลี่ยนวันเริ่ม/sale_type (ลิงก์เดิม) — เปลี่ยนลิงก์ในโหมดแก้
-  --   ปล่อยให้ AG009 (M23) ปฏิเสธเอง · trigger contracts_renewal_gap_guard กันซ้ำทุกทาง (รวม REST)
+  --   ปล่อยให้ AG009 (M23) ปฏิเสธเอง · trigger contracts_renewed_gap_guard กันซ้ำทุกทาง (รวม REST)
   IF p_renewed_from_contract_id IS NOT NULL
      AND (p_contract_id IS NULL
           OR (p_renewed_from_contract_id IS NOT DISTINCT FROM v_cur_link
