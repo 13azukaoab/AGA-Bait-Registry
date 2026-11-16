@@ -71,6 +71,14 @@ describe("แถวร่างที่เป็น Custom", () => {
   it("วันสิ้นสุดเติมอัตโนมัติตามจำนวนเดือน Custom", () => {
     expect(applyDraftPatch({ ...base, customTermMonths: 5 }, {}).endDate).toBe("2026-06-14");
   });
+  it("กด Custom… (ยังไม่ใส่เดือน = 0) → บันทึกไม่ได้ วันสิ้นสุดว่าง · กลับเป็น 1 ปี → 12 เดือนปกติ", () => {
+    const started = applyDraftPatch(base, { customTermMonths: 0 });
+    expect(started.endDate).toBe("");
+    expect(canSave(checkDraft(started, branches, undefined))).toBe(false);
+    const back = applyDraftPatch(started, { customTermMonths: null });
+    expect(checkDraft(back, branches, undefined).termMonths).toBe(12);
+    expect(back.endDate).toBe("2027-01-14");
+  });
   it("Custom ที่เป็น 12 / 36 / 0 / 40 = ผิด (บล็อกการบันทึก)", () => {
     for (const bad of [12, 36, 0, 40]) {
       const c = checkDraft({ ...base, customTermMonths: bad }, branches, undefined);
