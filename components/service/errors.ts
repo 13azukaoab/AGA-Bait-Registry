@@ -6,13 +6,18 @@
  *     `initialize_contract_stations` (ดูหัว migration 20261112130100 และ 20261112150000)
  *   * 22004 / 22023 / 23514 / 21000 = ข้อมูลที่หน้าจอส่งไปไม่ถูก (บั๊กหน้าจอ ไม่ใช่ความผิดผู้ใช้) →
  *     ข้อความทั่วไป + `isBug = true` ให้ผู้เรียก `console.error` ข้อความดิบ (ไม่โชว์ข้อความดิบให้ผู้ใช้)
+ *   * M26/M33: TM004 ทีมปิด · TM005 ทีมหัวหน้างาน (DETAIL = รหัสทีม ใส่ในข้อความ) · TM006 เปิด/ปิดทีมเฉพาะ host · AG015 Renew ต้องบันทึกผ่านหน้าเปิดงาน
  *   * 42501 = ไม่มีสิทธิ์ · อื่นๆ = ข้อความทั่วไป
  */
+
+import { describeTeamError } from "@/lib/service/teamErrors";
 
 export interface DbErrorLike {
   code?: string | null;
   message?: string | null;
   statusCode?: string | number | null;
+  /** DETAIL ของ DB — TM004/TM005 ใช้บอกรหัสทีม */
+  details?: string | null;
 }
 
 export interface ServiceError {
@@ -47,7 +52,9 @@ const RPC_ERRORS: Record<string, string> = {
   AG007: "สัญญานี้ปิดหรือยกเลิกแล้ว — เฉพาะ Host เท่านั้นที่แก้ได้",
   // M22 — จัดการทีม / ประเภทลูกค้า (หน้าตั้งค่า) · ใส่ไว้ที่นี่ให้ตัวแปลงข้อความเดียวกันใช้ได้
   TM001: "ลบทีมนี้ไม่ได้ เพราะยังมีงานผูกอยู่ (สัญญา / การเข้าบริการ / ผู้ใช้)",
-  TM002: "ทีมระบบ ลบหรือเปลี่ยนรหัส ประเภท สาขาไม่ได้ (แก้ชื่อได้)",
+  TM002: "ทีมระบบ ลบ ปิดใช้งาน หรือเปลี่ยนรหัส ประเภท สาขาไม่ได้ (แก้ชื่อได้)",
+  // M26 — สัญญาที่ต่อจากสัญญาเก่า (renewed_from) ต้องบันทึกผ่าน RPC หน้าเปิดงานเท่านั้น
+  AG015: "สัญญาที่ต่อ (Renew) จากสัญญาเก่าต้องบันทึกผ่านหน้าเปิดงานเท่านั้น — รีเฟรชหน้าแล้วบันทึกใหม่ หากยังไม่ได้ให้แจ้งผู้ดูแลระบบ",
   CT001: "รายการจัดเรียงประเภทลูกค้าไม่ตรงกับข้อมูลปัจจุบัน — โหลดหน้าใหม่แล้วลองอีกครั้ง",
 };
 
@@ -60,6 +67,9 @@ export function describeServiceError(error: DbErrorLike): ServiceError {
   const code = error.code ?? "";
   const msg = (error.message ?? "").toLowerCase();
   const status = String(error.statusCode ?? "");
+
+  const team = describeTeamError(code, error.details);
+  if (team) return { message: team, isBug: false };
 
   const rpc = RPC_ERRORS[code];
   if (rpc) return { message: rpc, isBug: false };

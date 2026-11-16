@@ -55,7 +55,7 @@ import { FileDialog } from "./FileDialog";
 import { uploadAfterSave } from "./uploadAfterSave";
 import { HistoryDialog } from "./HistoryDialog";
 import { monthLabel } from "@/lib/service/months";
-import { describeTeamsByKind } from "@/lib/service/teamKind";
+import { describeTeamsByKind, isTeamAssignableToContract } from "@/lib/service/teamKind";
 import { PdfIcon } from "./PdfIcon";
 import { RenewalDialog } from "./RenewalDialog";
 import { deleteContract, findLinkedRenewals, saveDraft, type SaveResult } from "./save";
@@ -959,7 +959,7 @@ export function NewContractsClient({
       </div>
 
       <p className="m-0 text-[11.5px] text-fg-muted">
-        ทีม: <b>{describeTeamsByKind(master.teams)}</b> · ช่อง เขต / Tier / วันสิ้นสุด
+        ทีม: <b>{describeTeamsByKind(master.teams.filter(isTeamAssignableToContract))}</b> · ช่อง เขต / Tier / วันสิ้นสุด
         ระบบคำนวณให้ (ไม่ต้องกรอก)
       </p>
 

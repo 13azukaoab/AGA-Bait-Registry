@@ -25,6 +25,7 @@ import { ContractList, type ListView } from "./ContractList";
 import { loadContractCounts, loadContractDetail, loadVisit, type ServiceMaster } from "./data";
 import { formFromVisit, newVisitForm } from "./formState";
 import { monthLabel, todayBangkok } from "@/lib/service/months";
+import { assignableTeamIds, isTeamAssignableToVisit } from "@/lib/service/teamKind";
 import { searchContracts } from "./search";
 import { ServiceForm, type SavedInfo } from "./ServiceForm";
 import type { ContractDetail, ContractListItem, FormState, LoadedVisit } from "./types";
@@ -76,11 +77,16 @@ export function ServiceClient({
     async (item: ContractListItem, detail: ContractDetail, choice: string, myReq: number): Promise<boolean> => {
       if (choice === "new") {
         if (myReq !== req.current) return false;
+        // ทีมครั้งก่อนที่ปิด/ไม่ใช่บริการ-ติดตั้ง เติมให้การเข้าใหม่ไม่ได้ (TM004) — กรองออกก่อนเป็นค่าตั้งต้น
+        const fresh = {
+          ...detail,
+          lastTeamIds: assignableTeamIds(detail.lastTeamIds, master.teams, isTeamAssignableToVisit),
+        };
         setOpen({
           itemId: item.contractId,
-          detail,
+          detail: fresh,
           loadedVisit: null,
-          form: newVisitForm(detail, month, todayBangkok()),
+          form: newVisitForm(fresh, month, todayBangkok()),
           chosenVisitId: "new",
         });
         return true;
@@ -100,7 +106,7 @@ export function ServiceClient({
       });
       return true;
     },
-    [supabase, month],
+    [supabase, month, master.teams],
   );
 
   const select = useCallback(

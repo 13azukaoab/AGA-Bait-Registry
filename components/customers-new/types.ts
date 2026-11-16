@@ -36,6 +36,8 @@ export interface TeamOption {
   code: string;
   /** ประเภททีมจาก teams.kind (M22) — ห้ามเดาจากรหัสทีม */
   kind: TeamKind;
+  /** ทีมเปิดใช้งานอยู่ไหม (teams.is_active — M33) · ปิดแล้วเลือกให้งานใหม่ไม่ได้ (TM004) */
+  isActive: boolean;
 }
 
 export interface CustomerTypeOption {

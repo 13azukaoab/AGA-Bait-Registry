@@ -3,12 +3,16 @@
 /**
  * TeamSelect — เลือกทีมที่เข้า (เลือกได้หลายทีม · ประเภทบริการ/ติดตั้งตาม teams.kind · อย่างน้อย 1 ทีม)
  * ปุ่มแสดง "ทีม A, B" (เกิน 3 ทีมย่อเป็น +n) · กดแล้วเปิดรายการติ๊ก · Esc/คลิกนอกกล่องปิด
+ *
+ * M33: รายการซ่อนทีมที่ปิดใช้งาน (DB ปฏิเสธ TM004) — ยกเว้นทีมที่ถูกเลือกอยู่แล้ว (การเข้าเก่า) ยังโชว์ติดป้าย "ปิดใช้งาน"
+ * ติ๊กออกได้ แต่ติ๊กกลับไม่ได้ (ออกจากรายการเมื่อติ๊กออก)
  */
 import { useEffect, useRef, useState } from "react";
 
 import { INPUT, INVALID } from "./styles";
 import type { TeamOption } from "./types";
 import { cx } from "@/components/ui/cx";
+import { isTeamAssignableToVisit, teamUnavailableNote, teamsForPicker } from "@/lib/service/teamKind";
 
 export function teamButtonText(codes: readonly string[]): string {
   if (codes.length === 0) return "";
@@ -45,6 +49,7 @@ export function TeamSelect({
     };
   }, [open]);
 
+  const options = teamsForPicker(teams, value, isTeamAssignableToVisit);
   const codes = teams.filter((t) => value.includes(t.id)).map((t) => t.code);
 
   return (
@@ -69,16 +74,22 @@ export function TeamSelect({
           className="absolute left-0 top-full z-30 mt-1 w-[220px] rounded-lg border border-border bg-surface p-2 shadow-[var(--shadow)]"
         >
           <div className="grid grid-cols-4 gap-1">
-            {teams.map((t) => {
+            {options.map((t) => {
               const on = value.includes(t.id);
+              const note = teamUnavailableNote(t);
               return (
-                <label key={t.id} className="flex cursor-pointer items-center gap-1 rounded px-1 py-1 text-[12.5px] hover:bg-surface-2">
+                <label
+                  key={t.id}
+                  title={note ? `ทีมนี้${note} — เป็นทีมเดิมของการเข้านี้ เอาออกได้ แต่เพิ่มกลับไม่ได้` : undefined}
+                  className={`flex cursor-pointer items-center gap-1 rounded px-1 py-1 text-[12.5px] hover:bg-surface-2${note ? " col-span-4" : ""}`}
+                >
                   <input
                     type="checkbox"
                     checked={on}
                     onChange={() => onChange(on ? value.filter((v) => v !== t.id) : [...value, t.id])}
                   />
                   {t.code}
+                  {note ? <span className="text-[10.5px] text-fg-faint">({note})</span> : null}
                 </label>
               );
             })}
