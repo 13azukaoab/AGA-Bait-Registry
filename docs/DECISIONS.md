@@ -272,6 +272,7 @@
 | M30 | **สัญญาสั้น 1–11 เดือน (2.53)** — `contracts` เพิ่มระยะเป็นเดือน (เช่น `term_months` · CHECK ให้เป็น 12/36 หรือ 1–11) · lib/rules `serviceMonths` / `annualValue` / `tierOf` / snapshot / `defaultEndDate` รองรับเดือน + unit test กรณีบังคับใหม่ · `save_job_opening` + หน้าเปิดงาน (ตัวเลือกระยะสัญญา) + import · ห้ามเปลี่ยนรูปแบบ dashboard_data.json | 2.53 | ✅ เจ้าของอนุมัติ 16 พ.ย. · Opus (สูตร + schema) · คิวหมวด 2 หลัง M28 · FE ต่อ |
 | M31 | **เฝ้าดูเว็บล่ม แบบฟรี** — `GET /api/health` (ไม่ล็อกอิน · เช็ก DB จริง · ไม่มีข้อมูลลูกค้า/secret · 503 เมื่อ DB ต่อไม่ได้) + GitHub Actions `uptime.yml` ใน repo public ทุก 5 นาที (ไม่ใช้ secret · ล้ม = GitHub ส่งอีเมล) · ภายหลังก่อน UAT: Sentry ฟรี (ตัดข้อมูลลูกค้า) + Microsoft Clarity (strict masking · แจ้งพนักงาน) | เจ้าของ 16 พ.ย. "เอาแบบไม่เสียเงิน" · ไม่ใช้ UptimeRobot/Better Stack (เงื่อนไขใช้เชิงธุรกิจยังไม่ชัด) | ✅ อนุมัติ · หมวด 3 (Sonnet + Opus ตรวจ) · ถ้าต้องมี RPC health ส่งหมวด 2 · ✅ **รวม main 16 พ.ย.** (/api/health + uptime.yml · cron 2-59/5 · HQ รัน vitest 592 · build ผ่าน) · เจ้าของต้อง: ตั้งรับอีเมล Actions + กด Enable/Run workflow จากบัญชีตัวเอง หลัง push |
 | M32 | **ติดตั้ง Sentry (ฟรี)** — `@sentry/nextjs` ติดตั้งมือ (ไม่ใช้ wizard) · ค่าจาก env (Vercel Production) · sendDefaultPii false · ตัด body/query/ข้อมูลลูกค้า · ไม่เปิด Session Replay · traces ต่ำ · บัญชี: org advance-group-asia · project aga-bait-registry · EU · กฎ "แจ้งทุก error ใหม่" (HQ แก้ให้ 16 พ.ย.) | M31 · เจ้าของสมัคร 16 พ.ย. | ✅ อนุมัติ · หมวด 3 (Sonnet + Opus ตรวจ) |
+| M33 | **ปุ่มเปิด/ปิดทีม (พักทีมชั่วคราว ไม่ลบ)** — `teams.is_active` (default true) · ทีมที่ปิด: ไม่ขึ้นให้เลือกในการเข้าบริการ/เปิดงานใหม่ · งานเก่ายังแสดงชื่อทีมเดิม · แก้งานเก่าที่มีทีมปิดอยู่แล้วได้ · ทีมระบบ (Sup) ปิดไม่ได้ · host เท่านั้น · ลง audit (audit_teams มีแล้ว M25) · ตาม mockup ตั้งค่า FINAL | เจ้าของ 16 พ.ย. "ต้องการ" | ✅ อนุมัติ · หมวด 2 (Sonnet + Opus ตรวจ) หลัง M28 · FE ต่อ |
 
 ---
 
@@ -327,3 +328,4 @@
 | 16 พ.ย. 2026 (7) | M19a รวม main · M19c (ย้ายเบอร์เดิม) คิวหลัง FE |
 | 16 พ.ย. 2026 (8) | เพิ่ม **M31** เฝ้าดูเว็บแบบฟรี (health + GitHub Actions) |
 | 16 พ.ย. 2026 (9) | M25 + M21b + M31 รวม main · ag_in_use_prev ไม่ใช้ · L2 → M26 · เพิ่ม **M32** Sentry |
+| 16 พ.ย. 2026 (10) | เพิ่ม **M33** ปุ่มเปิด/ปิดทีม (เจ้าของต้องการ) |
