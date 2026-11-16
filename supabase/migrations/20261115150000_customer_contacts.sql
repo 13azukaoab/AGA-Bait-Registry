@@ -9,9 +9,8 @@
 --      * sort_order ไม่ UNIQUE (เรียงด้วย sort_order, created_at) — กันปัญหาสลับลำดับแบบ M22
 --      * ลบลูกค้า → เบอร์ถูกลบตาม (CASCADE) และลง audit ทีละแถว · ย้ายเบอร์ไปลูกค้าอื่นไม่ได้ (customer_id แก้ไม่ได้)
 --      * DB ไม่บังคับ "ต้องมีอย่างน้อย 1 เบอร์" (ลูกค้าใหม่/นำเข้ายังไม่มีเบอร์) — RPC กันลบเบอร์สุดท้าย (CC004)
---      * audit: trigger audit_customer_phones เรียก public.audit_trigger() ตัวเดิม (ไม่แทนที่ฟังก์ชัน —
---        M21 กำลังแก้เนื้อ) ⚠ ตอนนี้ audit_log.branch_id ของแถวเบอร์ = NULL (CASE ใน audit_trigger ยังไม่มี
---        'customer_phones') — รอหมวด 2 ตัดสินว่าจะเพิ่มใน audit_trigger รอบไหน
+--      * audit: trigger audit_customer_phones เรียก public.audit_trigger() · audit_log.branch_id = สาขาของลูกค้า
+--        (กรณี 'customer_phones' เพิ่มใน audit_trigger ข้อ 7)
 --   3. สิทธิ์ (RLS + GRANT 2 ชั้น)
 --      * อ่าน: host / admin / recorder ทุกสาขา (เท่ากับ customers_select) · viewer / anon ไม่มีสิทธิ์เลย (PDPA —
 --        anon ถูกปฏิเสธตั้งแต่ชั้น GRANT 42501)
@@ -50,6 +49,9 @@
 --       CC003 เบอร์ซ้ำกับเบอร์ที่มีอยู่ของลูกค้านี้
 --       CC004 ลบเบอร์สุดท้ายไม่ได้
 --     ใช้ร่วมของเดิม: AG004 ไม่พบลูกค้า/เบอร์ · 42501 ไม่มีสิทธิ์ · 22023 payload ผิดรูปแบบ
+--   7. audit_trigger แทนที่ทั้งตัว (BE อนุมัติ 16 พ.ย. 2026): เนื้อ M21 (20261115120000) ทุกบรรทัด เพิ่มเฉพาะ
+--        'customer_phones' → branch_id ของลูกค้า · 'missed_service_notes' (M24) → contract_id + branch_id + month_key
+--      ⚠⚠ ตัวถัดไปที่แทน `audit_trigger` ต้องใช้เนื้อจาก M19a (ไฟล์นี้) — ไม่ใช่ M21 หรือเก่ากว่า
 --   * customers.phone (คอลัมน์เดิม 1 เบอร์) ไม่แตะ ไม่ย้ายข้อมูลในไฟล์นี้ — ทางเลือกอยู่ใน M19a-report.md
 
 -- =====================================================================
@@ -114,7 +116,7 @@ CREATE TRIGGER customer_phones_before_update
   BEFORE UPDATE ON public.customer_phones
   FOR EACH ROW EXECUTE FUNCTION public.customer_phones_before_update();
 
--- audit: ใช้ฟังก์ชันเดิม (ไม่ CREATE OR REPLACE audit_trigger — M21 เป็นเจ้าของเนื้อฟังก์ชัน)
+-- audit: ใช้ public.audit_trigger() (เนื้อใหม่ในข้อ 7 ของไฟล์นี้ เพิ่มบริบทสาขาให้)
 CREATE TRIGGER audit_customer_phones
   AFTER INSERT OR UPDATE OR DELETE ON public.customer_phones
   FOR EACH ROW EXECUTE FUNCTION public.audit_trigger();
@@ -436,3 +438,100 @@ REVOKE ALL ON FUNCTION public.customer_contact_is_cross_team(uuid) FROM PUBLIC, 
 GRANT EXECUTE ON FUNCTION public.customer_contact_is_cross_team(uuid) TO authenticated, service_role;
 REVOKE ALL ON FUNCTION public.save_customer_contact(jsonb) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.save_customer_contact(jsonb) TO authenticated;
+
+-- =====================================================================
+-- 7. audit_trigger: เนื้อ M21 (20261115120000) ทุกบรรทัด + 2 กรณีที่ติดป้าย "M19a" (BE อนุมัติ 16 พ.ย. 2026)
+--    ⚠⚠ ตัวถัดไปที่แทน audit_trigger (CREATE OR REPLACE) ต้องใช้เนื้อจาก M19a (ไฟล์นี้) ไม่ใช่ M21 หรือเก่ากว่า
+--       ไม่งั้น branch_id ของ customer_phones / บริบทของ missed_service_notes หายเงียบ (เทส 40 ล้ม)
+--       และ actor_position_code ของ M21 ต้องคงอยู่ (เทส 37 GUARD)
+-- =====================================================================
+CREATE OR REPLACE FUNCTION public.audit_trigger()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_old        jsonb;
+  v_new        jsonb;
+  v_rec        jsonb;
+  v_row_id     uuid;
+  v_branch     uuid;
+  v_contract   uuid;
+  v_month      text;
+  v_visit_date date;
+  v_actor_pos  text;   -- M21
+BEGIN
+  IF TG_OP IN ('UPDATE', 'DELETE') THEN v_old := to_jsonb(OLD); END IF;
+  IF TG_OP IN ('INSERT', 'UPDATE') THEN v_new := to_jsonb(NEW); END IF;
+
+  -- เลข F ที่ระบบคำนวณใหม่ ไม่ใช่การแก้ของคน → ไม่ลง (กัน "แก้หลังปิดเดือน" พอง)
+  IF TG_TABLE_NAME = 'station_checks' AND TG_OP = 'UPDATE'
+     AND (v_old - 'follow_up_no') = (v_new - 'follow_up_no') THEN
+    RETURN NULL;
+  END IF;
+
+  v_rec := COALESCE(v_new, v_old);
+
+  -- tables without an "id" column (contract_teams, visit_teams, snapshots, closures) yield NULL
+  v_row_id := NULLIF(v_rec ->> 'id', '')::uuid;
+
+  CASE TG_TABLE_NAME
+    WHEN 'customers' THEN
+      v_branch := (v_rec ->> 'branch_id')::uuid;
+    WHEN 'contracts' THEN
+      v_contract := v_row_id;
+      SELECT cu.branch_id INTO v_branch
+        FROM public.customers cu WHERE cu.id = (v_rec ->> 'customer_id')::uuid;
+    WHEN 'contract_teams', 'stations', 'contract_files' THEN
+      v_contract := (v_rec ->> 'contract_id')::uuid;
+    WHEN 'visits' THEN
+      v_contract := (v_rec ->> 'contract_id')::uuid;
+      v_month    := to_char((v_rec ->> 'visit_date')::date, 'YYYY-MM');
+    WHEN 'missed_service_resolutions' THEN   -- M18: ค้นตามสัญญา + เดือนที่ตก
+      v_contract := (v_rec ->> 'contract_id')::uuid;
+      v_month    := to_char((v_rec ->> 'missed_month')::date, 'YYYY-MM');
+    WHEN 'station_checks', 'visit_teams', 'station_works' THEN
+      SELECT v.contract_id, v.visit_date INTO v_contract, v_visit_date
+        FROM public.visits v WHERE v.id = (v_rec ->> 'visit_id')::uuid;
+      v_month := to_char(v_visit_date, 'YYYY-MM');
+    WHEN 'monthly_branch_snapshots' THEN
+      v_branch := (v_rec ->> 'branch_id')::uuid;
+      v_month  := public.normalize_month_key(v_rec ->> 'month_key');
+    WHEN 'month_closures' THEN
+      v_month := public.normalize_month_key(v_rec ->> 'month_key');
+    WHEN 'profiles' THEN                     -- M21: row_id = user_id ของบัญชีที่ถูกแก้
+      v_row_id := NULLIF(v_rec ->> 'user_id', '')::uuid;
+    WHEN 'customer_phones' THEN              -- M19a: เบอร์โทรลูกค้า → สาขาของลูกค้า
+      SELECT cu.branch_id INTO v_branch
+        FROM public.customers cu WHERE cu.id = (v_rec ->> 'customer_id')::uuid;
+    WHEN 'missed_service_notes' THEN         -- M19a (คำขอ M24): ค้นตามสัญญา + เดือนที่ตก
+      v_contract := (v_rec ->> 'contract_id')::uuid;
+      v_month    := to_char((v_rec ->> 'missed_month')::date, 'YYYY-MM');
+    ELSE
+      NULL;
+  END CASE;
+
+  IF v_branch IS NULL AND v_contract IS NOT NULL THEN
+    SELECT cu.branch_id INTO v_branch
+      FROM public.contracts c
+      JOIN public.customers cu ON cu.id = c.customer_id
+     WHERE c.id = v_contract;
+  END IF;
+
+  -- M21: ตำแหน่งของผู้แก้ ณ ตอนนี้ (ไม่มีผู้ใช้ → NULL)
+  IF auth.uid() IS NOT NULL THEN
+    SELECT p.position_code INTO v_actor_pos FROM public.profiles p WHERE p.user_id = auth.uid();
+  END IF;
+
+  INSERT INTO public.audit_log
+    (table_name, row_id, action, old_data, new_data, changed_by, branch_id, contract_id, month_key,
+     actor_position_code)                                                         -- M21
+  VALUES
+    (TG_TABLE_NAME, v_row_id, lower(TG_OP)::public.audit_action, v_old, v_new, auth.uid(),
+     v_branch, v_contract, v_month,
+     v_actor_pos);                                                                -- M21
+
+  RETURN NULL; -- AFTER trigger: return value ignored
+END;
+$$;

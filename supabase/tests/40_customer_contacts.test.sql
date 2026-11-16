@@ -2,7 +2,7 @@
 -- Role simulation: seed as postgres, then SET LOCAL ROLE authenticated/anon and set
 -- request.jwt.claim.sub (what auth.uid() reads). RESET ROLE to inspect as superuser.
 BEGIN;
-SELECT plan(66);
+SELECT plan(71);
 
 -- =====================================================================
 -- โครงสร้าง + สิทธิ์ระดับ GRANT / function
@@ -267,6 +267,31 @@ SELECT ok(EXISTS (SELECT 1 FROM audit_log WHERE table_name = 'customer_phones' A
   'audit_log has the direct admin insert');
 SELECT is((SELECT count(*)::int FROM customer_phones WHERE customer_id = '00000000-0000-0000-0000-0000000019c1'), 2,
   'c1 ends with 2 phones (seed + recorder add; admin phone deleted)');
+
+-- =====================================================================
+-- บริบทของ audit (audit_trigger เนื้อ M19a = M21 + customer_phones + missed_service_notes)
+-- =====================================================================
+SELECT is((SELECT count(*)::int FROM audit_log
+            WHERE table_name = 'customer_phones'
+              AND row_id IN ('00000000-0000-0000-0000-0000000019f1', '00000000-0000-0000-0000-0000000019f2')
+              AND branch_id IS DISTINCT FROM (SELECT branch_id FROM customers WHERE id = '00000000-0000-0000-0000-0000000019c1')),
+  0, 'every customer_phones audit row of c1 carries the customer branch_id');
+SELECT ok(EXISTS (SELECT 1 FROM audit_log WHERE table_name = 'customer_phones'
+                     AND row_id = '00000000-0000-0000-0000-0000000019f1' AND branch_id IS NOT NULL),
+  'customer_phones audit rows have a branch_id (History Log branch filter)');
+INSERT INTO missed_service_notes (id, contract_id, missed_month, note) VALUES
+  ('00000000-0000-0000-0000-0000000019e1', '00000000-0000-0000-0000-0000000019d1', '2026-03-01', 'ลูกค้าปิดอาคาร');
+SELECT results_eq(
+  $$SELECT contract_id, branch_id, month_key FROM audit_log
+     WHERE table_name = 'missed_service_notes' AND row_id = '00000000-0000-0000-0000-0000000019e1'$$,
+  $$SELECT '00000000-0000-0000-0000-0000000019d1'::uuid,
+           (SELECT branch_id FROM customers WHERE id = '00000000-0000-0000-0000-0000000019c1'),
+           '2026-03'::text$$,
+  'missed_service_notes audit row has contract_id + branch_id + month_key');
+SELECT matches(pg_get_functiondef('public.audit_trigger()'::regprocedure), 'actor_position_code',
+  'audit_trigger keeps the M21 actor_position_code');
+SELECT matches(pg_get_functiondef('public.audit_trigger()'::regprocedure), 'missed_service_notes',
+  'audit_trigger is the M19a body (has missed_service_notes)');
 
 SELECT * FROM finish();
 ROLLBACK;
