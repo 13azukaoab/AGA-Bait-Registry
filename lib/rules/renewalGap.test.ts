@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { effectiveEndDate, latestRenewStartMonth, renewalGapOk } from "./renewalGap";
+import { effectiveEndDate, latestRenewStartMonth, renewalGapOk, unlinkedRenewAllowed } from "./renewalGap";
 import { isRenewed, isSuperseded, missedResolutionStatus } from "./missedResolution";
 import type { Contract } from "./types";
 
@@ -101,5 +101,17 @@ describe("isSuperseded (DECISIONS 2.47 + 2.51 — ตกบริการค้
   });
   it("โมฆะแล้ว เรื่องที่รอตัดสินเป็น void_renewed", () => {
     expect(missedResolutionStatus(old, "2026-05", undefined, [], isSuperseded(old, [old, newLater]))).toBe("void_renewed");
+  });
+});
+
+describe("unlinkedRenewAllowed (M28 รอบ 2 — Renew ไม่ผูกสัญญาเก่า เปิดได้แค่ช่วงแรก)", () => {
+  // ค่า app_settings.allow_unlinked_renew_until = วันแรกที่ "ไม่ได้แล้ว" (2027-04-01 = ใช้ได้ถึง 31 มี.ค. 2027)
+  it("ก่อนวันกำหนด = ได้ · ตรงวันกำหนดหรือหลังจากนั้น = ต้องผูกสัญญาเก่า", () => {
+    expect(unlinkedRenewAllowed("2027-03-31", "2027-04-01")).toBe(true);
+    expect(unlinkedRenewAllowed("2027-04-01", "2027-04-01")).toBe(false);
+    expect(unlinkedRenewAllowed("2027-05-10", "2027-04-01")).toBe(false);
+  });
+  it("รับค่า timestamp ได้ (ตัดเหลือวันที่)", () => {
+    expect(unlinkedRenewAllowed("2026-11-16T10:00:00", "2027-04-01")).toBe(true);
   });
 });

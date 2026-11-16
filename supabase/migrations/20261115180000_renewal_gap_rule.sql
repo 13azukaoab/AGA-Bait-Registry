@@ -1,6 +1,7 @@
 -- M28 (DECISIONS 2.51 · เจ้าของอนุมัติ 16 พ.ย. 2026): กฎช่องว่าง 2 เดือน — Renew หรือ New
 --
--- ⚠ M30 (สัญญาสั้น term_months) ต้องต่อจาก `save_job_opening` ในไฟล์นี้ (ไม่ใช่ 20261112140000)
+-- ⚠ M30 (สัญญาสั้น term_months) ต้องต่อจาก `save_job_opening` ในไฟล์นี้ (ไม่ใช่ 20261112140000) — signature 23 พารามิเตอร์
+--   (ตัวสุดท้าย p_renew_unlinked_reason)
 --   และแก้ "วันจบ" ที่ `contract_effective_end_date` จุดเดียว (ฝั่ง TS: lib/rules/renewalGap.ts `effectiveEndDate`)
 --
 -- Logic summary:
@@ -46,6 +47,107 @@
 --        AG010 สัญญาใหม่เริ่มเกิน 2 เดือนหลังสัญญาเก่าจบ (หรือไม่ได้เริ่มหลังสัญญาเก่า) → เปิดเป็น New
 --              DETAIL = เดือนสุดท้ายที่ยังเริ่มแบบ Renew ได้ 'YYYY-MM'
 --        AG011 ผูกสัญญาเก่าแต่ sale_type ไม่ใช่ 'renew'
+--        AG012 Renew ไม่ผูกสัญญาเก่าต้องมีเหตุผล (renew_unlinked_reason)
+--        AG013 เลยช่วงที่เปิด Renew แบบไม่ผูกสัญญาเก่าได้แล้ว → ต้องผูกสัญญาเก่า · DETAIL = วันที่กำหนด 'YYYY-MM-DD'
+--        AG014 ผูกลิงก์ย้อนหลังได้เฉพาะสัญญา Renew ที่ยังไม่ผูก
+--   5. รอบ 2 (เจ้าของเลือก ข · 16 พ.ย. 2026): **Renew ไม่ผูกสัญญาเก่า เปิดได้แค่ช่วงแรก**
+--      * `contracts.renew_unlinked_reason` — CHECK (ข้อมูลเดิมผ่าน · ทุกแถวเดิมเป็น NULL): มีค่าได้เฉพาะ
+--        sale_type = 'renew' + ไม่ผูกสัญญาเก่า และต้องไม่ใช่ช่องว่างล้วน · ผูกแล้ว / New → ต้อง NULL (23514)
+--      * ทางกลับ (Renew ไม่ผูก ⇒ ต้องมีเหตุผล) บังคับด้วย trigger เฉพาะผู้ใช้ที่ล็อกอิน (AG012) · ข้อมูลเก่า /
+--        service_role / นำเข้า ไม่บังคับ (2.38) · แถวเก่าที่ไม่มีเหตุผล แก้ช่องอื่นได้ (ตรวจเมื่อ "กลายเป็น" Renew ไม่ผูก
+--        หรือแก้ช่องเหตุผล)
+--      * ช่วงเวลา: `app_settings.allow_unlinked_renew_until` (ค่าเริ่มต้น 2027-04-01 = **วันแรกที่ไม่ได้แล้ว** →
+--        ใช้ได้ถึง 31 มี.ค. 2027) · อ่านผ่าน `allow_unlinked_renew_until()` / `unlinked_renew_open()` จุดเดียว ·
+--        เทียบกับ "วันนี้" (เวลาไทย) ตอนบันทึก ไม่ใช่วันเริ่มสัญญา · **ไม่ใช่ go_live_month** (นั่นคือเดือนเริ่มข้อมูล)
+--        · แก้ได้เฉพาะ session ผู้ดูแลฐานข้อมูล (postgres/supabase_admin) — แทนที่ `app_settings_guard` (M25) → AS001
+--        · ⚠ **ผู้ดูแล DB ต้องปรับค่านี้ตอน go-live จริง** (go-live จริง + 3 เดือน · HQ ลง runbook)
+--        · เลยวันแล้ว: Renew ใหม่ที่ไม่ผูก → AG013 · แถวที่เปิดไว้ก่อนหน้า แก้ช่องอื่นต่อได้
+--      * Renew ไม่ผูก ข้ามกฎ 2 เดือน (ไม่มีสัญญาเก่าให้เทียบ)
+--      * `save_job_opening` + พารามิเตอร์ `p_renew_unlinked_reason` (signature เปลี่ยน → DROP + CREATE + สิทธิ์ใหม่)
+--        · New / ผูกแล้ว → เก็บเหตุผลเป็น NULL เอง (ไม่ error) · Renew ไม่ผูก → AG012 / AG013 ก่อนเขียน
+--      * host ตรวจ: `list_unlinked_renewals(p_branch_id)` (host + admin ตามขอบเขต · role อื่น 42501)
+--        · `link_renewal_contract(p_contract_id, p_renewed_from_contract_id)` host เท่านั้น — ผูกลิงก์ย้อนหลัง
+--          (NULL → มีค่า เท่านั้น · ล้างเหตุผล · M9 ลูกค้าเดียวกัน + กฎ 2 เดือน ตรวจด้วย trigger เดิม · ลง audit_log
+--          ผ่าน audit_contracts) · เปิดช่อง AG009 เฉพาะ RPC นี้ด้วย GUC `aga.renewal_link` = id สัญญา (แบบ M15)
+--          → แทนที่ `contracts_renewed_from_lock` (M23) · ผูกแล้ว ตกบริการค้างของสัญญาเก่าโมฆะตามกฎ (contract_is_renewed)
+
+-- =====================================================================
+-- 0. รอบ 2: ช่องเหตุผล Renew ไม่ผูก + ช่วงเวลาที่อนุญาต (app_settings)
+-- =====================================================================
+ALTER TABLE public.contracts
+  ADD COLUMN renew_unlinked_reason text;
+ALTER TABLE public.contracts
+  ADD CONSTRAINT contracts_renew_unlinked_reason_check
+    CHECK (renew_unlinked_reason IS NULL
+           OR (sale_type = 'renew' AND renewed_from_contract_id IS NULL AND btrim(renew_unlinked_reason) <> ''));
+COMMENT ON COLUMN public.contracts.renew_unlinked_reason IS
+  'M28: เหตุผลที่ Renew ไม่ผูกสัญญาเก่า (เปิดได้ถึง allow_unlinked_renew_until) · ผูกแล้ว/New = NULL';
+
+ALTER TABLE public.app_settings
+  ADD COLUMN allow_unlinked_renew_until date NOT NULL DEFAULT DATE '2027-04-01';
+COMMENT ON COLUMN public.app_settings.allow_unlinked_renew_until IS
+  'M28: วันแรกที่ "ไม่ได้แล้ว" สำหรับเปิด Renew แบบไม่ผูกสัญญาเก่า (2027-04-01 = ได้ถึง 31 มี.ค. 2027) · แก้ได้เฉพาะผู้ดูแลฐานข้อมูล (postgres) · ปรับตอน go-live จริง (go-live + 3 เดือน)';
+
+-- app_settings_guard: เนื้อเดิม M25 (20261115170000) + ด่าน allow_unlinked_renew_until (ป้าย "M28")
+CREATE OR REPLACE FUNCTION public.app_settings_guard()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY INVOKER
+SET search_path = public, pg_temp
+AS $$
+BEGIN
+  IF TG_OP IN ('DELETE', 'TRUNCATE') THEN
+    RAISE EXCEPTION 'ลบค่าตั้งระบบไม่ได้ (ตารางนี้ต้องมี 1 แถวเสมอ)' USING ERRCODE = 'AS001';
+  END IF;
+
+  -- session_user = role ที่ต่อเข้ามาจริง (ทาง API = authenticator) — ไม่เปลี่ยนตาม SECURITY DEFINER / SET ROLE
+  IF NEW.go_live_month IS DISTINCT FROM OLD.go_live_month
+     AND session_user NOT IN ('postgres', 'supabase_admin') THEN
+    RAISE EXCEPTION 'เดือนเริ่มใช้ระบบแก้ได้เฉพาะผู้ดูแลฐานข้อมูล' USING ERRCODE = 'AS001';
+  END IF;
+  -- M28: ช่วงเปิด Renew ไม่ผูกสัญญาเก่า — ผู้ดูแลฐานข้อมูลเท่านั้น
+  IF NEW.allow_unlinked_renew_until IS DISTINCT FROM OLD.allow_unlinked_renew_until
+     AND session_user NOT IN ('postgres', 'supabase_admin') THEN
+    RAISE EXCEPTION 'วันสิ้นสุดการเปิด Renew แบบไม่ผูกสัญญาเก่า แก้ได้เฉพาะผู้ดูแลฐานข้อมูล' USING ERRCODE = 'AS001';
+  END IF;
+  RETURN NEW;
+END;
+$$;
+REVOKE ALL ON FUNCTION public.app_settings_guard() FROM PUBLIC, anon, authenticated, service_role;
+
+-- helper จุดอ่านเดียว (แบบ go_live_month) · ไม่พบแถว → error ไม่คืน NULL
+CREATE FUNCTION public.allow_unlinked_renew_until()
+RETURNS date
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  v date;
+BEGIN
+  SELECT s.allow_unlinked_renew_until INTO v FROM app_settings s WHERE s.singleton;
+  IF v IS NULL THEN
+    RAISE EXCEPTION 'app_settings row is missing (allow_unlinked_renew_until)' USING ERRCODE = 'AS001';
+  END IF;
+  RETURN v;
+END;
+$$;
+
+-- วันนี้ (เวลาไทย) ยังเปิด Renew ไม่ผูกได้ไหม — ตรงกับ lib/rules `unlinkedRenewAllowed`
+CREATE FUNCTION public.unlinked_renew_open()
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SET search_path = public, pg_temp
+AS $$
+  SELECT (now() AT TIME ZONE 'Asia/Bangkok')::date < public.allow_unlinked_renew_until()
+$$;
+
+REVOKE ALL ON FUNCTION public.allow_unlinked_renew_until() FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.unlinked_renew_open() FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.allow_unlinked_renew_until() TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.unlinked_renew_open() TO authenticated, service_role;
 
 -- =====================================================================
 -- 1. ตัวช่วย (pure — ไม่อ่านตาราง)
@@ -111,9 +213,28 @@ DECLARE
   v_old_end   date;
   v_old_term  integer;
   v_latest    date;
+  v_was_unlinked boolean := false;
 BEGIN
   IF current_user <> 'authenticated' THEN
     RETURN NEW;
+  END IF;
+
+  -- ---------- รอบ 2: Renew ไม่ผูกสัญญาเก่า (ข้ามกฎ 2 เดือน · ต้องมีเหตุผล · เปิดได้ถึงวันที่กำหนด) ----------
+  IF NEW.sale_type = 'renew' AND NEW.renewed_from_contract_id IS NULL THEN
+    IF TG_OP = 'UPDATE' THEN
+      v_was_unlinked := coalesce(OLD.sale_type = 'renew' AND OLD.renewed_from_contract_id IS NULL, false);
+    END IF;
+    IF (NOT v_was_unlinked OR NEW.renew_unlinked_reason IS DISTINCT FROM OLD.renew_unlinked_reason)
+       AND coalesce(btrim(NEW.renew_unlinked_reason), '') = '' THEN
+      RAISE EXCEPTION 'a renewal without a link to the old contract needs a reason'
+        USING ERRCODE = 'AG012',
+              HINT = 'Renew ที่ไม่ผูกสัญญาเก่า ต้องระบุเหตุผล (เช่น สัญญาเก่าไม่อยู่ในระบบ)';
+    END IF;
+    IF NOT v_was_unlinked AND NOT public.unlinked_renew_open() THEN
+      RAISE EXCEPTION 'renewals without a link to the old contract are no longer allowed'
+        USING ERRCODE = 'AG013', DETAIL = to_char(public.allow_unlinked_renew_until(), 'YYYY-MM-DD'),
+              HINT = 'เลยช่วงที่เปิด Renew แบบไม่ผูกสัญญาเก่าได้แล้ว — เลือกสัญญาเก่าที่ต่อ หรือเปิดเป็นลูกค้าใหม่ (New)';
+    END IF;
   END IF;
 
   -- ---------- ฝั่งสัญญาใหม่ (สัญญานี้ผูกสัญญาเก่า) ----------
@@ -176,7 +297,8 @@ $$;
 REVOKE ALL ON FUNCTION public.contracts_renewed_gap_guard() FROM PUBLIC, anon, authenticated;
 
 CREATE TRIGGER contracts_renewed_gap_guard
-  BEFORE INSERT OR UPDATE OF start_date, end_date, term_years, sale_type, renewed_from_contract_id, status, cancelled_at
+  BEFORE INSERT OR UPDATE OF start_date, end_date, term_years, sale_type, renewed_from_contract_id, status, cancelled_at,
+                             renew_unlinked_reason
   ON public.contracts
   FOR EACH ROW EXECUTE FUNCTION public.contracts_renewed_gap_guard();
 
@@ -269,10 +391,16 @@ END;
 $$;
 
 -- =====================================================================
--- 5. save_job_opening — เนื้อเดิม 20261112140000 (M12) · signature เดิม → CREATE OR REPLACE คงสิทธิ์
---    แก้เฉพาะจุดติดป้าย "M28": อ่านค่าเดิม (start/sale_type/ลิงก์) ในโหมดแก้ + ตรวจ AG011 / AG010 ก่อนเขียน
+-- 5. save_job_opening — เนื้อเดิม 20261112140000 (M12) · แก้เฉพาะจุดติดป้าย "M28":
+--    อ่านค่าเดิม (start/sale_type/ลิงก์/เหตุผล) ในโหมดแก้ + ตรวจ AG011 / AG010 / AG012 / AG013 ก่อนเขียน
+--    + พารามิเตอร์ใหม่ p_renew_unlinked_reason → signature เปลี่ยน: DROP แล้ว CREATE + กำหนดสิทธิ์ใหม่
+--    (CREATE OR REPLACE จะได้ function ซ้อน 2 ตัว) · ผู้เรียกเดิมที่ใช้ชื่อพารามิเตอร์ เรียกได้เหมือนเดิม (ค่าเริ่มต้น NULL)
 -- =====================================================================
-CREATE OR REPLACE FUNCTION public.save_job_opening(
+DROP FUNCTION public.save_job_opening(
+  uuid, text, text, text, date, date, integer, numeric, public.sale_type, uuid[], uuid, uuid,
+  boolean, text, text, boolean, uuid, date, date, time, text, timestamptz);
+
+CREATE FUNCTION public.save_job_opening(
   p_branch_id                uuid,
   p_customer_name            text,
   p_customer_type            text,
@@ -294,7 +422,8 @@ CREATE OR REPLACE FUNCTION public.save_job_opening(
   p_first_service_date       date    DEFAULT NULL,
   p_first_service_time       time    DEFAULT NULL,
   p_note                     text    DEFAULT NULL,
-  p_expected_updated_at      timestamptz DEFAULT NULL
+  p_expected_updated_at      timestamptz DEFAULT NULL,
+  p_renew_unlinked_reason    text    DEFAULT NULL            -- M28 รอบ 2
 )
 RETURNS TABLE (
   contract_id            uuid,
@@ -328,6 +457,9 @@ DECLARE
   v_o_start       date;
   v_o_end         date;
   v_o_term        integer;
+  v_cur_reason    text;                                     -- M28 รอบ 2
+  v_was_unlinked  boolean := false;
+  v_reason        text := nullif(btrim(p_renew_unlinked_reason), '');
 BEGIN
   -- ---------- ล้มเร็ว: admin นอกขอบเขตหน่วยงาน (RLS ปฏิเสธอยู่แล้ว นี่แค่ไม่ต้องทำงานเปล่า) ----------
   --   host ข้ามได้: policy ของ host ไม่ขึ้นกับ division_scope
@@ -338,9 +470,9 @@ BEGIN
   -- ---------- โหมดแก้: สัญญาต้องมีอยู่และมองเห็น · ห้ามย้ายสาขา ----------
   IF p_contract_id IS NOT NULL THEN
     SELECT c.customer_id, cu.branch_id, c.status, c.updated_at,
-           c.start_date, c.sale_type, c.renewed_from_contract_id                -- M28
+           c.start_date, c.sale_type, c.renewed_from_contract_id, c.renew_unlinked_reason  -- M28
       INTO v_old_customer, v_old_branch, v_status, v_updated_at,
-           v_cur_start, v_cur_sale, v_cur_link
+           v_cur_start, v_cur_sale, v_cur_link, v_cur_reason
       FROM contracts c JOIN customers cu ON cu.id = c.customer_id
      WHERE c.id = p_contract_id;
     IF NOT FOUND THEN
@@ -392,6 +524,27 @@ BEGIN
     END IF;
   END IF;
 
+  -- ---------- M28 รอบ 2: Renew ไม่ผูกสัญญาเก่า — ต้องมีเหตุผล (AG012) · เปิดได้ถึงวันที่กำหนด (AG013) ----------
+  --   ตรวจเมื่อ "กลายเป็น" Renew ไม่ผูก (เปิดงานใหม่ / เดิมไม่ใช่) หรือแก้เหตุผลจนว่าง — แบบเดียวกับ trigger
+  --   New / ผูกแล้ว → ไม่เก็บเหตุผล (NULL · CHECK contracts_renew_unlinked_reason_check)
+  --   โหมดแก้ที่ล้างลิงก์เดิม (มีค่า → NULL) ไม่ตรวจที่นี่ — ปล่อยให้ AG009 (M23) ปฏิเสธก่อน
+  IF p_sale_type = 'renew' AND p_renewed_from_contract_id IS NULL
+     AND (p_contract_id IS NULL OR v_cur_link IS NULL) THEN
+    v_was_unlinked := p_contract_id IS NOT NULL AND coalesce(v_cur_sale = 'renew' AND v_cur_link IS NULL, false);
+    IF v_reason IS NULL AND (NOT v_was_unlinked OR v_cur_reason IS NOT NULL) THEN
+      RAISE EXCEPTION 'a renewal without a link to the old contract needs a reason'
+        USING ERRCODE = 'AG012',
+              HINT = 'Renew ที่ไม่ผูกสัญญาเก่า ต้องระบุเหตุผล (เช่น สัญญาเก่าไม่อยู่ในระบบ)';
+    END IF;
+    IF NOT v_was_unlinked AND NOT unlinked_renew_open() THEN
+      RAISE EXCEPTION 'renewals without a link to the old contract are no longer allowed'
+        USING ERRCODE = 'AG013', DETAIL = to_char(allow_unlinked_renew_until(), 'YYYY-MM-DD'),
+              HINT = 'เลยช่วงที่เปิด Renew แบบไม่ผูกสัญญาเก่าได้แล้ว — เลือกสัญญาเก่าที่ต่อ หรือเปิดเป็นลูกค้าใหม่ (New)';
+    END IF;
+  ELSE
+    v_reason := NULL;
+  END IF;
+
   -- ---------- ลูกค้า ----------
   IF p_customer_id IS NOT NULL OR p_contract_id IS NOT NULL THEN
     -- เลือกรายเดิม (หรือคงรายเดิมของสัญญาที่แก้)
@@ -440,12 +593,12 @@ BEGIN
     INSERT INTO contracts (
       customer_id, contract_no, start_date, end_date, term_years, value_total, sale_type,
       sale_name, am_name, is_urgent, renewed_from_contract_id, mail_received_date,
-      first_service_date, first_service_time, note)
+      first_service_date, first_service_time, note, renew_unlinked_reason)
     VALUES (
       v_customer_id, p_contract_no, p_start_date, p_end_date, p_term_years, p_value_total,
       p_sale_type, nullif(btrim(p_sale_name), ''), nullif(btrim(p_am_name), ''),
       coalesce(p_is_urgent, false), p_renewed_from_contract_id, p_mail_received_date,
-      p_first_service_date, p_first_service_time, nullif(btrim(p_note), ''))
+      p_first_service_date, p_first_service_time, nullif(btrim(p_note), ''), v_reason)
     RETURNING id INTO v_contract_id;
   ELSE
     UPDATE contracts c SET
@@ -463,7 +616,8 @@ BEGIN
       mail_received_date       = p_mail_received_date,
       first_service_date       = p_first_service_date,
       first_service_time       = p_first_service_time,
-      note                     = nullif(btrim(p_note), '')
+      note                     = nullif(btrim(p_note), ''),
+      renew_unlinked_reason    = v_reason
     WHERE c.id = p_contract_id
       AND date_trunc('milliseconds', c.updated_at) = date_trunc('milliseconds', p_expected_updated_at)
           -- มีคนแก้ระหว่างอ่านกับเขียน = 0 แถว
@@ -499,14 +653,135 @@ BEGIN
 END;
 $$;
 
--- ย้ำสิทธิ์ (CREATE OR REPLACE คงไว้อยู่แล้ว — กันพลาด)
+-- สิทธิ์ของ signature ใหม่ (DROP + CREATE → ต้องกำหนดใหม่ · เหมือนเดิม: authenticated เท่านั้น)
 REVOKE ALL ON FUNCTION public.save_job_opening(
   uuid, text, text, text, date, date, integer, numeric, public.sale_type, uuid[], uuid, uuid,
-  boolean, text, text, boolean, uuid, date, date, time, text, timestamptz) FROM PUBLIC, anon;
+  boolean, text, text, boolean, uuid, date, date, time, text, timestamptz, text) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.save_job_opening(
   uuid, text, text, text, date, date, integer, numeric, public.sale_type, uuid[], uuid, uuid,
-  boolean, text, text, boolean, uuid, date, date, time, text, timestamptz) TO authenticated;
+  boolean, text, text, boolean, uuid, date, date, time, text, timestamptz, text) TO authenticated;
 REVOKE ALL ON FUNCTION public.list_pending_missed_services(uuid, date) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.list_pending_missed_services(uuid, date) TO authenticated;
 REVOKE ALL ON FUNCTION public.contract_is_renewed(uuid) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.contract_is_renewed(uuid) TO authenticated;
+
+-- =====================================================================
+-- 6. AG009 (M23) เปิดช่องเฉพาะ link_renewal_contract — เนื้อเดิม 20261115100000 + เงื่อนไขป้าย "M28"
+--    ผ่านได้เมื่อ: NULL → มีค่า เท่านั้น · ผู้ใช้เป็น host · GUC aga.renewal_link = id ของแถวนี้ (ตั้งโดย RPC ด้านล่าง
+--    แบบ is_local — หมดเมื่อจบ transaction / ย้อนเมื่อ subtransaction ล้ม) · กรณีอื่นยัง AG009 เหมือนเดิม
+-- =====================================================================
+CREATE OR REPLACE FUNCTION public.contracts_renewed_from_lock()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY INVOKER
+SET search_path = public, pg_temp
+AS $$
+BEGIN
+  IF current_user = 'authenticated'
+     AND NEW.renewed_from_contract_id IS DISTINCT FROM OLD.renewed_from_contract_id
+     AND NOT (OLD.renewed_from_contract_id IS NULL                                     -- M28: ผูกย้อนหลังผ่าน RPC host
+              AND NEW.renewed_from_contract_id IS NOT NULL
+              AND public.is_host()
+              AND coalesce(current_setting('aga.renewal_link', true), '') = NEW.id::text) THEN
+    RAISE EXCEPTION 'renewed_from_contract_id cannot be changed after the contract is created'
+      USING ERRCODE = 'AG009',
+            HINT = 'ช่อง "ต่อมาจากสัญญาไหน" กำหนดได้ตอนเปิดงานต่อสัญญาเท่านั้น แก้หลังสร้างไม่ได้ (ถ้าผูกผิด ให้แจ้งผู้ดูแลระบบ)';
+  END IF;
+  RETURN NEW;
+END;
+$$;
+REVOKE ALL ON FUNCTION public.contracts_renewed_from_lock() FROM PUBLIC, anon, authenticated;
+
+-- =====================================================================
+-- 7. host ตรวจ Renew ที่ไม่ผูกสัญญาเก่า
+-- =====================================================================
+-- รายการ (host ทุกสาขา · admin เฉพาะสาขาในขอบเขต · role อื่น 42501) — รวมแถวเก่าที่ไม่มีเหตุผล และสัญญายกเลิก (ดู status)
+CREATE FUNCTION public.list_unlinked_renewals(p_branch_id uuid DEFAULT NULL)
+RETURNS TABLE (
+  contract_id           uuid,
+  contract_no           text,
+  customer_id           uuid,
+  customer_name         text,
+  branch_id             uuid,
+  start_date            date,
+  end_date              date,
+  term_years            integer,
+  status                public.contract_status,
+  renew_unlinked_reason text,
+  created_at            timestamptz,
+  updated_at            timestamptz
+)
+LANGUAGE plpgsql
+STABLE
+SECURITY INVOKER
+SET search_path = public, pg_temp
+AS $$
+#variable_conflict use_column
+DECLARE
+  v_role text := current_app_role();
+BEGIN
+  IF v_role IS NULL OR v_role NOT IN ('host', 'admin') THEN
+    RAISE EXCEPTION 'not allowed to read unlinked renewals' USING ERRCODE = '42501';
+  END IF;
+  RETURN QUERY
+  SELECT c.id, c.contract_no, cu.id, cu.name, cu.branch_id, c.start_date, c.end_date, c.term_years::int,
+         c.status, c.renew_unlinked_reason, c.created_at, c.updated_at
+    FROM contracts c
+    JOIN customers cu ON cu.id = c.customer_id
+   WHERE c.sale_type = 'renew' AND c.renewed_from_contract_id IS NULL
+     AND (p_branch_id IS NULL OR cu.branch_id = p_branch_id)
+     AND (v_role = 'host' OR branch_in_scope(cu.branch_id))
+   ORDER BY c.created_at, c.id;
+END;
+$$;
+
+-- ผูกลิงก์ย้อนหลัง (host เท่านั้น) — SECURITY INVOKER: RLS contracts_host_write + trigger เดิมทั้งหมดทำงาน
+--   M9 ลูกค้าเดียวกัน (P0001) · กฎ 2 เดือน + sale_type (AG010 / AG011) · advisory lock M15 · audit_contracts
+CREATE FUNCTION public.link_renewal_contract(p_contract_id uuid, p_renewed_from_contract_id uuid)
+RETURNS TABLE (contract_id uuid, updated_at timestamptz)
+LANGUAGE plpgsql
+SECURITY INVOKER
+SET search_path = public, pg_temp
+AS $$
+#variable_conflict use_column
+DECLARE
+  v_sale public.sale_type;
+  v_link uuid;
+  v_id   uuid;
+  v_upd  timestamptz;
+BEGIN
+  IF NOT is_host() THEN
+    RAISE EXCEPTION 'only host can link a renewal afterwards' USING ERRCODE = '42501';
+  END IF;
+  IF p_contract_id IS NULL OR p_renewed_from_contract_id IS NULL THEN
+    RAISE EXCEPTION 'contract and old contract are required' USING ERRCODE = '22004';
+  END IF;
+
+  SELECT c.sale_type, c.renewed_from_contract_id INTO v_sale, v_link
+    FROM contracts c WHERE c.id = p_contract_id
+     FOR UPDATE;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'contract not found' USING ERRCODE = 'AG004';
+  END IF;
+  IF v_sale IS DISTINCT FROM 'renew' OR v_link IS NOT NULL THEN
+    RAISE EXCEPTION 'only an unlinked renewal can be linked afterwards'
+      USING ERRCODE = 'AG014',
+            HINT = 'ผูกสัญญาเก่าย้อนหลังได้เฉพาะสัญญา Renew ที่ยังไม่ผูก';
+  END IF;
+
+  PERFORM set_config('aga.renewal_link', p_contract_id::text, true);
+  UPDATE contracts c
+     SET renewed_from_contract_id = p_renewed_from_contract_id,
+         renew_unlinked_reason    = NULL
+   WHERE c.id = p_contract_id
+  RETURNING c.id, c.updated_at INTO v_id, v_upd;
+  PERFORM set_config('aga.renewal_link', '', true);
+
+  RETURN QUERY SELECT v_id, v_upd;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.list_unlinked_renewals(uuid) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.list_unlinked_renewals(uuid) TO authenticated;
+REVOKE ALL ON FUNCTION public.link_renewal_contract(uuid, uuid) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.link_renewal_contract(uuid, uuid) TO authenticated;

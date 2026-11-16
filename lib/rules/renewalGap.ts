@@ -36,3 +36,12 @@ export function renewalGapOk(oldContract: ContractDates, newStartDate: string): 
   if (start <= oldContract.startDate.slice(0, 10)) return false;
   return monthOf(start) <= latestRenewStartMonth(oldContract);
 }
+
+/**
+ * M28 รอบ 2: เปิดงาน Renew ที่ไม่ผูกสัญญาเก่า (ต้องมีเหตุผล) ได้ไหม ณ วันนี้ (เวลาไทย 'YYYY-MM-DD')
+ * `untilDate` = app_settings.allow_unlinked_renew_until = วันแรกที่ "ไม่ได้แล้ว" — ตรงกับ SQL
+ * (`current_date` ไทย < allow_unlinked_renew_until()) · DB บังคับซ้ำ: AG013
+ */
+export function unlinkedRenewAllowed(todayDate: string, untilDate: string): boolean {
+  return todayDate.slice(0, 10) < untilDate.slice(0, 10);
+}

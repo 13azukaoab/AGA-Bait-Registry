@@ -6,7 +6,7 @@
 --   * โมฆะ: contract_is_renewed = Renew ผูกมา หรือ New ของลูกค้าเดียวกันที่เริ่มหลังสัญญานี้จบ · ยกเลิกแล้วไม่นับ
 -- ชุดกฎวันที่ใช้วันที่ตายตัว (ไม่ขึ้นกับวันนี้) · ชุดโมฆะใช้ pg_temp.m(n) = เดือนปัจจุบัน + n (Asia/Bangkok)
 BEGIN;
-SELECT plan(64);
+SELECT plan(108);
 
 INSERT INTO auth.users (id, instance_id, aud, role, email) VALUES
   ('00000000-0000-0000-0000-0000000000a1', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'host@test.local'),
@@ -306,6 +306,165 @@ INSERT INTO contracts (id, customer_id, contract_no, start_date, term_years, val
 SET LOCAL ROLE authenticated;
 SELECT ok(contract_is_renewed(pg_temp.id('b5')) AND NOT contract_is_renewed(pg_temp.id('b4')) AND pg_temp.pending('b4') > 0,
   'a Renew of another contract of the same customer does not count as a New for v4');
+
+-- =====================================================================
+-- รอบ 2: Renew ไม่ผูกสัญญาเก่า (เหตุผล + ช่วงเวลา) · host ผูกลิงก์ย้อนหลัง
+--   ช่วงเวลาตั้งเองในเทส (postgres) เทียบกับวันนี้ → ไม่พังเมื่อเลย 2027-04-01
+-- =====================================================================
+RESET ROLE;
+INSERT INTO auth.users (id, instance_id, aud, role, email) VALUES
+  ('00000000-0000-0000-0000-0000000000a4', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'viewer@test.local');
+INSERT INTO profiles (user_id, display_name, username, role, division_scope) VALUES
+  ('00000000-0000-0000-0000-0000000000a4', 'viewer', 'user_a4', 'viewer', '{central}');
+INSERT INTO customers (id, branch_id, name) VALUES
+  (pg_temp.id('c6'), pg_temp.br(), 'Unlinked'),
+  (pg_temp.id('c7'), pg_temp.br(), 'Unlinked other');
+INSERT INTO contracts (id, customer_id, contract_no, start_date, term_years, value_total, sale_type, stations_initialized_at) VALUES
+  (pg_temp.id('a1'), pg_temp.id('c6'), 'U-OLD',  pg_temp.m(-18), 1, 24000, 'new', pg_temp.m(-18)),
+  (pg_temp.id('a2'), pg_temp.id('c6'), 'U-FAR',  pg_temp.m(-40), 1, 24000, 'new', NULL),
+  (pg_temp.id('a3'), pg_temp.id('c7'), 'U-OTH',  pg_temp.m(-18), 1, 24000, 'new', NULL);
+-- เปิดช่วง: วันกำหนด = อีก 30 วัน
+UPDATE app_settings SET allow_unlinked_renew_until = pg_temp.td() + 30;
+
+SELECT is(allow_unlinked_renew_until(), pg_temp.td() + 30, 'helper reads allow_unlinked_renew_until from app_settings');
+SELECT is((SELECT column_default FROM information_schema.columns
+            WHERE table_schema = 'public' AND table_name = 'app_settings' AND column_name = 'allow_unlinked_renew_until'),
+  '''2027-04-01''::date', 'default cut-off is 2027-04-01 (open through 31 Mar 2027)');
+
+-- เปิดงาน Renew ไม่ผูก ผ่าน save_job_opening (ลูกค้า c6)
+CREATE FUNCTION pg_temp.unl(p_tag text, p_reason text, p_start date DEFAULT NULL, p_sale text DEFAULT 'renew') RETURNS text
+LANGUAGE sql AS $$
+  SELECT format($f$
+    INSERT INTO _r SELECT %L, contract_id, updated_at FROM public.save_job_opening(
+      p_branch_id := pg_temp.br(), p_customer_name := 'Unlinked', p_customer_type := NULL,
+      p_contract_no := %L, p_start_date := %L, p_end_date := NULL, p_term_years := 1, p_value_total := 24000,
+      p_sale_type := %L, p_customer_id := pg_temp.id('c6'), p_renew_unlinked_reason := %L)
+  $f$, p_tag, 'U-' || p_tag, coalesce(p_start, pg_temp.m(-7)), p_sale, p_reason)
+$$;
+GRANT EXECUTE ON FUNCTION pg_temp.unl(text, text, date, text) TO PUBLIC;
+CREATE FUNCTION pg_temp.link(p_tag text, p_old text) RETURNS text LANGUAGE sql AS $$
+  SELECT format('SELECT * FROM public.link_renewal_contract(%L, %L)', pg_temp.rid(p_tag), pg_temp.id(p_old))
+$$;
+GRANT EXECUTE ON FUNCTION pg_temp.link(text, text) TO PUBLIC;
+
+SET LOCAL ROLE authenticated;
+SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a2', true);
+SELECT lives_ok(pg_temp.unl('u1', 'สัญญาเก่าอยู่ในกระดาษ ยังไม่นำเข้า'),
+  'RPC: Renew without a link + reason, inside the period → saved');
+SELECT is((SELECT renew_unlinked_reason FROM contracts WHERE id = pg_temp.rid('u1')), 'สัญญาเก่าอยู่ในกระดาษ ยังไม่นำเข้า',
+  'the reason is stored');
+SELECT throws_ok(pg_temp.unl('ux', NULL), 'AG012', NULL, 'RPC: Renew without a link and no reason → AG012');
+SELECT throws_ok(pg_temp.unl('ux', '   '), 'AG012', NULL, 'RPC: a blank reason counts as no reason → AG012');
+SELECT lives_ok(pg_temp.unl('u2', 'ไม่ต้องใช้', pg_temp.m(-7), 'new'), 'RPC: New with a leftover reason is saved');
+SELECT is((SELECT renew_unlinked_reason FROM contracts WHERE id = pg_temp.rid('u2')), NULL::text,
+  'and the reason is dropped for New (kept NULL)');
+SELECT throws_ok($$INSERT INTO contracts (customer_id, contract_no, start_date, term_years, value_total, sale_type)
+                   VALUES (pg_temp.id('c6'), 'U-REST1', pg_temp.m(-7), 1, 24000, 'renew')$$,
+  'AG012', NULL, 'REST INSERT: Renew without a link and no reason → AG012');
+SELECT throws_ok($$INSERT INTO contracts (customer_id, contract_no, start_date, term_years, value_total, sale_type, renew_unlinked_reason)
+                   VALUES (pg_temp.id('c6'), 'U-REST2', pg_temp.m(-7), 1, 24000, 'new', 'x')$$,
+  '23514', NULL, 'REST INSERT: a reason on a New contract is refused (CHECK)');
+SELECT throws_ok($$UPDATE contracts SET renew_unlinked_reason = NULL WHERE id = pg_temp.rid('u1')$$,
+  'AG012', NULL, 'REST UPDATE: clearing the reason of an unlinked Renew → AG012');
+SELECT lives_ok($$UPDATE contracts SET note = 'ok' WHERE id = pg_temp.rid('u1')$$, 'other fields of an unlinked Renew are editable');
+
+-- ---------- เลยวันกำหนดแล้ว ----------
+RESET ROLE;
+UPDATE app_settings SET allow_unlinked_renew_until = pg_temp.td();          -- วันนี้ = วันแรกที่ไม่ได้แล้ว
+SET LOCAL ROLE authenticated;
+SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a2', true);
+SELECT throws_ok(pg_temp.unl('ux', 'เหตุผล'), 'AG013', NULL, 'RPC: past the cut-off, an unlinked Renew is refused (AG013)');
+SELECT is(pg_temp.err(pg_temp.unl('ux', 'เหตุผล')), 'AG013|' || to_char(pg_temp.td(), 'YYYY-MM-DD') || '|true',
+  'AG013 carries the cut-off date (DETAIL) and a Thai hint naming New');
+SELECT throws_ok($$INSERT INTO contracts (customer_id, contract_no, start_date, term_years, value_total, sale_type, renew_unlinked_reason)
+                   VALUES (pg_temp.id('c6'), 'U-REST3', pg_temp.m(-7), 1, 24000, 'renew', 'x')$$,
+  'AG013', NULL, 'REST INSERT: past the cut-off → AG013');
+SELECT throws_ok($$UPDATE contracts SET sale_type = 'renew', renew_unlinked_reason = 'x' WHERE id = pg_temp.rid('u2')$$,
+  'AG013', NULL, 'REST UPDATE: turning a New into an unlinked Renew past the cut-off → AG013');
+SELECT lives_ok($$UPDATE contracts SET note = 'แก้หลังเลยวัน' WHERE id = pg_temp.rid('u1')$$,
+  'an unlinked Renew opened before the cut-off can still be edited');
+SELECT lives_ok($$UPDATE contracts SET renew_unlinked_reason = 'เหตุผลใหม่' WHERE id = pg_temp.rid('u1')$$,
+  'and its reason can still be reworded');
+
+-- ---------- แก้ค่าวันกำหนด: เฉพาะผู้ดูแลฐานข้อมูล ----------
+SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a1', true);
+SELECT throws_ok($$UPDATE app_settings SET allow_unlinked_renew_until = '2030-01-01'$$,
+  '42501', NULL, 'host (authenticated) cannot change allow_unlinked_renew_until');
+RESET ROLE;
+SET LOCAL ROLE service_role;
+SELECT throws_ok($$UPDATE app_settings SET allow_unlinked_renew_until = '2030-01-01'$$,
+  '42501', NULL, 'service_role cannot change allow_unlinked_renew_until');
+RESET ROLE;
+SELECT ok(pg_temp.err($$UPDATE app_settings SET allow_unlinked_renew_until = '2030-01-01'$$) = 'no error',
+  'the database owner (postgres) can change it');
+UPDATE app_settings SET allow_unlinked_renew_until = pg_temp.td();
+
+-- ---------- ข้อมูลเก่า (postgres / นำเข้า) ไม่บังคับเหตุผล / วันกำหนด ----------
+SELECT lives_ok($$INSERT INTO contracts (id, customer_id, contract_no, start_date, term_years, value_total, sale_type)
+                  VALUES (pg_temp.id('a9'), pg_temp.id('c6'), 'U-LEGACY', pg_temp.m(-7), 1, 24000, 'renew')$$,
+  'legacy import (postgres): an unlinked Renew without a reason is not blocked');
+SET LOCAL ROLE service_role;
+SELECT lives_ok($$INSERT INTO contracts (customer_id, contract_no, start_date, term_years, value_total, sale_type)
+                  VALUES ('00000000-0000-0000-0000-0000000000c6', 'U-SVC', pg_temp.m(-7), 1, 24000, 'renew')$$,
+  'service_role: an unlinked Renew without a reason is not blocked');
+RESET ROLE;
+SET LOCAL ROLE authenticated;
+SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a2', true);
+SELECT lives_ok($$UPDATE contracts SET note = 'แก้แถวเก่า' WHERE id = pg_temp.id('a9')$$,
+  'a legacy unlinked Renew without a reason can still be edited');
+
+-- ---------- รายการให้ host ตรวจ ----------
+SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a1', true);
+SELECT ok((SELECT array_agg(contract_no ORDER BY contract_no) FROM public.list_unlinked_renewals() WHERE customer_id = pg_temp.id('c6'))
+          @> ARRAY['U-LEGACY', 'U-u1'],
+  'host: list_unlinked_renewals shows the unlinked Renews (with and without a reason)');
+SELECT ok(NOT EXISTS (SELECT 1 FROM public.list_unlinked_renewals() WHERE contract_no IN ('U-u2', 'U-OLD')),
+  'New contracts are not listed');
+SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a2', true);
+SELECT ok(EXISTS (SELECT 1 FROM public.list_unlinked_renewals() WHERE contract_no = 'U-u1'), 'admin (in scope) can read the list');
+SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a3', true);
+SELECT throws_ok($$SELECT * FROM public.list_unlinked_renewals()$$, '42501', NULL, 'recorder cannot read the list');
+SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a4', true);
+SELECT throws_ok($$SELECT * FROM public.list_unlinked_renewals()$$, '42501', NULL, 'viewer cannot read the list');
+RESET ROLE;
+SET LOCAL ROLE anon;
+SELECT throws_ok($$SELECT * FROM public.list_unlinked_renewals()$$, '42501', NULL, 'anon cannot call the list');
+RESET ROLE;
+
+-- ---------- host ผูกลิงก์ย้อนหลัง ----------
+SET LOCAL ROLE authenticated;
+SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a1', true);
+SELECT ok(pg_temp.pending('a1') > 0, 'before linking: the old contract (overlapping unlinked Renew) still has open months');
+SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a2', true);
+SELECT throws_ok(pg_temp.link('u1', 'a1'), '42501', NULL, 'admin cannot link afterwards');
+SELECT set_config('aga.renewal_link', pg_temp.rid('u1')::text, true);
+SELECT throws_ok($$UPDATE contracts SET renewed_from_contract_id = pg_temp.id('a1'), renew_unlinked_reason = NULL
+                    WHERE id = pg_temp.rid('u1')$$,
+  'AG009', NULL, 'admin setting the GUC by hand still gets AG009 (host only)');
+SELECT set_config('aga.renewal_link', '', true);
+SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a3', true);
+SELECT throws_ok(pg_temp.link('u1', 'a1'), '42501', NULL, 'recorder cannot link afterwards');
+SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a1', true);
+SELECT throws_ok($$UPDATE contracts SET renewed_from_contract_id = pg_temp.id('a1'), renew_unlinked_reason = NULL
+                    WHERE id = pg_temp.rid('u1')$$,
+  'AG009', NULL, 'host REST UPDATE (not through the RPC) is still refused (AG009)');
+SELECT throws_ok(pg_temp.link('u1', 'a3'), 'P0001', NULL, 'host: linking a contract of another customer → P0001');
+SELECT throws_ok(pg_temp.link('u1', 'a2'), 'AG010', NULL, 'host: linking an old contract outside the 2-month window → AG010');
+SELECT throws_ok(pg_temp.link('u2', 'a1'), 'AG014', NULL, 'host: a New contract cannot be linked afterwards (AG014)');
+SELECT lives_ok(pg_temp.link('u1', 'a1'), 'host links the unlinked Renew to its old contract');
+SELECT ok((SELECT renewed_from_contract_id = pg_temp.id('a1') AND renew_unlinked_reason IS NULL
+             FROM contracts WHERE id = pg_temp.rid('u1')),
+  'the link is set and the reason is cleared');
+SELECT ok(EXISTS (SELECT 1 FROM audit_log
+                   WHERE table_name = 'contracts' AND row_id = pg_temp.rid('u1') AND action = 'update'
+                     AND new_data->>'renewed_from_contract_id' = pg_temp.id('a1')::text
+                     AND old_data->>'renewed_from_contract_id' IS NULL),
+  'the link is recorded in audit_log');
+SELECT ok(contract_is_renewed(pg_temp.id('a1')) AND pg_temp.pending('a1') = 0,
+  'after linking, the old contract''s open months are void');
+SELECT throws_ok(pg_temp.link('u1', 'a1'), 'AG014', NULL, 'an already linked Renew cannot be linked again (AG014)');
+SELECT throws_ok($$UPDATE contracts SET renewed_from_contract_id = NULL WHERE id = pg_temp.rid('u1')$$,
+  'AG009', NULL, 'the GUC does not linger: unlinking afterwards is AG009');
 
 SELECT * FROM finish();
 ROLLBACK;
