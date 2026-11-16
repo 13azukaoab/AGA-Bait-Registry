@@ -25,7 +25,6 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { Alert, Button, Chip, Field, TierBadge, Toast, cx } from "@/components/ui";
 import type { UserRole } from "@/lib/db/types";
-import type { TermYears } from "@/lib/rules";
 import { createClient } from "@/lib/supabase/client";
 
 import { resolveBranch } from "./branchMatch";
@@ -212,7 +211,7 @@ export function NewContractsClient({
     () =>
       saved.map((s) => {
         const branch = branchById.get(s.branchId) ?? null;
-        const warn = endDateWarning(s.startDate, s.endDate, s.termYears);
+        const warn = endDateWarning(s.startDate, s.endDate, s.termMonths);
         const hasPdf = s.files.some((f) => f.kind === "contract_pdf");
         const filterable: FilterableRow = {
           customerName: s.customerName,
@@ -708,7 +707,7 @@ export function NewContractsClient({
             {/* ===== แถวที่บันทึกแล้ว ===== */}
             {visibleSaved.map((v, idx) => {
               const s = v.s;
-              const tier = tierFor(s.valueTotal, s.termYears, master.tierRules, s.startDate);
+              const tier = tierFor(s.valueTotal, s.termMonths, master.tierRules, s.startDate);
               const hasPdf = v.hasPdf;
               const spCount = s.files.filter((f) => f.kind === "site_plan").length;
 
@@ -717,8 +716,8 @@ export function NewContractsClient({
               const editCheck = editChecks.get(s.contractId);
               if (edit && editCheck) {
                 const ed = edit.draft;
-                const editWarn = editCheck.termYears
-                  ? endDateWarning(ed.startDate, ed.endDate, editCheck.termYears)
+                const editWarn = editCheck.termMonths
+                  ? endDateWarning(ed.startDate, ed.endDate, editCheck.termMonths)
                   : null;
                 return (
                   <DraftTableRow
@@ -730,7 +729,7 @@ export function NewContractsClient({
                     branchName={v.branch?.zoneName.replace("เขต ", "") ?? ""}
                     branchBad={false}
                     err={(f) => Boolean(editCheck.errors[f])}
-                    tier={tierFor(editCheck.valueTotal, editCheck.termYears, master.tierRules, ed.startDate)}
+                    tier={tierFor(editCheck.valueTotal, editCheck.termMonths, master.tierRules, ed.startDate)}
                     warn={editWarn}
                     showErrors
                     master={master}
@@ -824,14 +823,14 @@ export function NewContractsClient({
                   <td className={cx(TD, "num")}>{s.startDate}</td>
                   <td className={cx(TD, "num")}>{s.endDate || "—"}</td>
                   <td className={cx(TD, "num text-right")}>
-                    {s.termYears === 1 ? formatMoney(s.valueTotal) : ""}
+                    {s.termMonths !== 36 ? formatMoney(s.valueTotal) : ""}
                   </td>
                   <td className={cx(TD, "num text-right")}>
-                    {s.termYears === 3 ? formatMoney(s.valueTotal) : ""}
+                    {s.termMonths === 36 ? formatMoney(s.valueTotal) : ""}
                   </td>
                   <td className={cx(TD, "text-center")}>
                     {tier ? (
-                      <TierBadge tier={tier.tier} years={s.termYears} />
+                      <TierBadge tier={tier.tier} termMonths={s.termMonths} />
                     ) : (
                       <Chip tone="na">—</Chip>
                     )}
@@ -893,8 +892,8 @@ export function NewContractsClient({
             {drafts.map((d, i) => {
               const c = draftChecks[i]!;
               const branch = resolveBranch(d.branchText, master.branches);
-              const tier = tierFor(c.valueTotal, c.termYears, master.tierRules, d.startDate);
-              const warn = c.termYears ? endDateWarning(d.startDate, d.endDate, c.termYears) : null;
+              const tier = tierFor(c.valueTotal, c.termMonths, master.tierRules, d.startDate);
+              const warn = c.termMonths ? endDateWarning(d.startDate, d.endDate, c.termMonths) : null;
               const err = (f: keyof typeof c.errors) => showErrors && Boolean(c.errors[f]);
               const branchBad =
                 d.branchText.trim() !== "" && !branch ? true : showErrors && !!c.errors.branch;
@@ -1131,7 +1130,8 @@ function DraftTableRow({
     return [...map.entries()];
   }, [master.customerTypes]);
 
-  const money = (value: string, term: TermYears) => {
+  // ช่องมูลค่า: 1 = ช่อง "1 ปี" (รวม Custom) · 3 = ช่อง "3 ปี"
+  const money = (value: string, term: 1 | 3) => {
     const lock = term === 1 ? termLocked1 : termLocked3;
     return (
       <input
@@ -1442,8 +1442,8 @@ function DraftTableRow({
         <td className={TD}>{money(d.value1y, 1)}</td>
         <td className={TD}>{money(d.value3y, 3)}</td>
         <td className={cx(TD, "text-center")}>
-          {tier && c.termYears ? (
-            <TierBadge tier={tier.tier} years={c.termYears} />
+          {tier && c.termMonths ? (
+            <TierBadge tier={tier.tier} termMonths={c.termMonths} />
           ) : (
             <Chip tone="na">—</Chip>
           )}

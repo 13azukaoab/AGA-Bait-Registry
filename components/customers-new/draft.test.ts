@@ -43,7 +43,7 @@ describe("checkDraft", () => {
   it("แถวครบ: บันทึกได้ + ระยะ/มูลค่า/สาขาถูกแปลง", () => {
     const c = checkDraft(filled(), branches, undefined);
     expect(canSave(c)).toBe(true);
-    expect(c.termYears).toBe(1);
+    expect(c.termMonths).toBe(12);
     expect(c.valueTotal).toBe(99510);
     expect(c.branch?.id).toBe("b1");
     expect(c.warnings).toContain("ยังไม่แนบไฟล์สัญญา + Site plan"); // เตือน ไม่บล็อก
@@ -71,8 +71,8 @@ describe("checkDraft", () => {
     expect(c.errors.endDate).toBeTruthy();
   });
   it("ระยะสัญญามาจากช่องมูลค่าที่กรอก", () => {
-    expect(termFromValues("1", "")).toBe(1);
-    expect(termFromValues("", "1")).toBe(3);
+    expect(termFromValues("1", "")).toBe(12);
+    expect(termFromValues("", "1")).toBe(36);
     expect(termFromValues("", "")).toBeNull();
     expect(termFromValues("1", "1")).toBeNull();
   });

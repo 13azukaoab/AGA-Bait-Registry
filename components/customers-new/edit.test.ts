@@ -53,7 +53,7 @@ function saved(over: Partial<SavedContract> = {}): SavedContract {
     note: "หมายเหตุ",
     startDate: "2026-10-01",
     endDate: "2027-09-30",
-    termYears: 1,
+    termMonths: 12,
     valueTotal: 99510,
     teamIds: ["t2", "t1"],
     files: [],
@@ -86,7 +86,7 @@ describe("draftFromSaved — สัญญาที่บันทึกแล้
     });
   });
   it("มูลค่า 3 ปีลงช่อง 3 ปี · ตำแหน่ง AM คงไว้", () => {
-    const d = draftFromSaved(saved({ termYears: 3, valueTotal: 300000, sellerRole: "am" }), master);
+    const d = draftFromSaved(saved({ termMonths: 36, valueTotal: 300000, sellerRole: "am" }), master);
     expect(d).toMatchObject({ value1y: "", value3y: "300,000.00", sellerRole: "am" });
   });
   it("ไม่แชร์อาร์เรย์ทีมกับต้นฉบับ (แก้ร่างแล้วต้นฉบับไม่เปลี่ยน)", () => {
@@ -111,7 +111,7 @@ describe("draftFromSaved — สัญญาที่บันทึกแล้
     const c = checkDraft(draftFromSaved(saved(), master), branches, undefined);
     expect(canSave(c)).toBe(true);
     expect(c.branch?.id).toBe("b1");
-    expect(c.termYears).toBe(1);
+    expect(c.termMonths).toBe(12);
     expect(c.valueTotal).toBe(99510);
   });
   it("สัญญาเก่าที่ไม่มีผู้ขาย: ตัวตรวจบังคับใส่ผู้ขายก่อนบันทึก (เหมือนแถวใหม่)", () => {
@@ -124,10 +124,10 @@ describe("แก้แล้ว Tier / วันสิ้นสุดคำน�
   it("เปลี่ยนมูลค่า → Tier เปลี่ยน (เกณฑ์จาก tier_rules ที่ส่งเข้ามา)", () => {
     const d0 = draftFromSaved(saved(), master);
     const before = checkDraft(d0, branches, undefined);
-    expect(tierFor(before.valueTotal, before.termYears, [...rules])?.label).toBe("M1");
+    expect(tierFor(before.valueTotal, before.termMonths, [...rules])?.label).toBe("M1");
     const d1 = applyDraftPatch(d0, { value1y: "160,000.00" });
     const after = checkDraft(d1, branches, undefined);
-    expect(tierFor(after.valueTotal, after.termYears, [...rules])?.label).toBe("XL1");
+    expect(tierFor(after.valueTotal, after.termMonths, [...rules])?.label).toBe("XL1");
   });
   it("เปลี่ยนวันเริ่ม/ระยะ → วันสิ้นสุดตามสูตรใหม่ (เมื่อไม่ได้ตั้งเอง)", () => {
     const d0 = draftFromSaved(saved(), master);
@@ -200,7 +200,7 @@ describe("monthOfDate", () => {
 });
 
 describe("buildSaveParams โหมดแก้", () => {
-  const values = { branchId: "b1", termYears: 1, valueTotal: 99510, endDate: "2027-09-30" };
+  const values = { branchId: "b1", termMonths: 12, valueTotal: 99510, endDate: "2027-09-30" };
   it("ส่ง p_contract_id · ไม่ส่ง p_customer_id จาก Renew (ลูกค้าคงเดิม)", () => {
     const d = draftFromSaved(
       saved({ saleType: "renew", renewedFrom: { contractId: "old", contractNo: "X" } }),
@@ -316,7 +316,7 @@ describe("saveDraft โหมดแก้ (client ปลอม)", () => {
 });
 
 describe("M12 กันเขียนทับ (p_expected_updated_at)", () => {
-  const values = { branchId: "b1", termYears: 1, valueTotal: 99510, endDate: "2027-09-30" };
+  const values = { branchId: "b1", termMonths: 12, valueTotal: 99510, endDate: "2027-09-30" };
   const d = draftFromSaved(saved(), master);
   const check = checkDraft(d, branches, undefined);
   const okRow = (updatedAt?: string) => [

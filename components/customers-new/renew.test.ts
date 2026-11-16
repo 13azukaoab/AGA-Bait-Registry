@@ -23,7 +23,7 @@ const oldLink: RenewalLink = {
   customerId: "old-u",
   customerName: "บจก. เดิม",
   branchId: "b1",
-  oldDates: { startDate: "2026-01-15", termYears: 1 },
+  oldDates: { startDate: "2026-01-15", termMonths: 12 },
 };
 
 function renewDraft(over: Partial<DraftRow> = {}): DraftRow {
@@ -84,7 +84,7 @@ describe("Renew ไม่ผูกสัญญาเก่า — เหตุ�
   it("ช่วงเปิด + มีเหตุผล → บันทึกได้ · ส่ง p_renew_unlinked_reason (ตัดช่องว่าง) และ renewed_from = null", () => {
     const d = renewDraft({ renewUnlinkedReason: "  สัญญาเก่าไม่อยู่ในระบบ " });
     expect(canSave(checkDraft(d, branches, undefined, { policy: OPEN }))).toBe(true);
-    const p = buildSaveParams(d, { branchId: "b1", termYears: 1, valueTotal: 50000, endDate: "2028-02-29" });
+    const p = buildSaveParams(d, { branchId: "b1", termMonths: 12, valueTotal: 50000, endDate: "2028-02-29" });
     expect(p.p_renew_unlinked_reason).toBe("สัญญาเก่าไม่อยู่ในระบบ");
     expect(p.p_renewed_from_contract_id).toBeNull();
     expect(p.p_sale_type).toBe("renew");
@@ -97,7 +97,7 @@ describe("Renew ไม่ผูกสัญญาเก่า — เหตุ�
   });
 
   it("New / Renew ที่ผูกแล้ว ไม่ส่งเหตุผล (แม้ค้างค่าในแถวร่าง)", () => {
-    const v = { branchId: "b1", termYears: 1 as const, valueTotal: 50000, endDate: null };
+    const v = { branchId: "b1", termMonths: 12, valueTotal: 50000, endDate: null };
     const asNew = renewDraft({ saleType: "new", renewUnlinkedReason: "ค้างอยู่" });
     expect("p_renew_unlinked_reason" in buildSaveParams(asNew, v)).toBe(false);
     const linked = renewDraft({ renewal: oldLink, renewUnlinkedReason: "ค้างอยู่" });
@@ -176,7 +176,7 @@ describe("ข้อความ error ภาษาไทย AG010–AG014", () =
 
 describe("แก้แถวเดิม — AG009 ต้องยังทำงานเหมือนเดิม + เหตุผลเดิมไม่หาย", () => {
   const EXPECTED = "2026-11-12T10:00:00.123456+00:00";
-  const values = { branchId: "b1", termYears: 1 as const, valueTotal: 50000, endDate: "2028-02-29" };
+  const values = { branchId: "b1", termMonths: 12, valueTotal: 50000, endDate: "2028-02-29" };
   function saved(over: Partial<SavedContract> = {}): SavedContract {
     return {
       contractId: "c1",
@@ -198,7 +198,7 @@ describe("แก้แถวเดิม — AG009 ต้องยังทำ�
       note: "",
       startDate: "2027-03-01",
       endDate: "2028-02-29",
-      termYears: 1,
+      termMonths: 12,
       valueTotal: 50000,
       teamIds: [],
       files: [],

@@ -10,6 +10,8 @@
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import { termMonthsOf } from "@/lib/service/termMonths";
+
 import type { RenewalLink } from "./types";
 
 const MAX_RESULTS = 25;
@@ -25,11 +27,11 @@ type ContractWithCustomer = {
   customer_id: string;
   start_date: string;
   end_date: string | null;
-  term_years: number;
+  term_months: number;
   customers: { name: string; branch_id: string } | null;
 };
 
-const COLUMNS = "id, contract_no, customer_id, start_date, end_date, term_years, customers ( name, branch_id )";
+const COLUMNS = "id, contract_no, customer_id, start_date, end_date, term_months, customers ( name, branch_id )";
 
 function toLink(r: ContractWithCustomer): RenewalLink | null {
   if (!r.customers) return null;
@@ -43,7 +45,7 @@ function toLink(r: ContractWithCustomer): RenewalLink | null {
     oldDates: {
       startDate: r.start_date,
       endDate: r.end_date ?? undefined,
-      termYears: r.term_years === 3 ? 3 : 1,
+      termMonths: termMonthsOf(r.term_months),
     },
   };
 }

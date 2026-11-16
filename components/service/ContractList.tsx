@@ -241,7 +241,7 @@ export function ContractList({
               {c.monthTag ? <MonthTagBadge tag={c.monthTag} /> : null}
             </span>
             <span className="flex flex-none flex-wrap items-center justify-end gap-1">
-              <TierBadge tier={c.tier} years={c.termYears} />
+              <TierBadge tier={c.tier} termMonths={c.termMonths} />
               {c.agCount > 0 ? (
                 <span className="rounded bg-warn-soft px-1.5 py-px text-[11px] font-semibold text-warn">AG {c.agCount}</span>
               ) : null}

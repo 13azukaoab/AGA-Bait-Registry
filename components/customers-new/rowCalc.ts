@@ -2,20 +2,23 @@
  * ช่องคำนวณของแถวในตารางเปิดงาน (แสดงอย่างเดียว ผู้ใช้ไม่กรอก)
  *
  * Logic summary:
- *   * สูตรทั้งหมดเรียก `lib/rules` เท่านั้น (annualValue / tierOf / defaultEndDate / serviceMonths)
+ *   * สูตรทั้งหมดเรียก `lib/rules` เท่านั้น (annualValueForTerm / tierOf / defaultEndDateForTerm / serviceMonthsForTerm)
  *   * เกณฑ์ Tier รับเป็นพารามิเตอร์ `rules` ที่อ่านจากตาราง `tier_rules` — ห้าม hardcode
- *   * มูลค่า = ช่องเดียว + ระยะ 1/3 ปี (ช่อง "1 ปี"/"3 ปี" ใน mockup ระบบเลือกแสดงตามระยะ)
- *   * วันสิ้นสุด: ค่าเริ่มต้น = วันเริ่ม + N ปี − 1 วัน · ถ้าผู้ใช้แก้แล้วไม่ตรง = เตือน (ไม่บล็อก)
+ *   * มูลค่า = ช่องเดียว + ระยะเป็นเดือน `termMonths` 1–36 (M30 · 12 = 1 ปี · 36 = 3 ปี · อื่น = Custom ·
+ *     ช่อง "1 ปี"/"3 ปี" ใน mockup ระบบเลือกแสดงตามระยะ · Custom นับกลุ่มสี/ช่อง 1 ปี)
+ *   * วันสิ้นสุด: ค่าเริ่มต้น = วันเริ่ม + N เดือน − 1 วัน (ชนปลายเดือน) · ถ้าผู้ใช้แก้แล้วไม่ตรง = เตือน (ไม่บล็อก)
  */
 import {
-  annualValue,
+  annualValueForTerm,
+  colorGroup,
+  defaultEndDateForTerm,
+  isValidTermMonths,
+  serviceMonthsForTerm,
+  tierKey,
   tierOf,
-  serviceMonths,
-  type TermYears,
   type TierRule,
 } from "@/lib/rules";
 import { monthOf } from "@/lib/rules/date";
-import { defaultEndDate } from "@/lib/rules/serviceMonths";
 import { currentBangkokMonth } from "@/lib/service/months";
 
 /** key ของป้าย Tier 8 แบบ เช่น `s1`, `xl3` (ตรงกับ class `tier s1`) */
@@ -62,28 +65,28 @@ export interface TierResult {
 }
 
 /**
- * Tier + ปี → ป้าย 8 แบบ · ข้อมูลไม่ครบ = null
+ * Tier + ระยะ (เดือน) → ป้าย 8 แบบ (Custom ใช้กลุ่มสี 1 ปี · มูลค่าจัด Tier ตาม `annualValueForTerm`) · ข้อมูลไม่ครบ = null
  * M20 / DECISIONS 2.49: ใช้เกณฑ์ของ "เดือนเริ่มสัญญา" · ยังไม่มีวันเริ่ม/วันเริ่มไม่ถูกต้อง = เกณฑ์ของเดือนปัจจุบัน (เวลาไทย)
  * `now` ไว้ฉีดวันที่ในเทส
  */
 export function tierFor(
   valueTotal: number | null,
-  termYears: TermYears | null,
+  termMonths: number | null,
   rules: TierRule[],
   startDate?: string | null,
   now?: Date,
 ): TierResult | null {
-  if (valueTotal === null || termYears === null || rules.length === 0) return null;
-  const annual = annualValue(valueTotal, termYears);
+  if (valueTotal === null || termMonths === null || !isValidTermMonths(termMonths) || rules.length === 0) return null;
+  const annual = annualValueForTerm(valueTotal, termMonths);
   const month = startDate && isPlausibleDate(startDate) ? monthOf(startDate) : currentBangkokMonth(now);
   const tier = tierOf(annual, rules, month);
-  const key = `${tier.toLowerCase()}${termYears}` as TierKey;
-  return { tier, key, label: `${tier}${termYears}`, annual };
+  const key = tierKey(tier, termMonths);
+  return { tier, key, label: `${tier}${colorGroup(termMonths)}`, annual };
 }
 
 /** วันสิ้นสุดอัตโนมัติ · วันเริ่มไม่ใช่วันจริง = null */
-export function autoEndDate(startDate: string, termYears: TermYears): string | null {
-  return isPlausibleDate(startDate) ? defaultEndDate(startDate, termYears) : null;
+export function autoEndDate(startDate: string, termMonths: number): string | null {
+  return isPlausibleDate(startDate) && isValidTermMonths(termMonths) ? defaultEndDateForTerm(startDate, termMonths) : null;
 }
 
 /** จำนวนวันของสัญญา (นับรวมวันเริ่มและวันสิ้นสุด) · วันที่ไม่ถูกต้อง = null */
@@ -97,18 +100,18 @@ export function contractDays(startDate: string, endDate: string): number | null 
 /**
  * คำเตือนวันสิ้นสุด (ไม่บล็อกการบันทึก — SPEC §7.2)
  *  - สิ้นสุดก่อนวันเริ่ม → เตือน
- *  - ไม่ตรงกับสูตร วันเริ่ม + N ปี − 1 วัน → เตือนพร้อมจำนวนวัน (เช่น "ระยะ 396 วัน")
+ *  - ไม่ตรงกับสูตร วันเริ่ม + N เดือน − 1 วัน → เตือนพร้อมจำนวนวัน (เช่น "ระยะ 396 วัน")
  */
 export function endDateWarning(
   startDate: string,
   endDate: string,
-  termYears: TermYears,
+  termMonths: number,
 ): string | null {
   if (!endDate) return null;
   if (!isPlausibleDate(endDate)) return "วันสิ้นสุดไม่ถูกต้อง";
   if (!isPlausibleDate(startDate)) return null;
   if (endDate < startDate) return "วันสิ้นสุดอยู่ก่อนวันเริ่ม";
-  const expected = autoEndDate(startDate, termYears);
+  const expected = autoEndDate(startDate, termMonths);
   if (expected && expected !== endDate) {
     const days = contractDays(startDate, endDate);
     return days === null ? "วันสิ้นสุดไม่ตรงระยะสัญญา" : `ระยะ ${days} วัน`;
@@ -116,7 +119,7 @@ export function endDateWarning(
   return null;
 }
 
-/** เดือนบริการ (YYYY-MM) = เดือนเริ่ม + ปี×12 เดือน — ไม่คำนวณจากวันสิ้นสุด (CLAUDE.md ข้อ 5) */
-export function monthsOf(startDate: string, termYears: TermYears): string[] {
-  return isPlausibleDate(startDate) ? serviceMonths(startDate, termYears) : [];
+/** เดือนบริการ (YYYY-MM) = เดือนเริ่ม + จำนวนเดือนของสัญญา — ไม่คำนวณจากวันสิ้นสุด (CLAUDE.md ข้อ 5 · M30) */
+export function monthsOf(startDate: string, termMonths: number): string[] {
+  return isPlausibleDate(startDate) && isValidTermMonths(termMonths) ? serviceMonthsForTerm(startDate, termMonths) : [];
 }

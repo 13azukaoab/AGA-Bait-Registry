@@ -23,7 +23,7 @@ import type { DraftRow } from "./types";
 /** ค่าจากการตรวจแถว (`DraftCheck`) ที่ผ่านแล้ว — ไม่เป็น null */
 export interface ValidDraftValues {
   branchId: string;
-  termYears: number;
+  termMonths: number;
   valueTotal: number;
   endDate: string | null;
 }
@@ -56,7 +56,8 @@ export interface SaveJobOpeningParams {
   p_contract_no: string;
   p_start_date: string;
   p_end_date: string | null;
-  p_term_years: number;
+  /** M30: ระยะสัญญา (เดือน 1–36) — ส่งอย่างเดียว ไม่ส่ง p_term_years (ฝั่ง DB สะท้อนเอง · ส่งทั้งคู่ไม่ตรง = AG016) */
+  p_term_months: number;
   p_value_total: number;
   p_sale_type: "new" | "renew";
   p_team_ids: string[];
@@ -93,7 +94,7 @@ export function buildSaveParams(
     p_contract_no: normalizeContractNo(draft.contractNo),
     p_start_date: draft.startDate,
     p_end_date: values.endDate,
-    p_term_years: values.termYears,
+    p_term_months: values.termMonths,
     p_value_total: values.valueTotal,
     p_sale_type: draft.saleType,
     p_team_ids: draft.teamIds,

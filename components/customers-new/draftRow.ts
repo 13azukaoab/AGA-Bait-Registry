@@ -5,11 +5,12 @@
  *   * ช่องจำเป็น (ขาด = บันทึกไม่ได้ · แถวแดง): เลขที่สัญญา (รูปแบบถูก ไม่ซ้ำ) · ชื่อลูกค้า ·
  *     สาขา (ต้องอยู่ใน master) · วันเริ่ม · มูลค่า (กรอกช่อง 1 ปี หรือ 3 ปี อย่างใดอย่างหนึ่ง) · ผู้ขาย
  *   * คำเตือน (ไม่บล็อก): วันสิ้นสุดไม่ตรงระยะสัญญา · ยังไม่แนบไฟล์
- *   * ระยะสัญญา (term) = มาจากช่องมูลค่าที่กรอก (ช่อง 1 ปี → 1, ช่อง 3 ปี → 3) ตาม mockup
+ *   * ระยะสัญญา (termMonths · M30) = มาจากช่องมูลค่าที่กรอก (ช่อง 1 ปี → 12, ช่อง 3 ปี → 36) ตาม mockup
+ *     · สัญญา Custom (`customTermMonths` 1–35) เก็บมูลค่าในช่อง 1 ปี และใช้จำนวนเดือนนั้นแทน 12
  *   * ช่องที่ schema ยังไม่มี (เบิกด่วน/ลูกค้าเดิม/ตำแหน่งผู้ขาย/วันที่รับ Mail/วันที่-เวลาบริการ/หมายเหตุ)
  *     จะเพิ่มที่นี่เมื่อ migration เข้า main — ดู `PENDING_SCHEMA_FIELDS` ใน `columns.ts`
  */
-import type { TermYears } from "@/lib/rules";
+import { isCustomTerm, isValidTermMonths } from "@/lib/rules";
 
 import { resolveBranch, type BranchOption } from "./branchMatch";
 import { normalizeContractNo } from "./contractNo";
@@ -37,7 +38,7 @@ export interface DraftCheck {
   warnings: string[];
   /** ค่าที่แปลงแล้ว (เฉพาะส่วนที่ถูกต้อง) */
   branch: BranchOption | null;
-  termYears: TermYears | null;
+  termMonths: number | null;
   valueTotal: number | null;
   /** วันสิ้นสุดที่ใช้บันทึกจริง (ว่าง = null) */
   endDate: string | null;
@@ -81,17 +82,27 @@ export function createDraft(): DraftRow {
     endTouched: false,
     value1y: "",
     value3y: "",
+    customTermMonths: null,
     pendingPdf: null,
     saveError: null,
   };
 }
 
-/** ระยะสัญญาจากช่องมูลค่าที่กรอก: มีทั้งสองช่อง/ไม่มีเลย = null */
-export function termFromValues(value1y: string, value3y: string): TermYears | null {
+/**
+ * ระยะสัญญา (เดือน) จากช่องมูลค่าที่กรอก: มีทั้งสองช่อง/ไม่มีเลย = null
+ * ช่อง 1 ปี = 12 (หรือ `customTermMonths` ถ้าเป็น Custom) · ช่อง 3 ปี = 36
+ */
+export function termFromValues(value1y: string, value3y: string, customTermMonths: number | null = null): number | null {
   const has1 = value1y.trim() !== "";
   const has3 = value3y.trim() !== "";
   if (has1 === has3) return null;
-  return has1 ? 1 : 3;
+  if (has3) return 36;
+  return customTermMonths ?? 12;
+}
+
+/** จำนวนเดือน Custom ที่ใช้ได้: จำนวนเต็ม 1–35 ที่ไม่ใช่ 12 (12/36 ใช้ช่อง 1 ปี/3 ปีตามปกติ) */
+export function isValidCustomTerm(m: number): boolean {
+  return isValidTermMonths(m) && isCustomTerm(m);
 }
 
 /**
@@ -101,8 +112,8 @@ export function termFromValues(value1y: string, value3y: string): TermYears | nu
 export function applyDraftPatch(row: DraftRow, patch: Partial<DraftRow>): DraftRow {
   const next = { ...row, ...patch, saveError: null };
   if (!next.endTouched) {
-    const term = termFromValues(next.value1y, next.value3y);
-    next.endDate = term ? (autoEndDate(next.startDate, term) ?? "") : "";
+    const term = termFromValues(next.value1y, next.value3y, next.customTermMonths);
+    next.endDate = term && isValidTermMonths(term) ? (autoEndDate(next.startDate, term) ?? "") : "";
   }
   return next;
 }
@@ -132,10 +143,13 @@ export function checkDraft(
   if (!draft.startDate) errors.startDate = "ใส่วันเริ่มสัญญา";
   else if (!isPlausibleDate(draft.startDate)) errors.startDate = "วันเริ่มสัญญาไม่ถูกต้อง";
 
-  const termYears = termFromValues(draft.value1y, draft.value3y);
-  const raw = termYears === 1 ? draft.value1y : termYears === 3 ? draft.value3y : "";
-  const valueTotal = termYears ? parseMoney(raw) : null;
-  if (termYears === null) {
+  const customBad = draft.customTermMonths !== null && !isValidCustomTerm(draft.customTermMonths);
+  const termMonths = customBad ? null : termFromValues(draft.value1y, draft.value3y, draft.customTermMonths);
+  const raw = termMonths === null ? "" : termMonths === 36 ? draft.value3y : draft.value1y;
+  const valueTotal = termMonths ? parseMoney(raw) : null;
+  if (customBad) {
+    errors.value = "ระยะสัญญา Custom ต้องเป็นจำนวนเดือน 1–35 (ไม่ใช่ 12)";
+  } else if (termMonths === null) {
     errors.value =
       draft.value1y.trim() !== "" && draft.value3y.trim() !== ""
         ? "กรอกมูลค่าได้ช่องเดียว (1 ปี หรือ 3 ปี)"
@@ -147,8 +161,8 @@ export function checkDraft(
   let endDate: string | null = null;
   if (draft.endDate) {
     endDate = draft.endDate;
-    if (termYears) {
-      const w = endDateWarning(draft.startDate, draft.endDate, termYears);
+    if (termMonths) {
+      const w = endDateWarning(draft.startDate, draft.endDate, termMonths);
       if (w) warnings.push(w);
     }
   }
@@ -172,7 +186,7 @@ export function checkDraft(
     errors,
     warnings,
     branch,
-    termYears,
+    termMonths,
     valueTotal,
     endDate,
     pendingService: !draft.firstServiceDate,

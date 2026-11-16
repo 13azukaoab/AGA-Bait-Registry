@@ -55,7 +55,8 @@ export interface ContractListItem {
   branchId: string;
   status: ContractStatus;
   tier: Tier;
-  termYears: 1 | 3;
+  /** ระยะสัญญา (เดือน 1–36 · M30) — ป้าย Tier ใช้กลุ่มสี/ป้าย Custom จากค่านี้ */
+  termMonths: number;
   /** สัญญา Renew ผูกกับสัญญาเก่า (ใช้เสนอย้ายสถานีตอนตั้งสถานีครั้งแรก) */
   renewedFromContractId: string | null;
   /** null = ยังไม่ระบุจำนวนสถานี */

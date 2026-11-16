@@ -220,7 +220,7 @@ export function ServiceForm({
         </span>
         {item.routineCountInMonth > 0 ? <Chip tone="ok">กรอกแล้ว · บันทึกซ้ำเพื่อแก้ไข</Chip> : null}
         <b className="text-[16px]">{item.customerName}</b>
-        <TierBadge tier={item.tier} years={item.termYears} />
+        <TierBadge tier={item.tier} termMonths={item.termMonths} />
         <Chip tone="na">สัญญา {item.contractNo}</Chip>
         {needsSetup ? (
           <Chip tone="pend">ยังไม่ระบุจำนวนสถานี</Chip>
