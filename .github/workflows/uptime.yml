@@ -1,0 +1,67 @@
+# Uptime — เฝ้าดูเว็บล่มแบบฟรี 100% (M31)
+#
+# สรุป logic การทำงาน (เผื่อทีมงานเปิดมาอ่าน):
+# 1. ทุก 5 นาที (และกดรันเองได้ที่แท็บ Actions) เรียก 2 URL ของเว็บจริง:
+#      - /api/health  ต้องได้ HTTP 200 และมี "status":"ok" (เช็กถึงฐานข้อมูลด้วย)
+#      - /login       ต้องได้ HTTP 200 (เช็กว่าหน้าเว็บขึ้น)
+# 2. ถ้าพลาด จะลองซ้ำรวม 3 ครั้ง ห่างกัน 20 วินาที ก่อนตัดสินว่าล่ม (กันแจ้งเตือนหลอกจากเน็ตสะดุดชั่วคราว)
+# 3. ล่มจริง = job ล้ม (สีแดง) → GitHub ส่งอีเมลแจ้งเจ้าของ repo ให้เองฟรี
+#    (ตั้งรับอีเมลที่ GitHub → Settings → Notifications → Actions · ดู docs/คู่มือเฝ้าดูเว็บล่ม.md)
+# 4. ล่มนาน = job ล้มทุก 5 นาที → อีเมลมาซ้ำหลายฉบับ (ตั้งใจ: ทำแบบง่ายและไม่พลาดการแจ้งเตือน
+#    ถ้าอยากลดอีเมลซ้ำ ดูทางเลือกในคู่มือ)
+#
+# ความปลอดภัย: repo เป็น public → ไม่ใช้ secret ใดๆ · ไม่ checkout โค้ด · สิทธิ์ GITHUB_TOKEN = ไม่มีเลย
+# หมายเหตุ: cron ของ GitHub อาจช้ากว่ากำหนดหลายนาที และถูกปิดเองถ้า repo ไม่มีความเคลื่อนไหว 60 วัน
+
+name: Uptime
+
+on:
+  schedule:
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+
+# ไม่ต้องอ่าน/เขียนอะไรใน repo เลย
+permissions: {}
+
+# กันรอบซ้อนกันถ้ารอบก่อนยังค้าง (ไม่ยกเลิกรอบที่กำลังรัน)
+concurrency:
+  group: uptime
+  cancel-in-progress: false
+
+jobs:
+  check:
+    name: เช็กเว็บ + ฐานข้อมูล
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      BASE_URL: https://aga-bait-registry.vercel.app
+
+    steps:
+      - name: เช็ก /api/health และ /login (ลองซ้ำ 3 ครั้ง)
+        shell: bash
+        run: |
+          check_once() {
+            # health: ต้อง 200 และมี "status":"ok"
+            body=$(curl -sS --max-time 20 -w '\n%{http_code}' "$BASE_URL/api/health") || return 1
+            code=${body##*$'\n'}
+            json=${body%$'\n'*}
+            [ "$code" = "200" ] || { echo "health ตอบ HTTP $code"; return 1; }
+            printf '%s' "$json" | grep -Eq '"status"[[:space:]]*:[[:space:]]*"ok"' \
+              || { echo "health ไม่มี status ok"; return 1; }
+
+            # login: ต้อง 200
+            code=$(curl -sS --max-time 20 -o /dev/null -w '%{http_code}' "$BASE_URL/login") || return 1
+            [ "$code" = "200" ] || { echo "/login ตอบ HTTP $code"; return 1; }
+          }
+
+          for attempt in 1 2 3; do
+            echo "ครั้งที่ $attempt"
+            if check_once; then
+              echo "✅ เว็บปกติ"
+              exit 0
+            fi
+            [ "$attempt" -lt 3 ] && sleep 20
+          done
+
+          echo "::error::❌ เว็บ AGA Bait Registry ล่มหรือฐานข้อมูลต่อไม่ได้ (ลองครบ 3 ครั้งแล้ว)"
+          exit 1
