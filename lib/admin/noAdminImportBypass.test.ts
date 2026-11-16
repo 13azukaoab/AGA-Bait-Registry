@@ -1,6 +1,6 @@
 /**
  * กัน bypass ด่านเจ้าของ (M21b): `@/lib/supabase/admin` (service role) import ได้เฉพาะ
- *   - `lib/admin/**`  (ด่านตรวจสิทธิ์ผู้ใช้)
+ *   - `lib/admin/userAdmin.ts` (+ เทสของมัน) ไฟล์เดียว — ไฟล์ใหม่ใน lib/admin ต้องเพิ่มในรายการอนุญาตเอง
  *   - `app/api/cron/**`  (งานเบื้องหลัง ไม่มีผู้ใช้)
  *   - ตัวมันเอง `lib/supabase/admin.ts`
  * ไฟล์อื่นที่ import (รวม relative path, require, dynamic import) → เทสนี้ล้ม
@@ -19,7 +19,8 @@ const EXTENSIONS = /\.(ts|tsx|js|jsx|mjs|cjs)$/;
 function isAllowed(rel: string): boolean {
   return (
     rel === "lib/supabase/admin.ts" ||
-    rel.startsWith("lib/admin/") ||
+    rel === "lib/admin/userAdmin.ts" || // ไฟล์เดียวใน lib/admin ที่ได้ใช้ (ไฟล์ใหม่ต้องมาแก้รายการนี้ = ผ่านการรีวิว)
+    rel === "lib/admin/userAdmin.test.ts" ||
     rel.startsWith("app/api/cron/")
   );
 }
@@ -36,7 +37,7 @@ function walk(dir: string, out: string[]): void {
 
 /** import/require/dynamic import ที่ชี้ไปโมดูล supabase/admin (alias หรือ relative) */
 const ADMIN_MODULE =
-  /(?:from\s*|import\s*\(\s*|import\s+|require\s*\(\s*)["'](?:@\/lib\/supabase\/admin|(?:\.{1,2}\/)+(?:lib\/)?(?:supabase\/)?admin|\.\/admin)(?:\.[a-z]+)?["']/;
+  /(?:from\s*|import\s*\(\s*|import\s+|require\s*\(\s*)["'`](?:@\/lib\/supabase\/admin|(?:\.{1,2}\/)+(?:lib\/)?(?:supabase\/)?admin|\.\/admin)(?:\.[a-z]+)?["'`]/;
 
 describe("ห้ามไฟล์นอกที่อนุญาต import service-role client", () => {
   it("ไม่มี bypass", () => {
@@ -59,6 +60,9 @@ describe("ห้ามไฟล์นอกที่อนุญาต import se
       'require("@/lib/supabase/admin")',
       'import { a } from "../../lib/supabase/admin"',
       'import { a } from "../supabase/admin"',
+      'export * from "@/lib/supabase/admin";',
+      'import x = require("@/lib/supabase/admin")',
+      "import(`@/lib/supabase/admin`)",
     ]) {
       expect(ADMIN_MODULE.test(s), s).toBe(true);
     }
