@@ -201,13 +201,13 @@ SELECT throws_ok($$UPDATE contracts SET status = 'active' WHERE id = pg_temp.rid
 -- ข้อมูลเก่า (postgres / นำเข้า) ไม่ติด · แก้ช่องอื่นภายหลังได้
 RESET ROLE;
 SELECT lives_ok($$INSERT INTO contracts (id, customer_id, contract_no, start_date, term_years, value_total, sale_type, renewed_from_contract_id)
-                  VALUES (pg_temp.id('0l'), pg_temp.id('c1'), 'LEGACY-1', '2027-09-01', 1, 24000, 'renew', pg_temp.id('02'))$$,
+                  VALUES (pg_temp.id('0e'), pg_temp.id('c1'), 'LEGACY-1', '2027-09-01', 1, 24000, 'renew', pg_temp.id('02'))$$,
   'legacy import (postgres) is not blocked by the rule');
 SET LOCAL ROLE authenticated;
 SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a2', true);
-SELECT lives_ok($$UPDATE contracts SET note = 'แก้หมายเหตุ' WHERE id = pg_temp.id('0l')$$,
+SELECT lives_ok($$UPDATE contracts SET note = 'แก้หมายเหตุ' WHERE id = pg_temp.id('0e')$$,
   'a legacy out-of-window Renew can still have other fields edited');
-SELECT throws_ok($$UPDATE contracts SET start_date = '2027-10-01' WHERE id = pg_temp.id('0l')$$,
+SELECT throws_ok($$UPDATE contracts SET start_date = '2027-10-01' WHERE id = pg_temp.id('0e')$$,
   'AG010', NULL, 'but moving its start re-checks the rule');
 
 -- =====================================================================
@@ -232,10 +232,10 @@ SELECT lives_ok(format($$SELECT public.initialize_contract_stations(%L, ARRAY[1]
 -- =====================================================================
 RESET ROLE;
 INSERT INTO contracts (id, customer_id, contract_no, start_date, term_years, value_total, stations_initialized_at) VALUES
-  (pg_temp.id('v1'), pg_temp.id('c2'), 'V-1', pg_temp.m(-18), 1, 24000, pg_temp.m(-18)),
-  (pg_temp.id('v3'), pg_temp.id('c3'), 'V-3', pg_temp.m(-18), 1, 24000, pg_temp.m(-18)),
-  (pg_temp.id('v4'), pg_temp.id('c4'), 'V-4', pg_temp.m(-18), 1, 24000, pg_temp.m(-18)),
-  (pg_temp.id('v5'), pg_temp.id('c4'), 'V-5', pg_temp.m(-18), 1, 24000, pg_temp.m(-18));
+  (pg_temp.id('b1'), pg_temp.id('c2'), 'V-1', pg_temp.m(-18), 1, 24000, pg_temp.m(-18)),
+  (pg_temp.id('b3'), pg_temp.id('c3'), 'V-3', pg_temp.m(-18), 1, 24000, pg_temp.m(-18)),
+  (pg_temp.id('b4'), pg_temp.id('c4'), 'V-4', pg_temp.m(-18), 1, 24000, pg_temp.m(-18)),
+  (pg_temp.id('b5'), pg_temp.id('c4'), 'V-5', pg_temp.m(-18), 1, 24000, pg_temp.m(-18));
 
 CREATE FUNCTION pg_temp.pending(p text) RETURNS int LANGUAGE sql AS $$
   SELECT count(*)::int FROM public.list_pending_missed_services() WHERE contract_id = pg_temp.id(p)
@@ -259,52 +259,52 @@ GRANT EXECUTE ON FUNCTION pg_temp.makeup(text, date) TO PUBLIC;
 
 SET LOCAL ROLE authenticated;
 SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a1', true);
-SELECT ok(pg_temp.pending('v1') > 0 AND pg_temp.pending('v3') > 0 AND pg_temp.pending('v4') > 0,
+SELECT ok(pg_temp.pending('b1') > 0 AND pg_temp.pending('b3') > 0 AND pg_temp.pending('b4') > 0,
   'before any newer contract: old contracts have open missed months');
 
 -- ---------- New ที่ซ้อนช่วง / ลูกค้าคนอื่น → ไม่โมฆะ ----------
 RESET ROLE;
 INSERT INTO contracts (id, customer_id, contract_no, start_date, term_years, value_total) VALUES
-  (pg_temp.id('n2'), pg_temp.id('c2'), 'V-N2', pg_temp.m(-10), 1, 24000),            -- ซ้อน v1
-  (pg_temp.id('n3'), pg_temp.id('c5'), 'V-N3', pg_temp.m(-3),  1, 24000);            -- ลูกค้าอื่น
+  (pg_temp.id('e2'), pg_temp.id('c2'), 'V-N2', pg_temp.m(-10), 1, 24000),            -- ซ้อน v1
+  (pg_temp.id('e3'), pg_temp.id('c5'), 'V-N3', pg_temp.m(-3),  1, 24000);            -- ลูกค้าอื่น
 SET LOCAL ROLE authenticated;
-SELECT ok(NOT contract_is_renewed(pg_temp.id('v1')) AND pg_temp.pending('v1') > 0,
+SELECT ok(NOT contract_is_renewed(pg_temp.id('b1')) AND pg_temp.pending('b1') > 0,
   'a New that overlaps the old contract, or a New of another customer, does not void it');
 
 -- ---------- New ที่เริ่มหลังสัญญาเก่าจบ → โมฆะ ----------
 RESET ROLE;
 INSERT INTO contracts (id, customer_id, contract_no, start_date, term_years, value_total) VALUES
-  (pg_temp.id('n4'), pg_temp.id('c2'), 'V-N4', pg_temp.m(-3), 1, 24000);
+  (pg_temp.id('e4'), pg_temp.id('c2'), 'V-N4', pg_temp.m(-3), 1, 24000);
 SET LOCAL ROLE authenticated;
-SELECT ok(contract_is_renewed(pg_temp.id('v1')), 'contract_is_renewed: a later New of the same customer supersedes the old contract');
-SELECT is(pg_temp.pending('v1'), 0, 'its open missed months are void (not listed)');
-SELECT ok(NOT contract_is_renewed(pg_temp.id('n4')), 'the New contract itself is not superseded');
-SELECT throws_ok(pg_temp.waive('v1', pg_temp.m(-12)), 'MS011', NULL, 'host cannot waive a superseded contract (2.48 ④)');
-SELECT throws_ok(pg_temp.makeup('v1', pg_temp.m(-12)), 'MS011', NULL, 'host cannot make up a superseded contract');
+SELECT ok(contract_is_renewed(pg_temp.id('b1')), 'contract_is_renewed: a later New of the same customer supersedes the old contract');
+SELECT is(pg_temp.pending('b1'), 0, 'its open missed months are void (not listed)');
+SELECT ok(NOT contract_is_renewed(pg_temp.id('e4')), 'the New contract itself is not superseded');
+SELECT throws_ok(pg_temp.waive('b1', pg_temp.m(-12)), 'MS011', NULL, 'host cannot waive a superseded contract (2.48 ④)');
+SELECT throws_ok(pg_temp.makeup('b1', pg_temp.m(-12)), 'MS011', NULL, 'host cannot make up a superseded contract');
 SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a3', true);
-SELECT is(pg_temp.pending('v1'), 0, 'recorder does not see it either');
+SELECT is(pg_temp.pending('b1'), 0, 'recorder does not see it either');
 
 -- ---------- สัญญา New ใหม่กว่าถูกยกเลิก → กลับเป็นรอตัดสิน (2.48 ②) ----------
 SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a1', true);
-SELECT lives_ok($$UPDATE contracts SET status = 'cancelled' WHERE id = pg_temp.id('n4')$$, 'host cancels the newer New contract');
-SELECT ok(NOT contract_is_renewed(pg_temp.id('v1')) AND pg_temp.pending('v1') > 0,
+SELECT lives_ok($$UPDATE contracts SET status = 'cancelled' WHERE id = pg_temp.id('e4')$$, 'host cancels the newer New contract');
+SELECT ok(NOT contract_is_renewed(pg_temp.id('b1')) AND pg_temp.pending('b1') > 0,
   'a cancelled newer contract does not void: the open months are back');
 
 -- ---------- Renew ผูกมา → โมฆะ · ยกเลิก → กลับมา ----------
 RESET ROLE;
 INSERT INTO contracts (id, customer_id, contract_no, start_date, term_years, value_total, sale_type, renewed_from_contract_id) VALUES
-  (pg_temp.id('r9'), pg_temp.id('c3'), 'V-R9', pg_temp.m(-6), 1, 24000, 'renew', pg_temp.id('v3'));
+  (pg_temp.id('f9'), pg_temp.id('c3'), 'V-R9', pg_temp.m(-6), 1, 24000, 'renew', pg_temp.id('b3'));
 SET LOCAL ROLE authenticated;
-SELECT ok(contract_is_renewed(pg_temp.id('v3')) AND pg_temp.pending('v3') = 0, 'a Renew linked to the old contract voids it');
-SELECT lives_ok($$UPDATE contracts SET status = 'cancelled' WHERE id = pg_temp.id('r9')$$, 'host cancels the Renew');
-SELECT ok(NOT contract_is_renewed(pg_temp.id('v3')) AND pg_temp.pending('v3') > 0, 'cancelled Renew: open months are back');
+SELECT ok(contract_is_renewed(pg_temp.id('b3')) AND pg_temp.pending('b3') = 0, 'a Renew linked to the old contract voids it');
+SELECT lives_ok($$UPDATE contracts SET status = 'cancelled' WHERE id = pg_temp.id('f9')$$, 'host cancels the Renew');
+SELECT ok(NOT contract_is_renewed(pg_temp.id('b3')) AND pg_temp.pending('b3') > 0, 'cancelled Renew: open months are back');
 
 -- ---------- Renew ของอีกหน้างาน (v5) ไม่ทำให้ v4 โมฆะ ----------
 RESET ROLE;
 INSERT INTO contracts (id, customer_id, contract_no, start_date, term_years, value_total, sale_type, renewed_from_contract_id) VALUES
-  (pg_temp.id('r8'), pg_temp.id('c4'), 'V-R8', pg_temp.m(-6), 1, 24000, 'renew', pg_temp.id('v5'));
+  (pg_temp.id('f8'), pg_temp.id('c4'), 'V-R8', pg_temp.m(-6), 1, 24000, 'renew', pg_temp.id('b5'));
 SET LOCAL ROLE authenticated;
-SELECT ok(contract_is_renewed(pg_temp.id('v5')) AND NOT contract_is_renewed(pg_temp.id('v4')) AND pg_temp.pending('v4') > 0,
+SELECT ok(contract_is_renewed(pg_temp.id('b5')) AND NOT contract_is_renewed(pg_temp.id('b4')) AND pg_temp.pending('b4') > 0,
   'a Renew of another contract of the same customer does not count as a New for v4');
 
 SELECT * FROM finish();
