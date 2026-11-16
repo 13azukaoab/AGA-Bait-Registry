@@ -125,6 +125,18 @@ describe("normalizeTeams", () => {
     expect(normalizeTeams("XYZ").error).toBeDefined();
   });
 
+  it("ส่งรายชื่อทีมจริงจากตาราง teams: ทีมใหม่ P ผ่าน · ตัวเล็ก p → P", () => {
+    const codes = ["A", "P", "X1", "Sup"];
+    expect(normalizeTeams("P,x1", codes).teams).toEqual(["P", "X1"]);
+    expect(normalizeTeams("p", codes).fixes.length).toBe(1);
+    expect(normalizeTeams("Z", codes).error).toBeDefined(); // ไม่มีทีม Z ในตาราง
+  });
+
+  it("ไม่มีทีม Sup ในตาราง → alias sup/หนง. เป็น error", () => {
+    expect(normalizeTeams("sup", ["A", "B"]).error).toBeDefined();
+    expect(normalizeTeams("หนง.", ["A", "B"]).error).toBeDefined();
+  });
+
   it("ว่าง → teams=[] ไม่มี error (ยังไม่นัด)", () => {
     const r = normalizeTeams("");
     expect(r.teams).toEqual([]);

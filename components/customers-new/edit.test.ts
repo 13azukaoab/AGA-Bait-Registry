@@ -8,7 +8,6 @@ import type { BranchOption } from "./branchMatch";
 import { applyDraftPatch, canSave, checkDraft } from "./draftRow";
 import {
   EDIT_LOCK_REASONS,
-  checkRenewalPickForEdit,
   contractEditBlockReason,
   contractFileBlockReason,
   draftFromSaved,
@@ -183,26 +182,13 @@ describe("contractEditBlockReason — สัญญาปิด/ยกเลิ�
   });
 });
 
-describe("checkRenewalPickForEdit", () => {
-  const me = { contractId: "c1", customerId: "u1", customerName: "ก" };
-  const link = (over: object) => ({
-    contractId: "old",
-    contractNo: "CT25-0000009",
-    customerId: "u1",
-    customerName: "ก",
-    branchId: "b1",
-    ...over,
+describe("ล็อกประเภทงาน/สัญญาเก่าตอนแก้ (M23 / AG009)", () => {
+  it("มีข้อความอธิบายล็อก New↔Renew และสัญญาเก่า", () => {
+    expect(EDIT_LOCK_REASONS.saleType).toMatch(/สลับ New\/Renew ไม่ได้/);
+    expect(EDIT_LOCK_REASONS.renewal).toMatch(/ต่อมาจากสัญญาไหน/);
   });
-  it("ลูกค้าเดียวกัน = ผ่าน", () => {
-    expect(checkRenewalPickForEdit(link({}), me)).toEqual({ ok: true });
-  });
-  it("คนละลูกค้า = ไม่ผ่าน บอกชื่อทั้งสองฝั่ง", () => {
-    const r = checkRenewalPickForEdit(link({ customerId: "u2", customerName: "ข" }), me);
-    expect(r.ok).toBe(false);
-    if (!r.ok) expect(r.error).toMatch(/ลูกค้าคนเดียวกัน.*"ก".*"ข"/);
-  });
-  it("ผูกตัวเอง = ไม่ผ่าน", () => {
-    expect(checkRenewalPickForEdit(link({ contractId: "c1" }), me).ok).toBe(false);
+  it("AG009 → ข้อความไทย บอกให้แจ้งผู้ดูแลระบบ", () => {
+    expect(describeDbError({ code: "AG009", message: "x" })).toMatch(/ต่อมาจากสัญญาไหน.*ผู้ดูแลระบบ/);
   });
 });
 
@@ -232,12 +218,43 @@ describe("buildSaveParams โหมดแก้", () => {
     );
     expect(buildSaveParams(d, values).p_customer_id).toBe("u1");
   });
-  it("ล้าง Renew (เปลี่ยนเป็น New) → renewed_from เป็น null", () => {
+  it("แถวใหม่: ล้าง Renew (เปลี่ยนเป็น New) → renewed_from เป็น null (ยังทำได้ตอนสร้าง)", () => {
     const d = applyDraftPatch(
       draftFromSaved(saved({ saleType: "renew", renewedFrom: { contractId: "old", contractNo: "X" } }), master),
       { saleType: "new", renewal: null },
     );
-    expect(buildSaveParams(d, values, { contractId: "c1" }).p_renewed_from_contract_id).toBeNull();
+    expect(buildSaveParams(d, values).p_renewed_from_contract_id).toBeNull();
+  });
+  it("แก้ไขแล้วส่งค่าเดิม: แม้แถวร่างถูกสลับเป็น New/ล้างลิงก์ ก็ยังส่งสัญญาเก่าเดิม (กัน AG009)", () => {
+    const d = applyDraftPatch(
+      draftFromSaved(saved({ saleType: "renew", renewedFrom: { contractId: "old", contractNo: "X" } }), master),
+      { saleType: "new", renewal: null },
+    );
+    const p = buildSaveParams(d, values, {
+      contractId: "c1",
+      expectedUpdatedAt: EXPECTED,
+      renewedFromContractId: "old",
+    });
+    expect(p.p_renewed_from_contract_id).toBe("old");
+  });
+  it("แก้ไขสัญญาที่ไม่ได้ต่อ (ค่าเดิม null) → ส่ง null · แม้แถวร่างมีลิงก์ค้างมา", () => {
+    const d = draftFromSaved(
+      saved({ saleType: "renew", renewedFrom: { contractId: "old", contractNo: "X" } }),
+      master,
+    );
+    const p = buildSaveParams(d, values, {
+      contractId: "c1",
+      expectedUpdatedAt: EXPECTED,
+      renewedFromContractId: null,
+    });
+    expect(p.p_renewed_from_contract_id).toBeNull();
+  });
+  it("แก้ไขโดยไม่ระบุค่าเดิม → ใช้ค่าจากแถวร่าง (ซึ่งหน้าจอล็อกให้เท่าค่าเดิม)", () => {
+    const d = draftFromSaved(
+      saved({ saleType: "renew", renewedFrom: { contractId: "old", contractNo: "X" } }),
+      master,
+    );
+    expect(buildSaveParams(d, values, { contractId: "c1" }).p_renewed_from_contract_id).toBe("old");
   });
 });
 

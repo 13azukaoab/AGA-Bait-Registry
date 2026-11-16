@@ -162,12 +162,23 @@ describe("describeDbError", () => {
 });
 
 describe("sortTeams", () => {
-  it("A–O ก่อน แล้ว Z แล้ว Sup", () => {
-    expect(sortTeams([{ code: "Sup" }, { code: "Z" }, { code: "B" }, { code: "A" }]).map((t) => t.code)).toEqual([
-      "A",
-      "B",
-      "Z",
-      "Sup",
-    ]);
+  it("เรียงตามประเภท: บริการ → ติดตั้ง → หัวหน้างาน แล้วตามรหัส", () => {
+    expect(
+      sortTeams([
+        { code: "Sup", kind: "supervisor" as const },
+        { code: "Z", kind: "install" as const },
+        { code: "B", kind: "service" as const },
+        { code: "A", kind: "service" as const },
+      ]).map((t) => t.code),
+    ).toEqual(["A", "B", "Z", "Sup"]);
+  });
+  it("ทีมใหม่ P (service) ขึ้นก่อน Z (install) ตาม kind ไม่ใช่ตามรหัส", () => {
+    expect(
+      sortTeams([
+        { code: "Z", kind: "install" as const },
+        { code: "P", kind: "service" as const },
+        { code: "O", kind: "service" as const },
+      ]).map((t) => t.code),
+    ).toEqual(["O", "P", "Z"]);
   });
 });

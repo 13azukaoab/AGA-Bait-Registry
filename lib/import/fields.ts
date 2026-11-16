@@ -116,11 +116,14 @@ export interface TeamResult {
   error?: string;
 }
 
-/** รายชื่อทีมจริง A–O, Z, Sup (mockup TEAMLIST) */
-const TEAM_SET = new Set([
+/**
+ * รหัสทีมสำรอง (ชุดตอนตั้งต้นระบบ: A–O, Z, Sup) ใช้เมื่อผู้เรียกไม่ส่งรายชื่อทีมจริงจากตาราง `teams`
+ * ผู้เรียกที่อ่านตาราง `teams` ได้ ควรส่ง `knownCodes` เสมอ — ทีมใหม่ที่เพิ่มจากหน้าตั้งค่า (M22) จะได้ผ่านการตรวจ
+ */
+const DEFAULT_TEAM_CODES: readonly string[] = [
   "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O",
   "Z", "Sup",
-]);
+];
 
 /** คำที่หมายถึงหัวหน้างาน → Sup */
 const SUP_ALIASES = new Set(["sup", "SUP", "Sup", "หนง.", "หน."]);
@@ -131,8 +134,11 @@ const SUP_ALIASES = new Set(["sup", "SUP", "Sup", "หนง.", "หน."]);
  * - "หลายทีม" (ไม่ระบุว่าทีมไหน) → error
  * - ทีมไม่รู้จัก → error
  * - ว่าง → teams:[] (ยังไม่นัด ไม่ใช่ error)
+ * - `knownCodes` = รหัสทีมที่มีอยู่จริงในตาราง `teams` (ไม่ระบุ = ชุดตั้งต้น A–O, Z, Sup)
+ *   เทียบแบบไม่สนตัวพิมพ์ แล้วคืนรหัสตามที่ลงทะเบียนไว้จริง (เช่น "sup" → "Sup")
  */
-export function normalizeTeams(raw: string): TeamResult {
+export function normalizeTeams(raw: string, knownCodes: readonly string[] = DEFAULT_TEAM_CODES): TeamResult {
+  const byUpper = new Map(knownCodes.map((c) => [c.toUpperCase(), c]));
   const trimmed = (raw ?? "").trim();
   if (!trimmed) return { teams: [], fixes: [] };
   if (trimmed === "หลายทีม") {
@@ -145,16 +151,17 @@ export function normalizeTeams(raw: string): TeamResult {
     const token = rawToken.trim();
     if (!token) continue;
 
-    if (SUP_ALIASES.has(token)) {
-      if (token !== "Sup") fixes.push(`ทีม "${token}" → Sup`);
-      teams.push("Sup");
+    const supCode = byUpper.get("SUP");
+    if (supCode !== undefined && SUP_ALIASES.has(token)) {
+      if (token !== supCode) fixes.push(`ทีม "${token}" → ${supCode}`);
+      teams.push(supCode);
       continue;
     }
 
-    const upper = token.toUpperCase();
-    if (TEAM_SET.has(upper)) {
-      if (upper !== token) fixes.push(`ทีม "${token}" → ${upper}`);
-      teams.push(upper);
+    const code = byUpper.get(token.toUpperCase());
+    if (code !== undefined) {
+      if (code !== token) fixes.push(`ทีม "${token}" → ${code}`);
+      teams.push(code);
       continue;
     }
 
