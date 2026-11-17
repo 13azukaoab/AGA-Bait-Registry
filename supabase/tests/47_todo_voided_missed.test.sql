@@ -4,14 +4,15 @@
 --   * สิทธิ์: host / admin ทุกสาขา · recorder ในขอบเขต · viewer / anon ปฏิเสธ (PDPA)
 -- วันที่อ้างจากเดือนปัจจุบัน (Asia/Bangkok) ผ่าน pg_temp.m(n) → เทสไม่พังเมื่อเวลาผ่านไป · ข้อมูลสมมติทั้งหมด
 --   o1 (ส่วนกลาง) เริ่ม m(-8) 12 เดือน · m(-7) routine · m(-6) ไม่ชดเชย · m(-5) มีหมายเหตุ
---      Renew r1 (ผูกมา) เริ่ม m(-2) → โมฆะ m(-8), m(-5), m(-4), m(-3) · reason renewed
+--      Renew r1 (ผูกมา) เริ่ม m(-2) (ซ้อนช่วง) → โมฆะ m(-8), m(-5), m(-4), m(-3), m(-2), m(-1) · reason renewed
+--      (เจ้าของเลือกแบบ ข: เดือนช่วงซ้อนนับเป็นโมฆะด้วย ไม่ตัดที่เดือนเริ่มสัญญาใหม่)
 --      + New x1 ลูกค้าเดียวกัน เริ่มหลังจบ o1 → ต้องเลือก r1 (ผูกมาชนะ)
 --   o2 (ส่วนกลาง ลูกค้าอื่น) เริ่ม m(-14) 12 เดือน (เดือนสุดท้าย m(-3)) · ตั้งสถานี m(-4)
 --      New n2 เริ่ม m(-1) (หลังจบ) → โมฆะ m(-4), m(-3) · reason new_contract
---   o3 (ต่างจังหวัด) เริ่ม m(-8) · Renew r3 เริ่ม m(-6) → โมฆะ m(-8), m(-7)
+--   o3 (ต่างจังหวัด) เริ่ม m(-8) · Renew r3 เริ่ม m(-6) (ซ้อน) → โมฆะ m(-8)..m(-1)
 --   o4 ไม่มีสัญญาใหม่ → ไม่อยู่ในรายการโมฆะ (อยู่ในรอตัดสิน) · o5 สัญญาใหม่ถูกยกเลิก → ไม่โมฆะ
 BEGIN;
-SELECT plan(36);
+SELECT plan(37);
 
 INSERT INTO auth.users (id, instance_id, aud, role, email) VALUES
   ('00000000-0000-0000-0000-0000000000a1', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'host@test.local'),
@@ -118,8 +119,10 @@ SELECT ok(public.contract_is_renewed(pg_temp.id('01')) AND public.contract_is_re
 -- =====================================================================
 SET LOCAL ROLE authenticated;
 SELECT pg_temp.as_user('a1');
-SELECT is(pg_temp.voided('01'), ARRAY[pg_temp.m(-8), pg_temp.m(-5), pg_temp.m(-4), pg_temp.m(-3)],
-  'o1 voided months: skip routine / waived · stop before the Renew start month');
+SELECT is(pg_temp.voided('01'), ARRAY[pg_temp.m(-8), pg_temp.m(-5), pg_temp.m(-4), pg_temp.m(-3), pg_temp.m(-2), pg_temp.m(-1)],
+  'o1 voided months: skip routine / waived · overlap months after the Renew start are voided too (ข)');
+SELECT ok(ARRAY[pg_temp.m(-2), pg_temp.m(-1)] <@ pg_temp.voided('01') AND pg_temp.pending('01') = '{}'::date[],
+  'overlap months: in the voided list, not pending — never missing from both lists');
 SELECT is((SELECT array_agg(DISTINCT void_reason) FROM public.list_voided_missed_services() WHERE contract_id = pg_temp.id('01')),
   ARRAY['renewed'], 'o1 reason = renewed');
 SELECT is((SELECT array_agg(DISTINCT voided_by_contract_id) FROM public.list_voided_missed_services() WHERE contract_id = pg_temp.id('01')),
@@ -135,13 +138,15 @@ SELECT is(pg_temp.voided('02'), ARRAY[pg_temp.m(-4), pg_temp.m(-3)],
   'o2 voided from tracking start (station setup) to its last service month');
 SELECT is((SELECT array_agg(DISTINCT void_reason) FROM public.list_voided_missed_services() WHERE contract_id = pg_temp.id('02')),
   ARRAY['new_contract'], 'o2 reason = new_contract');
-SELECT is(pg_temp.voided('03'), ARRAY[pg_temp.m(-8), pg_temp.m(-7)], 'o3 (province) voided months');
+SELECT is(pg_temp.voided('03'), ARRAY[pg_temp.m(-8), pg_temp.m(-7), pg_temp.m(-6), pg_temp.m(-5), pg_temp.m(-4),
+                                 pg_temp.m(-3), pg_temp.m(-2), pg_temp.m(-1)],
+  'o3 (province) voided months: overlapping Renew from m(-6) → every missed month up to last month (ข)');
 SELECT is(pg_temp.voided('04'), '{}'::date[], 'o4 (not superseded) not listed');
 SELECT ok(cardinality(pg_temp.pending('04')) > 0, 'o4 still pending');
 SELECT is(pg_temp.voided('05'), '{}'::date[], 'o5 (cancelled Renew) not listed');
 SELECT is(pg_temp.voided('01', pg_temp.m(-4)), ARRAY[pg_temp.m(-8), pg_temp.m(-5)], 'p_month caps the months (before m(-4))');
 SELECT is((SELECT count(*)::int FROM public.list_voided_missed_services((SELECT p FROM _b), NULL)),
-  2, 'p_branch_id filters to the province branch');
+  8, 'p_branch_id filters to the province branch (o3 only)');
 SELECT is((SELECT count(*)::int FROM public.list_voided_missed_services() v
             JOIN public.list_pending_missed_services() p USING (contract_id, missed_month)),
   0, 'no month is both pending and voided');

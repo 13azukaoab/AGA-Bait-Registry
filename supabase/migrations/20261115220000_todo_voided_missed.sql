@@ -10,11 +10,10 @@
 --     * `list_voided_missed_services(p_branch_id, p_month)` — เกณฑ์ "เดือนตก" เดียวกับ list_pending_missed_services
 --         (M18/M28/M30): ตั้งแต่เดือนตั้งสถานี · ภายในเดือนบริการของสัญญา (term_months) · ไม่มี routine ·
 --         ไม่ชดเชย · ไม่ "ไม่ชดเชย" (waived) · สัญญาไม่ถูกยกเลิก — ต่างกันข้อเดียว: สัญญา **ถูกแทนแล้ว**
---       เดือนที่นับ = เดือนตกก่อน "เดือนเริ่มของสัญญาที่แทน" และก่อน p_month/เดือนปัจจุบัน
---         (Renew ที่ซ้อนช่วง: เดือนตั้งแต่สัญญาใหม่เริ่ม บริการย้ายไปสัญญาใหม่แล้ว ถ้านับจะได้เดือนตกปลอม
---          · New ที่แทนได้เริ่มหลังสัญญาเก่าจบเสมอ → ไม่ถูกตัด) · ⚠ ต่างจาก lib/rules missedResolutionStatus
---          ที่ไม่ตัดเดือนซ้อน (ทุกเดือนตกของสัญญาที่ถูกแทน = void_renewed) — รอ BE/เจ้าของยืนยัน
---       voided_at = เวลาที่บันทึกสัญญาที่แทน (created_at) — ข้อมูลประกอบ ไม่ใช้ตัดเดือน
+--       เดือนที่นับ = ทุกเดือนตกของสัญญาที่ถูกแทน ภายในเดือนบริการ และก่อน p_month/เดือนปัจจุบัน
+--         (เจ้าของเลือกแบบ ข 17 พ.ย. 2026: ไม่ตัดช่วงที่ Renew ซ้อน — ตรงกับ lib/rules missedResolutionStatus
+--          ที่ทุกเดือนตกของสัญญาที่ถูกแทน = void_renewed) → เดือนตกไม่หายจากทั้งสองรายการ
+--       voided_at = เวลาที่บันทึกสัญญาที่แทน (created_at) · voided_by_start_date = วันเริ่มสัญญาที่แทน — ข้อมูลประกอบ ไม่ใช้ตัดเดือน
 --       void_reason: 'renewed' = สัญญาใหม่ผูกมา (Renew · 2.47) · 'new_contract' = New ที่เริ่มหลังสัญญานี้จบ (2.51)
 --       คืนหมายเหตุ (missed_service_notes) ของเดือนนั้นด้วย ถ้ามี — หน้าจอไม่ต้องอ่านแยก
 --     * สิทธิ์: SECURITY INVOKER (แพทเทิร์นเดียวกับ list_pending_missed_services) · host / admin ทุกสาขา ·
@@ -109,16 +108,14 @@ BEGIN
     SELECT c.*,
            CASE WHEN n.renewed_from_contract_id = c.contract_id THEN 'renewed' ELSE 'new_contract' END AS reason,
            n.start_date AS by_start,
-           n.created_at AS by_created,
-           -- เดือนแรกที่ไม่นับแล้ว = เดือนเริ่มของสัญญาที่แทน (ช่วงซ้อนของ Renew ไม่ใช่ "เดือนตก")
-           date_trunc('month', n.start_date)::date AS void_month
+           n.created_at AS by_created
       FROM c
       JOIN contracts n ON n.id = c.by_id
   ), m AS (
     SELECT r.*, gs::date AS missed_month
       FROM r,
            generate_series(r.track_from,
-                           least(r.last_month, (r.void_month - interval '1 month')::date,
+                           least(r.last_month,
                                  (v_upto - interval '1 month')::date),
                            interval '1 month') gs
   )
@@ -142,7 +139,7 @@ END;
 $$;
 
 COMMENT ON FUNCTION public.list_voided_missed_services(uuid, date) IS
-  'M35: missed service months voided because the contract was superseded (Renew / later New · DECISIONS 2.47/2.51) — same missed-month rule as list_pending_missed_services, counted up to (not including) the start month of the superseding contract.';
+  'M35: missed service months voided because the contract was superseded (Renew / later New · DECISIONS 2.47/2.51) — same missed-month rule as list_pending_missed_services, every missed month of the superseded contract (overlap months included · owner choice ข, matches lib/rules).';
 
 -- =====================================================================
 -- 4. สิทธิ์
