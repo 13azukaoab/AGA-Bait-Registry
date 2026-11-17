@@ -104,6 +104,8 @@ export interface BranchDryRun {
   dataRows: number;
   /** แถวที่ช่องเลขที่สัญญาเป็นรูป CTyy-… */
   contractRows: number;
+  /** เลขแถว Excel ที่วันที่อ่านจากข้อความช่วงวันที่ (เฉพาะเมื่อเปิด readDateRangeText · ปิด = ว่าง) */
+  dateFromRangeTextRows: number[];
   strict: ImportRunSummary;
   lenient: ImportRunSummary;
   /** แถวที่ไม่ผ่าน strict รายแถว (สำหรับรายการแถวที่ต้องกรอกมือ) */
@@ -209,13 +211,26 @@ export interface DryRunOptions {
   sellerIndex?: SellerIndex;
   /** แถวที่กันไว้ไม่นำเข้า (เลขแถว Excel ของชีทนี้) */
   holdRows?: HoldRow[];
+  /**
+   * ชื่อสาขาปลายทาง (ตามตารางชีท → สาขาที่ระบุเอง เช่น centralRegistrySheets.ts)
+   * ต้องสะกดตรง master ทุกตัวอักษร · ไม่ส่ง = ใช้ชื่อชีท (แบบเขต 1)
+   */
+  branch?: string;
+  /** ⚠ ข้อเสนอ (ปิดไว้) — อ่านวันที่จากข้อความช่วงวันที่ เมื่อช่องวันที่ว่าง (RegistrySheetOptions.readDateRangeText) */
+  readDateRangeText?: boolean;
 }
 
 /** dry-run 1 ชีท (1 สาขา) */
 export function dryRunRegistrySheet(sheetName: string, grid: CellValue[][], opts: DryRunOptions): BranchDryRun {
-  const parsed = parseRegistrySheet(grid, sheetName.trim());
-  const br = normalizeBranch(sheetName);
+  const target = opts.branch ?? sheetName.trim();
+  const br = normalizeBranch(target);
   if (!br.branch || !br.zone) throw new Error(`dryRun: ชื่อชีท "${sheetName}" ไม่ใช่สาขาที่รู้จัก`);
+  if (opts.branch !== undefined && (br.fix || br.branch !== opts.branch)) {
+    throw new Error(`dryRun: สาขาปลายทาง "${opts.branch}" ต้องสะกดตรง master ทุกตัวอักษร`);
+  }
+  const parsed = parseRegistrySheet(grid, opts.branch ?? sheetName.trim(), {
+    readDateRangeText: opts.readDateRangeText,
+  });
   const ref = { area: br.zone, branch: br.branch };
 
   const rows = parsed.rows;
@@ -354,6 +369,7 @@ export function dryRunRegistrySheet(sheetName: string, grid: CellValue[][], opts
     headerRows: parsed.headerRows,
     dataRows: rows.length,
     contractRows: contractRows.length,
+    dateFromRangeTextRows: rows.filter((r) => r.dateFromRangeText).map((r) => r.excelRow),
     strict: summarize(strictResult, rows, heldRows.map((h) => h.excelRow)),
     lenient: summarize(lenientResult, rows),
     strictProblems,

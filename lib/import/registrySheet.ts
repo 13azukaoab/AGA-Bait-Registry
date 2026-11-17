@@ -6,6 +6,8 @@
  *   - ทะเบียนไม่ใช่รูปแบบ "เปิดงาน" (SOURCE_COLUMNS) ที่ importContracts รับ → ต้องแปลงก่อน
  *   - หัวตารางกินพื้นที่ 2 แถว และแต่ละชีทวางไม่ตรงกัน (บางชีทมีคอลัมน์ IC เพิ่ม · บางชีทหัวอยู่แถวบน)
  *     → หาแถวหัวที่มี "เลขที่สัญญา" แล้วรวม 2 แถว (แถวล่างชนะ ถ้าแถวล่างว่าง/เป็น "False" ใช้แถวบน)
+ *     · บางชีทหัว 3 แถว (เขต 9 สระบุรี: เริ่มสัญญา/New/Renew/ทีม อยู่แถวที่ 3) → รวม 3 แถวด้วยกฎเดียวกัน
+ *     · หัววันที่รับทั้ง "เริ่ม"/"สิ้นสุด" และ "เริ่มสัญญา"/"สิ้นสุดสัญญา" (เขต 9)
  *   - หาคอลัมน์จากชื่อหัว ไม่ใช้ตำแหน่งตายตัว
  *     · ประเภทลูกค้า = หัวที่ขึ้นต้น "H =" (หรือแถวบนเขียน "ประเภทลูกค้า")
  *     · New / Renew = หัว "New"/"Renew" · ถ้าไม่มี (บางชีทหัวเป็น "False") ใช้คอลัมน์ "ประเภทสัญญา" (แถวบน) และคอลัมน์ถัดไป
@@ -38,6 +40,8 @@ export interface RegistryRow {
   /** เลขแถวใน Excel (เริ่ม 1) */
   excelRow: number;
   raw: RawRow;
+  /** true = วันเริ่ม/สิ้นสุดอ่านจากข้อความช่วงวันที่ (readDateRangeText) */
+  dateFromRangeText?: boolean;
   /** เบอร์โทรเฉพาะตัวเลข — ใช้ตรวจลูกค้าซ้ำในหน่วยความจำเท่านั้น ห้าม log */
   phoneDigits: string;
 }
@@ -53,6 +57,30 @@ export interface RegistrySheetResult {
 export interface RegistrySheetOptions {
   /** ค่าที่ใส่ในช่อง "ผู้ขาย" (ทะเบียนไม่มีคอลัมน์นี้) · ไม่ระบุ = ว่าง → importContracts แจ้ง "ไม่มีผู้ขาย" */
   sellerPlaceholder?: string;
+  /**
+   * ⚠ ข้อเสนอ — ปิดไว้จนกว่าเจ้าของตัดสิน (ผล dry-run 21 สาขา OCT.26)
+   * แถวที่ช่อง "เริ่ม" และ "สิ้นสุด" ว่างทั้งคู่ แต่คอลัมน์ทางซ้ายของ "เริ่ม" (ใต้หัว "ระยะสัญญา") มีข้อความรูป
+   * `วว/ดด/ปปปป-วว/ดด/ปปปป` → อ่านเป็นวันเริ่ม/วันสิ้นสุด (ปี ≥ 2400 = พ.ศ. → ลบ 543) · รูปอื่น = ไม่อ่าน (ว่างเหมือนเดิม)
+   */
+  readDateRangeText?: boolean;
+}
+
+/** ข้อความช่วงวันที่ "วว/ดด/ปปปป-วว/ดด/ปปปป" (ตัวเลขล้วน · ปี 4 หลัก) */
+const DATE_RANGE_TEXT = /^(\d{1,2})\/(\d{1,2})\/(\d{4})\s*-\s*(\d{1,2})\/(\d{1,2})\/(\d{4})$/;
+
+function rangePartToIso(d: string, m: string, y: string): string {
+  const year = +y >= 2400 ? +y - 543 : +y;
+  return `${year}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`;
+}
+
+/**
+ * ข้อความช่วงวันที่ → [วันเริ่ม, วันสิ้นสุด] แบบ 'YYYY-MM-DD' · ไม่ตรงรูป = null
+ * ไม่ตรวจว่าวันมีจริง (ส่งต่อให้ parseSourceDate ของ importContracts ตรวจเหมือนวันที่อื่น)
+ */
+export function parseDateRangeText(text: string): [string, string] | null {
+  const m = DATE_RANGE_TEXT.exec(text.trim());
+  if (!m) return null;
+  return [rangePartToIso(m[1]!, m[2]!, m[3]!), rangePartToIso(m[4]!, m[5]!, m[6]!)];
 }
 
 /**
@@ -85,25 +113,44 @@ function dateText(v: CellValue | undefined): string {
 
 const HEADER_SCAN_ROWS = 12;
 
-/** หาแถวหัวตาราง (index 0) ที่รวม 2 แถวแล้วมี "เลขที่สัญญา" · คืน [แถวบน, แถวล่าง] */
+/** ชื่อหัววันที่ที่รับได้ (เขต 9 ปากช่อง/สระบุรี เขียนเต็ม "เริ่มสัญญา"/"สิ้นสุดสัญญา") */
+const START_LABELS = ["เริ่ม", "เริ่มสัญญา"];
+const END_LABELS = ["สิ้นสุด", "สิ้นสุดสัญญา"];
+/** ป้ายที่บอกว่าแถวนั้นเป็น "หัวย่อย" ไม่ใช่ข้อมูล */
+const SUB_HEADER_LABELS = [...START_LABELS, ...END_LABELS, "1 ปี", "3 ปี", "New", "Renew", "ทีม"];
+
+function looksLikeSubHeader(row: CellValue[] | undefined): boolean {
+  return (row ?? []).some((c) => SUB_HEADER_LABELS.includes(label(c)));
+}
+
+/**
+ * หาแถวหัวตาราง (index 0) · คืน [แถวบนสุด, แถวล่างสุด] ของหัว (2 หรือ 3 แถว)
+ * - "เลขที่สัญญา" อยู่แถวบน (มีแถวล่างเป็นหัวย่อย) หรือแถวล่าง (มีแถวบนเป็นหัวกลุ่ม)
+ * - หัว 3 แถว (สระบุรี): แถวที่ 3 มีหัวย่อย (เริ่มสัญญา/New/Renew/ทีม) → รวมเป็นหัวด้วย ไม่ถือเป็นข้อมูล
+ */
 function findHeaderRows(grid: CellValue[][]): [number, number] {
   for (let r = 0; r < Math.min(grid.length, HEADER_SCAN_ROWS); r++) {
     if ((grid[r] ?? []).some((c) => label(c) === "เลขที่สัญญา")) {
-      // "เลขที่สัญญา" อยู่แถวบน (มีแถวล่างเป็นหัวย่อย) หรือแถวล่าง (มีแถวบนเป็นหัวกลุ่ม)
-      const below = grid[r + 1] ?? [];
-      const belowLooksLikeHeader = below.some((c) => ["เริ่ม", "สิ้นสุด", "1 ปี", "3 ปี"].includes(label(c)));
-      return belowLooksLikeHeader ? [r, r + 1] : [r - 1, r];
+      const [top, bottom] = looksLikeSubHeader(grid[r + 1]) ? [r, r + 1] : [r - 1, r];
+      return looksLikeSubHeader(grid[bottom + 1]) ? [top, bottom + 1] : [top, bottom];
     }
   }
   throw new Error("registrySheet: ไม่พบหัวตาราง (คอลัมน์ \"เลขที่สัญญา\")");
 }
 
-function findColumns(top: CellValue[], bottom: CellValue[]): RegistryColumns {
-  const width = Math.max(top.length, bottom.length);
+/** รวมหัวหลายแถว: ต่อคอลัมน์ใช้ป้ายแถวล่างสุดที่ไม่ว่าง (ข้าม "False"/"True" ที่เป็นช่องติ๊ก) */
+function findColumns(headerRows: CellValue[][]): RegistryColumns {
+  const width = Math.max(...headerRows.map((r) => r.length));
   const merged: string[] = [];
   for (let i = 0; i < width; i++) {
-    const b = label(bottom[i]);
-    merged[i] = b && b !== "False" && b !== "True" ? b : label(top[i]);
+    merged[i] = "";
+    for (let h = headerRows.length - 1; h >= 0; h--) {
+      const v = label(headerRows[h]![i]);
+      if (v && v !== "False" && v !== "True") {
+        merged[i] = v;
+        break;
+      }
+    }
   }
   const first = (pred: (s: string) => boolean): number | null => {
     const i = merged.findIndex(pred);
@@ -119,7 +166,10 @@ function findColumns(top: CellValue[], bottom: CellValue[]): RegistryColumns {
   let isNew = first((s) => s === "New");
   let isRenew = first((s) => s === "Renew");
   if (isNew === null || isRenew === null) {
-    const group = top.findIndex((c) => label(c) === "ประเภทสัญญา");
+    // หา "ประเภทสัญญา" ในทุกแถวหัว (ป้ายนี้อาจถูกแถวล่างทับใน merged)
+    const group = headerRows
+      .map((row) => row.findIndex((c) => label(c) === "ประเภทสัญญา"))
+      .find((i) => i >= 0) ?? -1;
     if (group < 0) throw new Error("registrySheet: ไม่พบคอลัมน์ New/Renew");
     isNew = group;
     isRenew = group + 1;
@@ -130,8 +180,8 @@ function findColumns(top: CellValue[], bottom: CellValue[]): RegistryColumns {
     name: first((s) => s === "ชื่อลูกค้า"),
     contractNo: need("เลขที่สัญญา", (s) => s === "เลขที่สัญญา"),
     phone: first((s) => s.startsWith("เบอร์โทร")),
-    startDate: need("เริ่ม", (s) => s === "เริ่ม"),
-    endDate: need("สิ้นสุด", (s) => s === "สิ้นสุด"),
+    startDate: need("เริ่ม", (s) => START_LABELS.includes(s)),
+    endDate: need("สิ้นสุด", (s) => END_LABELS.includes(s)),
     value1y: need("1 ปี", (s) => s === "1 ปี"),
     value3y: need("3 ปี", (s) => s === "3 ปี"),
     customerType,
@@ -151,7 +201,7 @@ export function parseRegistrySheet(
   opts: RegistrySheetOptions = {},
 ): RegistrySheetResult {
   const [top, bottom] = findHeaderRows(grid);
-  const cols = findColumns(grid[top] ?? [], grid[bottom] ?? []);
+  const cols = findColumns(grid.slice(top, bottom + 1).map((r) => r ?? []));
   const keyCols = [cols.contractNo, cols.startDate, cols.endDate, cols.value1y, cols.value3y];
 
   const rows: RegistryRow[] = [];
@@ -174,10 +224,19 @@ export function parseRegistrySheet(
       "1 ปี": cellText(cells[cols.value1y]),
       "3 ปี": cellText(cells[cols.value3y]),
     };
+    let dateFromRangeText = false;
+    if (opts.readDateRangeText && !raw.เริ่ม && !raw.สิ้นสุด && cols.startDate > 0) {
+      const range = parseDateRangeText(cellText(cells[cols.startDate - 1]));
+      if (range) {
+        [raw.เริ่ม, raw.สิ้นสุด] = range;
+        dateFromRangeText = true;
+      }
+    }
     rows.push({
       excelRow: r + 1,
       raw: raw as Record<string, string>,
       phoneDigits: cols.phone !== null ? cellText(cells[cols.phone]).replace(/\D/g, "") : "",
+      ...(dateFromRangeText ? { dateFromRangeText } : {}),
     });
   }
 

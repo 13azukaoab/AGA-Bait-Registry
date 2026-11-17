@@ -7,6 +7,7 @@ import { TIER_RULES } from "../rules/__fixtures__/tierRules";
 import { dryRunRegistrySheet } from "./registryDryRun";
 import {
   excelSerialToIso,
+  parseDateRangeText,
   parseRegistrySheet,
   readRegistryTierSummary,
   type CellValue,
@@ -80,6 +81,65 @@ describe("parseRegistrySheet", () => {
     expect(res.rows[0]!.raw).toMatchObject({ เริ่ม: "2023-12-01", สิ้นสุด: "31/11/2026", ผู้ขาย: "" });
   });
 
+  it("หัววันที่เขียนเต็ม 'เริ่มสัญญา'/'สิ้นสุดสัญญา' (แบบเขต 9 ปากช่อง) — ข้อมูลสมมติ", () => {
+    const top: CellValue[] = ["ลำดับ", "ชื่อลูกค้า", "ที่อยู่ลูกค้า", "เลขที่สัญญา", "เบอร์ติดต่อ", "Site Plan", "Site Plan", "ระยะสัญญา ", null, null, null, "ประเภทลูกค้า", "ประเภทสัญญา"];
+    const bottom: CellValue[] = [null, null, null, null, null, "IG", "IC", "เริ่มสัญญา", "สิ้นสุดสัญญา", "1 ปี", "3 ปี", "H = บ้าน /T = ทาวน์โฮม/R=ห้อง", "New", "Renew", "ทีม"];
+    const grid: CellValue[][] = [
+      [], [], [], top, bottom,
+      [1, "สมมติ", "", "CT26-0000009", "", 4, 0, serial("2026-02-01"), serial("2027-01-31"), 20000, null, "H", true, false, "B"],
+    ];
+    const res = parseRegistrySheet(grid, "ปากช่อง");
+    expect(res.headerRows).toEqual([4, 5]);
+    expect(res.columns).toMatchObject({ contractNo: 3, startDate: 7, endDate: 8, value1y: 9, value3y: 10, customerType: 11, isNew: 12, isRenew: 13, team: 14 });
+    expect(res.rows).toHaveLength(1);
+    expect(res.rows[0]!.raw).toMatchObject({ เริ่ม: "2026-02-01", สิ้นสุด: "2027-01-31", New: "TRUE" });
+  });
+
+  it("หัวตาราง 3 แถว (แบบเขต 9 สระบุรี): แถวที่ 3 เป็นหัวย่อย ไม่ถือเป็นข้อมูล — ข้อมูลสมมติ", () => {
+    const r1: CellValue[] = ["ลำดับ", "ชื่อลูกค้า", "ที่อยู่ลูกค้า", "เบอร์โทรลูกค้า", "เลขที่สัญญา", "Site plan", null, "ระยะสัญญา "];
+    const r2: CellValue[] = [null, null, null, null, null, "IG", "IC", null, null, "1 ปี", "3 ปี", "ประเภทลูกค้า", "ประเภทสัญญา"];
+    const r3: CellValue[] = [null, null, null, null, null, null, null, "เริ่มสัญญา", "สิ้นสุดสัญญา", null, null, "H = บ้าน /T = ทาวน์โฮม/R=ห้อง", "New", "Renew", "ทีม"];
+    const grid: CellValue[][] = [
+      [], ["  สาขาสมมติ"], r1, r2, r3,
+      [1, "สมมติ", "", "0800000000", "CT25-0000010", null, null, serial("2025-03-01"), serial("2026-02-28"), null, 45000, "T", false, true, "C"],
+    ];
+    const res = parseRegistrySheet(grid, "สระบุรี");
+    expect(res.headerRows).toEqual([3, 5]);
+    expect(res.columns).toMatchObject({ contractNo: 4, phone: 3, startDate: 7, endDate: 8, value1y: 9, value3y: 10, customerType: 11, isNew: 12, isRenew: 13, team: 14 });
+    expect(res.rows.map((r) => r.excelRow)).toEqual([6]);
+    expect(res.rows[0]!.raw).toMatchObject({ เลขที่สัญญา: "CT25-0000010", เริ่ม: "2025-03-01", "3 ปี": "45000", ประเภท: "T", Renew: "TRUE", ทีม: "C" });
+  });
+
+  it("readDateRangeText (ข้อเสนอ · ปิดไว้): ช่องวันที่ว่าง + ข้อความช่วงวันที่ทางซ้าย → อ่านเป็นวันเริ่ม/สิ้นสุด", () => {
+    const top: CellValue[] = ["ลำดับ", "ชื่อลูกค้า", "ที่อยู่ลูกค้า", "เลขที่สัญญา", "เบอร์", "Site plan", null, "ระยะสัญญา ", null, null, null, null, "ประเภทลูกค้า", "ประเภทสัญญา"];
+    const bottom: CellValue[] = [null, null, null, null, null, "IG", "IC", null, "เริ่ม", "สิ้นสุด", "1 ปี", "3 ปี", "H = บ้าน /T = ทาวน์โฮม/R=ห้อง", "New", "Renew", "ทีม"];
+    const grid: CellValue[][] = [
+      [], [], [], top, bottom,
+      [1, "สมมติ", "", "CT24-0000001", "", 4, 0, "01/03/2024-28/02/2027", null, null, null, 60000, "H", false, true, "A"],
+      [2, "สมมติ", "", "CT24-0000002", "", 4, 0, "15/06/2567 - 14/06/2570", null, null, null, 60000, "H", false, true, "A"],
+      [3, "สมมติ", "", "CT24-0000003", "", 4, 0, "1/3/24-28/2/27", null, null, null, 60000, "H", false, true, "A"],
+      [4, "สมมติ", "", "CT24-0000004", "", 4, 0, "01/03/2024-28/02/2027", serial("2024-03-05"), serial("2027-03-04"), null, 60000, "H", false, true, "A"],
+    ];
+    const off = parseRegistrySheet(grid, "นนทบุรี");
+    expect(off.rows[0]!.raw).toMatchObject({ เริ่ม: "", สิ้นสุด: "" });
+    expect(off.rows.some((r) => r.dateFromRangeText)).toBe(false);
+
+    const on = parseRegistrySheet(grid, "นนทบุรี", { readDateRangeText: true });
+    expect(on.rows[0]!.raw).toMatchObject({ เริ่ม: "2024-03-01", สิ้นสุด: "2027-02-28" });
+    expect(on.rows[1]!.raw).toMatchObject({ เริ่ม: "2024-06-15", สิ้นสุด: "2027-06-14" }); // พ.ศ. → ค.ศ.
+    expect(on.rows[2]!.raw).toMatchObject({ เริ่ม: "", สิ้นสุด: "" }); // ปี 2 หลัก = ไม่อ่าน
+    expect(on.rows[3]!.raw).toMatchObject({ เริ่ม: "2024-03-05" }); // มีวันที่อยู่แล้ว = ใช้ช่องวันที่
+    expect(on.rows.filter((r) => r.dateFromRangeText).map((r) => r.excelRow)).toEqual([6, 7]);
+  });
+
+  it("parseDateRangeText", () => {
+    expect(parseDateRangeText("01/03/2024-28/02/2027")).toEqual(["2024-03-01", "2027-02-28"]);
+    expect(parseDateRangeText(" 5/1/2568 - 4/1/2571 ")).toEqual(["2025-01-05", "2028-01-04"]);
+    expect(parseDateRangeText("01/03/24-28/02/27")).toBeNull();
+    expect(parseDateRangeText("03/2024-02/2027")).toBeNull();
+    expect(parseDateRangeText("")).toBeNull();
+  });
+
   it("ไม่พบหัวตาราง → throw", () => {
     expect(() => parseRegistrySheet([["อะไรก็ได้"]], "หัวหิน")).toThrow(/หัวตาราง/);
   });
@@ -134,6 +194,14 @@ describe("dryRunRegistrySheet (ข้อมูลสมมติ)", () => {
     expect(res.sellers).toBeNull();
     // เตือนทุกแถวที่ไม่มีผู้ขาย (ทั้งที่ผ่านและไม่ผ่าน)
     expect(res.strict.warnings["ไม่ทราบผู้ขาย (…)"]?.excelRows.sort()).toEqual([6, 7, 8, 9]);
+  });
+
+  it("option branch: ใช้ชื่อสาขาจากตารางชีท (ชื่อชีทสะกดต่าง) · ชื่อปลายทางต้องตรง master เป๊ะ", () => {
+    const viaTable = dryRunRegistrySheet("พระราม4", grid, { rules: TIER_RULES, months: ["2026-10"], branch: "พระราม 4" });
+    expect(viaTable).toMatchObject({ sheet: "พระราม4", branch: "พระราม 4", area: "เขต 2" });
+    expect(viaTable.snapshots["2026-10"]!.lenient.branch).toBe("พระราม 4");
+    expect(viaTable.strict.fixes['สาขา "…" → พระราม 4']).toBeUndefined();
+    expect(() => dryRunRegistrySheet("พระราม4", grid, { rules: TIER_RULES, months: [], branch: "พระราม4" })).toThrow(/ตรง master/);
   });
 
   it("customerTypeValues นับค่าประเภทดิบของแถวสัญญา", () => {
