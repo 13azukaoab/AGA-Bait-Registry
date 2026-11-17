@@ -91,8 +91,8 @@ SELECT throws_ok($$UPDATE stations SET removed_at = now() - interval '1 day' WHE
   '42501', NULL, 'recorder cannot change removed_at of a removed box directly');
 SELECT throws_ok($$UPDATE stations SET status = 'active' WHERE id = '00000000-0000-0000-0000-0000000000e3'$$,
   '42501', NULL, 'recorder cannot change an eliminated station directly');
-SELECT lives_ok($$UPDATE stations SET point_label = 'kitchen' WHERE id = '00000000-0000-0000-0000-0000000000e1'$$,
-  'recorder can still change the point label of a removed box');
+SELECT throws_ok($$UPDATE stations SET point_label = 'kitchen' WHERE id = '00000000-0000-0000-0000-0000000000e1'$$,
+  'SV014', NULL, 'recorder can still change the point label of a removed box — M37: direct label edit is refused (SV014 fires only on a row RLS lets through)');
 SELECT throws_ok($$UPDATE stations SET collected_at = now() WHERE id = '00000000-0000-0000-0000-0000000000e1'$$,
   '42501', NULL, 'recorder cannot set collected_at directly any more (M19b: collection goes through collect_ig_stations)');
 SELECT lives_ok($$UPDATE stations SET status = 'pending_removal' WHERE id = '00000000-0000-0000-0000-0000000000e2'$$,

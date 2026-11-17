@@ -86,9 +86,9 @@ SELECT lives_ok($$SELECT public.save_service_visit(pg_temp.payload('00000000-000
 -- =====================================================================
 SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a2', true);
 -- คู่ควบคุม: admin เห็นและแก้แถวเดียวกันได้ (RLS ไม่ได้ซ่อน)
-SELECT lives_ok($$UPDATE stations SET point_label = 'admin-kitchen' WHERE id = '00000000-0000-0000-0000-0000000000e1'$$,
-  'control: admin can still change the point label of a removed box');
-SELECT is(pg_temp.label('00000000-0000-0000-0000-0000000000e1'), 'admin-kitchen', 'control: the label change really saved (row is visible to admin)');
+SELECT throws_ok($$UPDATE stations SET point_label = 'admin-kitchen' WHERE id = '00000000-0000-0000-0000-0000000000e1'$$,
+  'SV014', NULL, 'control: admin can still change the point label of a removed box — M37: direct label edit is refused (SV014 fires only on a row RLS lets through)');
+SELECT is(pg_temp.label('00000000-0000-0000-0000-0000000000e1'), NULL, 'control: the refused direct label edit saved nothing (M37)');
 SELECT throws_ok($$UPDATE stations SET status = 'active' WHERE id = '00000000-0000-0000-0000-0000000000e1'$$,
   '42501', NULL, 'admin cannot wake a removed box directly');
 SELECT throws_ok($$UPDATE stations SET status = 'pending_removal', removed_at = NULL
@@ -96,8 +96,8 @@ SELECT throws_ok($$UPDATE stations SET status = 'pending_removal', removed_at = 
   '42501', NULL, 'admin cannot move a removed box to pending_removal directly');
 SELECT throws_ok($$UPDATE stations SET removed_at = now() - interval '1 day' WHERE id = '00000000-0000-0000-0000-0000000000e1'$$,
   '42501', NULL, 'admin cannot change removed_at of a removed box directly');
-SELECT lives_ok($$UPDATE stations SET point_label = 'admin-hall' WHERE id = '00000000-0000-0000-0000-0000000000e3'$$,
-  'control: admin can still change the point label of an eliminated station');
+SELECT throws_ok($$UPDATE stations SET point_label = 'admin-hall' WHERE id = '00000000-0000-0000-0000-0000000000e3'$$,
+  'SV014', NULL, 'control: admin can still change the point label of an eliminated station — M37: direct label edit is refused (SV014 fires only on a row RLS lets through)');
 SELECT throws_ok($$UPDATE stations SET status = 'active' WHERE id = '00000000-0000-0000-0000-0000000000e3'$$,
   '42501', NULL, 'admin cannot change an eliminated station directly');
 SELECT throws_ok($$UPDATE stations SET status = 'removed', removed_at = now() WHERE id = '00000000-0000-0000-0000-0000000000e2'$$,
@@ -139,9 +139,9 @@ SELECT is((SELECT code FROM stations WHERE id = '00000000-0000-0000-0000-0000000
 -- =====================================================================
 SET LOCAL ROLE authenticated;
 SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a3', true);
-SELECT lives_ok($$UPDATE stations SET point_label = 'rec-ig1' WHERE id = '00000000-0000-0000-0000-0000000000b1'$$,
-  'control: recorder can change the point label of IG-1');
-SELECT is(pg_temp.label('00000000-0000-0000-0000-0000000000b1'), 'rec-ig1', 'control: the label change really saved');
+SELECT throws_ok($$UPDATE stations SET point_label = 'rec-ig1' WHERE id = '00000000-0000-0000-0000-0000000000b1'$$,
+  'SV014', NULL, 'control: recorder can change the point label of IG-1 — M37: direct label edit is refused (SV014 fires only on a row RLS lets through)');
+SELECT is(pg_temp.label('00000000-0000-0000-0000-0000000000b1'), NULL, 'control: the refused direct label edit saved nothing (M37)');
 SELECT throws_ok($$UPDATE stations SET status = 'lost' WHERE id = '00000000-0000-0000-0000-0000000000b1'$$,
   '42501', NULL, 'recorder cannot mark a station lost directly');
 SELECT throws_ok($$UPDATE stations SET status = 'withdrawn', removed_at = now() WHERE id = '00000000-0000-0000-0000-0000000000b1'$$,
@@ -149,8 +149,8 @@ SELECT throws_ok($$UPDATE stations SET status = 'withdrawn', removed_at = now() 
 SELECT throws_ok($$UPDATE stations SET status = 'withdrawn' WHERE id = '00000000-0000-0000-0000-0000000000b1'$$,
   '42501', NULL, 'recorder cannot mark a station withdrawn directly (status only)');
 -- IG-5 หายจากข้อมูลเดิม: คืนตรงไม่ได้
-SELECT lives_ok($$UPDATE stations SET point_label = 'rec-ig5' WHERE id = '00000000-0000-0000-0000-0000000000b5'$$,
-  'control: recorder can change the point label of the lost IG-5');
+SELECT throws_ok($$UPDATE stations SET point_label = 'rec-ig5' WHERE id = '00000000-0000-0000-0000-0000000000b5'$$,
+  'SV014', NULL, 'control: recorder can change the point label of the lost IG-5 — M37: direct label edit is refused (SV014 fires only on a row RLS lets through)');
 SELECT throws_ok($$UPDATE stations SET status = 'active' WHERE id = '00000000-0000-0000-0000-0000000000b5'$$,
   '42501', NULL, 'recorder cannot bring a lost station back directly');
 SELECT throws_ok($$UPDATE stations SET status = 'withdrawn' WHERE id = '00000000-0000-0000-0000-0000000000b5'$$,

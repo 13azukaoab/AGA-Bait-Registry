@@ -43,12 +43,12 @@ GRANT EXECUTE ON FUNCTION pg_temp.payload(uuid, date, jsonb, jsonb) TO PUBLIC;
 -- =====================================================================
 SET LOCAL ROLE authenticated;
 SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a2', true);
-SELECT lives_ok($$UPDATE stations SET point_label = 'admin-ig1' WHERE id = '00000000-0000-0000-0000-0000000000b1'$$,
-  'control: admin can change the point label of IG-1 (row visible)');
-SELECT lives_ok($$UPDATE stations SET point_label = 'admin-ig3' WHERE id = '00000000-0000-0000-0000-0000000000b3'$$,
-  'control: admin can change the point label of the lost IG-3');
-SELECT lives_ok($$UPDATE stations SET point_label = 'admin-ig4' WHERE id = '00000000-0000-0000-0000-0000000000b4'$$,
-  'control: admin can change the point label of the withdrawn IG-4');
+SELECT throws_ok($$UPDATE stations SET point_label = 'admin-ig1' WHERE id = '00000000-0000-0000-0000-0000000000b1'$$,
+  'SV014', NULL, 'control: admin can change the point label of IG-1 (row visible) — M37: direct label edit is refused (SV014 fires only on a row RLS lets through)');
+SELECT throws_ok($$UPDATE stations SET point_label = 'admin-ig3' WHERE id = '00000000-0000-0000-0000-0000000000b3'$$,
+  'SV014', NULL, 'control: admin can change the point label of the lost IG-3 — M37: direct label edit is refused (SV014 fires only on a row RLS lets through)');
+SELECT throws_ok($$UPDATE stations SET point_label = 'admin-ig4' WHERE id = '00000000-0000-0000-0000-0000000000b4'$$,
+  'SV014', NULL, 'control: admin can change the point label of the withdrawn IG-4 — M37: direct label edit is refused (SV014 fires only on a row RLS lets through)');
 SELECT throws_ok($$UPDATE stations SET status = 'lost' WHERE id = '00000000-0000-0000-0000-0000000000b1'$$,
   '42501', NULL, 'admin cannot mark a station lost directly');
 SELECT throws_ok($$UPDATE stations SET status = 'withdrawn' WHERE id = '00000000-0000-0000-0000-0000000000b1'$$,
