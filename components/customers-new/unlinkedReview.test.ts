@@ -11,6 +11,7 @@ import {
   buildLinkParams,
   canReviewUnlinked,
   closeUnlinkedRenewal,
+  filterByContractNo,
   linkRenewalContract,
   normalizeCloseNote,
   unlinkedStateOf,
@@ -107,5 +108,21 @@ describe("แปล error (M28b)", () => {
     expect(describeDbError({ code: "42501" }, "link")).toContain("เชื่อมสัญญาเก่า");
     expect(describeDbError({ code: "42501" }, "close")).toContain("ปิดรายการ");
     expect(describeDbError({ code: "42501" }, "close")).toContain("ขอบเขต");
+  });
+});
+
+describe("filterByContractNo", () => {
+  const list = [{ contractNo: "AGA-2026-001" }, { contractNo: "agb-77" }, { contractNo: "X-100" }];
+  it("ว่าง/ช่องว่าง = ทั้งหมด", () => {
+    expect(filterByContractNo(list, "")).toHaveLength(3);
+    expect(filterByContractNo(list, "   ")).toHaveLength(3);
+  });
+  it("ไม่สนตัวพิมพ์ + substring + ตัดช่องว่างหัวท้าย", () => {
+    expect(filterByContractNo(list, " aga-")).toEqual([{ contractNo: "AGA-2026-001" }]);
+    expect(filterByContractNo(list, "AGB")).toEqual([{ contractNo: "agb-77" }]);
+    expect(filterByContractNo(list, "100")).toEqual([{ contractNo: "X-100" }]);
+  });
+  it("ไม่เจอ = ว่าง", () => {
+    expect(filterByContractNo(list, "zzz")).toEqual([]);
   });
 });

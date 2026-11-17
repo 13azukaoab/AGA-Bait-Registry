@@ -94,3 +94,28 @@ export async function searchRenewalCandidates(
   }
   return { results, error: null };
 }
+
+/**
+ * สัญญาอื่นทั้งหมดของลูกค้า "คนเดียว" (ใช้ในกล่องเชื่อมสัญญาเก่า M28b) · ไม่ค้นด้วยข้อความ
+ * (ชื่อที่มีวงเล็บถูก sanitizeSearch ตัดจนค้นไม่เจอ) · ตัดสัญญาปัจจุบันออก
+ */
+export async function loadCustomerOtherContracts(
+  supabase: SupabaseClient,
+  customerId: string,
+  contractId: string,
+): Promise<{ results: RenewalLink[]; error: string | null }> {
+  const res = await supabase
+    .from("contracts")
+    .select(COLUMNS)
+    .eq("customer_id", customerId)
+    .neq("id", contractId)
+    .order("start_date", { ascending: false })
+    .limit(MAX_RESULTS);
+  if (res.error) return { results: [], error: "ค้นหาไม่สำเร็จ ลองอีกครั้ง" };
+  const results: RenewalLink[] = [];
+  for (const r of (res.data ?? []) as unknown as ContractWithCustomer[]) {
+    const link = toLink(r);
+    if (link) results.push(link);
+  }
+  return { results, error: null };
+}
