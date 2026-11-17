@@ -390,3 +390,84 @@ describe("syncDashboardData — ส่งขึ้น repo Dashboard (SPEC §9.2
     expect(log.durationMs).toBe(500);
   });
 });
+
+describe("syncDashboardData — M27 รหัส error · เดือนที่เปลี่ยน · กันเดือนหาย", () => {
+  /** ไฟล์ 2 เดือน (SEP.26 + OCT.26) — ค่า OCT.26 เปลี่ยนตาม value */
+  function twoMonths(octValue: number): DashboardData {
+    return buildDashboardData({
+      computed: { "2026-09": [sample(50)], "2026-10": [sample(octValue)] },
+    });
+  }
+
+  it("สำเร็จ = บอกเดือนที่ข้อมูลเปลี่ยนเท่านั้น (changedMonths)", async () => {
+    const oldJson = serializeDashboardData(twoMonths(100));
+    const { fetchImpl } = makeFetch({
+      files: { "dashboard_data.json": oldJson, "index.html": makeIndexHtml(oldJson) },
+    });
+    const log = await syncDashboardData(twoMonths(200), { target, token: TOKEN, fetchImpl });
+    expect(log.result).toBe("ok");
+    expect(log.changedMonths).toEqual(["OCT.26"]);
+    expect(log.errorCode).toBeUndefined();
+  });
+
+  it("ข้าม = changedMonths ว่าง", async () => {
+    const json = serializeDashboardData(twoMonths(100));
+    const { fetchImpl } = makeFetch({
+      files: { "dashboard_data.json": json, "index.html": makeIndexHtml(json) },
+    });
+    const log = await syncDashboardData(twoMonths(100), { target, token: TOKEN, fetchImpl });
+    expect(log.result).toBe("skip");
+    expect(log.changedMonths).toEqual([]);
+  });
+
+  it("ไฟล์ใหม่ไม่มีเดือนที่ Dashboard มีอยู่ = ล้มเหลว months_dropped ไม่ commit", async () => {
+    const oldJson = serializeDashboardData(twoMonths(100));
+    const { fetchImpl, calls } = makeFetch({
+      files: { "dashboard_data.json": oldJson, "index.html": makeIndexHtml(oldJson) },
+    });
+    // ไฟล์ใหม่มีแค่ OCT.26 (เช่น ลืมนำเข้า legacy) → SEP.26 จะหาย
+    const log = await syncDashboardData(makeData(999), { target, token: TOKEN, fetchImpl });
+    expect(log.result).toBe("fail");
+    expect(log.errorCode).toBe("months_dropped");
+    expect(log.error).toContain("SEP.26");
+    expect(calls.every((c) => c.method === "GET")).toBe(true);
+  });
+
+  it("เดือนหายเฉพาะในสำเนา .json ก็ไม่ส่ง", async () => {
+    const twoJson = serializeDashboardData(twoMonths(100));
+    const oneJson = serializeDashboardData(makeData(100));
+    const { fetchImpl, calls } = makeFetch({
+      files: { "dashboard_data.json": twoJson, "index.html": makeIndexHtml(oneJson) },
+    });
+    const log = await syncDashboardData(makeData(200), { target, token: TOKEN, fetchImpl });
+    expect(log.errorCode).toBe("months_dropped");
+    expect(calls.every((c) => c.method === "GET")).toBe(true);
+  });
+
+  it("GitHub 401 → errorCode github_401", async () => {
+    const json = serializeDashboardData(makeData(100));
+    const { fetchImpl } = makeFetch({
+      files: { "dashboard_data.json": json, "index.html": makeIndexHtml(json) },
+      fail: { pathIncludes: "/contents/", status: 401, message: "Bad credentials" },
+    });
+    const log = await syncDashboardData(makeData(200), { target, token: TOKEN, fetchImpl });
+    expect(log.errorCode).toBe("github_401");
+    expect(log.changedMonths).toEqual([]);
+  });
+
+  it("ไฟล์ผิดรูปแบบ → invalid_data · ไม่มี index.html → index_missing · ไม่มี const DATA → index_marker_missing", async () => {
+    const bad = { "OCT.26": [] } as DashboardData;
+    const r1 = await syncDashboardData(bad, { target, token: TOKEN, fetchImpl: makeFetch({ files: {} }).fetchImpl });
+    expect(r1.errorCode).toBe("invalid_data");
+
+    const r2 = await syncDashboardData(makeData(1), { target, token: TOKEN, fetchImpl: makeFetch({ files: {} }).fetchImpl });
+    expect(r2.errorCode).toBe("index_missing");
+
+    const r3 = await syncDashboardData(makeData(1), {
+      target,
+      token: TOKEN,
+      fetchImpl: makeFetch({ files: { "index.html": "<html>no data</html>" } }).fetchImpl,
+    });
+    expect(r3.errorCode).toBe("index_marker_missing");
+  });
+});

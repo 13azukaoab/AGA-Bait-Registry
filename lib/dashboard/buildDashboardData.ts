@@ -91,6 +91,30 @@ export interface BuildDashboardDataOptions {
    * ตั้ง `false` เมื่ออยากเห็นเฉพาะข้อมูลที่กรอกจริง (เช่น หน้าตรวจความครบก่อนปิดเดือน)
    */
   carryForwardProvince?: boolean;
+  /**
+   * M27: เดือนแรกที่ใช้ระบบ `YYYY-MM` — อ่านจาก `go_live_month()` ในฐานข้อมูล (ผู้เรียกส่งมา · ห้าม hardcode)
+   * ใส่แล้วบังคับขอบเขตแหล่งข้อมูล (SPEC §9.1):
+   *   - `legacy`  ใช้เฉพาะเดือน **ก่อน** go-live
+   *   - `computed` / `manual` ใช้เฉพาะเดือน go-live **เป็นต้นไป**
+   * แถวที่อยู่นอกขอบเขตถูกตัดทิ้ง (ไม่ทับกัน) · ไม่ใส่ = ใช้ทุกแถวแบบเดิม
+   */
+  goLiveMonth?: string;
+}
+
+/** ตัดแถวนอกขอบเขตเดือน go-live ออก (M27) */
+function limitSources(sources: DashboardSources, goLiveMonth: string): DashboardSources {
+  if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(goLiveMonth)) {
+    throw new Error(`buildDashboardData: goLiveMonth ต้องเป็น YYYY-MM (ได้ "${goLiveMonth}")`);
+  }
+  const pick = (rows: MonthlyRows | undefined, keep: (month: string) => boolean) =>
+    rows
+      ? Object.fromEntries(Object.entries(rows).filter(([month]) => keep(month)))
+      : undefined;
+  return {
+    legacy: pick(sources.legacy, (m) => m < goLiveMonth),
+    computed: pick(sources.computed, (m) => m >= goLiveMonth),
+    manual: pick(sources.manual, (m) => m >= goLiveMonth),
+  };
 }
 
 /**
@@ -104,10 +128,12 @@ export interface BuildDashboardDataOptions {
  * throw เมื่อ: ชื่อสาขาสะกดผิด/ไม่รู้จัก, สาขาซ้ำในแหล่งเดียวกันของเดือนเดียวกัน
  */
 export function buildDashboardData(
-  sources: DashboardSources,
+  input: DashboardSources,
   options: BuildDashboardDataOptions = {},
 ): DashboardData {
   const carryForward = options.carryForwardProvince ?? true;
+  const sources =
+    options.goLiveMonth === undefined ? input : limitSources(input, options.goLiveMonth);
   const out: DashboardData = {};
 
   /** ค่าล่าสุดที่ "มีข้อมูลจริง" ของแต่ละสาขาต่างจังหวัด (ไม่เก็บค่าที่ยกมา — ผลลัพธ์เท่ากันแต่ตามรอยง่ายกว่า) */
