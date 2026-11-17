@@ -3,7 +3,7 @@
 /**
  * UnlinkedReviewDialog — กล่อง "เชื่อมสัญญาเก่า (Renew)" ของแถวที่บันทึกแล้วและยังไม่ผูกสัญญาเก่า (M28b · mockup FINAL)
  * (host + admin) · สองมุมมอง:
- *   1) ค้นหา → เลือกสัญญาเก่าของ "ลูกค้าคนเดียวกัน" แล้วเชื่อม (RPC link_renewal_contract) · ใบที่เกินช่วง Renew 2 เดือนกดไม่ได้
+ *   1) แสดงสัญญาอื่นของลูกค้านี้ทันที (กรองด้วยเลขที่สัญญา) → เลือกสัญญาเก่าของ "ลูกค้าคนเดียวกัน" แล้วเชื่อม (RPC link_renewal_contract) · ใบที่เกินช่วง Renew 2 เดือนกดไม่ได้
  *   2) "ไม่มีสัญญาเก่าในระบบ" → หมายเหตุ (ไม่บังคับ + คำเตือนห้ามใส่ข้อมูลส่วนตัว) → ปิดรายการ (RPC close_unlinked_renewal)
  * สิทธิ์จริงอยู่ที่ DB (admin นอกขอบเขต = 42501 แปลเป็นไทยใน errors.ts) · สำเร็จแล้วเรียก `onDone` ให้หน้าโหลดแถวใหม่
  * ห้าม log หมายเหตุ/ข้อมูลลูกค้า
@@ -15,13 +15,14 @@ import { Alert, Button } from "@/components/ui";
 
 import { describeDbError } from "./errors";
 import { Modal } from "./Modal";
-import { searchRenewalCandidates } from "./renewal";
+import { loadCustomerOtherContracts } from "./renewal";
 import { renewGapBlockReason } from "./renewRules";
 import type { RenewalLink, SavedContract } from "./types";
 import {
   CLOSE_NOTE_MAX,
   CLOSE_NOTE_WARNING,
   closeUnlinkedRenewal,
+  filterByContractNo,
   linkRenewalContract,
   unlinkedStateOf,
 } from "./unlinkedReview";
@@ -42,31 +43,27 @@ export function UnlinkedReviewDialog({
 }) {
   const closed = unlinkedStateOf(contract) === "closed";
   const [view, setView] = useState<"search" | "close">("search");
-  const [q, setQ] = useState(contract.customerName);
+  const [q, setQ] = useState("");
   const [results, setResults] = useState<RenewalLink[] | null>(null);
   const [searchError, setSearchError] = useState<string | null>(null);
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
 
+  // โหลดสัญญาอื่นของลูกค้าคนนี้ทันทีที่เปิดกล่อง (ไม่ค้นด้วยชื่อ — ชื่อมีวงเล็บแล้วค้นไม่เจอ)
   useEffect(() => {
-    if (view !== "search" || q.trim().length < 2) {
-      setResults(null);
-      return;
-    }
     let cancelled = false;
-    const timer = window.setTimeout(async () => {
-      const res = await searchRenewalCandidates(supabase, q);
+    void loadCustomerOtherContracts(supabase, contract.customerId, contract.contractId).then((res) => {
       if (cancelled) return;
       setSearchError(res.error);
-      // DB บังคับลูกค้าคนเดียวกัน (M9) · และห้ามเลือกตัวเอง → กรองให้เหลือที่เลือกได้จริง
-      setResults(res.results.filter((r) => r.customerId === contract.customerId && r.contractId !== contract.contractId));
-    }, 300);
+      setResults(res.results);
+    });
     return () => {
       cancelled = true;
-      window.clearTimeout(timer);
     };
-  }, [q, supabase, view, contract.customerId, contract.contractId]);
+  }, [supabase, contract.customerId, contract.contractId]);
+
+  const shown = results ? filterByContractNo(results, q) : null;
 
   async function link(r: RenewalLink) {
     if (busy) return;
@@ -113,23 +110,27 @@ export function UnlinkedReviewDialog({
         {view === "search" ? (
           <>
             <label className="flex flex-col gap-1">
-              <span className="text-[11px] text-fg-muted">ค้นหาเลขที่สัญญาเดิม (ลูกค้าคนเดียวกับสัญญานี้)</span>
+              <span className="text-[11px] text-fg-muted">สัญญาอื่นของลูกค้ารายนี้ · กรองด้วยเลขที่สัญญา</span>
               <input
                 autoFocus
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
                 autoComplete="off"
-                placeholder="พิมพ์อย่างน้อย 2 ตัวอักษร"
+                placeholder="กรองด้วยเลขที่สัญญา"
                 className="w-full rounded-lg border border-border-strong bg-surface px-2.5 py-1.5 text-[13px] text-fg placeholder:text-fg-faint focus-visible:outline-2 focus-visible:outline-accent"
               />
             </label>
             {searchError ? <Alert variant="danger">{searchError}</Alert> : null}
+            {results === null && !searchError ? <p className="m-0 text-fg-muted">กำลังโหลด…</p> : null}
             {results && results.length === 0 ? (
-              <p className="m-0 text-fg-muted">ไม่พบสัญญาเก่าของลูกค้ารายนี้ที่ตรงกับ “{q.trim()}”</p>
+              <p className="m-0 text-fg-muted">ลูกค้ารายนี้ไม่มีสัญญาอื่นในระบบ</p>
             ) : null}
-            {results && results.length > 0 ? (
+            {shown && results && results.length > 0 && shown.length === 0 ? (
+              <p className="m-0 text-fg-muted">ไม่พบเลขที่สัญญาที่ตรงกับ “{q.trim()}”</p>
+            ) : null}
+            {shown && shown.length > 0 ? (
               <ul className="m-0 flex list-none flex-col gap-1 p-0">
-                {results.map((r) => {
+                {shown.map((r) => {
                   const blocked = renewGapBlockReason(r, contract.startDate);
                   return (
                     <li key={r.contractId}>

@@ -14,7 +14,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 import type { UserRole } from "@/lib/db/types";
 
-import type { SavedContract } from "./types";
+import type { RenewalLink, SavedContract } from "./types";
 
 /** ข้อความเตือนใต้ช่องหมายเหตุ (mockup FINAL — หัวหน้างานอ่านได้) */
 export const CLOSE_NOTE_WARNING =
@@ -76,4 +76,11 @@ export async function linkRenewalContract(
 ): Promise<ReviewResult> {
   const { error } = await supabase.rpc("link_renewal_contract", buildLinkParams(contractId, oldContractId));
   return error ? { ok: false, error } : { ok: true };
+}
+
+/** กรองรายการสัญญาที่โหลดมาแล้วด้วยเลขที่สัญญา (ไม่สนตัวพิมพ์ · ช่องว่างหัวท้ายถูกตัด · ว่าง = ทั้งหมด) */
+export function filterByContractNo<T extends Pick<RenewalLink, "contractNo">>(list: readonly T[], query: string): T[] {
+  const q = query.trim().toLowerCase();
+  if (q === "") return [...list];
+  return list.filter((r) => r.contractNo.toLowerCase().includes(q));
 }
