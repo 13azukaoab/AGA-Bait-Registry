@@ -38,22 +38,22 @@ CREATE FUNCTION pg_temp.id(p text) RETURNS uuid LANGUAGE sql IMMUTABLE AS
   $$ SELECT ('00000000-0000-0000-0000-0000000000' || p)::uuid $$;
 GRANT EXECUTE ON FUNCTION pg_temp.id(text) TO PUBLIC;
 
-INSERT INTO contracts (id, customer_id, contract_no, start_date, term_years, value_total, stations_initialized_at,
+INSERT INTO contracts (id, customer_id, contract_no, start_date, term_months, value_total, stations_initialized_at,
                        status, cancelled_at) VALUES
-  (pg_temp.id('d1'), pg_temp.id('c1'), 'M-1', pg_temp.m(-18), 1, 150000, pg_temp.m(-18), 'active', NULL),
-  (pg_temp.id('d2'), pg_temp.id('c2'), 'M-2', pg_temp.m(-18), 1, 50000,  pg_temp.m(-18), 'active', NULL),
-  (pg_temp.id('d3'), pg_temp.id('c3'), 'M-3', pg_temp.m(-6),  1, 24000,  pg_temp.m(-6),  'active', NULL),
-  (pg_temp.id('d4'), pg_temp.id('c1'), 'M-4', pg_temp.m(-18), 1, 24000,  pg_temp.m(-18), 'cancelled', pg_temp.m(-10)),
-  (pg_temp.id('d5'), pg_temp.id('c1'), 'M-5', pg_temp.m(-18), 1, 24000,  NULL,           'active', NULL),
-  (pg_temp.id('d6'), pg_temp.id('c1'), 'M-6', pg_temp.m(-18), 1, 24000,  pg_temp.m(-18), 'closed', NULL),
-  (pg_temp.id('d7'), pg_temp.id('c4'), 'M-7', pg_temp.m(-30), 1, 24000,  pg_temp.m(-30), 'active', NULL),
-  (pg_temp.id('d8'), pg_temp.id('c1'), 'M-8', pg_temp.m(-18), 1, 24000,  pg_temp.m(-10), 'active', NULL),
-  (pg_temp.id('da'), pg_temp.id('c1'), 'M-A', pg_temp.m(-18), 1, 24000,  pg_temp.m(-18), 'active', NULL),
-  (pg_temp.id('db'), pg_temp.id('c4'), 'M-B', pg_temp.m(-30), 1, 24000,  pg_temp.m(-30), 'active', NULL),
-  (pg_temp.id('dc'), pg_temp.id('c1'), 'M-C', pg_temp.m(-18), 1, 24000,  pg_temp.m(-18), 'closed', NULL),
-  (pg_temp.id('dd'), pg_temp.id('c1'), 'M-R', pg_temp.m(-18), 1, 24000,  pg_temp.m(-18), 'active', NULL),
-  (pg_temp.id('df'), pg_temp.id('c1'), 'M-F', pg_temp.m(-18), 1, 24000,  pg_temp.m(-18), 'active', NULL),
-  (pg_temp.id('10'), pg_temp.id('c1'), 'M-10', pg_temp.m(-18), 1, 24000, pg_temp.m(-18), 'active', NULL);
+  (pg_temp.id('d1'), pg_temp.id('c1'), 'M-1', pg_temp.m(-18), 12, 150000, pg_temp.m(-18), 'active', NULL),
+  (pg_temp.id('d2'), pg_temp.id('c2'), 'M-2', pg_temp.m(-18), 12, 50000,  pg_temp.m(-18), 'active', NULL),
+  (pg_temp.id('d3'), pg_temp.id('c3'), 'M-3', pg_temp.m(-6),  12, 24000,  pg_temp.m(-6),  'active', NULL),
+  (pg_temp.id('d4'), pg_temp.id('c1'), 'M-4', pg_temp.m(-18), 12, 24000,  pg_temp.m(-18), 'cancelled', pg_temp.m(-10)),
+  (pg_temp.id('d5'), pg_temp.id('c1'), 'M-5', pg_temp.m(-18), 12, 24000,  NULL,           'active', NULL),
+  (pg_temp.id('d6'), pg_temp.id('c1'), 'M-6', pg_temp.m(-18), 12, 24000,  pg_temp.m(-18), 'closed', NULL),
+  (pg_temp.id('d7'), pg_temp.id('c4'), 'M-7', pg_temp.m(-30), 12, 24000,  pg_temp.m(-30), 'active', NULL),
+  (pg_temp.id('d8'), pg_temp.id('c1'), 'M-8', pg_temp.m(-18), 12, 24000,  pg_temp.m(-10), 'active', NULL),
+  (pg_temp.id('da'), pg_temp.id('c1'), 'M-A', pg_temp.m(-18), 12, 24000,  pg_temp.m(-18), 'active', NULL),
+  (pg_temp.id('db'), pg_temp.id('c4'), 'M-B', pg_temp.m(-30), 12, 24000,  pg_temp.m(-30), 'active', NULL),
+  (pg_temp.id('dc'), pg_temp.id('c1'), 'M-C', pg_temp.m(-18), 12, 24000,  pg_temp.m(-18), 'closed', NULL),
+  (pg_temp.id('dd'), pg_temp.id('c1'), 'M-R', pg_temp.m(-18), 12, 24000,  pg_temp.m(-18), 'active', NULL),
+  (pg_temp.id('df'), pg_temp.id('c1'), 'M-F', pg_temp.m(-18), 12, 24000,  pg_temp.m(-18), 'active', NULL),
+  (pg_temp.id('10'), pg_temp.id('c1'), 'M-10', pg_temp.m(-18), 12, 24000, pg_temp.m(-18), 'active', NULL);
 -- d1: m(-15) มี routine (ไม่ตก) · เดือนอื่นตก
 INSERT INTO visits (id, contract_id, visit_date, visit_type, start_time, end_time) VALUES
   (pg_temp.id('e1'), pg_temp.id('d1'), pg_temp.m(-15) + 9, 'routine', '09:00', '10:00');
@@ -363,9 +363,9 @@ SELECT throws_ok(pg_temp.rs('d8', pg_temp.m(-17), 'x'), 'MS001', NULL,
 SELECT lives_ok(pg_temp.rs('dd', pg_temp.m(-14), 'ยินยอม'), 'before renewal: waive a month');
 SELECT lives_ok(pg_temp.mk('0a', 'dd', pg_temp.td(), pg_temp.m(-13)), 'before renewal: record a make-up');
 RESET ROLE;
-INSERT INTO contracts (id, customer_id, contract_no, start_date, term_years, value_total, stations_initialized_at,
+INSERT INTO contracts (id, customer_id, contract_no, start_date, term_months, value_total, stations_initialized_at,
                        renewed_from_contract_id)
-VALUES (pg_temp.id('de'), pg_temp.id('c1'), 'M-R2', pg_temp.m(-6), 1, 24000, pg_temp.m(-6), pg_temp.id('dd'));
+VALUES (pg_temp.id('de'), pg_temp.id('c1'), 'M-R2', pg_temp.m(-6), 12, 24000, pg_temp.m(-6), pg_temp.id('dd'));
 SELECT ok(public.contract_is_renewed(pg_temp.id('dd')) AND NOT public.contract_is_renewed(pg_temp.id('de')),
   'contract_is_renewed: the old contract is renewed, the new one is not');
 SELECT is(pg_temp.res('dd', pg_temp.m(-14)), 'waived|-', 'a waiver made before renewal is kept');
@@ -434,12 +434,12 @@ SELECT is((SELECT count(*)::int FROM audit_log WHERE table_name = 'missed_servic
 -- =====================================================================
 SELECT col_has_check('public', 'contracts', ARRAY['status', 'cancelled_at'],
   'contracts has a CHECK tying status cancelled to cancelled_at');
-INSERT INTO contracts (id, customer_id, contract_no, start_date, term_years, value_total, status)
-VALUES (pg_temp.id('0e'), pg_temp.id('c1'), 'M-E', pg_temp.m(-18), 1, 24000, 'cancelled');
+INSERT INTO contracts (id, customer_id, contract_no, start_date, term_months, value_total, status)
+VALUES (pg_temp.id('0e'), pg_temp.id('c1'), 'M-E', pg_temp.m(-18), 12, 24000, 'cancelled');
 SELECT ok((SELECT cancelled_at IS NOT NULL FROM contracts WHERE id = pg_temp.id('0e')),
   'inserting a cancelled contract without a date fills cancelled_at');
-SELECT throws_ok($$INSERT INTO contracts (id, customer_id, contract_no, start_date, term_years, value_total, status, cancelled_at)
-                   VALUES (pg_temp.id('0f'), pg_temp.id('c1'), 'M-X', pg_temp.m(-18), 1, 24000, 'active', now())$$,
+SELECT throws_ok($$INSERT INTO contracts (id, customer_id, contract_no, start_date, term_months, value_total, status, cancelled_at)
+                   VALUES (pg_temp.id('0f'), pg_temp.id('c1'), 'M-X', pg_temp.m(-18), 12, 24000, 'active', now())$$,
   '23514', NULL, 'an active contract with cancelled_at is refused (no guessing)');
 SET LOCAL ROLE authenticated;
 SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a1', true);

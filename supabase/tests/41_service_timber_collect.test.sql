@@ -56,13 +56,13 @@ INSERT INTO customers (id, branch_id, name) VALUES
   ('00000000-0000-0000-0000-0000000000c1', (SELECT id FROM branches WHERE division = 'central'  ORDER BY name LIMIT 1), 'Central'),
   ('00000000-0000-0000-0000-0000000000c2', (SELECT id FROM branches WHERE division = 'province' ORDER BY name LIMIT 1), 'Province');
 -- d1 = หมดสัญญาแล้ว (เก็บ IG) · d2 = ยังใช้งาน (เปลี่ยนไม้ + เก็บไม่ได้) · d3 = หมดแล้วแต่อยู่สาขาต่างจังหวัด (นอกขอบเขต recorder)
-INSERT INTO contracts (id, customer_id, contract_no, start_date, term_years, value_total, stations_initialized_at) VALUES
-  ('00000000-0000-0000-0000-0000000000d1', '00000000-0000-0000-0000-0000000000c1', 'TC-1', '2025-01-15', 1, 50000, now()),
-  ('00000000-0000-0000-0000-0000000000d2', '00000000-0000-0000-0000-0000000000c1', 'TC-2', current_date - 400, 3, 90000, now()),
-  ('00000000-0000-0000-0000-0000000000d3', '00000000-0000-0000-0000-0000000000c2', 'TC-3', '2025-01-15', 1, 50000, now());
+INSERT INTO contracts (id, customer_id, contract_no, start_date, term_months, value_total, stations_initialized_at) VALUES
+  ('00000000-0000-0000-0000-0000000000d1', '00000000-0000-0000-0000-0000000000c1', 'TC-1', '2025-01-15', 12, 50000, now()),
+  ('00000000-0000-0000-0000-0000000000d2', '00000000-0000-0000-0000-0000000000c1', 'TC-2', current_date - 400, 36, 90000, now()),
+  ('00000000-0000-0000-0000-0000000000d3', '00000000-0000-0000-0000-0000000000c2', 'TC-3', '2025-01-15', 12, 50000, now());
 -- d4 = สัญญา Renew ของ d1 (ยังไม่ตั้งสถานี) — ทดสอบย้ายสถานีที่เก็บแล้ว (ส่วน D)
-INSERT INTO contracts (id, customer_id, contract_no, start_date, term_years, value_total, renewed_from_contract_id) VALUES
-  ('00000000-0000-0000-0000-0000000000d4', '00000000-0000-0000-0000-0000000000c1', 'TC-4', '2026-01-15', 1, 50000,
+INSERT INTO contracts (id, customer_id, contract_no, start_date, term_months, value_total, renewed_from_contract_id) VALUES
+  ('00000000-0000-0000-0000-0000000000d4', '00000000-0000-0000-0000-0000000000c1', 'TC-4', '2026-01-15', 12, 50000,
    '00000000-0000-0000-0000-0000000000d1');
 INSERT INTO stations (id, contract_id, type, station_no, status) VALUES
   -- d1: IG-1..6 ใช้งาน · IG-7 หาย · IC-1 · AG-1

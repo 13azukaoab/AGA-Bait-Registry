@@ -40,16 +40,16 @@ INSERT INTO profiles (user_id, display_name, username, role, division_scope) VAL
 INSERT INTO customers (id, branch_id, name) VALUES
   ('00000000-0000-0000-0000-0000000000c1', (SELECT id FROM branches WHERE division = 'central'  ORDER BY name LIMIT 1), 'Central'),
   ('00000000-0000-0000-0000-0000000000c2', (SELECT id FROM branches WHERE division = 'province' ORDER BY name LIMIT 1), 'Province');
-INSERT INTO contracts (id, customer_id, contract_no, start_date, term_years, value_total, renewed_from_contract_id) VALUES
-  ('00000000-0000-0000-0000-0000000000d1', '00000000-0000-0000-0000-0000000000c1', 'OLD',  '2025-01-15', 1, 50000, NULL),
-  ('00000000-0000-0000-0000-0000000000d3', '00000000-0000-0000-0000-0000000000c1', 'X',    '2026-01-15', 1, 50000, NULL),
-  ('00000000-0000-0000-0000-0000000000d4', '00000000-0000-0000-0000-0000000000c2', 'PROV', '2026-01-15', 1, 50000, NULL),
-  ('00000000-0000-0000-0000-0000000000d6', '00000000-0000-0000-0000-0000000000c1', 'X2',   '2026-01-15', 1, 50000, NULL);
-INSERT INTO contracts (id, customer_id, contract_no, start_date, term_years, value_total, status, cancelled_at) VALUES
-  ('00000000-0000-0000-0000-0000000000d7', '00000000-0000-0000-0000-0000000000c1', 'CANCEL', '2026-01-15', 1, 50000, 'cancelled', now());
-INSERT INTO contracts (id, customer_id, contract_no, start_date, term_years, value_total, renewed_from_contract_id) VALUES
-  ('00000000-0000-0000-0000-0000000000d2', '00000000-0000-0000-0000-0000000000c1', 'NEW',  '2026-01-15', 1, 50000, '00000000-0000-0000-0000-0000000000d1'),
-  ('00000000-0000-0000-0000-0000000000d5', '00000000-0000-0000-0000-0000000000c1', 'NEW3', '2026-01-15', 1, 50000, '00000000-0000-0000-0000-0000000000d1');
+INSERT INTO contracts (id, customer_id, contract_no, start_date, term_months, value_total, renewed_from_contract_id) VALUES
+  ('00000000-0000-0000-0000-0000000000d1', '00000000-0000-0000-0000-0000000000c1', 'OLD',  '2025-01-15', 12, 50000, NULL),
+  ('00000000-0000-0000-0000-0000000000d3', '00000000-0000-0000-0000-0000000000c1', 'X',    '2026-01-15', 12, 50000, NULL),
+  ('00000000-0000-0000-0000-0000000000d4', '00000000-0000-0000-0000-0000000000c2', 'PROV', '2026-01-15', 12, 50000, NULL),
+  ('00000000-0000-0000-0000-0000000000d6', '00000000-0000-0000-0000-0000000000c1', 'X2',   '2026-01-15', 12, 50000, NULL);
+INSERT INTO contracts (id, customer_id, contract_no, start_date, term_months, value_total, status, cancelled_at) VALUES
+  ('00000000-0000-0000-0000-0000000000d7', '00000000-0000-0000-0000-0000000000c1', 'CANCEL', '2026-01-15', 12, 50000, 'cancelled', now());
+INSERT INTO contracts (id, customer_id, contract_no, start_date, term_months, value_total, renewed_from_contract_id) VALUES
+  ('00000000-0000-0000-0000-0000000000d2', '00000000-0000-0000-0000-0000000000c1', 'NEW',  '2026-01-15', 12, 50000, '00000000-0000-0000-0000-0000000000d1'),
+  ('00000000-0000-0000-0000-0000000000d5', '00000000-0000-0000-0000-0000000000c1', 'NEW3', '2026-01-15', 12, 50000, '00000000-0000-0000-0000-0000000000d1');
 -- สัญญาเก่า: IG-1..3 ใช้งาน · IG-4 หาย · AG-1 ใช้งาน
 INSERT INTO stations (id, contract_id, type, station_no, status) VALUES
   ('00000000-0000-0000-0000-0000000000e1', '00000000-0000-0000-0000-0000000000d1', 'IG', 1, 'active'),

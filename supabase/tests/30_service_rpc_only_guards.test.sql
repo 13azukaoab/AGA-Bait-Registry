@@ -40,10 +40,10 @@ INSERT INTO profiles (user_id, display_name, username, role, division_scope) VAL
 INSERT INTO customers (id, branch_id, name) VALUES
   ('00000000-0000-0000-0000-0000000000c1', (SELECT id FROM branches WHERE division = 'central' ORDER BY name LIMIT 1), 'Central');
 -- d1 สัญญาหลัก · d2 สัญญาเปล่า (ทดสอบ admin ลบ) · d3 สัญญาเก่าที่จะถูก Renew เป็น d4
-INSERT INTO contracts (id, customer_id, contract_no, start_date, term_years, value_total, stations_initialized_at) VALUES
-  ('00000000-0000-0000-0000-0000000000d1', '00000000-0000-0000-0000-0000000000c1', 'G-1', '2026-01-15', 1, 50000, now()),
-  ('00000000-0000-0000-0000-0000000000d2', '00000000-0000-0000-0000-0000000000c1', 'G-2', '2026-01-15', 1, 50000, NULL),
-  ('00000000-0000-0000-0000-0000000000d3', '00000000-0000-0000-0000-0000000000c1', 'G-3', '2025-01-15', 1, 50000, now());
+INSERT INTO contracts (id, customer_id, contract_no, start_date, term_months, value_total, stations_initialized_at) VALUES
+  ('00000000-0000-0000-0000-0000000000d1', '00000000-0000-0000-0000-0000000000c1', 'G-1', '2026-01-15', 12, 50000, now()),
+  ('00000000-0000-0000-0000-0000000000d2', '00000000-0000-0000-0000-0000000000c1', 'G-2', '2026-01-15', 12, 50000, NULL),
+  ('00000000-0000-0000-0000-0000000000d3', '00000000-0000-0000-0000-0000000000c1', 'G-3', '2025-01-15', 12, 50000, now());
 -- AG-1, AG-2 ใช้งาน · AG-3 กำจัดแล้ว (d1) · IG-1 ของสัญญาเปล่า d2 · AG-9 ของสัญญาเก่า d3
 INSERT INTO stations (id, contract_id, type, station_no, status) VALUES
   ('00000000-0000-0000-0000-0000000000e1', '00000000-0000-0000-0000-0000000000d1', 'AG', 1, 'active'),
@@ -278,8 +278,8 @@ SELECT lives_ok($$SELECT public.save_service_visit(pg_temp.payload('00000000-000
   '00000000-0000-0000-0000-0000000000fb', '2025-07-20', '[]'))$$,
   'V10 in the old contract (no AG removal)');
 RESET ROLE;
-INSERT INTO contracts (id, customer_id, contract_no, start_date, term_years, value_total, renewed_from_contract_id) VALUES
-  ('00000000-0000-0000-0000-0000000000d4', '00000000-0000-0000-0000-0000000000c1', 'G-4', '2026-01-15', 1, 50000,
+INSERT INTO contracts (id, customer_id, contract_no, start_date, term_months, value_total, renewed_from_contract_id) VALUES
+  ('00000000-0000-0000-0000-0000000000d4', '00000000-0000-0000-0000-0000000000c1', 'G-4', '2026-01-15', 12, 50000,
    '00000000-0000-0000-0000-0000000000d3');
 SET LOCAL ROLE authenticated;
 SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a3', true);

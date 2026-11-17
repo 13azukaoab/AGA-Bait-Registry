@@ -37,9 +37,9 @@ INSERT INTO profiles (user_id, display_name, username, role, division_scope) VAL
 INSERT INTO customers (id, branch_id, name) VALUES
   ('00000000-0000-0000-0000-0000000000c1', (SELECT id FROM branches WHERE division = 'central'  ORDER BY name LIMIT 1), 'Central'),
   ('00000000-0000-0000-0000-0000000000c2', (SELECT id FROM branches WHERE division = 'province' ORDER BY name LIMIT 1), 'Province');
-INSERT INTO contracts (id, customer_id, contract_no, start_date, term_years, value_total) VALUES
-  ('00000000-0000-0000-0000-0000000000d1', '00000000-0000-0000-0000-0000000000c1', 'V-1', '2026-01-15', 1, 50000),
-  ('00000000-0000-0000-0000-0000000000d2', '00000000-0000-0000-0000-0000000000c2', 'V-2', '2026-01-15', 1, 50000);
+INSERT INTO contracts (id, customer_id, contract_no, start_date, term_months, value_total) VALUES
+  ('00000000-0000-0000-0000-0000000000d1', '00000000-0000-0000-0000-0000000000c1', 'V-1', '2026-01-15', 12, 50000),
+  ('00000000-0000-0000-0000-0000000000d2', '00000000-0000-0000-0000-0000000000c2', 'V-2', '2026-01-15', 12, 50000);
 INSERT INTO visits (id, contract_id, visit_date, visit_type, start_time, end_time) VALUES
   ('00000000-0000-0000-0000-0000000000f1', '00000000-0000-0000-0000-0000000000d1', '2026-02-10', 'routine', '09:00', '10:30'),
   ('00000000-0000-0000-0000-0000000000f2', '00000000-0000-0000-0000-0000000000d2', '2026-02-10', 'routine', '13:00', '14:00');

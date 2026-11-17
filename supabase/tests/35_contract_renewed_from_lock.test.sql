@@ -36,10 +36,10 @@ CREATE FUNCTION pg_temp.link(p text) RETURNS uuid LANGUAGE sql AS $$
 $$;
 GRANT EXECUTE ON FUNCTION pg_temp.link(text) TO PUBLIC;
 
-INSERT INTO contracts (id, customer_id, contract_no, start_date, term_years, value_total, stations_initialized_at) VALUES
-  (pg_temp.id('d1'), pg_temp.id('c1'), 'L-1', pg_temp.m(-18), 1, 50000, pg_temp.m(-18)),
-  (pg_temp.id('d2'), pg_temp.id('c1'), 'L-2', pg_temp.m(-18), 1, 50000, pg_temp.m(-18)),
-  (pg_temp.id('d3'), pg_temp.id('c1'), 'L-3', pg_temp.m(-18), 1, 50000, pg_temp.m(-18));
+INSERT INTO contracts (id, customer_id, contract_no, start_date, term_months, value_total, stations_initialized_at) VALUES
+  (pg_temp.id('d1'), pg_temp.id('c1'), 'L-1', pg_temp.m(-18), 12, 50000, pg_temp.m(-18)),
+  (pg_temp.id('d2'), pg_temp.id('c1'), 'L-2', pg_temp.m(-18), 12, 50000, pg_temp.m(-18)),
+  (pg_temp.id('d3'), pg_temp.id('c1'), 'L-3', pg_temp.m(-18), 12, 50000, pg_temp.m(-18));
 
 -- ผลลัพธ์ของ save_job_opening (เก็บไว้ตรวจ)
 CREATE TEMP TABLE _r (tag text, contract_id uuid, updated_at timestamptz);
@@ -60,7 +60,7 @@ SELECT lives_ok(format($$
   INSERT INTO _r SELECT 'new', contract_id, updated_at FROM public.save_job_opening(
     p_branch_id := (SELECT id FROM branches WHERE division = 'central' ORDER BY name LIMIT 1),
     p_customer_name := 'Central', p_customer_type := NULL, p_contract_no := 'L-R1',
-    p_start_date := %L, p_end_date := %L, p_term_years := 1, p_value_total := 50000, p_sale_type := 'renew',
+    p_start_date := %L, p_end_date := %L, p_term_months := 12, p_value_total := 50000, p_sale_type := 'renew',
     p_customer_id := %L, p_renewed_from_contract_id := %L)
 $$, pg_temp.m(-6), pg_temp.m(6) - 1, pg_temp.id('c1'), pg_temp.id('d1')),
   'admin opens a renewal job via save_job_opening');
@@ -120,7 +120,7 @@ CREATE FUNCTION pg_temp.edit_new(p_renewed text, p_note text) RETURNS text LANGU
     SELECT * FROM public.save_job_opening(
       p_branch_id := (SELECT id FROM branches WHERE division = 'central' ORDER BY name LIMIT 1),
       p_customer_name := 'Central', p_customer_type := NULL, p_contract_no := 'L-R1',
-      p_start_date := %L, p_end_date := %L, p_term_years := 1, p_value_total := 60000, p_sale_type := 'renew',
+      p_start_date := %L, p_end_date := %L, p_term_months := 12, p_value_total := 60000, p_sale_type := 'renew',
       p_contract_id := %L, p_customer_id := %L, p_renewed_from_contract_id := %s, p_note := %L,
       p_expected_updated_at := (SELECT updated_at FROM contracts WHERE id = %L))
   $f$, pg_temp.m(-6), pg_temp.m(6) - 1, (SELECT contract_id FROM _r WHERE tag = 'new'), pg_temp.id('c1'),
@@ -147,8 +147,8 @@ SELECT ok(cardinality(pg_temp.pending('d1')) > 0, 'M18: cancelling the renewal b
 
 -- ---------- ลบสัญญาเก่า: FK ON DELETE SET NULL ยังทำงาน (ไม่ถูกด่านนี้ขวาง) ----------
 RESET ROLE;
-INSERT INTO contracts (id, customer_id, contract_no, start_date, term_years, value_total, stations_initialized_at, renewed_from_contract_id)
-VALUES (pg_temp.id('d4'), pg_temp.id('c1'), 'L-4', pg_temp.m(-6), 1, 50000, pg_temp.m(-6), pg_temp.id('d3'));
+INSERT INTO contracts (id, customer_id, contract_no, start_date, term_months, value_total, stations_initialized_at, renewed_from_contract_id)
+VALUES (pg_temp.id('d4'), pg_temp.id('c1'), 'L-4', pg_temp.m(-6), 12, 50000, pg_temp.m(-6), pg_temp.id('d3'));
 SET LOCAL ROLE authenticated;
 SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a1', true);
 SELECT lives_ok($$DELETE FROM contracts WHERE id = pg_temp.id('d3')$$, 'host deletes an old contract that has a renewal linked');

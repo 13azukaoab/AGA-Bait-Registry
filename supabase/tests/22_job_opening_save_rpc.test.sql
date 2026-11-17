@@ -73,7 +73,7 @@ SELECT lives_ok($$
   SELECT * FROM public.save_job_opening(
     p_branch_id := (SELECT central_id FROM _s), p_customer_name := 'ลูกค้า ทดสอบ',
     p_customer_type := 'house', p_contract_no := 'T-1', p_start_date := '2026-01-15',
-    p_end_date := '2027-01-14', p_term_years := 1, p_value_total := 50000, p_sale_type := 'new',
+    p_end_date := '2027-01-14', p_term_months := 12, p_value_total := 50000, p_sale_type := 'new',
     p_team_ids := (SELECT team_ids[1:2] FROM _s), p_mail_received_date := '2026-01-10',
     p_is_urgent := true, p_note := 'ทดสอบ')
 $$, 'admin saves customer + contract + teams in one call');
@@ -83,7 +83,7 @@ SELECT throws_ok($$
   SELECT * FROM public.save_job_opening(
     p_branch_id := (SELECT central_id FROM _s), p_customer_name := '  ลูกค้า    ทดสอบ ',
     p_customer_type := 'house', p_contract_no := 'T-2', p_start_date := '2026-02-01',
-    p_end_date := '2027-01-31', p_term_years := 1, p_value_total := 50000, p_sale_type := 'new')
+    p_end_date := '2027-01-31', p_term_months := 12, p_value_total := 50000, p_sale_type := 'new')
 $$, 'AG001', NULL, 'same normalized name in the branch asks for confirmation (AG001)');
 
 -- ยืนยันว่าเป็นคนละราย → สร้างลูกค้าใหม่ได้
@@ -91,7 +91,7 @@ SELECT lives_ok($$
   SELECT * FROM public.save_job_opening(
     p_branch_id := (SELECT central_id FROM _s), p_customer_name := 'ลูกค้า ทดสอบ',
     p_customer_type := 'house', p_contract_no := 'T-2', p_start_date := '2026-02-01',
-    p_end_date := '2027-01-31', p_term_years := 1, p_value_total := 50000, p_sale_type := 'new',
+    p_end_date := '2027-01-31', p_term_months := 12, p_value_total := 50000, p_sale_type := 'new',
     p_confirm_new_customer := true)
 $$, 'confirming "different customer" creates a second customer with the same name');
 
@@ -100,7 +100,7 @@ SELECT throws_ok($$
   SELECT * FROM public.save_job_opening(
     p_branch_id := (SELECT central_id FROM _s), p_customer_name := 'x',
     p_customer_type := 'house', p_contract_no := 'T-X2', p_start_date := '2026-02-01',
-    p_end_date := '2027-01-31', p_term_years := 1, p_value_total := 50000, p_sale_type := 'new',
+    p_end_date := '2027-01-31', p_term_months := 12, p_value_total := 50000, p_sale_type := 'new',
     p_customer_id := '00000000-0000-0000-0000-0000000000c9')
 $$, 'AG002', NULL, 'choosing a customer from another branch is refused (AG002)');
 
@@ -109,7 +109,7 @@ SELECT throws_ok($$
   SELECT * FROM public.save_job_opening(
     p_branch_id := (SELECT province_id FROM _s), p_customer_name := 'นอกขอบเขต',
     p_customer_type := 'house', p_contract_no := 'T-OUT', p_start_date := '2026-02-01',
-    p_end_date := '2027-01-31', p_term_years := 1, p_value_total := 50000, p_sale_type := 'new')
+    p_end_date := '2027-01-31', p_term_months := 12, p_value_total := 50000, p_sale_type := 'new')
 $$, '42501', NULL, 'admin outside their division is refused by RLS (42501)');
 
 -- ก้อนเดียวจริง: ทีมผิด (FK ล้มตอนท้าย) → ลูกค้า/สัญญาที่สร้างไปก่อนต้องหายหมด
@@ -117,7 +117,7 @@ SELECT throws_ok($$
   SELECT * FROM public.save_job_opening(
     p_branch_id := (SELECT central_id FROM _s), p_customer_name := 'อะตอม ทดสอบ',
     p_customer_type := 'house', p_contract_no := 'T-ATOM', p_start_date := '2026-02-01',
-    p_end_date := '2027-01-31', p_term_years := 1, p_value_total := 50000, p_sale_type := 'new',
+    p_end_date := '2027-01-31', p_term_months := 12, p_value_total := 50000, p_sale_type := 'new',
     p_team_ids := ARRAY['00000000-0000-0000-0000-00000000dead']::uuid[])
 $$, '23503', NULL, 'a bad team id fails the whole call');
 
@@ -150,7 +150,7 @@ SELECT results_eq($$
   SELECT reused_customer, existing_customer_type FROM public.save_job_opening(
     p_branch_id := (SELECT central_id FROM _s), p_customer_name := 'ไม่ใช้ชื่อนี้',
     p_customer_type := 'condo', p_contract_no := 'T-3', p_start_date := '2026-03-01',
-    p_end_date := '2027-02-28', p_term_years := 1, p_value_total := 60000, p_sale_type := 'new',
+    p_end_date := '2027-02-28', p_term_months := 12, p_value_total := 60000, p_sale_type := 'new',
     p_customer_id := (SELECT t1_customer FROM _c))
 $$, $$VALUES (true, 'house'::text)$$,
   'reusing a customer returns reused_customer = true and the existing customer type');
@@ -170,7 +170,7 @@ SELECT lives_ok($$
     p_contract_id := (SELECT t1_contract FROM _c),
     p_branch_id := (SELECT central_id FROM _s), p_customer_name := 'ignored in edit',
     p_customer_type := 'house', p_contract_no := 'T-1', p_start_date := '2026-01-15',
-    p_end_date := '2027-01-14', p_term_years := 1, p_value_total := 55000, p_sale_type := 'new',
+    p_end_date := '2027-01-14', p_term_months := 12, p_value_total := 55000, p_sale_type := 'new',
     p_team_ids := (SELECT team_ids[2:3] FROM _s),
     p_expected_updated_at := (SELECT updated_at FROM contracts WHERE id = (SELECT t1_contract FROM _c)))
 $$, 'admin edits a saved contract');
@@ -193,14 +193,14 @@ SELECT throws_ok($$
     p_contract_id := (SELECT t1_contract FROM _c),
     p_branch_id := (SELECT central_id FROM _s), p_customer_name := 'x',
     p_customer_type := 'house', p_contract_no := 'T-1', p_start_date := '2026-01-15',
-    p_end_date := '2027-01-14', p_term_years := 1, p_value_total := 1, p_sale_type := 'new',
+    p_end_date := '2027-01-14', p_term_months := 12, p_value_total := 1, p_sale_type := 'new',
     p_expected_updated_at := (SELECT updated_at FROM contracts WHERE id = (SELECT t1_contract FROM _c)))
 $$, '42501', NULL, 'recorder cannot edit a contract (silent RLS no-op becomes 42501)');
 SELECT throws_ok($$
   SELECT * FROM public.save_job_opening(
     p_branch_id := (SELECT central_id FROM _s), p_customer_name := 'หัวหน้างานสร้าง',
     p_customer_type := 'house', p_contract_no := 'T-REC', p_start_date := '2026-02-01',
-    p_end_date := '2027-01-31', p_term_years := 1, p_value_total := 50000, p_sale_type := 'new')
+    p_end_date := '2027-01-31', p_term_months := 12, p_value_total := 50000, p_sale_type := 'new')
 $$, '42501', NULL, 'recorder cannot open a job');
 RESET ROLE;
 SELECT is((SELECT value_total FROM contracts WHERE contract_no = 'T-1'), 55000.00::numeric,
@@ -214,7 +214,7 @@ SELECT throws_ok($$
     p_contract_id := (SELECT t1_contract FROM _c),
     p_branch_id := (SELECT province_id FROM _s), p_customer_name := 'x',
     p_customer_type := 'house', p_contract_no := 'T-1', p_start_date := '2026-01-15',
-    p_end_date := '2027-01-14', p_term_years := 1, p_value_total := 55000, p_sale_type := 'new',
+    p_end_date := '2027-01-14', p_term_months := 12, p_value_total := 55000, p_sale_type := 'new',
     p_customer_id := '00000000-0000-0000-0000-0000000000c9')
 $$, 'AG006', NULL, 'edit cannot move a contract to another branch (AG006)');
 
@@ -224,7 +224,7 @@ SELECT lives_ok($$
   SELECT * FROM public.save_job_opening(
     p_branch_id := (SELECT province_id FROM _s), p_customer_name := 'ลูกค้า host ต่างจังหวัด',
     p_customer_type := 'house', p_contract_no := 'T-HOST', p_start_date := '2026-02-01',
-    p_end_date := '2027-01-31', p_term_years := 1, p_value_total := 50000, p_sale_type := 'new')
+    p_end_date := '2027-01-31', p_term_months := 12, p_value_total := 50000, p_sale_type := 'new')
 $$, 'host is not blocked by the fast scope check');
 RESET ROLE;
 SELECT is((SELECT c.customer_id FROM contracts c WHERE c.contract_no = 'T-1'),
@@ -257,7 +257,7 @@ SELECT lives_ok($$
   SELECT * FROM public.save_job_opening(
     p_branch_id := (SELECT central_id FROM _s), p_customer_name := 'ลูกค้าสัญญาเดียว',
     p_customer_type := 'house', p_contract_no := 'T-SOLO', p_start_date := '2026-04-01',
-    p_end_date := '2027-03-31', p_term_years := 1, p_value_total := 40000, p_sale_type := 'new')
+    p_end_date := '2027-03-31', p_term_months := 12, p_value_total := 40000, p_sale_type := 'new')
 $$, 'admin opens a single-contract job');
 SELECT lives_ok($$SELECT public.delete_job_opening((SELECT id FROM contracts WHERE contract_no = 'T-SOLO'))$$,
   'admin deletes the single contract');

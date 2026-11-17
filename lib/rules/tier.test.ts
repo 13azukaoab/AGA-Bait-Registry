@@ -1,22 +1,23 @@
 import { describe, it, expect } from "vitest";
-import { annualValue, rulesForMonth, tierOf } from "./tier";
+import { rulesForMonth, tierOf } from "./tier";
+import { annualValueForTerm } from "./term";
 import { CHANGE_MONTH, TIER_RULES, TIER_RULE_VERSIONS } from "./__fixtures__/tierRules";
 
-describe("annualValue", () => {
+describe("annualValueForTerm (1 ปี = 12 เดือน · 3 ปี = 36 เดือน)", () => {
   it("= มูลค่าสัญญา ÷ จำนวนปี", () => {
-    expect(annualValue(150000, 1)).toBe(150000);
-    expect(annualValue(150000, 3)).toBe(50000);
-    expect(annualValue(50000, 3)).toBeCloseTo(16666.67, 2);
+    expect(annualValueForTerm(150000, 12)).toBe(150000);
+    expect(annualValueForTerm(150000, 36)).toBe(50000);
+    expect(annualValueForTerm(50000, 36)).toBeCloseTo(16666.67, 2);
   });
 });
 
 describe("tierOf", () => {
   const t = (annual: number) => tierOf(annual, TIER_RULES);
   it("กรณีบังคับจาก SPEC", () => {
-    expect(t(annualValue(50000, 3))).toBe("S"); // 16,667 → S3
-    expect(t(annualValue(150000, 1))).toBe("XL"); // 150,000 → XL1
-    expect(t(annualValue(150000, 3))).toBe("L"); // 50,000 → L3
-    expect(t(annualValue(29999.5, 1))).toBe("S"); // 29,999.50 → S1
+    expect(t(annualValueForTerm(50000, 36))).toBe("S"); // 16,667 → S3
+    expect(t(annualValueForTerm(150000, 12))).toBe("XL"); // 150,000 → XL1
+    expect(t(annualValueForTerm(150000, 36))).toBe("L"); // 50,000 → L3
+    expect(t(annualValueForTerm(29999.5, 12))).toBe("S"); // 29,999.50 → S1
   });
   it("ขอบเขตพอดี", () => {
     expect(t(29999.99)).toBe("S");
@@ -32,10 +33,10 @@ describe("tierOf", () => {
 describe("rulesForMonth / tierOf ตามเดือน (M20)", () => {
   it("กรณีบังคับจาก SPEC ผ่านทั้งชุดตั้งต้นแบบมีเดือน", () => {
     const t = (annual: number) => tierOf(annual, TIER_RULE_VERSIONS, "2026-11");
-    expect(t(annualValue(50000, 3))).toBe("S"); // S3
-    expect(t(annualValue(150000, 1))).toBe("XL"); // XL1
-    expect(t(annualValue(150000, 3))).toBe("L"); // L3
-    expect(t(annualValue(29999.5, 1))).toBe("S"); // S1
+    expect(t(annualValueForTerm(50000, 36))).toBe("S"); // S3
+    expect(t(annualValueForTerm(150000, 12))).toBe("XL"); // XL1
+    expect(t(annualValueForTerm(150000, 36))).toBe("L"); // L3
+    expect(t(annualValueForTerm(29999.5, 12))).toBe("S"); // S1
   });
 
   it("เดือนก่อนเปลี่ยนเกณฑ์ใช้ชุดเดิม · ตั้งแต่เดือนที่เปลี่ยนใช้ชุดใหม่", () => {

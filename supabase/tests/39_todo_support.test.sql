@@ -46,21 +46,21 @@ INSERT INTO customers (id, branch_id, name) VALUES
   (pg_temp.id('c2'), (SELECT y FROM _b), 'Central Y'),
   (pg_temp.id('c3'), (SELECT p FROM _b), 'Province');
 
-INSERT INTO contracts (id, customer_id, contract_no, start_date, term_years, value_total, stations_initialized_at,
+INSERT INTO contracts (id, customer_id, contract_no, start_date, term_months, value_total, stations_initialized_at,
                        status, cancelled_at, renewed_from_contract_id) VALUES
-  (pg_temp.id('d1'), pg_temp.id('c1'), 'N-1', pg_temp.m(-6), 1, 24000, pg_temp.m(-6), 'active', NULL, NULL),
-  (pg_temp.id('d2'), pg_temp.id('c1'), 'N-2', pg_temp.m(-6), 1, 24000, pg_temp.m(-6), 'cancelled', pg_temp.m(-3), NULL),
-  (pg_temp.id('d3'), pg_temp.id('c1'), 'N-3', pg_temp.m(-8), 1, 24000, pg_temp.m(-8), 'active', NULL, NULL),
-  (pg_temp.id('d4'), pg_temp.id('c3'), 'N-4', pg_temp.m(-6), 1, 24000, pg_temp.m(-6), 'active', NULL, NULL),
-  (pg_temp.id('d5'), pg_temp.id('c1'), 'N-5', pg_temp.m(-6), 1, 24000, NULL,           'active', NULL, NULL),
+  (pg_temp.id('d1'), pg_temp.id('c1'), 'N-1', pg_temp.m(-6), 12, 24000, pg_temp.m(-6), 'active', NULL, NULL),
+  (pg_temp.id('d2'), pg_temp.id('c1'), 'N-2', pg_temp.m(-6), 12, 24000, pg_temp.m(-6), 'cancelled', pg_temp.m(-3), NULL),
+  (pg_temp.id('d3'), pg_temp.id('c1'), 'N-3', pg_temp.m(-8), 12, 24000, pg_temp.m(-8), 'active', NULL, NULL),
+  (pg_temp.id('d4'), pg_temp.id('c3'), 'N-4', pg_temp.m(-6), 12, 24000, pg_temp.m(-6), 'active', NULL, NULL),
+  (pg_temp.id('d5'), pg_temp.id('c1'), 'N-5', pg_temp.m(-6), 12, 24000, NULL,           'active', NULL, NULL),
   -- สรุป New/Renew เดือน m(-2)
-  (pg_temp.id('f1'), pg_temp.id('c1'), 'T-1', pg_temp.m(-2) + 2,  1, 24000, NULL, 'active', NULL, NULL),
-  (pg_temp.id('f2'), pg_temp.id('c2'), 'T-2', pg_temp.m(-2) + 4,  1, 24000, NULL, 'active', NULL, NULL),
-  (pg_temp.id('f3'), pg_temp.id('c1'), 'T-3', pg_temp.m(-2) + 9,  1, 24000, NULL, 'active', NULL, pg_temp.id('d3')),
-  (pg_temp.id('f4'), pg_temp.id('c1'), 'T-4', pg_temp.m(-2) + 1,  1, 24000, NULL, 'cancelled', pg_temp.m(-2) + 5, NULL),
-  (pg_temp.id('f5'), pg_temp.id('c3'), 'T-5', pg_temp.m(-2) + 3,  1, 24000, NULL, 'active', NULL, NULL),
-  (pg_temp.id('f6'), pg_temp.id('c1'), 'T-6', pg_temp.m(-2) + 6,  1, 24000, NULL, 'active', NULL, NULL),
-  (pg_temp.id('f7'), pg_temp.id('c1'), 'T-7', pg_temp.m(-1),      1, 24000, NULL, 'active', NULL, NULL);
+  (pg_temp.id('f1'), pg_temp.id('c1'), 'T-1', pg_temp.m(-2) + 2, 12, 24000, NULL, 'active', NULL, NULL),
+  (pg_temp.id('f2'), pg_temp.id('c2'), 'T-2', pg_temp.m(-2) + 4, 12, 24000, NULL, 'active', NULL, NULL),
+  (pg_temp.id('f3'), pg_temp.id('c1'), 'T-3', pg_temp.m(-2) + 9, 12, 24000, NULL, 'active', NULL, pg_temp.id('d3')),
+  (pg_temp.id('f4'), pg_temp.id('c1'), 'T-4', pg_temp.m(-2) + 1, 12, 24000, NULL, 'cancelled', pg_temp.m(-2) + 5, NULL),
+  (pg_temp.id('f5'), pg_temp.id('c3'), 'T-5', pg_temp.m(-2) + 3, 12, 24000, NULL, 'active', NULL, NULL),
+  (pg_temp.id('f6'), pg_temp.id('c1'), 'T-6', pg_temp.m(-2) + 6, 12, 24000, NULL, 'active', NULL, NULL),
+  (pg_temp.id('f7'), pg_temp.id('c1'), 'T-7', pg_temp.m(-1), 12, 24000, NULL, 'active', NULL, NULL);
 INSERT INTO contract_teams (contract_id, team_id) VALUES
   (pg_temp.id('f1'), (SELECT ta FROM _b)),
   (pg_temp.id('f2'), (SELECT ta FROM _b)),

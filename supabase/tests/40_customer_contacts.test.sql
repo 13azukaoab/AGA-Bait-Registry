@@ -54,8 +54,8 @@ INSERT INTO customers (id, branch_id, name, contact_name) VALUES
   ('00000000-0000-0000-0000-0000000019c1', (SELECT id FROM branches WHERE division = 'central' ORDER BY name LIMIT 1), 'C1', 'คุณเดิม'),
   ('00000000-0000-0000-0000-0000000019c2', (SELECT id FROM branches WHERE division = 'central' ORDER BY name LIMIT 1), 'C2', NULL),
   ('00000000-0000-0000-0000-0000000019c3', (SELECT id FROM branches WHERE division = 'province' ORDER BY name LIMIT 1), 'C3', NULL);
-INSERT INTO contracts (id, customer_id, contract_no, start_date, term_years, value_total) VALUES
-  ('00000000-0000-0000-0000-0000000019d1', '00000000-0000-0000-0000-0000000019c1', 'M19A-1', '2026-01-15', 1, 50000);
+INSERT INTO contracts (id, customer_id, contract_no, start_date, term_months, value_total) VALUES
+  ('00000000-0000-0000-0000-0000000019d1', '00000000-0000-0000-0000-0000000019c1', 'M19A-1', '2026-01-15', 12, 50000);
 INSERT INTO contract_teams (contract_id, team_id) VALUES
   ('00000000-0000-0000-0000-0000000019d1', (SELECT id FROM teams WHERE code = 'A'));
 INSERT INTO customer_phones (id, customer_id, phone, label, sort_order) VALUES
@@ -338,8 +338,8 @@ SELECT results_eq(
   'direct INSERT cannot plant contact_* values');
 
 -- ทีมจากการเข้าครั้งล่าสุดเท่านั้น (c2 ไม่มี contract_teams) + บริบท audit ของ visits (WHEN เดิมยังทำงาน)
-INSERT INTO contracts (id, customer_id, contract_no, start_date, term_years, value_total) VALUES
-  ('00000000-0000-0000-0000-0000000019d2', '00000000-0000-0000-0000-0000000019c2', 'M19A-2', '2026-01-15', 1, 50000);
+INSERT INTO contracts (id, customer_id, contract_no, start_date, term_months, value_total) VALUES
+  ('00000000-0000-0000-0000-0000000019d2', '00000000-0000-0000-0000-0000000019c2', 'M19A-2', '2026-01-15', 12, 50000);
 INSERT INTO visits (id, contract_id, visit_date, visit_type, start_time, end_time) VALUES
   ('00000000-0000-0000-0000-0000000019b1', '00000000-0000-0000-0000-0000000019d2', '2026-02-10', 'routine', '09:00', '10:00');
 INSERT INTO visit_teams (visit_id, team_id) VALUES

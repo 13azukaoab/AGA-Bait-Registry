@@ -31,10 +31,10 @@ INSERT INTO profiles (user_id, display_name, username, role, division_scope) VAL
 INSERT INTO customers (id, branch_id, name) VALUES
   ('00000000-0000-0000-0000-0000000000c1',
    (SELECT id FROM branches WHERE division = 'central' ORDER BY name LIMIT 1), 'Q Cust');
-INSERT INTO contracts (id, customer_id, contract_no, start_date, term_years, value_total) VALUES
-  ('00000000-0000-0000-0000-0000000000d1', '00000000-0000-0000-0000-0000000000c1', 'Q-1', '2026-01-15', 1, 50000),
-  ('00000000-0000-0000-0000-0000000000d2', '00000000-0000-0000-0000-0000000000c1', 'Q-2', '2026-01-15', 1, 50000),
-  ('00000000-0000-0000-0000-0000000000d3', '00000000-0000-0000-0000-0000000000c1', 'Q-3', '2026-01-15', 1, 50000);
+INSERT INTO contracts (id, customer_id, contract_no, start_date, term_months, value_total) VALUES
+  ('00000000-0000-0000-0000-0000000000d1', '00000000-0000-0000-0000-0000000000c1', 'Q-1', '2026-01-15', 12, 50000),
+  ('00000000-0000-0000-0000-0000000000d2', '00000000-0000-0000-0000-0000000000c1', 'Q-2', '2026-01-15', 12, 50000),
+  ('00000000-0000-0000-0000-0000000000d3', '00000000-0000-0000-0000-0000000000c1', 'Q-3', '2026-01-15', 12, 50000);
 INSERT INTO contract_files (id, contract_id, kind, storage_path, file_name, mime_type, size_bytes) VALUES
   ('00000000-0000-0000-0000-0000000000f1', '00000000-0000-0000-0000-0000000000d1', 'contract_pdf',
    '00000000-0000-0000-0000-0000000000d1/one.pdf', 'one.pdf', 'application/pdf', 100),

@@ -8,9 +8,9 @@
  *   - วันสิ้นสุดอัตโนมัติ = เริ่ม + m เดือน − 1 วัน ชนปลายเดือน (addMonthsMinusDay)
  *   - มูลค่าจัด Tier: m ≥ 12 → มูลค่า ÷ (m/12) · m < 12 → มูลค่าตามจริง (ไม่ขยายเป็นต่อปี)
  *   - กลุ่มสี / คีย์ Dashboard: 36 → "3" · อื่นทั้งหมด → "1" (Custom นับกลุ่ม 1 ปี · dashboard_data.json ไม่เปลี่ยน)
- *   - ฟังก์ชันชื่อเดิมแบบ "ปี" (`serviceMonths`, `defaultEndDate`, `annualValue`) ยังรับ "ปี" เหมือนเดิม
- *     (@deprecated) — FE (`components/**`) ยังส่งปีอยู่ จะได้ไม่เปลี่ยนความหมายเงียบๆ · ย้ายมาใช้ชุดนี้ใน M30b
- *   - ตรงกับ SQL ใน 20261115200000_term_months.sql — แก้ฝั่งหนึ่งต้องแก้อีกฝั่ง
+ *   - M30b: ลบฟังก์ชันแบบ "ปี" เดิม (`serviceMonths`, `defaultEndDate`, `annualValue`, `termMonthsFromYears`)
+ *     และคอลัมน์ contracts.term_years แล้ว — ใช้ชุด `...ForTerm(…, termMonths)` นี้เท่านั้น (12 = 1 ปี · 36 = 3 ปี)
+ *   - ตรงกับ SQL ใน 20261115200000_term_months.sql (+ M30b 20261115230000_drop_term_years.sql) — แก้ฝั่งหนึ่งต้องแก้อีกฝั่ง
  */
 import type { Tier } from "./types";
 import { addMonthsMinusDay, listMonths, monthOf } from "./date";
@@ -47,11 +47,6 @@ export type TierKey = "s1" | "s3" | "m1" | "m3" | "l1" | "l3" | "xl1" | "xl3";
 /** คีย์นับใน snapshot = tier + colorGroup เช่น ("XL", 12) → "xl1" · ("L", 5) → "l1" */
 export function tierKey(tier: Tier, m: number): TierKey {
   return `${tier.toLowerCase()}${colorGroup(m)}` as TierKey;
-}
-
-/** แปลงระยะแบบปีเดิม (1 / 3) เป็นเดือน */
-export function termMonthsFromYears(years: number): number {
-  return years * 12;
 }
 
 /** เดือนบริการ 'YYYY-MM' = เดือนเริ่ม ต่อเนื่อง m เดือน (SPEC §7.2 · M30) */

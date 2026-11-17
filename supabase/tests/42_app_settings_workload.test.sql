@@ -189,9 +189,9 @@ SELECT has_trigger('public', 'customer_types', 'audit_customer_types', 'customer
 INSERT INTO customers (id, branch_id, name) VALUES
   ('00000000-0000-0000-0000-0000000000c1', (SELECT b.id FROM branches b WHERE b.division = 'central' ORDER BY b.name LIMIT 1), 'Central'),
   ('00000000-0000-0000-0000-0000000000c2', (SELECT b.id FROM branches b WHERE b.division = 'province' ORDER BY b.name LIMIT 1), 'Province');
-INSERT INTO contracts (id, customer_id, contract_no, start_date, term_years, value_total, stations_initialized_at) VALUES
-  ('00000000-0000-0000-0000-0000000000d1', '00000000-0000-0000-0000-0000000000c1', 'M25-1', pg_temp.m(-6), 1, 50000, now()),
-  ('00000000-0000-0000-0000-0000000000d2', '00000000-0000-0000-0000-0000000000c2', 'M25-2', pg_temp.m(-6), 1, 50000, now());
+INSERT INTO contracts (id, customer_id, contract_no, start_date, term_months, value_total, stations_initialized_at) VALUES
+  ('00000000-0000-0000-0000-0000000000d1', '00000000-0000-0000-0000-0000000000c1', 'M25-1', pg_temp.m(-6), 12, 50000, now()),
+  ('00000000-0000-0000-0000-0000000000d2', '00000000-0000-0000-0000-0000000000c2', 'M25-2', pg_temp.m(-6), 12, 50000, now());
 -- ทีม: T1 ผูกสัญญา · T2 ผูกการเข้า · T3 ว่าง
 INSERT INTO teams (id, code, name, kind) VALUES
   ('00000000-0000-0000-0000-0000000000b1', 'T1', 'ทีม T1', 'service'),

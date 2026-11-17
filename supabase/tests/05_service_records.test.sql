@@ -10,8 +10,8 @@ SELECT col_is_null('public', 'station_checks', 'termite_caste', 'termite_caste n
 -- Fixtures: one contract, stations A/B/C, visits on several dates
 INSERT INTO public.customers (branch_id, name, customer_type)
 SELECT b.id, 'T6 customer', ct.code FROM public.branches b, public.customer_types ct LIMIT 1;
-INSERT INTO public.contracts (customer_id, contract_no, start_date, term_years, value_total)
-SELECT id, 'T6-001', '2026-01-15', 1, 50000 FROM public.customers WHERE name = 'T6 customer';
+INSERT INTO public.contracts (customer_id, contract_no, start_date, term_months, value_total)
+SELECT id, 'T6-001', '2026-01-15', 12, 50000 FROM public.customers WHERE name = 'T6 customer';
 INSERT INTO public.stations (contract_id, code, type)
 SELECT c.id, s.code, 'IG' FROM public.contracts c, (VALUES ('A'), ('B'), ('C')) s(code)
 WHERE c.contract_no = 'T6-001';

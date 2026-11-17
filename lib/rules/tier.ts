@@ -2,15 +2,6 @@ import type { Tier, TierRule } from "./types";
 import { monthOf } from "./date";
 
 /**
- * มูลค่าต่อปี = มูลค่าสัญญา ÷ จำนวนปี (SPEC §7.1)
- * @deprecated M30 — รับ "ปี" (1/3) ตามผู้เรียกเดิมใน components/** · ใช้ `annualValueForTerm(value, termMonths)`
- *   (สัญญาสั้น < 12 เดือนใช้มูลค่าจริง ไม่ขยายเป็นต่อปี — ฟังก์ชันนี้ไม่รู้จัก)
- */
-export function annualValue(valueTotal: number, termYears: number): number {
-  return valueTotal / termYears;
-}
-
-/**
  * M20 (DECISIONS 2.31): เลือกชุดเกณฑ์ที่ใช้กับเดือน `month`
  * = ชุดที่ effectiveMonth ล่าสุดที่ไม่เกินเดือนนั้น (เดือนที่ปิดแล้วจึงคงเกณฑ์เดิม)
  *

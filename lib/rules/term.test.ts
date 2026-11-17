@@ -8,12 +8,10 @@ import {
   isCustomTerm,
   isValidTermMonths,
   serviceMonthsForTerm,
-  termMonthsFromYears,
   tierKey,
 } from "./term";
 import { addMonthsMinusDay, addYearsMinusDay } from "./date";
-import { annualValue, tierOf } from "./tier";
-import { defaultEndDate, serviceMonths } from "./serviceMonths";
+import { tierOf } from "./tier";
 import { TIER_RULES } from "./__fixtures__/tierRules";
 
 /**
@@ -75,11 +73,6 @@ describe("ช่วงระยะสัญญา (term_months 1–36)", () => {
     expect(tierKey("XL", 12)).toBe("xl1");
     expect(tierKey("L", 5)).toBe("l1");
     expect(tierKey("M", 24)).toBe("m1");
-  });
-
-  it("termMonthsFromYears: 1 → 12 · 3 → 36", () => {
-    expect(termMonthsFromYears(1)).toBe(12);
-    expect(termMonthsFromYears(3)).toBe(36);
   });
 });
 
@@ -176,12 +169,14 @@ describe("annualValueForTerm (มูลค่าจัด Tier)", () => {
   });
   it("ข้อ 5: 12 ≡ 1 ปี · 36 ≡ 3 ปี (ค่าเท่ากันทุกตัว)", () => {
     for (const v of [1, 29999.5, 50000, 99999.99, 150000, 1234567.89]) {
-      expect(annualValueForTerm(v, 12)).toBe(annualValue(v, 1));
-      expect(annualValueForTerm(v, 36)).toBe(annualValue(v, 3));
+      // สูตรปีเดิม (SPEC §7.1 ก่อน M30): มูลค่า ÷ จำนวนปี
+      expect(annualValueForTerm(v, 12)).toBe(v / 1);
+      expect(annualValueForTerm(v, 36)).toBe(v / 3);
     }
-    expect(serviceMonthsForTerm("2026-04-03", 12)).toEqual(serviceMonths("2026-04-03", 1));
-    expect(serviceMonthsForTerm("2026-04-03", 36)).toEqual(serviceMonths("2026-04-03", 3));
-    expect(defaultEndDateForTerm("2026-04-03", 36)).toBe(defaultEndDate("2026-04-03", 3));
+    expect(serviceMonthsForTerm("2026-04-03", 12)).toHaveLength(12);
+    expect(serviceMonthsForTerm("2026-04-03", 36)).toHaveLength(36);
+    expect(defaultEndDateForTerm("2026-04-03", 12)).toBe(legacyAddYearsMinusDay("2026-04-03", 1));
+    expect(defaultEndDateForTerm("2026-04-03", 36)).toBe(legacyAddYearsMinusDay("2026-04-03", 3));
   });
   it("Custom 13–35 เดือนไม่เพี้ยนใต้เส้นเกณฑ์ (ทศนิยม)", () => {
     expect(annualValueForTerm(35000, 14)).toBe(30000);

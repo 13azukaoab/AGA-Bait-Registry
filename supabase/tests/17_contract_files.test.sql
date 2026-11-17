@@ -36,10 +36,10 @@ INSERT INTO customers (id, branch_id, name) VALUES
    (SELECT id FROM branches WHERE division = 'central'  ORDER BY name LIMIT 1), 'Central cust'),
   ('00000000-0000-0000-0000-0000000000c2',
    (SELECT id FROM branches WHERE division = 'province' ORDER BY name LIMIT 1), 'Province cust');
-INSERT INTO contracts (id, customer_id, contract_no, start_date, term_years, value_total, status) VALUES
-  ('00000000-0000-0000-0000-0000000000d1', '00000000-0000-0000-0000-0000000000c1', 'CF-1', '2026-01-15', 1, 50000, 'active'),
-  ('00000000-0000-0000-0000-0000000000d2', '00000000-0000-0000-0000-0000000000c2', 'CF-2', '2026-01-15', 1, 50000, 'active'),
-  ('00000000-0000-0000-0000-0000000000d3', '00000000-0000-0000-0000-0000000000c1', 'CF-3', '2026-01-15', 1, 50000, 'closed');
+INSERT INTO contracts (id, customer_id, contract_no, start_date, term_months, value_total, status) VALUES
+  ('00000000-0000-0000-0000-0000000000d1', '00000000-0000-0000-0000-0000000000c1', 'CF-1', '2026-01-15', 12, 50000, 'active'),
+  ('00000000-0000-0000-0000-0000000000d2', '00000000-0000-0000-0000-0000000000c2', 'CF-2', '2026-01-15', 12, 50000, 'active'),
+  ('00000000-0000-0000-0000-0000000000d3', '00000000-0000-0000-0000-0000000000c1', 'CF-3', '2026-01-15', 12, 50000, 'closed');
 
 -- ---------- admin in scope ----------
 SET LOCAL ROLE authenticated;
