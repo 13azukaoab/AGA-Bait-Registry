@@ -74,6 +74,10 @@
     margin: 9px 6px;
     border-top: 1px solid var(--border);
   }
+  /* ตอนหุบ: ซ่อนเลขเวอร์ชัน (แถบ 58px ไม่พอ) */
+  :global(html[data-nav-mini="1"]) .nav:not(:hover):not(:has(:focus-visible)) .navVersion {
+    display: none;
+  }
 }
 /* ตอนโหลดหน้า: ไม่เล่นแอนิเมชันหุบ (ตั้งโดย NAV_MINI_INIT_SCRIPT แล้วถอดหลังวาดแล้ว 2 เฟรม) */
 :global(html[data-nav-noanim]) .nav {

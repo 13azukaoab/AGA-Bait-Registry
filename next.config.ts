@@ -2,12 +2,17 @@ import withSerwistInit from "@serwist/next";
 import { withSentryConfig } from "@sentry/nextjs/config";
 import type { NextConfig } from "next";
 
+import pkg from "./package.json";
+
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   // ฝัง VERCEL_ENV ตอน build ให้ Sentry ฝั่ง browser/edge รู้ว่าเป็น production หรือไม่ (M32)
   // — Sentry ส่งเฉพาะ production เท่านั้น (lib/sentry/options.ts)
   env: {
     NEXT_PUBLIC_SENTRY_ENV: process.env.VERCEL_ENV ?? "",
+    // เลขเวอร์ชัน (SemVer, DECISIONS 2.58) + commit สั้น 7 ตัว — แสดงที่หน้าล็อกอินและท้ายเมนูซ้าย
+    NEXT_PUBLIC_APP_VERSION: pkg.version,
+    NEXT_PUBLIC_COMMIT_SHA: (process.env.VERCEL_GIT_COMMIT_SHA ?? "").slice(0, 7),
   },
 };
 

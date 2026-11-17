@@ -1,6 +1,7 @@
 "use client";
 
 import { forwardRef } from "react";
+import { AppVersion } from "./AppVersion";
 import { cx } from "./cx";
 import { NavLinks } from "./NavLinks";
 import styles from "./shell.module.css";
@@ -43,6 +44,7 @@ export const NavDrawer = forwardRef<HTMLElement, NavDrawerProps>(
           )}
         >
           <NavLinks role={role} currentPath={currentPath} onNavigate={onClose} />
+          <AppVersion className={cx(styles.navVersion, "px-2.5 pt-4 pb-1")} />
         </nav>
         {open ? (
           <div
