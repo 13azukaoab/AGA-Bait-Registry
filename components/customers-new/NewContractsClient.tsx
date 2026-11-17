@@ -23,6 +23,8 @@
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
+import { useUnsavedWork } from "@/components/shell/unsaved-work";
+
 import { Alert, Button, Chip, Field, TierBadge, Toast, cx } from "@/components/ui";
 import type { UserRole } from "@/lib/db/types";
 import { createClient } from "@/lib/supabase/client";
@@ -58,6 +60,7 @@ import { describeTeamsByKind, isTeamAssignableToContract } from "@/lib/service/t
 import { PdfIcon } from "./PdfIcon";
 import { RenewalDialog } from "./RenewalDialog";
 import { UnlinkedReviewDialog } from "./UnlinkedReviewDialog";
+import { hasUnsavedCustomers } from "./unsavedWork";
 import { canReviewUnlinked, unlinkedStateOf } from "./unlinkedReview";
 import { deleteContract, findLinkedRenewals, saveDraft, type SaveResult } from "./save";
 import { describeTypeMismatch } from "./saveRules";
@@ -148,6 +151,8 @@ export function NewContractsClient({
   const [knownUpdatedAt, setKnownUpdatedAt] = useState<Record<string, string>>({});
   const [reloadingId, setReloadingId] = useState<string | null>(null);
   const [showErrors, setShowErrors] = useState(false);
+  // M34: บอกแถบแจ้งเวอร์ชันใหม่ว่ามีข้อมูลที่ยังไม่บันทึก (ไม่กระทบ logic บันทึก)
+  useUnsavedWork(hasUnsavedCustomers(drafts, edits));
 
   // ข้อมูลจาก server ชุดใหม่ (หลัง router.refresh) ถูกต้องที่สุด → ล้างค่าชั่วคราวทิ้ง
   useEffect(() => {
