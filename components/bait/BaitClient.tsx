@@ -71,9 +71,18 @@ export function BaitClient({
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [formDirty, setDirty] = useState(false);
-  // M37: กำลังแก้ชื่อจุดค้าง (PointLabelPanel) — นับเป็นงานค้างร่วมกับฟอร์ม (ตัวแผงเองก็ลงทะเบียน useUnsavedWork ด้วย)
-  const [labelDirty, setLabelDirty] = useState(false);
-  const dirty = formDirty || labelDirty;
+  // M37: กำลังแก้ชื่อจุดค้าง (AgPointLabelEditor · เก็บเป็นชุด id สถานี) — นับเป็นงานค้างร่วมกับฟอร์ม (ตัวแก้เองก็ลงทะเบียน useUnsavedWork ด้วย)
+  const [labelDirtyIds, setLabelDirtyIds] = useState<ReadonlySet<string>>(new Set());
+  const setLabelDirty = useCallback((stationId: string, d: boolean) => {
+    setLabelDirtyIds((prev) => {
+      if (prev.has(stationId) === d) return prev;
+      const next = new Set(prev);
+      if (d) next.add(stationId);
+      else next.delete(stationId);
+      return next;
+    });
+  }, []);
+  const dirty = formDirty || labelDirtyIds.size > 0;
   // M34: บอกแถบแจ้งเวอร์ชันใหม่ว่ามีข้อมูลที่ยังไม่บันทึก (ไม่กระทบ logic บันทึก)
   useUnsavedWork(formDirty);
   const [pending, setPending] = useState<(() => void) | null>(null);
@@ -331,7 +340,7 @@ export function BaitClient({
             const go = pending;
             setPending(null);
             setDirty(false);
-            setLabelDirty(false);
+            setLabelDirtyIds(new Set());
             go();
           }}
           onCancel={() => setPending(null)}

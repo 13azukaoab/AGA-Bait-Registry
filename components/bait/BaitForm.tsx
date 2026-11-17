@@ -12,7 +12,7 @@
  *   * วันที่เข้าอยู่ก่อนวันติดตั้งของจุดที่กรอกผลติดตาม → แถบเตือนสีส้ม + บันทึกไม่ได้
  *   * รายการ "การเข้านอกรอบที่บันทึกแล้ว" (จากฐานข้อมูล) แก้/ลบได้ · แก้การเข้าที่มี IG/IC หรืองานซ่อมปนอยู่ไม่ได้ที่นี่
  *   * ยังไม่ตั้งจำนวนสถานี (SV003) → ไม่ให้กรอก บอกให้ไปตั้งที่หน้า “ลงข้อมูลทำบริการประจำเดือน” ก่อน
- *   * M37: แผง "ชื่อจุดกล่อง AG" (PointLabelPanel) แก้ชื่อจุดได้ทันทีโดยไม่สร้างการเข้าบริการ
+ *   * M37: ไอคอนดินสอข้างชื่อจุดกล่อง AG (AgPointLabelEditor) แก้ชื่อจุดได้ทันทีโดยไม่สร้างการเข้าบริการ
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { useEffect, useMemo, useState } from "react";
@@ -30,7 +30,7 @@ import type { UserRole } from "@/lib/db/types";
 
 import { buildBaitPayload, validateBait } from "./baitLogic";
 import type { BaitVisitLogItem } from "./data";
-import { PointLabelPanel } from "./PointLabelPanel";
+import { AgPointLabelEditor } from "./AgPointLabelEditor";
 
 export interface BaitSavedInfo {
   /** true = "บันทึกแล้วเพิ่มอีกวัน" */
@@ -83,7 +83,7 @@ export function BaitForm({
   /** แก้ชื่อจุดสำเร็จ (newLabel = ชื่อที่ DB เก็บ · null = ลบ) */
   onPointLabelSaved: (stationId: string, newLabel: string | null) => void;
   /** กำลังแก้ชื่อจุดค้างอยู่ (ยังไม่บันทึก) */
-  onPointLabelDirty: (dirty: boolean) => void;
+  onPointLabelDirty: (stationId: string, dirty: boolean) => void;
 }) {
   const [showIssues, setShowIssues] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -222,18 +222,18 @@ export function BaitForm({
             issues={issues}
             showIssues={showIssues}
             mode="offround"
+            renderPointLabel={(p) => (
+              <AgPointLabelEditor
+                supabase={supabase}
+                role={role}
+                point={p}
+                onSaved={onPointLabelSaved}
+                onDirtyChange={onPointLabelDirty}
+              />
+            )}
             onChange={onChange}
           />
         </fieldset>
-
-        {/* M37: แก้ชื่อจุดกล่อง AG โดยไม่สร้างการเข้าบริการ (host/recorder) — อยู่นอก fieldset เพราะไม่ใช่การบันทึกการเข้า */}
-        <PointLabelPanel
-          supabase={supabase}
-          role={role}
-          stations={detail.stations}
-          onSaved={onPointLabelSaved}
-          onDirtyChange={onPointLabelDirty}
-        />
 
         {log.length > 0 ? (
           <div className={cx(SECTION, "text-[13px]")} aria-label="การเข้านอกรอบที่บันทึกแล้ว">
