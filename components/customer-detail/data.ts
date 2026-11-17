@@ -44,7 +44,12 @@ export const ROW_CAP = 5000;
 const CHUNK = 60;
 const AUDIT_LIMIT = 300;
 
-type Err = { message: string } | null;
+type Err = { message: string; code?: string } | null;
+
+/** ข้อความ error ภายใน = รหัสเท่านั้น (ข้อความดิบของ Postgres อาจมีค่าข้อมูลลูกค้า — ห้ามส่งต่อ/ห้าม log) */
+function dbErr(e: { code?: string | null }): string {
+  return `db-error:${e.code ?? "unknown"}`;
+}
 
 function chunks<T>(list: readonly T[], size: number): T[][] {
   const out: T[][] = [];
@@ -59,7 +64,7 @@ async function fetchAll<T>(
   const rows: T[] = [];
   for (let from = 0; from < ROW_CAP; from += PAGE) {
     const { data, error } = await page(from, from + PAGE - 1);
-    if (error) return { rows, error: error.message, capped: false };
+    if (error) return { rows, error: dbErr(error), capped: false };
     const got = (data ?? []) as T[];
     rows.push(...got);
     if (got.length < PAGE) return { rows, error: null, capped: false };
@@ -144,7 +149,7 @@ export async function loadCustomerDetail(
     )
     .eq("id", args.customerId)
     .maybeSingle();
-  if (cu.error) return fail(cu.error.message);
+  if (cu.error) return fail(dbErr(cu.error));
   if (!cu.data) return { data: null, notFound: true, error: null };
   const c = cu.data as unknown as CustomerDb;
 
@@ -162,8 +167,8 @@ export async function loadCustomerDetail(
   ]);
   for (const r of [phonesRes, contractsRes, rulesRes, typeRes, deadlineRes, myTeamRes]) {
     if (r.error) {
-      console.error("[customer-detail] load error", (r.error as { code?: string }).code, r.error.message);
-      return fail(r.error.message);
+      console.error("[customer-detail] load error code:", (r.error as { code?: string }).code);
+      return fail(dbErr(r.error as { code?: string }));
     }
   }
 
@@ -172,7 +177,7 @@ export async function loadCustomerDetail(
   try {
     contracts = ((contractsRes.data ?? []) as unknown as ContractDb[]).map((x) => toContractRow(x, tierRules));
   } catch (e) {
-    return fail(e instanceof Error ? e.message : "อ่านสัญญาไม่ได้");
+    return fail("อ่านข้อมูลสัญญาไม่ได้ (ค่าระยะสัญญาไม่ถูกต้อง)");
   }
   const contractIds = contracts.map((x) => x.id);
   const contractNoById = new Map(contracts.map((x) => [x.id, x.no]));
@@ -213,7 +218,7 @@ export async function loadCustomerDetail(
     if (stRes.error) return fail(stRes.error);
     truncated ||= stRes.capped;
     const moved = await supabase.from("station_transfers").select("station_id, from_contract_id").in("to_contract_id", contractIds);
-    if (moved.error) return fail(moved.error.message);
+    if (moved.error) return fail(dbErr(moved.error));
     const movedFrom = new Map<string, string>();
     for (const m of (moved.data ?? []) as { station_id: string; from_contract_id: string }[]) {
       const no = contractNoById.get(m.from_contract_id);
@@ -355,7 +360,7 @@ export async function loadCustomerDetail(
         .in("contract_id", contractIds),
       supabase.from("v_contract_monthly_timber").select("contract_id, month, ig_station_nos, ic_station_nos").in("contract_id", contractIds).order("month"),
     ]);
-    for (const r of [fRes, rRes, tRes]) if (r.error) return fail(r.error.message);
+    for (const r of [fRes, rRes, tRes]) if (r.error) return fail(dbErr(r.error));
     for (const f of (fRes.data ?? []) as {
       id: string;
       contract_id: string;
@@ -422,7 +427,7 @@ export async function loadCustomerDetail(
       .or(conds.join(","))
       .order("changed_at", { ascending: false })
       .limit(AUDIT_LIMIT);
-    if (aRes.error) return fail(aRes.error.message);
+    if (aRes.error) return fail(dbErr(aRes.error));
     audit = ((aRes.data ?? []) as {
       id: string;
       table_name: string;
