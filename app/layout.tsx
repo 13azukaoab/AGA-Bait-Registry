@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Noto_Sans_Thai } from "next/font/google";
 import "./globals.css";
+import { Clarity } from "@/components/analytics/Clarity";
 
 // ฟอนต์ Noto Sans Thai (SPEC §3) — ผูกเป็น CSS variable ใช้ใน globals.css
 const notoSansThai = Noto_Sans_Thai({
@@ -33,7 +34,10 @@ export default function RootLayout({
     // ก่อน React hydrate เพื่อไม่ให้หน้ากะพริบ — React เลยเห็น attribute ที่ server ไม่ได้ render
     // (ไม่กระทบผู้ใช้ แค่กัน warning ใน dev · ผลเฉพาะ attribute ของ <html> ไม่ลามถึงลูก)
     <html lang="th" suppressHydrationWarning>
-      <body className={notoSansThai.variable}>{children}</body>
+      <body className={notoSansThai.variable}>
+        {children}
+        <Clarity />
+      </body>
     </html>
   );
 }

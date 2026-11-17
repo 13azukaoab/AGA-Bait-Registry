@@ -681,7 +681,7 @@ export function NewContractsClient({
 
       {/* ---------- ตาราง ---------- */}
       {/* relative: ให้ sr-only (absolute) ในตารางถูกกักในกล่องเลื่อน ไม่ดันหน้าให้เลื่อนแนวนอน */}
-      <div className="relative overflow-x-auto rounded-[var(--radius-card)] border border-border bg-surface">
+      <div data-clarity-mask="True" className="relative overflow-x-auto rounded-[var(--radius-card)] border border-border bg-surface">
         <datalist id="branch-list">
           {master.branches.map((b) => (
             <option key={b.id} value={b.name} />
