@@ -24,9 +24,11 @@ import { assignableTeamIds, isTeamAssignableToVisit } from "@/lib/service/teamKi
 import type { ContractDetail, ContractListItem, FormState, LoadedVisit } from "@/components/service/types";
 import { useUnsavedWork } from "@/components/shell/unsaved-work";
 import { Alert, Toast } from "@/components/ui";
+import type { UserRole } from "@/lib/db/types";
 import { createClient } from "@/lib/supabase/client";
 
 import { newBaitForm } from "./baitLogic";
+import { applyPointLabel } from "./pointLabelLogic";
 import { BaitForm, type BaitSavedInfo } from "./BaitForm";
 import { loadBaitVisits, type BaitVisitLogItem } from "./data";
 
@@ -47,8 +49,11 @@ export function BaitClient({
   currentMonth,
   initialItems,
   truncated,
+  role,
 }: {
   master: ServiceMaster;
+  /** บทบาทผู้ใช้ (หน้านี้เข้าได้เฉพาะ host/recorder) — ตัดสินปุ่มแก้ชื่อจุด */
+  role: UserRole;
   zoneId: string;
   branchId: string;
   month: string;
@@ -65,9 +70,21 @@ export function BaitClient({
   const [open, setOpen] = useState<OpenState | null>(null);
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [dirty, setDirty] = useState(false);
+  const [formDirty, setDirty] = useState(false);
+  // M37: กำลังแก้ชื่อจุดค้าง (AgPointLabelEditor · เก็บเป็นชุด id สถานี) — นับเป็นงานค้างร่วมกับฟอร์ม (ตัวแก้เองก็ลงทะเบียน useUnsavedWork ด้วย)
+  const [labelDirtyIds, setLabelDirtyIds] = useState<ReadonlySet<string>>(new Set());
+  const setLabelDirty = useCallback((stationId: string, d: boolean) => {
+    setLabelDirtyIds((prev) => {
+      if (prev.has(stationId) === d) return prev;
+      const next = new Set(prev);
+      if (d) next.add(stationId);
+      else next.delete(stationId);
+      return next;
+    });
+  }, []);
+  const dirty = formDirty || labelDirtyIds.size > 0;
   // M34: บอกแถบแจ้งเวอร์ชันใหม่ว่ามีข้อมูลที่ยังไม่บันทึก (ไม่กระทบ logic บันทึก)
-  useUnsavedWork(dirty);
+  useUnsavedWork(formDirty);
   const [pending, setPending] = useState<(() => void) | null>(null);
   const [toast, setToast] = useState("");
   const req = useRef(0);
@@ -177,6 +194,16 @@ export function BaitClient({
     if (myReq === req.current) setLoading(false);
   };
 
+  /** แก้ชื่อจุดสำเร็จ (M37) — อัปเดตชื่อบนหน้าจอเลย ไม่โหลดใหม่ ไม่แตะสิ่งที่ผู้ใช้กรอกค้างในฟอร์ม */
+  const handlePointLabelSaved = (stationId: string, newLabel: string | null) => {
+    setOpen((o) => {
+      if (!o) return o;
+      const next = applyPointLabel(o.detail, o.form, stationId, newLabel);
+      return { ...o, detail: next.detail, form: next.form };
+    });
+    setToast(newLabel ? `บันทึกชื่อจุดแล้ว: ${newLabel}` : "ลบชื่อจุดแล้ว");
+  };
+
   const handleDeleted = async () => {
     if (!open) return;
     const current = open.itemId;
@@ -275,6 +302,9 @@ export function BaitClient({
               teams={master.teams}
               today={todayBangkok()}
               focusDateOnMount={open.focusDate}
+              role={role}
+              onPointLabelSaved={handlePointLabelSaved}
+              onPointLabelDirty={setLabelDirty}
               onChange={(patch) => {
                 setDirty(true);
                 setOpen((o) => (o ? { ...o, form: { ...o.form, ...patch } } : o));
@@ -310,6 +340,7 @@ export function BaitClient({
             const go = pending;
             setPending(null);
             setDirty(false);
+            setLabelDirtyIds(new Set());
             go();
           }}
           onCancel={() => setPending(null)}

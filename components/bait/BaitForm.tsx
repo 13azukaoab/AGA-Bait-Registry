@@ -11,7 +11,8 @@
  *     (กรอกหลายวันที่เข้าจริงในรอบเดียว — กรอกเรียงจากเก่าไปใหม่ · F ฐานข้อมูลนับตามวันที่เข้าจริง)
  *   * วันที่เข้าอยู่ก่อนวันติดตั้งของจุดที่กรอกผลติดตาม → แถบเตือนสีส้ม + บันทึกไม่ได้
  *   * รายการ "การเข้านอกรอบที่บันทึกแล้ว" (จากฐานข้อมูล) แก้/ลบได้ · แก้การเข้าที่มี IG/IC หรืองานซ่อมปนอยู่ไม่ได้ที่นี่
- *   * ยังไม่ตั้งจำนวนสถานี (SV003) → ไม่ให้กรอก บอกให้ไปตั้งที่หน้า "ลงข้อมูลทำบริการประจำเดือน" ก่อน
+ *   * ยังไม่ตั้งจำนวนสถานี (SV003) → ไม่ให้กรอก บอกให้ไปตั้งที่หน้า “ลงข้อมูลทำบริการประจำเดือน” ก่อน
+ *   * M37: ไอคอนดินสอข้างชื่อจุดกล่อง AG (AgPointLabelEditor) แก้ชื่อจุดได้ทันทีโดยไม่สร้างการเข้าบริการ
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { useEffect, useMemo, useState } from "react";
@@ -25,9 +26,11 @@ import { VisitHeader } from "@/components/service/VisitHeader";
 import { Alert, Button, Chip, TierBadge } from "@/components/ui";
 import { cx } from "@/components/ui/cx";
 import { isInUse } from "@/components/service/types";
+import type { UserRole } from "@/lib/db/types";
 
 import { buildBaitPayload, validateBait } from "./baitLogic";
 import type { BaitVisitLogItem } from "./data";
+import { AgPointLabelEditor } from "./AgPointLabelEditor";
 
 export interface BaitSavedInfo {
   /** true = "บันทึกแล้วเพิ่มอีกวัน" */
@@ -49,11 +52,14 @@ export function BaitForm({
   teams,
   today,
   focusDateOnMount,
+  role,
   onChange,
   onEditLog,
   onSaved,
   onDeleted,
   onCancel,
+  onPointLabelSaved,
+  onPointLabelDirty,
 }: {
   supabase: SupabaseClient;
   item: ContractListItem;
@@ -67,11 +73,17 @@ export function BaitForm({
   today: string;
   /** true = โฟกัสช่องวันที่ตอนเปิดฟอร์ม (หลัง "บันทึกแล้วเพิ่มอีกวัน") */
   focusDateOnMount: boolean;
+  /** บทบาทผู้ใช้ — ตัดสินว่าเห็นปุ่มแก้ชื่อจุดไหน (host/recorder เท่านั้น) */
+  role: UserRole;
   onChange: (patch: Partial<FormState>) => void;
   onEditLog: (visitId: string) => void;
   onSaved: (info: BaitSavedInfo) => void;
   onDeleted: () => void;
   onCancel: () => void;
+  /** แก้ชื่อจุดสำเร็จ (newLabel = ชื่อที่ DB เก็บ · null = ลบ) */
+  onPointLabelSaved: (stationId: string, newLabel: string | null) => void;
+  /** กำลังแก้ชื่อจุดค้างอยู่ (ยังไม่บันทึก) */
+  onPointLabelDirty: (stationId: string, dirty: boolean) => void;
 }) {
   const [showIssues, setShowIssues] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -210,6 +222,15 @@ export function BaitForm({
             issues={issues}
             showIssues={showIssues}
             mode="offround"
+            renderPointLabel={(p) => (
+              <AgPointLabelEditor
+                supabase={supabase}
+                role={role}
+                point={p}
+                onSaved={onPointLabelSaved}
+                onDirtyChange={onPointLabelDirty}
+              />
+            )}
             onChange={onChange}
           />
         </fieldset>

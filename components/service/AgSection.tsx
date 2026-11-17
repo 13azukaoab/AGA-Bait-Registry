@@ -6,14 +6,14 @@
  *   * ทุกจุดที่ยังใช้งานต้อง "กรอกผล" (เหยื่อ + สัดส่วนปลวก) หรือ "ไม่ได้ตรวจจุดนี้" หรือข้ามทั้งหมด (กันลืมกล่อง D10)
  *   * เลขรอบ F **ไม่ให้กรอก** — แสดงจากฐานข้อมูล (บันทึกแล้ว) หรือค่าโดยประมาณ F ถัดไป (ระบบนับจริงตอนบันทึก)
  *     "ไม่ได้ตรวจจุดนี้" ไม่นับเป็นรอบ F
- *   * ป้ายกำกับจุด (ไม่บังคับ) ผูกกับจุดข้ามรอบ แก้ได้ทุกเดือนแม้ไม่ได้ตรวจ
+ *   * ป้ายกำกับจุด (ไม่บังคับ) ผูกกับจุดข้ามรอบ แก้ได้ทุกเดือนแม้ไม่ได้ตรวจ · /bait ส่ง `renderPointLabel` มาแทน (ดินสอ · M37)
  *   * สถานะจุด: ติดตามผล / รอถอด / ถอดแล้ว (DECISIONS 2.34) — "ถอดแล้ว" = จบงาน เปลี่ยนกลับไม่ได้ ยกเว้นแก้การเข้าที่เป็นคนถอด
  *     เอง (2.26 — เปลี่ยนกลับ = ยกเลิกการถอด) · จุดที่ถอดโดยการเข้าอื่นล็อกไว้
  *   * `mode="offround"` (หน้า "กล่อง AG นอกรอบประจำเดือน"): ไม่มี "ไม่ได้ตรวจจุดนี้"/"ข้ามทุกจุด" — จุดที่ไม่ได้กรอกถือว่าไม่ได้ตรวจ
  *   * "ติดกล่องใหม่ (S)": กรอก "เหยื่อที่ใส่" + "ป้ายจุด" (ไม่มี % กิน · ไม่นับเป็นรอบตรวจ → ครั้งถัดไปเป็น F1 SPEC §7.5) · ส่งเป็น `installs` ใน works (M13)
  *   * ชิป: ใต้ดิน/ติดตาม = ฟ้า · ถอดแล้ว = เขียว · ไม่ได้ตรวจ = ส้ม · แดงใช้เฉพาะขาด/ผิด
  */
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 
 import { Button, Chip } from "@/components/ui";
 import { cx } from "@/components/ui/cx";
@@ -46,6 +46,7 @@ export function AgSection({
   issues,
   showIssues,
   mode = "round",
+  renderPointLabel,
   onChange,
 }: {
   form: FormState;
@@ -55,6 +56,8 @@ export function AgSection({
   showIssues: boolean;
   /** round = ในรอบบริการประจำเดือน (/service) · offround = นอกรอบ (/bait) */
   mode?: "round" | "offround";
+  /** ไม่ส่ง = ปุ่ม "ป้ายกำกับ" เดิม (/service) · ส่ง = ใช้ตัวนี้แสดง/แก้ชื่อจุดแทน (/bait · M37) */
+  renderPointLabel?: (p: AgPointState) => ReactNode;
   onChange: (patch: Partial<FormState>) => void;
 }) {
   const round = mode === "round";
@@ -104,15 +107,20 @@ export function AgSection({
               <div className="flex flex-wrap items-center gap-2">
                 <span className={STATION_TYPE_TAG}>AG</span>
                 <b className="text-[13px]">จุดที่ {p.no}</b>
-                <button
-                  type="button"
-                  onClick={() => setLabelOpen(isOpen ? null : p.stationId)}
-                  aria-expanded={isOpen}
-                  className="cursor-pointer rounded border border-dashed border-border-strong px-1.5 py-0.5 text-[12px] text-fg-muted hover:bg-surface"
-                  title="ป้ายกำกับจุด (ไม่บังคับ) — บอกตำแหน่ง เช่น ห้องนอน"
-                >
-                  {p.label ? `${p.label} ✎` : "+ ป้ายกำกับ"}
-                </button>
+                {renderPointLabel ? (
+                  // M37: /bait ส่งตัวแก้ชื่อจุดแบบดินสอ (บันทึกทันที ไม่ผ่านการเข้าบริการ) มาแทนปุ่มป้ายกำกับ
+                  renderPointLabel(p)
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setLabelOpen(isOpen ? null : p.stationId)}
+                    aria-expanded={isOpen}
+                    className="cursor-pointer rounded border border-dashed border-border-strong px-1.5 py-0.5 text-[12px] text-fg-muted hover:bg-surface"
+                    title="ป้ายกำกับจุด (ไม่บังคับ) — บอกตำแหน่ง เช่น ห้องนอน"
+                  >
+                    {p.label ? `${p.label} ✎` : "+ ป้ายกำกับ"}
+                  </button>
+                )}
                 {p.statusChoice === "active" ? (
                   <Chip tone="info">{statusLabel("active", p.statusDb)}</Chip>
                 ) : p.statusChoice === "pending_removal" ? (
