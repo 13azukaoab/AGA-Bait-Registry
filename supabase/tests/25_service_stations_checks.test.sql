@@ -159,8 +159,8 @@ SELECT throws_ok($$INSERT INTO stations (contract_id, type, station_no) VALUES (
 -- M16 (DECISIONS 2.29): "หาย" ตั้งผ่านงานซ่อมใน save_service_visit เท่านั้น → ตรงๆ โดนกัน · ป้ายจุดยังแก้ได้
 SELECT throws_ok($$UPDATE stations SET status = 'lost', point_label = 'หน้าบ้าน' WHERE id = '00000000-0000-0000-0000-0000000000e6'$$,
   '42501', NULL, 'recorder cannot mark a station lost directly (M16)');
-SELECT lives_ok($$UPDATE stations SET point_label = 'หน้าบ้าน' WHERE id = '00000000-0000-0000-0000-0000000000e6'$$,
-  'recorder changes the point label');
+SELECT throws_ok($$UPDATE stations SET point_label = 'หน้าบ้าน' WHERE id = '00000000-0000-0000-0000-0000000000e6'$$,
+  'SV014', NULL, 'recorder changes the point label — M37: direct label edit is refused (SV014 fires only on a row RLS lets through)');
 SELECT throws_ok($$UPDATE stations SET station_no = 7 WHERE id = '00000000-0000-0000-0000-0000000000e7'$$,
   '42501', NULL, 'recorder cannot renumber a station');
 SELECT throws_ok($$UPDATE stations SET contract_id = '00000000-0000-0000-0000-0000000000d6' WHERE id = '00000000-0000-0000-0000-0000000000e7'$$,
