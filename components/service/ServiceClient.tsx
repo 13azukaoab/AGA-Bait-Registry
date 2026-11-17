@@ -17,6 +17,7 @@
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import { useUnsavedWork } from "@/components/shell/unsaved-work";
 import { Alert, Toast } from "@/components/ui";
 import { createClient } from "@/lib/supabase/client";
 
@@ -65,6 +66,8 @@ export function ServiceClient({
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [dirty, setDirty] = useState(false);
+  // M34: บอกแถบแจ้งเวอร์ชันใหม่ว่ามีข้อมูลที่ยังไม่บันทึก (ไม่กระทบ logic บันทึก)
+  useUnsavedWork(dirty);
   const [pending, setPending] = useState<(() => void) | null>(null);
   const [toast, setToast] = useState("");
   const [allDone, setAllDone] = useState(false);

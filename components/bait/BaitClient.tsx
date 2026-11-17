@@ -22,6 +22,7 @@ import { defaultVisitDate, formFromVisit, newId } from "@/components/service/for
 import { monthLabel, todayBangkok } from "@/lib/service/months";
 import { assignableTeamIds, isTeamAssignableToVisit } from "@/lib/service/teamKind";
 import type { ContractDetail, ContractListItem, FormState, LoadedVisit } from "@/components/service/types";
+import { useUnsavedWork } from "@/components/shell/unsaved-work";
 import { Alert, Toast } from "@/components/ui";
 import { createClient } from "@/lib/supabase/client";
 
@@ -65,6 +66,8 @@ export function BaitClient({
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [dirty, setDirty] = useState(false);
+  // M34: บอกแถบแจ้งเวอร์ชันใหม่ว่ามีข้อมูลที่ยังไม่บันทึก (ไม่กระทบ logic บันทึก)
+  useUnsavedWork(dirty);
   const [pending, setPending] = useState<(() => void) | null>(null);
   const [toast, setToast] = useState("");
   const req = useRef(0);
