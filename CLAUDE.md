@@ -32,10 +32,10 @@
 
 ## ตรรกะหลักที่ต้องมี unit test
 อยู่ใน `lib/rules/` เป็น pure function แยกจาก UI/DB เพื่อทดสอบได้ง่าย
-- `annualValue(valueTotal, termMonths)` (M30 · เดิมรับปี)
+- `annualValueForTerm(valueTotal, termMonths)` (M30 · ตัวเดิม `annualValue` รับปี)
 - `tierOf(annualValue, rules)` → `S | M | L | XL`
-- `serviceMonths(startDate, termMonths)` → รายการ `YYYY-MM` (M30)
-- `defaultEndDate(startDate, termMonths)` = วันเริ่ม + N เดือน − 1 วัน · วันเริ่มปลายเดือนที่เดือนปลายทางสั้นกว่า → วันสุดท้ายของเดือน (31 ม.ค. + 1 เดือน → 28 ก.พ.)
+- `serviceMonthsForTerm(startDate, termMonths)` → รายการ `YYYY-MM` (M30 · ตัวเดิม `serviceMonths` รับปี)
+- `defaultEndDateForTerm(startDate, termMonths)` = วันเริ่ม + N เดือน − 1 วัน · วันเริ่มปลายเดือนที่เดือนปลายทางสั้นกว่า → วันสุดท้ายของเดือน (31 ม.ค. + 1 เดือน → 28 ก.พ.)
 - `isMissedService(contract, month, visits)` (SPEC §7.4)
 - `buildBranchSnapshot(contracts, month, rules)` → แถวรูปแบบ Dashboard
 - `monthKey(date)` → `SEP.26`
