@@ -8,48 +8,48 @@ import {
 } from "./passwordStrength";
 
 describe("checkPasswordStrength (DECISIONS 2.69)", () => {
-  it("ขั้นต่ำคือ 10", () => {
-    expect(PASSWORD_MIN_LENGTH).toBe(10);
+  it("ขั้นต่ำคือ 8", () => {
+    expect(PASSWORD_MIN_LENGTH).toBe(8);
   });
 
   it("ผ่านเมื่อครบทุกข้อ", () => {
-    expect(checkPasswordStrength("Abcdefgh12")).toEqual([]);
+    expect(checkPasswordStrength("Abcdefg1")).toEqual([]);
   });
 
-  it("ยาว 9 ไม่ผ่าน / ยาว 10 ผ่าน (ขอบเขต)", () => {
-    expect(checkPasswordStrength("Abcdefgh1")).toEqual(["too_short"]);
-    expect(checkPasswordStrength("Abcdefghi1")).toEqual([]);
-  });
-
-  it("ไม่มีตัวพิมพ์เล็ก", () => {
-    expect(checkPasswordStrength("ABCDEFGH12")).toEqual(["no_lowercase"]);
+  it("ยาว 7 ไม่ผ่าน / ยาว 8 ผ่าน (ขอบเขต)", () => {
+    expect(checkPasswordStrength("Abcdef1")).toEqual(["too_short"]);
+    expect(checkPasswordStrength("Abcdefg1")).toEqual([]);
   });
 
   it("ไม่มีตัวพิมพ์ใหญ่", () => {
-    expect(checkPasswordStrength("abcdefgh12")).toEqual(["no_uppercase"]);
+    expect(checkPasswordStrength("abcdefg1")).toEqual(["no_uppercase"]);
+  });
+
+  it("ไม่มีตัวพิมพ์เล็ก", () => {
+    expect(checkPasswordStrength("ABCDEFG1")).toEqual(["no_lowercase"]);
   });
 
   it("ไม่มีตัวเลข", () => {
-    expect(checkPasswordStrength("Abcdefghij")).toEqual(["no_digit"]);
+    expect(checkPasswordStrength("Abcdefgh")).toEqual(["no_digit"]);
   });
 
   it("รายงานทุกข้อที่ไม่ผ่านพร้อมกัน", () => {
     expect(checkPasswordStrength("")).toEqual([
       "too_short",
-      "no_lowercase",
       "no_uppercase",
+      "no_lowercase",
       "no_digit",
     ]);
   });
 
   it("ช่องว่างนับเป็นอักขระ (ไม่ตัดหัวท้าย) แต่ไม่ช่วยให้ครบเงื่อนไข", () => {
-    expect(checkPasswordStrength("Ab1       ")).toEqual([]); // 10 ตัวรวมช่องว่าง
-    expect(checkPasswordStrength("          ")).toEqual(["no_lowercase", "no_uppercase", "no_digit"]);
+    expect(checkPasswordStrength("Ab1     ")).toEqual([]); // 8 ตัวรวมช่องว่าง
+    expect(checkPasswordStrength("        ")).toEqual(["no_uppercase", "no_lowercase", "no_digit"]);
   });
 
   it("อักขระไทยนับความยาวได้ แต่ไม่นับเป็นตัวพิมพ์เล็ก/ใหญ่", () => {
-    expect(checkPasswordStrength("สวัสดีครับผมAa1")).toEqual([]);
-    expect(checkPasswordStrength("สวัสดีครับผมเอง1")).toEqual(["no_lowercase", "no_uppercase"]);
+    expect(checkPasswordStrength("สวัสดีAa1")).toEqual([]);
+    expect(checkPasswordStrength("สวัสดีครับ1")).toEqual(["no_uppercase", "no_lowercase"]);
   });
 });
 
@@ -57,10 +57,12 @@ describe("describePasswordIssues", () => {
   it("ผ่าน → null", () => {
     expect(describePasswordIssues([])).toBeNull();
   });
-  it("รวมข้อความไทยทุกข้อ", () => {
-    const text = describePasswordIssues(["too_short", "no_digit"]);
-    expect(text).toContain("10 ตัวอักษร");
-    expect(text).toContain("ตัวเลข");
+  it("บอกชัดว่าขาดอะไร", () => {
+    const text = describePasswordIssues(["too_short", "no_uppercase", "no_digit"]);
+    expect(text).toContain("ยาวอย่างน้อย 8 ตัวอักษร");
+    expect(text).toContain("ตัวพิมพ์ใหญ่อย่างน้อย 1 ตัว");
+    expect(text).toContain("ตัวเลขอย่างน้อย 1 ตัว");
+    expect(text).not.toContain("ตัวพิมพ์เล็ก");
   });
 });
 
@@ -68,10 +70,10 @@ describe("translatePasswordUpdateError", () => {
   it("weak_password (ความยาว) → ข้อความไทย ไม่โชว์ข้อความดิบ", () => {
     const text = translatePasswordUpdateError({
       code: "weak_password",
-      message: "Password should be at least 10 characters.",
+      message: "Password should be at least 8 characters.",
       reasons: ["length"],
     });
-    expect(text).toBe("รหัสผ่านใหม่ต้องยาวอย่างน้อย 10 ตัวอักษร");
+    expect(text).toBe("รหัสผ่านใหม่ต้องยาวอย่างน้อย 8 ตัวอักษร");
     expect(text).not.toMatch(/[A-Za-z]{4}/);
   });
 
@@ -94,7 +96,7 @@ describe("translatePasswordUpdateError", () => {
 
   it("ไม่มี code แต่ข้อความเข้าข่าย weak → ยังแปลได้", () => {
     expect(
-      translatePasswordUpdateError({ message: "Password should be at least 10 characters" }),
+      translatePasswordUpdateError({ message: "Password should be at least 8 characters" }),
     ).toContain("รหัสผ่านใหม่");
   });
 

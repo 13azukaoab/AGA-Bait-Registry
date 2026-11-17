@@ -226,7 +226,7 @@ describe("เป้าหมายปกติ + ผู้เรียกเป�
       expect(r.ok).toBe(true);
       if (!r.ok) return;
       const { temporaryPassword } = r as { temporaryPassword: string };
-      expect(temporaryPassword.length).toBeGreaterThanOrEqual(10);
+      expect(temporaryPassword.length).toBeGreaterThanOrEqual(8);
       expect(checkPasswordStrength(temporaryPassword)).toEqual([]);
     }
   });
