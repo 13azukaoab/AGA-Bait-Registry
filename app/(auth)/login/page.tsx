@@ -7,6 +7,7 @@
  */
 import type { Metadata } from "next";
 
+import { AppVersion } from "@/components/shell/AppVersion";
 import { ALERT_INFO, PAGE_HELP, PAGE_TITLE } from "../ui";
 import { LoginForm } from "./login-form";
 
@@ -51,6 +52,8 @@ export default async function LoginPage({
         ลืมรหัสผ่านหรือยังไม่มีบัญชี? ติดต่อ <b>Host (QCS ส่วนกลาง Bait)</b>{" "}
         เพื่อรีเซ็ตหรือสร้างบัญชีให้
       </p>
+
+      <AppVersion className="text-center" />
     </div>
   );
 }
