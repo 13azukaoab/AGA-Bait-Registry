@@ -5,7 +5,7 @@
  *
  * โครง: แถบบน (Topbar) ติดบน · ใต้แถบ = เมนูซ้าย (NavDrawer) ติดที่ + เนื้อหา (children) เลื่อนได้
  * จอ ≤860px เมนูเป็นลิ้นชัก: เปิดด้วย ☰ · ปิดด้วย Esc / กดฉากหลัง / กดลิงก์ / ขยายจอ / เปลี่ยนหน้า
- * จอ ≥861px ☰ = ย่อ/ขยายเมนู (แถบไอคอน 58px · ชี้เมาส์/Tab = กางทับชั่วคราว) — ตรรกะอยู่ใน nav-mini.ts
+ * จอ ≥861px ปุ่ม ☰ อยู่บนสุดของเมนูซ้าย = ย่อ/ขยายเมนู (แถบไอคอน 58px · ชี้เมาส์/Tab = กางทับชั่วคราว) — ตรรกะอยู่ใน nav-mini.ts
  *   บางหน้าเริ่มแบบย่อเสมอ (NAV_MINI_START_PATHS) โดยไม่บันทึกค่า
  *
  * สิทธิ์ (สำคัญ):
@@ -44,14 +44,6 @@ const NAV_ID = "app-nav";
 /** จุดตัดจอกว้าง/จอเล็กของเมนู — ต้องตรงกับ `min-[861px]` / `max-[860px]` ใน NavDrawer */
 const DESKTOP_QUERY = "(min-width: 861px)";
 
-function subscribeDesktop(onChange: () => void): () => void {
-  const query = window.matchMedia(DESKTOP_QUERY);
-  query.addEventListener("change", onChange);
-  return () => query.removeEventListener("change", onChange);
-}
-const getDesktop = () => window.matchMedia(DESKTOP_QUERY).matches;
-/** ฝั่ง server ไม่รู้ขนาดจอ → เริ่มด้วยโหมดลิ้นชัก แล้วอัปเดตหลัง hydrate (ไม่ mismatch) */
-const getDesktopOnServer = () => false;
 const getMiniOnServer = () => false;
 
 export type AppShellProps = {
@@ -94,17 +86,14 @@ export function AppShell({
   );
 
   // เมนูย่อ (จอกว้าง): ค่าอยู่ที่ attribute บน <html> — script ใน JSX ตั้งก่อนวาด, effect นี้ตั้งซ้ำตอนเปลี่ยนหน้า
-  const wide = useSyncExternalStore(subscribeDesktop, getDesktop, getDesktopOnServer);
   const mini = useSyncExternalStore(subscribeMini, getMini, getMiniOnServer);
   useEffect(() => releaseNoAnim(), []);
   useEffect(() => {
     applyMini(resolveMini(pathname, readStoredMini()));
   }, [pathname]);
 
-  const onToggleNav = () => {
-    if (wide) setMiniByUser(!mini);
-    else setNavOpen(!navOpen);
-  };
+  // ปุ่มในแถบบนมีเฉพาะจอเล็ก = เปิด/ปิดลิ้นชัก · ปุ่มย่อ/ขยายบนจอกว้างอยู่ใน NavDrawer
+  const onToggleNav = () => setNavOpen(!navOpen);
 
   const toggleRef = useRef<HTMLButtonElement>(null);
   const navRef = useRef<HTMLElement>(null);
@@ -155,8 +144,6 @@ export function AppShell({
         ref={toggleRef}
         navId={NAV_ID}
         navOpen={navOpen}
-        wide={wide}
-        mini={mini}
         onToggleNav={onToggleNav}
         months={months}
         month={month}
@@ -171,6 +158,8 @@ export function AppShell({
           id={NAV_ID}
           role={role}
           currentPath={pathname}
+          mini={mini}
+          onToggleMini={() => setMiniByUser(!mini)}
           open={navOpen}
           onClose={() => setNavOpen(false)}
         />

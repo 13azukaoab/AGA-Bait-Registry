@@ -128,14 +128,13 @@ code,.mono{font-family:ui-monospace,Consolas,"Courier New",monospace;font-size:1
 /* ===== ปุ่มมาตรฐาน 3 แบบ (เจ้าของเลือก 16 พ.ย. 2026 — ใช้ทุกหน้า · แหล่งจริง = _shell/shell.css) =====
    1) .navtoggle ปุ่มเมนู  2) .addbtn ปุ่มเพิ่ม (ไอคอนสไลด์ สี --ok)  3) .savebtn ปุ่มบันทึกหลัก (แถบสีกวาด สี --accent)
    ปุ่มรอง/ปุ่มใน modal/ปุ่มอันตราย ใช้ .btn เดิม */
-.navtoggle{width:auto;height:34px;padding:0 10px;gap:6px;border:none;border-radius:8px;background:var(--fg);color:var(--bg);
-  font-family:inherit;font-size:12.5px;font-weight:600;letter-spacing:.04em;transition:box-shadow .3s ease-in-out,transform .15s}
+.navtoggle{width:38px;height:34px;padding:0;border:none;border-radius:8px;background:var(--fg);color:var(--bg);
+  transition:box-shadow .3s ease-in-out,transform .15s}
 .navtoggle .nt-ic{fill:currentColor;flex:none;transition:transform .3s}
 .navtoggle:hover{box-shadow:0 0 14px 0 var(--border-strong)}
 .navtoggle:hover .nt-ic{transform:scale(1.08)}
 .navtoggle:active{transform:scale(.97)}
-.navtoggle .nt-tx{display:none}
-@media (min-width:861px){ .navtoggle .nt-tx{display:inline} }
+/* ปุ่มเมนูเป็นไอคอนล้วน · จอกว้าง (≥861px) อยู่บนสุดของเมนูซ้าย (.navtoggle-nav) · จอเล็กอยู่ใน topbar */
 .addbtn{flex:none;position:relative;height:38px;box-sizing:border-box;cursor:pointer;display:inline-flex;align-items:center;overflow:hidden;font-family:inherit;font-size:13px;
   border:1px solid var(--ok);border-radius:8px;background:var(--ok);color:var(--accent-fg);padding:0}
 .addbtn,.addbtn__ic,.addbtn__tx{transition:all .3s}
@@ -176,7 +175,7 @@ code,.mono{font-family:ui-monospace,Consolas,"Courier New",monospace;font-size:1
 /* จอเล็ก: เมนูเป็นลิ้นชักเลื่อนจากซ้าย · topbar เหลือ ☰ + โลโก้ + ชื่อ + ปุ่มสำคัญ */
 @media (max-width:860px){
   .shell{display:block;min-height:0}
-  .navtoggle{display:inline-flex}
+  .navtoggle:not(.navtoggle-nav){display:inline-flex}
   .nav{position:fixed;top:0;left:0;bottom:0;width:260px;z-index:40;overflow-y:auto;
     transform:translateX(-100%);transition:transform .22s ease;box-shadow:var(--drawer-shadow)}
   body.nav-open .nav{transform:translateX(0)}
@@ -199,7 +198,7 @@ code,.mono{font-family:ui-monospace,Consolas,"Courier New",monospace;font-size:1
    ชี้เมาส์หรือกด Tab เข้าแถบ → เมนูกางทับเนื้อหาชั่วคราว (margin-right ติดลบ = ไม่ดันเนื้อหา ไม่กระตุก) · ออกแล้วหุบเอง
    จำค่าในเครื่อง (localStorage 'aga-nav-mini') ใช้ร่วมทุกหน้า · จอเล็ก ≤860px ยังเป็นลิ้นชักเดิม (body.nav-open) */
 @media (min-width:861px){
-  .navtoggle{display:inline-flex}
+  .navtoggle-nav{display:flex;margin-bottom:8px}
   body.nav-mini .nav{position:sticky;top:57px;align-self:flex-start;height:calc(100vh - 57px);width:58px;
     overflow:hidden;z-index:15;transition:width .18s ease,margin-right .18s ease,box-shadow .18s ease}
   body.nav-mini .nav:is(:hover,:focus-within){width:238px;margin-right:-180px;overflow-y:auto;
@@ -209,6 +208,13 @@ code,.mono{font-family:ui-monospace,Consolas,"Courier New",monospace;font-size:1
   body.nav-mini .nav:not(:hover):not(:focus-within) .group{font-size:0;padding:0;margin:9px 6px;border-top:1px solid var(--border)}
 }
 @media (prefers-reduced-motion:reduce){body.nav-mini .nav{transition:none}}
+/* ปุ่มเมนูบนสุดของเมนูซ้าย: เมนูขยาย (ปกติ หรือกางชั่วคราวตอนชี้เมาส์/Tab) = ไอคอน + ข้อความ MENU · เมนูย่อ 58px = ไอคอนล้วน
+   ข้อความ aria-hidden (ชื่อปุ่มอ่านจาก aria-label) · whitespace:nowrap + overflow:hidden กันตัดบรรทัดระหว่างเมนูกำลังกาง */
+.navtoggle .nt-tx{display:none;font-family:inherit;font-size:12.5px;font-weight:600;letter-spacing:.04em;line-height:1;white-space:nowrap;overflow:hidden}
+@media (min-width:861px){
+  body:not(.nav-mini) .navtoggle-nav,body.nav-mini .nav:is(:hover,:focus-within) .navtoggle-nav{width:fit-content;padding:0 10px;gap:6px}
+  body:not(.nav-mini) .navtoggle-nav .nt-tx,body.nav-mini .nav:is(:hover,:focus-within) .navtoggle-nav .nt-tx{display:inline}
+}
 /* ตอนโหลดหน้า: ตั้งสถานะเมนูทันทีโดยไม่เล่นแอนิเมชันหุบ (ใส่/ถอดโดย init ใน JS) */
 body.nav-noanim .nav{transition:none!important}
 /* ===== UX เร่งด่วน (เจ้าของอนุมัติ 16 พ.ย. 2026 · HQ วัดค่าจริง) =====
@@ -391,7 +397,7 @@ dialog .row{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
 <body>
 
 <div class="topbar">
-  <button class="navtoggle" id="navToggle" aria-label="เปิด/ปิดเมนู" aria-expanded="false" aria-controls="nav" onclick="toggleNav()"><svg class="nt-ic" viewBox="0 0 80 75" width="16" height="15" aria-hidden="true"><rect width="80" height="15" rx="7.5"/><rect y="30" width="80" height="15" rx="7.5"/><rect y="60" width="80" height="15" rx="7.5"/></svg><span class="nt-tx">MENU</span></button>
+  <button class="navtoggle" id="navToggle" aria-label="เปิด/ปิดเมนู" aria-expanded="false" aria-controls="nav" onclick="toggleNav()"><svg class="nt-ic" viewBox="0 0 80 75" width="16" height="15" aria-hidden="true"><rect width="80" height="15" rx="7.5"/><rect y="30" width="80" height="15" rx="7.5"/><rect y="60" width="80" height="15" rx="7.5"/></svg></button>
   <a class="tb-brand" href="aga-bait-registry-prototype.html#todo">
     <span class="tb-logo" role="img" aria-label="Advance Group Asia (AGA)"></span>
     <span class="tb-title"><b>ข้อมูลหลังบ้านระบบเหยื่อ</b><span>ส่วนกลาง</span></span>
@@ -411,6 +417,7 @@ dialog .row{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
   <!-- AGA-SHELL v2 : เมนูซ้าย — เหมือนกันทุกหน้า · ต่างกันแค่ลิงก์ของหน้าปัจจุบันใส่ class="active" aria-current="page"
        data-roles = สิทธิ์ที่เห็นเมนูนี้ (host admin recorder viewer) · ตัวกรองอยู่ที่ applyNavRole() ด้านล่าง -->
   <nav class="nav" id="nav" aria-label="เมนูหลัก">
+    <button class="navtoggle navtoggle-nav" id="navToggleDesk" type="button" aria-label="ย่อเมนูให้เนื้อหากว้างขึ้น" title="ย่อเมนูให้เนื้อหากว้างขึ้น" aria-pressed="false" aria-controls="nav" onclick="toggleNav()"><svg class="nt-ic" viewBox="0 0 80 75" width="16" height="15" aria-hidden="true"><rect width="80" height="15" rx="7.5"/><rect y="30" width="80" height="15" rx="7.5"/><rect y="60" width="80" height="15" rx="7.5"/></svg><span class="nt-tx" aria-hidden="true">MENU</span></button>
     <div class="group">งานประจำวัน</div>
     <a href="aga-bait-registry-prototype.html#todo" data-nav="todo" data-roles="host recorder"><span class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 11l3 3 8-8"/><path d="M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h9"/></svg></span> สถานะทะเบียนบริการ</a>
     <a href="aga-bait-registry-prototype.html#service" data-nav="service" data-roles="host recorder"><span class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg></span> ลงข้อมูลทำบริการประจำเดือน</a>
@@ -1257,7 +1264,7 @@ function updateJson(ev){
 function navWide(){ return window.matchMedia('(min-width:861px)').matches; }
 function navMini(on,noSave){   // noSave = หน้าที่บังคับเริ่มแบบย่อ ไม่เขียนทับค่าที่ผู้ใช้เลือกไว้ของหน้าอื่น
   document.body.classList.toggle('nav-mini',on);
-  var t=document.getElementById('navToggle');
+  var t=document.getElementById('navToggleDesk');
   if(t && navWide()){
     t.setAttribute('aria-pressed',on?'true':'false');
     t.setAttribute('aria-label',on?'ขยายเมนู (ตอนนี้ย่อไว้ ชี้ที่แถบเมนูเพื่อดูชั่วคราว)':'ย่อเมนูให้เนื้อหากว้างขึ้น');

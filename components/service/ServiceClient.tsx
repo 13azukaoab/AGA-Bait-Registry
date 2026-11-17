@@ -269,7 +269,7 @@ export function ServiceClient({
         </p>
       </header>
 
-      <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[minmax(300px,380px)_minmax(0,1fr)]">
+      <div data-clarity-mask="True" className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[minmax(300px,380px)_minmax(0,1fr)]">
         <ContractList
           zones={master.zones}
           branches={master.branches}
