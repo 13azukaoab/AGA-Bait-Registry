@@ -67,6 +67,9 @@ export interface PendingMissed {
   contractId: string;
   customerName: string;
   branchName: string;
+  /** ใช้ทำลิงก์ไปหน้าลงข้อมูลบริการ (zone/branch เท่านั้น ไม่พาข้อมูลลูกค้า) */
+  branchId: string;
+  zoneId: string;
   contractNo: string;
   /** 'YYYY-MM' เดือนที่ตก */
   missedMonth: string;

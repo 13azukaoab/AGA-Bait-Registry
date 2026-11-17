@@ -163,3 +163,13 @@ describe("ลูกค้ารอเก็บสถานี", () => {
     expect(s).toEqual({ customers: 1, stations: 5 });
   });
 });
+
+describe("สิทธิ์เข้าหน้า /todo (DECISIONS 2.57)", () => {
+  it("host · recorder · admin เข้าได้ · viewer เข้าไม่ได้", async () => {
+    const { canAccessPath } = await import("@/lib/auth/access");
+    expect(canAccessPath("host", "/todo")).toBe(true);
+    expect(canAccessPath("recorder", "/todo")).toBe(true);
+    expect(canAccessPath("admin", "/todo")).toBe(true);
+    expect(canAccessPath("viewer", "/todo")).toBe(false);
+  });
+});

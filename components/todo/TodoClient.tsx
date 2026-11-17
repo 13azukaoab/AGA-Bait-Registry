@@ -90,7 +90,7 @@ export function TodoClient({ data, role }: { data: TodoData; role: UserRole }) {
 
       <ProgressCard month={data.month} progress={data.progress} />
       <StatCards missedCount={data.pending.length} collect={data.collect} agPendingCount={data.agPending.length} />
-      <MissedBox pending={data.pending} closed={data.closed} role={role} onWaive={setWaiving} onReopen={(c) => setReopening(c)} />
+      <MissedBox pending={data.pending} closed={data.closed} role={role} currentMonth={data.currentMonth} onWaive={setWaiving} onReopen={(c) => setReopening(c)} />
 
       <div className="grid gap-4 md:grid-cols-2">
         <ListCard

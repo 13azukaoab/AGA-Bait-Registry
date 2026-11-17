@@ -23,12 +23,15 @@ export function MissedBox({
   pending,
   closed,
   role,
+  currentMonth,
   onWaive,
   onReopen,
 }: {
   pending: readonly PendingMissed[];
   closed: readonly ClosedMissed[];
   role: UserRole;
+  /** เดือนปัจจุบัน — บริการชดเชยบันทึกในเดือนที่ไปทำจริง */
+  currentMonth: string;
   onWaive: (item: PendingMissed) => void;
   onReopen: (item: ClosedMissed) => void;
 }) {
@@ -65,7 +68,7 @@ export function MissedBox({
             : `ชดเชยได้ถึง ${monthLabel(it.deadlineMonth)}`;
           const record = (
             <Link
-              href="/service"
+              href={`/service?zone=${it.zoneId}&branch=${it.branchId}&month=${currentMonth}`}
               aria-disabled={!a.recordEnabled}
               tabIndex={a.recordEnabled ? undefined : -1}
               title={

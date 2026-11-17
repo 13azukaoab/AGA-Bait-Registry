@@ -123,11 +123,12 @@ export async function loadTodo(supabase: SupabaseClient): Promise<{ data: TodoDa
   // 2) ข้อมูลอ้างอิง (สาขาของส่วนที่แสดง + เกณฑ์ Tier สำหรับป้ายในรายการ)
   const [master, branchRes] = await Promise.all([
     loadServiceMaster(supabase),
-    supabase.from("branches").select("id, name, division").eq("is_active", true).eq("division", scope).order("name"),
+    supabase.from("branches").select("id, name, zone_id, division").eq("is_active", true).eq("division", scope).order("name"),
   ]);
   if (!master.master || master.error) return { data: null, error: master.error ?? "โหลดข้อมูลอ้างอิงไม่สำเร็จ" };
   if (branchRes.error) return { data: null, error: branchRes.error.message };
-  const branches = (branchRes.data ?? []) as { id: string; name: string }[];
+  const branches = (branchRes.data ?? []) as { id: string; name: string; zone_id: string }[];
+  const zoneOf: Record<string, string> = Object.fromEntries(branches.map((b) => [b.id, b.zone_id]));
   const branchNames: Record<string, string> = Object.fromEntries(branches.map((b) => [b.id, b.name]));
   const branchIds = new Set(branches.map((b) => b.id));
 
@@ -209,6 +210,8 @@ export async function loadTodo(supabase: SupabaseClient): Promise<{ data: TodoDa
           contractId: p.contract_id,
           customerName: n.customerName,
           branchName: branchNames[p.branch_id] ?? "-",
+          branchId: p.branch_id,
+          zoneId: zoneOf[p.branch_id] ?? "",
           contractNo: n.contractNo,
           missedMonth: toMonthKey(p.missed_month),
           lastServiceMonth: toMonthKey(p.last_service_month),
