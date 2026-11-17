@@ -53,7 +53,7 @@ export function Icon({ name, className }: { name: IconName; className?: string }
 export function Tag({ tone, children, title }: { tone: Tone; children: ReactNode; title?: string }) {
   return (
     <span title={title}>
-      <Chip tone={tone} className="text-xs">
+      <Chip tone={tone} className="!text-xs">
         {children}
       </Chip>
     </span>
@@ -108,7 +108,7 @@ export function FilterChip({
 }) {
   return (
     <span title={title} className="inline-flex">
-      <Chip tone={tone} selected={on} onClick={onClick} className="text-xs max-md:min-h-11 max-md:px-3 md:min-h-8">
+      <Chip tone={tone} selected={on} onClick={onClick} className="!text-xs max-md:min-h-11 max-md:px-3 md:min-h-8">
         {children}
       </Chip>
     </span>

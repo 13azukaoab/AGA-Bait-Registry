@@ -84,6 +84,7 @@ export function VisitsTab({
   const [waiving, setWaiving] = useState<MissedItem | null>(null);
   const [reopening, setReopening] = useState<MissedItem | null>(null);
   const [reopenError, setReopenError] = useState<string | null>(null);
+  const [showVoid, setShowVoid] = useState(false);
 
   const multi = data.contracts.length > 1;
   const contractById = new Map(data.contracts.map((c) => [c.id, c]));
@@ -166,7 +167,7 @@ export function VisitsTab({
             {canDecide ? null : <span className="ml-auto text-xs font-normal text-fg-muted">ดูอย่างเดียว</span>}
           </h3>
           <ul className="m-0 list-none p-0">
-            {[...mlist].reverse().map((m) => {
+            {[...mlist].reverse().filter((m) => m.status !== "void_renewed" || showVoid).map((m) => {
               const k = contractById.get(m.contractId);
               const a = missedActions({ role: data.role, contractStatus: k?.status ?? "active", item: m });
               const lab = MISSED_STATUS_LABEL[m.status];
@@ -219,6 +220,16 @@ export function VisitsTab({
               );
             })}
           </ul>
+          {mc.voided > 0 ? (
+            <button
+              type="button"
+              aria-expanded={showVoid}
+              onClick={() => setShowVoid((v) => !v)}
+              className="flex min-h-11 w-full items-center gap-2 border-t border-border px-3.5 text-left text-xs font-semibold text-fg-muted hover:text-fg md:min-h-9"
+            >
+              {showVoid ? "ซ่อน" : "แสดง"}เดือนที่เป็นโมฆะ (ต่อสัญญาแล้ว) {mc.voided} เดือน
+            </button>
+          ) : null}
         </section>
       ) : null}
 
@@ -448,7 +459,7 @@ export function VisitsTab({
               </tbody>
             </table>
           </div>
-          <Pager page={pg.page} pageSize={PAGE_VI} total={rows.length} onPageChange={(p) => onUi({ ...ui, page: p })} className="mt-2" />
+          <Pager page={pg.page} pageSize={PAGE_VI} total={rows.length} onPageChange={(p) => onUi({ ...ui, page: p })} className="mt-2 max-md:[&_button]:min-h-11" />
         </>
       )}
 

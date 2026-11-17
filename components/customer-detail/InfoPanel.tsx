@@ -99,7 +99,7 @@ export function InfoPanel({ data }: { data: CustomerDetailData }) {
     if (data.role === "recorder" && !xteamOk) {
       const cross = await checkCrossTeam(supabase, c.id);
       if (cross === true) {
-        setAsk({ pending, teams: [] });
+        setAsk({ pending, teams: [...new Set(data.contracts.flatMap((k) => k.teamCodes))] });
         return;
       }
     }

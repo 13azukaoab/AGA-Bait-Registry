@@ -182,8 +182,8 @@ export function StationsTab({ data, ui, onUi }: { data: CustomerDetailData; ui: 
                             </button>
                           </td>
                           <td className={`${TD_CLASS} font-mono`}>
-                            {s.code}
-                            {s.pointLabel ? <span className="ml-1 font-sans text-xs text-fg-muted">{s.pointLabel}</span> : null}
+                            <span className="whitespace-nowrap">{s.code}</span>
+                            {s.pointLabel ? <span className="block font-sans text-xs text-fg-muted">{s.pointLabel}</span> : null}
                             {s.movedFromContractNo ? (
                               <span className="ml-1 text-fg-muted" title={`ย้ายมาจากสัญญา ${s.movedFromContractNo} (Renew) — การนับเดิมต่อเนื่อง`}>
                                 <Icon name="moved" className="size-3.5" />
@@ -285,7 +285,7 @@ export function StationsTab({ data, ui, onUi }: { data: CustomerDetailData; ui: 
               </tbody>
             </table>
           </div>
-          <Pager page={pg.page} pageSize={PAGE_ST} total={rows.length} onPageChange={(p) => onUi({ ...ui, page: p })} className="mt-2" />
+          <Pager page={pg.page} pageSize={PAGE_ST} total={rows.length} onPageChange={(p) => onUi({ ...ui, page: p })} className="mt-2 max-md:[&_button]:min-h-11" />
         </>
       )}
     </div>

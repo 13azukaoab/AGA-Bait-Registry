@@ -111,7 +111,7 @@ export function TimelineTab({ data }: { data: CustomerDetailData }) {
               );
             })}
           </ul>
-          <Pager page={pg.page} pageSize={PAGE_TL} total={rows.length} onPageChange={setPage} className="mt-2" />
+          <Pager page={pg.page} pageSize={PAGE_TL} total={rows.length} onPageChange={setPage} className="mt-2 max-md:[&_button]:min-h-11" />
         </>
       )}
     </div>

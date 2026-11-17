@@ -163,7 +163,7 @@ export function Kpis({
   const leftMonths = serviceMonthsForTerm(k.startDate, k.termMonths).filter((m) => m > data.currentMonth).length;
 
   return (
-    <div role="group" aria-label="ตัวเลขสำคัญของลูกค้ารายนี้" className="mb-3 grid gap-2.5 [grid-template-columns:repeat(auto-fit,minmax(190px,1fr))]">
+    <div role="group" aria-label="ตัวเลขสำคัญของลูกค้ารายนี้" className="mb-3 grid gap-2.5 [grid-template-columns:repeat(auto-fit,minmax(150px,1fr))]">
       <Kp
         tone="plain"
         label={k.status === "active" ? "สัญญาปัจจุบัน" : "สัญญาล่าสุด"}
