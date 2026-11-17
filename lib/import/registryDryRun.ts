@@ -3,10 +3,10 @@
  *
  * Logic summary:
  *   1. แต่ละชีท → parseRegistrySheet → importContracts 2 รอบ
- *      - strict  = โหมดนำเข้าจริง (DECISIONS 2.70 + คำตอบเจ้าของ 17 พ.ย. 2026)
+ *      - strict  = โหมดนำเข้าจริง (DECISIONS 2.70)
  *          · ประเภทลูกค้าแปลงตามตาราง customerTypes.ts (H/T/TH/R + คำสะกดผิด · ข้อเสนอ ศาลเจ้า เปิด/ปิดได้)
  *          · ผู้ขาย = จับคู่เลขที่สัญญากับไฟล์เปิดงาน (sellerLookup.ts) · ไม่เจอ = ปล่อยว่าง (allowMissingSeller)
- *          · แถวที่สั่งกันไว้ (holdRows เช่น มูลค่าสูงผิดปกติ) ไม่นำเข้า รอสาขายืนยัน
+ *          · แถวที่สั่งกันไว้ (holdRows เช่น มูลค่าสูงผิดปกติ) ไม่นำเข้า (ตัวเลือก · เขต 1 ไม่ใช้)
  *        → ใช้นับ "ปัญหาข้อมูล" และเป็นตัวเลขที่จะเข้าระบบจริง
  *      - lenient = ตัดปัญหาที่ไม่กระทบตัวเลข (ประเภทลูกค้า, ทีม) ออก → เหลือเฉพาะปัญหาวันที่/มูลค่า/ระยะสัญญา
  *        ใช้แยก "สูตรผิด" ออกจาก "ข้อมูลไม่สะอาด" (ถ้า lenient ยังไม่ตรง = ต้องหาสาเหตุที่วันที่/มูลค่า/สูตร)
@@ -15,7 +15,7 @@
  *      · ลูกค้าซ้ำ (2.59) ตรวจด้วยเบอร์โทร/ชื่อในหน่วยความจำ แล้วคืนแค่เลขแถว
  *      · ผู้ขาย รายงานเป็น "จำนวน" เท่านั้น (ไม่มีชื่อผู้ขาย)
  *   4. ไม่ตัดสินวิธีล้างข้อมูลเอง — รายงานอย่างเดียว (เจ้าของเลือกวิธีแก้)
- *      รายการให้สาขายืนยัน + ตารางแปลงประเภทสร้างต่อใน registryReport.ts
+ *      รายการแถวที่ต้องกรอกมือ + ตารางแปลงประเภทสร้างต่อใน registryReport.ts
  */
 import { buildBranchSnapshot } from "../rules/snapshot";
 import { annualValueForTerm, serviceMonthsForTerm } from "../rules/term";
@@ -40,7 +40,7 @@ export interface RowsByKind {
 }
 
 export interface ImportRunSummary {
-  /** ผ่านและจะนำเข้า (ไม่รวมแถวที่กันไว้รอสาขายืนยัน) */
+  /** ผ่านและจะนำเข้า (ไม่รวมแถวที่สั่งกันไว้) */
   ready: number;
   /** แถวที่ผ่านกฎแต่ถูกกันไว้ (holdRows) — เลขแถว Excel · lenient ว่างเสมอ */
   held: number[];
@@ -64,7 +64,7 @@ export interface RowProblem {
   kinds: string[];
 }
 
-/** แถวที่สั่งกันไว้ไม่ให้นำเข้า (รอสาขายืนยัน) */
+/** แถวที่สั่งกันไว้ไม่ให้นำเข้า (ผ่านกฎแต่ต้องตรวจก่อน) → ไปอยู่ในรายการกรอกมือ */
 export interface HoldRow {
   excelRow: number;
   /** เหตุผล (ไม่มีข้อมูลลูกค้า) เช่น "มูลค่าสูงผิดปกติ" */
@@ -96,7 +96,7 @@ export interface BranchDryRun {
   contractRows: number;
   strict: ImportRunSummary;
   lenient: ImportRunSummary;
-  /** แถวที่ไม่ผ่าน strict รายแถว (สำหรับรายการให้สาขายืนยัน) */
+  /** แถวที่ไม่ผ่าน strict รายแถว (สำหรับรายการแถวที่ต้องกรอกมือ) */
   strictProblems: RowProblem[];
   /** แถวที่กันไว้ + เหตุผล (เฉพาะแถวที่ผ่านกฎ · แถวที่ไม่ผ่านอยู่ใน strictProblems อยู่แล้ว) */
   heldRows: HoldRow[];
@@ -227,7 +227,7 @@ export function dryRunRegistrySheet(sheetName: string, grid: CellValue[][], opts
     allowMissingSeller: true,
     customerTypeProposals: opts.customerTypeProposals,
   });
-  // กันแถวที่สั่งไว้ (ผ่านกฎแต่รอสาขายืนยัน) ออกจากกลุ่มพร้อมนำเข้า
+  // กันแถวที่สั่งไว้ (ผ่านกฎแต่ต้องตรวจก่อน) ออกจากกลุ่มพร้อมนำเข้า
   const holdSet = new Set((opts.holdRows ?? []).map((h) => h.excelRow));
   const readyExcelRows = new Set(rawStrict.ready.map((r) => excelOf(r.rowIndex)));
   const heldRows = (opts.holdRows ?? []).filter((h) => readyExcelRows.has(h.excelRow));

@@ -1,14 +1,14 @@
 /**
- * เทสตัวสร้าง "รายการให้สาขายืนยัน" + ตารางแปลงประเภทลูกค้า — ข้อมูลสมมติ (รันได้ใน CI)
+ * เทสตัวสร้าง "รายการแถวที่ต้องกรอกมือ" + ตารางแปลงประเภทลูกค้า — ข้อมูลสมมติ (รันได้ใน CI)
  */
 import { describe, expect, it } from "vitest";
 import { TIER_RULES } from "../rules/__fixtures__/tierRules";
 import { dryRunRegistrySheet } from "./registryDryRun";
 import {
-  buildConfirmationItems,
+  buildManualEntryItems,
   customerTypeMappingRows,
   describeProblem,
-  renderConfirmationMarkdown,
+  renderManualEntryMarkdown,
   renderCustomerTypeMappingTable,
 } from "./registryReport";
 import type { CellValue } from "./registrySheet";
@@ -41,52 +41,41 @@ const result = dryRunRegistrySheet("พุทธมณฑล", GRID, {
   holdRows: [{ excelRow: 8, reason: "มูลค่าสูงผิดปกติ (2,000,000 / 1 ปี)" }],
 });
 
-describe("describeProblem — ชนิดปัญหา → ข้อความให้สาขา", () => {
-  it("วันที่/ระยะสัญญา/เลขสัญญา/มูลค่า/ประเภท มีคำถามเฉพาะ", () => {
-    expect(describeProblem("วันสิ้นสุด: วันที่ไม่มีจริง (…)").ask).toMatch(/วันสิ้นสุด/);
-    expect(describeProblem("วันเริ่มสัญญา: ปีผิดปกติ (…)").ask).toMatch(/วันเริ่ม/);
-    expect(describeProblem("ระยะสัญญาไม่ใช่ 3 ปี (…)").problem).toMatch(/ช่องมูลค่า 3 ปี/);
-    expect(describeProblem("เลขที่สัญญาไม่ครบ 7 หลัก (…)").ask).toMatch(/เลขที่สัญญา/);
-    expect(describeProblem("ไม่มีมูลค่า").ask).toMatch(/มูลค่า/);
-    expect(describeProblem("ไม่มีประเภทลูกค้า").ask).toMatch(/ประเภทลูกค้า/);
-  });
-
-  it("ชนิดที่ไม่รู้จัก → ใช้ข้อความเดิม (ตัด … ออก) + ขอให้ตรวจแถว", () => {
-    const d = describeProblem('อะไรสักอย่าง "…" (…)');
-    expect(d.problem).toBe("อะไรสักอย่าง");
-    expect(d.ask).toMatch(/ตรวจ/);
+describe("describeProblem — ชนิดปัญหา → เหตุผลภาษาคน", () => {
+  it("ตัดเครื่องหมาย … ออก · ระยะสัญญา/เลขสัญญา/มูลค่า มีข้อความเฉพาะ", () => {
+    expect(describeProblem("วันสิ้นสุด: วันที่ไม่มีจริง (…)")).toBe("วันสิ้นสุด: วันที่ไม่มีจริง");
+    expect(describeProblem("ระยะสัญญาไม่ใช่ 3 ปี (…)")).toBe("ช่องมูลค่า 3 ปี แต่วันเริ่ม–วันสิ้นสุดไม่ใช่ 3 ปี");
+    expect(describeProblem("เลขที่สัญญาไม่ครบ 7 หลัก (…)")).toBe("เลขที่สัญญาไม่ครบ 7 หลัก");
+    expect(describeProblem("ไม่มีมูลค่า")).toBe("ไม่มีมูลค่าสัญญา");
+    expect(describeProblem('อะไรสักอย่าง "…" (…)')).toBe("อะไรสักอย่าง");
   });
 });
 
-describe("buildConfirmationItems", () => {
-  const items = buildConfirmationItems([result]);
+describe("buildManualEntryItems (รายการแถวที่ต้องกรอกมือ)", () => {
+  const items = buildManualEntryItems([result]);
 
-  it("รวมแถวที่ไม่ผ่าน + แถวที่กันไว้ เรียงตามเลขแถว", () => {
+  it("รวมแถวที่ไม่ผ่าน + แถวที่กันไว้ (ถ้ามี) เรียงตามเลขแถว", () => {
     expect(items.map((i) => i.excelRow)).toEqual([5, 6, 7, 8, 10]);
     expect(items.every((i) => i.branch === "พุทธมณฑล")).toBe(true);
+    expect(items.find((i) => i.excelRow === 8)!.reasons).toEqual(["มูลค่าสูงผิดปกติ (2,000,000 / 1 ปี)"]);
   });
 
-  it("แถวที่กันไว้ใช้เหตุผลที่สั่ง + ขอให้ยืนยันมูลค่า", () => {
-    const held = items.find((i) => i.excelRow === 8)!;
-    expect(held.problems).toEqual(["มูลค่าสูงผิดปกติ (2,000,000 / 1 ปี)"]);
-    expect(held.asks.join(" ")).toMatch(/ยืนยัน/);
+  it("แถวที่มีหลายปัญหา แสดงเหตุผลครบ", () => {
+    expect(items.find((i) => i.excelRow === 10)!.reasons.length).toBe(2);
   });
 
-  it("แถวที่มีหลายปัญหา รวมคำถามไม่ซ้ำ", () => {
-    const r10 = items.find((i) => i.excelRow === 10)!;
-    expect(r10.problems.length).toBe(2);
-    expect(new Set(r10.asks).size).toBe(r10.asks.length);
+  it("ไม่มีแถวที่ผ่านกฎ (ไม่มีลูกค้าซ้ำในรายการ)", () => {
+    expect(items.map((i) => i.excelRow)).not.toContain(9);
   });
 });
 
-describe("renderConfirmationMarkdown", () => {
-  const md = renderConfirmationMarkdown([result], { title: "ทดสอบ", sourceFile: "ไฟล์สมมติ.xlsx", generatedOn: "17 พ.ย. 2026" });
+describe("renderManualEntryMarkdown", () => {
+  const md = renderManualEntryMarkdown([result], { title: "ทดสอบ", sourceFile: "ไฟล์สมมติ.xlsx", generatedOn: "17 พ.ย. 2026" });
 
-  it("มีหัวข้อสาขา ตารางแถว และหัวข้อลูกค้าซ้ำ (เลขแถวเท่านั้น)", () => {
-    expect(md).toContain("## พุทธมณฑล");
-    expect(md).toMatch(/\| 5 \|/);
-    expect(md).toContain("ลูกค้าซ้ำ");
-    expect(md).toContain("4, 9");
+  it("ตาราง สาขา · แถว · เหตุผล · ไม่มีคำถามถึงสาขาและไม่มีหัวข้อลูกค้าซ้ำ", () => {
+    expect(md).toContain("| สาขา | แถว | เหตุผล |");
+    expect(md).toMatch(/| พุทธมณฑล | 5 |/);
+    expect(md).not.toMatch(/ลูกค้าซ้ำ|ขอให้สาขา/);
   });
 
   it("ไม่มีชื่อ เบอร์ ที่อยู่ หรือเลขที่สัญญาลูกค้า", () => {

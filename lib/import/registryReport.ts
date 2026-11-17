@@ -1,23 +1,16 @@
 /**
- * สร้างเอกสารจากผล dry-run ทะเบียนรายสาขา (phase 6 · DECISIONS 2.70) — pure function คืน string
+ * สร้างเอกสารจากผล dry-run ทะเบียนรายสาขา (phase 6 · DECISIONS 2.70 ฉบับสุดท้าย) — pure function คืน string
  *
  * Logic summary:
- *   - "รายการให้สาขายืนยัน": รวมแถวที่ไม่ผ่าน strict (strictProblems) + แถวที่สั่งกันไว้ (heldRows)
- *     → แปลง "ชนิดปัญหา" เป็นข้อความภาษาคนให้สาขา + สิ่งที่ขอให้สาขาตอบ (describeProblem)
- *     → แยกหัวข้อ "ลูกค้าซ้ำ" (กลุ่มเลขแถว · 2.59 แอดมินแก้เอง ไม่มีเครื่องมือรวม)
+ *   - "รายการแถวที่ต้องกรอกมือ": แถวที่ไม่ผ่าน strict (strictProblems) + แถวที่สั่งกันไว้ (heldRows ถ้ามี)
+ *     → ไม่นำเข้าอัตโนมัติ · Admin กรอกเองในระบบ · แต่ละแถวมี สาขา · เลขแถว Excel · เหตุผล (ภาษาคน)
+ *     → ไม่มีคำถามถึงสาขา และไม่ใส่ลูกค้าซ้ำ (2.59 แอดมินแก้เอง)
  *   - "ตารางแปลงประเภทลูกค้า": สร้างจาก CUSTOMER_TYPE_MAPPINGS + จำนวนแถวจริงต่อสาขา (ไม่พิมพ์ตารางเอง)
  *     แสดงรหัสทะเบียน/ข้อเสนอทุกตัว (แม้ 0 แถว) + กฎเดิม (legacy) เฉพาะที่มีแถวโดน
  *   - ⚠ PDPA: ใช้ได้เฉพาะ เลขแถว Excel · ชนิดปัญหา (ตัดค่าจริงแล้ว) · จำนวน — ห้ามมีชื่อ/เบอร์/ที่อยู่/เลขสัญญา/ชื่อผู้ขาย
  */
 import { CUSTOMER_TYPE_MAPPINGS, type CustomerTypeMappingSource } from "./customerTypes";
 import type { BranchDryRun } from "./registryDryRun";
-
-export interface ProblemText {
-  /** ปัญหาที่พบ (ภาษาคน) */
-  problem: string;
-  /** สิ่งที่ขอให้สาขาตอบ */
-  ask: string;
-}
 
 function cleanKind(kind: string): string {
   return kind
@@ -27,64 +20,37 @@ function cleanKind(kind: string): string {
     .trim();
 }
 
-/** ชนิดปัญหา (จาก kindOf) → ข้อความให้สาขา */
-export function describeProblem(kind: string): ProblemText {
+/** ชนิดปัญหา (จาก kindOf) → เหตุผลภาษาคน */
+export function describeProblem(kind: string): string {
   const text = cleanKind(kind);
   const term = /^ระยะสัญญาไม่ใช่ (.+)$/.exec(text);
-  if (term) {
-    return {
-      problem: `ช่องมูลค่า ${term[1]} แต่วันเริ่ม–วันสิ้นสุดไม่ใช่ ${term[1]}`,
-      ask: "สัญญานี้กี่ปี/กี่เดือน + วันเริ่ม–วันสิ้นสุดที่ถูกต้อง",
-    };
-  }
-  if (text.startsWith("วันเริ่มสัญญา")) return { problem: text, ask: "วันเริ่มสัญญาที่ถูกต้อง" };
-  if (text.startsWith("วันสิ้นสุด")) return { problem: text, ask: "วันสิ้นสุดสัญญาที่ถูกต้อง" };
-  if (text.startsWith("เลขที่สัญญาไม่ครบ")) {
-    return { problem: "เลขที่สัญญาไม่ครบ 7 หลัก", ask: "เลขที่สัญญาที่ถูกต้อง (รูปแบบ CTyy-nnnnnnn)" };
-  }
-  if (text === "ไม่มีมูลค่า") return { problem: "ไม่มีมูลค่าสัญญา", ask: "มูลค่าสัญญา และเป็นสัญญา 1 ปี หรือ 3 ปี" };
-  if (text === "ไม่มีประเภทลูกค้า" || text.startsWith("ไม่รู้จักประเภท")) {
-    return { problem: text, ask: "ประเภทลูกค้า (H = บ้าน / T = ทาวน์โฮม / R = ห้อง หรือประเภทอื่น)" };
-  }
-  return { problem: text, ask: "ตรวจและแก้ไขแถวนี้" };
+  if (term) return `ช่องมูลค่า ${term[1]} แต่วันเริ่ม–วันสิ้นสุดไม่ใช่ ${term[1]}`;
+  if (text.startsWith("เลขที่สัญญาไม่ครบ")) return "เลขที่สัญญาไม่ครบ 7 หลัก";
+  if (text === "ไม่มีมูลค่า") return "ไม่มีมูลค่าสัญญา";
+  return text;
 }
 
-export interface ConfirmationItem {
+export interface ManualEntryItem {
   branch: string;
   excelRow: number;
-  problems: string[];
-  asks: string[];
+  reasons: string[];
 }
 
-/** รายการให้สาขายืนยัน (แถวไม่ผ่าน + แถวที่กันไว้) เรียงตามสาขาตามลำดับผล แล้วตามเลขแถว */
-export function buildConfirmationItems(results: BranchDryRun[]): ConfirmationItem[] {
-  const items: ConfirmationItem[] = [];
+/** รายการแถวที่ต้องกรอกมือ เรียงตามสาขา (ตามลำดับผล) แล้วตามเลขแถว */
+export function buildManualEntryItems(results: BranchDryRun[]): ManualEntryItem[] {
+  const items: ManualEntryItem[] = [];
   for (const r of results) {
-    const branchItems: ConfirmationItem[] = [];
-    for (const p of r.strictProblems) {
-      const texts = p.kinds.map(describeProblem);
-      branchItems.push({
-        branch: r.branch,
-        excelRow: p.excelRow,
-        problems: texts.map((t) => t.problem),
-        asks: [...new Set(texts.map((t) => t.ask))],
-      });
-    }
-    for (const h of r.heldRows) {
-      branchItems.push({
-        branch: r.branch,
-        excelRow: h.excelRow,
-        problems: [h.reason],
-        asks: ["ยืนยันว่ามูลค่าถูกต้อง หรือแจ้งมูลค่าที่ถูก"],
-      });
-    }
-    branchItems.sort((a, b) => a.excelRow - b.excelRow);
-    items.push(...branchItems);
+    const mine: ManualEntryItem[] = [
+      ...r.strictProblems.map((p) => ({ branch: r.branch, excelRow: p.excelRow, reasons: p.kinds.map(describeProblem) })),
+      ...r.heldRows.map((h) => ({ branch: r.branch, excelRow: h.excelRow, reasons: [h.reason] })),
+    ];
+    mine.sort((a, b) => a.excelRow - b.excelRow);
+    items.push(...mine);
   }
   return items;
 }
 
-export interface ConfirmationMeta {
+export interface ManualEntryMeta {
   title: string;
   /** ชื่อไฟล์ทะเบียนต้นทาง (ไม่ใช่ path ในเครื่อง) */
   sourceFile: string;
@@ -95,58 +61,23 @@ function cell(s: string): string {
   return s.replace(/\|/g, "\\|");
 }
 
-/** เอกสาร markdown "รายการให้สาขายืนยัน" — ส่งต่อให้สาขาได้ (ไม่มีข้อมูลลูกค้า) */
-export function renderConfirmationMarkdown(results: BranchDryRun[], meta: ConfirmationMeta): string {
-  const items = buildConfirmationItems(results);
+/** เอกสาร markdown "รายการแถวที่ต้องกรอกมือ" (ไม่มีข้อมูลลูกค้า) */
+export function renderManualEntryMarkdown(results: BranchDryRun[], meta: ManualEntryMeta): string {
+  const items = buildManualEntryItems(results);
   const out: string[] = [];
   out.push(`# ${meta.title}`, "");
   out.push(`> ไฟล์ทะเบียน: \`${meta.sourceFile}\` · สร้างจากผล dry-run วันที่ ${meta.generatedOn}`);
   out.push("> \"แถว\" = เลขแถวในไฟล์ Excel ของสาขา (เปิดชีทของสาขาแล้วดูเลขแถวซ้ายมือ)");
-  out.push("> เอกสารนี้ไม่มีชื่อ เบอร์โทร หรือที่อยู่ลูกค้า · แถวในรายการนี้จะ **ยังไม่ถูกนำเข้า** จนกว่าสาขาจะตอบ แถวอื่นนำเข้าตามปกติ");
+  out.push("> แถวในรายการนี้ **ไม่ถูกนำเข้าอัตโนมัติ** เพราะตัวเลข/วันที่ไม่ตรงกัน ให้ Admin กรอกเองในระบบ · แถวอื่นนำเข้าตามปกติ");
+  out.push("> เอกสารนี้ไม่มีชื่อ เบอร์โทร หรือที่อยู่ลูกค้า (PDPA)");
   out.push("");
-
-  const total = items.length;
-  const dupTotal = results.reduce(
-    (n, r) => n + r.duplicates.samePhoneDifferentName.length + r.duplicates.sameName.length,
-    0,
-  );
   out.push("## สรุป", "");
-  out.push("| สาขา | แถวที่ต้องยืนยัน | กลุ่มที่อาจเป็นลูกค้าซ้ำ |", "|---|---|---|");
-  for (const r of results) {
-    const n = items.filter((i) => i.branch === r.branch).length;
-    const d = r.duplicates.samePhoneDifferentName.length + r.duplicates.sameName.length;
-    out.push(`| ${r.branch} | ${n} | ${d} |`);
-  }
-  out.push(`| **รวม** | **${total}** | **${dupTotal}** |`, "");
-
-  for (const r of results) {
-    const mine = items.filter((i) => i.branch === r.branch);
-    const dups = r.duplicates;
-    out.push(`## ${r.branch}`, "");
-    if (mine.length === 0) {
-      out.push("ไม่มีแถวที่ต้องยืนยัน", "");
-    } else {
-      out.push("### แถวที่ต้องยืนยันก่อนนำเข้า", "");
-      out.push("| แถว | ปัญหาที่พบ | สิ่งที่ขอให้สาขาตอบ |", "|---|---|---|");
-      for (const i of mine) {
-        out.push(`| ${i.excelRow} | ${cell(i.problems.join(" · "))} | ${cell(i.asks.join(" · "))} |`);
-      }
-      out.push("");
-    }
-    if (dups.samePhoneDifferentName.length + dups.sameName.length > 0) {
-      out.push("### ลูกค้าซ้ำ (แอดมินสาขาตรวจและแก้เอง · ไม่กระทบการนำเข้า)", "");
-      out.push("ระบบนับต่อสัญญา จึงนำเข้าได้ตามปกติ แต่ขอให้แอดมินตรวจว่าเป็นลูกค้ารายเดียวกันหรือกรอกซ้ำ");
-      out.push("ถ้าเป็นแถวที่กรอกซ้ำ (สัญญาเดียวกันกรอก 2 ครั้ง) ให้แจ้งกลับ เพราะจะทำให้นับเกิน", "");
-      out.push("| กลุ่มแถว | ลักษณะ | สิ่งที่ขอให้สาขาตอบ |", "|---|---|---|");
-      for (const g of dups.samePhoneDifferentName) {
-        out.push(`| ${g.join(", ")} | เบอร์โทรเดียวกัน แต่ชื่อต่างกัน | ลูกค้ารายเดียวกันไหม (เช่น เปลี่ยนชื่อ) |`);
-      }
-      for (const g of dups.sameName) {
-        out.push(`| ${g.join(", ")} | ชื่อเดียวกันหลายแถว | หลายสัญญาจริง หรือกรอกซ้ำ |`);
-      }
-      out.push("");
-    }
-  }
+  out.push("| สาขา | แถวที่ต้องกรอกมือ |", "|---|---|");
+  for (const r of results) out.push(`| ${r.branch} | ${items.filter((i) => i.branch === r.branch).length} |`);
+  out.push(`| **รวม** | **${items.length}** |`, "");
+  out.push("## รายการ", "");
+  out.push("| สาขา | แถว | เหตุผล |", "|---|---|---|");
+  for (const i of items) out.push(`| ${i.branch} | ${i.excelRow} | ${cell(i.reasons.join(" · "))} |`);
   return out.join("\n");
 }
 
@@ -160,7 +91,7 @@ export interface CustomerTypeMappingRow {
 }
 
 const SOURCE_LABEL: Record<CustomerTypeMappingSource, string> = {
-  registry: "รหัส/คำสะกดผิดในทะเบียน (2.70 ก1)",
+  registry: "รหัส/คำสะกดผิดในทะเบียน (2.70)",
   proposed: "ข้อเสนอ รอเจ้าของยืนยัน (ปิดอยู่)",
   legacy: "ตารางเดิม (task.md 2 พ.ย.)",
 };

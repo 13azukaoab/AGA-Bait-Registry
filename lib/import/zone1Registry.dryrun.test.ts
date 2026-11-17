@@ -4,10 +4,10 @@
  * - ไฟล์จริงอยู่ใน fixtures/ (ไม่ commit · มีข้อมูลลูกค้า) → ไม่เจอไฟล์ = skip เอง (CI ไม่มีไฟล์)
  * - ตำแหน่งไฟล์: env AGA_FIXTURES_DIR หรือ <repo>/fixtures
  * - โหมดนำเข้าจริง (strict): แปลงประเภทลูกค้าตามตาราง · ผู้ขายจับคู่จากไฟล์เปิดงาน (ไม่เจอ = ว่าง)
- *   · กันแถวที่รอสาขายืนยัน (ZONE1_HOLD) · รัน 2 แบบ: ข้อเสนอ "ศาลเจ้า" ปิด (ค่าเริ่มต้น) / เปิด
+ *   · แถวที่ไม่ผ่าน = ไม่นำเข้า → รายการกรอกมือ (2.70 ฉบับสุดท้าย · แถว 242 นำเข้าตามปกติ) · รัน 2 แบบ: ข้อเสนอ "ศาลเจ้า" ปิด (ค่าเริ่มต้น) / เปิด
  * - env (ไม่บังคับ · เขียนไฟล์นอก repo หรือ docs/ ก็ได้ เพราะมีแค่ตัวเลข + เลขแถว):
  *     AGA_DRYRUN_OUT=<path>.json        ผลสรุป dry-run (แบบเปิดข้อเสนอ)
- *     AGA_CONFIRM_OUT=<path>.md         รายการให้สาขายืนยัน
+ *     AGA_MANUAL_OUT=<path>.md          รายการแถวที่ต้องกรอกมือ
  *     AGA_TYPEMAP_OUT=<path>.md         ตารางแปลงประเภทลูกค้า
  * - ⚠ assert เฉพาะจำนวน/เลขแถว ห้าม toEqual กับค่าที่มีชื่อ (diff ของ vitest จะพิมพ์ชื่อออกมา)
  */
@@ -15,8 +15,8 @@ import { existsSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { TIER_RULES } from "../rules/__fixtures__/tierRules";
-import { dryRunRegistrySheet, type BranchDryRun, type HoldRow } from "./registryDryRun";
-import { renderConfirmationMarkdown, renderCustomerTypeMappingTable } from "./registryReport";
+import { dryRunRegistrySheet, type BranchDryRun } from "./registryDryRun";
+import { renderCustomerTypeMappingTable, renderManualEntryMarkdown } from "./registryReport";
 import { buildSellerIndex } from "./sellerLookup";
 import { readXlsx } from "./xlsx/readXlsx";
 
@@ -26,12 +26,7 @@ const ZONE1_FILE = join(FIXTURES_DIR, ZONE1_NAME);
 const JOB_FILE = join(FIXTURES_DIR, "รายชื่อลูกค้าเปิดงาน ปี2569.xlsx");
 const MONTHS = ["2026-09", "2026-10"];
 
-/** แถวที่ผ่านกฎแต่ต้องให้สาขายืนยันก่อน (DECISIONS 2.70 จ) */
-const ZONE1_HOLD: Record<string, HoldRow[]> = {
-  พุทธมณฑล: [{ excelRow: 242, reason: "มูลค่าสูงผิดปกติ (2,140,000 บาท / 1 ปี · สูงกว่า XL1 เดิมของสาขาราว 6.8 เท่า)" }],
-};
-
-/** แถวที่ไม่ผ่าน strict ตามรายงาน dry-run รอบแรก (docs/ผลทดลองนำเข้าเขต1-OCT26.md หัวข้อ 5 · ข/ค/ง) */
+/** แถวที่ไม่ผ่าน strict ตามรายงาน dry-run รอบแรก (docs/ผลทดลองนำเข้าเขต1-OCT26.md หัวข้อ 5) = รายการกรอกมือ 15 แถว (2.70) */
 const EXPECTED_MUSTFIX: Record<string, number[]> = {
   พุทธมณฑล: [13, 14, 75, 80, 85, 103, 223, 224, 228, 235],
   นครปฐม: [],
@@ -50,7 +45,6 @@ describe.skipIf(!HAS_FILES)("dry-run ทะเบียนเขต 1 OCT.26 (�
         months: MONTHS,
         sellerIndex,
         customerTypeProposals,
-        holdRows: ZONE1_HOLD[s.name.trim()] ?? [],
       }),
     );
   const results = HAS_FILES ? run(true) : [];
@@ -62,20 +56,21 @@ describe.skipIf(!HAS_FILES)("dry-run ทะเบียนเขต 1 OCT.26 (�
     results.forEach((r) => expect(r.area).toBe("เขต 1"));
   });
 
-  it("ทุกแถวสัญญาถูกจัดกลุ่ม (ready + held + mustFix) ไม่มีแถวหาย", () => {
+  it("ทุกแถวสัญญาถูกจัดกลุ่ม (ready + mustFix) ไม่มีแถวหาย", () => {
     for (const r of [...results, ...resultsDefault]) {
       expect(r.contractRows).toBeGreaterThan(0);
-      expect(r.strict.ready + r.strict.held.length + r.strict.mustFix).toBe(r.contractRows);
+      expect(r.strict.held).toEqual([]);
+      expect(r.strict.ready + r.strict.mustFix).toBe(r.contractRows);
       expect(r.lenient.ready + r.lenient.mustFix).toBe(r.contractRows);
-      expect(r.strict.ready + r.strict.held.length + r.strict.mustFix + r.strict.skipped).toBe(r.dataRows);
+      expect(r.strict.ready + r.strict.mustFix + r.strict.skipped).toBe(r.dataRows);
     }
   });
 
-  it("แถวที่ไม่ผ่าน strict (เปิดข้อเสนอ) ตรงกับรายการแถวน่าสงสัยของรอบแรกทุกแถว · กันแถว 242 ไว้", () => {
+  it("แถวที่ไม่ผ่าน strict (เปิดข้อเสนอ) ตรงกับรายการกรอกมือ 15 แถวทุกแถว · แถว 242 นำเข้าตามปกติ", () => {
     for (const r of results) {
       expect(r.strictProblems.map((p) => p.excelRow)).toEqual(EXPECTED_MUSTFIX[r.branch]);
     }
-    expect(byBranch(results, "พุทธมณฑล").strict.held).toEqual([242]);
+    expect(byBranch(results, "พุทธมณฑล").strictProblems.map((p) => p.excelRow)).not.toContain(242);
   });
 
   it("ปิดข้อเสนอ (ค่าเริ่มต้น): เพิ่มแค่แถว 141 ของพุทธมณฑล (ศาลเจ้า)", () => {
@@ -84,14 +79,14 @@ describe.skipIf(!HAS_FILES)("dry-run ทะเบียนเขต 1 OCT.26 (�
     expect(off.filter((x) => !on.includes(x))).toEqual([141]);
   });
 
-  it("ยอด OCT.26 strict = lenient − แถวที่กันไว้ (สูตรไม่ขยับจากรอบแรก)", () => {
+  it("ยอด OCT.26 strict = lenient ของรอบแรก (สูตรไม่ขยับ)", () => {
     const oct = (rs: BranchDryRun[], b: string) => byBranch(rs, b).snapshots["2026-10"]!.strict;
     expect(oct(results, "นครปฐม")).toMatchObject({ cust: 31 });
     expect(oct(results, "นครปฐม").value).toBeCloseTo(1_972_860.07, 2);
     expect(oct(results, "หัวหิน")).toMatchObject({ cust: 71 });
     expect(oct(results, "หัวหิน").value).toBeCloseTo(5_450_904.16, 2);
-    expect(oct(results, "พุทธมณฑล")).toMatchObject({ cust: 229 });
-    expect(oct(results, "พุทธมณฑล").value).toBeCloseTo(12_356_636.86, 2);
+    expect(oct(results, "พุทธมณฑล")).toMatchObject({ cust: 230 });
+    expect(oct(results, "พุทธมณฑล").value).toBeCloseTo(14_496_636.86, 2);
   });
 
   it("snapshot ภายในสอดคล้องกัน (cust = ผลรวมจำนวน tier · value = ผลรวมมูลค่า tier)", () => {
@@ -117,7 +112,7 @@ describe.skipIf(!HAS_FILES)("dry-run ทะเบียนเขต 1 OCT.26 (�
     for (const r of results) expect(r.inSheetSummary).not.toBeNull();
   });
 
-  it("เขียนผลสรุป/รายการให้สาขา/ตารางแปลง (ถ้าตั้ง env)", () => {
+  it("เขียนผลสรุป/รายการกรอกมือ/ตารางแปลง (ถ้าตั้ง env)", () => {
     const out = process.env.AGA_DRYRUN_OUT;
     if (out) {
       const index = sellerIndex
@@ -125,12 +120,12 @@ describe.skipIf(!HAS_FILES)("dry-run ทะเบียนเขต 1 OCT.26 (�
         : null;
       writeFileSync(out, JSON.stringify({ sellerIndex: index, results, resultsDefault }, null, 2), "utf8");
     }
-    const confirm = process.env.AGA_CONFIRM_OUT;
-    if (confirm) {
+    const manual = process.env.AGA_MANUAL_OUT;
+    if (manual) {
       writeFileSync(
-        confirm,
-        renderConfirmationMarkdown(results, {
-          title: "รายการให้สาขายืนยัน — ทะเบียนเขต 1 (OCT.26)",
+        manual,
+        renderManualEntryMarkdown(results, {
+          title: "รายการแถวที่ต้องกรอกมือ — ทะเบียนเขต 1 (OCT.26)",
           sourceFile: ZONE1_NAME,
           generatedOn: new Date().toISOString().slice(0, 10),
         }) + "\n",

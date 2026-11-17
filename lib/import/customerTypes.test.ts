@@ -60,7 +60,7 @@ describe("normalizeCustomerType", () => {
   });
 });
 
-describe("ตารางแปลงรหัสประเภทจากทะเบียนรายสาขา (DECISIONS 2.70 ก1 · เจ้าของตอบ 17 พ.ย. 2026)", () => {
+describe("ตารางแปลงรหัสประเภทจากทะเบียนรายสาขา (DECISIONS 2.70)", () => {
   it("H → บ้านเดี่ยว · T/TH → ทาวน์โฮม / ตึกแถว · R → คอนโด / อพาร์ตเมนต์ / หอพัก (มี fix บอกว่าแปลง)", () => {
     expect(normalizeCustomerType("H")).toMatchObject({ value: "บ้านเดี่ยว" });
     expect(normalizeCustomerType("T").value).toBe("ทาวน์โฮม / ตึกแถว");
