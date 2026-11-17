@@ -103,8 +103,8 @@ button{font-family:inherit}
 /* ===== ปุ่มมาตรฐาน 3 แบบ (เจ้าของเลือก 16 พ.ย. 2026 — ใช้ทุกหน้า · แหล่งจริง = _shell/shell.css) =====
    1) .navtoggle ปุ่มเมนู  2) .addbtn ปุ่มเพิ่ม (ไอคอนสไลด์ สี --ok)  3) .savebtn ปุ่มบันทึกหลัก (แถบสีกวาด สี --accent)
    ปุ่มรอง/ปุ่มใน modal/ปุ่มอันตราย ใช้ .btn เดิม */
-.navtoggle{width:auto;height:36px;padding:0 14px 0 12px;gap:9px;border:none;border-radius:6px;background:var(--fg);color:var(--bg);
-  font-family:inherit;font-size:13px;font-weight:600;letter-spacing:.06em;transition:box-shadow .3s ease-in-out,transform .15s}
+.navtoggle{width:auto;height:34px;padding:0 10px;gap:6px;border:none;border-radius:8px;background:var(--fg);color:var(--bg);
+  font-family:inherit;font-size:12.5px;font-weight:600;letter-spacing:.04em;transition:box-shadow .3s ease-in-out,transform .15s}
 .navtoggle .nt-ic{fill:currentColor;flex:none;transition:transform .3s}
 .navtoggle:hover{box-shadow:0 0 14px 0 var(--border-strong)}
 .navtoggle:hover .nt-ic{transform:scale(1.08)}
@@ -324,7 +324,7 @@ ul.plain{margin:6px 0 0;padding-left:18px;font-size:12.5px;color:var(--fg-muted)
 
 <div class="topbar">
 <!-- AGA-SHELL v1 : topbar ฝั่งซ้าย (ปุ่ม ☰ + โลโก้) — ฝั่งขวา (เดือน/บทบาท/ธีม/avatar) เป็นของแต่ละหน้า -->
-  <button class="navtoggle" id="navToggle" aria-label="เปิด/ปิดเมนู" aria-expanded="false" aria-controls="nav" onclick="toggleNav()"><svg class="nt-ic" viewBox="0 0 80 75" width="20" height="19" aria-hidden="true"><rect width="80" height="15" rx="7.5"/><rect y="30" width="80" height="15" rx="7.5"/><rect y="60" width="80" height="15" rx="7.5"/></svg><span class="nt-tx">MENU</span></button>
+  <button class="navtoggle" id="navToggle" aria-label="เปิด/ปิดเมนู" aria-expanded="false" aria-controls="nav" onclick="toggleNav()"><svg class="nt-ic" viewBox="0 0 80 75" width="16" height="15" aria-hidden="true"><rect width="80" height="15" rx="7.5"/><rect y="30" width="80" height="15" rx="7.5"/><rect y="60" width="80" height="15" rx="7.5"/></svg><span class="nt-tx">MENU</span></button>
   <a class="tb-brand" href="aga-bait-registry-prototype.html#todo">
     <span class="tb-logo" role="img" aria-label="Advance Group Asia (AGA)"></span>
     <span class="tb-title"><b>ข้อมูลหลังบ้านระบบเหยื่อ</b><span>ส่วนกลาง</span></span>

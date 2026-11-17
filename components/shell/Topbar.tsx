@@ -71,12 +71,12 @@ export const Topbar = forwardRef<HTMLButtonElement, TopbarProps>(function Topbar
           aria-pressed={wide ? mini : undefined}
           aria-expanded={wide ? undefined : navOpen}
           aria-controls={navId}
-          className="group inline-flex h-9 shrink-0 cursor-pointer items-center justify-center gap-[9px] rounded-md border-0 bg-fg py-0 pr-3.5 pl-3 text-[13px] font-semibold tracking-[0.06em] text-bg transition-[box-shadow,transform] duration-150 hover:shadow-[0_0_14px_0_var(--border-strong)] active:scale-[0.97] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent motion-reduce:transition-none motion-reduce:active:scale-100"
+          className="group inline-flex h-[34px] shrink-0 cursor-pointer items-center justify-center gap-1.5 rounded-lg border-0 bg-fg px-2.5 py-0 text-[12.5px] font-semibold tracking-[0.04em] max-[600px]:min-h-11 max-[600px]:min-w-11 text-bg transition-[box-shadow,transform] duration-150 hover:shadow-[0_0_14px_0_var(--border-strong)] active:scale-[0.97] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent motion-reduce:transition-none motion-reduce:active:scale-100"
         >
           <svg
             viewBox="0 0 80 75"
-            width="20"
-            height="19"
+            width="16"
+            height="15"
             aria-hidden="true"
             className="flex-none fill-current transition-transform duration-300 group-hover:scale-[1.08] motion-reduce:transition-none motion-reduce:group-hover:scale-100"
           >

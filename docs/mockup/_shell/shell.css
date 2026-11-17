@@ -29,8 +29,8 @@
 /* ===== ปุ่มมาตรฐาน 3 แบบ (เจ้าของเลือก 16 พ.ย. 2026 — ใช้ทุกหน้า · แหล่งจริง = _shell/shell.css) =====
    1) .navtoggle ปุ่มเมนู  2) .addbtn ปุ่มเพิ่ม (ไอคอนสไลด์ สี --ok)  3) .savebtn ปุ่มบันทึกหลัก (แถบสีกวาด สี --accent)
    ปุ่มรอง/ปุ่มใน modal/ปุ่มอันตราย ใช้ .btn เดิม */
-.navtoggle{width:auto;height:36px;padding:0 14px 0 12px;gap:9px;border:none;border-radius:6px;background:var(--fg);color:var(--bg);
-  font-family:inherit;font-size:13px;font-weight:600;letter-spacing:.06em;transition:box-shadow .3s ease-in-out,transform .15s}
+.navtoggle{width:auto;height:34px;padding:0 10px;gap:6px;border:none;border-radius:8px;background:var(--fg);color:var(--bg);
+  font-family:inherit;font-size:12.5px;font-weight:600;letter-spacing:.04em;transition:box-shadow .3s ease-in-out,transform .15s}
 .navtoggle .nt-ic{fill:currentColor;flex:none;transition:transform .3s}
 .navtoggle:hover{box-shadow:0 0 14px 0 var(--border-strong)}
 .navtoggle:hover .nt-ic{transform:scale(1.08)}
