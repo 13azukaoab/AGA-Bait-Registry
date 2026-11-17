@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<title>AGA Bait Registry — Workflow การทำงาน</title>
+<!--
+  ผังภาพรวม Workflow การทำงาน (ฉบับต้นฉบับที่แก้ไขได้ — แทน PNG/PDF เดิมของ 11 พ.ย. ที่ไม่มีไฟล์ต้นทาง)
+  แก้ 17 พ.ย. 2026:
+    - ต่อเส้นที่ขาด (3 → 4) และเพิ่มเส้น 3 → 5 พร้อมป้ายกำกับบนเส้น ให้คนนอกอ่านแล้วเข้าใจลำดับ
+    - สูตรมูลค่าต่อปีตาม M30 (นับเป็นเดือน) · สี Tier ตาม CLAUDE.md
+    - Roadmap ตามกำหนดใหม่ DECISIONS 2.68: ส่งงานภายใน 31 ธ.ค. 2569 · go-live ม.ค. 2570
+  เส้นเชื่อมเป็น SVG พิกัดตายตัว (กล่องวางแบบ absolute) — ย้ายกล่องต้องแก้พิกัดเส้นใน <svg class="links"> ด้วย
+  สร้างภาพใหม่ (Edge headless, จากโฟลเดอร์ docs/workflow):
+    msedge --headless --disable-gpu --hide-scrollbars --window-size=1450,1025 --force-device-scale-factor=2.56 --screenshot=<path>.png file:///<path>.html
+    msedge --headless --disable-gpu --no-pdf-header-footer --print-to-pdf=<path>.pdf file:///<path>.html
+-->
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --brand:#11695f; --brand-soft:#e6f2f0; --fg:#1c2733; --muted:#55657a; --line:#c9d3dd;
+    --lane-a:#f4f6f8; --lane-b:#f9fafb; --card:#fff; --arrow:#5b6b80;
+    --tier-s:#1f5fa8; --tier-m:#157a50; --tier-l:#a86c07; --tier-xl:#c2561f;
+  }
+  @page{size:1450px 1025px;margin:0}
+  *{box-sizing:border-box}
+  body{margin:0;background:#fff;color:var(--fg);font-family:'Noto Sans Thai',sans-serif;width:1450px;height:1025px;overflow:hidden}
+  .page{padding:34px 50px 0}
+  header{display:flex;justify-content:space-between;align-items:flex-start;gap:30px}
+  h1{margin:0;font-size:33px;line-height:1.2;color:var(--brand);font-weight:700}
+  .sub{margin:8px 0 0;font-size:14.5px;color:var(--muted);line-height:1.6;max-width:900px}
+  .legend{border:1px solid var(--line);border-radius:12px;padding:12px 16px;font-size:12.5px;min-width:330px}
+  .legend b{font-size:13px}
+  .legend .f{color:var(--muted);margin:2px 0 6px;line-height:1.45}
+  .legend .g{display:grid;grid-template-columns:1fr 1fr;gap:4px 18px}
+  .sw{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:6px;vertical-align:-1px}
+
+  .lanes{position:relative;width:1350px;height:544px;margin-top:22px;border-radius:10px;overflow:hidden}
+  .lane{position:absolute;left:0;width:1350px;height:136px;padding:14px 18px}
+  .lane:nth-child(odd){background:var(--lane-a)} .lane:nth-child(even){background:var(--lane-b)}
+  .lane h3{margin:0;font-size:15px;font-weight:700} .lane p{margin:2px 0 0;font-size:12.5px;color:var(--muted);line-height:1.45;max-width:130px}
+  .box{position:absolute;width:168px;height:96px;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:9px 11px;font-size:11.5px;line-height:1.45;color:var(--muted);z-index:2}
+  .box b{display:block;color:var(--fg);font-size:12.5px;margin-bottom:2px}
+  .box.sys{background:var(--brand-soft);border-color:#2a8a7e}
+  .box.dark{background:var(--brand);border-color:var(--brand);color:#e6f2f0}
+  .box.dark b{color:#fff}
+  svg.links{position:absolute;inset:0;z-index:1;overflow:visible}
+  svg.links path{fill:none;stroke:var(--arrow);stroke-width:1.6}
+  svg.links text{font-family:'Noto Sans Thai',sans-serif;font-size:11px;fill:var(--muted)}
+  svg.links rect.tag{fill:#fff;stroke:var(--line)}
+
+  h2{margin:26px 0 14px;font-size:21px}
+  .road{position:relative;display:grid;grid-template-columns:repeat(4,1fr);gap:18px;padding-top:22px}
+  .road:before{content:"";position:absolute;left:0;right:0;top:6px;height:2px;background:var(--line)}
+  .stop{position:relative;border:1px solid var(--line);border-radius:10px;padding:12px 14px;font-size:12.5px;color:var(--muted);line-height:1.5;min-height:92px}
+  .stop:before{content:"";position:absolute;top:-23px;left:50%;width:14px;height:14px;margin-left:-7px;border-radius:50%;background:#fff;border:3px solid var(--line)}
+  .stop b{display:block;color:var(--fg);font-size:13.5px;margin-bottom:3px}
+  .stop.now{background:var(--brand-soft);border-color:#2a8a7e} .stop.now:before{background:var(--brand);border-color:var(--brand)}
+  .stop.goal:before{border-color:var(--tier-xl)} .stop.goal b{color:var(--tier-xl)}
+  .stop.live:before{border-color:var(--brand)}
+  .stop.later{border-style:dashed}
+</style>
+</head>
+<body>
+<div class="page">
+  <header>
+    <div>
+      <h1>AGA Bait Registry — Workflow การทำงาน</h1>
+      <p class="sub">ระบบทะเบียนบริการเหยื่อ (Bait Service) ออนไลน์ แทนการบันทึกด้วยไฟล์ Excel แยกแต่ละสาขา — ทุกคนใช้ข้อมูลชุดเดียวกัน และส่งต่อให้ Dashboard ผู้บริหารโดยอัตโนมัติ</p>
+    </div>
+    <div class="legend">
+      <b>Tier ลูกค้า (ระบบคำนวณให้อัตโนมัติ)</b>
+      <div class="f">มูลค่าต่อปี = มูลค่าสัญญา ÷ (จำนวนเดือน ÷ 12) · สัญญาสั้นกว่า 12 เดือนใช้มูลค่าจริง (บาท)</div>
+      <div class="g">
+        <span><i class="sw" style="background:var(--tier-s)"></i><b>S</b> ต่ำกว่า 30,000</span>
+        <span><i class="sw" style="background:var(--tier-m)"></i><b>M</b> 30,000–49,999</span>
+        <span><i class="sw" style="background:var(--tier-l)"></i><b>L</b> 50,000–99,999</span>
+        <span><i class="sw" style="background:var(--tier-xl)"></i><b>XL</b> ตั้งแต่ 100,000</span>
+      </div>
+    </div>
+  </header>
+
+  <div class="lanes">
+    <div class="lane" style="top:0"><h3>สาขา</h3><p>ทีมบริการ<br>หัวหน้างาน</p></div>
+    <div class="lane" style="top:136px"><h3>ระบบ</h3><p>AGA Bait Registry (เว็บแอป + ฐานข้อมูลกลาง)</p></div>
+    <div class="lane" style="top:272px"><h3>ส่วนกลาง</h3><p>QCS · ฝ่ายวิชาการ Bait</p></div>
+    <div class="lane" style="top:408px"><h3>ผู้บริหาร &amp; ผู้ชม</h3><p>AGA Bait Dashboard</p></div>
+
+    <div class="box" style="left:150px;top:20px"><b>1. เข้าสู่ระบบ</b>บัญชีผู้ใช้ของแต่ละคน สิทธิ์ ดู / แก้ไข ตามบทบาท</div>
+    <div class="box" style="left:350px;top:20px"><b>2. บันทึกงานบริการ</b>กรอกข้อมูลสัญญาและงานบริการเหยื่อ ในตารางคล้าย Excel</div>
+    <div class="box sys" style="left:550px;top:156px"><b>3. เก็บที่ฐานข้อมูลกลาง</b>บันทึกมูลค่าทั้งสัญญาและต่อปี พร้อมจัด Tier ให้อัตโนมัติ</div>
+    <div class="box" style="left:750px;top:292px"><b>4. ติดตามข้อมูล</b>เห็นข้อมูลทุกสาขาในที่เดียว อัปเดตภายใน 15–30 นาที</div>
+    <div class="box sys" style="left:950px;top:156px"><b>5. ส่งข้อมูลอัตโนมัติ</b>ทุกวัน 06:00 น. และเมื่อปิดเดือน (มีปุ่ม Export สำรอง)</div>
+    <div class="box dark" style="left:1150px;top:428px"><b>6. Dashboard อัปเดต</b>ผู้บริหารเห็นมูลค่าและ Tier ล่าสุด โดยไม่ต้องคีย์ซ้ำ</div>
+
+    <svg class="links" width="1350" height="544" viewBox="0 0 1350 544" aria-hidden="true">
+      <defs>
+        <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0 0 L10 5 L0 10 z" style="fill:var(--arrow);stroke:none"/>
+        </marker>
+      </defs>
+      <!-- 1 → 2 -->
+      <path d="M318 68 H348" marker-end="url(#ah)"/>
+      <!-- 2 → 3 -->
+      <path d="M518 68 H634 V154" marker-end="url(#ah)"/>
+      <!-- 3 → 4 : ส่วนกลางเห็นข้อมูล -->
+      <path d="M718 228 H834 V290" marker-end="url(#ah)"/>
+      <rect class="tag" x="742" y="216" width="70" height="20" rx="10"/><text x="777" y="230" text-anchor="middle">ดูข้อมูล</text>
+      <!-- 3 → 5 : ส่งอัตโนมัติทุกวัน -->
+      <path d="M718 184 H948" marker-end="url(#ah)"/>
+      <rect class="tag" x="790" y="172" width="86" height="20" rx="10"/><text x="833" y="186" text-anchor="middle">ทุกวัน 06:00</text>
+      <!-- 4 → 5 : ปิดเดือน -->
+      <path d="M918 340 H1034 V254" marker-end="url(#ah)"/>
+      <rect class="tag" x="941" y="328" width="62" height="20" rx="10"/><text x="972" y="342" text-anchor="middle">ปิดเดือน</text>
+      <!-- 5 → 6 -->
+      <path d="M1118 204 H1234 V426" marker-end="url(#ah)"/>
+    </svg>
+  </div>
+
+  <h2>แผนการพัฒนา (Roadmap)</h2>
+  <div class="road">
+    <div class="stop now"><b>ปัจจุบัน · พ.ย. 2569 — กำลังพัฒนา</b>Phase 1 เริ่มที่หน่วยงานส่วนกลาง (ประมาณ 24 สาขา) พร้อมเชื่อมต่อ Dashboard อัตโนมัติ</div>
+    <div class="stop goal"><b>ภายใน 31 ธ.ค. 2569 — ส่งงาน</b>ระบบพร้อมใช้ ทดสอบกับข้อมูลจริง (UAT) และอบรมทีมเสร็จ</div>
+    <div class="stop live"><b>ม.ค. 2570 — Go-live</b>เปิดใช้งานจริงกับสาขาส่วนกลาง เลิกใช้ไฟล์ Excel แยกสาขา</div>
+    <div class="stop later"><b>Phase 2 — ขั้นถัดไป</b>ขยายสู่สาขาต่างจังหวัด · หน้าจอมือถือสำหรับหัวหน้างาน · คลังเอกสารเต็มรูปแบบ · แจ้งเตือนผ่าน LINE</div>
+  </div>
+</div>
+</body>
+</html>
