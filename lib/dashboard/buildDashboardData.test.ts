@@ -323,3 +323,50 @@ describe("buildDashboardData — เดือนแรกหลัง go-live �
     expect(find(data, "NOV.26", "เชียงใหม่")).toEqual(find(data, "OCT.26", "เชียงใหม่"));
   });
 });
+
+describe("buildDashboardData — ขอบเขต go-live (M27 · อ่านจาก go_live_month() ไม่ hardcode)", () => {
+  const r = (branch: string, area: string, value: number): DashboardRow => ({
+    area, branch,
+    s1: 1, s3: 0, m1: 0, m3: 0, l1: 0, l3: 0, xl1: 0, xl3: 0,
+    cust: 1, vS: value, vM: 0, vL: 0, vXL: 0, value,
+  });
+  const pick = (data: ReturnType<typeof buildDashboardData>, month: string, branch: string) =>
+    data[month]?.find((x) => x.branch === branch)?.value;
+
+  it("legacy ใช้ได้ถึงเดือนก่อน go-live · เดือน go-live ใช้ computed ไม่ใช้ legacy", () => {
+    const data = buildDashboardData(
+      {
+        legacy: { "2026-09": [r("พุทธมณฑล", "เขต 1", 10)], "2026-10": [r("พุทธมณฑล", "เขต 1", 11)] },
+        computed: { "2026-09": [r("พุทธมณฑล", "เขต 1", 20)], "2026-10": [r("พุทธมณฑล", "เขต 1", 21)] },
+      },
+      { goLiveMonth: "2026-10" },
+    );
+    expect(pick(data, "SEP.26", "พุทธมณฑล")).toBe(10); // ก่อน go-live = legacy (computed ถูกตัด)
+    expect(pick(data, "OCT.26", "พุทธมณฑล")).toBe(21); // go-live = computed (legacy ถูกตัด)
+  });
+
+  it("manual ก่อน go-live ถูกตัด · ต่างจังหวัดเดือน go-live ไม่มี manual = ยก legacy เดือนล่าสุด (5.12a)", () => {
+    const data = buildDashboardData(
+      {
+        legacy: { "2026-09": [r("เชียงใหม่", "เขต 7", 500)] },
+        manual: { "2026-09": [r("เชียงใหม่", "เขต 7", 999)] },
+        computed: { "2026-10": [r("พุทธมณฑล", "เขต 1", 1)] },
+      },
+      { goLiveMonth: "2026-10" },
+    );
+    expect(pick(data, "SEP.26", "เชียงใหม่")).toBe(500);
+    expect(pick(data, "OCT.26", "เชียงใหม่")).toBe(500);
+  });
+
+  it("เดือนที่มีแต่แถวนอกขอบเขต ไม่ถูกสร้างในไฟล์", () => {
+    const data = buildDashboardData(
+      { legacy: { "2026-11": [r("พุทธมณฑล", "เขต 1", 1)] }, computed: { "2026-10": [r("พุทธมณฑล", "เขต 1", 2)] } },
+      { goLiveMonth: "2026-10" },
+    );
+    expect(Object.keys(data)).toEqual(["OCT.26"]);
+  });
+
+  it("goLiveMonth ผิดรูปแบบ = throw", () => {
+    expect(() => buildDashboardData({}, { goLiveMonth: "2026-10-01" })).toThrow(/YYYY-MM/);
+  });
+});

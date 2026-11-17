@@ -16,6 +16,7 @@
  * ข้อห้าม: GitHub token มาจาก environment variable ของ Vercel เท่านั้น (CLAUDE.md กฎ 8)
  * ห้ามใส่ token ลงข้อความ error หรือ log
  */
+import { DashboardSyncError } from "./errors";
 import type { DashboardData } from "./types";
 import { assertValidDashboardData } from "./validate";
 
@@ -48,6 +49,13 @@ export interface SyncLogRecord {
   message: string;
   /** ข้อความ error (เฉพาะกรณีล้มเหลว) — ไม่มี token อยู่ในข้อความนี้ */
   error?: string;
+  /**
+   * M27: รหัส error สั้น (เฉพาะกรณีล้มเหลว) → `sync_logs.error_code`
+   * `github_<status>` หรือค่าใน `DashboardSyncErrorCode` (errors.ts)
+   */
+  errorCode?: string;
+  /** M27: key เดือน (MMM.YY) ที่ข้อมูลต่างจากบน Dashboard ในรอบนี้ (สำเร็จเท่านั้น · ข้าม/ล้มเหลว = ว่าง) */
+  changedMonths: string[];
   durationMs: number;
 }
 
@@ -88,7 +96,8 @@ export function replaceIndexData(html: string, json: string): string {
       "ไม่พบบรรทัด `const DATA = …;` ใน index.html ของ Dashboard — โครงสร้างหน้าเปลี่ยนไป ต้องให้ผู้ดูแลตรวจก่อนส่ง",
     );
   }
-  return html.replace(DATA_MARKER, `const DATA = ${json};`);
+  // ใช้ฟังก์ชันแทนข้อความ — กัน `$&` / `$'` ใน JSON ถูกตีความเป็นรูปแบบแทนที่
+  return html.replace(DATA_MARKER, () => `const DATA = ${json};`);
 }
 
 /**
@@ -106,6 +115,87 @@ export function isSameJsonContent(
   } catch {
     return false;
   }
+}
+
+/** แปลงข้อความ JSON บน repo เป็น object รายเดือน (อ่านไม่ได้ / ไม่ใช่ object = `null`) */
+function parseRemoteMonths(text: string | null): Record<string, unknown> | null {
+  if (text === null) return null;
+  try {
+    const parsed: unknown = JSON.parse(text);
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+      return parsed as Record<string, unknown>;
+    }
+  } catch {
+    /* อ่านไม่ได้ = ถือว่าไม่มีข้อมูลเดิม */
+  }
+  return null;
+}
+
+/**
+ * M27 ด่านกันประวัติหาย: เดือนที่บน Dashboard มีอยู่แล้ว ต้องยังอยู่ในไฟล์ใหม่ครบทุกเดือน
+ * (เช่น ลืมนำเข้า legacy → ไฟล์ใหม่เหลือ 1–2 เดือน แต่ยังผ่านการตรวจรูปแบบ — ถ้าส่งไป กราฟย้อนหลังหายหมด)
+ * คืนรายชื่อเดือนที่หายไป (ว่าง = ผ่าน)
+ */
+export function findDroppedMonths(
+  data: DashboardData,
+  ...remotes: (Record<string, unknown> | null)[]
+): string[] {
+  const dropped = new Set<string>();
+  for (const remote of remotes) {
+    if (!remote) continue;
+    for (const key of Object.keys(remote)) {
+      if (!Object.prototype.hasOwnProperty.call(data, key)) dropped.add(key);
+    }
+  }
+  return [...dropped];
+}
+
+/** M27: เดือนที่ข้อมูลใหม่ต่างจากบน Dashboard (ไม่มีข้อมูลเดิมให้เทียบ = ทุกเดือน) */
+export function diffMonths(
+  data: DashboardData,
+  remote: Record<string, unknown> | null,
+): string[] {
+  return Object.keys(data).filter(
+    (key) =>
+      !remote ||
+      !Object.prototype.hasOwnProperty.call(remote, key) ||
+      JSON.stringify(remote[key]) !== JSON.stringify(data[key]),
+  );
+}
+
+/** ผลรวม `value` ของ 1 เดือน (แถวผิดรูปแบบนับเป็น 0) */
+function monthTotal(rows: unknown): number {
+  if (!Array.isArray(rows)) return 0;
+  return rows.reduce((sum: number, r) => {
+    const v = Number((r as { value?: unknown } | null)?.value);
+    return Number.isFinite(v) ? sum + v : sum;
+  }, 0);
+}
+
+/**
+ * M27 ด่านกันตัวเลขทรุด: เดือนที่บน Dashboard มีอยู่แล้ว ถ้ามูลค่ารวมทั้งประเทศของเดือนนั้นลดลงเกิน `maxDropRatio`
+ * (ค่าตั้งต้น 50%) → ไม่ส่ง (เช่น ทะเบียนยังย้ายเข้าไม่ครบ / ตั้ง go-live ย้อนไปเดือนที่มีตัวเลขจริงแล้ว)
+ * คืนรายชื่อเดือนที่ทรุด (ว่าง = ผ่าน)
+ */
+export function findValueDrops(
+  data: DashboardData,
+  remote: Record<string, unknown> | null,
+  maxDropRatio = 0.5,
+): string[] {
+  if (!remote) return [];
+  return Object.keys(data).filter((key) => {
+    if (!Object.prototype.hasOwnProperty.call(remote, key)) return false;
+    const before = monthTotal(remote[key]);
+    if (before <= 0) return false;
+    return monthTotal(data[key]) < before * (1 - maxDropRatio);
+  });
+}
+
+/** รหัส error สั้นสำหรับ `sync_logs.error_code` */
+function errorCodeOf(error: unknown): string {
+  if (error instanceof GithubApiError) return `github_${error.status}`;
+  if (error instanceof DashboardSyncError) return error.code;
+  return "unknown";
 }
 
 function toBase64(text: string): string {
@@ -304,14 +394,24 @@ export async function syncDashboardData(
     files: [],
     months,
     rows,
+    changedMonths: [],
     durationMs: 0,
   };
   const finish = (
-    record: Omit<SyncLogRecord, "durationMs" | "months" | "rows">,
+    record: Omit<SyncLogRecord, "durationMs" | "months" | "rows" | "changedMonths"> & {
+      changedMonths?: string[];
+    },
   ): SyncLogRecord => ({ ...base, ...record, durationMs: now() - started });
 
   try {
-    assertValidDashboardData(data);
+    try {
+      assertValidDashboardData(data);
+    } catch (error) {
+      throw new DashboardSyncError(
+        "invalid_data",
+        error instanceof Error ? error.message : String(error),
+      );
+    }
 
     const target = withDefaults(options.target);
     const client = createClient(options.token, options.fetchImpl ?? fetch);
@@ -323,13 +423,41 @@ export async function syncDashboardData(
     ]);
 
     if (remoteIndex === null) {
-      throw new Error(
+      throw new DashboardSyncError(
+        "index_missing",
         `ไม่พบไฟล์ ${target.indexPath} บน repo ${target.owner}/${target.repo} — ต้องให้ผู้ดูแลตรวจก่อนส่ง`,
       );
     }
 
+    const remoteIndexJson = extractIndexData(remoteIndex);
+    if (remoteIndexJson === null) {
+      throw new DashboardSyncError(
+        "index_marker_missing",
+        "ไม่พบบรรทัด `const DATA = …;` ใน index.html ของ Dashboard — โครงสร้างหน้าเปลี่ยนไป ต้องให้ผู้ดูแลตรวจก่อนส่ง",
+      );
+    }
+
+    // M27: ห้ามส่งไฟล์ที่ทำให้เดือนบน Dashboard หายไป (เทียบทั้งตัวที่ Dashboard ใช้ + สำเนา .json)
+    const remoteIndexMonths = parseRemoteMonths(remoteIndexJson);
+    const dropped = findDroppedMonths(data, remoteIndexMonths, parseRemoteMonths(remoteData));
+    if (dropped.length > 0) {
+      const shown = dropped.slice(0, 6).join(", ");
+      throw new DashboardSyncError(
+        "months_dropped",
+        `ไฟล์ใหม่ไม่มีเดือนที่ Dashboard มีอยู่แล้ว ${dropped.length} เดือน (${shown}${dropped.length > 6 ? ", …" : ""}) — ไม่ส่ง เพื่อไม่ให้ข้อมูลย้อนหลังหาย`,
+      );
+    }
+
+    const drops = findValueDrops(data, remoteIndexMonths);
+    if (drops.length > 0) {
+      throw new DashboardSyncError(
+        "value_drop",
+        `มูลค่ารวมของ ${drops.slice(0, 6).join(", ")} ลดลงเกินครึ่งจากที่ Dashboard แสดงอยู่ — ไม่ส่ง ให้ผู้ดูแลตรวจทะเบียน/เดือนเริ่มใช้ระบบก่อน`,
+      );
+    }
+
     const dataSame = isSameJsonContent(remoteData, json);
-    const indexSame = isSameJsonContent(extractIndexData(remoteIndex), json);
+    const indexSame = isSameJsonContent(remoteIndexJson, json);
 
     if (dataSame && indexSame) {
       return finish({
@@ -356,6 +484,7 @@ export async function syncDashboardData(
       result: "ok",
       files: files.map((f) => f.path),
       commitSha,
+      changedMonths: diffMonths(data, remoteIndexMonths),
       message: `commit ${commitSha.slice(0, 7)} · ${months} เดือน × ${rows / (months || 1)} สาขา`,
     });
   } catch (error) {
@@ -365,6 +494,7 @@ export async function syncDashboardData(
       files: [],
       message: "ส่งไม่สำเร็จ",
       error: detail,
+      errorCode: errorCodeOf(error),
     });
   }
 }
