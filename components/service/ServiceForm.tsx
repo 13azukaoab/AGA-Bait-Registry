@@ -16,8 +16,10 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { useMemo, useState } from "react";
 
+import { CustomerLink } from "@/components/links/CustomerLink";
 import { Alert, Button, Chip, TierBadge } from "@/components/ui";
 import { cx } from "@/components/ui/cx";
+import { customerLinkContexts } from "@/lib/links/customerLink";
 
 import { AgSection } from "./AgSection";
 import { buildPayload } from "./buildPayload";
@@ -70,6 +72,7 @@ export function ServiceForm({
   onDeleted,
   onPrev,
   onSkip,
+  guardLeave,
 }: {
   supabase: SupabaseClient;
   item: ContractListItem;
@@ -89,6 +92,8 @@ export function ServiceForm({
   onDeleted: () => void;
   onPrev: () => void;
   onSkip: () => void;
+  /** กล่องยืนยันก่อนออกจากรายที่ยังไม่บันทึก (ของ ServiceClient) — ใช้กับลิงก์ชื่อลูกค้า */
+  guardLeave: (go: () => void) => void;
 }) {
   const [showIssues, setShowIssues] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -219,7 +224,11 @@ export function ServiceForm({
           รายที่ {position.index} จาก {position.total}
         </span>
         {item.routineCountInMonth > 0 ? <Chip tone="ok">กรอกแล้ว · บันทึกซ้ำเพื่อแก้ไข</Chip> : null}
-        <b className="text-[16px]">{item.customerName}</b>
+        <b className="text-[16px]">
+          <CustomerLink customerId={item.customerId} context={customerLinkContexts.contract(item.contractId)} guardLeave={guardLeave}>
+            {item.customerName}
+          </CustomerLink>
+        </b>
         <TierBadge tier={item.tier} termMonths={item.termMonths} />
         <Chip tone="na">สัญญา {item.contractNo}</Chip>
         {needsSetup ? (

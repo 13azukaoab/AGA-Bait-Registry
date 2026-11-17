@@ -16,6 +16,7 @@ import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 
 import { ConfirmDialog } from "@/components/service/ConfirmDialog";
+import { useUnsavedWork } from "@/components/shell/unsaved-work";
 import { Button, Toast } from "@/components/ui";
 import { createClient } from "@/lib/supabase/client";
 
@@ -38,6 +39,7 @@ import {
 } from "./logic";
 import { Icon } from "./parts";
 import type { CustomerDetailData } from "./types";
+import { isContactDraftDirty } from "./unsavedContact";
 
 type EditKey = { kind: "contact" } | { kind: "note" } | { kind: "phone"; id: string | null };
 type Pending = { type: "edit"; key: EditKey } | { type: "delete"; phoneId: string } | { type: "save"; edit: ContactEdit };
@@ -69,7 +71,7 @@ export function InfoPanel({ data }: { data: CustomerDetailData }) {
 
   /**
    * สถานะ "มีการแก้ที่ยังไม่บันทึก" — จุดเดียวของหน้านี้ (M34): ช่องที่เปิดแก้อยู่และค่าที่พิมพ์ต่างจากค่าเดิม
-   * เมื่อ `useUnsavedWork` (M34) รวมเข้า main ให้ส่งค่านี้เข้า hook ตรงนี้ที่เดียว (ห้ามสร้าง hook ซ้ำ)
+   * ส่งเข้า `useUnsavedWork` ด้านล่าง → แถบแจ้งเวอร์ชันใหม่จะไม่รีโหลดทับของที่พิมพ์ค้าง (ห้ามสร้าง hook ซ้ำ)
    */
   const original =
     edit?.kind === "contact"
@@ -79,7 +81,8 @@ export function InfoPanel({ data }: { data: CustomerDetailData }) {
         : edit?.kind === "phone"
           ? { value: "", phone: phones.find((x) => x.id === edit.id)?.phone ?? "", label: phones.find((x) => x.id === edit.id)?.label ?? "" }
           : null;
-  const hasUnsavedChanges = !!original && (original.value !== draft.value || original.phone !== draft.phone || original.label !== draft.label);
+  const hasUnsavedChanges = isContactDraftDirty(original, draft);
+  useUnsavedWork(hasUnsavedChanges);
 
   /** เปิดช่องแก้จริง (หลังผ่านด่านข้ามทีมแล้ว) */
   function openEditor(key: EditKey) {

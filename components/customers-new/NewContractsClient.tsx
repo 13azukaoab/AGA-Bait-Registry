@@ -23,10 +23,12 @@
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
+import { CustomerLink } from "@/components/links/CustomerLink";
 import { useUnsavedWork } from "@/components/shell/unsaved-work";
 
 import { Alert, Button, Chip, Field, TierBadge, Toast, cx } from "@/components/ui";
 import type { UserRole } from "@/lib/db/types";
+import { customerLinkContexts } from "@/lib/links/customerLink";
 import { createClient } from "@/lib/supabase/client";
 
 import { resolveBranch } from "./branchMatch";
@@ -779,7 +781,11 @@ export function NewContractsClient({
                   <td className={cx(TD, "num")}>{s.contractNo}</td>
                   <td className={TD}>
                     <div className="flex items-center gap-2">
-                      <span className="min-w-0 flex-1 break-words">{s.customerName}</span>
+                      <span className="min-w-0 flex-1 break-words">
+                        <CustomerLink customerId={s.customerId} context={customerLinkContexts.contract(s.contractId)} role={role}>
+                          {s.customerName}
+                        </CustomerLink>
+                      </span>
                       {s.auditCountFailed ? (
                         <span
                           title="นับจำนวนครั้งที่แก้ไขไม่สำเร็จ ลองรีเฟรชหน้า"

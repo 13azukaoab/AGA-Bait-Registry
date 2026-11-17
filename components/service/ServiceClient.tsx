@@ -336,6 +336,7 @@ export function ServiceClient({
               onDeleted={() => void handleDeleted()}
               onPrev={goPrev}
               onSkip={goSkip}
+              guardLeave={guard}
             />
           ) : (
             <div className="rounded-xl border border-border bg-surface px-5 py-14 text-center">
