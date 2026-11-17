@@ -138,7 +138,7 @@ function checkRow(
   addFix(br.fix);
 
   // ประเภทลูกค้า
-  const type = normalizeCustomerType(get(COL.customerType));
+  const type = normalizeCustomerType(get(COL.customerType), { includeProposed: opts.customerTypeProposals });
   if (type.error) errors.push(type.error);
   addFix(type.fix);
 
@@ -153,7 +153,11 @@ function checkRow(
   addFix(time.fix);
 
   // ผู้ขาย
-  if (!get(COL.seller)) errors.push("ไม่มีผู้ขาย");
+  // นำเข้าจากทะเบียนรายสาขา (2.70 ฉ): ไม่มีผู้ขาย = ปล่อยว่าง (sale_name NULL) + เตือน · การนำเข้าปกติยังบังคับ
+  if (!get(COL.seller)) {
+    if (opts.allowMissingSeller) warnings.push("ไม่ทราบผู้ขาย (ปล่อยว่าง)");
+    else errors.push("ไม่มีผู้ขาย");
+  }
 
   // New / Renew
   const isNew = isTruthy(get(COL.isNew));

@@ -67,6 +67,7 @@ export interface CleanedRow {
   rowIndex: number;
   contractNo: string;
   customerName: string;
+  /** ชื่อผู้ขาย · "" = ไม่ทราบ (เฉพาะเมื่อ allowMissingSeller) → บันทึกเป็น NULL */
   seller: string;
   saleType: SaleType | null;
   urgent: boolean;
@@ -124,4 +125,11 @@ export interface ImportOptions {
   entryMonth?: string;
   /** รหัสทีมที่มีอยู่จริงในตาราง `teams` (M22: ทีมใหม่เพิ่มได้) — ไม่ระบุ = ชุดตั้งต้น A–O, Z, Sup */
   teamCodes?: readonly string[];
+  /**
+   * ยอมให้ผู้ขายว่าง (นำเข้าจากทะเบียนรายสาขา · DECISIONS 2.70 ฉ) — แถวที่ไม่มีผู้ขายนำเข้าได้ seller = "" (บันทึกเป็น NULL)
+   * พร้อมเตือน "ไม่ทราบผู้ขาย" · ไม่ระบุ = บังคับมีผู้ขายเหมือนเดิม (ไฟล์เปิดงาน)
+   */
+  allowMissingSeller?: boolean;
+  /** เปิดกฎแปลงประเภทลูกค้าที่เป็นข้อเสนอ (เช่น ศาลเจ้า → สถานที่ทางศาสนา) · ค่าเริ่มต้นปิด */
+  customerTypeProposals?: boolean;
 }

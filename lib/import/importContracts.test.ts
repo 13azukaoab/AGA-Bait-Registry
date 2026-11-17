@@ -109,6 +109,30 @@ describe("importContracts — เคสเฉพาะกฎ", () => {
     expect(res.mustFix[0]!.errors.join(" ")).toMatch(/ผู้ขาย/);
   });
 
+  it("allowMissingSeller (นำเข้าจากทะเบียน · 2.70 ฉ): ไม่มีผู้ขาย → นำเข้าได้ ผู้ขายว่าง + เตือน", () => {
+    const res = importContracts([row({ 6: "" })], { allowMissingSeller: true });
+    expect(res.summary.ready).toBe(1);
+    expect(res.ready[0]!.seller).toBe("");
+    expect(res.ready[0]!.warnings.join(" ")).toMatch(/ไม่ทราบผู้ขาย/);
+  });
+
+  it("allowMissingSeller ไม่กระทบแถวที่มีผู้ขาย (ไม่เตือน)", () => {
+    const res = importContracts([row({})], { allowMissingSeller: true });
+    expect(res.ready[0]!.seller).toBe("ผู้ขาย");
+    expect(res.ready[0]!.warnings.join(" ")).not.toMatch(/ผู้ขาย/);
+  });
+
+  it("รหัสประเภททะเบียน H → บ้านเดี่ยว (fix)", () => {
+    const res = importContracts([row({ 14: "H" })]);
+    expect(res.ready[0]!.customerType).toBe("บ้านเดี่ยว");
+  });
+
+  it("customerTypeProposals: ศาลเจ้า ปิด = ต้องแก้ · เปิด = สถานที่ทางศาสนา", () => {
+    expect(importContracts([row({ 14: "ศาลเจ้า" })]).summary.mustFix).toBe(1);
+    const on = importContracts([row({ 14: "ศาลเจ้า" })], { customerTypeProposals: true });
+    expect(on.ready[0]!.customerType).toBe("สถานที่ทางศาสนา");
+  });
+
   it("วันสิ้นสุดก่อนวันเริ่ม → ต้องแก้เอง", () => {
     const res = importContracts([row({ 15: "01/06/2026", 16: "01/01/2026" })]);
     expect(res.mustFix[0]!.errors.join(" ")).toMatch(/สิ้นสุด/);

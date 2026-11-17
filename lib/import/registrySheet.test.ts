@@ -11,6 +11,7 @@ import {
   readRegistryTierSummary,
   type CellValue,
 } from "./registrySheet";
+import { buildSellerIndex } from "./sellerLookup";
 import { columnIndex } from "./xlsx/readXlsx";
 
 /** serial ของ Excel สำหรับวันที่ (ย้อนสูตรของ excelSerialToIso) */
@@ -118,10 +119,75 @@ describe("dryRunRegistrySheet (ข้อมูลสมมติ)", () => {
 
   it("แยก strict (ปัญหาประเภทลูกค้า) กับ lenient (เหลือแค่ปัญหาวันที่/มูลค่า) พร้อมเลขแถว Excel", () => {
     expect(res.contractRows).toBe(4);
-    expect(res.strict.ready).toBe(1); // แถว 7 (อาคาร → ออฟฟิต)
-    expect(res.strict.errors['ไม่รู้จักประเภท "…"']).toEqual({ count: 3, excelRows: [6, 8, 9] });
+    // แถว 6 (H → บ้านเดี่ยว) + แถว 7 (อาคาร → ออฟฟิต) · แถว 9 ศาลเจ้า = ข้อเสนอ ปิดเป็นค่าเริ่มต้น
+    expect(res.strict.ready).toBe(2);
+    expect(res.strict.errors['ไม่รู้จักประเภท "…"']).toEqual({ count: 1, excelRows: [9] });
     expect(res.lenient.ready).toBe(3);
     expect(res.lenient.errors["วันสิ้นสุด: วันที่ไม่มีจริง (…)"]).toEqual({ count: 1, excelRows: [8] });
+  });
+
+  it("strictProblems: ปัญหารายแถว (ชนิด ไม่มีค่าจริง) · ไม่ส่งไฟล์เปิดงาน = ผู้ขายว่างแต่ยังนำเข้าได้", () => {
+    expect(res.strictProblems).toEqual([
+      { excelRow: 8, kinds: ["วันสิ้นสุด: วันที่ไม่มีจริง (…)"] },
+      { excelRow: 9, kinds: ['ไม่รู้จักประเภท "…"'] },
+    ]);
+    expect(res.sellers).toBeNull();
+    // เตือนทุกแถวที่ไม่มีผู้ขาย (ทั้งที่ผ่านและไม่ผ่าน)
+    expect(res.strict.warnings["ไม่ทราบผู้ขาย (…)"]?.excelRows.sort()).toEqual([6, 7, 8, 9]);
+  });
+
+  it("customerTypeValues นับค่าประเภทดิบของแถวสัญญา", () => {
+    expect(res.customerTypeValues).toEqual({ H: 2, อาคาร: 1, ศาลเจ้า: 1 });
+  });
+
+  it("เปิดข้อเสนอประเภท (ศาลเจ้า) → แถว 9 ผ่าน strict", () => {
+    const on = dryRunRegistrySheet("พุทธมณฑล", grid, {
+      rules: TIER_RULES,
+      months: ["2026-10"],
+      customerTypeProposals: true,
+    });
+    expect(on.strict.ready).toBe(3);
+    expect(on.strictProblems.map((p) => p.excelRow)).toEqual([8]);
+  });
+
+  it("holdRows: แถวที่ผ่านกฎแต่สั่งกันไว้ → ไม่นับใน strict ready/snapshot · แถวที่ไม่ผ่านอยู่แล้วไม่ซ้ำใน heldRows", () => {
+    const held = dryRunRegistrySheet("พุทธมณฑล", grid, {
+      rules: TIER_RULES,
+      months: ["2026-10"],
+      holdRows: [
+        { excelRow: 7, reason: "มูลค่าสูงผิดปกติ" },
+        { excelRow: 8, reason: "ทดสอบ (ไม่ผ่านอยู่แล้ว)" },
+      ],
+    });
+    expect(held.strict.ready).toBe(1);
+    expect(held.strict.held).toEqual([7]);
+    expect(held.heldRows).toEqual([{ excelRow: 7, reason: "มูลค่าสูงผิดปกติ" }]);
+    expect(held.snapshots["2026-10"]!.strict).toMatchObject({ cust: 1, xl1: 0 });
+    // lenient (ตัวเทียบสูตร) ไม่โดน hold
+    expect(held.snapshots["2026-10"]!.lenient.xl1).toBe(1);
+  });
+
+  it("จับคู่ผู้ขายจากไฟล์เปิดงาน: นับจำนวนเท่านั้น (ตำแหน่ง · ไม่เจอแยกปีสัญญา) ไม่มีชื่อผู้ขายในผลลัพธ์", () => {
+    const sellerIndex = buildSellerIndex([
+      {
+        name: "ม.ค.26",
+        rows: [
+          ["ลำดับ", "เลขที่สัญญา", "รายชื่อ", "ผู้ขาย", "ตำแหน่ง"],
+          [1, "CT26-0000002", "ลูกค้า ข", "ผู้ขายสมมติ ซ", "AM"],
+        ],
+      },
+    ]);
+    const withSeller = dryRunRegistrySheet("พุทธมณฑล", grid, { rules: TIER_RULES, months: ["2026-10"], sellerIndex });
+    expect(withSeller.sellers).toEqual({
+      matched: 1,
+      blank: 0,
+      conflict: 0,
+      notFound: 1,
+      matchedByPosition: { AM: 1 },
+      notFoundByContractYear: { "24": 1 },
+    });
+    expect(withSeller.strict.warnings["ไม่ทราบผู้ขาย (…)"]?.excelRows.sort()).toEqual([6, 8, 9]);
+    expect(JSON.stringify(withSeller)).not.toMatch(/ผู้ขายสมมติ/);
   });
 
   it("snapshot ใช้ lib/rules: เดือน 2026-10 นับครบ · 2026-09 ไม่นับสัญญาที่เริ่ม ต.ค.", () => {
