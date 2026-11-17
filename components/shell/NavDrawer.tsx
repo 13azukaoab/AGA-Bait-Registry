@@ -62,6 +62,7 @@ export const NavDrawer = forwardRef<HTMLElement, NavDrawerProps>(
             }
             pressed={mini}
             showTitle
+            withText
             onClick={onToggleMini}
             className="mb-2 max-[860px]:hidden"
           />

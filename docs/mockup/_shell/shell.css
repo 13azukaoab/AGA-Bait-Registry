@@ -109,6 +109,13 @@
   body.nav-mini .nav:not(:hover):not(:focus-within) .group{font-size:0;padding:0;margin:9px 6px;border-top:1px solid var(--border)}
 }
 @media (prefers-reduced-motion:reduce){body.nav-mini .nav{transition:none}}
+/* ปุ่มเมนูบนสุดของเมนูซ้าย: เมนูขยาย (ปกติ หรือกางชั่วคราวตอนชี้เมาส์/Tab) = ไอคอน + ข้อความ MENU · เมนูย่อ 58px = ไอคอนล้วน
+   ข้อความ aria-hidden (ชื่อปุ่มอ่านจาก aria-label) · whitespace:nowrap + overflow:hidden กันตัดบรรทัดระหว่างเมนูกำลังกาง */
+.navtoggle .nt-tx{display:none;font-family:inherit;font-size:12.5px;font-weight:600;letter-spacing:.04em;line-height:1;white-space:nowrap;overflow:hidden}
+@media (min-width:861px){
+  body:not(.nav-mini) .navtoggle-nav,body.nav-mini .nav:is(:hover,:focus-within) .navtoggle-nav{width:fit-content;padding:0 10px;gap:6px}
+  body:not(.nav-mini) .navtoggle-nav .nt-tx,body.nav-mini .nav:is(:hover,:focus-within) .navtoggle-nav .nt-tx{display:inline}
+}
 /* ตอนโหลดหน้า: ตั้งสถานะเมนูทันทีโดยไม่เล่นแอนิเมชันหุบ (ใส่/ถอดโดย init ใน JS) */
 body.nav-noanim .nav{transition:none!important}
 /* ===== UX เร่งด่วน (เจ้าของอนุมัติ 16 พ.ย. 2026 · HQ วัดค่าจริง) =====
