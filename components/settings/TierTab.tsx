@@ -134,7 +134,7 @@ export function TierTab({ data, onToast }: { data: SettingsData; onToast: (m: st
               แก้เฉพาะ <b className="text-fg">จุดเริ่มของ M, L, XL</b> — ปลายช่วงของ Tier ก่อนหน้าระบบคำนวณให้
               (จุดเริ่มถัดไป − 0.01) จึงไม่มีช่องว่างหรือช่วงทับกัน
             </p>
-            <div className="overflow-x-auto">
+            <div className="relative overflow-x-auto">
               <table className="w-full border-collapse text-[13px]">
                 <thead>
                   <tr className="bg-surface-2 text-left text-xs text-fg-muted">
@@ -197,7 +197,7 @@ export function TierTab({ data, onToast }: { data: SettingsData; onToast: (m: st
 
         <div className="flex flex-col gap-4">
           <Card title="เกณฑ์ที่ใช้ในแต่ละช่วงเดือน" sub="เริ่มใช้ตั้งแต่เดือนไหน · ประวัติการแก้">
-            <div className="overflow-x-auto">
+            <div className="relative overflow-x-auto">
               <table className="w-full border-collapse text-[13px]">
                 <thead>
                   <tr className="bg-surface-2 text-left text-xs text-fg-muted">

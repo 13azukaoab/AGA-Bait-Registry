@@ -281,7 +281,7 @@ export function UsersClient({
         </Field>
       </div>
 
-      <div className="overflow-x-auto rounded-lg border border-border bg-surface shadow-[var(--shadow)]">
+      <div className="relative overflow-x-auto rounded-lg border border-border bg-surface shadow-[var(--shadow)]">
         <table className="w-full border-collapse text-[13px]">
           <thead>
             <tr className="bg-surface-2 text-left text-xs text-fg-muted">

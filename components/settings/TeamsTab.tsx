@@ -88,7 +88,7 @@ export function TeamsTab({ data, onToast }: { data: SettingsData; onToast: (m: s
           </Button>
         }
       >
-        <div className="overflow-x-auto">
+        <div className="relative overflow-x-auto">
           <table className="w-full border-collapse text-[13px]">
             <thead>
               <tr className="bg-surface-2 text-left text-xs text-fg-muted">
