@@ -86,6 +86,7 @@ vi.mock("@/lib/db", () => ({
   },
 }));
 
+import { checkPasswordStrength } from "@/lib/auth/passwordStrength";
 import {
   changeUsername,
   createUser,
@@ -217,6 +218,17 @@ describe("เป้าหมายปกติ + ผู้เรียกเป�
     expect(adminCalls).toEqual([
       { op: "updateUserById", args: [NORMAL, { password: temporaryPassword }] },
     ]);
+  });
+
+  it("รหัสชั่วคราวผ่านกติการหัสผ่าน (DECISIONS 2.69) ทุกครั้งที่สุ่ม", async () => {
+    for (let i = 0; i < 300; i += 1) {
+      const r = await resetPassword(NORMAL);
+      expect(r.ok).toBe(true);
+      if (!r.ok) return;
+      const { temporaryPassword } = r as { temporaryPassword: string };
+      expect(temporaryPassword.length).toBeGreaterThanOrEqual(10);
+      expect(checkPasswordStrength(temporaryPassword)).toEqual([]);
+    }
   });
 
   it("setBanned(true/false)", async () => {

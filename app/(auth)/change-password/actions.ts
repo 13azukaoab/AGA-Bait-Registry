@@ -17,7 +17,10 @@ import { LOGIN_PATH, homeForRole } from "@/lib/auth/access";
 import { fetchProfileByUserId } from "@/lib/db";
 import { createClient } from "@/lib/supabase/server";
 
-import { PASSWORD_MIN_LENGTH, type ChangePasswordState } from "../form-state";
+import { translatePasswordUpdateError } from "@/lib/auth/passwordErrors";
+import { checkPasswordStrength, describePasswordIssues } from "@/lib/auth/passwordStrength";
+
+import type { ChangePasswordState } from "../form-state";
 
 export async function changePasswordAction(
   _previous: ChangePasswordState,
@@ -26,8 +29,9 @@ export async function changePasswordAction(
   const password = String(formData.get("password") ?? "");
   const confirmation = String(formData.get("confirmation") ?? "");
 
-  if (password.length < PASSWORD_MIN_LENGTH) {
-    return { error: `รหัสผ่านใหม่ต้องยาวอย่างน้อย ${PASSWORD_MIN_LENGTH} ตัวอักษร` };
+  const weakness = describePasswordIssues(checkPasswordStrength(password));
+  if (weakness) {
+    return { error: weakness };
   }
   if (password !== confirmation) {
     return { error: "รหัสผ่านใหม่ทั้งสองช่องไม่ตรงกัน" };
@@ -44,13 +48,10 @@ export async function changePasswordAction(
 
   const { error } = await supabase.auth.updateUser({ password });
   if (error) {
-    // ข้อความจาก Supabase เป็นภาษาอังกฤษ — แปลงเป็นข้อความที่ผู้ใช้เข้าใจ
-    const samePassword = error.message.toLowerCase().includes("should be different");
-    return {
-      error: samePassword
-        ? "รหัสผ่านใหม่ต้องไม่ซ้ำกับรหัสผ่านเดิม"
-        : "เปลี่ยนรหัสผ่านไม่สำเร็จ ลองอีกครั้ง หากยังไม่ได้ให้ติดต่อ Host",
-    };
+    // ข้อความจาก Supabase เป็นภาษาอังกฤษ — แปลงเป็นข้อความไทย (weak_password / same_password / อื่นๆ)
+    // ส่งเฉพาะ code/message/reasons ไม่ส่งรหัสผ่าน และไม่ log
+    const reasons = (error as { reasons?: readonly string[] }).reasons;
+    return { error: translatePasswordUpdateError({ code: error.code, message: error.message, reasons }) };
   }
 
   // ปิดธง "ต้องเปลี่ยนรหัสผ่าน" — ถ้าขั้นนี้พลาด ผู้ใช้จะถูกพามาหน้านี้อีกครั้ง (ไม่หลุดสิทธิ์)

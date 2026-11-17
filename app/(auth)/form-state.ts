@@ -16,5 +16,5 @@ export type ChangePasswordState = { error: string | null };
 
 export const CHANGE_PASSWORD_INITIAL_STATE: ChangePasswordState = { error: null };
 
-/** ความยาวขั้นต่ำของรหัสผ่าน (เข้มกว่าค่าตั้งต้นของ Supabase ที่ 6 ตัว) */
-export const PASSWORD_MIN_LENGTH = 8;
+/** ความยาวขั้นต่ำของรหัสผ่าน (DECISIONS 2.69 = 10) — นิยามจริงอยู่ที่ lib/auth/passwordStrength.ts */
+export { PASSWORD_MIN_LENGTH } from "@/lib/auth/passwordStrength";
