@@ -37,6 +37,7 @@ import {
   subscribeMini,
 } from "./nav-mini";
 import { Topbar } from "./Topbar";
+import { UpdateBanner } from "./UpdateBanner";
 import type { MonthOption, Role } from "./types";
 
 const NAV_ID = "app-nav";
@@ -178,6 +179,8 @@ export function AppShell({
           {children}
         </div>
       </div>
+      {/* กล่องแจ้ง "มีเวอร์ชันใหม่" (M34) — ลอยมุมล่างขวา แสดงเมื่อมี service worker ตัวใหม่รออยู่ */}
+      <UpdateBanner />
     </div>
   );
 }
