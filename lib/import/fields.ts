@@ -233,3 +233,22 @@ export function parseTermMonths(raw: string): TermMonthsResult {
   }
   return { months: n };
 }
+
+// ---------- ผู้ขาย → sale_name / am_name ----------
+export interface SellerColumns {
+  saleName: string | null;
+  amName: string | null;
+}
+
+/**
+ * แยกชื่อผู้ขายลงช่องตามตำแหน่ง (เหมือนหน้าเปิดงาน components/customers-new/savePayload.ts)
+ * - ตำแหน่ง AM (= ตำแหน่ง "ต่อสัญญา") → am_name
+ * - ตำแหน่งอื่นทั้งหมด (Sale · ผู้จัดการ · "ไม่พบชื่อ" · ว่าง) → sale_name (เจ้าของตอบ ต1–ต2 17 พ.ย. 2026)
+ * - ไม่มีชื่อ → ว่างทั้ง 2 ช่อง
+ * ⚠ ไม่อนุมาน New/Renew จากตำแหน่ง (เจ้าของไม่ได้สั่ง)
+ */
+export function sellerColumns(name: string, position: string): SellerColumns {
+  const n = (name ?? "").trim();
+  if (!n) return { saleName: null, amName: null };
+  return (position ?? "").trim().toUpperCase() === "AM" ? { saleName: null, amName: n } : { saleName: n, amName: null };
+}

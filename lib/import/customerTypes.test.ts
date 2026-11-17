@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { CUSTOMER_TYPES, normalizeCustomerType } from "./customerTypes";
+import { CUSTOMER_TYPE_MAPPINGS, CUSTOMER_TYPES, normalizeCustomerType } from "./customerTypes";
 
 describe("customer types master (14 ค่า 4 หมวด)", () => {
   it("มีครบ 14 ค่า", () => {
@@ -57,5 +57,38 @@ describe("normalizeCustomerType", () => {
     const r = normalizeCustomerType("");
     expect(r.value).toBeNull();
     expect(r.error).toBeDefined();
+  });
+});
+
+describe("ตารางแปลงรหัสประเภทจากทะเบียนรายสาขา (DECISIONS 2.70)", () => {
+  it("H → บ้านเดี่ยว · T/TH → ทาวน์โฮม / ตึกแถว · R → คอนโด / อพาร์ตเมนต์ / หอพัก (มี fix บอกว่าแปลง)", () => {
+    expect(normalizeCustomerType("H")).toMatchObject({ value: "บ้านเดี่ยว" });
+    expect(normalizeCustomerType("T").value).toBe("ทาวน์โฮม / ตึกแถว");
+    expect(normalizeCustomerType("TH").value).toBe("ทาวน์โฮม / ตึกแถว");
+    expect(normalizeCustomerType("R").value).toBe("คอนโด / อพาร์ตเมนต์ / หอพัก");
+    expect(normalizeCustomerType("H").fix).toContain("H");
+  });
+
+  it("รหัสไม่สนตัวพิมพ์เล็ก/ใหญ่ และช่องว่างหัวท้าย", () => {
+    expect(normalizeCustomerType(" h ").value).toBe("บ้านเดี่ยว");
+    expect(normalizeCustomerType("th").value).toBe("ทาวน์โฮม / ตึกแถว");
+  });
+
+  it("คำสะกดผิดในทะเบียน: ออฟฟิิต → ออฟฟิต · โรงาน → โรงงาน", () => {
+    expect(normalizeCustomerType("ออฟฟิิต").value).toBe("ออฟฟิต");
+    expect(normalizeCustomerType("โรงาน").value).toBe("โรงงาน");
+  });
+
+  it("ศาลเจ้า → สถานที่ทางศาสนา (เจ้าของยืนยัน 17 พ.ย. 2026)", () => {
+    expect(normalizeCustomerType("ศาลเจ้า")).toMatchObject({ value: "สถานที่ทางศาสนา" });
+  });
+
+  it("ค่าปลายทางทุกตัว (ตารางเดิม + ทะเบียน) ต้องอยู่ใน master — ห้ามสร้างค่าใหม่", () => {
+    for (const rule of CUSTOMER_TYPE_MAPPINGS) expect(CUSTOMER_TYPES).toContain(rule.to);
+  });
+
+  it("ตารางแปลงระบุที่มาของแต่ละกฎ (ใช้ทำตารางให้เจ้าของตรวจ)", () => {
+    const sources = new Set(CUSTOMER_TYPE_MAPPINGS.map((r) => r.source));
+    expect(sources).toEqual(new Set(["legacy", "registry"]));
   });
 });

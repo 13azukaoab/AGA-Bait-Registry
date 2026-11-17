@@ -67,7 +67,12 @@ export interface CleanedRow {
   rowIndex: number;
   contractNo: string;
   customerName: string;
+  /** ชื่อผู้ขาย · "" = ไม่ทราบ (เฉพาะเมื่อ allowMissingSeller) → บันทึกเป็น NULL */
   seller: string;
+  /** ชื่อที่จะลง contracts.sale_name (ตำแหน่ง Sale / อื่นๆ / "ไม่พบชื่อ" / ว่าง) · null = ไม่ใช่ช่องนี้หรือไม่มีชื่อ */
+  saleName: string | null;
+  /** ชื่อที่จะลง contracts.am_name (ตำแหน่ง AM = ต่อสัญญา) · null = ไม่ใช่ช่องนี้หรือไม่มีชื่อ */
+  amName: string | null;
   saleType: SaleType | null;
   urgent: boolean;
   branch: string;
@@ -124,4 +129,9 @@ export interface ImportOptions {
   entryMonth?: string;
   /** รหัสทีมที่มีอยู่จริงในตาราง `teams` (M22: ทีมใหม่เพิ่มได้) — ไม่ระบุ = ชุดตั้งต้น A–O, Z, Sup */
   teamCodes?: readonly string[];
+  /**
+   * ยอมให้ผู้ขายว่าง (นำเข้าจากทะเบียนรายสาขา · DECISIONS 2.70 ฉ) — แถวที่ไม่มีผู้ขายนำเข้าได้ seller = "" (บันทึกเป็น NULL)
+   * พร้อมเตือน "ไม่ทราบผู้ขาย" · ไม่ระบุ = บังคับมีผู้ขายเหมือนเดิม (ไฟล์เปิดงาน)
+   */
+  allowMissingSeller?: boolean;
 }

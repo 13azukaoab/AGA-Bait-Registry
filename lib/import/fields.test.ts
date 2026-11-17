@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   parseTermMonths,
+  sellerColumns,
   normalizeContractNo,
   normalizeTime,
   parseSourceDate,
@@ -189,5 +190,23 @@ describe("parseTermMonths (คอลัมน์ 'จำนวนเดือน
       expect(r.months).toBeNull();
       expect(r.error).toMatch(/1–36/);
     }
+  });
+});
+
+describe("sellerColumns — แยกชื่อผู้ขายลง sale_name / am_name ตามตำแหน่ง (DECISIONS 2.70 · เจ้าของตอบ ต1–ต2 17 พ.ย. 2026)", () => {
+  it("AM → am_name (ไม่สนตัวพิมพ์/ช่องว่าง)", () => {
+    expect(sellerColumns("ผู้ขายสมมติ", "AM")).toEqual({ saleName: null, amName: "ผู้ขายสมมติ" });
+    expect(sellerColumns(" ผู้ขายสมมติ ", " am ")).toEqual({ saleName: null, amName: "ผู้ขายสมมติ" });
+  });
+
+  it("Sale / ตำแหน่งอื่น / ไม่พบชื่อ / ว่าง → sale_name", () => {
+    for (const pos of ["Sale", "ผู้จัดการ", "ไม่พบชื่อ", ""]) {
+      expect(sellerColumns("ผู้ขายสมมติ", pos)).toEqual({ saleName: "ผู้ขายสมมติ", amName: null });
+    }
+  });
+
+  it("ไม่มีชื่อ → ว่างทั้ง 2 ช่อง", () => {
+    expect(sellerColumns("", "AM")).toEqual({ saleName: null, amName: null });
+    expect(sellerColumns("  ", "Sale")).toEqual({ saleName: null, amName: null });
   });
 });

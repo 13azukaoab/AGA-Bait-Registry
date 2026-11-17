@@ -20,6 +20,7 @@ import {
   parseSourceDate,
   parseTermMonths,
   resolveTermValue,
+  sellerColumns,
 } from "./fields";
 
 /**
@@ -153,7 +154,11 @@ function checkRow(
   addFix(time.fix);
 
   // ผู้ขาย
-  if (!get(COL.seller)) errors.push("ไม่มีผู้ขาย");
+  // นำเข้าจากทะเบียนรายสาขา (2.70 ฉ): ไม่มีผู้ขาย = ปล่อยว่าง (sale_name NULL) + เตือน · การนำเข้าปกติยังบังคับ
+  if (!get(COL.seller)) {
+    if (opts.allowMissingSeller) warnings.push("ไม่ทราบผู้ขาย (ปล่อยว่าง)");
+    else errors.push("ไม่มีผู้ขาย");
+  }
 
   // New / Renew
   const isNew = isTruthy(get(COL.isNew));
@@ -245,6 +250,7 @@ function checkRow(
       contractNo: ct.value,
       customerName: name,
       seller: get(COL.seller),
+      ...sellerColumns(get(COL.seller), get(COL.position)),
       saleType,
       urgent: isTruthy(get(COL.urgent)),
       branch: br.branch!,
