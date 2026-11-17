@@ -6,7 +6,7 @@
 --   * finish: ครั้งเดียว (SY003) · service_role ปิดได้แค่ auto · host ปิดได้แค่ manual ของตัวเอง · ผลผิด SY002
 -- ข้อมูลสมมติทั้งหมด
 BEGIN;
-SELECT plan(45);
+SELECT plan(44);
 
 INSERT INTO auth.users (id, instance_id, aud, role, email) VALUES
   ('00000000-0000-0000-0000-0000000000a1', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'host@test.local'),

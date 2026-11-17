@@ -107,7 +107,8 @@ BEGIN
     END IF;
     v_uid := NULL;
   ELSIF p_source = 'manual' THEN
-    IF v_uid IS NULL OR NOT public.is_host() THEN
+    -- service_role ห้ามเปิดรอบ manual แม้มี sub ของ host ติดมา (manual = คนกดจริงเท่านั้น)
+    IF v_is_service OR v_uid IS NULL OR NOT public.is_host() THEN
       RAISE EXCEPTION 'ส่งข้อมูลเข้า Dashboard ได้เฉพาะ OM/PM (host)' USING ERRCODE = '42501';
     END IF;
   ELSE
