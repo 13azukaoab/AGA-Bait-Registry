@@ -127,10 +127,21 @@ describe("importContracts — เคสเฉพาะกฎ", () => {
     expect(res.ready[0]!.customerType).toBe("บ้านเดี่ยว");
   });
 
-  it("customerTypeProposals: ศาลเจ้า ปิด = ต้องแก้ · เปิด = สถานที่ทางศาสนา", () => {
-    expect(importContracts([row({ 14: "ศาลเจ้า" })]).summary.mustFix).toBe(1);
-    const on = importContracts([row({ 14: "ศาลเจ้า" })], { customerTypeProposals: true });
-    expect(on.ready[0]!.customerType).toBe("สถานที่ทางศาสนา");
+  it("ศาลเจ้า → สถานที่ทางศาสนา (เจ้าของยืนยัน)", () => {
+    expect(importContracts([row({ 14: "ศาลเจ้า" })]).ready[0]!.customerType).toBe("สถานที่ทางศาสนา");
+  });
+
+  it("ผู้ขายลงช่องตามตำแหน่ง: AM → amName · Sale/อื่นๆ → saleName · ไม่มีชื่อ → ว่างทั้งคู่", () => {
+    expect(importContracts([row({})]).ready[0]).toMatchObject({ saleName: null, amName: "ผู้ขาย" });
+    expect(importContracts([row({ 7: "Sale" })]).ready[0]).toMatchObject({ saleName: "ผู้ขาย", amName: null });
+    expect(importContracts([row({ 7: "ไม่พบชื่อ" })]).ready[0]).toMatchObject({ saleName: "ผู้ขาย", amName: null });
+    const none = importContracts([row({ 6: "" })], { allowMissingSeller: true }).ready[0]!;
+    expect(none).toMatchObject({ saleName: null, amName: null });
+  });
+
+  it("ตำแหน่ง AM ไม่ทำให้ช่อง New/Renew เปลี่ยน (ไม่อนุมาน)", () => {
+    const r = importContracts([row({ 4: "", 5: "", 7: "AM" })]).ready[0]!;
+    expect(r.saleType).toBeNull();
   });
 
   it("วันสิ้นสุดก่อนวันเริ่ม → ต้องแก้เอง", () => {

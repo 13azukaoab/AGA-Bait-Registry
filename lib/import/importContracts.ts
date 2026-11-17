@@ -20,6 +20,7 @@ import {
   parseSourceDate,
   parseTermMonths,
   resolveTermValue,
+  sellerColumns,
 } from "./fields";
 
 /**
@@ -138,7 +139,7 @@ function checkRow(
   addFix(br.fix);
 
   // ประเภทลูกค้า
-  const type = normalizeCustomerType(get(COL.customerType), { includeProposed: opts.customerTypeProposals });
+  const type = normalizeCustomerType(get(COL.customerType));
   if (type.error) errors.push(type.error);
   addFix(type.fix);
 
@@ -249,6 +250,7 @@ function checkRow(
       contractNo: ct.value,
       customerName: name,
       seller: get(COL.seller),
+      ...sellerColumns(get(COL.seller), get(COL.position)),
       saleType,
       urgent: isTruthy(get(COL.urgent)),
       branch: br.branch!,

@@ -91,7 +91,7 @@ describe("ตารางแปลงประเภทลูกค้า (ส�
     expect(byFrom["TH"]).toMatchObject({ total: 1 });
     expect(byFrom["R"]).toMatchObject({ total: 0 });
     expect(byFrom["โรงาน"]).toMatchObject({ to: "โรงงาน", total: 1 });
-    expect(byFrom["ศาลเจ้า"]).toMatchObject({ source: "proposed", total: 0 });
+    expect(byFrom["ศาลเจ้า"]).toMatchObject({ source: "registry", total: 0 });
     expect(byFrom["บ้าน"]).toBeUndefined(); // legacy ที่ไม่มีแถวโดน ไม่ต้องแสดง
   });
 

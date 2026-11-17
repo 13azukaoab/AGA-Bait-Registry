@@ -112,14 +112,14 @@ describe("dryRunRegistrySheet (ข้อมูลสมมติ)", () => {
     [1, "ลูกค้า ก", "", "CT24-0000001", "0811111111", 6, serial("2024-11-01"), serial("2027-10-31"), null, 60000, "H", false, true, "A"],
     [2, "ลูกค้า ข", "", "CT26-0000002", "0811111111", 6, serial("2026-01-15"), serial("2027-01-14"), 150000, null, "อาคาร", true, false, "A"],
     [3, "ลูกค้า ค", "", "CT23-0000003", "0822222222", 6, serial("2023-12-01"), "31/11/2026", null, 70000, "H", false, false, "A"],
-    [4, "ลูกค้า ก", "", "CT26-0000004", "0833333333", 6, serial("2026-10-05"), serial("2027-10-04"), 20000, null, "ศาลเจ้า", true, false, "A"],
+    [4, "ลูกค้า ก", "", "CT26-0000004", "0833333333", 6, serial("2026-10-05"), serial("2027-10-04"), 20000, null, "บ้านพัก", true, false, "A"],
     [],
   ]);
   const res = dryRunRegistrySheet("พุทธมณฑล", grid, { rules: TIER_RULES, months: ["2026-09", "2026-10"] });
 
   it("แยก strict (ปัญหาประเภทลูกค้า) กับ lenient (เหลือแค่ปัญหาวันที่/มูลค่า) พร้อมเลขแถว Excel", () => {
     expect(res.contractRows).toBe(4);
-    // แถว 6 (H → บ้านเดี่ยว) + แถว 7 (อาคาร → ออฟฟิต) · แถว 9 ศาลเจ้า = ข้อเสนอ ปิดเป็นค่าเริ่มต้น
+    // แถว 6 (H → บ้านเดี่ยว) + แถว 7 (อาคาร → ออฟฟิต) · แถว 9 "บ้านพัก" ไม่อยู่ในตารางแปลง
     expect(res.strict.ready).toBe(2);
     expect(res.strict.errors['ไม่รู้จักประเภท "…"']).toEqual({ count: 1, excelRows: [9] });
     expect(res.lenient.ready).toBe(3);
@@ -137,17 +137,7 @@ describe("dryRunRegistrySheet (ข้อมูลสมมติ)", () => {
   });
 
   it("customerTypeValues นับค่าประเภทดิบของแถวสัญญา", () => {
-    expect(res.customerTypeValues).toEqual({ H: 2, อาคาร: 1, ศาลเจ้า: 1 });
-  });
-
-  it("เปิดข้อเสนอประเภท (ศาลเจ้า) → แถว 9 ผ่าน strict", () => {
-    const on = dryRunRegistrySheet("พุทธมณฑล", grid, {
-      rules: TIER_RULES,
-      months: ["2026-10"],
-      customerTypeProposals: true,
-    });
-    expect(on.strict.ready).toBe(3);
-    expect(on.strictProblems.map((p) => p.excelRow)).toEqual([8]);
+    expect(res.customerTypeValues).toEqual({ H: 2, อาคาร: 1, บ้านพัก: 1 });
   });
 
   it("holdRows: แถวที่ผ่านกฎแต่สั่งกันไว้ → ไม่นับใน strict ready/snapshot · แถวที่ไม่ผ่านอยู่แล้วไม่ซ้ำใน heldRows", () => {
@@ -185,6 +175,8 @@ describe("dryRunRegistrySheet (ข้อมูลสมมติ)", () => {
       notFound: 1,
       matchedByPosition: { AM: 1 },
       notFoundByContractYear: { "24": 1 },
+      saleName: 0,
+      amName: 1, // ตำแหน่ง AM → am_name
     });
     expect(withSeller.strict.warnings["ไม่ทราบผู้ขาย (…)"]?.excelRows.sort()).toEqual([6, 8, 9]);
     expect(JSON.stringify(withSeller)).not.toMatch(/ผู้ขายสมมติ/);

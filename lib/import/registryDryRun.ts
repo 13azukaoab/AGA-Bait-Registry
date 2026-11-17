@@ -4,7 +4,7 @@
  * Logic summary:
  *   1. แต่ละชีท → parseRegistrySheet → importContracts 2 รอบ
  *      - strict  = โหมดนำเข้าจริง (DECISIONS 2.70)
- *          · ประเภทลูกค้าแปลงตามตาราง customerTypes.ts (H/T/TH/R + คำสะกดผิด · ข้อเสนอ ศาลเจ้า เปิด/ปิดได้)
+ *          · ประเภทลูกค้าแปลงตามตาราง customerTypes.ts (H/T/TH/R + คำสะกดผิด + ศาลเจ้า)
  *          · ผู้ขาย = จับคู่เลขที่สัญญากับไฟล์เปิดงาน (sellerLookup.ts) · ไม่เจอ = ปล่อยว่าง (allowMissingSeller)
  *          · แถวที่สั่งกันไว้ (holdRows เช่น มูลค่าสูงผิดปกติ) ไม่นำเข้า (ตัวเลือก · เขต 1 ไม่ใช้)
  *        → ใช้นับ "ปัญหาข้อมูล" และเป็นตัวเลขที่จะเข้าระบบจริง
@@ -83,6 +83,10 @@ export interface SellerMatchSummary {
   matchedByPosition: Record<string, number>;
   /** ที่ไม่เจอ แยกตามปีในเลขสัญญา (CTyy → "yy") — ไฟล์เปิดงานมีแค่ปี 2569 สัญญาเก่าจึงไม่เจอตามปกติ */
   notFoundByContractYear: Record<string, number>;
+  /** แถวที่จะลงชื่อใน contracts.sale_name (ตำแหน่ง Sale / อื่นๆ) */
+  saleName: number;
+  /** แถวที่จะลงชื่อใน contracts.am_name (ตำแหน่ง AM) */
+  amName: number;
 }
 
 export interface BranchDryRun {
@@ -197,8 +201,6 @@ export interface DryRunOptions {
   months: string[];
   /** ดัชนีผู้ขายจากไฟล์เปิดงาน · ไม่ส่ง = ผู้ขายว่างทุกแถว (ยังนำเข้าได้ · 2.70 ฉ) */
   sellerIndex?: SellerIndex;
-  /** เปิดกฎแปลงประเภทที่เป็นข้อเสนอ (ศาลเจ้า → สถานที่ทางศาสนา) · ค่าเริ่มต้นปิด */
-  customerTypeProposals?: boolean;
   /** แถวที่กันไว้ไม่นำเข้า (เลขแถว Excel ของชีทนี้) */
   holdRows?: HoldRow[];
 }
@@ -221,11 +223,12 @@ export function dryRunRegistrySheet(sheetName: string, grid: CellValue[][], opts
   const strictRows = rows.map((r) => {
     const raw = r.raw as Record<string, string>;
     const found = opts.sellerIndex ? lookupSeller(opts.sellerIndex, raw["เลขที่สัญญา"] ?? "") : null;
-    return { ...raw, ผู้ขาย: found?.status === "matched" ? found.seller.name : "" };
+    const matched = found?.status === "matched" ? found.seller : null;
+    // ตำแหน่งใช้แยก sale_name / am_name (sellerColumns) · ไม่ใช้อนุมาน New/Renew
+    return { ...raw, ผู้ขาย: matched?.name ?? "", ตำแหน่ง: matched?.position ?? "" };
   });
   const rawStrict = importContracts(strictRows, {
     allowMissingSeller: true,
-    customerTypeProposals: opts.customerTypeProposals,
   });
   // กันแถวที่สั่งไว้ (ผ่านกฎแต่ต้องตรวจก่อน) ออกจากกลุ่มพร้อมนำเข้า
   const holdSet = new Set((opts.holdRows ?? []).map((h) => h.excelRow));
@@ -313,8 +316,12 @@ export function dryRunRegistrySheet(sheetName: string, grid: CellValue[][], opts
       notFound: 0,
       matchedByPosition: {},
       notFoundByContractYear: {},
+      saleName: 0,
+      amName: 0,
     };
     for (const r of strictResult.ready) {
+      if (r.saleName) s.saleName += 1;
+      if (r.amName) s.amName += 1;
       const found = lookupSeller(opts.sellerIndex, r.contractNo);
       s[found.status] += 1;
       if (found.status === "matched") {

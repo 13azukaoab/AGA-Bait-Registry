@@ -69,6 +69,10 @@ export interface CleanedRow {
   customerName: string;
   /** ชื่อผู้ขาย · "" = ไม่ทราบ (เฉพาะเมื่อ allowMissingSeller) → บันทึกเป็น NULL */
   seller: string;
+  /** ชื่อที่จะลง contracts.sale_name (ตำแหน่ง Sale / อื่นๆ / "ไม่พบชื่อ" / ว่าง) · null = ไม่ใช่ช่องนี้หรือไม่มีชื่อ */
+  saleName: string | null;
+  /** ชื่อที่จะลง contracts.am_name (ตำแหน่ง AM = ต่อสัญญา) · null = ไม่ใช่ช่องนี้หรือไม่มีชื่อ */
+  amName: string | null;
   saleType: SaleType | null;
   urgent: boolean;
   branch: string;
@@ -130,6 +134,4 @@ export interface ImportOptions {
    * พร้อมเตือน "ไม่ทราบผู้ขาย" · ไม่ระบุ = บังคับมีผู้ขายเหมือนเดิม (ไฟล์เปิดงาน)
    */
   allowMissingSeller?: boolean;
-  /** เปิดกฎแปลงประเภทลูกค้าที่เป็นข้อเสนอ (เช่น ศาลเจ้า → สถานที่ทางศาสนา) · ค่าเริ่มต้นปิด */
-  customerTypeProposals?: boolean;
 }

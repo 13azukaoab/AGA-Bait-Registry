@@ -27,10 +27,9 @@ export const CUSTOMER_TYPES: readonly string[] = [
  * ที่มาของกฎแปลง
  * - legacy   = ค่าเก่าของไฟล์เปิดงาน (task.md 2026-11-02)
  * - registry = รหัส/คำสะกดผิดในทะเบียนรายสาขา (DECISIONS 2.70 · TH = เหมือน T)
- *              รหัสอ่านจากหัวตารางทะเบียน "H = บ้าน /T = ทาวน์โฮม/R=ห้อง"
- * - proposed = ข้อเสนอที่เจ้าของยังไม่ยืนยัน → ปิดเป็นค่าเริ่มต้น เปิดด้วย `includeProposed`
+ *              รหัสอ่านจากหัวตารางทะเบียน "H = บ้าน /T = ทาวน์โฮม/R=ห้อง" · ศาลเจ้า → สถานที่ทางศาสนา (เจ้าของยืนยัน 17 พ.ย. 2026)
  */
-export type CustomerTypeMappingSource = "legacy" | "registry" | "proposed";
+export type CustomerTypeMappingSource = "legacy" | "registry";
 
 export interface CustomerTypeMapping {
   /** ค่าในไฟล์ต้นทาง (รหัสภาษาอังกฤษเทียบแบบไม่สนตัวพิมพ์) */
@@ -67,8 +66,7 @@ export const CUSTOMER_TYPE_MAPPINGS: readonly CustomerTypeMapping[] = [
   { from: "R", to: "คอนโด / อพาร์ตเมนต์ / หอพัก", source: "registry" },
   { from: "ออฟฟิิต", to: "ออฟฟิต", source: "registry" }, // สระอิซ้อน 2 ตัว
   { from: "โรงาน", to: "โรงงาน", source: "registry" },
-  // ข้อเสนอ (เจ้าของยังไม่ยืนยันแยก)
-  { from: "ศาลเจ้า", to: "สถานที่ทางศาสนา", source: "proposed" },
+  { from: "ศาลเจ้า", to: "สถานที่ทางศาสนา", source: "registry" },
 ];
 
 const CANONICAL = new Set(CUSTOMER_TYPES);
@@ -80,11 +78,6 @@ function mappingKey(s: string): string {
 
 const MAPPING_BY_KEY = new Map(CUSTOMER_TYPE_MAPPINGS.map((m) => [mappingKey(m.from), m]));
 
-export interface CustomerTypeOptions {
-  /** เปิดกฎที่เป็นข้อเสนอ (source = "proposed") · ค่าเริ่มต้นปิด */
-  includeProposed?: boolean;
-}
-
 export interface CustomerTypeResult {
   value: string | null;
   fix?: string;
@@ -94,20 +87,17 @@ export interface CustomerTypeResult {
 /**
  * ล้าง+ตรวจประเภทลูกค้า
  * - เป็นค่า canonical อยู่แล้ว → ไม่มี fix
- * - อยู่ในตารางแปลง → แปลงให้ พร้อมบอกว่าแปลงอะไร (กฎข้อเสนอใช้เฉพาะเมื่อเปิด includeProposed)
+ * - อยู่ในตารางแปลง → แปลงให้ พร้อมบอกว่าแปลงอะไร
  * - ไม่รู้จัก / ว่าง → error
  */
-export function normalizeCustomerType(raw: string, opts: CustomerTypeOptions = {}): CustomerTypeResult {
+export function normalizeCustomerType(raw: string): CustomerTypeResult {
   const trimmed = (raw ?? "").trim();
   if (!trimmed) return { value: null, error: "ไม่มีประเภทลูกค้า" };
 
   if (CANONICAL.has(trimmed)) return { value: trimmed };
 
   const rule = MAPPING_BY_KEY.get(mappingKey(trimmed));
-  if (rule && (rule.source !== "proposed" || opts.includeProposed)) {
-    const tag = rule.source === "proposed" ? " (ข้อเสนอ รอเจ้าของยืนยัน)" : "";
-    return { value: rule.to, fix: `ประเภท "${trimmed}" → ${rule.to}${tag}` };
-  }
+  if (rule) return { value: rule.to, fix: `ประเภท "${trimmed}" → ${rule.to}` };
 
   return { value: null, error: `ไม่รู้จักประเภท "${trimmed}"` };
 }

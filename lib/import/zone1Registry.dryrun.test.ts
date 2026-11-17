@@ -4,9 +4,10 @@
  * - ไฟล์จริงอยู่ใน fixtures/ (ไม่ commit · มีข้อมูลลูกค้า) → ไม่เจอไฟล์ = skip เอง (CI ไม่มีไฟล์)
  * - ตำแหน่งไฟล์: env AGA_FIXTURES_DIR หรือ <repo>/fixtures
  * - โหมดนำเข้าจริง (strict): แปลงประเภทลูกค้าตามตาราง · ผู้ขายจับคู่จากไฟล์เปิดงาน (ไม่เจอ = ว่าง)
- *   · แถวที่ไม่ผ่าน = ไม่นำเข้า → รายการกรอกมือ (2.70 ฉบับสุดท้าย · แถว 242 นำเข้าตามปกติ) · รัน 2 แบบ: ข้อเสนอ "ศาลเจ้า" ปิด (ค่าเริ่มต้น) / เปิด
+ *   · แถวที่ไม่ผ่าน = ไม่นำเข้า → รายการกรอกมือ (2.70 · แถว 242 นำเข้าตามปกติ)
+ *   · ผู้ขายลง sale_name / am_name ตามตำแหน่ง (AM → am_name · อื่นๆ → sale_name)
  * - env (ไม่บังคับ · เขียนไฟล์นอก repo หรือ docs/ ก็ได้ เพราะมีแค่ตัวเลข + เลขแถว):
- *     AGA_DRYRUN_OUT=<path>.json        ผลสรุป dry-run (แบบเปิดข้อเสนอ)
+ *     AGA_DRYRUN_OUT=<path>.json        ผลสรุป dry-run
  *     AGA_MANUAL_OUT=<path>.md          รายการแถวที่ต้องกรอกมือ
  *     AGA_TYPEMAP_OUT=<path>.md         ตารางแปลงประเภทลูกค้า
  * - ⚠ assert เฉพาะจำนวน/เลขแถว ห้าม toEqual กับค่าที่มีชื่อ (diff ของ vitest จะพิมพ์ชื่อออกมา)
@@ -38,17 +39,9 @@ const HAS_FILES = existsSync(ZONE1_FILE) && existsSync(JOB_FILE);
 describe.skipIf(!HAS_FILES)("dry-run ทะเบียนเขต 1 OCT.26 (ไฟล์จริง)", () => {
   const sheets = HAS_FILES ? readXlsx(ZONE1_FILE) : [];
   const sellerIndex = HAS_FILES ? buildSellerIndex(readXlsx(JOB_FILE)) : undefined;
-  const run = (customerTypeProposals: boolean): BranchDryRun[] =>
-    sheets.map((s) =>
-      dryRunRegistrySheet(s.name, s.rows, {
-        rules: TIER_RULES,
-        months: MONTHS,
-        sellerIndex,
-        customerTypeProposals,
-      }),
-    );
-  const results = HAS_FILES ? run(true) : [];
-  const resultsDefault = HAS_FILES ? run(false) : [];
+  const results: BranchDryRun[] = sheets.map((s) =>
+    dryRunRegistrySheet(s.name, s.rows, { rules: TIER_RULES, months: MONTHS, sellerIndex }),
+  );
   const byBranch = (rs: BranchDryRun[], b: string) => rs.find((r) => r.branch === b)!;
 
   it("อ่านได้ครบ 3 สาขาของเขต 1", () => {
@@ -57,7 +50,7 @@ describe.skipIf(!HAS_FILES)("dry-run ทะเบียนเขต 1 OCT.26 (�
   });
 
   it("ทุกแถวสัญญาถูกจัดกลุ่ม (ready + mustFix) ไม่มีแถวหาย", () => {
-    for (const r of [...results, ...resultsDefault]) {
+    for (const r of results) {
       expect(r.contractRows).toBeGreaterThan(0);
       expect(r.strict.held).toEqual([]);
       expect(r.strict.ready + r.strict.mustFix).toBe(r.contractRows);
@@ -66,20 +59,16 @@ describe.skipIf(!HAS_FILES)("dry-run ทะเบียนเขต 1 OCT.26 (�
     }
   });
 
-  it("แถวที่ไม่ผ่าน strict (เปิดข้อเสนอ) ตรงกับรายการกรอกมือ 15 แถวทุกแถว · แถว 242 นำเข้าตามปกติ", () => {
+  it("แถวที่ไม่ผ่าน strict ตรงกับรายการกรอกมือ 15 แถวทุกแถว · แถว 242 นำเข้าตามปกติ", () => {
     for (const r of results) {
       expect(r.strictProblems.map((p) => p.excelRow)).toEqual(EXPECTED_MUSTFIX[r.branch]);
     }
     expect(byBranch(results, "พุทธมณฑล").strictProblems.map((p) => p.excelRow)).not.toContain(242);
   });
 
-  it("ปิดข้อเสนอ (ค่าเริ่มต้น): เพิ่มแค่แถว 141 ของพุทธมณฑล (ศาลเจ้า)", () => {
-    const on = byBranch(results, "พุทธมณฑล").strictProblems.map((p) => p.excelRow);
-    const off = byBranch(resultsDefault, "พุทธมณฑล").strictProblems.map((p) => p.excelRow);
-    expect(off.filter((x) => !on.includes(x))).toEqual([141]);
-  });
-
-  it("ยอด OCT.26 strict = lenient ของรอบแรก (สูตรไม่ขยับ)", () => {
+  it("นำเข้า 332 / 347 แถว · ยอด OCT.26 strict = lenient ของรอบแรก (สูตรไม่ขยับ)", () => {
+    expect(results.reduce((n, r) => n + r.strict.ready, 0)).toBe(332);
+    expect(results.reduce((n, r) => n + r.contractRows, 0)).toBe(347);
     const oct = (rs: BranchDryRun[], b: string) => byBranch(rs, b).snapshots["2026-10"]!.strict;
     expect(oct(results, "นครปฐม")).toMatchObject({ cust: 31 });
     expect(oct(results, "นครปฐม").value).toBeCloseTo(1_972_860.07, 2);
@@ -105,6 +94,9 @@ describe.skipIf(!HAS_FILES)("dry-run ทะเบียนเขต 1 OCT.26 (�
     for (const r of results) {
       const s = r.sellers!;
       expect(s.matched + s.blank + s.conflict + s.notFound).toBe(r.strict.ready);
+      // ทุกแถวที่จับคู่ได้มีชื่อ → ลงช่องใดช่องหนึ่งพอดี
+      expect(s.saleName + s.amName).toBe(s.matched);
+      expect(s.amName).toBe(s.matchedByPosition["AM"] ?? 0);
     }
   });
 
@@ -118,7 +110,7 @@ describe.skipIf(!HAS_FILES)("dry-run ทะเบียนเขต 1 OCT.26 (�
       const index = sellerIndex
         ? { contracts: sellerIndex.contracts, sheetsRead: sellerIndex.sheetsRead, sheetsSkipped: sellerIndex.sheetsSkipped }
         : null;
-      writeFileSync(out, JSON.stringify({ sellerIndex: index, results, resultsDefault }, null, 2), "utf8");
+      writeFileSync(out, JSON.stringify({ sellerIndex: index, results }, null, 2), "utf8");
     }
     const manual = process.env.AGA_MANUAL_OUT;
     if (manual) {

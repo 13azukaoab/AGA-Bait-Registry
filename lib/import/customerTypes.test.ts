@@ -79,21 +79,16 @@ describe("ตารางแปลงรหัสประเภทจากท�
     expect(normalizeCustomerType("โรงาน").value).toBe("โรงงาน");
   });
 
-  it("ศาลเจ้า: ปิดเป็นค่าเริ่มต้น (เจ้าของยังไม่ยืนยัน) → error · เปิดข้อเสนอ → สถานที่ทางศาสนา", () => {
-    expect(normalizeCustomerType("ศาลเจ้า").error).toBeDefined();
-    const on = normalizeCustomerType("ศาลเจ้า", { includeProposed: true });
-    expect(on.value).toBe("สถานที่ทางศาสนา");
-    expect(on.fix).toContain("ข้อเสนอ");
+  it("ศาลเจ้า → สถานที่ทางศาสนา (เจ้าของยืนยัน 17 พ.ย. 2026)", () => {
+    expect(normalizeCustomerType("ศาลเจ้า")).toMatchObject({ value: "สถานที่ทางศาสนา" });
   });
 
-  it("ค่าปลายทางทุกตัว (ตารางเดิม + ทะเบียน + ข้อเสนอ) ต้องอยู่ใน master — ห้ามสร้างค่าใหม่", () => {
+  it("ค่าปลายทางทุกตัว (ตารางเดิม + ทะเบียน) ต้องอยู่ใน master — ห้ามสร้างค่าใหม่", () => {
     for (const rule of CUSTOMER_TYPE_MAPPINGS) expect(CUSTOMER_TYPES).toContain(rule.to);
   });
 
   it("ตารางแปลงระบุที่มาของแต่ละกฎ (ใช้ทำตารางให้เจ้าของตรวจ)", () => {
     const sources = new Set(CUSTOMER_TYPE_MAPPINGS.map((r) => r.source));
-    expect(sources).toEqual(new Set(["legacy", "registry", "proposed"]));
-    const proposed = CUSTOMER_TYPE_MAPPINGS.filter((r) => r.source === "proposed").map((r) => r.from);
-    expect(proposed).toEqual(["ศาลเจ้า"]);
+    expect(sources).toEqual(new Set(["legacy", "registry"]));
   });
 });

@@ -6,7 +6,7 @@
  *     → ไม่นำเข้าอัตโนมัติ · Admin กรอกเองในระบบ · แต่ละแถวมี สาขา · เลขแถว Excel · เหตุผล (ภาษาคน)
  *     → ไม่มีคำถามถึงสาขา และไม่ใส่ลูกค้าซ้ำ (2.59 แอดมินแก้เอง)
  *   - "ตารางแปลงประเภทลูกค้า": สร้างจาก CUSTOMER_TYPE_MAPPINGS + จำนวนแถวจริงต่อสาขา (ไม่พิมพ์ตารางเอง)
- *     แสดงรหัสทะเบียน/ข้อเสนอทุกตัว (แม้ 0 แถว) + กฎเดิม (legacy) เฉพาะที่มีแถวโดน
+ *     แสดงรหัสทะเบียนทุกตัว (แม้ 0 แถว) + กฎเดิม (legacy) เฉพาะที่มีแถวโดน
  *   - ⚠ PDPA: ใช้ได้เฉพาะ เลขแถว Excel · ชนิดปัญหา (ตัดค่าจริงแล้ว) · จำนวน — ห้ามมีชื่อ/เบอร์/ที่อยู่/เลขสัญญา/ชื่อผู้ขาย
  */
 import { CUSTOMER_TYPE_MAPPINGS, type CustomerTypeMappingSource } from "./customerTypes";
@@ -92,11 +92,10 @@ export interface CustomerTypeMappingRow {
 
 const SOURCE_LABEL: Record<CustomerTypeMappingSource, string> = {
   registry: "รหัส/คำสะกดผิดในทะเบียน (2.70)",
-  proposed: "ข้อเสนอ รอเจ้าของยืนยัน (ปิดอยู่)",
   legacy: "ตารางเดิม (task.md 2 พ.ย.)",
 };
 
-/** แถวตารางแปลงประเภท: กฎ registry/proposed ทุกตัว + legacy ที่มีแถวโดน · นับแยกสาขา */
+/** แถวตารางแปลงประเภท: กฎ registry ทุกตัว + legacy ที่มีแถวโดน · นับแยกสาขา */
 export function customerTypeMappingRows(results: BranchDryRun[]): CustomerTypeMappingRow[] {
   const rows: CustomerTypeMappingRow[] = [];
   for (const m of CUSTOMER_TYPE_MAPPINGS) {
@@ -113,7 +112,7 @@ export function customerTypeMappingRows(results: BranchDryRun[]): CustomerTypeMa
     if (m.source === "legacy" && total === 0) continue;
     rows.push({ from: m.from, to: m.to, source: m.source, counts, total });
   }
-  const order: CustomerTypeMappingSource[] = ["registry", "proposed", "legacy"];
+  const order: CustomerTypeMappingSource[] = ["registry", "legacy"];
   return rows.sort((a, b) => order.indexOf(a.source) - order.indexOf(b.source));
 }
 
