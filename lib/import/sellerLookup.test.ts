@@ -4,7 +4,7 @@
  */
 import { describe, expect, it } from "vitest";
 import type { CellValue } from "./registrySheet";
-import { buildSellerIndex, lookupSeller } from "./sellerLookup";
+import { buildSellerIndex, lookupSeller, mergeSellerIndexes } from "./sellerLookup";
 
 /** ชีทหัว 1 แถว (แบบ พ.ค.26 เป็นต้นไป) · หัว "ผู้ขาย " มีช่องว่างท้าย */
 const ONE_ROW_HEADER: CellValue[][] = [
@@ -73,5 +73,84 @@ describe("buildSellerIndex", () => {
     const big: CellValue[][] = [];
     for (let i = 0; i < 50_000; i++) big.push([]);
     expect(() => buildSellerIndex([{ name: "ว่าง", rows: big }])).not.toThrow();
+  });
+});
+
+/** ไฟล์ปีเก่าแบบไม่มีคอลัมน์ผู้ขาย (เหมือนไฟล์เปิดงาน 2568 ที่ได้มา) — ข้อมูลสมมติ */
+const NO_SELLER_SHEET: CellValue[][] = [
+  [],
+  ["ลำดับ", "เลขที่สัญญา", "รายชื่อ", "New", "Renew", "สาขา"],
+  [1, "CT25-0000010", "ลูกค้าสมมติ 10", true, false, "สาทร"],
+];
+
+describe("ชีทที่มีเลขที่สัญญาแต่ไม่มีคอลัมน์ผู้ขาย", () => {
+  const idx = buildSellerIndex([{ name: "เม.ย", rows: NO_SELLER_SHEET }]);
+
+  it("บันทึกชื่อชีทไว้แยก (sheetsWithoutSeller) และนับเลขสัญญาที่เจอ", () => {
+    expect(idx.sheetsRead).toEqual([]);
+    expect(idx.sheetsWithoutSeller).toEqual(["เม.ย"]);
+    expect(idx.contracts).toBe(1);
+  });
+
+  it("เจอเลขสัญญาแต่ไฟล์ไม่มีคอลัมน์ผู้ขาย = noSellerColumn (ไม่ใช่ notFound)", () => {
+    expect(lookupSeller(idx, "CT25-0000010")).toEqual({ status: "noSellerColumn" });
+  });
+});
+
+describe("mergeSellerIndexes — หลายไฟล์ (ปีล่าสุดมาก่อน)", () => {
+  const y69 = buildSellerIndex([
+    {
+      name: "ม.ค.26",
+      rows: [
+        ["ลำดับ", "เลขที่สัญญา", "ผู้ขาย", "ตำแหน่ง"],
+        [1, "CT26-0000001", "ผู้ขายสมมติ ใหม่", "Sale"],
+        [2, "CT25-0000002", "ผู้ขายสมมติ ใหม่", "AM"],
+        [3, "CT25-0000003", null, null],
+      ],
+    },
+  ]);
+  const y68 = buildSellerIndex([
+    {
+      name: "ม.ค.",
+      rows: [
+        ["ลำดับ", "เลขที่สัญญา", "ผู้ขาย", "ตำแหน่ง"],
+        [1, "CT25-0000002", "ผู้ขายสมมติ เก่า", "Sale"], // ขัดกับปี 69 → ใช้ปี 69
+        [2, "CT25-0000003", "ผู้ขายสมมติ เก่า", "AM"], // ปี 69 ช่องว่าง → ใช้ปี 68
+        [3, "CT25-0000004", "ผู้ขายสมมติ เก่า", "AM"], // มีแค่ปี 68
+        [4, "CT26-0000001", "ผู้ขายสมมติ ใหม่", "Sale"], // ชื่อตรงกัน → ไม่นับว่าขัด
+      ],
+    },
+  ]);
+  const merged = mergeSellerIndexes([
+    { label: "2569", index: y69 },
+    { label: "2568", index: y68 },
+  ]);
+
+  it("เจอทั้ง 2 ไฟล์แต่ผู้ขายต่างกัน → ใช้ปีล่าสุด และนับเป็นกรณีขัดกัน", () => {
+    expect(lookupSeller(merged, "CT25-0000002")).toEqual({
+      status: "matched",
+      seller: { name: "ผู้ขายสมมติ ใหม่", position: "AM", source: "2569" },
+    });
+    expect(merged.crossSourceConflicts.has("CT25-0000002")).toBe(true);
+    expect(merged.crossSourceConflicts.has("CT26-0000001")).toBe(false);
+  });
+
+  it("ปีล่าสุดช่องผู้ขายว่าง → ใช้ปีเก่าที่มีชื่อ (จับให้ได้มากที่สุด)", () => {
+    expect(lookupSeller(merged, "CT25-0000003")).toMatchObject({ status: "matched", seller: { source: "2568" } });
+  });
+
+  it("มีแค่ไฟล์เก่า → ได้จากไฟล์เก่า · ไม่มีทั้ง 2 ไฟล์ → notFound", () => {
+    expect(lookupSeller(merged, "CT25-0000004")).toMatchObject({ status: "matched", seller: { source: "2568" } });
+    expect(lookupSeller(merged, "CT24-0000099")).toEqual({ status: "notFound" });
+  });
+
+  it("ไฟล์ที่ไม่มีคอลัมน์ผู้ขาย ไม่ทับผลของไฟล์อื่น · ถ้าไม่มีที่อื่นเลย = noSellerColumn", () => {
+    const m = mergeSellerIndexes([
+      { label: "2569", index: y69 },
+      { label: "2568", index: buildSellerIndex([{ name: "เม.ย", rows: NO_SELLER_SHEET }]) },
+    ]);
+    expect(lookupSeller(m, "CT26-0000001")).toMatchObject({ status: "matched", seller: { source: "2569" } });
+    expect(lookupSeller(m, "CT25-0000010")).toEqual({ status: "noSellerColumn" });
+    expect(m.sheetsWithoutSeller).toEqual(["2568:เม.ย"]);
   });
 });

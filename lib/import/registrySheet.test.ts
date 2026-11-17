@@ -172,8 +172,11 @@ describe("dryRunRegistrySheet (ข้อมูลสมมติ)", () => {
       matched: 1,
       blank: 0,
       conflict: 0,
+      noSellerColumn: 0,
       notFound: 1,
       matchedByPosition: { AM: 1 },
+      matchedBySource: { "": 1 }, // ดัชนีไฟล์เดียว ไม่มีป้ายไฟล์
+      crossSourceConflicts: 0,
       notFoundByContractYear: { "24": 1 },
       saleName: 0,
       amName: 1, // ตำแหน่ง AM → am_name

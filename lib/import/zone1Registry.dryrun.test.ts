@@ -6,6 +6,7 @@
  * - โหมดนำเข้าจริง (strict): แปลงประเภทลูกค้าตามตาราง · ผู้ขายจับคู่จากไฟล์เปิดงาน (ไม่เจอ = ว่าง)
  *   · แถวที่ไม่ผ่าน = ไม่นำเข้า → รายการกรอกมือ (2.70 · แถว 242 นำเข้าตามปกติ)
  *   · ผู้ขายลง sale_name / am_name ตามตำแหน่ง (AM → am_name · อื่นๆ → sale_name)
+ *   · ไฟล์เปิดงาน 2 ปี: 2569 (มาก่อน) + 2568 (ถ้ามีไฟล์) · ชื่อต่างกัน → ใช้ปีล่าสุด (mergeSellerIndexes)
  * - env (ไม่บังคับ · เขียนไฟล์นอก repo หรือ docs/ ก็ได้ เพราะมีแค่ตัวเลข + เลขแถว):
  *     AGA_DRYRUN_OUT=<path>.json        ผลสรุป dry-run
  *     AGA_MANUAL_OUT=<path>.md          รายการแถวที่ต้องกรอกมือ
@@ -18,13 +19,14 @@ import { describe, expect, it } from "vitest";
 import { TIER_RULES } from "../rules/__fixtures__/tierRules";
 import { dryRunRegistrySheet, type BranchDryRun } from "./registryDryRun";
 import { renderCustomerTypeMappingTable, renderManualEntryMarkdown } from "./registryReport";
-import { buildSellerIndex } from "./sellerLookup";
+import { buildSellerIndex, mergeSellerIndexes } from "./sellerLookup";
 import { readXlsx } from "./xlsx/readXlsx";
 
 const FIXTURES_DIR = process.env.AGA_FIXTURES_DIR ?? resolve(process.cwd(), "fixtures");
 const ZONE1_NAME = "OCT.26_เขต 1 ปี 2026 (พุทธมณฑล, นครปฐม, หัวหิน).xlsx";
 const ZONE1_FILE = join(FIXTURES_DIR, ZONE1_NAME);
 const JOB_FILE = join(FIXTURES_DIR, "รายชื่อลูกค้าเปิดงาน ปี2569.xlsx");
+const JOB_FILE_2568 = join(FIXTURES_DIR, "รายชื่อลูกค้าเปิดงาน ปี2568.xlsx");
 const MONTHS = ["2026-09", "2026-10"];
 
 /** แถวที่ไม่ผ่าน strict ตามรายงาน dry-run รอบแรก (docs/ผลทดลองนำเข้าเขต1-OCT26.md หัวข้อ 5) = รายการกรอกมือ 15 แถว (2.70) */
@@ -38,7 +40,12 @@ const HAS_FILES = existsSync(ZONE1_FILE) && existsSync(JOB_FILE);
 
 describe.skipIf(!HAS_FILES)("dry-run ทะเบียนเขต 1 OCT.26 (ไฟล์จริง)", () => {
   const sheets = HAS_FILES ? readXlsx(ZONE1_FILE) : [];
-  const sellerIndex = HAS_FILES ? buildSellerIndex(readXlsx(JOB_FILE)) : undefined;
+  const sellerIndex = HAS_FILES
+    ? mergeSellerIndexes([
+        { label: "2569", index: buildSellerIndex(readXlsx(JOB_FILE)) },
+        ...(existsSync(JOB_FILE_2568) ? [{ label: "2568", index: buildSellerIndex(readXlsx(JOB_FILE_2568)) }] : []),
+      ])
+    : undefined;
   const results: BranchDryRun[] = sheets.map((s) =>
     dryRunRegistrySheet(s.name, s.rows, { rules: TIER_RULES, months: MONTHS, sellerIndex }),
   );
@@ -93,7 +100,8 @@ describe.skipIf(!HAS_FILES)("dry-run ทะเบียนเขต 1 OCT.26 (�
   it("จับคู่ผู้ขายครบทุกแถวที่นำเข้า (matched + blank + conflict + notFound = ready)", () => {
     for (const r of results) {
       const s = r.sellers!;
-      expect(s.matched + s.blank + s.conflict + s.notFound).toBe(r.strict.ready);
+      expect(s.matched + s.blank + s.conflict + s.noSellerColumn + s.notFound).toBe(r.strict.ready);
+      expect(Object.values(s.matchedBySource).reduce((a, b) => a + b, 0)).toBe(s.matched);
       // ทุกแถวที่จับคู่ได้มีชื่อ → ลงช่องใดช่องหนึ่งพอดี
       expect(s.saleName + s.amName).toBe(s.matched);
       expect(s.amName).toBe(s.matchedByPosition["AM"] ?? 0);
@@ -108,7 +116,13 @@ describe.skipIf(!HAS_FILES)("dry-run ทะเบียนเขต 1 OCT.26 (�
     const out = process.env.AGA_DRYRUN_OUT;
     if (out) {
       const index = sellerIndex
-        ? { contracts: sellerIndex.contracts, sheetsRead: sellerIndex.sheetsRead, sheetsSkipped: sellerIndex.sheetsSkipped }
+        ? {
+            contracts: sellerIndex.contracts,
+            sheetsRead: sellerIndex.sheetsRead,
+            sheetsWithoutSeller: sellerIndex.sheetsWithoutSeller,
+            sheetsSkipped: sellerIndex.sheetsSkipped,
+            crossSourceConflicts: sellerIndex.crossSourceConflicts.size,
+          }
         : null;
       writeFileSync(out, JSON.stringify({ sellerIndex: index, results }, null, 2), "utf8");
     }

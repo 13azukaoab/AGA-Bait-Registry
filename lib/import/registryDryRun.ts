@@ -78,10 +78,16 @@ export interface SellerMatchSummary {
   blank: number;
   /** เลขเดียวกันมีผู้ขายต่างกันในไฟล์เปิดงาน */
   conflict: number;
+  /** เจอเลขสัญญา แต่ไฟล์ที่เจอไม่มีคอลัมน์ผู้ขาย (เช่น ไฟล์เปิดงาน 2568) */
+  noSellerColumn: number;
   notFound: number;
   /** ที่จับคู่ได้ แยกตามตำแหน่ง (Sale / AM / "" = ไม่ระบุ) */
   matchedByPosition: Record<string, number>;
-  /** ที่ไม่เจอ แยกตามปีในเลขสัญญา (CTyy → "yy") — ไฟล์เปิดงานมีแค่ปี 2569 สัญญาเก่าจึงไม่เจอตามปกติ */
+  /** ที่จับคู่ได้ แยกตามไฟล์ (ป้ายจาก mergeSellerIndexes เช่น "2569") · ดัชนีไฟล์เดียว = "" */
+  matchedBySource: Record<string, number>;
+  /** แถวที่หลายไฟล์ให้ชื่อผู้ขายต่างกัน (ใช้ไฟล์ล่าสุดแล้ว) */
+  crossSourceConflicts: number;
+  /** ที่ไม่เจอ (notFound + noSellerColumn) แยกตามปีในเลขสัญญา (CTyy → "yy") */
   notFoundByContractYear: Record<string, number>;
   /** แถวที่จะลงชื่อใน contracts.sale_name (ตำแหน่ง Sale / อื่นๆ) */
   saleName: number;
@@ -313,8 +319,11 @@ export function dryRunRegistrySheet(sheetName: string, grid: CellValue[][], opts
       matched: 0,
       blank: 0,
       conflict: 0,
+      noSellerColumn: 0,
       notFound: 0,
       matchedByPosition: {},
+      matchedBySource: {},
+      crossSourceConflicts: 0,
       notFoundByContractYear: {},
       saleName: 0,
       amName: 0,
@@ -322,12 +331,15 @@ export function dryRunRegistrySheet(sheetName: string, grid: CellValue[][], opts
     for (const r of strictResult.ready) {
       if (r.saleName) s.saleName += 1;
       if (r.amName) s.amName += 1;
+      if (opts.sellerIndex.crossSourceConflicts.has(r.contractNo)) s.crossSourceConflicts += 1;
       const found = lookupSeller(opts.sellerIndex, r.contractNo);
       s[found.status] += 1;
       if (found.status === "matched") {
         const pos = found.seller.position;
         s.matchedByPosition[pos] = (s.matchedByPosition[pos] ?? 0) + 1;
-      } else if (found.status === "notFound") {
+        const src = found.seller.source ?? "";
+        s.matchedBySource[src] = (s.matchedBySource[src] ?? 0) + 1;
+      } else if (found.status === "notFound" || found.status === "noSellerColumn") {
         const yy = contractYear(r.contractNo);
         s.notFoundByContractYear[yy] = (s.notFoundByContractYear[yy] ?? 0) + 1;
       }
