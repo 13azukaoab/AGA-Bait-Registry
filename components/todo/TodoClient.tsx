@@ -102,7 +102,7 @@ export function TodoClient({ data, role }: { data: TodoData; role: UserRole }) {
           footerLabel="เปิดหน้ากรอกผลบริการ →"
           note={data.progress.remaining > 10 ? "แสดง 10 รายแรก (เรียงตามชื่อ) · ดูทั้งหมดที่หน้ากรอกผลบริการ" : undefined}
         >
-          <UnfilledList items={data.unfilled} />
+          <UnfilledList items={data.unfilled} role={role} />
         </ListCard>
         <ListCard
           title="กล่องเหยื่อรอถอด"
@@ -113,7 +113,7 @@ export function TodoClient({ data, role }: { data: TodoData; role: UserRole }) {
           footerLabel="ดูกล่องติดตามผลทั้งหมด →"
           note={data.agPending.length > 10 ? "แสดง 10 รายการแรก · ดูทั้งหมดที่หน้ากล่อง AG" : undefined}
         >
-          <AgList items={data.agPending} />
+          <AgList items={data.agPending} role={role} />
         </ListCard>
       </div>
 

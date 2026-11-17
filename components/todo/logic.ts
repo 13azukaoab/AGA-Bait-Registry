@@ -65,6 +65,8 @@ export function computeProgress(items: readonly ProgressItem[]): Progress {
 
 export interface PendingMissed {
   contractId: string;
+  /** id ลูกค้า — ใช้ทำลิงก์ชื่อไปหน้ารายละเอียดลูกค้า (lib/links/customerLink.ts) · optional เพราะหน้ารายละเอียดลูกค้าใช้ชนิดนี้ด้วยและไม่ต้องมี */
+  customerId?: string;
   customerName: string;
   branchName: string;
   /** ใช้ทำลิงก์ไปหน้าลงข้อมูลบริการ (zone/branch เท่านั้น ไม่พาข้อมูลลูกค้า) */
@@ -118,6 +120,7 @@ export type ClosedKind = "waived" | "makeup";
 
 export interface ClosedMissed {
   contractId: string;
+  customerId?: string;
   customerName: string;
   branchName: string;
   contractNo: string;

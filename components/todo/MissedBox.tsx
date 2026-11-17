@@ -12,7 +12,9 @@
 import Link from "next/link";
 import { useState } from "react";
 
+import { CustomerLink } from "@/components/links/CustomerLink";
 import { Button } from "@/components/ui";
+import { customerLinkContexts } from "@/lib/links/customerLink";
 import { monthLabel } from "@/lib/service/months";
 import type { UserRole } from "@/lib/db/types";
 
@@ -92,7 +94,11 @@ export function MissedBox({
           return (
             <li key={`${it.contractId}-${it.missedMonth}`} className="grid gap-2 border-b border-border px-4 py-3 last:border-b-0 md:grid-cols-[1fr_1.2fr_auto] md:items-center">
               <div>
-                <b className="text-[13px]">{it.customerName}</b>
+                <b className="text-[13px]">
+                  <CustomerLink customerId={it.customerId} context={customerLinkContexts.missed(it.contractId)} role={role}>
+                    {it.customerName}
+                  </CustomerLink>
+                </b>
                 <small className="block text-[12.5px] text-fg-muted">
                   สาขา{it.branchName} · {it.contractNo} · ตกบริการ {monthLabel(it.missedMonth)}
                 </small>
@@ -138,7 +144,11 @@ export function MissedBox({
               {closed.map((it) => (
                 <li key={`${it.contractId}-${it.missedMonth}`} className="grid gap-2 border-t border-border py-3 md:grid-cols-[1fr_1.2fr_auto] md:items-center">
                   <div>
-                    <b className="text-[13px]">{it.customerName}</b>
+                    <b className="text-[13px]">
+                      <CustomerLink customerId={it.customerId} context={customerLinkContexts.missed(it.contractId)} role={role}>
+                        {it.customerName}
+                      </CustomerLink>
+                    </b>
                     <small className="block text-[12.5px] text-fg-muted">
                       สาขา{it.branchName} · {it.contractNo} · ตกบริการ {monthLabel(it.missedMonth)}
                     </small>
