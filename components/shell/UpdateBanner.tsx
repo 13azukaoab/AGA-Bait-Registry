@@ -18,6 +18,7 @@ import {
   updateBannerReducer,
 } from "./update-banner-state";
 import { hasUnsavedWork } from "./unsaved-work";
+import { useBannerLift } from "./useBannerLift";
 import { useServiceWorkerUpdate } from "./useServiceWorkerUpdate";
 
 export function UpdateBanner() {
@@ -25,6 +26,7 @@ export function UpdateBanner() {
   const [state, dispatch] = useReducer(updateBannerReducer, INITIAL_UPDATE_BANNER_STATE);
   const dialogRef = useRef<HTMLDialogElement>(null);
   const cancelRef = useRef<HTMLButtonElement>(null);
+  const boxRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (hasWaiting) dispatch({ type: "waiting" });
@@ -48,10 +50,14 @@ export function UpdateBanner() {
   }, [state.confirming]);
 
   const visible = isBannerVisible(state);
+  // มีแถบบันทึกติดล่างทับตำแหน่งกล่อง → ยกกล่องขึ้นเหนือแถบ (null = ตำแหน่งเดิม)
+  const liftedBottom = useBannerLift(boxRef, visible);
 
   return (
     <>
       <div
+        ref={boxRef}
+        style={liftedBottom === null ? undefined : { bottom: liftedBottom }}
         role="status"
         aria-live="polite"
         className="fixed bottom-4 right-4 z-50 w-[min(400px,calc(100vw-32px))] max-[600px]:inset-x-3 max-[600px]:w-auto max-[600px]:bottom-[calc(12px+env(safe-area-inset-bottom,0px))]"
