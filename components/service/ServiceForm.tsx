@@ -342,7 +342,7 @@ export function ServiceForm({
       </div>
 
       {/* แถบบันทึก */}
-      <div className="sticky bottom-0 flex flex-col gap-2 rounded-b-xl border-t border-border bg-surface px-4 py-3">
+      <div data-sticky-savebar className="sticky bottom-0 flex flex-col gap-2 rounded-b-xl border-t border-border bg-surface px-4 py-3">
         {showIssues && issues.missing.length > 0 ? (
           <div role="alert" className="rounded-lg border border-danger bg-danger-soft px-3 py-2 text-[13px]">
             <b>
