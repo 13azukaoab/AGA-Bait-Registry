@@ -67,15 +67,25 @@ const BAN_FOREVER = "876000h";
 const DISPLAY_NAME_MAX = 100;
 const TEMP_PASSWORD_LENGTH = 12;
 // ตัดตัวที่สับสนง่าย (0/O, 1/l/I)
-const PASSWORD_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
+const PASSWORD_UPPER = "ABCDEFGHJKLMNPQRSTUVWXYZ";
+const PASSWORD_LOWER = "abcdefghijkmnopqrstuvwxyz";
+const PASSWORD_DIGITS = "23456789";
+const PASSWORD_ALPHABET = PASSWORD_UPPER + PASSWORD_LOWER + PASSWORD_DIGITS;
 
-/** รหัสผ่านชั่วคราวแบบสุ่มด้วย crypto — แสดงให้ host ครั้งเดียว ไม่เก็บ ไม่ log */
+/**
+ * รหัสผ่านชั่วคราวแบบสุ่มด้วย crypto — แสดงให้ host ครั้งเดียว ไม่เก็บ ไม่ log
+ * ผ่านกติการหัสผ่าน (DECISIONS 2.69) เสมอ: ยาว ≥ 8 (ใช้ 12) + มีตัวพิมพ์เล็ก/ใหญ่/ตัวเลขอย่างน้อยอย่างละ 1
+ * วิธี: บังคับ 3 ตำแหน่งแรกให้ครบ 3 ชนิด แล้วเติมที่เหลือจากทั้งชุด แล้วสลับตำแหน่ง (Fisher–Yates)
+ */
 function generateTempPassword(): string {
-  let out = "";
-  for (let i = 0; i < TEMP_PASSWORD_LENGTH; i += 1) {
-    out += PASSWORD_ALPHABET[randomInt(PASSWORD_ALPHABET.length)];
+  const pick = (set: string) => set[randomInt(set.length)];
+  const chars = [pick(PASSWORD_LOWER), pick(PASSWORD_UPPER), pick(PASSWORD_DIGITS)];
+  while (chars.length < TEMP_PASSWORD_LENGTH) chars.push(pick(PASSWORD_ALPHABET));
+  for (let i = chars.length - 1; i > 0; i -= 1) {
+    const j = randomInt(i + 1);
+    [chars[i], chars[j]] = [chars[j], chars[i]];
   }
-  return out;
+  return chars.join("");
 }
 
 /** ตรวจว่า object มีเฉพาะ key ที่อนุญาต — กัน `division_scope`/`role`/`is_active` ที่แอบส่งมา */

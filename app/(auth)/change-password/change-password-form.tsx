@@ -3,6 +3,8 @@
 /** ฟอร์มตั้งรหัสผ่านใหม่ — ตรวจความยาวและความตรงกันของ 2 ช่องซ้ำอีกครั้งฝั่ง server */
 import { useActionState } from "react";
 
+import { PASSWORD_RULE_HINT } from "@/lib/auth/passwordStrength";
+
 import {
   CHANGE_PASSWORD_INITIAL_STATE,
   PASSWORD_MIN_LENGTH,
@@ -53,7 +55,7 @@ export function ChangePasswordForm() {
           aria-describedby="password-hint"
         />
         <p className={FIELD_HINT} id="password-hint">
-          ยาวอย่างน้อย {PASSWORD_MIN_LENGTH} ตัวอักษร และต้องไม่ซ้ำกับรหัสผ่านเดิม
+          {PASSWORD_RULE_HINT} และต้องไม่ซ้ำกับรหัสผ่านเดิม
         </p>
       </div>
 
