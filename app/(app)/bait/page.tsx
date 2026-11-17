@@ -84,6 +84,7 @@ export default async function BaitPage({
       <BaitClient
         key={`${zone.id}|${branch?.id ?? ""}|${month}`}
         master={master}
+        role={profile.role}
         zoneId={zone.id}
         branchId={branch?.id ?? ""}
         month={month}
