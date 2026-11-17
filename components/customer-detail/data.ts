@@ -176,7 +176,7 @@ export async function loadCustomerDetail(
   let contracts: ContractRow[];
   try {
     contracts = ((contractsRes.data ?? []) as unknown as ContractDb[]).map((x) => toContractRow(x, tierRules));
-  } catch (e) {
+  } catch {
     return fail("อ่านข้อมูลสัญญาไม่ได้ (ค่าระยะสัญญาไม่ถูกต้อง)");
   }
   const contractIds = contracts.map((x) => x.id);
