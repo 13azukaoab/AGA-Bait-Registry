@@ -41,6 +41,7 @@ const CHUNK = 80;
 export interface AgPendingItem {
   stationId: string;
   contractId: string;
+  customerId: string;
   customerName: string;
   branchName: string;
   contractNo: string;
@@ -208,6 +209,7 @@ export async function loadTodo(supabase: SupabaseClient): Promise<{ data: TodoDa
       return [
         {
           contractId: p.contract_id,
+          customerId: n.customerId,
           customerName: n.customerName,
           branchName: branchNames[p.branch_id] ?? "-",
           branchId: p.branch_id,
@@ -229,6 +231,7 @@ export async function loadTodo(supabase: SupabaseClient): Promise<{ data: TodoDa
       return [
         {
           contractId: c.contract_id,
+          customerId: n.customerId,
           customerName: n.customerName,
           branchName: branchNames[n.branchId] ?? "-",
           contractNo: n.contractNo,
@@ -248,6 +251,7 @@ export async function loadTodo(supabase: SupabaseClient): Promise<{ data: TodoDa
       {
         stationId: a.id,
         contractId: a.contract_id,
+        customerId: n.customerId,
         customerName: n.customerName,
         branchName: branchNames[n.branchId] ?? "-",
         contractNo: n.contractNo,

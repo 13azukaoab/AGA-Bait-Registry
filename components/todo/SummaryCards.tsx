@@ -5,8 +5,11 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 
+import { CustomerLink } from "@/components/links/CustomerLink";
 import type { ContractListItem } from "@/components/service/types";
 import { TierBadge } from "@/components/ui";
+import type { UserRole } from "@/lib/db/types";
+import { customerLinkContexts } from "@/lib/links/customerLink";
 import { monthLabel } from "@/lib/service/months";
 
 import type { AgPendingItem } from "./data";
@@ -140,11 +143,15 @@ export function ListCard({
   );
 }
 
-export function UnfilledList({ items }: { items: readonly ContractListItem[] }) {
+export function UnfilledList({ items, role }: { items: readonly ContractListItem[]; role: UserRole }) {
   return items.slice(0, LIST_LIMIT).map((c) => (
     <li key={c.contractId} className="flex items-center justify-between gap-3 border-b border-border px-4 py-3 last:border-b-0">
       <div className="min-w-0">
-        <b className="block truncate text-[13px]">{c.customerName}</b>
+        <b className="block truncate text-[13px]">
+          <CustomerLink customerId={c.customerId} context={customerLinkContexts.contract(c.contractId)} role={role} className="max-w-full truncate align-bottom">
+            {c.customerName}
+          </CustomerLink>
+        </b>
         <small className="text-[12.5px] text-fg-muted">{c.contractNo}</small>
       </div>
       <div className="flex shrink-0 items-center gap-2 text-xs text-danger">
@@ -155,12 +162,15 @@ export function UnfilledList({ items }: { items: readonly ContractListItem[] }) 
   ));
 }
 
-export function AgList({ items }: { items: readonly AgPendingItem[] }) {
+export function AgList({ items, role }: { items: readonly AgPendingItem[]; role: UserRole }) {
   return items.slice(0, LIST_LIMIT).map((a) => (
     <li key={a.stationId} className="flex items-center justify-between gap-3 border-b border-border px-4 py-3 last:border-b-0">
       <div className="min-w-0">
         <b className="block truncate text-[13px]">
-          AG{a.label ? ` จุดที่ ${a.label}` : ""} · {a.customerName}
+          AG{a.label ? ` จุดที่ ${a.label}` : ""} ·{" "}
+          <CustomerLink customerId={a.customerId} context={customerLinkContexts.agPendingRemoval(a.contractId)} role={role} className="max-w-full truncate align-bottom">
+            {a.customerName}
+          </CustomerLink>
         </b>
         <small className="text-[12.5px] text-fg-muted">
           สาขา{a.branchName} · {a.contractNo} · พบปลวกตาย · รอถอด
