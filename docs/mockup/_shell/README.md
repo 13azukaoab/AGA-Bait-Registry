@@ -70,3 +70,10 @@ topbar ฝั่งขวายังเป็นของแต่ละหน�
 
 ## ลิงก์ไปหน้า prototype
 prototype เป็นหน้าเดียวหลายส่วน ใช้ hash: `aga-bait-registry-prototype.html#todo` (`todo service bait collect registry summary material`) — ตัว prototype อ่าน hash ตอนเปิด/เปลี่ยน และเขียน hash กลับตอนกดเมนู
+
+## แถบแจ้ง "มีเวอร์ชันใหม่" (M34 · DECISIONS 2.56 · เจ้าของเลือกแบบ ข กล่องลอยมุมล่าง 17 พ.ย. 2026)
+ชุดแยก 3 ไฟล์ (ไม่ได้รวมใน `shell.css`/`shell.js` — หน้าไหนต้องการค่อยวาง): `update-banner.css` → ใน `<style>` · `update-banner.html` → ท้าย `<body>` ก่อน `<script>` · `update-banner.js` → ใน `<script>` (ตัวแปร global `UB`)
+- `UB.show()` แสดงกล่อง · `UB.setDirty(true/false)` บอกว่ามีงานกรอกค้าง · `UB.onApply = fn` เรียกเมื่อยืนยันอัปเดต (หน้าจริง: ส่ง `SKIP_WAITING` แล้วรีโหลดเมื่อ `controllerchange`)
+- "อัปเดตตอนนี้" + มีงานค้าง → ขึ้น `<dialog>` ยืนยัน (ปุ่มโฟกัสเริ่มต้น = ยกเลิก) · "ภายหลัง" = ซ่อนรอบนี้
+- มือถือ ≤600px กล่องเต็มกว้างเหนือขอบล่าง ปุ่มสูง 44px · `body.ub-on-float` เพิ่ม padding ท้ายหน้าไม่ให้บังปุ่มสุดท้าย · `role="status" aria-live="polite"`
+- หน้าทดลอง: `../update-banner-demo.html` (ปุ่มกรอบส้ม "เฉพาะ mockup" = จำลองเวอร์ชันใหม่ / สลับมีงานค้าง — ห้ามเอาไปหน้าจริง) · เปิดด้วย `?show=1&dirty=1` ให้แสดงทันที

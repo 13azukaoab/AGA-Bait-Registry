@@ -1,0 +1,20 @@
+<!-- AGA-UPDATE-BANNER (M34) : markup — วางท้าย <body> ก่อน <script> · ทุกหน้าวางที่เดียว (กล่องลอย ตำแหน่ง fixed)
+     role="status" + aria-live อยู่บนกล่องนอกที่คงอยู่ใน DOM เสมอ เพื่อให้ screen reader อ่านตอนข้อความโผล่ -->
+<div class="ub ub--float" id="ub" role="status" aria-live="polite">
+  <div class="ub-card" id="ubCard">
+    <svg class="ub-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 3v6h-6"/></svg>
+    <div class="ub-msg"><b>มีเวอร์ชันใหม่ กดเพื่ออัปเดต</b><span>ระบบจะโหลดหน้าใหม่ · เลือกจังหวะอัปเดตเองได้</span></div>
+    <div class="ub-act">
+      <button type="button" class="btn ghost" id="ubLater">ภายหลัง</button>
+      <button type="button" class="btn primary" id="ubNow">อัปเดตตอนนี้</button>
+    </div>
+  </div>
+</div>
+<dialog class="ub-dlg" id="ubDlg" aria-labelledby="ubDlgT" aria-describedby="ubDlgD">
+  <h2 id="ubDlgT">มีข้อมูลที่ยังไม่บันทึก</h2>
+  <p id="ubDlgD">มีข้อมูลที่ยังไม่บันทึก จะหายถ้าอัปเดตตอนนี้</p>
+  <div class="ub-act">
+    <button type="button" class="btn" id="ubCancel" autofocus>ยกเลิก</button>
+    <button type="button" class="btn dangerfill" id="ubConfirm">ยืนยัน อัปเดตเลย</button>
+  </div>
+</dialog>

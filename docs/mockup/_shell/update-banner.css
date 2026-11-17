@@ -1,0 +1,37 @@
+/* ===== AGA-UPDATE-BANNER (M34 · DECISIONS 2.56) : แถบ "มีเวอร์ชันใหม่ กดเพื่ออัปเดต" =====
+   แหล่งจริง = _shell/update-banner.css · คู่กับ update-banner.html (markup) + update-banner.js
+   ห้ามใส่ hex — ใช้ token ของหน้า (--surface --border --fg --fg-muted --accent --accent-soft --accent-strong --accent-fg --danger --on-tier --shadow --scrim)
+   แบบที่เจ้าของเลือก 17 พ.ย. 2026 = กล่องลอยมุมล่างขวา (.ub--float · ไม่ดันเนื้อหา · มือถือเต็มความกว้างเหนือขอบล่าง) */
+.ub{display:contents}
+.ub-card{display:none;font-size:14px;line-height:1.5;color:var(--fg)}
+.ub.show .ub-card{display:flex}
+.ub-msg{min-width:0;flex:1}
+.ub-msg b{display:block;font-weight:600}
+.ub-msg span{display:block;font-size:12.5px;color:var(--fg-muted)}
+.ub-act{display:flex;gap:8px;flex:none;align-items:center}
+.ub-act .btn{white-space:nowrap}
+.ub-ic{flex:none;width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+
+/* กล่องลอยมุมล่างขวา (ไม่ดันเนื้อหา แต่ทับมุมล่างของหน้า) */
+.ub--float .ub-card{position:fixed;z-index:50;right:16px;bottom:16px;width:min(400px,calc(100vw - 32px));
+  flex-wrap:wrap;align-items:flex-start;gap:12px;padding:14px 16px;background:var(--surface);
+  border:1px solid var(--border);border-left:4px solid var(--accent);border-radius:12px;box-shadow:var(--drawer-shadow,var(--shadow))}
+.ub--float .ub-ic{color:var(--accent)}
+.ub--float .ub-act{width:100%;justify-content:flex-end}
+
+.ub-dlg{border:1px solid var(--border);border-radius:12px;background:var(--surface);color:var(--fg);padding:20px;max-width:min(420px,calc(100vw - 32px));font-family:inherit}
+.ub-dlg::backdrop{background:var(--scrim)}
+.ub-dlg h2{margin:0 0 6px;font-size:16px}
+.ub-dlg p{margin:0 0 16px;color:var(--fg-muted)}
+.ub-dlg .ub-act{justify-content:flex-end}
+
+@media (max-width:600px){
+  .ub--float .ub-act .btn,.ub-dlg .ub-act .btn{flex:1}
+  .ub--float .ub-card{right:12px;left:12px;width:auto;bottom:calc(12px + env(safe-area-inset-bottom,0px))}
+  .ub-dlg .ub-act{flex-direction:column-reverse}
+  .ub-dlg .ub-act .btn{width:100%}
+}
+@media (max-width:767px){ .ub-act .btn{min-height:44px} }
+/* กล่องลอยบนมือถือ: เผื่อที่ท้ายหน้าไม่ให้บังปุ่มสุดท้ายตอนเลื่อนสุด */
+body.ub-on-float{padding-bottom:140px}
+/* ===== /AGA-UPDATE-BANNER ===== */
