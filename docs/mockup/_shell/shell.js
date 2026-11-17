@@ -4,7 +4,7 @@
 function navWide(){ return window.matchMedia('(min-width:861px)').matches; }
 function navMini(on,noSave){   // noSave = หน้าที่บังคับเริ่มแบบย่อ ไม่เขียนทับค่าที่ผู้ใช้เลือกไว้ของหน้าอื่น
   document.body.classList.toggle('nav-mini',on);
-  var t=document.getElementById('navToggle');
+  var t=document.getElementById('navToggleDesk');
   if(t && navWide()){
     t.setAttribute('aria-pressed',on?'true':'false');
     t.setAttribute('aria-label',on?'ขยายเมนู (ตอนนี้ย่อไว้ ชี้ที่แถบเมนูเพื่อดูชั่วคราว)':'ย่อเมนูให้เนื้อหากว้างขึ้น');

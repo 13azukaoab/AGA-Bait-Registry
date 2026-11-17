@@ -29,14 +29,13 @@
 /* ===== ปุ่มมาตรฐาน 3 แบบ (เจ้าของเลือก 16 พ.ย. 2026 — ใช้ทุกหน้า · แหล่งจริง = _shell/shell.css) =====
    1) .navtoggle ปุ่มเมนู  2) .addbtn ปุ่มเพิ่ม (ไอคอนสไลด์ สี --ok)  3) .savebtn ปุ่มบันทึกหลัก (แถบสีกวาด สี --accent)
    ปุ่มรอง/ปุ่มใน modal/ปุ่มอันตราย ใช้ .btn เดิม */
-.navtoggle{width:auto;height:34px;padding:0 10px;gap:6px;border:none;border-radius:8px;background:var(--fg);color:var(--bg);
-  font-family:inherit;font-size:12.5px;font-weight:600;letter-spacing:.04em;transition:box-shadow .3s ease-in-out,transform .15s}
+.navtoggle{width:38px;height:34px;padding:0;border:none;border-radius:8px;background:var(--fg);color:var(--bg);
+  transition:box-shadow .3s ease-in-out,transform .15s}
 .navtoggle .nt-ic{fill:currentColor;flex:none;transition:transform .3s}
 .navtoggle:hover{box-shadow:0 0 14px 0 var(--border-strong)}
 .navtoggle:hover .nt-ic{transform:scale(1.08)}
 .navtoggle:active{transform:scale(.97)}
-.navtoggle .nt-tx{display:none}
-@media (min-width:861px){ .navtoggle .nt-tx{display:inline} }
+/* ปุ่มเมนูเป็นไอคอนล้วน · จอกว้าง (≥861px) อยู่บนสุดของเมนูซ้าย (.navtoggle-nav) · จอเล็กอยู่ใน topbar */
 .addbtn{flex:none;position:relative;height:38px;box-sizing:border-box;cursor:pointer;display:inline-flex;align-items:center;overflow:hidden;font-family:inherit;font-size:13px;
   border:1px solid var(--ok);border-radius:8px;background:var(--ok);color:var(--accent-fg);padding:0}
 .addbtn,.addbtn__ic,.addbtn__tx{transition:all .3s}
@@ -77,7 +76,7 @@
 /* จอเล็ก: เมนูเป็นลิ้นชักเลื่อนจากซ้าย · topbar เหลือ ☰ + โลโก้ + ชื่อ + ปุ่มสำคัญ */
 @media (max-width:860px){
   .shell{display:block;min-height:0}
-  .navtoggle{display:inline-flex}
+  .navtoggle:not(.navtoggle-nav){display:inline-flex}
   .nav{position:fixed;top:0;left:0;bottom:0;width:260px;z-index:40;overflow-y:auto;
     transform:translateX(-100%);transition:transform .22s ease;box-shadow:var(--drawer-shadow)}
   body.nav-open .nav{transform:translateX(0)}
@@ -100,7 +99,7 @@
    ชี้เมาส์หรือกด Tab เข้าแถบ → เมนูกางทับเนื้อหาชั่วคราว (margin-right ติดลบ = ไม่ดันเนื้อหา ไม่กระตุก) · ออกแล้วหุบเอง
    จำค่าในเครื่อง (localStorage 'aga-nav-mini') ใช้ร่วมทุกหน้า · จอเล็ก ≤860px ยังเป็นลิ้นชักเดิม (body.nav-open) */
 @media (min-width:861px){
-  .navtoggle{display:inline-flex}
+  .navtoggle-nav{display:flex;margin-bottom:8px}
   body.nav-mini .nav{position:sticky;top:57px;align-self:flex-start;height:calc(100vh - 57px);width:58px;
     overflow:hidden;z-index:15;transition:width .18s ease,margin-right .18s ease,box-shadow .18s ease}
   body.nav-mini .nav:is(:hover,:focus-within){width:238px;margin-right:-180px;overflow-y:auto;
