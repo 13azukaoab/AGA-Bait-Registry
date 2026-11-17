@@ -35,14 +35,17 @@ ALTER TABLE public.customer_types
   ADD COLUMN is_active boolean NOT NULL DEFAULT true,
   ADD COLUMN hint text,
   ADD CONSTRAINT customer_types_hint_check
-    CHECK (hint IS NULL OR (char_length(hint) <= 120 AND btrim(hint) <> ''));
+    CHECK (hint IS NULL OR (char_length(hint) <= 120 AND hint ~ '\S'));
 
 COMMENT ON COLUMN public.customer_types.is_active IS
   'M38: false = ปิดใช้ — ไม่โผล่ใน dropdown · ลูกค้าเดิมคงค่าเดิม · เลือกให้ลูกค้าใหม่/เปลี่ยนมาใช้ไม่ได้ (CT002)';
 COMMENT ON COLUMN public.customer_types.hint IS
   'M38: คำอธิบาย (tooltip ตอนเลือก) ≤ 120 ตัวอักษร · NULL = ไม่มี';
 
--- ด่านประเภทที่ปิดใช้ (SECURITY DEFINER: ล็อกแถว FOR SHARE ต้องใช้สิทธิ์ UPDATE — ผู้เรียก recorder/admin ไม่มี)
+-- ด่านประเภทที่ปิดใช้ — ต้องเป็น SECURITY DEFINER (ห้ามเปลี่ยนเป็น INVOKER):
+--   SELECT ... FOR SHARE ต้องผ่าน RLS ของ UPDATE (`customer_types_host_write` = host เท่านั้น)
+--   ถ้ารันเป็นผู้เรียก admin/recorder แถวจะถูกซ่อน → ดูเหมือน "ไม่พบรหัส" แต่ FK (ไม่ผ่าน RLS) ยังผ่าน
+--   → ประเภทที่ปิดใช้หลุดเข้าไปเงียบๆ · pgTAP 52 ตรวจ prosecdef + ทาง admin ไว้แล้ว
 CREATE FUNCTION public.customers_customer_type_active_guard()
 RETURNS trigger
 LANGUAGE plpgsql
@@ -64,8 +67,10 @@ BEGIN
    WHERE ct.code = NEW.customer_type
      FOR SHARE;
 
-  -- ไม่พบรหัส → ปล่อยให้ FK แจ้ง 23503 ตามเดิม
-  IF v_active IS FALSE THEN
+  IF NOT FOUND THEN
+    RETURN NEW; -- ไม่พบรหัส → ปล่อยให้ FK แจ้ง 23503 ตามเดิม
+  END IF;
+  IF v_active IS NOT TRUE THEN
     RAISE EXCEPTION 'ประเภทลูกค้านี้ปิดใช้งานแล้ว เลือกประเภทอื่น' USING ERRCODE = 'CT002';
   END IF;
   RETURN NEW;

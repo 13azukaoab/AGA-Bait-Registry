@@ -4,7 +4,7 @@
 --   ③ list_notification_read_status — host · ไม่มีเนื้อหา · RLS user_notifications ไม่เปลี่ยน
 -- ข้อมูลสมมติทั้งหมด · สัญญาเทสอยู่ปี 2090 (ไม่ปนกับข้อมูลอื่นในเครื่อง)
 BEGIN;
-SELECT plan(56);
+SELECT plan(60);
 
 INSERT INTO auth.users (id, instance_id, aud, role, email) VALUES
   ('00000000-0000-0000-0000-0000000000a1', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'host@test.local'),
@@ -45,6 +45,8 @@ SELECT ok(has_column_privilege('authenticated', 'public.customer_types', 'is_act
 SELECT has_trigger('public', 'customers', 'customers_customer_type_active_guard', 'guard trigger on customers');
 SELECT ok(NOT has_function_privilege('authenticated', 'public.customers_customer_type_active_guard()', 'EXECUTE'),
   'authenticated cannot call the trigger function');
+SELECT ok((SELECT prosecdef FROM pg_proc WHERE oid = 'public.customers_customer_type_active_guard()'::regprocedure),
+  'guard is SECURITY DEFINER (INVOKER would let RLS hide the type row → fail-open)');
 
 -- hint CHECK
 SELECT lives_ok($$UPDATE customer_types SET hint = repeat('ก', 120) WHERE code = 'hospital'$$, 'hint 120 chars ok');
@@ -52,6 +54,8 @@ SELECT throws_ok($$UPDATE customer_types SET hint = repeat('ก', 121) WHERE cod
   'hint 121 chars → 23514');
 SELECT throws_ok($$UPDATE customer_types SET hint = '   ' WHERE code = 'hospital'$$, '23514', NULL,
   'blank hint → 23514');
+SELECT throws_ok($$UPDATE customer_types SET hint = chr(9) || chr(10) WHERE code = 'hospital'$$, '23514', NULL,
+  'tab/newline-only hint → 23514');
 
 -- =====================================================================
 -- ① host แก้ตรง (RLS) + audit · role อื่นแก้ไม่ได้
@@ -115,6 +119,13 @@ SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a1
 SELECT throws_ok($$INSERT INTO customers (branch_id, name, customer_type)
                    VALUES (pg_temp.br(), 'Test API Warehouse', 'warehouse')$$,
   'CT002', NULL, 'API caller (host) also gets CT002');
+-- admin: แถวประเภทถูก RLS (UPDATE policy) ซ่อนจากผู้เรียก — ด่านยังต้องปิด
+SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a2', true);
+SELECT throws_ok($$INSERT INTO customers (branch_id, name, customer_type)
+                   VALUES (pg_temp.br(), 'Test Admin Warehouse', 'warehouse')$$,
+  'CT002', NULL, 'API caller (admin) insert with inactive type → CT002');
+SELECT throws_ok($$UPDATE customers SET customer_type = 'warehouse' WHERE id = pg_temp.id('c1')$$,
+  'CT002', NULL, 'API caller (admin) change to inactive type → CT002');
 RESET ROLE;
 
 -- =====================================================================
@@ -204,7 +215,7 @@ SELECT results_eq(
 SELECT is((SELECT sum(contract_count)::int FROM _moved), 7, 'moved preview counts the same scope');
 
 -- ② helper มูลค่าต่อปี
-SELECT is(public.contract_annual_value(50000, 36), 50000::numeric / 3, 'annual 50k/36 = ÷3');
+SELECT is(round(public.contract_annual_value(50000, 36), 2), 16666.67, 'annual 50k/36 = ÷3 (16,666.67)');
 SELECT is(public.contract_annual_value(50000, 5), 50000::numeric, 'annual 50k/5 = actual (no scale-up)');
 SELECT is(public.contract_annual_value(35000, 14), 30000::numeric, 'annual 35k/14 = 30,000 exactly');
 SELECT is(public.contract_annual_value(150000, 12), 150000::numeric, 'annual 150k/12 = 150k');
