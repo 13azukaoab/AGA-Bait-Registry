@@ -96,7 +96,8 @@ export function replaceIndexData(html: string, json: string): string {
       "ไม่พบบรรทัด `const DATA = …;` ใน index.html ของ Dashboard — โครงสร้างหน้าเปลี่ยนไป ต้องให้ผู้ดูแลตรวจก่อนส่ง",
     );
   }
-  return html.replace(DATA_MARKER, `const DATA = ${json};`);
+  // ใช้ฟังก์ชันแทนข้อความ — กัน `$&` / `$'` ใน JSON ถูกตีความเป็นรูปแบบแทนที่
+  return html.replace(DATA_MARKER, () => `const DATA = ${json};`);
 }
 
 /**
@@ -160,6 +161,34 @@ export function diffMonths(
       !Object.prototype.hasOwnProperty.call(remote, key) ||
       JSON.stringify(remote[key]) !== JSON.stringify(data[key]),
   );
+}
+
+/** ผลรวม `value` ของ 1 เดือน (แถวผิดรูปแบบนับเป็น 0) */
+function monthTotal(rows: unknown): number {
+  if (!Array.isArray(rows)) return 0;
+  return rows.reduce((sum: number, r) => {
+    const v = Number((r as { value?: unknown } | null)?.value);
+    return Number.isFinite(v) ? sum + v : sum;
+  }, 0);
+}
+
+/**
+ * M27 ด่านกันตัวเลขทรุด: เดือนที่บน Dashboard มีอยู่แล้ว ถ้ามูลค่ารวมทั้งประเทศของเดือนนั้นลดลงเกิน `maxDropRatio`
+ * (ค่าตั้งต้น 50%) → ไม่ส่ง (เช่น ทะเบียนยังย้ายเข้าไม่ครบ / ตั้ง go-live ย้อนไปเดือนที่มีตัวเลขจริงแล้ว)
+ * คืนรายชื่อเดือนที่ทรุด (ว่าง = ผ่าน)
+ */
+export function findValueDrops(
+  data: DashboardData,
+  remote: Record<string, unknown> | null,
+  maxDropRatio = 0.5,
+): string[] {
+  if (!remote) return [];
+  return Object.keys(data).filter((key) => {
+    if (!Object.prototype.hasOwnProperty.call(remote, key)) return false;
+    const before = monthTotal(remote[key]);
+    if (before <= 0) return false;
+    return monthTotal(data[key]) < before * (1 - maxDropRatio);
+  });
 }
 
 /** รหัส error สั้นสำหรับ `sync_logs.error_code` */
@@ -416,6 +445,14 @@ export async function syncDashboardData(
       throw new DashboardSyncError(
         "months_dropped",
         `ไฟล์ใหม่ไม่มีเดือนที่ Dashboard มีอยู่แล้ว ${dropped.length} เดือน (${shown}${dropped.length > 6 ? ", …" : ""}) — ไม่ส่ง เพื่อไม่ให้ข้อมูลย้อนหลังหาย`,
+      );
+    }
+
+    const drops = findValueDrops(data, remoteIndexMonths);
+    if (drops.length > 0) {
+      throw new DashboardSyncError(
+        "value_drop",
+        `มูลค่ารวมของ ${drops.slice(0, 6).join(", ")} ลดลงเกินครึ่งจากที่ Dashboard แสดงอยู่ — ไม่ส่ง ให้ผู้ดูแลตรวจทะเบียน/เดือนเริ่มใช้ระบบก่อน`,
       );
     }
 

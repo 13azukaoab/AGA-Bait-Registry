@@ -27,6 +27,7 @@ import { syncDashboardData, type DashboardRepoTarget } from "./sync";
 import type { DashboardData } from "./types";
 
 const PAGE = 1000;
+const KEYSET = { keyset: true } as const;
 
 /** env ที่ต้องตั้งใน Vercel (ชื่อเท่านั้น — ห้าม log ค่า) */
 export const DASHBOARD_ENV = {
@@ -68,27 +69,43 @@ export function dashboardSyncConfigFromEnv(
 
 type Row = Record<string, unknown>;
 
-/** อ่านทุกแถวแบบแบ่งหน้า เรียงตาม `orderBy` (คอลัมน์ที่ไม่ซ้ำ ไม่งั้นแบ่งหน้าแล้วแถวสลับ/หล่นได้) */
+/**
+ * อ่านทุกแถวแบบแบ่งหน้า (PostgREST คืนครั้งละไม่เกิน 1,000 แถว)
+ * - `keyset: true` (ตารางที่มีคอลัมน์ `id` ไม่ซ้ำ): หน้าถัดไป = `id > id สุดท้าย` — มีคนเพิ่ม/ลบแถวระหว่างอ่าน
+ *   ก็ไม่ได้แถวซ้ำหรือข้ามแถว (แบบ offset จะเลื่อนแล้วนับสัญญาซ้ำได้)
+ * - ตารางอื่น (snapshot · คีย์ประกอบ): offset + เรียงตามคีย์หลัก แล้วตัดแถวซ้ำด้วย `dedupeKey`
+ */
 async function fetchAll(
   client: SupabaseClient,
   table: string,
   columns: string,
-  orderBy: string[],
+  page: { keyset: true } | { orderBy: string[]; dedupeKey: (r: Row) => string },
   where: { eq?: [string, string]; notNull?: string } = {},
 ): Promise<Row[]> {
-  const out: Row[] = [];
+  const out = new Map<string, Row>();
+  let lastId: string | null = null;
   for (let from = 0; ; from += PAGE) {
     let query = client.from(table).select(columns);
     if (where.eq) query = query.eq(where.eq[0], where.eq[1]);
     if (where.notNull) query = query.not(where.notNull, "is", null);
-    for (const col of orderBy) query = query.order(col, { ascending: true });
-    const { data, error } = await query.range(from, from + PAGE - 1);
+    let result;
+    if ("keyset" in page) {
+      if (lastId !== null) query = query.gt("id", lastId);
+      result = await query.order("id", { ascending: true }).range(0, PAGE - 1);
+    } else {
+      for (const col of page.orderBy) query = query.order(col, { ascending: true });
+      result = await query.range(from, from + PAGE - 1);
+    }
+    const { data, error } = result;
     if (error) {
-      throw new DashboardSyncError("load_failed", `อ่าน ${table} ไม่สำเร็จ: ${error.message}`);
+      throw new DashboardSyncError("load_failed", `อ่าน ${table} ไม่สำเร็จ`);
     }
     const rows = (data ?? []) as unknown as Row[];
-    out.push(...rows);
-    if (rows.length < PAGE) return out;
+    for (const r of rows) {
+      out.set("keyset" in page ? String(r.id) : page.dedupeKey(r), r);
+    }
+    if (rows.length < PAGE) return [...out.values()];
+    if ("keyset" in page) lastId = String(rows[rows.length - 1]!.id);
   }
 }
 
@@ -121,21 +138,33 @@ export async function loadDashboardData(
   const lastMonth = previousMonth(bangkokMonth(now));
 
   const [branches, snapshots, closures, tierRows, customers, contracts, visits] = await Promise.all([
-    fetchAll(client, "branches", "id, name", ["id"]),
-    fetchAll(client, "monthly_branch_snapshots", SNAPSHOT_COLUMNS, ["month_key", "branch_id"]),
-    fetchAll(client, "month_closures", "month_key", ["month_key"], {
+    fetchAll(client, "branches", "id, name", KEYSET),
+    fetchAll(client, "monthly_branch_snapshots", SNAPSHOT_COLUMNS, {
+      orderBy: ["month_key", "branch_id"],
+      dedupeKey: (r) => `${String(r.month_key)}|${String(r.branch_id)}`,
+    }),
+    fetchAll(client, "month_closures", "month_key, scope", {
+      orderBy: ["month_key", "scope"],
+      dedupeKey: (r) => `${String(r.month_key)}|${String(r.scope)}`,
+    }, {
       eq: ["scope", "central"],
       notNull: "closed_at",
     }),
-    fetchAll(client, "tier_rules", TIER_RULE_COLUMNS, ["effective_month", "tier"]),
-    fetchAll(client, "customers", "id, branch_id", ["id"]),
+    fetchAll(client, "tier_rules", TIER_RULE_COLUMNS, {
+      orderBy: ["effective_month", "tier"],
+      dedupeKey: (r) => `${String(r.effective_month)}|${String(r.tier)}`,
+    }),
+    fetchAll(client, "customers", "id, branch_id", KEYSET),
     fetchAll(
       client,
       "contracts",
       "id, customer_id, start_date, end_date, term_months, value_total, cancelled_at, stations_initialized_at, renewed_from_contract_id",
-      ["id"],
+      KEYSET,
     ),
-    fetchAll(client, "visits", "id, contract_id, visit_date, visit_type, makeup_for_month", ["id"]),
+    // สูตร snapshot / ตกบริการใช้เฉพาะการเข้าแบบ routine (lib/rules) — ไม่ต้องอ่านแบบอื่น
+    fetchAll(client, "visits", "id, contract_id, visit_date, visit_type, makeup_for_month", KEYSET, {
+      eq: ["visit_type", "routine"],
+    }),
   ]);
 
   const branchName = new Map(branches.map((b) => [String(b.id), String(b.name)]));

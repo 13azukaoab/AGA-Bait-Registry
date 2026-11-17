@@ -5,11 +5,16 @@
  * กฎที่สำคัญ: **ไม่ได้ตั้ง `CRON_SECRET` = ปฏิเสธทุกคำขอ (fail closed)**
  * ถ้าปล่อยผ่านเมื่อไม่มี secret คนนอกจะยิง endpoint ให้ระบบ commit ขึ้น repo Dashboard ได้
  */
+import { timingSafeEqual } from "node:crypto";
+
 export function isAuthorizedCronRequest(
   authorizationHeader: string | null | undefined,
   secret: string | null | undefined,
 ): boolean {
   if (!secret) return false; // ไม่มี secret = ปฏิเสธเสมอ
   if (!authorizationHeader) return false;
-  return authorizationHeader === `Bearer ${secret}`;
+  // เทียบแบบเวลาคงที่ (กันเดา secret จากเวลาตอบ)
+  const given = Buffer.from(authorizationHeader, "utf8");
+  const expected = Buffer.from(`Bearer ${secret}`, "utf8");
+  return given.length === expected.length && timingSafeEqual(given, expected);
 }

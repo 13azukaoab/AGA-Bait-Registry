@@ -24,7 +24,8 @@
 --          * auto  : บันทึกแถว skipped/busy ทันที (ให้ประวัติเห็นว่ารอบ 06:00 ไม่ได้ส่งเพราะอะไร) แล้วคืน NULL
 --        10 นาที > maxDuration ของ route (60 วินาที) เผื่อเวลา GitHub ช้า
 --   4. finish_sync_log(id, result, error_code, error_message, months_sent, month_count, commit_sha)
---      - แก้ได้เฉพาะแถวที่ยังไม่จบ · service_role แก้แถว auto · host แก้ได้เฉพาะแถว manual ของตัวเอง
+--      - แก้ได้เฉพาะแถวที่ยังไม่จบ · service_role แก้แถว auto · ผู้เปิดรอบ manual (triggered_by) แก้แถวของตัวเอง
+--        (ไม่ตรวจ is_host ซ้ำ — เปิดรอบได้ต้องเป็น host อยู่แล้ว · ถูกถอดสิทธิ์กลางรอบยังปิดผลจริงได้)
 --      - ตรวจรูปแบบค่าด้วย CHECK ของตาราง (result ต้องคู่กับ finished_at, sha 40 hex, ข้อความไม่เกิน 500)
 --   5. ไม่ต้องลง audit_log (ตารางนี้เป็นบันทึกอยู่แล้ว · ไม่แตะ audit_trigger)
 --   * error ใหม่: SY001 (มีการส่งอื่นกำลังทำงาน) · SY002 (ช่องทาง/ผลลัพธ์ไม่ถูกต้อง) · SY003 (ไม่พบรอบที่ยังไม่จบ)
@@ -47,7 +48,10 @@ CREATE TABLE public.sync_logs (
   error_code    text CONSTRAINT sync_logs_error_code_len CHECK (char_length(error_code) <= 40),
   error_message text CONSTRAINT sync_logs_error_message_len CHECK (char_length(error_message) <= 500),
   months_sent   text[] NOT NULL DEFAULT '{}'
-                  CONSTRAINT sync_logs_months_sent_len CHECK (cardinality(months_sent) <= 120),
+                  CONSTRAINT sync_logs_months_sent_len CHECK (cardinality(months_sent) <= 120)
+                  -- ทุกตัวต้องเป็น key เดือน MMM.YY (array_to_string รวมแล้วตรวจทั้งก้อน — CHECK ใช้ subquery ไม่ได้)
+                  CONSTRAINT sync_logs_months_sent_format
+                  CHECK (array_to_string(months_sent, ',') ~ '^([A-Z]{3}\.[0-9]{2}(,[A-Z]{3}\.[0-9]{2})*)?$'),
   month_count   int CONSTRAINT sync_logs_month_count_range CHECK (month_count BETWEEN 0 AND 1000),
   commit_sha    text CONSTRAINT sync_logs_commit_sha_hex CHECK (commit_sha ~ '^[0-9a-f]{40}$'),
   -- ยังไม่จบ = ไม่มีผล · จบแล้ว = ต้องมีผล
@@ -180,10 +184,10 @@ BEGIN
     IF v_row.source <> 'auto' THEN
       RAISE EXCEPTION 'ระบบปิดได้เฉพาะรอบ Auto Sync' USING ERRCODE = '42501';
     END IF;
+  -- ผู้เปิดรอบปิดรอบของตัวเองได้แม้ถูกถอดสิทธิ์ host ระหว่างทาง (ไม่งั้น commit แล้วแต่ log ค้างเป็น timeout)
   ELSIF v_row.source <> 'manual'
-        OR v_row.triggered_by IS DISTINCT FROM auth.uid()
         OR auth.uid() IS NULL
-        OR NOT public.is_host() THEN
+        OR v_row.triggered_by IS DISTINCT FROM auth.uid() THEN
     RAISE EXCEPTION 'ไม่มีสิทธิ์บันทึกผลรอบนี้' USING ERRCODE = '42501';
   END IF;
 

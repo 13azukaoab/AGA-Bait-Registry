@@ -6,7 +6,7 @@
 --   * finish: ครั้งเดียว (SY003) · service_role ปิดได้แค่ auto · host ปิดได้แค่ manual ของตัวเอง · ผลผิด SY002
 -- ข้อมูลสมมติทั้งหมด
 BEGIN;
-SELECT plan(44);
+SELECT plan(45);
 
 INSERT INTO auth.users (id, instance_id, aud, role, email) VALUES
   ('00000000-0000-0000-0000-0000000000a1', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'host@test.local'),
@@ -56,6 +56,8 @@ SELECT throws_ok($$INSERT INTO sync_logs (source, finished_at, result, commit_sh
   '23514', NULL, 'CHECK: commit sha only on success');
 SELECT throws_ok($$INSERT INTO sync_logs (source) VALUES ('other')$$,
   '23514', NULL, 'CHECK: unknown source rejected');
+SELECT throws_ok($$INSERT INTO sync_logs (source, months_sent) VALUES ('auto', ARRAY['OCT.26', '<script>'])$$,
+  '23514', NULL, 'CHECK: months_sent must be MMM.YY keys');
 
 -- =====================================================================
 -- start: สิทธิ์ตามช่องทาง

@@ -12,14 +12,29 @@ import {
 // Supabase จำลอง — ไม่ต่อฐานข้อมูลจริง · ข้อมูลสมมติทั้งหมด
 type Row = Record<string, unknown>;
 
-function fakeClient(tables: Record<string, Row[]>, rpc: Record<string, unknown> = {}) {
-  const calls = { ranges: [] as { table: string; from: number; to: number }[], rpc: [] as { name: string; args: unknown }[] };
+function fakeClient(
+  tables: Record<string, Row[]>,
+  rpc: Record<string, unknown> = {},
+  onPage?: (table: string, call: number) => void,
+) {
+  const calls = {
+    ranges: [] as { table: string; from: number; to: number; after?: string }[],
+    rpc: [] as { name: string; args: unknown }[],
+    eqs: [] as string[],
+  };
   const client = {
     from(table: string) {
       const filters: ((r: Row) => boolean)[] = [];
+      let after: string | undefined;
       const builder = {
+        gt: (col: string, val: string) => {
+          after = val;
+          filters.push((r) => String(r[col]) > val);
+          return builder;
+        },
         select: () => builder,
         eq: (col: string, val: unknown) => {
+          calls.eqs.push(`${table}.${col}=${String(val)}`);
           filters.push((r) => r[col] === val);
           return builder;
         },
@@ -29,8 +44,11 @@ function fakeClient(tables: Record<string, Row[]>, rpc: Record<string, unknown> 
         },
         order: () => builder,
         range: async (from: number, to: number) => {
-          calls.ranges.push({ table, from, to });
-          const rows = (tables[table] ?? []).filter((r) => filters.every((f) => f(r)));
+          calls.ranges.push({ table, from, to, after });
+          const rows = (tables[table] ?? [])
+            .filter((r) => filters.every((f) => f(r)))
+            .sort((a, b) => (String(a.id) < String(b.id) ? -1 : String(a.id) > String(b.id) ? 1 : 0));
+          onPage?.(table, calls.ranges.length);
           return { data: rows.slice(from, to + 1), error: null };
         },
       };
@@ -140,7 +158,38 @@ describe("loadDashboardData", () => {
     }));
     const { client, calls } = fakeClient(t, { go_live_month: "2026-10-01" });
     await loadDashboardData(client, NOV_6);
-    expect(calls.ranges.filter((c) => c.table === "visits").map((c) => c.from)).toEqual([0, 1000, 2000]);
+    // keyset: หน้าถัดไปเริ่มหลัง id สุดท้ายของหน้าก่อน
+    expect(calls.ranges.filter((c) => c.table === "visits").map((c) => c.after)).toEqual([
+      undefined, "v00999", "v01999",
+    ]);
+  });
+
+  it("มีคนเพิ่มสัญญาระหว่างอ่าน (id น้อยกว่าหน้าปัจจุบัน) → ไม่นับซ้ำ ไม่ข้าม", async () => {
+    const t = baseTables();
+    const base = t.contracts![0]!;
+    t.contracts = Array.from({ length: 1500 }, (_, i) => ({
+      ...base, id: `k${String(i + 10).padStart(5, "0")}`, value_total: "1000.00",
+    }));
+    let inserted = false;
+    const { client } = fakeClient(t, { go_live_month: "2026-10-01" }, (table) => {
+      if (table === "contracts" && !inserted) {
+        // ระหว่างอ่านหน้าแรก มีสัญญาใหม่ที่ id อยู่ก่อนหน้า → แบบ offset แถวจะเลื่อนแล้วนับซ้ำ 1 แถว
+        inserted = true;
+        t.contracts!.push({ ...base, id: "k00000", value_total: "1000.00" });
+      }
+    });
+    const data = await loadDashboardData(client, NOV_6);
+    expect(data["OCT.26"]!.find((r) => r.branch === "นครปฐม")?.cust).toBe(1500);
+  });
+
+  it("อ่านเฉพาะการเข้าแบบ routine", async () => {
+    const t = baseTables();
+    t.visits = [
+      { id: "v1", contract_id: "k1", visit_date: "2026-10-10", visit_type: "problem", makeup_for_month: null },
+    ];
+    const { client, calls } = fakeClient(t, { go_live_month: "2026-10-01" });
+    await loadDashboardData(client, NOV_6);
+    expect(calls.eqs).toContain("visits.visit_type=routine");
   });
 
   it("go_live_month อ่านไม่ได้ = load_failed", async () => {
@@ -175,5 +224,15 @@ describe("supabaseSyncPorts", () => {
   it("push ไม่มี token = throw config_missing (runDashboardSync บันทึกเป็น failed)", async () => {
     const { client } = fakeClient({});
     await expect(supabaseSyncPorts(client, { env: {} }).push({})).rejects.toMatchObject({ code: "config_missing" });
+  });
+});
+
+describe("findValueDrops / value_drop", () => {
+  it("มูลค่ารวมของเดือนเดิมลดลงเกินครึ่ง = เตือนเดือนนั้น · ลดไม่ถึงครึ่ง / เดือนใหม่ = ผ่าน", async () => {
+    const { findValueDrops } = await import("./sync");
+    const row = (value: number) => [{ value }];
+    const data = { "SEP.26": row(40), "OCT.26": row(60), "NOV.26": row(1) } as never;
+    expect(findValueDrops(data, { "SEP.26": row(100), "OCT.26": row(100) })).toEqual(["SEP.26"]);
+    expect(findValueDrops(data, null)).toEqual([]);
   });
 });

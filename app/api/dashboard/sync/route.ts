@@ -24,7 +24,8 @@ export const maxDuration = 60;
 
 function sameOrigin(request: Request): boolean {
   const origin = request.headers.get("origin");
-  if (!origin) return true; // fetch แบบ same-origin บางเบราว์เซอร์ไม่ส่ง Origin · cookie SameSite=Lax กันข้ามเว็บอยู่แล้ว
+  // ไม่มี Origin: ยอมเฉพาะเมื่อเบราว์เซอร์ยืนยันว่ามาจากเว็บเดียวกัน (Sec-Fetch-Site)
+  if (!origin) return request.headers.get("sec-fetch-site") === "same-origin";
   try {
     return new URL(origin).host === new URL(request.url).host;
   } catch {
@@ -72,12 +73,14 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, errorCode: "busy" }, { status: 409 });
   }
 
+  // ข้อความ error ภายใน (ฐานข้อมูล / ไม่ทราบสาเหตุ) ไม่ส่งถึงหน้าจอ — ฉบับเต็มอยู่ใน sync_logs (host อ่าน)
+  const internal = outcome.errorCode === "load_failed" || outcome.errorCode === "unknown";
   const body = {
     ok: outcome.result !== "failed",
     logId: outcome.logId,
     result: outcome.result,
     errorCode: outcome.errorCode,
-    message: outcome.message,
+    message: internal ? "อ่านข้อมูลจากระบบไม่สำเร็จ ดูรายละเอียดในประวัติการส่ง" : outcome.message,
     monthsSent: outcome.monthsSent,
     monthCount: outcome.monthCount,
     commitSha: outcome.commitSha,
