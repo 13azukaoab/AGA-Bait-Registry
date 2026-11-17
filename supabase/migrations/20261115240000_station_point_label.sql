@@ -9,6 +9,7 @@
 --             (40 = maxLength ของช่องป้ายในหน้าบันทึกบริการ components/service/AgSection.tsx)
 --          ③ ขอบเขต: recorder ต้องเป็นสถานีในขอบเขต (station_in_scope) · ไม่พบ/นอกขอบเขต → 42501 (ไม่บอกว่ามีอยู่จริงไหม)
 --          ④ ล็อกแถว (FOR UPDATE) กันบันทึกบริการถอดกล่องพร้อมกัน · host ส่ง id ที่ไม่มี → AG004
+--             แล้วตรวจขอบเขต recorder ซ้ำจากแถวที่ล็อก (contract_in_scope) กันสถานีถูกย้ายสัญญาระหว่าง ③ กับ ④
 --          ⑤ เฉพาะกล่อง AG → อื่นๆ SV012
 --          ⑥ สถานะต้องเป็น active / pending_removal → removed / eliminated / lost / withdrawn = SV013
 --      * แก้เฉพาะ point_label + updated_at · ไม่สร้าง visits / station_checks · ไม่แตะรอบ F / status / pending_removal_month
@@ -102,11 +103,18 @@ BEGIN
   END IF;
 
   -- ④ ล็อกแถว กันบันทึกบริการเปลี่ยนสถานะพร้อมกัน
-  SELECT st.id, st.type, st.status, st.point_label, st.updated_at INTO s
+  SELECT st.id, st.contract_id, st.type, st.status, st.point_label, st.updated_at INTO s
     FROM public.stations st WHERE st.id = p_station_id
      FOR UPDATE;
   IF NOT FOUND THEN
+    IF NOT public.is_host() THEN
+      RAISE EXCEPTION 'not allowed to edit this station' USING ERRCODE = '42501';
+    END IF;
     RAISE EXCEPTION 'station not found' USING ERRCODE = 'AG004';
+  END IF;
+  -- ตรวจขอบเขตซ้ำหลังล็อก (กันสถานีถูกย้ายสัญญาระหว่างข้อ ③ กับ ④)
+  IF NOT public.is_host() AND NOT public.contract_in_scope(s.contract_id) THEN
+    RAISE EXCEPTION 'not allowed to edit this station' USING ERRCODE = '42501';
   END IF;
 
   -- ⑤ เฉพาะกล่อง AG

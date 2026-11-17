@@ -286,7 +286,7 @@ SELECT lives_ok($$SELECT public.collect_ig_stations('00000000-0000-0000-0000-000
 -- B5. เขียนช่องเก็บตรง (REST) ไม่ได้ — ยกเว้น host
 SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a3', true);
 SELECT throws_ok($$UPDATE stations SET point_label = 'rec-ok' WHERE id = '00000000-0000-0000-0000-0000000001b4'$$,
-  'SV014', NULL, 'control: recorder still updates other station fields (row visible) — M37: direct label edit is refused (SV014 fires only on a row RLS lets through)');
+  'SV014', NULL, 'control: recorder row is visible (the label guard fired) — M37: direct label edit is refused (SV014 fires only on a row RLS lets through)');
 SELECT is((SELECT point_label FROM stations WHERE id = '00000000-0000-0000-0000-0000000001b4'), NULL, 'control: the refused direct label edit saved nothing (M37)');
 SELECT throws_ok($$UPDATE stations SET collected_at = now() WHERE id = '00000000-0000-0000-0000-0000000001b4'$$,
   '42501', NULL, 'recorder cannot set collected_at directly');
