@@ -79,6 +79,26 @@
     display: none;
   }
 }
+/*
+ * ปุ่มเมนูบนสุดของเมนูซ้าย: เมนูขยาย (ปกติ หรือกางชั่วคราวตอนชี้เมาส์/โฟกัสคีย์บอร์ด) = ไอคอน + คำว่า MENU
+ * เมนูย่อ 58px = ไอคอนล้วน · จอเล็ก (≤860px) ใช้ปุ่มในแถบบน ไม่แตะ · ตรงกับ docs/mockup/_shell/shell.css
+ * คำว่า MENU ใช้ nowrap + overflow:hidden จึงไม่ตัดบรรทัด/ล้นระหว่างเมนูกำลังกาง
+ */
+.menuToggleText {
+  display: none;
+}
+@media (min-width: 861px) {
+  :global(html:not([data-nav-mini="1"])) .menuToggleNav,
+  :global(html[data-nav-mini="1"]) .nav:is(:hover, :has(:focus-visible)) .menuToggleNav {
+    width: fit-content;
+    padding: 0 10px;
+    gap: 6px;
+  }
+  :global(html:not([data-nav-mini="1"])) .menuToggleNav .menuToggleText,
+  :global(html[data-nav-mini="1"]) .nav:is(:hover, :has(:focus-visible)) .menuToggleNav .menuToggleText {
+    display: inline;
+  }
+}
 /* ตอนโหลดหน้า: ไม่เล่นแอนิเมชันหุบ (ตั้งโดย NAV_MINI_INIT_SCRIPT แล้วถอดหลังวาดแล้ว 2 เฟรม) */
 :global(html[data-nav-noanim]) .nav {
   transition: none !important;
