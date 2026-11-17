@@ -57,6 +57,8 @@ import { monthLabel } from "@/lib/service/months";
 import { describeTeamsByKind, isTeamAssignableToContract } from "@/lib/service/teamKind";
 import { PdfIcon } from "./PdfIcon";
 import { RenewalDialog } from "./RenewalDialog";
+import { UnlinkedReviewDialog } from "./UnlinkedReviewDialog";
+import { canReviewUnlinked, unlinkedStateOf } from "./unlinkedReview";
 import { deleteContract, findLinkedRenewals, saveDraft, type SaveResult } from "./save";
 import { describeTypeMismatch } from "./saveRules";
 import { TeamPicker } from "./TeamPicker";
@@ -134,6 +136,8 @@ export function NewContractsClient({
   const [historyFor, setHistoryFor] = useState<SavedContract | null>(null);
   /** แถว (ร่าง หรือแถวที่กำลังแก้) ที่กำลังเลือกลูกค้าเดิม (Renew) */
   const [renewalFor, setRenewalFor] = useState<RenewalTarget | null>(null);
+  /** M28b: กล่องตรวจ Renew ที่ยังไม่ผูกสัญญาเก่าของแถวที่บันทึกแล้ว (host/admin) */
+  const [reviewFor, setReviewFor] = useState<SavedContract | null>(null);
   /** แถวที่บันทึกแล้วซึ่งกำลังแก้ — key = contractId */
   const [edits, setEdits] = useState<Record<string, EditState>>({});
   /** contractId ของแถวที่กำลังส่งบันทึก (กันกดซ้ำ) */
@@ -327,6 +331,18 @@ export function NewContractsClient({
     const fresh = res.row;
     setReloaded((all) => ({ ...all, [s.contractId]: fresh }));
     setToast(`โหลดสัญญา ${fresh.contractNo} ล่าสุดแล้ว — กด แก้ เพื่อแก้ต่อจากค่าล่าสุด`);
+    router.refresh();
+  }
+
+  /** M28b: เชื่อมสัญญาเก่า/ปิดรายการสำเร็จ → โหลดแถวใหม่ให้ชิปเปลี่ยนสถานะทันที (รายการที่ปิด/ผูกแล้วไม่ขึ้นเป็น "ยังไม่ผูก" อีก) */
+  async function afterReview(s: SavedContract, message: string) {
+    setReviewFor(null);
+    const res = await loadContractById(supabase, s.contractId, role);
+    if (res.row) {
+      const fresh = res.row;
+      setReloaded((all) => ({ ...all, [s.contractId]: fresh }));
+    }
+    setToast(message);
     router.refresh();
   }
 
@@ -798,7 +814,18 @@ export function NewContractsClient({
                         )}
                       </Chip>
                     ) : s.saleType === "renew" ? (
-                      <Chip tone="miss">⚠ ยังไม่ผูก</Chip>
+                      unlinkedStateOf(s) === "closed" ? (
+                        <Chip
+                          tone="na"
+                          onClick={canReviewUnlinked(role, s) ? () => setReviewFor(s) : undefined}
+                        >
+                          ✓ ไม่มีสัญญาเก่า
+                        </Chip>
+                      ) : (
+                        <Chip tone="miss" onClick={canReviewUnlinked(role, s) ? () => setReviewFor(s) : undefined}>
+                          ⚠ ยังไม่ผูก{canReviewUnlinked(role, s) ? " · เชื่อมสัญญาเก่า" : ""}
+                        </Chip>
+                      )
                     ) : (
                       <Chip tone="na">— งานใหม่ —</Chip>
                     )}
@@ -1013,6 +1040,15 @@ export function NewContractsClient({
               branchText: branchById.get(link.branchId)?.name ?? "",
             });
           }}
+        />
+      ) : null}
+      {reviewFor ? (
+        <UnlinkedReviewDialog
+          supabase={supabase}
+          contract={reviewFor}
+          branchNameOf={(id) => branchById.get(id)?.name ?? ""}
+          onClose={() => setReviewFor(null)}
+          onDone={(message) => void afterReview(reviewFor, message)}
         />
       ) : null}
       {historyFor ? (
