@@ -35,8 +35,8 @@ INSERT INTO profiles (user_id, display_name, username, role, division_scope) VAL
 INSERT INTO customers (id, branch_id, name) VALUES
   ('00000000-0000-0000-0000-0000000000b2',
    (SELECT id FROM branches WHERE division = 'central' ORDER BY name LIMIT 1), 'Backup cust');
-INSERT INTO contracts (id, customer_id, contract_no, start_date, term_years, value_total, status) VALUES
-  ('00000000-0000-0000-0000-0000000000b3', '00000000-0000-0000-0000-0000000000b2', 'BK-1', '2026-01-15', 1, 50000, 'active');
+INSERT INTO contracts (id, customer_id, contract_no, start_date, term_months, value_total, status) VALUES
+  ('00000000-0000-0000-0000-0000000000b3', '00000000-0000-0000-0000-0000000000b2', 'BK-1', '2026-01-15', 12, 50000, 'active');
 
 -- ---------- อ่านได้ ----------
 -- postgres สร้าง role นี้ จึงมี ADMIN OPTION แต่ไม่มีสิทธิ์ SET ROLE (PG16+) — ให้เฉพาะใน transaction ของเทส (ROLLBACK ท้ายไฟล์)

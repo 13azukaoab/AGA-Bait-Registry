@@ -26,8 +26,8 @@ CREATE TEMP TABLE _b AS
 
 INSERT INTO customers (id, branch_id, name)
   SELECT '00000000-0000-0000-0000-0000000000c1', cen_id, 'Audit Ctx' FROM _b;
-INSERT INTO contracts (id, customer_id, contract_no, start_date, term_years, value_total)
-  VALUES ('00000000-0000-0000-0000-0000000000d1', '00000000-0000-0000-0000-0000000000c1', 'T-AUD-1', '2026-01-15', 1, 50000);
+INSERT INTO contracts (id, customer_id, contract_no, start_date, term_months, value_total)
+  VALUES ('00000000-0000-0000-0000-0000000000d1', '00000000-0000-0000-0000-0000000000c1', 'T-AUD-1', '2026-01-15', 12, 50000);
 INSERT INTO contract_teams (contract_id, team_id)
   SELECT '00000000-0000-0000-0000-0000000000d1', id FROM teams LIMIT 1;
 INSERT INTO stations (id, contract_id, code, type)

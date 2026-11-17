@@ -31,10 +31,10 @@ CREATE TEMP TABLE _s AS
 GRANT SELECT ON _s TO PUBLIC;
 INSERT INTO customers (id, branch_id, name) VALUES
   ('00000000-0000-0000-0000-0000000000c1', (SELECT br FROM _s), 'ลูกค้า ล็อก');
-INSERT INTO contracts (id, customer_id, contract_no, start_date, end_date, term_years, value_total, sale_type, status) VALUES
-  ('00000000-0000-0000-0000-0000000000d1', '00000000-0000-0000-0000-0000000000c1', 'L-ACTIVE', '2026-01-15', '2027-01-14', 1, 50000, 'new', 'active'),
-  ('00000000-0000-0000-0000-0000000000d2', '00000000-0000-0000-0000-0000000000c1', 'L-CLOSED', '2025-01-15', '2026-01-14', 1, 50000, 'new', 'closed'),
-  ('00000000-0000-0000-0000-0000000000d3', '00000000-0000-0000-0000-0000000000c1', 'L-CANCEL', '2026-01-15', '2027-01-14', 1, 50000, 'new', 'cancelled');
+INSERT INTO contracts (id, customer_id, contract_no, start_date, end_date, term_months, value_total, sale_type, status) VALUES
+  ('00000000-0000-0000-0000-0000000000d1', '00000000-0000-0000-0000-0000000000c1', 'L-ACTIVE', '2026-01-15', '2027-01-14', 12, 50000, 'new', 'active'),
+  ('00000000-0000-0000-0000-0000000000d2', '00000000-0000-0000-0000-0000000000c1', 'L-CLOSED', '2025-01-15', '2026-01-14', 12, 50000, 'new', 'closed'),
+  ('00000000-0000-0000-0000-0000000000d3', '00000000-0000-0000-0000-0000000000c1', 'L-CANCEL', '2026-01-15', '2027-01-14', 12, 50000, 'new', 'cancelled');
 INSERT INTO contract_teams (contract_id, team_id) VALUES
   ('00000000-0000-0000-0000-0000000000d3', (SELECT team_a FROM _s));
 INSERT INTO stations (id, contract_id, type, code) VALUES
@@ -46,7 +46,7 @@ RETURNS TABLE (contract_id uuid, updated_at timestamptz) LANGUAGE sql AS $$
   SELECT r.contract_id, r.updated_at FROM public.save_job_opening(
     p_contract_id := p_contract, p_branch_id := (SELECT br FROM _s), p_customer_name := 'x',
     p_customer_type := 'house', p_contract_no := p_no, p_start_date := '2026-01-15',
-    p_end_date := '2027-01-14', p_term_years := 1, p_value_total := p_value, p_sale_type := 'new',
+    p_end_date := '2027-01-14', p_term_months := 12, p_value_total := p_value, p_sale_type := 'new',
     p_team_ids := ARRAY[(SELECT team_a FROM _s)], p_expected_updated_at := p_expected) r
 $$;
 GRANT EXECUTE ON FUNCTION pg_temp.edit(uuid, text, numeric, timestamptz) TO PUBLIC;

@@ -39,25 +39,25 @@ INSERT INTO customers (id, branch_id, name) VALUES
   (pg_temp.id('c3'), pg_temp.bc(), 'Gamma');
 
 -- สัญญาเก่า: o1 อยู่ในช่วง (จบ 31 ธ.ค. 2026 → Renew เริ่ม ม.ค.–ก.พ. 2027) · o2 ไกลเกินช่วง · o3 ลูกค้าอื่น · po จังหวัด
-INSERT INTO contracts (id, customer_id, contract_no, start_date, end_date, term_years, value_total, sale_type) VALUES
-  (pg_temp.id('01'), pg_temp.id('c1'), 'O-1',  '2026-01-01', '2026-12-31', 1, 24000, 'new'),
-  (pg_temp.id('02'), pg_temp.id('c1'), 'O-2',  '2024-01-01', '2024-12-31', 1, 24000, 'new'),
-  (pg_temp.id('03'), pg_temp.id('c3'), 'O-3',  '2026-01-01', '2026-12-31', 1, 24000, 'new'),
-  (pg_temp.id('04'), pg_temp.id('c2'), 'PO-1', '2026-01-01', '2026-12-31', 1, 24000, 'new'),
-  (pg_temp.id('05'), pg_temp.id('c1'), 'N-1',  '2027-01-15', NULL,         1, 24000, 'new');
+INSERT INTO contracts (id, customer_id, contract_no, start_date, end_date, term_months, value_total, sale_type) VALUES
+  (pg_temp.id('01'), pg_temp.id('c1'), 'O-1',  '2026-01-01', '2026-12-31', 12, 24000, 'new'),
+  (pg_temp.id('02'), pg_temp.id('c1'), 'O-2',  '2024-01-01', '2024-12-31', 12, 24000, 'new'),
+  (pg_temp.id('03'), pg_temp.id('c3'), 'O-3',  '2026-01-01', '2026-12-31', 12, 24000, 'new'),
+  (pg_temp.id('04'), pg_temp.id('c2'), 'PO-1', '2026-01-01', '2026-12-31', 12, 24000, 'new'),
+  (pg_temp.id('05'), pg_temp.id('c1'), 'N-1',  '2027-01-15', NULL,         12, 24000, 'new');
 -- Renew ไม่ผูก (ข้อมูลเก่า: postgres ไม่บังคับเหตุผล)
-INSERT INTO contracts (id, customer_id, contract_no, start_date, term_years, value_total, sale_type) VALUES
-  (pg_temp.id('a1'), pg_temp.id('c1'), 'U-1', '2027-01-15', 1, 24000, 'renew'),
-  (pg_temp.id('a2'), pg_temp.id('c1'), 'U-2', '2027-01-15', 1, 24000, 'renew'),
-  (pg_temp.id('a3'), pg_temp.id('c1'), 'U-3', '2027-01-15', 1, 24000, 'renew'),
-  (pg_temp.id('a4'), pg_temp.id('c1'), 'U-4', '2027-01-15', 1, 24000, 'renew'),
-  (pg_temp.id('a5'), pg_temp.id('c1'), 'U-5', '2027-01-15', 1, 24000, 'renew'),
-  (pg_temp.id('a6'), pg_temp.id('c1'), 'U-6', '2027-01-15', 1, 24000, 'renew'),
-  (pg_temp.id('a7'), pg_temp.id('c1'), 'U-7', '2027-01-15', 1, 24000, 'renew'),
-  (pg_temp.id('d1'), pg_temp.id('c2'), 'U-P', '2027-01-15', 1, 24000, 'renew');
+INSERT INTO contracts (id, customer_id, contract_no, start_date, term_months, value_total, sale_type) VALUES
+  (pg_temp.id('a1'), pg_temp.id('c1'), 'U-1', '2027-01-15', 12, 24000, 'renew'),
+  (pg_temp.id('a2'), pg_temp.id('c1'), 'U-2', '2027-01-15', 12, 24000, 'renew'),
+  (pg_temp.id('a3'), pg_temp.id('c1'), 'U-3', '2027-01-15', 12, 24000, 'renew'),
+  (pg_temp.id('a4'), pg_temp.id('c1'), 'U-4', '2027-01-15', 12, 24000, 'renew'),
+  (pg_temp.id('a5'), pg_temp.id('c1'), 'U-5', '2027-01-15', 12, 24000, 'renew'),
+  (pg_temp.id('a6'), pg_temp.id('c1'), 'U-6', '2027-01-15', 12, 24000, 'renew'),
+  (pg_temp.id('a7'), pg_temp.id('c1'), 'U-7', '2027-01-15', 12, 24000, 'renew'),
+  (pg_temp.id('d1'), pg_temp.id('c2'), 'U-P', '2027-01-15', 12, 24000, 'renew');
 -- Renew ที่ผูกแล้ว (ข้อมูลเก่า)
-INSERT INTO contracts (id, customer_id, contract_no, start_date, term_years, value_total, sale_type, renewed_from_contract_id) VALUES
-  (pg_temp.id('b1'), pg_temp.id('c1'), 'L-1', '2027-01-10', 1, 24000, 'renew', pg_temp.id('01'));
+INSERT INTO contracts (id, customer_id, contract_no, start_date, term_months, value_total, sale_type, renewed_from_contract_id) VALUES
+  (pg_temp.id('b1'), pg_temp.id('c1'), 'L-1', '2027-01-10', 12, 24000, 'renew', pg_temp.id('01'));
 -- a6 = ยกเลิกแล้ว
 UPDATE contracts SET status = 'cancelled' WHERE id = pg_temp.id('a6');
 
@@ -209,9 +209,9 @@ SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a1
 SELECT throws_ok($$UPDATE contracts SET unlinked_closed_at = now(), unlinked_closed_by = '00000000-0000-0000-0000-0000000000a1'
                     WHERE id = pg_temp.id('a2')$$,
   'AG019', NULL, 'host REST UPDATE: closing directly → AG019');
-SELECT throws_ok($$INSERT INTO contracts (customer_id, contract_no, start_date, term_years, value_total, sale_type, renew_unlinked_reason,
+SELECT throws_ok($$INSERT INTO contracts (customer_id, contract_no, start_date, term_months, value_total, sale_type, renew_unlinked_reason,
                                           unlinked_closed_at, unlinked_closed_by)
-                   VALUES (pg_temp.id('c1'), 'REST-C', '2027-01-15', 1, 24000, 'renew', 'x', now(), '00000000-0000-0000-0000-0000000000a1')$$,
+                   VALUES (pg_temp.id('c1'), 'REST-C', '2027-01-15', 12, 24000, 'renew', 'x', now(), '00000000-0000-0000-0000-0000000000a1')$$,
   'AG019', NULL, 'host REST INSERT: a row born closed → AG019');
 -- GUC ตั้งมือ: ต้องตรงแถว + ผู้ปิดต้องเป็นผู้เรียก
 SELECT set_config('aga.renewal_close', pg_temp.id('a2')::text, true);

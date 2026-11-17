@@ -48,8 +48,8 @@ INSERT INTO profiles (user_id, display_name, username, role, division_scope) VAL
   ('00000000-0000-0000-0000-0000000000a3', 'recorder', 'user_a3', 'recorder', '{central}');
 INSERT INTO customers (id, branch_id, name) VALUES
   ('00000000-0000-0000-0000-0000000000c1', (SELECT id FROM branches WHERE division = 'central' ORDER BY name LIMIT 1), 'Central');
-INSERT INTO contracts (id, customer_id, contract_no, start_date, term_years, value_total, stations_initialized_at) VALUES
-  ('00000000-0000-0000-0000-0000000000d1', '00000000-0000-0000-0000-0000000000c1', 'TK-1', '2026-01-15', 1, 50000, now());
+INSERT INTO contracts (id, customer_id, contract_no, start_date, term_months, value_total, stations_initialized_at) VALUES
+  ('00000000-0000-0000-0000-0000000000d1', '00000000-0000-0000-0000-0000000000c1', 'TK-1', '2026-01-15', 12, 50000, now());
 INSERT INTO stations (id, contract_id, type, station_no) VALUES
   ('00000000-0000-0000-0000-0000000000e1', '00000000-0000-0000-0000-0000000000d1', 'IG', 1);
 

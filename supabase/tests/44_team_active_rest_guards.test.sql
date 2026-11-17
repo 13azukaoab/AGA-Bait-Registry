@@ -56,14 +56,14 @@ GRANT EXECUTE ON FUNCTION pg_temp.as_user(text) TO PUBLIC;
 
 INSERT INTO customers (id, branch_id, name) VALUES (pg_temp.id('c1'), pg_temp.br(), 'Team Active');
 -- d1: สัญญาที่เตรียมสถานีแล้ว (บันทึกบริการได้) · d0: สัญญาเก่าสำหรับ Renew (จบ 31 ธ.ค. 2026)
-INSERT INTO contracts (id, customer_id, contract_no, start_date, term_years, value_total, stations_initialized_at) VALUES
-  (pg_temp.id('d1'), pg_temp.id('c1'), 'TA-1', '2026-01-15', 1, 50000, now());
-INSERT INTO contracts (id, customer_id, contract_no, start_date, end_date, term_years, value_total, sale_type) VALUES
-  (pg_temp.id('d0'), pg_temp.id('c1'), 'TA-0', '2026-01-01', '2026-12-31', 1, 24000, 'new');
+INSERT INTO contracts (id, customer_id, contract_no, start_date, term_months, value_total, stations_initialized_at) VALUES
+  (pg_temp.id('d1'), pg_temp.id('c1'), 'TA-1', '2026-01-15', 12, 50000, now());
+INSERT INTO contracts (id, customer_id, contract_no, start_date, end_date, term_months, value_total, sale_type) VALUES
+  (pg_temp.id('d0'), pg_temp.id('c1'), 'TA-0', '2026-01-01', '2026-12-31', 12, 24000, 'new');
 INSERT INTO stations (id, contract_id, type, station_no) VALUES (pg_temp.id('e1'), pg_temp.id('d1'), 'IG', 1);
 -- d5: สัญญาที่หมดแล้ว (เก็บ IG ได้) + IG 2 จุด
-INSERT INTO contracts (id, customer_id, contract_no, start_date, term_years, value_total, stations_initialized_at) VALUES
-  (pg_temp.id('d5'), pg_temp.id('c1'), 'TA-5', '2024-01-01', 1, 24000, now());
+INSERT INTO contracts (id, customer_id, contract_no, start_date, term_months, value_total, stations_initialized_at) VALUES
+  (pg_temp.id('d5'), pg_temp.id('c1'), 'TA-5', '2024-01-01', 12, 24000, now());
 INSERT INTO stations (id, contract_id, type, station_no) VALUES
   (pg_temp.id('e5'), pg_temp.id('d5'), 'IG', 1), (pg_temp.id('e6'), pg_temp.id('d5'), 'IG', 2);
 
@@ -93,7 +93,7 @@ LANGUAGE sql AS $$
   SELECT format($f$
     WITH r AS (SELECT contract_id, updated_at FROM public.save_job_opening(
       p_branch_id := pg_temp.br(), p_customer_name := 'Team Active', p_customer_type := NULL,
-      p_contract_no := %L, p_start_date := %L, p_end_date := NULL, p_term_years := 1, p_value_total := 24000,
+      p_contract_no := %L, p_start_date := %L, p_end_date := NULL, p_term_months := 12, p_value_total := 24000,
       p_sale_type := %L, p_team_ids := %L::uuid[], p_customer_id := pg_temp.id('c1'),
       p_contract_id := %L, p_expected_updated_at := %L, p_renewed_from_contract_id := %L,
       p_renew_unlinked_reason := %L))
@@ -269,23 +269,23 @@ SELECT lives_ok(pg_temp.job('r1', ARRAY['b2'], false, 'renew', 'd0', '2027-01-01
 SELECT is((SELECT renewed_from_contract_id FROM contracts WHERE id = pg_temp.rid('r1')), pg_temp.id('d0'), 'and it is linked to d0');
 SELECT is(current_setting('aga.job_opening', true), '', 'the job-opening GUC is cleared after the RPC');
 -- ข้อมูลผ่านกฎอื่นทุกข้อ (ลูกค้าเดียวกัน · renew · อยู่ในช่วง 2 เดือน) → ติด AG015 เท่านั้น
-SELECT throws_ok($$INSERT INTO contracts (customer_id, contract_no, start_date, term_years, value_total, sale_type, renewed_from_contract_id)
-                   VALUES (pg_temp.id('c1'), 'REST-R', '2027-01-15', 1, 24000, 'renew', pg_temp.id('d0'))$$,
+SELECT throws_ok($$INSERT INTO contracts (customer_id, contract_no, start_date, term_months, value_total, sale_type, renewed_from_contract_id)
+                   VALUES (pg_temp.id('c1'), 'REST-R', '2027-01-15', 12, 24000, 'renew', pg_temp.id('d0'))$$,
   'AG015', 'a renewal contract can only be created through save_job_opening',
   'REST: admin cannot insert a Renew linked to an old contract (AG015)');
-SELECT lives_ok($$INSERT INTO contracts (customer_id, contract_no, start_date, term_years, value_total, sale_type)
-                  VALUES (pg_temp.id('c1'), 'REST-N', '2027-01-15', 1, 24000, 'new')$$,
+SELECT lives_ok($$INSERT INTO contracts (customer_id, contract_no, start_date, term_months, value_total, sale_type)
+                  VALUES (pg_temp.id('c1'), 'REST-N', '2027-01-15', 12, 24000, 'new')$$,
   'REST: an insert without renewed_from is not affected');
 SELECT pg_temp.as_user('a1');
 -- ช่องเดิม (2.48 ①): ลบสัญญา Renew (ยังไม่มี visit) แล้วสร้างใหม่ชี้ลิงก์เดิม/ใหม่ ผ่าน REST
 SELECT lives_ok($$DELETE FROM contracts WHERE id = pg_temp.rid('r1')$$, 'host deletes Renew r1 (no visits)');
-SELECT throws_ok($$INSERT INTO contracts (id, customer_id, contract_no, start_date, term_years, value_total, sale_type, renewed_from_contract_id)
-                   VALUES (pg_temp.rid('r1'), pg_temp.id('c1'), 'J-r1', '2027-01-01', 1, 24000, 'renew', pg_temp.id('d0'))$$,
+SELECT throws_ok($$INSERT INTO contracts (id, customer_id, contract_no, start_date, term_months, value_total, sale_type, renewed_from_contract_id)
+                   VALUES (pg_temp.rid('r1'), pg_temp.id('c1'), 'J-r1', '2027-01-01', 12, 24000, 'renew', pg_temp.id('d0'))$$,
   'AG015', NULL, 'REST: DELETE + INSERT to re-create a linked Renew is refused, even for host (AG015)');
 -- ปลอม GUC ให้ id อื่น → ไม่ตรงกับ NEW.id → ยังติด
 SELECT set_config('aga.job_opening', pg_temp.id('99')::text, true);
-SELECT throws_ok($$INSERT INTO contracts (customer_id, contract_no, start_date, term_years, value_total, sale_type, renewed_from_contract_id)
-                   VALUES (pg_temp.id('c1'), 'REST-G', '2027-01-15', 1, 24000, 'renew', pg_temp.id('d0'))$$,
+SELECT throws_ok($$INSERT INTO contracts (customer_id, contract_no, start_date, term_months, value_total, sale_type, renewed_from_contract_id)
+                   VALUES (pg_temp.id('c1'), 'REST-G', '2027-01-15', 12, 24000, 'renew', pg_temp.id('d0'))$$,
   'AG015', NULL, 'a GUC value for another row does not open the insert');
 SELECT set_config('aga.job_opening', '', true);
 -- M23 / M28 ยังทำงาน
@@ -299,8 +299,8 @@ RESET ROLE;
 SELECT is((SELECT renewed_from_contract_id FROM contracts WHERE id = pg_temp.rid('u1')), pg_temp.id('d0'), 'u1 is now linked to d0');
 
 SET LOCAL ROLE service_role;
-SELECT lives_ok($$INSERT INTO contracts (customer_id, contract_no, start_date, term_years, value_total, sale_type, renewed_from_contract_id)
-                  VALUES (pg_temp.id('c1'), 'LEGACY-1', '2027-01-10', 1, 24000, 'renew', pg_temp.id('d0'))$$,
+SELECT lives_ok($$INSERT INTO contracts (customer_id, contract_no, start_date, term_months, value_total, sale_type, renewed_from_contract_id)
+                  VALUES (pg_temp.id('c1'), 'LEGACY-1', '2027-01-10', 12, 24000, 'renew', pg_temp.id('d0'))$$,
   'service_role (legacy import) can still insert a linked Renew');
 RESET ROLE;
 

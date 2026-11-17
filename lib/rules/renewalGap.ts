@@ -18,22 +18,14 @@ import { listMonths, monthOf } from "./date";
 /** จำนวนเดือนที่ยอมให้เว้นหลังเดือนจบ แล้วยังนับเป็น Renew (กฎบริษัท 2.51) */
 export const RENEWAL_GAP_MONTHS = 2;
 
-/**
- * วันที่ของสัญญาที่กฎนี้ใช้ · ระยะส่งเป็น `termMonths` (M30) หรือ `termYears` แบบเดิม
- * (@deprecated — components/customers-new/renewRules.ts ยังส่งปีอยู่ · ลบใน M30b เมื่อ FE ย้ายเป็นเดือน)
- */
-export type ContractDates = Pick<Contract, "startDate" | "endDate"> &
-  ({ termMonths: number; termYears?: undefined } | { termYears: number; termMonths?: undefined });
-
-function termMonthsOf(contract: ContractDates): number {
-  return contract.termMonths !== undefined ? contract.termMonths : contract.termYears * 12;
-}
+/** วันที่ของสัญญาที่กฎนี้ใช้ · ระยะเป็นเดือน `termMonths` (M30 · M30b ลบแบบปีแล้ว) */
+export type ContractDates = Pick<Contract, "startDate" | "endDate" | "termMonths">;
 
 /** วันจบที่ใช้จริง = end_date ถ้ามี · ว่าง = วันเริ่ม + N เดือน − 1 วัน ชนปลายเดือน ('YYYY-MM-DD' · M30) */
 export function effectiveEndDate(contract: ContractDates): string {
   return contract.endDate
     ? contract.endDate.slice(0, 10)
-    : defaultEndDateForTerm(contract.startDate, termMonthsOf(contract));
+    : defaultEndDateForTerm(contract.startDate, contract.termMonths);
 }
 
 /** เดือนสุดท้าย 'YYYY-MM' ที่สัญญาใหม่ยังเริ่มแบบ Renew ได้ */

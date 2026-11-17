@@ -38,11 +38,11 @@ INSERT INTO customers (id, branch_id, name) VALUES
   (pg_temp.id('c5'), pg_temp.br(), 'Other');
 
 -- ---------- สัญญาเก่าของชุดกฎวันที่ (ลูกค้า c1) ----------
-INSERT INTO contracts (id, customer_id, contract_no, start_date, end_date, term_years, value_total, sale_type) VALUES
-  (pg_temp.id('01'), pg_temp.id('c1'), 'G-01', '2026-01-01', '2026-12-31', 1, 24000, 'new'),
-  (pg_temp.id('02'), pg_temp.id('c1'), 'G-02', '2026-01-01', '2026-12-31', 1, 24000, 'new'),
-  (pg_temp.id('03'), pg_temp.id('c1'), 'G-03', '2026-01-01', '2026-12-31', 1, 24000, 'new'),
-  (pg_temp.id('04'), pg_temp.id('c1'), 'G-04', '2026-01-15', NULL,         1, 24000, 'new');
+INSERT INTO contracts (id, customer_id, contract_no, start_date, end_date, term_months, value_total, sale_type) VALUES
+  (pg_temp.id('01'), pg_temp.id('c1'), 'G-01', '2026-01-01', '2026-12-31', 12, 24000, 'new'),
+  (pg_temp.id('02'), pg_temp.id('c1'), 'G-02', '2026-01-01', '2026-12-31', 12, 24000, 'new'),
+  (pg_temp.id('03'), pg_temp.id('c1'), 'G-03', '2026-01-01', '2026-12-31', 12, 24000, 'new'),
+  (pg_temp.id('04'), pg_temp.id('c1'), 'G-04', '2026-01-15', NULL,         12, 24000, 'new');
 
 CREATE TEMP TABLE _r (tag text, contract_id uuid, updated_at timestamptz);
 GRANT ALL ON _r TO PUBLIC;
@@ -52,7 +52,7 @@ LANGUAGE sql AS $$
   SELECT format($f$
     INSERT INTO _r SELECT %L, contract_id, updated_at FROM public.save_job_opening(
       p_branch_id := pg_temp.br(), p_customer_name := 'Gap', p_customer_type := NULL,
-      p_contract_no := %L, p_start_date := %L, p_end_date := NULL, p_term_years := 1, p_value_total := 24000,
+      p_contract_no := %L, p_start_date := %L, p_end_date := NULL, p_term_months := 12, p_value_total := 24000,
       p_sale_type := %L, p_customer_id := pg_temp.id('c1'), p_renewed_from_contract_id := %L)
   $f$, p_tag, 'R-' || p_tag, p_start, p_sale, pg_temp.id(p_from))
 $$;
@@ -113,7 +113,7 @@ SELECT lives_ok(pg_temp.renew('r4', '04', '2027-03-31'), 'RPC: mid-month end (14
 SELECT is((SELECT count(*)::int FROM contracts WHERE contract_no LIKE 'R-x%'), 0, 'no refused job was saved');
 SELECT lives_ok($$INSERT INTO _r SELECT 'n1', contract_id, updated_at FROM public.save_job_opening(
       p_branch_id := pg_temp.br(), p_customer_name := 'Gap', p_customer_type := NULL,
-      p_contract_no := 'N-1', p_start_date := '2027-06-01', p_end_date := NULL, p_term_years := 1, p_value_total := 24000,
+      p_contract_no := 'N-1', p_start_date := '2027-06-01', p_end_date := NULL, p_term_months := 12, p_value_total := 24000,
       p_sale_type := 'new', p_customer_id := pg_temp.id('c1'))$$,
   'RPC: the same customer can be opened as New (no link) after the window');
 
@@ -137,7 +137,7 @@ CREATE FUNCTION pg_temp.edit_r1(p_start date, p_sale text DEFAULT 'renew') RETUR
   SELECT format($f$
     SELECT * FROM public.save_job_opening(
       p_branch_id := pg_temp.br(), p_customer_name := 'Gap', p_customer_type := NULL,
-      p_contract_no := 'R-r1', p_start_date := %L, p_end_date := NULL, p_term_years := 1, p_value_total := 24000,
+      p_contract_no := 'R-r1', p_start_date := %L, p_end_date := NULL, p_term_months := 12, p_value_total := 24000,
       p_sale_type := %L, p_contract_id := %L, p_customer_id := pg_temp.id('c1'),
       p_renewed_from_contract_id := pg_temp.id('01'),
       p_expected_updated_at := (SELECT updated_at FROM contracts WHERE id = %L))
@@ -151,14 +151,14 @@ SELECT lives_ok(pg_temp.edit_r1('2027-01-20'), 'RPC edit: moving the start insid
 -- =====================================================================
 -- REST (INSERT / UPDATE ตรง) — ข้าม RPC ไม่ได้
 -- =====================================================================
-SELECT throws_ok($$INSERT INTO contracts (customer_id, contract_no, start_date, term_years, value_total, sale_type, renewed_from_contract_id)
-                   VALUES (pg_temp.id('c1'), 'REST-1', '2027-03-01', 1, 24000, 'renew', pg_temp.id('02'))$$,
+SELECT throws_ok($$INSERT INTO contracts (customer_id, contract_no, start_date, term_months, value_total, sale_type, renewed_from_contract_id)
+                   VALUES (pg_temp.id('c1'), 'REST-1', '2027-03-01', 12, 24000, 'renew', pg_temp.id('02'))$$,
   'AG010', NULL, 'REST INSERT: Renew past the window is refused');
-SELECT throws_ok($$INSERT INTO contracts (customer_id, contract_no, start_date, term_years, value_total, sale_type, renewed_from_contract_id)
-                   VALUES (pg_temp.id('c1'), 'REST-2', '2027-01-01', 1, 24000, 'new', pg_temp.id('02'))$$,
+SELECT throws_ok($$INSERT INTO contracts (customer_id, contract_no, start_date, term_months, value_total, sale_type, renewed_from_contract_id)
+                   VALUES (pg_temp.id('c1'), 'REST-2', '2027-01-01', 12, 24000, 'new', pg_temp.id('02'))$$,
   'AG011', NULL, 'REST INSERT: link with sale_type new is refused');
-SELECT throws_ok($$INSERT INTO contracts (customer_id, contract_no, start_date, term_years, value_total, renewed_from_contract_id)
-                   VALUES (pg_temp.id('c1'), 'REST-3', '2027-01-01', 1, 24000, pg_temp.id('02'))$$,
+SELECT throws_ok($$INSERT INTO contracts (customer_id, contract_no, start_date, term_months, value_total, renewed_from_contract_id)
+                   VALUES (pg_temp.id('c1'), 'REST-3', '2027-01-01', 12, 24000, pg_temp.id('02'))$$,
   'AG011', NULL, 'REST INSERT: link with sale_type left empty is refused');
 SELECT throws_ok($$UPDATE contracts SET start_date = '2027-04-01' WHERE id = pg_temp.rid('r1')$$,
   'AG010', NULL, 'REST UPDATE: moving a Renew start past the window is refused');
@@ -177,8 +177,8 @@ SELECT throws_ok($$UPDATE contracts SET renewed_from_contract_id = pg_temp.id('0
   'AG009', NULL, 'M23 lock still fires first when the link changes (AG009)');
 
 -- M9 ยังชนะ: ผูกสัญญาของลูกค้าคนอื่น (sale_type ว่าง) → P0001 ไม่ใช่ AG011 (ลำดับ trigger)
-SELECT throws_ok($$INSERT INTO contracts (customer_id, contract_no, start_date, term_years, value_total, renewed_from_contract_id)
-                   VALUES (pg_temp.id('c5'), 'REST-4', '2027-01-01', 1, 24000, pg_temp.id('02'))$$,
+SELECT throws_ok($$INSERT INTO contracts (customer_id, contract_no, start_date, term_months, value_total, renewed_from_contract_id)
+                   VALUES (pg_temp.id('c5'), 'REST-4', '2027-01-01', 12, 24000, pg_temp.id('02'))$$,
   'P0001', NULL, 'M9 same-customer trigger still fires before the gap guard (P0001)');
 SELECT ok((SELECT array_agg(tgname ORDER BY tgname) FROM pg_trigger
             WHERE tgrelid = 'public.contracts'::regclass AND tgname IN
@@ -200,8 +200,8 @@ SELECT throws_ok($$UPDATE contracts SET status = 'active' WHERE id = pg_temp.rid
 
 -- ข้อมูลเก่า (postgres / นำเข้า) ไม่ติด · แก้ช่องอื่นภายหลังได้
 RESET ROLE;
-SELECT lives_ok($$INSERT INTO contracts (id, customer_id, contract_no, start_date, term_years, value_total, sale_type, renewed_from_contract_id)
-                  VALUES (pg_temp.id('0e'), pg_temp.id('c1'), 'LEGACY-1', '2027-09-01', 1, 24000, 'renew', pg_temp.id('02'))$$,
+SELECT lives_ok($$INSERT INTO contracts (id, customer_id, contract_no, start_date, term_months, value_total, sale_type, renewed_from_contract_id)
+                  VALUES (pg_temp.id('0e'), pg_temp.id('c1'), 'LEGACY-1', '2027-09-01', 12, 24000, 'renew', pg_temp.id('02'))$$,
   'legacy import (postgres) is not blocked by the rule');
 SET LOCAL ROLE authenticated;
 SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a2', true);
@@ -231,11 +231,11 @@ SELECT lives_ok(format($$SELECT public.initialize_contract_stations(%L, ARRAY[1]
 --   v1 (c2) เริ่ม m(-18) จบ m(-6) − 1 วัน มีเดือนตกค้าง
 -- =====================================================================
 RESET ROLE;
-INSERT INTO contracts (id, customer_id, contract_no, start_date, term_years, value_total, stations_initialized_at) VALUES
-  (pg_temp.id('b1'), pg_temp.id('c2'), 'V-1', pg_temp.m(-18), 1, 24000, pg_temp.m(-18)),
-  (pg_temp.id('b3'), pg_temp.id('c3'), 'V-3', pg_temp.m(-18), 1, 24000, pg_temp.m(-18)),
-  (pg_temp.id('b4'), pg_temp.id('c4'), 'V-4', pg_temp.m(-18), 1, 24000, pg_temp.m(-18)),
-  (pg_temp.id('b5'), pg_temp.id('c4'), 'V-5', pg_temp.m(-18), 1, 24000, pg_temp.m(-18));
+INSERT INTO contracts (id, customer_id, contract_no, start_date, term_months, value_total, stations_initialized_at) VALUES
+  (pg_temp.id('b1'), pg_temp.id('c2'), 'V-1', pg_temp.m(-18), 12, 24000, pg_temp.m(-18)),
+  (pg_temp.id('b3'), pg_temp.id('c3'), 'V-3', pg_temp.m(-18), 12, 24000, pg_temp.m(-18)),
+  (pg_temp.id('b4'), pg_temp.id('c4'), 'V-4', pg_temp.m(-18), 12, 24000, pg_temp.m(-18)),
+  (pg_temp.id('b5'), pg_temp.id('c4'), 'V-5', pg_temp.m(-18), 12, 24000, pg_temp.m(-18));
 
 CREATE FUNCTION pg_temp.pending(p text) RETURNS int LANGUAGE sql AS $$
   SELECT count(*)::int FROM public.list_pending_missed_services() WHERE contract_id = pg_temp.id(p)
@@ -264,17 +264,17 @@ SELECT ok(pg_temp.pending('b1') > 0 AND pg_temp.pending('b3') > 0 AND pg_temp.pe
 
 -- ---------- New ที่ซ้อนช่วง / ลูกค้าคนอื่น → ไม่โมฆะ ----------
 RESET ROLE;
-INSERT INTO contracts (id, customer_id, contract_no, start_date, term_years, value_total) VALUES
-  (pg_temp.id('e2'), pg_temp.id('c2'), 'V-N2', pg_temp.m(-10), 1, 24000),            -- ซ้อน v1
-  (pg_temp.id('e3'), pg_temp.id('c5'), 'V-N3', pg_temp.m(-3),  1, 24000);            -- ลูกค้าอื่น
+INSERT INTO contracts (id, customer_id, contract_no, start_date, term_months, value_total) VALUES
+  (pg_temp.id('e2'), pg_temp.id('c2'), 'V-N2', pg_temp.m(-10), 12, 24000),            -- ซ้อน v1
+  (pg_temp.id('e3'), pg_temp.id('c5'), 'V-N3', pg_temp.m(-3), 12, 24000);            -- ลูกค้าอื่น
 SET LOCAL ROLE authenticated;
 SELECT ok(NOT contract_is_renewed(pg_temp.id('b1')) AND pg_temp.pending('b1') > 0,
   'a New that overlaps the old contract, or a New of another customer, does not void it');
 
 -- ---------- New ที่เริ่มหลังสัญญาเก่าจบ → โมฆะ ----------
 RESET ROLE;
-INSERT INTO contracts (id, customer_id, contract_no, start_date, term_years, value_total) VALUES
-  (pg_temp.id('e4'), pg_temp.id('c2'), 'V-N4', pg_temp.m(-3), 1, 24000);
+INSERT INTO contracts (id, customer_id, contract_no, start_date, term_months, value_total) VALUES
+  (pg_temp.id('e4'), pg_temp.id('c2'), 'V-N4', pg_temp.m(-3), 12, 24000);
 SET LOCAL ROLE authenticated;
 SELECT ok(contract_is_renewed(pg_temp.id('b1')), 'contract_is_renewed: a later New of the same customer supersedes the old contract');
 SELECT is(pg_temp.pending('b1'), 0, 'its open missed months are void (not listed)');
@@ -292,8 +292,8 @@ SELECT ok(NOT contract_is_renewed(pg_temp.id('b1')) AND pg_temp.pending('b1') > 
 
 -- ---------- Renew ผูกมา → โมฆะ · ยกเลิก → กลับมา ----------
 RESET ROLE;
-INSERT INTO contracts (id, customer_id, contract_no, start_date, term_years, value_total, sale_type, renewed_from_contract_id) VALUES
-  (pg_temp.id('f9'), pg_temp.id('c3'), 'V-R9', pg_temp.m(-6), 1, 24000, 'renew', pg_temp.id('b3'));
+INSERT INTO contracts (id, customer_id, contract_no, start_date, term_months, value_total, sale_type, renewed_from_contract_id) VALUES
+  (pg_temp.id('f9'), pg_temp.id('c3'), 'V-R9', pg_temp.m(-6), 12, 24000, 'renew', pg_temp.id('b3'));
 SET LOCAL ROLE authenticated;
 SELECT ok(contract_is_renewed(pg_temp.id('b3')) AND pg_temp.pending('b3') = 0, 'a Renew linked to the old contract voids it');
 SELECT lives_ok($$UPDATE contracts SET status = 'cancelled' WHERE id = pg_temp.id('f9')$$, 'host cancels the Renew');
@@ -301,8 +301,8 @@ SELECT ok(NOT contract_is_renewed(pg_temp.id('b3')) AND pg_temp.pending('b3') > 
 
 -- ---------- Renew ของอีกหน้างาน (v5) ไม่ทำให้ v4 โมฆะ ----------
 RESET ROLE;
-INSERT INTO contracts (id, customer_id, contract_no, start_date, term_years, value_total, sale_type, renewed_from_contract_id) VALUES
-  (pg_temp.id('f8'), pg_temp.id('c4'), 'V-R8', pg_temp.m(-6), 1, 24000, 'renew', pg_temp.id('b5'));
+INSERT INTO contracts (id, customer_id, contract_no, start_date, term_months, value_total, sale_type, renewed_from_contract_id) VALUES
+  (pg_temp.id('f8'), pg_temp.id('c4'), 'V-R8', pg_temp.m(-6), 12, 24000, 'renew', pg_temp.id('b5'));
 SET LOCAL ROLE authenticated;
 SELECT ok(contract_is_renewed(pg_temp.id('b5')) AND NOT contract_is_renewed(pg_temp.id('b4')) AND pg_temp.pending('b4') > 0,
   'a Renew of another contract of the same customer does not count as a New for v4');
@@ -319,10 +319,10 @@ INSERT INTO profiles (user_id, display_name, username, role, division_scope) VAL
 INSERT INTO customers (id, branch_id, name) VALUES
   (pg_temp.id('c6'), pg_temp.br(), 'Unlinked'),
   (pg_temp.id('c7'), pg_temp.br(), 'Unlinked other');
-INSERT INTO contracts (id, customer_id, contract_no, start_date, term_years, value_total, sale_type, stations_initialized_at) VALUES
-  (pg_temp.id('a1'), pg_temp.id('c6'), 'U-OLD',  pg_temp.m(-18), 1, 24000, 'new', pg_temp.m(-18)),
-  (pg_temp.id('a2'), pg_temp.id('c6'), 'U-FAR',  pg_temp.m(-40), 1, 24000, 'new', NULL),
-  (pg_temp.id('a3'), pg_temp.id('c7'), 'U-OTH',  pg_temp.m(-18), 1, 24000, 'new', NULL);
+INSERT INTO contracts (id, customer_id, contract_no, start_date, term_months, value_total, sale_type, stations_initialized_at) VALUES
+  (pg_temp.id('a1'), pg_temp.id('c6'), 'U-OLD',  pg_temp.m(-18), 12, 24000, 'new', pg_temp.m(-18)),
+  (pg_temp.id('a2'), pg_temp.id('c6'), 'U-FAR',  pg_temp.m(-40), 12, 24000, 'new', NULL),
+  (pg_temp.id('a3'), pg_temp.id('c7'), 'U-OTH',  pg_temp.m(-18), 12, 24000, 'new', NULL);
 -- เปิดช่วง: วันกำหนด = อีก 30 วัน
 UPDATE app_settings SET allow_unlinked_renew_until = pg_temp.td() + 30;
 
@@ -337,7 +337,7 @@ LANGUAGE sql AS $$
   SELECT format($f$
     INSERT INTO _r SELECT %L, contract_id, updated_at FROM public.save_job_opening(
       p_branch_id := pg_temp.br(), p_customer_name := 'Unlinked', p_customer_type := NULL,
-      p_contract_no := %L, p_start_date := %L, p_end_date := NULL, p_term_years := 1, p_value_total := 24000,
+      p_contract_no := %L, p_start_date := %L, p_end_date := NULL, p_term_months := 12, p_value_total := 24000,
       p_sale_type := %L, p_customer_id := pg_temp.id('c6'), p_renew_unlinked_reason := %L)
   $f$, p_tag, 'U-' || p_tag, coalesce(p_start, pg_temp.m(-7)), p_sale, p_reason)
 $$;
@@ -358,11 +358,11 @@ SELECT throws_ok(pg_temp.unl('ux', '   '), 'AG012', NULL, 'RPC: a blank reason c
 SELECT lives_ok(pg_temp.unl('u2', 'ไม่ต้องใช้', pg_temp.m(-7), 'new'), 'RPC: New with a leftover reason is saved');
 SELECT is((SELECT renew_unlinked_reason FROM contracts WHERE id = pg_temp.rid('u2')), NULL::text,
   'and the reason is dropped for New (kept NULL)');
-SELECT throws_ok($$INSERT INTO contracts (customer_id, contract_no, start_date, term_years, value_total, sale_type)
-                   VALUES (pg_temp.id('c6'), 'U-REST1', pg_temp.m(-7), 1, 24000, 'renew')$$,
+SELECT throws_ok($$INSERT INTO contracts (customer_id, contract_no, start_date, term_months, value_total, sale_type)
+                   VALUES (pg_temp.id('c6'), 'U-REST1', pg_temp.m(-7), 12, 24000, 'renew')$$,
   'AG012', NULL, 'REST INSERT: Renew without a link and no reason → AG012');
-SELECT throws_ok($$INSERT INTO contracts (customer_id, contract_no, start_date, term_years, value_total, sale_type, renew_unlinked_reason)
-                   VALUES (pg_temp.id('c6'), 'U-REST2', pg_temp.m(-7), 1, 24000, 'new', 'x')$$,
+SELECT throws_ok($$INSERT INTO contracts (customer_id, contract_no, start_date, term_months, value_total, sale_type, renew_unlinked_reason)
+                   VALUES (pg_temp.id('c6'), 'U-REST2', pg_temp.m(-7), 12, 24000, 'new', 'x')$$,
   '23514', NULL, 'REST INSERT: a reason on a New contract is refused (CHECK)');
 SELECT throws_ok($$UPDATE contracts SET renew_unlinked_reason = NULL WHERE id = pg_temp.rid('u1')$$,
   'AG012', NULL, 'REST UPDATE: clearing the reason of an unlinked Renew → AG012');
@@ -376,7 +376,7 @@ CREATE FUNCTION pg_temp.edit_u(p_tag text, p_sale text, p_reason text) RETURNS t
   SELECT format($f$
     SELECT * FROM public.save_job_opening(
       p_branch_id := pg_temp.br(), p_customer_name := 'Unlinked', p_customer_type := NULL,
-      p_contract_no := %L, p_start_date := %L, p_end_date := NULL, p_term_years := 1, p_value_total := 24000,
+      p_contract_no := %L, p_start_date := %L, p_end_date := NULL, p_term_months := 12, p_value_total := 24000,
       p_sale_type := %L, p_contract_id := %L, p_customer_id := pg_temp.id('c6'), p_renew_unlinked_reason := %L,
       p_expected_updated_at := (SELECT updated_at FROM contracts WHERE id = %L))
   $f$, 'U-' || p_tag, pg_temp.m(-7), p_sale, pg_temp.rid(p_tag), p_reason, pg_temp.rid(p_tag))
@@ -393,8 +393,8 @@ SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a2
 SELECT throws_ok(pg_temp.unl('ux', 'เหตุผล'), 'AG013', NULL, 'RPC: past the cut-off, an unlinked Renew is refused (AG013)');
 SELECT is(pg_temp.err(pg_temp.unl('ux', 'เหตุผล')), 'AG013|' || to_char(pg_temp.td(), 'YYYY-MM-DD') || '|true',
   'AG013 carries the cut-off date (DETAIL) and a Thai hint naming New');
-SELECT throws_ok($$INSERT INTO contracts (customer_id, contract_no, start_date, term_years, value_total, sale_type, renew_unlinked_reason)
-                   VALUES (pg_temp.id('c6'), 'U-REST3', pg_temp.m(-7), 1, 24000, 'renew', 'x')$$,
+SELECT throws_ok($$INSERT INTO contracts (customer_id, contract_no, start_date, term_months, value_total, sale_type, renew_unlinked_reason)
+                   VALUES (pg_temp.id('c6'), 'U-REST3', pg_temp.m(-7), 12, 24000, 'renew', 'x')$$,
   'AG013', NULL, 'REST INSERT: past the cut-off → AG013');
 SELECT throws_ok($$UPDATE contracts SET sale_type = 'renew', renew_unlinked_reason = 'x' WHERE id = pg_temp.rid('u2')$$,
   'AG013', NULL, 'REST UPDATE: turning a New into an unlinked Renew past the cut-off → AG013');
@@ -425,12 +425,12 @@ SELECT ok(pg_temp.err($$UPDATE app_settings SET allow_unlinked_renew_until = '20
 UPDATE app_settings SET allow_unlinked_renew_until = pg_temp.td();
 
 -- ---------- ข้อมูลเก่า (postgres / นำเข้า) ไม่บังคับเหตุผล / วันกำหนด ----------
-SELECT lives_ok($$INSERT INTO contracts (id, customer_id, contract_no, start_date, term_years, value_total, sale_type)
-                  VALUES (pg_temp.id('a9'), pg_temp.id('c6'), 'U-LEGACY', pg_temp.m(-7), 1, 24000, 'renew')$$,
+SELECT lives_ok($$INSERT INTO contracts (id, customer_id, contract_no, start_date, term_months, value_total, sale_type)
+                  VALUES (pg_temp.id('a9'), pg_temp.id('c6'), 'U-LEGACY', pg_temp.m(-7), 12, 24000, 'renew')$$,
   'legacy import (postgres): an unlinked Renew without a reason is not blocked');
 SET LOCAL ROLE service_role;
-SELECT lives_ok($$INSERT INTO contracts (customer_id, contract_no, start_date, term_years, value_total, sale_type)
-                  VALUES ('00000000-0000-0000-0000-0000000000c6', 'U-SVC', pg_temp.m(-7), 1, 24000, 'renew')$$,
+SELECT lives_ok($$INSERT INTO contracts (customer_id, contract_no, start_date, term_months, value_total, sale_type)
+                  VALUES ('00000000-0000-0000-0000-0000000000c6', 'U-SVC', pg_temp.m(-7), 12, 24000, 'renew')$$,
   'service_role: an unlinked Renew without a reason is not blocked');
 RESET ROLE;
 SET LOCAL ROLE authenticated;

@@ -37,10 +37,10 @@ INSERT INTO profiles (user_id, display_name, username, role, division_scope) VAL
 INSERT INTO customers (id, branch_id, name) VALUES
   ('00000000-0000-0000-0000-0000000000c1', (SELECT id FROM branches WHERE division = 'central'  ORDER BY name LIMIT 1), 'Central'),
   ('00000000-0000-0000-0000-0000000000c2', (SELECT id FROM branches WHERE division = 'province' ORDER BY name LIMIT 1), 'Province');
-INSERT INTO contracts (id, customer_id, contract_no, start_date, term_years, value_total, stations_initialized_at) VALUES
-  ('00000000-0000-0000-0000-0000000000d1', '00000000-0000-0000-0000-0000000000c1', 'S-1', '2026-01-15', 1, 50000, now()),
-  ('00000000-0000-0000-0000-0000000000d2', '00000000-0000-0000-0000-0000000000c1', 'S-NEW', '2026-01-15', 1, 50000, NULL),
-  ('00000000-0000-0000-0000-0000000000d4', '00000000-0000-0000-0000-0000000000c2', 'S-PROV', '2026-01-15', 1, 50000, now());
+INSERT INTO contracts (id, customer_id, contract_no, start_date, term_months, value_total, stations_initialized_at) VALUES
+  ('00000000-0000-0000-0000-0000000000d1', '00000000-0000-0000-0000-0000000000c1', 'S-1', '2026-01-15', 12, 50000, now()),
+  ('00000000-0000-0000-0000-0000000000d2', '00000000-0000-0000-0000-0000000000c1', 'S-NEW', '2026-01-15', 12, 50000, NULL),
+  ('00000000-0000-0000-0000-0000000000d4', '00000000-0000-0000-0000-0000000000c2', 'S-PROV', '2026-01-15', 12, 50000, now());
 -- S-1: IG-1..5 · IC-1..2 · AG-1, AG-2
 INSERT INTO stations (id, contract_id, type, station_no) VALUES
   ('00000000-0000-0000-0000-0000000000e1', '00000000-0000-0000-0000-0000000000d1', 'IG', 1),

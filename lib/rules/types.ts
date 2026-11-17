@@ -1,6 +1,4 @@
 export type Tier = "S" | "M" | "L" | "XL";
-/** @deprecated M30 — ระยะแบบปีเดิม (1/3) ใช้ใน components/** ระหว่างย้าย · ข้อมูลจริงใช้ `termMonths` 1–36 */
-export type TermYears = 1 | 3;
 
 /**
  * เกณฑ์ Tier: ใช้ขอบล่าง (minAnnual) เรียงจากน้อยไปมาก เลือก tier ที่ minAnnual <= annual สูงสุด

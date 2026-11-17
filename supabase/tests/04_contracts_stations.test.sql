@@ -7,7 +7,7 @@ SELECT has_table('public', 'contract_teams', 'contract_teams exists');
 SELECT has_table('public', 'stations', 'stations exists');
 
 SELECT col_is_pk('public', 'contracts', 'id', 'contracts.id is PK');
-SELECT col_type_is('public', 'contracts', 'term_years', 'smallint', 'contracts.term_years type');
+SELECT col_type_is('public', 'contracts', 'term_months', 'smallint', 'contracts.term_months type (M30b: term_years removed)');
 SELECT col_type_is('public', 'contracts', 'value_total', 'numeric(12,2)', 'contracts.value_total type');
 SELECT col_type_is('public', 'contracts', 'status', 'public', 'contract_status', 'contracts.status is contract_status');
 SELECT col_type_is('public', 'contracts', 'sale_type', 'public', 'sale_type', 'contracts.sale_type is sale_type');
@@ -33,22 +33,22 @@ INSERT INTO public.customers (branch_id, name, customer_type)
 SELECT b.id, 'T5 customer', ct.code
 FROM public.branches b, public.customer_types ct LIMIT 1;
 
-INSERT INTO public.contracts (customer_id, contract_no, start_date, term_years, value_total)
-SELECT id, 'T5-001', '2026-01-15', 1, 50000 FROM public.customers WHERE name = 'T5 customer';
+INSERT INTO public.contracts (customer_id, contract_no, start_date, term_months, value_total)
+SELECT id, 'T5-001', '2026-01-15', 12, 50000 FROM public.customers WHERE name = 'T5 customer';
 
 SELECT throws_ok(
-  $$ INSERT INTO public.contracts (customer_id, contract_no, start_date, term_years, value_total)
-     SELECT id, 'T5-002', '2026-01-15', 2, 50000 FROM public.customers WHERE name = 'T5 customer' $$,
-  '23514', NULL, 'term_years=2 rejected');
+  $$ INSERT INTO public.contracts (customer_id, contract_no, start_date, term_months, value_total)
+     SELECT id, 'T5-002', '2026-01-15', 37, 50000 FROM public.customers WHERE name = 'T5 customer' $$,
+  '23514', NULL, 'term_months=37 rejected');
 
 SELECT lives_ok(
-  $$ INSERT INTO public.contracts (customer_id, contract_no, start_date, term_years, value_total)
-     SELECT id, 'T5-003', '2026-01-15', 3, 50000 FROM public.customers WHERE name = 'T5 customer' $$,
-  'term_years=3 accepted');
+  $$ INSERT INTO public.contracts (customer_id, contract_no, start_date, term_months, value_total)
+     SELECT id, 'T5-003', '2026-01-15', 36, 50000 FROM public.customers WHERE name = 'T5 customer' $$,
+  'term_months=36 accepted');
 
 SELECT throws_ok(
-  $$ INSERT INTO public.contracts (customer_id, contract_no, start_date, term_years, value_total)
-     SELECT id, 'T5-001', '2026-02-01', 1, 1000 FROM public.customers WHERE name = 'T5 customer' $$,
+  $$ INSERT INTO public.contracts (customer_id, contract_no, start_date, term_months, value_total)
+     SELECT id, 'T5-001', '2026-02-01', 12, 1000 FROM public.customers WHERE name = 'T5 customer' $$,
   '23505', NULL, 'duplicate contract_no rejected');
 
 -- many-to-many: one contract, two teams; same pair twice fails

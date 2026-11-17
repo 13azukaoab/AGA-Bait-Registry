@@ -32,9 +32,9 @@ GRANT SELECT ON _b TO PUBLIC;
 INSERT INTO customers (id, branch_id, name) VALUES
   ('00000000-0000-0000-0000-0000000000c1', (SELECT central_id  FROM _b), 'Central Cust'),
   ('00000000-0000-0000-0000-0000000000c2', (SELECT province_id FROM _b), 'Province Cust');
-INSERT INTO contracts (id, customer_id, contract_no, start_date, term_years, value_total) VALUES
-  ('00000000-0000-0000-0000-0000000000d1', '00000000-0000-0000-0000-0000000000c1', 'T-CEN-1', '2026-01-15', 1, 50000),
-  ('00000000-0000-0000-0000-0000000000d2', '00000000-0000-0000-0000-0000000000c2', 'T-PRO-1', '2026-01-15', 1, 50000);
+INSERT INTO contracts (id, customer_id, contract_no, start_date, term_months, value_total) VALUES
+  ('00000000-0000-0000-0000-0000000000d1', '00000000-0000-0000-0000-0000000000c1', 'T-CEN-1', '2026-01-15', 12, 50000),
+  ('00000000-0000-0000-0000-0000000000d2', '00000000-0000-0000-0000-0000000000c2', 'T-PRO-1', '2026-01-15', 12, 50000);
 INSERT INTO stations (id, contract_id, code, type) VALUES
   ('00000000-0000-0000-0000-0000000000e1', '00000000-0000-0000-0000-0000000000d1', 'S-01', 'IG'),
   ('00000000-0000-0000-0000-0000000000e2', '00000000-0000-0000-0000-0000000000d2', 'S-01', 'IG');
@@ -125,10 +125,10 @@ SELECT throws_ok(
   '42501', NULL, 'admin REJECTED inserting customer in province branch');
 UPDATE customers SET name = 'hacked' WHERE id = '00000000-0000-0000-0000-0000000000c2';
 SELECT lives_ok(
-  $$INSERT INTO contracts (customer_id, contract_no, start_date, term_years, value_total) VALUES ('00000000-0000-0000-0000-0000000000c3', 'T-CEN-2', '2026-01-15', 1, 1000)$$,
+  $$INSERT INTO contracts (customer_id, contract_no, start_date, term_months, value_total) VALUES ('00000000-0000-0000-0000-0000000000c3', 'T-CEN-2', '2026-01-15', 12, 1000)$$,
   'admin can insert contract for central customer');
 SELECT throws_ok(
-  $$INSERT INTO contracts (customer_id, contract_no, start_date, term_years, value_total) VALUES ('00000000-0000-0000-0000-0000000000c2', 'T-PRO-2', '2026-01-15', 1, 1000)$$,
+  $$INSERT INTO contracts (customer_id, contract_no, start_date, term_months, value_total) VALUES ('00000000-0000-0000-0000-0000000000c2', 'T-PRO-2', '2026-01-15', 12, 1000)$$,
   '42501', NULL, 'admin REJECTED inserting contract for province customer');
 SELECT throws_ok(
   $$INSERT INTO stations (contract_id, type) VALUES ('00000000-0000-0000-0000-0000000000d2', 'IG')$$,
