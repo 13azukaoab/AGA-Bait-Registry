@@ -67,6 +67,20 @@ export function InfoPanel({ data }: { data: CustomerDetailData }) {
 
   const lastVisit = latestVisit(data.visits);
 
+  /**
+   * สถานะ "มีการแก้ที่ยังไม่บันทึก" — จุดเดียวของหน้านี้ (M34): ช่องที่เปิดแก้อยู่และค่าที่พิมพ์ต่างจากค่าเดิม
+   * เมื่อ `useUnsavedWork` (M34) รวมเข้า main ให้ส่งค่านี้เข้า hook ตรงนี้ที่เดียว (ห้ามสร้าง hook ซ้ำ)
+   */
+  const original =
+    edit?.kind === "contact"
+      ? { value: c.contactName ?? "", phone: "", label: "" }
+      : edit?.kind === "note"
+        ? { value: c.note ?? "", phone: "", label: "" }
+        : edit?.kind === "phone"
+          ? { value: "", phone: phones.find((x) => x.id === edit.id)?.phone ?? "", label: phones.find((x) => x.id === edit.id)?.label ?? "" }
+          : null;
+  const hasUnsavedChanges = !!original && (original.value !== draft.value || original.phone !== draft.phone || original.label !== draft.label);
+
   /** เปิดช่องแก้จริง (หลังผ่านด่านข้ามทีมแล้ว) */
   function openEditor(key: EditKey) {
     setDelPhone(null);
@@ -202,7 +216,7 @@ export function InfoPanel({ data }: { data: CustomerDetailData }) {
   );
 
   return (
-    <aside aria-label="ข้อมูลลูกค้า" className="rounded-xl border border-border bg-surface lg:sticky lg:top-3 lg:self-start" data-clarity-mask="True">
+    <aside aria-label="ข้อมูลลูกค้า" className="rounded-xl border border-border bg-surface lg:sticky lg:top-3 lg:self-start" data-clarity-mask="True" data-unsaved={hasUnsavedChanges ? "true" : undefined}>
       <h2 className="m-0 flex items-center gap-2 border-b border-border px-3.5 py-3 text-[15px] font-semibold">
         ข้อมูลลูกค้า
         <span title="ข้อมูลส่วนบุคคล — viewer อ่านไม่ได้ (PDPA)" className="inline-flex items-center gap-1 rounded-full bg-surface-3 px-2 py-0.5 text-xs font-normal text-fg-muted">
@@ -288,6 +302,7 @@ export function InfoPanel({ data }: { data: CustomerDetailData }) {
                 </div>
               ),
             )}
+            {/* ทางสำรองเบอร์เดิม (รอ M19c ย้ายเข้า customer_phones) — ลบบล็อกนี้ได้เมื่อ M19c มา */}
             {phones.length === 0 && c.legacyPhone ? (
               <div className="text-[13px]">
                 {c.legacyPhone}
