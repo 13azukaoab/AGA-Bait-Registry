@@ -8,7 +8,14 @@
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-import type { PositionOption, UserRoleName, UserRow } from "./userLogic";
+import {
+  mergeReadStatus,
+  parseReadStatusRows,
+  type PositionOption,
+  type ReadStatusRow,
+  type UserRoleName,
+  type UserRow,
+} from "./userLogic";
 
 type ProfileDb = {
   user_id: string;
@@ -40,24 +47,32 @@ export const USER_ROW_LIMIT = 500;
 export async function loadUsersPage(
   supabase: SupabaseClient,
 ): Promise<{ users: UserRow[]; positions: PositionOption[]; error: boolean }> {
-  const [profiles, positions] = await Promise.all([
+  const [profiles, positions, readStatus] = await Promise.all([
     supabase.from("profiles").select(PROFILE_COLUMNS).order("username").limit(USER_ROW_LIMIT),
     supabase.from("positions").select(POSITION_COLUMNS).order("sort_order"),
+    // M38: ป้าย "รอแจ้งผู้ใช้" — ไม่สำคัญพอทำให้หน้าล่ม: ล้ม = ไม่แสดงป้าย (log เฉพาะ code)
+    supabase.rpc("list_notification_read_status"),
   ]);
   if (profiles.error || positions.error) return { users: [], positions: [], error: true };
 
+  let statusRows: ReadStatusRow[] | null = null;
+  if (readStatus.error) console.error("[admin/users] list_notification_read_status", readStatus.error.code ?? "unknown");
+  else statusRows = parseReadStatusRows(readStatus.data);
+
+  const users: UserRow[] = ((profiles.data ?? []) as ProfileDb[]).map((r) => ({
+    userId: r.user_id,
+    username: r.username,
+    displayName: r.display_name,
+    positionCode: r.position_code,
+    role: r.role,
+    isActive: r.is_active,
+    mustChangePassword: r.must_change_password,
+    lastLogin: r.last_login,
+  }));
+
   return {
     error: false,
-    users: ((profiles.data ?? []) as ProfileDb[]).map((r) => ({
-      userId: r.user_id,
-      username: r.username,
-      displayName: r.display_name,
-      positionCode: r.position_code,
-      role: r.role,
-      isActive: r.is_active,
-      mustChangePassword: r.must_change_password,
-      lastLogin: r.last_login,
-    })),
+    users: statusRows ? mergeReadStatus(users, statusRows) : users,
     positions: ((positions.data ?? []) as PositionDb[]).map((r) => ({
       code: r.code,
       nameTh: r.name_th,

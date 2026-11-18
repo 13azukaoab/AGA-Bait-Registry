@@ -9,8 +9,9 @@
  *   * รหัสผ่านชั่วคราว (สร้าง/รีเซ็ต) อยู่ใน state ของ dialog เท่านั้น: แสดงครั้งเดียว ปิดแล้วหายทันที ไม่ใส่ URL/storage/log
  *   * ปุ่มของบัญชีเจ้าของ (ตำแหน่ง assignable=false) ปิดไว้ + มีเหตุผล · server ปฏิเสธซ้ำ (PS003) แม้ยิงตรง
  *   * ฟอร์มที่แก้ค้างลงทะเบียนด้วย `useUnsavedWork` (กันอัปเดตเวอร์ชันรีโหลดทับ)
- *   * ⚠ ต่างจาก mockup (รายงานแล้ว): ไม่มีป้าย "รอแจ้งผู้ใช้" (host อ่าน user_notifications ของคนอื่นไม่ได้)
- *     · บัญชีเจ้าของแก้จากหน้านี้ไม่ได้ (userAdmin PS003) จึงไม่มี "ตำแหน่งเจ้าของ" ในฟอร์มแก้ไข
+ *   * M38: ป้าย "รอแจ้งผู้ใช้" = ผู้ใช้ยังไม่ได้อ่านแจ้งเตือน "ตำแหน่งถูกเปลี่ยน" (RPC `list_notification_read_status` ผ่าน userData.ts
+ *     · host เท่านั้น · ไม่เห็นเนื้อหา) · RPC ล้ม = ไม่แสดงป้าย หน้ายังใช้ได้
+ *   * บัญชีเจ้าของแก้จากหน้านี้ไม่ได้ (userAdmin PS003) จึงไม่มี "ตำแหน่งเจ้าของ" ในฟอร์มแก้ไข
  */
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition, type ReactNode } from "react";
@@ -320,6 +321,11 @@ export function UsersClient({
                     <div className="flex flex-wrap items-center gap-1">
                       <Chip tone={u.isActive ? "ok" : "na"}>{u.isActive ? "ใช้งาน" : "ปิดบัญชี"}</Chip>
                       {u.mustChangePassword ? <Chip tone="pend">รอเปลี่ยนรหัส</Chip> : null}
+                      {u.hasUnreadPositionChange ? (
+                        <span title={noticeTitle(u)}>
+                          <Chip tone="pend">รอแจ้งผู้ใช้</Chip>
+                        </span>
+                      ) : null}
                     </div>
                   </td>
                   <td className="px-3.5 py-2.5 text-fg-muted max-[640px]:hidden">{formatLastLogin(u.lastLogin)}</td>
@@ -480,6 +486,13 @@ export function UsersClient({
 // ---------------------------------------------------------------------------
 // ชิ้นส่วนย่อย
 // ---------------------------------------------------------------------------
+
+/** tooltip ของป้าย "รอแจ้งผู้ใช้": จำนวนที่ยังไม่อ่าน + วันที่เก่าสุด */
+function noticeTitle(u: UserRow): string {
+  const n = u.unreadCount ?? 0;
+  const since = u.oldestUnreadAt ? ` ตั้งแต่ ${formatLastLogin(u.oldestUnreadAt)}` : "";
+  return `ยังไม่อ่านแจ้งเตือนเปลี่ยนตำแหน่ง ${n} รายการ${since}`;
+}
 
 function RowButton({
   children,

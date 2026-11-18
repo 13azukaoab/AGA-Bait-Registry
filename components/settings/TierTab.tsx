@@ -9,7 +9,9 @@
  *   * ตัวอย่างตรวจสอบ/ลองใส่มูลค่าเอง คำนวณสดด้วย `classify` (= tierOf + annualValueForTerm ของ lib/rules) กับร่างเกณฑ์
  *   * กดบันทึก → dialog เลือก "เดือนที่เริ่มใช้" (เฉพาะเดือนที่ยังไม่ถูกปิด/ก่อน go-live) + เหตุผล + พิมพ์ "ยืนยันแก้ไข"
  *     → server action `saveTierRuleSetAction` (RPC save_tier_rule_set) · เดือนที่ปิดแล้วคงเกณฑ์เดิมโดย DB (TR002)
- *   * ⚠ ต่างจาก mockup: ไม่มีการ์ด "ผลกระทบต่อสัญญาที่ใช้งานอยู่" (mockup ใช้ข้อมูลสมมติ · ของจริงต้องมี RPC นับสัญญาต่อ Tier — แจ้งในรายงาน)
+ *   * M38: การ์ด "ผลกระทบต่อสัญญาที่ใช้งานอยู่" (คอลัมน์ขวา เหนือประวัติเกณฑ์ ตาม mockup) — `ImpactCard.tsx` เรียก RPC
+ *     `preview_tier_rule_change` เมื่อร่างถูกต้องและต่างจากที่บันทึก · เดือนที่นับใช้ร่วมกับ dialog บันทึก (state เดียว) ·
+ *     ตัวเลขประมาณ นับทุกสัญญาที่ไม่ถูกยกเลิก (DECISIONS 2.74) · ไม่มีชื่อลูกค้า
  */
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
@@ -19,6 +21,7 @@ import { useUnsavedWork } from "@/components/shell/unsaved-work";
 import { Alert, Button, Chip, Field, TierBadge, cx } from "@/components/ui";
 import { monthLabel } from "@/lib/service/months";
 
+import { ImpactCard, useTierImpact, type ImpactState } from "./ImpactCard";
 import { saveTierRuleSetAction } from "./settingsActions";
 import type { SettingsData } from "./settingsData";
 import { Card, ConfirmField, DialogError, DialogFooter, MOBILE_BTN, MOBILE_INPUT } from "./parts";
@@ -66,6 +69,20 @@ export function TierTab({ data, onToast }: { data: SettingsData; onToast: (m: st
   const ends = valid ? rangeEnds(draft) : null;
   const preview: TierThresholds | null = valid ? { m: draft.m!, l: draft.l!, xl: draft.xl! } : null;
   const current = setForMonth(ruleSets, currentMonth);
+
+  // เดือนที่เริ่มใช้ (ใช้ร่วมกันระหว่างการ์ดผลกระทบกับ dialog บันทึก) · ตัวเลือกเดียวกับ dialog
+  const monthOptions = useMemo(
+    () =>
+      effectiveMonthOptions({
+        currentMonth: data.currentMonth,
+        goLiveMonth: data.goLiveMonth,
+        lastClosedMonth: data.lastClosedMonth,
+        baselineMonth: data.ruleSets[0]?.month ?? null,
+      }),
+    [data.currentMonth, data.goLiveMonth, data.lastClosedMonth, data.ruleSets],
+  );
+  const [month, setMonth] = useState(monthOptions[0] ?? data.currentMonth);
+  const impact = useTierImpact({ month, draft: preview, enabled: dirty && valid });
 
   const field = (key: keyof Texts, label: string) => (
     <div>
@@ -196,6 +213,14 @@ export function TierTab({ data, onToast }: { data: SettingsData; onToast: (m: st
         </div>
 
         <div className="flex flex-col gap-4">
+          <ImpactCard
+            state={impact}
+            month={month}
+            monthOptions={monthOptions}
+            currentMonth={currentMonth}
+            draftValid={valid}
+            onMonthChange={setMonth}
+          />
           <Card title="เกณฑ์ที่ใช้ในแต่ละช่วงเดือน" sub="เริ่มใช้ตั้งแต่เดือนไหน · ประวัติการแก้">
             <div className="relative overflow-x-auto">
               <table className="w-full border-collapse text-[13px]">
@@ -249,6 +274,10 @@ export function TierTab({ data, onToast }: { data: SettingsData; onToast: (m: st
           data={data}
           saved={saved}
           next={preview}
+          month={month}
+          monthOptions={monthOptions}
+          onMonthChange={setMonth}
+          impact={impact}
           onClose={() => setSaving(false)}
           onSaved={(month) => {
             setSaving(false);
@@ -357,27 +386,24 @@ function SaveDialog({
   data,
   saved,
   next,
+  month,
+  monthOptions: options,
+  onMonthChange: setMonth,
+  impact,
   onClose,
   onSaved,
 }: {
   data: SettingsData;
   saved: TierThresholds;
   next: TierThresholds;
+  month: string;
+  monthOptions: readonly string[];
+  onMonthChange: (m: string) => void;
+  impact: ImpactState;
   onClose: () => void;
   onSaved: (month: string) => void;
 }) {
   const router = useRouter();
-  const options = useMemo(
-    () =>
-      effectiveMonthOptions({
-        currentMonth: data.currentMonth,
-        goLiveMonth: data.goLiveMonth,
-        lastClosedMonth: data.lastClosedMonth,
-        baselineMonth: data.ruleSets[0]?.month ?? null,
-      }),
-    [data],
-  );
-  const [month, setMonth] = useState(options[0] ?? data.currentMonth);
   const [reason, setReason] = useState("");
   const [confirm, setConfirm] = useState("");
   const [errors, setErrors] = useState<Partial<Record<"month" | "reason" | "confirm", string>>>({});
@@ -442,6 +468,11 @@ function SaveDialog({
           )}
         </Field>
         <Alert variant="warn">
+          {impact.status === "ready" && impact.summary.moved > 0 ? (
+            <>
+              <b>{impact.summary.moved} สัญญา</b> จะเปลี่ยน Tier (ตัวเลขประมาณ) ·{" "}
+            </>
+          ) : null}
           เกณฑ์ใหม่ส่งผลต่อตัวเลขที่ส่งไป Dashboard ตั้งแต่เดือนที่เลือก · เดือนก่อนหน้านั้นไม่เปลี่ยน
         </Alert>
         <Field label="เหตุผลในการแก้ (บังคับ — เก็บในประวัติการแก้ไข)" required error={errors.reason}>

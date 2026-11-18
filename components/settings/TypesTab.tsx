@@ -8,8 +8,10 @@
  *   * จัดเรียงลำดับ: เปิดโหมดแล้วกด ▲▼ (ย้ายในหมวด/ย้ายหมวด) → "บันทึกลำดับ" ส่งรหัสทุกตัวตามลำดับใหม่ครั้งเดียวผ่าน
  *     RPC `reorder_customer_types` (sort_order เป็น UNIQUE จึงสลับทีละแถวไม่ได้) · ไม่ตรงกับข้อมูลปัจจุบัน = CT001
  *   * เพิ่ม/แก้ชื่อ/ย้ายหมวด/ลบ — ลบได้เฉพาะประเภทที่ไม่มีลูกค้าใช้ (FK · 23503 แสดงข้อความไทย)
- *   * ⚠ ต่างจาก mockup (รอตัดสินใจ — ดูรายงาน): ตาราง `customer_types` ยังไม่มีคอลัมน์ `is_active` (ปิดใช้งาน) และ `hint` (คำอธิบาย)
- *     จึงไม่มีสวิตช์ปิดใช้/ช่องหมายเหตุ · ไม่มีปุ่ม "เพิ่มหมวด" แยก — พิมพ์ชื่อหมวดใหม่ในฟอร์ม "เพิ่มประเภท" ได้เลย
+ *   * M38: สวิตช์ "ใช้งาน/ปิดใช้" ต่อแถว (`setCustomerTypeActiveAction` แก้ `is_active` ตัวเดียว) + ช่อง "คำอธิบาย" ในฟอร์ม
+ *     (≤ 120 ตัวอักษร นับสด · เว้นว่าง = ไม่มีคำอธิบาย) · ประเภทที่ปิดใช้ไม่โผล่ใน dropdown ตัวอย่าง/ฟอร์มเปิดงาน
+ *     แต่ลูกค้าเดิมที่ใช้อยู่ยังแสดงชื่อเดิม (DB ตอบ CT002 ถ้าพยายามเลือกให้ลูกค้าใหม่)
+ *   * ไม่มีปุ่ม "เพิ่มหมวด" แยก — พิมพ์ชื่อหมวดใหม่ในฟอร์ม "เพิ่มประเภท" ได้เลย
  */
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
@@ -22,15 +24,19 @@ import {
   createCustomerTypeAction,
   deleteCustomerTypeAction,
   reorderCustomerTypesAction,
+  setCustomerTypeActiveAction,
   updateCustomerTypeAction,
 } from "./settingsActions";
 import type { SettingsData } from "./settingsData";
-import { Card, DialogError, DialogFooter, MOBILE_BTN, MOBILE_INPUT } from "./parts";
+import { Card, DialogError, DialogFooter, MOBILE_BTN, MOBILE_INPUT, SwitchButton } from "./parts";
 import {
+  TYPE_HINT_MAX,
   flattenCodes,
   groupTypes,
+  hintLength,
   moveGroup,
   moveItem,
+  selectableTypes,
   validateType,
   type CustomerTypeRow,
   type TypeGroup,
@@ -49,6 +55,7 @@ export function TypesTab({ data, onToast }: { data: SettingsData; onToast: (m: s
   const [sorting, setSorting] = useState(false);
   const [dialog, setDialog] = useState<Dialog | null>(null);
   const [error, setError] = useState("");
+  const [busyCode, setBusyCode] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
   const orderChanged = flattenCodes(groups).join("|") !== flattenCodes(serverGroups).join("|");
@@ -75,14 +82,31 @@ export function TypesTab({ data, onToast }: { data: SettingsData; onToast: (m: s
       router.refresh();
     });
 
+  const toggleActive = (it: CustomerTypeRow) => {
+    setBusyCode(it.code);
+    startTransition(async () => {
+      const res = await setCustomerTypeActiveAction(it.code, !it.isActive);
+      setBusyCode(null);
+      if (!res.ok) return onToast(res.message);
+      onToast(`${it.isActive ? "ปิดใช้" : "เปิดใช้"} "${it.label}" แล้ว · บันทึกลงประวัติการแก้ไข`);
+      router.refresh();
+    });
+  };
+
   const total = data.customerTypes.length;
+  const activeTotal = data.customerTypes.filter((t) => t.isActive).length;
   const allRows = data.customerTypes;
+  // dropdown ตัวอย่าง = เฉพาะที่ใช้งาน (เหมือนที่ผู้ใช้เห็นในฟอร์มเปิดงาน)
+  const previewGroups = groups
+    .map((g) => ({ ...g, items: selectableTypes(g.items, null) }))
+    .filter((g) => g.items.length > 0);
+  const previewCount = previewGroups.reduce((n, g) => n + g.items.length, 0);
 
   return (
     <div>
       <div className="mb-3 flex flex-wrap items-center gap-2.5">
         <Chip tone="info">
-          {groups.length} หมวด · {total} ประเภท
+          {groups.length} หมวด · {total} ประเภท · ใช้งาน {activeTotal}
         </Chip>
         <span className="ml-auto flex flex-wrap gap-2">
           {sorting && orderChanged ? (
@@ -130,7 +154,19 @@ export function TypesTab({ data, onToast }: { data: SettingsData; onToast: (m: s
               <ul className="m-0 list-none p-0">
                 {g.items.map((it, ii) => (
                   <li key={it.code} className="flex flex-wrap items-center gap-2 border-t border-border px-4 py-2 first:border-t-0 text-[13px]">
-                    <span className="min-w-0 flex-1 break-words">{it.label}</span>
+                    <span className={cx("min-w-0 flex-1 break-words", !it.isActive && "opacity-60")}>
+                      <b className="font-medium">{it.label}</b>
+                      {!it.isActive ? <Chip tone="na" className="ml-2">ปิดใช้</Chip> : null}
+                      {it.hint ? <small className="block text-xs text-fg-muted">{it.hint}</small> : null}
+                    </span>
+                    {!sorting ? (
+                      <SwitchButton
+                        checked={it.isActive}
+                        disabled={pending && busyCode === it.code}
+                        label={`เปิด/ปิดใช้ ${it.label}`}
+                        onClick={() => toggleActive(it)}
+                      />
+                    ) : null}
                     {sorting ? (
                       <span className="flex gap-1">
                         <MoveBtn label={`ย้าย ${it.label} ขึ้น`} disabled={ii === 0} onClick={() => setGroups(moveItem(groups, gi, ii, -1))} up />
@@ -158,18 +194,23 @@ export function TypesTab({ data, onToast }: { data: SettingsData; onToast: (m: s
           <Card title="ตัวอย่างใน dropdown" sub="หน้าเปิดงาน / ทะเบียน">
             <div className="p-4">
               <select
-                size={Math.min(16, total + groups.length)}
+                size={Math.max(2, Math.min(16, previewCount + previewGroups.length))}
                 aria-label="ตัวอย่างรายการประเภทลูกค้าใน dropdown"
                 className="w-full rounded-lg border border-border-strong bg-surface p-1 text-[13px] text-fg"
               >
-                {groups.map((g) => (
+                {previewGroups.map((g) => (
                   <optgroup key={g.label} label={g.label}>
                     {g.items.map((i) => (
-                      <option key={i.code}>{i.label}</option>
+                      <option key={i.code} title={i.hint ?? undefined}>
+                        {i.label}
+                      </option>
                     ))}
                   </optgroup>
                 ))}
               </select>
+              <p className="m-0 mt-2 text-xs text-fg-muted">
+                ค่าที่ปิดใช้ไม่โผล่ใน dropdown แต่ลูกค้าเดิมที่ใช้ค่านั้นยังแสดงตามเดิม ไม่ถูกลบ · เอาเมาส์ชี้ที่ชื่อเพื่อดูคำอธิบาย
+              </p>
             </div>
           </Card>
           <Alert variant="info">
@@ -188,12 +229,12 @@ export function TypesTab({ data, onToast }: { data: SettingsData; onToast: (m: s
           error={error}
           pending={pending}
           onClose={close}
-          onSubmit={(label, groupLabel) =>
+          onSubmit={(label, groupLabel, hint, isActive) =>
             startTransition(async () => {
               setError("");
               const res = dialog.item
-                ? await updateCustomerTypeAction({ code: dialog.item.code, label, groupLabel })
-                : await createCustomerTypeAction({ label, groupLabel });
+                ? await updateCustomerTypeAction({ code: dialog.item.code, label, groupLabel, hint, isActive })
+                : await createCustomerTypeAction({ label, groupLabel, hint, isActive });
               if (!res.ok) return setError(res.message);
               close();
               onToast(dialog.item ? "บันทึกการแก้ไขแล้ว · บันทึกลงประวัติการแก้ไข" : "เพิ่มประเภทแล้ว · บันทึกลงประวัติการแก้ไข");
@@ -270,20 +311,28 @@ function TypeForm({
   error: string;
   pending: boolean;
   onClose: () => void;
-  onSubmit: (label: string, groupLabel: string) => void;
+  onSubmit: (label: string, groupLabel: string, hint: string, isActive: boolean) => void;
 }) {
   const [label, setLabel] = useState(item?.label ?? "");
   const [groupSel, setGroupSel] = useState(item?.groupLabel ?? groups[0]?.label ?? NEW_GROUP);
   const [newGroup, setNewGroup] = useState("");
+  const [hint, setHint] = useState(item?.hint ?? "");
+  const [isActive, setIsActive] = useState(item?.isActive ?? true);
   const [errors, setErrors] = useState<ReturnType<typeof validateType>>({});
-  useUnsavedWork(label !== (item?.label ?? "") || newGroup !== "");
+  useUnsavedWork(
+    label !== (item?.label ?? "") ||
+      newGroup !== "" ||
+      hint !== (item?.hint ?? "") ||
+      isActive !== (item?.isActive ?? true),
+  );
 
   const groupLabel = groupSel === NEW_GROUP ? newGroup : groupSel;
   const submit = () => {
-    const found = validateType({ label, group: groupLabel }, all, item?.code);
+    const found = validateType({ label, group: groupLabel, hint }, all, item?.code);
     setErrors(found);
-    if (Object.keys(found).length === 0) onSubmit(label.trim(), groupLabel.trim());
+    if (Object.keys(found).length === 0) onSubmit(label.trim(), groupLabel.trim(), hint, isActive);
   };
+  const hintCount = hintLength(hint);
 
   return (
     <Modal title={item ? "แก้ไขประเภทลูกค้า" : "เพิ่มประเภทลูกค้า"} onClose={onClose}>
@@ -334,6 +383,30 @@ function TypeForm({
             )}
           </Field>
         ) : null}
+        <Field
+          label="คำอธิบาย (โชว์เป็น tooltip ตอนเลือก — ไม่บังคับ)"
+          error={errors.hint}
+          hint={`${hintCount}/${TYPE_HINT_MAX} ตัวอักษร`}
+        >
+          {(c) => (
+            <textarea
+              {...c}
+              className={cx(c.className, MOBILE_INPUT, "min-h-[72px]")}
+              rows={3}
+              value={hint}
+              onChange={(e) => setHint(e.target.value)}
+            />
+          )}
+        </Field>
+        <label className="flex min-h-11 cursor-pointer items-center gap-2 text-[13px]">
+          <input
+            type="checkbox"
+            className="size-4 accent-[var(--accent)]"
+            checked={isActive}
+            onChange={(e) => setIsActive(e.target.checked)}
+          />
+          เปิดใช้งาน (ปิดแล้วจะไม่โผล่ใน dropdown · ลูกค้าเดิมยังแสดงตามเดิม)
+        </label>
         <DialogError message={error} />
         <DialogFooter>
           <Button className={MOBILE_BTN} onClick={onClose}>ยกเลิก</Button>

@@ -46,7 +46,7 @@ export async function loadSettingsData(
     supabase.from("month_closures").select("month_key").order("month_key", { ascending: false }).limit(1),
     supabase.from("app_settings").select("go_live_month, workload_hours_per_person").maybeSingle(),
     supabase.from("teams").select("id, code, name, kind, is_system, is_active, headcount").order("code"),
-    supabase.from("customer_types").select("code, label, group_label, sort_order").order("sort_order"),
+    supabase.from("customer_types").select("code, label, group_label, sort_order, is_active, hint").order("sort_order"),
   ]);
   if (tier.error || closures.error || app.error || teams.error || types.error || !app.data) {
     return { data: null };
@@ -83,9 +83,23 @@ export async function loadSettingsData(
         headcount: t.headcount,
         activeContracts: counts[i] ?? null,
       })),
-      customerTypes: ((types.data ?? []) as { code: string; label: string; group_label: string; sort_order: number }[]).map(
-        (r) => ({ code: r.code, label: r.label, groupLabel: r.group_label, sortOrder: r.sort_order }),
-      ),
+      customerTypes: (
+        (types.data ?? []) as {
+          code: string;
+          label: string;
+          group_label: string;
+          sort_order: number;
+          is_active: boolean;
+          hint: string | null;
+        }[]
+      ).map((r) => ({
+        code: r.code,
+        label: r.label,
+        groupLabel: r.group_label,
+        sortOrder: r.sort_order,
+        isActive: r.is_active,
+        hint: r.hint,
+      })),
       currentMonth: currentBangkokMonth(now),
     },
   };
