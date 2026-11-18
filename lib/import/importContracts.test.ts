@@ -15,6 +15,25 @@ const DEMO: string[][] = [
   ["", "จำนวน", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "17", "34", ""],
 ];
 
+describe("importContracts — flagMalformedContractWithValue (ทะเบียนรายสาขา · ค1)", () => {
+  const malformed = (no: string) =>
+    ["9", no, "ลูกค้าสมมติ", "", "TRUE", "", "", "", "สุขุมวิท", "", "", "", "", "A", "บ้าน", "01/10/2026", "30/09/2027", "20000", "", ""];
+
+  it("ไม่เปิด = ข้ามเหมือนเดิม", () => {
+    const res = importContracts([malformed(".CT26-9100009")]);
+    expect(res.summary).toMatchObject({ skipped: 1, mustFix: 0 });
+  });
+
+  it("เปิด: เลขผิดรูป/ว่าง + มีมูลค่า + มีวันที่ → ต้องแก้ · แถวสรุป (มีตัวเลขแต่ไม่มีวันที่) ยังข้าม", () => {
+    const res = importContracts([malformed(".CT26-9100009"), malformed(""), DEMO[7]!], {
+      flagMalformedContractWithValue: true,
+    });
+    expect(res.summary).toMatchObject({ mustFix: 2, skipped: 1, ready: 0 });
+    expect(res.mustFix[0]!.errors[0]).toMatch(/เลขที่สัญญาผิดรูปหรือว่าง .* แต่มีมูลค่า/);
+    expect(res.mustFix[1]!.errors[0]).toContain('"ว่าง"');
+  });
+});
+
 describe("importContracts — เดโม 8 แถว", () => {
   const res = importContracts(DEMO);
 

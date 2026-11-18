@@ -96,6 +96,30 @@ function checkRow(
 
   const ct = normalizeContractNo(cells[COL.contractNo] ?? "");
 
+  // เลขสัญญาผิดรูป/ว่าง แต่มีมูลค่า + วันที่ = แถวสัญญาจริงที่พิมพ์เลขผิด → ต้องแก้ (ไม่ข้ามเงียบ · ค1 18 พ.ย. 2026)
+  // แถวสรุปท้ายชีท (ไม่มีวันที่) ยังข้ามเหมือนเดิม
+  if (!ct.isContractNo && opts.flagMalformedContractWithValue) {
+    const money = (v: string) => {
+      const n = Number(v.replace(/,/g, ""));
+      return Number.isFinite(n) && n > 0;
+    };
+    const hasValue = money(get(COL.value1y)) || money(get(COL.value3y));
+    const hasDate = get(COL.startDate) !== "" || get(COL.endDate) !== "";
+    if (hasValue && hasDate) {
+      return {
+        kind: "mustFix",
+        row: {
+          rowIndex,
+          contractNo: get(COL.contractNo),
+          customerName: name,
+          errors: [`เลขที่สัญญาผิดรูปหรือว่าง ("${get(COL.contractNo) || "ว่าง"}") แต่มีมูลค่า`],
+          fixes: [],
+          warnings: [],
+        },
+      };
+    }
+  }
+
   // ไม่ใช่แถวสัญญา → ข้าม
   if (!ct.isContractNo) {
     return {

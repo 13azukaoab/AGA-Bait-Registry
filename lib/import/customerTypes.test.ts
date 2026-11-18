@@ -47,6 +47,21 @@ describe("normalizeCustomerType", () => {
     expect(normalizeCustomerType("โรงแรม").value).toBe("โรงแรม/รีสอร์ท");
   });
 
+  it("คำใหม่จากทะเบียน 21 สาขา (ข1 · 18 พ.ย.): ค่าที่ชัดแปลงตรง · ค่าไม่ชัด → อื่นๆ", () => {
+    expect(normalizeCustomerType("คอนโด").value).toBe("คอนโด / อพาร์ตเมนต์ / หอพัก");
+    expect(normalizeCustomerType("หอพัก").value).toBe("คอนโด / อพาร์ตเมนต์ / หอพัก");
+    expect(normalizeCustomerType("ออฟิต").value).toBe("ออฟฟิต");
+    expect(normalizeCustomerType("ร้านอาหาร").value).toBe("ห้าง / ร้านค้า");
+    expect(normalizeCustomerType("ศูนย์การค้า").value).toBe("ห้าง / ร้านค้า");
+    expect(normalizeCustomerType("วัด").value).toBe("สถานที่ทางศาสนา");
+    expect(normalizeCustomerType("กุฏิ").value).toBe("สถานที่ทางศาสนา");
+    for (const v of ["สถานฑูต", "โรงพยาบาลสัตว์", "กองไม้ซุง", "คลับเฮาส์", "สนามกอล์ฟ", "สวน", "ห้องน้ำ"]) {
+      expect(normalizeCustomerType(v).value, v).toBe("อื่นๆ (ระบุในหมายเหตุ)");
+    }
+    // ตารางเดิมไม่ถูกทับ
+    expect(normalizeCustomerType("สวนลอยฟ้า").value).toBe("สถานที่สำคัญ");
+  });
+
   it("ไม่รู้จัก → error", () => {
     const r = normalizeCustomerType("o");
     expect(r.value).toBeNull();

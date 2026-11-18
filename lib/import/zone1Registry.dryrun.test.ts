@@ -11,12 +11,18 @@
  *     AGA_DRYRUN_OUT=<path>.json        ผลสรุป dry-run
  *     AGA_MANUAL_OUT=<path>.md          รายการแถวที่ต้องกรอกมือ
  *     AGA_TYPEMAP_OUT=<path>.md         ตารางแปลงประเภทลูกค้า
+ * - ผลตัดสินเจ้าของ 18 พ.ย. 2026: ใช้ REGISTRY_IMPORT_OPTIONS เหมือน 21 สาขา (ก1 ข3 ค1 ไม่กระทบเขต 1)
+ *   + ง1 เลขสัญญาซ้ำข้ามสาขา → พุทธมณฑล แถว 225 ไม่นำเข้า (คู่กับสุวินทวงศ์ แถว 77) → นำเข้า 331/347 · กรอกมือ 16
+ *   → ต้องมีไฟล์ทะเบียนส่วนกลางครบ 8 ไฟล์ (หาคู่ซ้ำข้ามไฟล์) · ไม่ครบ = skip
  * - ⚠ assert เฉพาะจำนวน/เลขแถว ห้าม toEqual กับค่าที่มีชื่อ (diff ของ vitest จะพิมพ์ชื่อออกมา)
  */
 import { existsSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { TIER_RULES } from "../rules/__fixtures__/tierRules";
+import { hasAllCentralFiles, loadCentralRegistry } from "./centralRegistry.testkit";
+import { REGISTRY_IMPORT_OPTIONS } from "./centralRegistrySheets";
+import { DUPLICATE_ACROSS_BRANCH_REASON } from "./crossBranchDuplicates";
 import { dryRunRegistrySheet, type BranchDryRun } from "./registryDryRun";
 import { renderCustomerTypeMappingTable, renderManualEntryMarkdown } from "./registryReport";
 import { buildSellerIndex, mergeSellerIndexes } from "./sellerLookup";
@@ -36,10 +42,11 @@ const EXPECTED_MUSTFIX: Record<string, number[]> = {
   หัวหิน: [8, 43, 49, 52, 60],
 };
 
-const HAS_FILES = existsSync(ZONE1_FILE) && existsSync(JOB_FILE);
+const HAS_FILES = existsSync(ZONE1_FILE) && existsSync(JOB_FILE) && hasAllCentralFiles(FIXTURES_DIR);
 
 describe.skipIf(!HAS_FILES)("dry-run ทะเบียนเขต 1 OCT.26 (ไฟล์จริง)", () => {
-  const sheets = HAS_FILES ? readXlsx(ZONE1_FILE) : [];
+  const central = HAS_FILES ? loadCentralRegistry(FIXTURES_DIR) : null;
+  const sheets = central ? central.sheets.filter((s) => s.spec.zone === "เขต 1") : [];
   const sellerIndex = HAS_FILES
     ? mergeSellerIndexes([
         { label: "2569", index: buildSellerIndex(readXlsx(JOB_FILE)) },
@@ -47,7 +54,14 @@ describe.skipIf(!HAS_FILES)("dry-run ทะเบียนเขต 1 OCT.26 (�
       ])
     : undefined;
   const results: BranchDryRun[] = sheets.map((s) =>
-    dryRunRegistrySheet(s.name, s.rows, { rules: TIER_RULES, months: MONTHS, sellerIndex }),
+    dryRunRegistrySheet(s.sheet, s.grid, {
+      rules: TIER_RULES,
+      months: MONTHS,
+      sellerIndex,
+      branch: s.branch,
+      holdRows: central!.holds.get(s.branch),
+      ...REGISTRY_IMPORT_OPTIONS,
+    }),
   );
   const byBranch = (rs: BranchDryRun[], b: string) => rs.find((r) => r.branch === b)!;
 
@@ -56,33 +70,51 @@ describe.skipIf(!HAS_FILES)("dry-run ทะเบียนเขต 1 OCT.26 (�
     results.forEach((r) => expect(r.area).toBe("เขต 1"));
   });
 
-  it("ทุกแถวสัญญาถูกจัดกลุ่ม (ready + mustFix) ไม่มีแถวหาย", () => {
+  it("ทุกแถวสัญญาถูกจัดกลุ่ม (ready + กันไว้ + mustFix) ไม่มีแถวหาย · ก1/ค1 ไม่กระทบเขต 1", () => {
     for (const r of results) {
       expect(r.contractRows).toBeGreaterThan(0);
-      expect(r.strict.held).toEqual([]);
-      expect(r.strict.ready + r.strict.mustFix).toBe(r.contractRows);
+      expect(r.dateFromRangeTextRows).toEqual([]);
+      expect(r.malformedContractRows).toEqual([]);
+      expect(r.strict.ready + r.strict.held.length + r.strict.mustFix).toBe(r.contractRows);
       expect(r.lenient.ready + r.lenient.mustFix).toBe(r.contractRows);
-      expect(r.strict.ready + r.strict.mustFix + r.strict.skipped).toBe(r.dataRows);
+      expect(r.strict.ready + r.strict.held.length + r.strict.mustFix + r.strict.skipped).toBe(r.dataRows);
     }
   });
 
-  it("แถวที่ไม่ผ่าน strict ตรงกับรายการกรอกมือ 15 แถวทุกแถว · แถว 242 นำเข้าตามปกติ", () => {
+  it("ง1: พุทธมณฑล แถว 225 (เลขสัญญาซ้ำกับสุวินทวงศ์) ไม่นำเข้า → รายการกรอกมือ · สาขาอื่นไม่มีแถวกัน", () => {
+    expect(byBranch(results, "พุทธมณฑล").heldRows).toEqual([{ excelRow: 225, reason: DUPLICATE_ACROSS_BRANCH_REASON }]);
+    expect(byBranch(results, "นครปฐม").heldRows).toEqual([]);
+    expect(byBranch(results, "หัวหิน").heldRows).toEqual([]);
+  });
+
+  it("ข3: ประเภทว่างในเขต 1 มีแถวเดียว (หัวหิน 49) ซึ่งอยู่ในรายการกรอกมือแล้ว → ผลไม่เปลี่ยน", () => {
+    expect(results.flatMap((r) => r.blankTypeFilledRows.map((row) => `${r.branch}:${row}`))).toEqual(["หัวหิน:49"]);
+  });
+
+  it("แถวที่ไม่ผ่าน strict ตรงกับ 15 แถวของ 2.70 ทุกแถว (+ แถว 225 ที่กันไว้ = กรอกมือ 16) · แถว 242 นำเข้าตามปกติ", () => {
     for (const r of results) {
       expect(r.strictProblems.map((p) => p.excelRow)).toEqual(EXPECTED_MUSTFIX[r.branch]);
     }
     expect(byBranch(results, "พุทธมณฑล").strictProblems.map((p) => p.excelRow)).not.toContain(242);
   });
 
-  it("นำเข้า 332 / 347 แถว · ยอด OCT.26 strict = lenient ของรอบแรก (สูตรไม่ขยับ)", () => {
-    expect(results.reduce((n, r) => n + r.strict.ready, 0)).toBe(332);
+  it("นำเข้า 331 / 347 แถว (ง1) · ยอด OCT.26 lenient = รอบแรก (สูตรไม่ขยับ) · strict พุทธมณฑลลดเท่าแถว 225", () => {
+    expect(results.reduce((n, r) => n + r.strict.ready, 0)).toBe(331);
     expect(results.reduce((n, r) => n + r.contractRows, 0)).toBe(347);
-    const oct = (rs: BranchDryRun[], b: string) => byBranch(rs, b).snapshots["2026-10"]!.strict;
+    const oct = (rs: BranchDryRun[], b: string) => byBranch(rs, b).snapshots["2026-10"]!.lenient;
     expect(oct(results, "นครปฐม")).toMatchObject({ cust: 31 });
     expect(oct(results, "นครปฐม").value).toBeCloseTo(1_972_860.07, 2);
     expect(oct(results, "หัวหิน")).toMatchObject({ cust: 71 });
     expect(oct(results, "หัวหิน").value).toBeCloseTo(5_450_904.16, 2);
     expect(oct(results, "พุทธมณฑล")).toMatchObject({ cust: 230 });
     expect(oct(results, "พุทธมณฑล").value).toBeCloseTo(14_496_636.86, 2);
+    // strict (นำเข้าจริง): นครปฐม/หัวหิน = lenient · พุทธมณฑลขาดแถว 225 ที่กันไว้ 1 ราย
+    for (const b of ["นครปฐม", "หัวหิน"]) {
+      expect(byBranch(results, b).snapshots["2026-10"]!.strict).toMatchObject({ cust: oct(results, b).cust, value: oct(results, b).value });
+    }
+    const pm = byBranch(results, "พุทธมณฑล").snapshots["2026-10"]!.strict;
+    expect(pm.cust).toBe(229);
+    expect(pm.value).toBeCloseTo(14_472_707.38, 2);
   });
 
   it("snapshot ภายในสอดคล้องกัน (cust = ผลรวมจำนวน tier · value = ผลรวมมูลค่า tier)", () => {
