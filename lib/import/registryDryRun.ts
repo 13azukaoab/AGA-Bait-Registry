@@ -231,8 +231,32 @@ export interface DryRunOptions {
   flagMalformedContractWithValue?: boolean;
 }
 
-/** dry-run 1 ชีท (1 สาขา) */
-export function dryRunRegistrySheet(sheetName: string, grid: CellValue[][], opts: DryRunOptions): BranchDryRun {
+/** ตัวเลือกของแกนคัดแถว strict (ส่วนหนึ่งของ DryRunOptions — ไม่ต้องมีเกณฑ์ Tier / เดือน) */
+export type StrictImportOptions = Omit<DryRunOptions, "rules" | "months">;
+
+/**
+ * ผลของแกนคัดแถว strict 1 ชีท — ใช้ร่วมกันระหว่าง dry-run (registryDryRun) และนำเข้าจริง (registryImportPlan)
+ * ⚠ `strictResult.ready` มีชื่อลูกค้า (หน่วยความจำเท่านั้น) — ห้าม log / ห้ามใส่ในรายงาน
+ */
+export interface StrictImport {
+  ref: { area: string; branch: string };
+  parsed: ReturnType<typeof parseRegistrySheet>;
+  /** ผล importContracts ก่อนกันแถว holdRows */
+  rawStrict: ImportResult;
+  /** ผลที่จะนำเข้าจริง (กันแถว holdRows ออกแล้ว) */
+  strictResult: ImportResult;
+  /** แถวที่กันไว้ (เฉพาะที่ผ่านกฎ) */
+  heldRows: HoldRow[];
+  /** rowIndex (เริ่ม 1) → เลขแถว Excel */
+  excelOf: (rowIndex: number) => number;
+}
+
+/**
+ * แกนเดียวของ "แถวที่จะเข้าระบบจริง" (strict · DECISIONS 2.70 / 2.76):
+ *   ตรวจชื่อสาขา → parseRegistrySheet → ผู้ขายจากไฟล์เปิดงาน → ประเภทว่าง = อื่นๆ (ข3) → importContracts → กัน holdRows (ง1)
+ * dry-run และขั้นนำเข้าจริงต้องเรียกฟังก์ชันนี้เท่านั้น (ห้ามเขียนขั้นตอนซ้ำที่อื่น)
+ */
+export function prepareStrictImport(sheetName: string, grid: CellValue[][], opts: StrictImportOptions): StrictImport {
   const target = opts.branch ?? sheetName.trim();
   const br = normalizeBranch(target);
   if (!br.branch || !br.zone) throw new Error(`dryRun: ชื่อชีท "${sheetName}" ไม่ใช่สาขาที่รู้จัก`);
@@ -243,13 +267,8 @@ export function dryRunRegistrySheet(sheetName: string, grid: CellValue[][], opts
     readDateRangeText: opts.readDateRangeText,
   });
   const ref = { area: br.zone, branch: br.branch };
-
   const rows = parsed.rows;
   const excelOf = (rowIndex: number) => rows[rowIndex - 1]?.excelRow ?? -1;
-  const contractRows = rows.filter((r) => {
-    const raw = r.raw as Record<string, string>;
-    return CONTRACT_LIKE.test((raw["เลขที่สัญญา"] ?? "").replace(/\s+/g, "").toUpperCase());
-  });
 
   // strict: ผู้ขายจากไฟล์เปิดงาน (ชื่ออยู่ในหน่วยความจำเท่านั้น ไม่ออกไปกับผลลัพธ์)
   const strictRows = rows.map((r) => {
@@ -266,11 +285,10 @@ export function dryRunRegistrySheet(sheetName: string, grid: CellValue[][], opts
       ตำแหน่ง: matched?.position ?? "",
     };
   });
-  const importOpts = {
+  const rawStrict = importContracts(strictRows, {
     allowMissingSeller: true,
     flagMalformedContractWithValue: opts.flagMalformedContractWithValue,
-  };
-  const rawStrict = importContracts(strictRows, importOpts);
+  });
   // กันแถวที่สั่งไว้ (ผ่านกฎแต่ต้องตรวจก่อน) ออกจากกลุ่มพร้อมนำเข้า
   const holdSet = new Set((opts.holdRows ?? []).map((h) => h.excelRow));
   const readyExcelRows = new Set(rawStrict.ready.map((r) => excelOf(r.rowIndex)));
@@ -281,7 +299,21 @@ export function dryRunRegistrySheet(sheetName: string, grid: CellValue[][], opts
     ready: strictReady,
     summary: { ...rawStrict.summary, ready: strictReady.length },
   };
+  return { ref, parsed, rawStrict, strictResult, heldRows, excelOf };
+}
 
+/** dry-run 1 ชีท (1 สาขา) */
+export function dryRunRegistrySheet(sheetName: string, grid: CellValue[][], opts: DryRunOptions): BranchDryRun {
+  const { ref, parsed, rawStrict, strictResult, heldRows, excelOf } = prepareStrictImport(sheetName, grid, opts);
+  const rows = parsed.rows;
+  const contractRows = rows.filter((r) => {
+    const raw = r.raw as Record<string, string>;
+    return CONTRACT_LIKE.test((raw["เลขที่สัญญา"] ?? "").replace(/\s+/g, "").toUpperCase());
+  });
+  const importOpts = {
+    allowMissingSeller: true,
+    flagMalformedContractWithValue: opts.flagMalformedContractWithValue,
+  };
   const lenientRows = rows.map((r) => ({ ...(r.raw as Record<string, string>), ประเภท: LENIENT_TYPE, ทีม: "" }));
   const lenientResult = importContracts(lenientRows, importOpts);
 

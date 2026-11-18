@@ -1,0 +1,263 @@
+/**
+ * เทสชั้นเขียน DB ของการนำเข้าทะเบียนส่วนกลาง ด้วย client ปลอม (ไม่แตะฐานข้อมูลจริง · ข้อมูลสมมติทั้งหมด)
+ */
+import type { SupabaseClient } from "@supabase/supabase-js";
+import { describe, expect, it } from "vitest";
+import { TIER_RULES } from "../rules/__fixtures__/tierRules";
+import { importRegistryPlan, safeDbError, verifyRegistryImport } from "./registryDbImport";
+import { planRegistryImport, type RegistryImportPlan } from "./registryImportPlan";
+import type { CellValue } from "./registrySheet";
+
+type Row = Record<string, unknown>;
+
+function serial(iso: string): number {
+  return (Date.UTC(+iso.slice(0, 4), +iso.slice(5, 7) - 1, +iso.slice(8, 10)) - Date.UTC(1899, 11, 30)) / 86_400_000;
+}
+const TOP: CellValue[] = [null, null, null, null, null, "Site plan", "ระยะสัญญา", null, "มูลค่าสัญญา", null, "ประเภทลูกค้า", "ประเภทสัญญา"];
+const BOTTOM: CellValue[] = ["ลำดับ", "ชื่อลูกค้า", "ที่อยู่ลูกค้า", "เลขที่สัญญา", "เบอร์โทรลูกค้า", "IG", "เริ่ม", "สิ้นสุด", "1 ปี", "3 ปี", "H = บ้าน /T = ทาวน์โฮม/R=ห้อง", false, false, "ทีม"];
+const sheet = (rows: CellValue[][]): CellValue[][] => [[], ["สาขาสมมติ"], [], TOP, BOTTOM, ...rows];
+
+const PLAN: RegistryImportPlan = planRegistryImport(
+  [
+    {
+      sheet: "สาทร",
+      branch: "สาทร",
+      grid: sheet([
+        [1, "ลูกค้าสมมติ 1", "", "CT26-0000001", "", 4, serial("2026-01-15"), serial("2027-01-14"), 15000.5, null, "H", true, false, "A"],
+        [2, "ลูกค้าสมมติ 2", "", "CT25-0000002", "", 4, serial("2025-06-01"), serial("2028-05-31"), null, 150000, "T", false, true, "B,C"],
+        [3, "ลูกค้าสมมติ 3", "", "CT26-0000003", "", 4, serial("2026-05-15"), serial("2026-10-14"), 50000, null, "R", false, false, ""],
+      ]),
+    },
+    {
+      sheet: "ปทุมวัน",
+      branch: "ปทุมวัน",
+      grid: sheet([[1, "ลูกค้าสมมติ 4", "", "CT26-0000004", "", 4, serial("2026-07-01"), serial("2027-06-30"), 45000, null, "H", true, false, "A"]]),
+    },
+  ],
+  { rules: TIER_RULES, month: "2026-10" },
+);
+
+interface FakeInit {
+  failInsert?: string;
+  types?: Row[];
+  teams?: Row[];
+  customers?: Row[];
+  contracts?: Row[];
+}
+
+/** PostgREST จำลองขั้นต่ำ: select(head/count) · in · order · range · insert · delete (contracts → cascade contract_teams) */
+function fakeClient(init: FakeInit = {}) {
+  const db: Record<string, Row[]> = {
+    branches: [
+      { id: "b-sathorn", name: "สาทร" },
+      { id: "b-pathum", name: "ปทุมวัน" },
+      { id: "b-other", name: "หัวหิน" },
+    ],
+    customer_types: init.types ?? [
+      { code: "house", label: "บ้านเดี่ยว", is_active: true },
+      { code: "townhome", label: "ทาวน์โฮม / ตึกแถว", is_active: true },
+      { code: "condo", label: "คอนโด / อพาร์ตเมนต์ / หอพัก", is_active: true },
+      { code: "other", label: "อื่นๆ (ระบุในหมายเหตุ)", is_active: true },
+    ],
+    teams: init.teams ?? [
+      { id: "t-A", code: "A", branch_id: null, kind: "service", is_active: true },
+      { id: "t-B", code: "B", branch_id: null, kind: "service", is_active: true },
+      { id: "t-C", code: "C", branch_id: null, kind: "service", is_active: true },
+      { id: "t-A-sathorn", code: "A", branch_id: "b-sathorn", kind: "service", is_active: true },
+    ],
+    tier_rules: [
+      { tier: "S", min_annual: 0, effective_month: "2000-01-01" },
+      { tier: "M", min_annual: 30000, effective_month: "2000-01-01" },
+      { tier: "L", min_annual: 50000, effective_month: "2000-01-01" },
+      { tier: "XL", min_annual: 100000, effective_month: "2000-01-01" },
+    ],
+    customers: (init.customers ?? []).map((r) => ({ ...r })),
+    contracts: (init.contracts ?? []).map((r) => ({ ...r })),
+    contract_teams: [],
+  };
+  const log = { inserts: 0, deletes: [] as string[] };
+  const client = {
+    from(table: string) {
+      const filters: ((r: Row) => boolean)[] = [];
+      let mode: "select" | "insert" | "delete" = "select";
+      let head = false;
+      let range: [number, number] | null = null;
+      let payload: Row[] = [];
+      const exec = () => {
+        const t = db[table]!;
+        if (mode === "insert") {
+          if (init.failInsert === table) {
+            return { error: { code: "23514", message: `new row for relation "${table}" violates check constraint "x"`, details: "Failing row contains (ลูกค้าสมมติ 1)" } };
+          }
+          if (table === "contracts" && payload.some((p) => t.some((r) => r.contract_no === p.contract_no))) {
+            return { error: { code: "23505", message: "duplicate key value violates unique constraint" } };
+          }
+          log.inserts++;
+          t.push(...payload.map((r) => ({ cancelled_at: null, stations_initialized_at: null, renewed_from_contract_id: null, ...r })));
+          return { error: null };
+        }
+        const hit = t.filter((r) => filters.every((f) => f(r)));
+        if (mode === "delete") {
+          log.deletes.push(table);
+          db[table] = t.filter((r) => !hit.includes(r));
+          if (table === "contracts") {
+            const ids = new Set(hit.map((r) => r.id));
+            db.contract_teams = db.contract_teams!.filter((r) => !ids.has(r.contract_id));
+          }
+          return { error: null };
+        }
+        if (head) return { data: null, count: hit.length, error: null };
+        return { data: range ? hit.slice(range[0], range[1] + 1) : hit, error: null };
+      };
+      const q = {
+        select(_cols?: string, o?: { head?: boolean }) {
+          if (o?.head) head = true;
+          return q;
+        },
+        in(col: string, vals: unknown[]) {
+          filters.push((r) => vals.includes(r[col]));
+          return q;
+        },
+        order: () => q,
+        range(a: number, b: number) {
+          range = [a, b];
+          return q;
+        },
+        insert(rows: Row[]) {
+          mode = "insert";
+          payload = rows;
+          return q;
+        },
+        delete() {
+          mode = "delete";
+          return q;
+        },
+        then(res: (v: unknown) => unknown, rej?: (e: unknown) => unknown) {
+          return Promise.resolve(exec()).then(res, rej);
+        },
+      };
+      return q;
+    },
+  };
+  let n = 0;
+  const newId = () => `id-${++n}`;
+  return { client: client as unknown as SupabaseClient, db, log, newId };
+}
+
+describe("importRegistryPlan", () => {
+  it("dryRun: ตรวจครบแต่ไม่เขียน", async () => {
+    const f = fakeClient();
+    const res = await importRegistryPlan(f.client, PLAN, { dryRun: true, newId: f.newId });
+    expect(res.planned).toEqual({ customers: 4, contracts: 4, contractTeams: 4 });
+    expect(res.written).toEqual({ customers: 0, contracts: 0, contractTeams: 0 });
+    expect(f.log.inserts).toBe(0);
+  });
+
+  it("เขียนจริง: 1 แถวสัญญา = ลูกค้า 1 ราย · ประเภทเป็น code · ทีมของสาขาก่อนทีมกลาง · มูลค่า 2 ตำแหน่ง", async () => {
+    const f = fakeClient();
+    const res = await importRegistryPlan(f.client, PLAN, { newId: f.newId });
+    expect(res.written).toEqual({ customers: 4, contracts: 4, contractTeams: 4 });
+    expect(f.db.customers!.map((c) => [c.branch_id, c.customer_type])).toEqual([
+      ["b-sathorn", "house"], ["b-sathorn", "townhome"], ["b-sathorn", "condo"], ["b-pathum", "house"],
+    ]);
+    const c1 = f.db.contracts!.find((c) => c.contract_no === "CT26-0000001")!;
+    expect(c1).toMatchObject({ value_total: "15000.50", term_months: 12, sale_type: "new", start_date: "2026-01-15", end_date: "2027-01-14", is_urgent: false });
+    expect(f.db.contracts!.find((c) => c.contract_no === "CT26-0000003")).toMatchObject({ term_months: 5, sale_type: null });
+    // ทีม A ของสาทร = ทีมประจำสาขา · ปทุมวันไม่มีทีมประจำ → ทีมกลาง
+    const teamOf = (no: string) =>
+      f.db.contract_teams!.filter((t) => t.contract_id === f.db.contracts!.find((c) => c.contract_no === no)!.id).map((t) => t.team_id);
+    expect(teamOf("CT26-0000001")).toEqual(["t-A-sathorn"]);
+    expect(teamOf("CT25-0000002")).toEqual(["t-B", "t-C"]);
+    expect(teamOf("CT26-0000004")).toEqual(["t-A"]);
+  });
+
+  it("รันซ้ำ = หยุดก่อนเขียน (ไม่เกิดแถวซ้ำ)", async () => {
+    const f = fakeClient();
+    await importRegistryPlan(f.client, PLAN, { newId: f.newId });
+    const inserts = f.log.inserts;
+    await expect(importRegistryPlan(f.client, PLAN, { newId: f.newId })).rejects.toThrow(/พบข้อมูลเดิม/);
+    expect(f.log.inserts).toBe(inserts);
+    expect(f.db.contracts).toHaveLength(4);
+  });
+
+  it("มีเลขสัญญาในแผนอยู่แล้ว (สาขาอื่น) = หยุด", async () => {
+    const f = fakeClient({ contracts: [{ id: "x", customer_id: "c-x", contract_no: "CT26-0000004" }] });
+    await expect(importRegistryPlan(f.client, PLAN, { dryRun: true })).rejects.toThrow(/เลขสัญญาในแผน 1/);
+  });
+
+  it("มีลูกค้าในสาขาเป้าหมายอยู่แล้ว = หยุด", async () => {
+    const f = fakeClient({ customers: [{ id: "c-x", branch_id: "b-pathum", name: "เดิม" }] });
+    await expect(importRegistryPlan(f.client, PLAN, { dryRun: true })).rejects.toThrow(/ลูกค้า 1/);
+  });
+
+  it("ประเภทลูกค้าไม่อยู่ใน master หรือปิดใช้ = หยุด (ข้อความมีแค่ป้ายประเภท)", async () => {
+    const types = [
+      { code: "house", label: "บ้านเดี่ยว", is_active: true },
+      { code: "townhome", label: "ทาวน์โฮม / ตึกแถว", is_active: false },
+    ];
+    const f = fakeClient({ types });
+    const err = await importRegistryPlan(f.client, PLAN, { dryRun: true }).catch((e: Error) => e);
+    expect(String(err)).toMatch(/ทาวน์โฮม \/ ตึกแถว.*คอนโด/);
+    expect(String(err)).not.toContain("ลูกค้าสมมติ");
+  });
+
+  it("ทีมไม่พบ / ทีมหัวหน้างาน / ทีมปิด = หยุด", async () => {
+    const teams = [
+      { id: "t-A", code: "A", branch_id: null, kind: "supervisor", is_active: true },
+      { id: "t-B", code: "B", branch_id: null, kind: "service", is_active: false },
+    ];
+    const err = await importRegistryPlan(fakeClient({ teams }).client, PLAN, { dryRun: true }).catch((e: Error) => e);
+    expect(String(err)).toMatch(/ทีม A เป็นทีมหัวหน้างาน/);
+    expect(String(err)).toMatch(/ทีม B ปิดใช้งาน/);
+    expect(String(err)).toMatch(/ไม่พบทีม C/);
+  });
+
+  it("เขียนพังกลางทาง → ลบที่เขียนแล้วคืนครบ · error ไม่มีข้อมูลลูกค้า (ไม่ใช้ details)", async () => {
+    const f = fakeClient({ failInsert: "contract_teams" });
+    const err = await importRegistryPlan(f.client, PLAN, { newId: f.newId }).catch((e: Error) => e);
+    expect(String(err)).toMatch(/เขียน contract_teams ไม่สำเร็จ: \[23514\]/);
+    expect(String(err)).toMatch(/ลบที่เขียนไปแล้วคืนครบ/);
+    expect(String(err)).not.toContain("ลูกค้าสมมติ");
+    expect(f.db.customers).toHaveLength(0);
+    expect(f.db.contracts).toHaveLength(0);
+    expect(f.log.deletes).toEqual(["contracts", "customers"]);
+  });
+
+  it("safeDbError ใช้แค่ code + message", () => {
+    expect(safeDbError({ code: "23505", message: "dup", details: "Key (contract_no)=(CT…)" } as never)).toBe("[23505] dup");
+  });
+});
+
+describe("verifyRegistryImport", () => {
+  it("หลังนำเข้า: ยอดเดือนจาก DB ตรงกับแผนทุกสาขา", async () => {
+    const f = fakeClient();
+    await importRegistryPlan(f.client, PLAN, { newId: f.newId });
+    const v = await verifyRegistryImport(f.client, PLAN);
+    expect(v.ok).toBe(true);
+    expect(v.branches.map((b) => b.mismatches)).toEqual([[], []]);
+    // สาทร: 1 ปี + 3 ปี ครอบ ต.ค. · 5 เดือน (พ.ค.–ก.ย.) ไม่ครอบ
+    expect(v.branches[0]).toMatchObject({ dbContracts: 3, expected: { cust: 2, value: 165000.5 }, actual: { cust: 2, value: 165000.5 } });
+    expect(v.totals).toMatchObject({ plannedContracts: 4, dbContracts: 4, expectedCust: 3, actualCust: 3 });
+  });
+
+  it("มูลค่าใน DB ต่างจากแผน → ไม่ผ่าน (บอกชื่อช่อง)", async () => {
+    const f = fakeClient();
+    await importRegistryPlan(f.client, PLAN, { newId: f.newId });
+    f.db.contracts!.find((c) => c.contract_no === "CT26-0000001")!.value_total = "15000.49";
+    const v = await verifyRegistryImport(f.client, PLAN);
+    expect(v.ok).toBe(false);
+    expect(v.branches[0]!.mismatches).toEqual(["vS", "value"]);
+  });
+
+  it("มีสัญญาเกินแผนในสาขา (เช่นแถวกรอกมือหลุดเข้า) → ไม่ผ่าน", async () => {
+    const f = fakeClient();
+    await importRegistryPlan(f.client, PLAN, { newId: f.newId });
+    f.db.contracts!.push({
+      id: "extra", customer_id: f.db.customers![0]!.id, contract_no: "CT26-0000999", start_date: "2026-01-01",
+      end_date: "2026-12-31", term_months: 12, value_total: "100.00", cancelled_at: null, stations_initialized_at: null,
+      renewed_from_contract_id: null, sale_name: null, am_name: null,
+    });
+    const v = await verifyRegistryImport(f.client, PLAN);
+    expect(v.branches[0]!.mismatches).toEqual(expect.arrayContaining(["ชุดเลขสัญญา", "จำนวนสัญญา", "cust"]));
+  });
+});
