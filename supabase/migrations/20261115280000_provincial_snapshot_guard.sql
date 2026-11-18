@@ -47,6 +47,7 @@
 --         **ไม่มี old_data / new_data / row_id / contract_id / ข้อมูลลูกค้า**
 --       * ข้อจำกัดที่รู้: การเข้าบริการที่ถูกย้ายออกจากเดือนที่ปิด ลง audit ด้วยเดือนใหม่ → ไม่อยู่ในรายการของเดือนเดิม
 --         (แก้ได้เฉพาะตอนแทน audit_trigger — ไม่ทำในรอบนี้)
+--   (e) get_central_readiness(p_month) — ตัวห่ออ่านอย่างเดียวของ central_unready_branches (ดูส่วนที่ 4)
 --   * error ใหม่: SN001–SN004 (ไม่ชนชุดเดิม AG/AS/CC/CL/CT/MC/MS/PS/SV/SY/TM/TR/WL) · ใช้ซ้ำ MC001 (เดือน/ส่วนผิด) · 42501
 --   * ไม่แทน audit_trigger และไม่แทนฟังก์ชันเดิมตัวใด · REVOKE TRUNCATE/REFERENCES/TRIGGER ของ authenticated บนตารางนี้
 --     (TRUNCATE ข้ามทั้ง RLS และ row trigger — ในเครื่องได้มาจาก default privileges)
@@ -263,3 +264,39 @@ COMMENT ON FUNCTION public.list_post_close_edits(text, public.closure_scope) IS
 
 REVOKE ALL ON FUNCTION public.list_post_close_edits(text, public.closure_scope) FROM PUBLIC, anon, service_role;
 GRANT EXECUTE ON FUNCTION public.list_post_close_edits(text, public.closure_scope) TO authenticated;
+
+-- =====================================================================
+-- 4. get_central_readiness(p_month) — ขั้น "ตรวจความครบ" ก่อนปิดส่วนกลาง (หน้าปิดเดือน · คำขอ HQ ผ่าน BE)
+--    ตัวห่ออ่านอย่างเดียวของ central_unready_branches (เนื้อล่าสุด 20261115271000 · ไม่แทน · ไม่ขยายสิทธิ์ของมัน)
+--    สิทธิ์ = เดียวกับ can_close_month_part('central'): host หรือ recorder active ที่มี central ใน division_scope → อื่นๆ 42501
+--    คืนเฉพาะสาขาที่ยังไม่พร้อม: branch_id, branch_name, pending_count (จำนวนสัญญาค้าง · ไม่มีข้อมูลลูกค้า/สัญญา)
+--    0 แถว = พร้อมปิด · เดือนไม่ใช่ YYYY-MM = MC001
+-- =====================================================================
+CREATE FUNCTION public.get_central_readiness(p_month text)
+RETURNS TABLE (branch_id uuid, branch_name text, pending_count int)
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+#variable_conflict use_column
+BEGIN
+  IF auth.uid() IS NULL OR NOT public.month_close_actor_can(auth.uid(), 'central', 'close') THEN
+    RAISE EXCEPTION 'ไม่มีสิทธิ์ดูความพร้อมปิดเดือนส่วนกลาง' USING ERRCODE = '42501';
+  END IF;
+  IF p_month IS NULL OR p_month !~ '^\d{4}-(0[1-9]|1[0-2])$' THEN
+    RAISE EXCEPTION 'เดือนต้องเป็นรูปแบบ YYYY-MM (ได้ %)', coalesce(p_month, 'ว่าง') USING ERRCODE = 'MC001';
+  END IF;
+
+  RETURN QUERY
+  SELECT u.branch_id, u.branch_name, u.pending_count
+    FROM public.central_unready_branches(p_month) u
+   ORDER BY u.branch_name;
+END;
+$$;
+
+COMMENT ON FUNCTION public.get_central_readiness(text) IS
+  'M40: สาขาส่วนกลางที่ยังไม่พร้อมปิด (host / recorder ส่วนกลาง) — 0 แถว = พร้อม · 42501 / MC001';
+
+REVOKE ALL ON FUNCTION public.get_central_readiness(text) FROM PUBLIC, anon, service_role;
+GRANT EXECUTE ON FUNCTION public.get_central_readiness(text) TO authenticated;

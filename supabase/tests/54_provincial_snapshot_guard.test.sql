@@ -5,7 +5,7 @@
 --   (d) list_post_close_edits(p_month, p_scope)
 -- go-live ในเทส = 2026-09 · ข้อมูลสมมติทั้งหมด
 BEGIN;
-SELECT plan(83);
+SELECT plan(94);
 
 INSERT INTO auth.users (id, instance_id, aud, role, email) VALUES
   ('00000000-0000-0000-0000-0000000000e1', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'host@test.local'),
@@ -382,6 +382,57 @@ SELECT pg_temp.as_user('00000000-0000-0000-0000-0000000000e1');
 UPDATE monthly_branch_snapshots SET m3 = 1, v_m3 = 70000 WHERE month_key = '2026-10' AND source = 'manual';
 SELECT is((SELECT count(*)::int FROM public.list_post_close_edits('2026-10', 'province')), 2,
   'a real manual edit after the province close is listed');
+RESET ROLE;
+
+-- =====================================================================
+-- 8. get_central_readiness(p_month)
+-- =====================================================================
+SELECT ok((SELECT prosecdef FROM pg_proc WHERE oid = 'public.get_central_readiness(text)'::regprocedure)
+          AND NOT has_function_privilege('anon', 'public.get_central_readiness(text)', 'EXECUTE')
+          AND has_function_privilege('authenticated', 'public.get_central_readiness(text)', 'EXECUTE')
+          AND NOT has_function_privilege('authenticated', 'public.central_unready_branches(text)', 'EXECUTE'),
+  'get_central_readiness: DEFINER · authenticated only · central_unready_branches still not granted');
+
+-- สัญญาส่วนกลาง 1 ราย ตั้งสถานีแล้ว ไม่มีการเข้า → ค้างบริการ 2026-11 (สมมติ)
+INSERT INTO customers (id, branch_id, name) SELECT '00000000-0000-0000-0000-0000000000c1', cen_id, 'Central' FROM _b;
+INSERT INTO contracts (id, customer_id, contract_no, start_date, term_months, value_total, stations_initialized_at)
+  VALUES ('00000000-0000-0000-0000-0000000000d1', '00000000-0000-0000-0000-0000000000c1', 'T-54', '2026-09-01', 12, 50000,
+          '2026-09-01 09:00+07');
+CREATE TEMP TABLE _r AS SELECT * FROM public.central_unready_branches('2026-11');
+GRANT ALL ON _r TO PUBLIC;
+SELECT cmp_ok((SELECT count(*)::int FROM _r), '>=', 1, 'seed: at least one central branch is not ready for 2026-11');
+
+SET LOCAL ROLE authenticated;
+SELECT pg_temp.as_user('00000000-0000-0000-0000-0000000000e1');
+SELECT results_eq($$SELECT branch_id, branch_name, pending_count FROM public.get_central_readiness('2026-11') ORDER BY branch_id$$,
+                  $$SELECT branch_id, branch_name, pending_count FROM _r ORDER BY branch_id$$,
+  'host: output equals central_unready_branches');
+SELECT throws_ok($$SELECT * FROM public.get_central_readiness('2026-13')$$, 'MC001', NULL, 'bad month → MC001');
+SELECT pg_temp.as_user('00000000-0000-0000-0000-0000000000e3');
+SELECT results_eq($$SELECT branch_id, branch_name, pending_count FROM public.get_central_readiness('2026-11') ORDER BY branch_id$$,
+                  $$SELECT branch_id, branch_name, pending_count FROM _r ORDER BY branch_id$$,
+  'central recorder: same result');
+SELECT pg_temp.as_user('00000000-0000-0000-0000-0000000000e4');
+SELECT throws_ok($$SELECT * FROM public.get_central_readiness('2026-11')$$, '42501', NULL, 'recorder without central → 42501');
+SELECT pg_temp.as_user('00000000-0000-0000-0000-0000000000e5');
+SELECT throws_ok($$SELECT * FROM public.get_central_readiness('2026-11')$$, '42501', NULL, 'inactive recorder → 42501');
+SELECT pg_temp.as_user('00000000-0000-0000-0000-0000000000e2');
+SELECT throws_ok($$SELECT * FROM public.get_central_readiness('2026-11')$$, '42501', NULL, 'admin → 42501');
+SELECT pg_temp.as_user('00000000-0000-0000-0000-0000000000e6');
+SELECT throws_ok($$SELECT * FROM public.get_central_readiness('2026-11')$$, '42501', NULL, 'viewer → 42501');
+RESET ROLE;
+SET LOCAL ROLE anon;
+SELECT pg_temp.no_user();
+SELECT throws_ok($$SELECT * FROM public.get_central_readiness('2026-11')$$, '42501', NULL, 'anon → 42501');
+RESET ROLE;
+
+-- ลงบริการครบ → พร้อม (0 แถวของสาขานั้น)
+INSERT INTO visits (contract_id, visit_date, visit_type, start_time, end_time)
+  VALUES ('00000000-0000-0000-0000-0000000000d1', '2026-11-10', 'routine', '09:00', '10:00');
+SET LOCAL ROLE authenticated;
+SELECT pg_temp.as_user('00000000-0000-0000-0000-0000000000e3');
+SELECT is((SELECT count(*)::int FROM public.get_central_readiness('2026-11') WHERE branch_id = (SELECT cen_id FROM _b)), 0,
+  'after the visit is recorded the branch is ready');
 RESET ROLE;
 
 SELECT * FROM finish();
