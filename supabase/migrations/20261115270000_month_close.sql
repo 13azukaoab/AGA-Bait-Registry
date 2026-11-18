@@ -411,6 +411,10 @@ BEGIN
           USING ERRCODE = 'MC006',
                 DETAIL = jsonb_build_object('branches', v_unready, 'can_override', false)::text;
       END IF;
+      -- ส่งเหตุผลมาแต่เป็นช่องว่างล้วน (space/tab/newline) = เหตุผลไม่ถูกต้อง ไม่ใช่ "ไม่ได้ส่ง"
+      IF p_override_reason IS NOT NULL AND v_reason IS NULL THEN
+        RAISE EXCEPTION 'เหตุผลต้องยาว 5–500 ตัวอักษร' USING ERRCODE = 'MC007';
+      END IF;
       IF v_reason IS NULL THEN
         RAISE EXCEPTION 'ยังมี % สาขาส่วนกลางที่บันทึกบริการไม่ครบ — รอให้ครบ หรือพิมพ์เหตุผลเพื่อปิดข้าม', v_unready_n
           USING ERRCODE = 'MC006',

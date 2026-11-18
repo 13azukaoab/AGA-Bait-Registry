@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { closeMonthAsActor } from "@/lib/admin/monthCloseAdmin";
+import { closeMonthForUser } from "@/lib/admin/monthCloseAdmin";
 import { monthKey } from "@/lib/rules/monthKey";
 
 import { errorResponse, fail, monthAndScope, readJson, requireUser } from "../_lib/hostGuard";
@@ -40,12 +40,6 @@ export async function POST(request: Request) {
   const target = monthAndScope(body);
   if (target instanceof Response) return target;
 
-  // สิทธิ์ตามส่วนที่จะปิด ตรวจที่ฐานข้อมูลก่อนใช้ service role
-  const { data: allowed, error: roleError } = await signedIn.supabase.rpc("can_close_month_part", {
-    p_scope: target.scope,
-  });
-  if (roleError || allowed !== true) return fail(403, "forbidden");
-
   const key = monthKey(target.month);
   if (body.confirmKey !== key) {
     return fail(400, "confirm_key_mismatch", `พิมพ์ ${key} เพื่อยืนยันการปิดเดือน`);
@@ -60,7 +54,8 @@ export async function POST(request: Request) {
   }
 
   try {
-    const result = await closeMonthAsActor(signedIn.userId, {
+    // closeMonthForUser ตรวจ getUser + can_close_month_part(scope) ที่ DB เองก่อนใช้ service role (ไม่ผ่าน = 403)
+    const result = await closeMonthForUser(signedIn.supabase, {
       ...target,
       overrideReason: typeof reason === "string" && reason.trim() !== "" ? reason : undefined,
       acknowledgeCarried: ack === true,

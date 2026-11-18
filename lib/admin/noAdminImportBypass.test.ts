@@ -21,7 +21,8 @@ function isAllowed(rel: string): boolean {
     rel === "lib/supabase/admin.ts" ||
     rel === "lib/admin/userAdmin.ts" || // ไฟล์เดียวใน lib/admin ที่ได้ใช้ (ไฟล์ใหม่ต้องมาแก้รายการนี้ = ผ่านการรีวิว)
     rel === "lib/admin/userAdmin.test.ts" ||
-    rel === "lib/admin/monthCloseAdmin.ts" || // M39 ปิดเดือน/คำนวณใหม่ (BE อนุมัติ 18 พ.ย. 2026 · route ตรวจสิทธิ์ที่ DB ก่อน)
+    rel === "lib/admin/monthCloseAdmin.ts" || // M39 ปิดเดือน/คำนวณใหม่ (BE อนุมัติ 18 พ.ย. 2026 · ตรวจผู้ใช้+สิทธิ์ที่ DB เองก่อนใช้)
+    rel === "lib/admin/monthCloseAdmin.test.ts" ||
     rel.startsWith("app/api/cron/")
   );
 }

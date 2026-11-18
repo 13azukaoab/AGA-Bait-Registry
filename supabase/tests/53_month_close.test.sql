@@ -162,9 +162,11 @@ RESET ROLE;
 -- =====================================================================
 SELECT is((SELECT array_agg(row(branch_id, pending_count)::text) FROM public.central_unready_branches('2026-10')),
   ARRAY[(SELECT row(cen_id, 1)::text FROM _b)], 'contract without a visit → its branch is not ready (1 pending)');
+CREATE TEMP TABLE _pending (missed_month date, branch_id uuid);
+GRANT ALL ON _pending TO PUBLIC;
 SET LOCAL ROLE authenticated;
 SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000b1', true);
-CREATE TEMP TABLE _pending AS
+INSERT INTO _pending
   SELECT p.missed_month, p.branch_id FROM public.list_pending_missed_services(NULL, '2026-11-01') p
     JOIN branches b ON b.id = p.branch_id AND b.division = 'central';
 RESET ROLE;

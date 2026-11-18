@@ -99,7 +99,7 @@ const DB_CODES: Record<string, { status: number; errorCode: MonthCloseErrorCode;
   MC012: { status: 400, errorCode: "invalid_closed_at", message: "เวลาปิดต้องอยู่หลังสิ้นเดือนนั้น และไม่เกินเวลาปัจจุบัน" },
   MC013: { status: 409, errorCode: "stale_resync", message: "มีการคำนวณ snapshot ใหม่ของส่วนนี้ระหว่างรอ — กดใหม่อีกครั้ง" },
   MC014: { status: 403, errorCode: "override_host_only", message: "ปิดข้ามด้วยเหตุผลได้เฉพาะ OM/PM (host)" },
-  "42501": { status: 403, errorCode: "forbidden", message: "ทำรายการนี้ได้เฉพาะ OM/PM (host)" },
+  "42501": { status: 403, errorCode: "forbidden", message: "ไม่มีสิทธิ์ทำรายการนี้" },
 };
 
 function parseDetails(details: unknown): Pick<MappedError, "branches" | "canOverride"> {
@@ -192,8 +192,6 @@ export interface SyncSummary {
   monthsSent: string[];
 }
 
-const INTERNAL_SYNC_CODES = new Set(["load_failed", "unknown"]);
-
 export async function syncAfter(ports: MonthClosePorts, source: SyncSource): Promise<SyncSummary> {
   let outcome: RunOutcome;
   try {
@@ -218,12 +216,14 @@ export async function syncAfter(ports: MonthClosePorts, source: SyncSource): Pro
   if (outcome.status === "busy") {
     return { result: "busy", errorCode: "busy", message: "มีการส่งข้อมูลอื่นกำลังทำงานอยู่", monthsSent: [] };
   }
-  const internal = outcome.errorCode !== undefined && INTERNAL_SYNC_CODES.has(outcome.errorCode);
+  // ข้อความ error ดิบของการส่ง (ชื่อ repo / ชื่อ env ฯลฯ) ไม่ส่งถึงหน้าจอ — ผู้กดปิดอาจเป็น recorder
+  // ที่เห็นได้แค่สถานะ (DECISIONS 2.72) · รายละเอียดเต็มอยู่ใน sync_logs (host อ่าน)
+  const failed = outcome.result === "failed";
   return {
     result: outcome.result,
     logId: outcome.logId,
     errorCode: outcome.errorCode ?? (outcome.logError ? "log_failed" : undefined),
-    message: internal ? "อ่านข้อมูลจากระบบไม่สำเร็จ ดูรายละเอียดในประวัติการส่ง" : outcome.message,
+    message: failed ? "ส่ง Dashboard ไม่สำเร็จ — เดือนปิดแล้ว ระบบจะลองส่งใหม่ในรอบอัตโนมัติ 06:00 หรือให้ OM/PM กด \"ส่งตอนนี้\"" : outcome.message,
     monthsSent: outcome.monthsSent,
   };
 }

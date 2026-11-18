@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { resyncMonthAsActor } from "@/lib/admin/monthCloseAdmin";
+import { resyncMonthForUser } from "@/lib/admin/monthCloseAdmin";
 
 import { errorResponse, fail, monthAndScope, readJson, requireHost } from "../_lib/hostGuard";
 
@@ -31,7 +31,7 @@ export async function POST(request: Request) {
   if (target instanceof Response) return target;
 
   try {
-    const result = await resyncMonthAsActor(signedIn.userId, target);
+    const result = await resyncMonthForUser(signedIn.supabase, target);
     return NextResponse.json({ ok: true, ...result });
   } catch (error) {
     return errorResponse(error);
