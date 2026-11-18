@@ -72,8 +72,8 @@ describe("rolesForPath / canAccessPath", () => {
   });
 
   it("หน้าปิดเดือนอยู่ใต้ /admin แต่ recorder เข้าได้ (กฎเจาะจงชนะกฎของ /admin)", () => {
-    expect(canAccessPath("recorder", "/admin/closure")).toBe(true);
-    expect(canAccessPath("admin", "/admin/closure")).toBe(false);
+    expect(canAccessPath("recorder", "/admin/months")).toBe(true);
+    expect(canAccessPath("admin", "/admin/months")).toBe(false);
   });
 
   it("ไม่มีกฎครอบ = ไม่ให้เข้า (default closed)", () => {

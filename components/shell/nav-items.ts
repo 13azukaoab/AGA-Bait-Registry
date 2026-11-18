@@ -58,7 +58,7 @@ export const NAV_GROUPS: readonly NavGroup[] = [
     title: "ดูแลระบบ",
     items: [
       // หน้าจริง 6 รายการนี้ยังไม่มี (ตอนนี้มีแค่ /admin แบบ stub) — เส้นทางที่เสนอ
-      { key: "closure", label: "ส่งข้อมูล และสรุปงานประจำเดือน", href: "/admin/closure", icon: "🔒", roles: ["host", "recorder"] },
+      { key: "closure", label: "ส่งข้อมูล และสรุปงานประจำเดือน", href: "/admin/months", icon: "🔒", roles: ["host", "recorder"] },
       { key: "port", label: "ลงข้อมูล Port ต่างจังหวัด", href: "/admin/port", icon: "⛰", roles: ["host"] },
       { key: "sync", label: "Dashboard Sync", href: "/admin/sync", icon: "⇅", roles: ["host"] },
       { key: "history", label: "ประวัติการแก้ไข", href: "/admin/history", icon: "⟲", roles: ["host"] },

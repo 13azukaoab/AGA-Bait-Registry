@@ -50,7 +50,7 @@ export function MonthAlert({
         <p className="m-0 mt-2 text-xs text-fg-muted">กรอกให้ครบแล้วปิดเดือน หน้านี้จะเลื่อนไปเดือนถัดไปเอง</p>
       </div>
       <div className="flex flex-wrap items-center justify-end gap-2 border-t border-border px-4 py-3">
-        <Link href="/admin/closure" className="mr-auto inline-flex min-h-11 items-center text-[13px] text-accent underline md:min-h-10">
+        <Link href="/admin/months" className="mr-auto inline-flex min-h-11 items-center text-[13px] text-accent underline md:min-h-10">
           ไปหน้าปิดเดือน
         </Link>
         <Button className="max-md:min-h-11" onClick={onClose}>
