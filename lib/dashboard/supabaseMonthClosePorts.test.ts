@@ -137,9 +137,10 @@ describe("supabaseMonthClosePorts", () => {
     });
     const ports = supabaseMonthClosePorts(client);
     const rows = await ports.centralRows("2026-10");
-    const res = await ports.resyncPart({ month: "2026-10", scope: "central", rows });
+    const res = await ports.resyncPart({ month: "2026-10", scope: "central", rows, computedAt: "2026-11-18T08:00:00.000Z" });
     expect(res).toEqual({ month: "2026-10", scope: "central", changedBranches: 3 });
     expect((calls[0]!.args as { p_rows: unknown[] }).p_rows).toHaveLength(CENTRAL_IDS.length);
+    expect(calls[0]!.args).toMatchObject({ p_computed_at: "2026-11-18T08:00:00.000Z" });
   });
 
   it("setMonthCloser ส่งพารามิเตอร์ตรงชื่อ RPC + ส่ง error ต่อ", async () => {

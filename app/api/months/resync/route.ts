@@ -16,7 +16,7 @@ import { errorResponse, fail, monthAndScope, readJson, requireHost } from "../_l
 // คำตอบ:
 //   200 { ok: true, resync: { month, scope, changedBranches }, sync: { ...เหมือน /api/months/close } }
 //   400 invalid_body / invalid_month / invalid_scope · 401 / 403 เหมือน close
-//   409 not_closed / non_computed_rows · 500 load_failed / invalid_rows / unknown
+//   409 not_closed / non_computed_rows / stale_resync (มีคนคำนวณใหม่ระหว่างรอ — กดใหม่) · 500 load_failed / invalid_rows / unknown
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;

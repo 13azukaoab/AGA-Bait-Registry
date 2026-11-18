@@ -6,18 +6,23 @@
 -- go_live_month seed = 2026-10-01 → เดือนที่ปิดได้ในเทส = 2026-10 (จบแล้วเสมอหลัง พ.ย. 2026)
 -- ข้อมูลสมมติทั้งหมด
 BEGIN;
-SELECT plan(75);
+SELECT plan(82);
 
 INSERT INTO auth.users (id, instance_id, aud, role, email) VALUES
   ('00000000-0000-0000-0000-0000000000b1', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'host@test.local'),
   ('00000000-0000-0000-0000-0000000000b2', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'admin@test.local'),
   ('00000000-0000-0000-0000-0000000000b3', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'rec@test.local'),
-  ('00000000-0000-0000-0000-0000000000b4', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'viewer@test.local');
+  ('00000000-0000-0000-0000-0000000000b4', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'viewer@test.local'),
+  ('00000000-0000-0000-0000-0000000000b5', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'recprov@test.local'),
+  ('00000000-0000-0000-0000-0000000000b6', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'recoff@test.local');
 INSERT INTO profiles (user_id, display_name, username, role, division_scope, position_code) VALUES
   ('00000000-0000-0000-0000-0000000000b1', 'host',     'user_b1', 'host',     '{central,province}', 'pm'),
   ('00000000-0000-0000-0000-0000000000b2', 'admin',    'user_b2', 'admin',    '{central}',          'job_admin'),
   ('00000000-0000-0000-0000-0000000000b3', 'recorder', 'user_b3', 'recorder', '{central}',          'supervisor'),
-  ('00000000-0000-0000-0000-0000000000b4', 'viewer',   'user_b4', 'viewer',   '{central}',          NULL);
+  ('00000000-0000-0000-0000-0000000000b4', 'viewer',   'user_b4', 'viewer',   '{central}',          NULL),
+  ('00000000-0000-0000-0000-0000000000b5', 'recprov',  'user_b5', 'recorder', '{province}',         'supervisor'),
+  ('00000000-0000-0000-0000-0000000000b6', 'recoff',   'user_b6', 'recorder', '{central}',          'supervisor');
+UPDATE profiles SET is_active = false WHERE user_id = '00000000-0000-0000-0000-0000000000b6';
 
 -- แถวส่วนกลางที่ route คำนวณมา (จำลอง) · ค่าเดียวกันทุกสาขา
 CREATE TEMP TABLE _j (k text PRIMARY KEY, v jsonb);
@@ -103,6 +108,9 @@ SELECT throws_ok($$SELECT public.close_month_part('2026-10', 'central', (SELECT 
   'MC006', NULL, 'unconfirmed branches without a reason → MC006');
 SELECT throws_ok($$SELECT public.close_month_part('2026-10', 'central', (SELECT v FROM _j WHERE k = 'good'), '  ab  ')$$,
   'MC007', NULL, 'reason shorter than 5 chars → MC007');
+SELECT throws_ok(format('SELECT public.close_month_part(%L, %L, (SELECT v FROM _j WHERE k = %L), %L)',
+                        '2026-10', 'central', 'good', repeat(chr(10) || chr(9), 3)),
+  'MC007', NULL, 'whitespace-only reason (newlines/tabs) → MC007');
 RESET ROLE;
 
 -- แถว legacy ของสาขาส่วนกลางในเดือนนั้น → ไม่เขียนทับ (MC008)
@@ -148,7 +156,7 @@ SELECT is((SELECT count(*)::int FROM audit_log WHERE table_name = 'month_closure
 SELECT is((SELECT count(*)::int FROM audit_log WHERE table_name = 'month_closure_overrides' AND action = 'insert'
             AND new_data ->> 'reason' = 'ยังไม่มีหน้ายืนยันสาขา'),
   1, 'override audited (reason in new_data)');
-SELECT is((SELECT count(*)::int FROM audit_log WHERE table_name = 'monthly_branch_snapshots'),
+SELECT is((SELECT count(*)::int FROM audit_log WHERE table_name = 'monthly_branch_snapshots' AND month_key = '2026-10'),
   0, 'computed snapshot inserts on close are not audited');
 
 -- ยืนยันครบแล้ว → helper คืนว่าง (ใช้ตรวจนิยาม "ยืนยัน")
@@ -203,6 +211,28 @@ SELECT is((SELECT count(*)::int FROM month_closures WHERE month_key = '2026-10'
             AND last_resync_by = '00000000-0000-0000-0000-0000000000b1' AND last_resync_at IS NOT NULL),
   2, 'last_resync_at / by set on both parts');
 
+-- กันเขียนทับด้วยตัวเลขเก่า (MC013): มี resync สำเร็จหลังเวลาที่รอบนี้เริ่มคำนวณ
+SET LOCAL ROLE authenticated;
+SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000b1', true);
+SELECT throws_ok(format('SELECT public.resync_month_part(%L, %L, (SELECT v FROM _j WHERE k = %L), %L)',
+                        '2026-10', 'central', 'good', now() - interval '1 minute'),
+  'MC013', NULL, 'resync computed before the latest resync → MC013');
+RESET ROLE;
+
+-- ลบแถว computed ตรง (เช่น REST) ลงประวัติ · resync เติมแถวที่หายของเดือนที่ปิดแล้ว ลงประวัติ
+DELETE FROM monthly_branch_snapshots
+ WHERE month_key = '2026-10' AND branch_id = (SELECT id FROM branches WHERE division = 'central' ORDER BY name LIMIT 1);
+SELECT is((SELECT count(*)::int FROM audit_log WHERE table_name = 'monthly_branch_snapshots' AND action = 'delete'
+            AND month_key = '2026-10'), 1, 'deleting a computed row is audited');
+SET LOCAL ROLE authenticated;
+SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000b1', true);
+SELECT is((public.resync_month_part('2026-10', 'central', (SELECT v FROM _j WHERE k = 'changed'), now()) ->> 'changed_branches')::int,
+  1, 'resync re-creates the missing row');
+RESET ROLE;
+SELECT is((SELECT count(*)::int FROM audit_log WHERE table_name = 'monthly_branch_snapshots' AND action = 'insert'
+            AND month_key = '2026-10' AND changed_by = '00000000-0000-0000-0000-0000000000b1'),
+  1, 'computed insert into a closed month is audited');
+
 -- =====================================================================
 -- set_month_closer (DECISIONS 5.8)
 -- =====================================================================
@@ -217,6 +247,10 @@ SELECT throws_ok($$SELECT public.set_month_closer('2026-10', 'central', '0000000
   'MC011', NULL, 'viewer as closer → MC011');
 SELECT throws_ok($$SELECT public.set_month_closer('2026-10', 'province', '00000000-0000-0000-0000-0000000000b3', '2026-11-02 09:00+07')$$,
   'MC011', NULL, 'recorder as province closer → MC011');
+SELECT throws_ok($$SELECT public.set_month_closer('2026-10', 'central', '00000000-0000-0000-0000-0000000000b6', '2026-11-02 09:00+07')$$,
+  'MC011', NULL, 'deactivated recorder as closer → MC011');
+SELECT throws_ok($$SELECT public.set_month_closer('2026-10', 'central', '00000000-0000-0000-0000-0000000000b5', '2026-11-02 09:00+07')$$,
+  'MC011', NULL, 'province-only recorder as central closer → MC011');
 SELECT throws_ok($$SELECT public.set_month_closer('2026-10', 'central', '00000000-0000-0000-0000-0000000000b3', '2026-10-31 23:00+07')$$,
   'MC012', NULL, 'closed_at before the month ended (Bangkok) → MC012');
 SELECT throws_ok($$SELECT public.set_month_closer('2026-10', 'central', '00000000-0000-0000-0000-0000000000b3', now() + interval '1 day')$$,

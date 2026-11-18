@@ -97,6 +97,7 @@ describe("mapMonthCloseError", () => {
     ["MC010", 409, "not_closed"],
     ["MC011", 400, "invalid_closer"],
     ["MC012", 400, "invalid_closed_at"],
+    ["MC013", 409, "stale_resync"],
     ["42501", 403, "forbidden"],
   ])("%s → %i %s", (code, status, errorCode) => {
     expect(mapMonthCloseError({ code, message: "internal db text" })).toMatchObject({ status, errorCode });
@@ -162,8 +163,10 @@ describe("closeMonth", () => {
 describe("resyncMonth", () => {
   it("ส่วนกลาง: คำนวณใหม่ → เขียนทับ → ส่ง source resync", async () => {
     const p = ports();
-    const out = await resyncMonth(p, { month: "2026-10", scope: "central" });
+    const out = await resyncMonth(p, { month: "2026-10", scope: "central" }, () => new Date("2026-11-18T08:00:00Z"));
     expect(p.calls).toEqual(["rows:2026-10", "resync:2026-10:central:rows", "sync:resync"]);
+    // เวลาเริ่มคำนวณถูกจับก่อนอ่านทะเบียน แล้วส่งให้ RPC กันเขียนทับด้วยตัวเลขเก่า
+    expect(p.resyncPart).toHaveBeenCalledWith(expect.objectContaining({ computedAt: "2026-11-18T08:00:00.000Z" }));
     expect(out.resync.changedBranches).toBe(2);
   });
 

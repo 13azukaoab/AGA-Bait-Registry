@@ -66,6 +66,7 @@ export type MonthCloseErrorCode =
   | "not_closed" // MC010
   | "invalid_closer" // MC011
   | "invalid_closed_at" // MC012
+  | "stale_resync" // MC013
   | "forbidden" // 42501
   | "load_failed"
   | "unknown";
@@ -91,6 +92,7 @@ const DB_CODES: Record<string, { status: number; errorCode: MonthCloseErrorCode;
   MC010: { status: 409, errorCode: "not_closed", message: "ส่วนนี้ของเดือนนี้ยังไม่ปิด" },
   MC011: { status: 400, errorCode: "invalid_closer", message: "ผู้ปิดต้องเป็นผู้ใช้ที่มีสิทธิ์ปิดส่วนนี้" },
   MC012: { status: 400, errorCode: "invalid_closed_at", message: "เวลาปิดต้องอยู่หลังสิ้นเดือนนั้น และไม่เกินเวลาปัจจุบัน" },
+  MC013: { status: 409, errorCode: "stale_resync", message: "มีการคำนวณ snapshot ใหม่ของส่วนนี้ระหว่างรอ — กดใหม่อีกครั้ง" },
   "42501": { status: 403, errorCode: "forbidden", message: "ทำรายการนี้ได้เฉพาะ OM/PM (host)" },
 };
 
@@ -155,7 +157,13 @@ export interface MonthClosePorts {
   /** คำนวณแถวส่วนกลางของเดือน (อ่านทะเบียน + lib/rules) */
   centralRows(month: string): Promise<CentralSnapshotPayloadRow[]>;
   closePart(args: ClosePartArgs): Promise<ClosePartResult>;
-  resyncPart(args: { month: string; scope: ClosureScope; rows: CentralSnapshotPayloadRow[] | null }): Promise<ResyncPartResult>;
+  /** `computedAt` = เวลาที่เริ่มอ่านทะเบียน (กันเขียนทับด้วยตัวเลขเก่า — MC013) */
+  resyncPart(args: {
+    month: string;
+    scope: ClosureScope;
+    rows: CentralSnapshotPayloadRow[] | null;
+    computedAt: string;
+  }): Promise<ResyncPartResult>;
   /** ส่ง Dashboard 1 รอบ (runDashboardSync) — throw ได้ (SY001 / 42501 / อื่น ๆ) */
   sync(source: SyncSource): Promise<RunOutcome>;
 }
@@ -227,9 +235,11 @@ export async function closeMonth(
 export async function resyncMonth(
   ports: MonthClosePorts,
   input: { month: string; scope: ClosureScope },
+  now: () => Date = () => new Date(),
 ): Promise<{ resync: ResyncPartResult; sync: SyncSummary }> {
+  const computedAt = now().toISOString();
   const rows = input.scope === "central" ? await ports.centralRows(input.month) : null;
-  const resync = await ports.resyncPart({ ...input, rows });
+  const resync = await ports.resyncPart({ ...input, rows, computedAt });
   const sync = await syncAfter(ports, "resync");
   return { resync, sync };
 }

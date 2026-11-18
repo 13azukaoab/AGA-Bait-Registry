@@ -63,6 +63,7 @@ export function supabaseMonthClosePorts(
         p_month: args.month,
         p_scope: args.scope,
         p_rows: args.rows,
+        p_computed_at: args.computedAt,
       });
       if (error) throw rpcError(error);
       const d = (data ?? {}) as Json;
