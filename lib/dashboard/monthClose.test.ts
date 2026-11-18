@@ -56,7 +56,7 @@ function ports(over: Partial<MonthClosePorts> = {}): MonthClosePorts & { calls: 
     }),
     closePart: vi.fn(async (a) => {
       calls.push(`close:${a.month}:${a.scope}:${a.rows === null ? "null" : "rows"}`);
-      return { month: a.month, scope: a.scope, closedAt: "2026-11-02T00:00:00Z", overridden: false, unconfirmedCount: 0, carriedCount: 0 };
+      return { month: a.month, scope: a.scope, closedAt: "2026-11-02T00:00:00Z", overridden: false, unreadyCount: 0, carriedCount: 0 };
     }),
     resyncPart: vi.fn(async (a) => {
       calls.push(`resync:${a.month}:${a.scope}:${a.rows === null ? "null" : "rows"}`);
@@ -103,11 +103,20 @@ describe("mapMonthCloseError", () => {
     expect(mapMonthCloseError({ code, message: "internal db text" })).toMatchObject({ status, errorCode });
   });
 
-  it("MC006 / MC009 แนบรายชื่อสาขาจาก DETAIL", () => {
-    const details = JSON.stringify({ branches: [{ id: "a", name: "นครปฐม" }] });
-    expect(mapMonthCloseError({ code: "MC006", details })).toMatchObject({
-      status: 409, errorCode: "unconfirmed_branches", branches: [{ id: "a", name: "นครปฐม" }],
+  it("MC014 → 403 override_host_only", () => {
+    expect(mapMonthCloseError({ code: "MC014" })).toMatchObject({ status: 403, errorCode: "override_host_only" });
+  });
+
+  it("MC006 / MC009 แนบรายชื่อสาขา (+จำนวนสัญญาค้าง · canOverride) จาก DETAIL", () => {
+    const notReady = JSON.stringify({ branches: [{ id: "a", name: "นครปฐม", pending: 3 }], can_override: false });
+    expect(mapMonthCloseError({ code: "MC006", details: notReady })).toEqual({
+      status: 409,
+      errorCode: "branches_not_ready",
+      message: expect.any(String),
+      branches: [{ id: "a", name: "นครปฐม", pending: 3 }],
+      canOverride: false,
     });
+    const details = JSON.stringify({ branches: [{ id: "a", name: "นครปฐม" }] });
     expect(mapMonthCloseError({ code: "MC009", details })).toMatchObject({
       errorCode: "carried_not_acknowledged", branches: [{ id: "a", name: "นครปฐม" }],
     });

@@ -40,14 +40,14 @@ SELECT ok(NOT has_table_privilege('service_role', 'public.sync_logs', 'INSERT')
           AND NOT has_table_privilege('service_role', 'public.sync_logs', 'UPDATE')
           AND NOT has_table_privilege('service_role', 'public.sync_logs', 'DELETE'),
   'service_role: no direct writes (RPC only)');
-SELECT ok(has_function_privilege('authenticated', 'public.start_sync_log(text)', 'EXECUTE')
-          AND has_function_privilege('service_role', 'public.start_sync_log(text)', 'EXECUTE')
-          AND NOT has_function_privilege('anon', 'public.start_sync_log(text)', 'EXECUTE'),
-  'start_sync_log: authenticated/service_role yes · anon no');
+SELECT ok(has_function_privilege('authenticated', 'public.start_sync_log(text, uuid)', 'EXECUTE')
+          AND has_function_privilege('service_role', 'public.start_sync_log(text, uuid)', 'EXECUTE')
+          AND NOT has_function_privilege('anon', 'public.start_sync_log(text, uuid)', 'EXECUTE'),
+  'start_sync_log(text, uuid) (M39): authenticated/service_role yes · anon no');
 SELECT ok(NOT has_function_privilege('anon', 'public.finish_sync_log(bigint, text, text, text, text[], int, text)', 'EXECUTE'),
   'finish_sync_log: anon no');
 SELECT ok((SELECT bool_and(prosecdef AND proconfig::text LIKE '%search_path%') FROM pg_proc
-           WHERE oid IN ('public.start_sync_log(text)'::regprocedure,
+           WHERE oid IN ('public.start_sync_log(text, uuid)'::regprocedure,
                          'public.finish_sync_log(bigint, text, text, text, text[], int, text)'::regprocedure)),
   'both RPCs are SECURITY DEFINER with a pinned search_path');
 SELECT throws_ok($$INSERT INTO sync_logs (source, finished_at) VALUES ('auto', now())$$,

@@ -45,6 +45,7 @@ function fakeClient(tables: Record<string, Row[]>, rpc: Record<string, (args: un
   return { client: client as unknown as SupabaseClient, calls };
 }
 
+const ACTOR = "00000000-0000-0000-0000-0000000000b3";
 const branchRows = BRANCHES.map((b, i) => ({ id: `b${String(i).padStart(2, "0")}`, name: b.branch }));
 const idOf = (name: string) => branchRows.find((b) => b.name === name)!.id;
 const CENTRAL_IDS = BRANCHES.filter((b) => b.division === "central").map((b) => idOf(b.branch));
@@ -72,7 +73,7 @@ function tables(): Record<string, Row[]> {
 const closeOk = (args: unknown): RpcResult => {
   const a = args as { p_month: string; p_scope: string };
   return {
-    data: { month: a.p_month, scope: a.p_scope, closed_at: "2026-11-02T01:00:00+00:00", overridden: true, unconfirmed_count: 24, carried_count: 0 },
+    data: { month: a.p_month, scope: a.p_scope, closed_at: "2026-11-02T01:00:00+00:00", overridden: true, unready_count: 24, carried_count: 0 },
     error: null,
   };
 };
@@ -84,7 +85,7 @@ describe("supabaseMonthClosePorts", () => {
       close_month_part: closeOk,
       start_sync_log: () => ({ data: null, error: { message: "busy", code: "SY001" } }),
     });
-    const out = await closeMonth(supabaseMonthClosePorts(client, { fetchImpl: fetchImpl as unknown as typeof fetch }), {
+    const out = await closeMonth(supabaseMonthClosePorts(client, ACTOR, { fetchImpl: fetchImpl as unknown as typeof fetch }), {
       month: "2026-10",
       scope: "central",
       overrideReason: "สาขายังไม่มีหน้ายืนยัน",
@@ -101,8 +102,10 @@ describe("supabaseMonthClosePorts", () => {
     expect(close.p_rows.map((r) => r.branch_id).sort()).toEqual([...CENTRAL_IDS].sort());
     expect(close.p_rows.find((r) => r.branch_id === idOf("นครปฐม"))?.value).toBe(40000);
 
-    expect(calls.find((c) => c.name === "start_sync_log")?.args).toEqual({ p_source: "close" });
-    expect(out.closure).toMatchObject({ overridden: true, unconfirmedCount: 24, closedAt: "2026-11-02T01:00:00+00:00" });
+    // ผู้กด (actor) ไปถึง RPC ปิดเดือนและรอบส่ง Dashboard
+    expect(close).toMatchObject({ p_actor: ACTOR });
+    expect(calls.find((c) => c.name === "start_sync_log")?.args).toEqual({ p_source: "close", p_actor: ACTOR });
+    expect(out.closure).toMatchObject({ overridden: true, unreadyCount: 24, closedAt: "2026-11-02T01:00:00+00:00" });
     expect(out.sync.result).toBe("busy");
     expect(fetchImpl).not.toHaveBeenCalled();
   });
@@ -112,7 +115,7 @@ describe("supabaseMonthClosePorts", () => {
       close_month_part: closeOk,
       start_sync_log: () => ({ data: null, error: { message: "busy", code: "SY001" } }),
     });
-    await closeMonth(supabaseMonthClosePorts(client), { month: "2026-10", scope: "province", acknowledgeCarried: true });
+    await closeMonth(supabaseMonthClosePorts(client, ACTOR), { month: "2026-10", scope: "province", acknowledgeCarried: true });
     expect(calls.find((c) => c.name === "close_month_part")?.args).toMatchObject({
       p_scope: "province", p_rows: null, p_ack_carried: true,
     });
@@ -124,7 +127,7 @@ describe("supabaseMonthClosePorts", () => {
       close_month_part: () => ({ data: null, error: { message: "unconfirmed", code: "MC006", details } }),
     });
     await expect(
-      closeMonth(supabaseMonthClosePorts(client), { month: "2026-10", scope: "central" }),
+      closeMonth(supabaseMonthClosePorts(client, ACTOR), { month: "2026-10", scope: "central" }),
     ).rejects.toMatchObject({ code: "MC006", details });
   });
 
@@ -135,12 +138,12 @@ describe("supabaseMonthClosePorts", () => {
         error: null,
       }),
     });
-    const ports = supabaseMonthClosePorts(client);
+    const ports = supabaseMonthClosePorts(client, ACTOR);
     const rows = await ports.centralRows("2026-10");
     const res = await ports.resyncPart({ month: "2026-10", scope: "central", rows, computedAt: "2026-11-18T08:00:00.000Z" });
     expect(res).toEqual({ month: "2026-10", scope: "central", changedBranches: 3 });
     expect((calls[0]!.args as { p_rows: unknown[] }).p_rows).toHaveLength(CENTRAL_IDS.length);
-    expect(calls[0]!.args).toMatchObject({ p_computed_at: "2026-11-18T08:00:00.000Z" });
+    expect(calls[0]!.args).toMatchObject({ p_actor: ACTOR, p_computed_at: "2026-11-18T08:00:00.000Z" });
   });
 
   it("setMonthCloser ส่งพารามิเตอร์ตรงชื่อ RPC + ส่ง error ต่อ", async () => {

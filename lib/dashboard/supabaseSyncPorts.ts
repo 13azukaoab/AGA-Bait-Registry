@@ -252,6 +252,11 @@ export interface SupabaseSyncPortsOptions {
   env?: Record<string, string | undefined>;
   fetchImpl?: typeof fetch;
   now?: () => Date;
+  /**
+   * M39: ผู้กด (user id) เมื่อ server เปิดรอบ `close` / `resync` ด้วย service role —
+   * DB ตรวจสิทธิ์ของผู้นี้เองและบันทึกเป็น triggered_by
+   */
+  actor?: string;
 }
 
 /** ports จริง: log ผ่าน RPC start_sync_log / finish_sync_log (ไม่มีสิทธิ์เขียนตารางตรง) */
@@ -261,7 +266,10 @@ export function supabaseSyncPorts(
 ): DashboardSyncPorts {
   return {
     async startLog(source: SyncSource) {
-      const { data, error } = await client.rpc("start_sync_log", { p_source: source });
+      const { data, error } = await client.rpc(
+        "start_sync_log",
+        options.actor ? { p_source: source, p_actor: options.actor } : { p_source: source },
+      );
       if (error) throw Object.assign(new Error(error.message), { code: error.code });
       return data === null ? null : Number(data);
     },

@@ -2,9 +2,11 @@
  * ปิดเดือน / คำนวณ snapshot ใหม่ / แก้ชื่อ-เวลาผู้ปิด (M39 · SPEC §7.7, §9.2 · DECISIONS 2.72, 5.4, 5.8)
  *
  * Logic summary:
- *   - ตรวจสิทธิ์ 2 ชั้น: route ถาม `is_host()` ที่ฐานข้อมูลก่อน → RPC (SECURITY DEFINER) ตรวจ host ซ้ำเอง
- *   - ส่วนกลาง: คำนวณ 24 สาขาด้วย lib/rules (`computeCentralRows` — สูตรเดียวกับตอนส่ง Dashboard)
- *     แล้วส่งเป็น jsonb ให้ RPC `close_month_part` / `resync_month_part` เขียน snapshot + แถวปิดใน transaction เดียว
+ *   - สิทธิ์ (เจ้าของ 18 พ.ย. 2026): ปิดส่วนกลาง = host หรือ recorder ส่วนกลาง · ปิดต่างจังหวัด / คำนวณใหม่ /
+ *     ปิดข้ามด้วยเหตุผล / แก้ผู้ปิด = host · route ถามสิทธิ์ที่ DB ด้วย JWT ผู้ใช้ก่อน → server ใช้ service role
+ *     (lib/admin/monthCloseAdmin.ts) ในนามผู้กด → RPC ตรวจสิทธิ์ผู้กดซ้ำ + ลง audit ในนามผู้กด
+ *   - ผู้เรียกส่งตัวเลขเองไม่ได้: ส่วนกลางคำนวณ 24 สาขาฝั่ง server ด้วย lib/rules (`computeCentralRows` — สูตรเดียวกับ
+ *     ตอนส่ง Dashboard) แล้วส่ง jsonb ให้ RPC `close_month_part` / `resync_month_part` เขียน snapshot + แถวปิดใน transaction เดียว
  *   - ต่างจังหวัด: ไม่มีสูตร (แถว manual §6.5 + ค่ายกมา 5.12/5.12a ประกอบตอนส่งใน buildDashboardData)
  *     → RPC ปิด/บันทึกเวลาอย่างเดียว
  *   - ปิด/คำนวณใหม่สำเร็จ = **commit แล้ว** จากนั้นจึงส่ง Dashboard (sync_logs source `close` / `resync`)
@@ -59,7 +61,7 @@ export type MonthCloseErrorCode =
   | "before_go_live" // MC003
   | "already_closed" // MC004
   | "invalid_rows" // MC005 (บั๊กฝั่ง server — route คำนวณแถวเอง)
-  | "unconfirmed_branches" // MC006 (+ branches)
+  | "branches_not_ready" // MC006 (+ branches, canOverride)
   | "invalid_reason" // MC007
   | "non_computed_rows" // MC008
   | "carried_not_acknowledged" // MC009 (+ branches)
@@ -67,6 +69,7 @@ export type MonthCloseErrorCode =
   | "invalid_closer" // MC011
   | "invalid_closed_at" // MC012
   | "stale_resync" // MC013
+  | "override_host_only" // MC014
   | "forbidden" // 42501
   | "load_failed"
   | "unknown";
@@ -75,8 +78,10 @@ export interface MappedError {
   status: number;
   errorCode: MonthCloseErrorCode;
   message: string;
-  /** รายชื่อสาขาที่ยังไม่ยืนยัน (MC006) / ใช้ค่ายกมา (MC009) */
-  branches?: { id: string; name: string }[];
+  /** สาขาที่ยังบันทึกบริการไม่ครบ (MC006 · มี pending = จำนวนสัญญาค้าง) / ใช้ค่ายกมา (MC009) */
+  branches?: { id: string; name: string; pending?: number }[];
+  /** MC006: ผู้กดปิดข้ามด้วยเหตุผลได้ไหม (host = true · recorder = false) */
+  canOverride?: boolean;
 }
 
 const DB_CODES: Record<string, { status: number; errorCode: MonthCloseErrorCode; message: string }> = {
@@ -85,7 +90,7 @@ const DB_CODES: Record<string, { status: number; errorCode: MonthCloseErrorCode;
   MC003: { status: 409, errorCode: "before_go_live", message: "เดือนนี้อยู่ก่อนเริ่มใช้ระบบ ไม่ต้องปิด" },
   MC004: { status: 409, errorCode: "already_closed", message: "ส่วนนี้ของเดือนนี้ปิดไปแล้ว — ใช้ \"คำนวณ snapshot ใหม่\" แทน" },
   MC005: { status: 500, errorCode: "invalid_rows", message: "ข้อมูลที่คำนวณได้ไม่ครบหรือไม่ถูกต้อง แจ้งผู้ดูแลระบบ" },
-  MC006: { status: 409, errorCode: "unconfirmed_branches", message: "ยังมีสาขาส่วนกลางที่ไม่ยืนยันตัวเลข — รอให้ครบ หรือพิมพ์เหตุผลเพื่อปิดข้าม" },
+  MC006: { status: 409, errorCode: "branches_not_ready", message: "ยังมีสาขาส่วนกลางที่บันทึกบริการเดือนนี้ไม่ครบ" },
   MC007: { status: 400, errorCode: "invalid_reason", message: "เหตุผลต้องยาว 5–500 ตัวอักษร" },
   MC008: { status: 409, errorCode: "non_computed_rows", message: "เดือนนี้มีตัวเลขส่วนกลางแบบนำเข้า/กรอกมือ ระบบไม่เขียนทับ แจ้งผู้ดูแลระบบ" },
   MC009: { status: 409, errorCode: "carried_not_acknowledged", message: "ยังมีสาขาต่างจังหวัดที่ใช้ค่ายกมา — ต้องติ๊กรับทราบก่อนปิด" },
@@ -93,19 +98,28 @@ const DB_CODES: Record<string, { status: number; errorCode: MonthCloseErrorCode;
   MC011: { status: 400, errorCode: "invalid_closer", message: "ผู้ปิดต้องเป็นผู้ใช้ที่มีสิทธิ์ปิดส่วนนี้" },
   MC012: { status: 400, errorCode: "invalid_closed_at", message: "เวลาปิดต้องอยู่หลังสิ้นเดือนนั้น และไม่เกินเวลาปัจจุบัน" },
   MC013: { status: 409, errorCode: "stale_resync", message: "มีการคำนวณ snapshot ใหม่ของส่วนนี้ระหว่างรอ — กดใหม่อีกครั้ง" },
+  MC014: { status: 403, errorCode: "override_host_only", message: "ปิดข้ามด้วยเหตุผลได้เฉพาะ OM/PM (host)" },
   "42501": { status: 403, errorCode: "forbidden", message: "ทำรายการนี้ได้เฉพาะ OM/PM (host)" },
 };
 
-function parseBranches(details: unknown): MappedError["branches"] {
-  if (typeof details !== "string" || details === "") return undefined;
+function parseDetails(details: unknown): Pick<MappedError, "branches" | "canOverride"> {
+  if (typeof details !== "string" || details === "") return {};
   try {
-    const parsed = JSON.parse(details) as { branches?: unknown };
-    if (!Array.isArray(parsed.branches)) return undefined;
-    return parsed.branches
-      .filter((b): b is { id: unknown; name: unknown } => typeof b === "object" && b !== null)
-      .map((b) => ({ id: String(b.id), name: String(b.name) }));
+    const parsed = JSON.parse(details) as { branches?: unknown; can_override?: unknown };
+    const out: Pick<MappedError, "branches" | "canOverride"> = {};
+    if (Array.isArray(parsed.branches)) {
+      out.branches = parsed.branches
+        .filter((b): b is { id: unknown; name: unknown; pending?: unknown } => typeof b === "object" && b !== null)
+        .map((b) => ({
+          id: String(b.id),
+          name: String(b.name),
+          ...(typeof b.pending === "number" ? { pending: b.pending } : {}),
+        }));
+    }
+    if (typeof parsed.can_override === "boolean") out.canOverride = parsed.can_override;
+    return out;
   } catch {
-    return undefined;
+    return {};
   }
 }
 
@@ -119,11 +133,11 @@ export function mapMonthCloseError(error: unknown): MappedError {
   if (!known) {
     return { status: 500, errorCode: "unknown", message: "ทำรายการไม่สำเร็จ ลองใหม่อีกครั้ง" };
   }
-  const branches =
-    known.errorCode === "unconfirmed_branches" || known.errorCode === "carried_not_acknowledged"
-      ? parseBranches(e.details)
-      : undefined;
-  return { ...known, ...(branches ? { branches } : {}) };
+  const extra =
+    known.errorCode === "branches_not_ready" || known.errorCode === "carried_not_acknowledged"
+      ? parseDetails(e.details)
+      : {};
+  return { ...known, ...extra };
 }
 
 // ---------------------------------------------------------------------------
@@ -143,7 +157,8 @@ export interface ClosePartResult {
   scope: ClosureScope;
   closedAt: string;
   overridden: boolean;
-  unconfirmedCount: number;
+  /** จำนวนสาขาส่วนกลางที่ยังบันทึกบริการไม่ครบตอนปิด (ปิดข้ามด้วยเหตุผล) */
+  unreadyCount: number;
   carriedCount: number;
 }
 

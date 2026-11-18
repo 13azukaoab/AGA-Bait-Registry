@@ -1,44 +1,46 @@
--- M39 (phase 5): ปิดเดือน 2 ส่วน + คำนวณ snapshot ใหม่ + แก้ชื่อ/เวลาผู้ปิด + สถานะแบบแคบให้ recorder
--- (SPEC §7.7, §9.2 · DECISIONS 2.72, 5.4, 5.8, 5.12/5.12a · CLAUDE.md กฎ 7)
+-- M39 (phase 5): ปิดเดือน 2 ส่วน + คำนวณ snapshot ใหม่ + แก้ชื่อ/เวลาผู้ปิด + สถานะแบบแคบ + month_closures เขียนผ่าน RPC เท่านั้น
+-- (SPEC §7.7, §9.2 · DECISIONS 2.72, 5.4, 5.8, 5.12/5.12a · CLAUDE.md กฎ 7 · เจ้าของตอบ 18 พ.ย. 2026 ผ่าน BE)
 --
 -- Logic summary:
---   0. ทางเลือกสถาปัตยกรรม: **SECURITY DEFINER RPC ที่ตรวจ host เอง เรียกด้วย JWT ของ host** (ไม่ใช้ service role)
---      - เขียนแถวปิดเดือน + snapshot 24 สาขา ใน transaction เดียว (REST ทีละตารางทำแบบ atomic ไม่ได้)
---      - audit_log บันทึก changed_by = auth.uid() ของ host จริง (service role = ผู้แก้ว่าง)
---      - ไม่ต้องเปิด import service-role นอก lib/admin / app/api/cron (เทส noAdminImportBypass)
---      - **สูตรยังอยู่ที่ lib/rules (TypeScript) ที่เดียว** — route คำนวณแถวแล้วส่งเป็น jsonb (ไม่มีสูตรใน SQL)
---        ⚠ host ส่งตัวเลขเองได้ทาง RPC = ไม่เพิ่มสิทธิ์ เพราะ host เขียน snapshot ตรงได้อยู่แล้ว (snapshots_host_write)
---   1. month_closure_overrides — เหตุผลที่ host ปิดส่วนกลางทั้งที่บางสาขายังไม่ยืนยัน (DECISIONS 2.72)
---      host อ่านได้คนเดียว · เขียนผ่าน close_month_part เท่านั้น · ลง audit_log (trigger เดิม ไม่แทน audit_trigger)
---   2. audit แถว computed: UPDATE ที่ค่าเปลี่ยน (= คำนวณ snapshot ใหม่ · เห็นค่าเก่า/ใหม่) · DELETE · INSERT ของเดือน/ส่วนที่ปิดแล้ว
+--   0. สิทธิ์ (เจ้าของ 18 พ.ย.):
+--      - ปิดส่วนกลาง: host หรือ recorder ที่มี 'central' ใน division_scope · ปิดต่างจังหวัด: host
+--      - คำนวณ snapshot ใหม่ / แก้ชื่อ-เวลาผู้ปิด / ปิดข้ามด้วยเหตุผล: host เท่านั้น
+--        (ปิดข้าม = host only เพราะ mockup ทำก่อน DECISIONS 2.72 และ 2.72 ระบุ "ผู้ดูแล (host) กดข้ามได้")
+--   1. ทางเขียน: **ผู้เรียกส่งตัวเลขเองไม่ได้** — route ตรวจสิทธิ์ที่ DB ด้วย JWT ของผู้ใช้ (`can_close_month_part`)
+--      → server ใช้ service role (lib/admin/monthCloseAdmin.ts) อ่านทะเบียน + คำนวณด้วย lib/rules
+--      → เรียก RPC แบบ service-role-only `close_month_part(p_actor, …)` / `resync_month_part(p_actor, …)`
+--      - RPC ตรวจซ้ำ 2 ชั้น: EXECUTE ให้ service_role เท่านั้น + ตรวจ role ในเนื้อฟังก์ชัน · ตรวจสิทธิ์ของ p_actor จาก profiles
+--        (active · role · division_scope) เอง ไม่เชื่อ route
+--      - **ผู้แก้ใน audit_log = p_actor**: หลังตรวจสิทธิ์แล้ว ฟังก์ชันตั้ง `request.jwt.claim.sub` และ `sub` ใน
+--        `request.jwt.claims` = p_actor แบบ local (เฉพาะ transaction นี้ · role คง service_role) → auth.uid() ใน
+--        audit_trigger = คนกดจริง (+ actor_position_code) · ช่องผู้ทำ (closed_by / overridden_by / last_resync_by) ตั้งจาก p_actor ตรงๆ
+--      - **สูตรอยู่ที่ lib/rules (TypeScript) ที่เดียว** — SQL ตรวจรูปแบบแถวอย่างเดียว ไม่มีสูตรคำนวณ
+--   2. month_closures เขียนผ่าน RPC เท่านั้น: ลบ policy เขียน 3 ตัว + REVOKE INSERT/UPDATE/DELETE จาก authenticated
+--      และ service_role · อ่านคงเดิม (month_closures_select: host/admin/recorder)
+--   3. "ส่วนกลางพร้อมปิด" (เจ้าของเลือก ก) = ทุกสาขาส่วนกลางไม่มีสัญญาที่ "ค้างบริการ" ของเดือนนั้น
+--      ค้างบริการ = เกณฑ์เดียวกับ list_pending_missed_services (เนื้อล่าสุด 20261115200000 · M30) ที่ missed_month = เดือนนั้น:
+--      สัญญาไม่ยกเลิก · ไม่ถูกแทน (contract_is_renewed) · ตั้งสถานีแล้ว · เดือนอยู่ในช่วง
+--      missed_tracking_start_month … เดือนสุดท้ายของสัญญา (term_months) · ไม่มีการเข้า routine (ไม่ใช่ชดเชย) ในเดือนนั้น ·
+--      ไม่มีการเข้าชดเชยให้เดือนนั้น · ไม่มีผลตัดสิน "ไม่ชดเชย" (waived)
+--      → หมายเหตุตกบริการ (missed_service_notes) **ไม่นับ** ว่าบันทึกแล้ว · ไม่ใช้ confirmed_at (เจ้าของ: ไม่บังคับ)
+--      → `central_unready_branches(month)` (เรียก helper เดิมตามชื่อ ได้เนื้อล่าสุดเสมอ · ไม่กรองขอบเขต recorder)
+--      ไม่พร้อม → host ปิดได้พร้อมเหตุผล (MC006/MC007) · recorder ปิดไม่ได้ (MC006 · ส่งเหตุผลมา = MC014)
+--   4. month_closure_overrides — เหตุผลปิดข้าม · host อ่านคนเดียว · เขียนผ่าน close_month_part · ลง audit (trigger เดิม)
+--   5. audit แถว computed: UPDATE ที่ค่าเปลี่ยน (คำนวณใหม่ · ค่าเก่า/ใหม่) · DELETE · INSERT เข้าเดือน/ส่วนที่ปิดแล้ว
 --      (INSERT ตอนกดปิดไม่ลง — กันประวัติรก · แถว manual ใช้ trigger เดิม)
---   3. central_unconfirmed_branches(month) — สาขาส่วนกลางที่ยังไม่มีแถว snapshot ที่ confirmed_at ไม่ว่าง
---      (เงื่อนไข "ยืนยันครบ" อยู่ในฟังก์ชันเดียว — ถ้าเจ้าของเปลี่ยนนิยาม แก้ที่นี่ที่เดียว)
---   4. close_month_part(month, scope, rows, override_reason, ack_carried) — host เท่านั้น
---      - เดือน 'YYYY-MM' (MC001) · จบแล้วตามเวลาไทย (MC002) · ≥ go_live_month() (MC003) · ปิดซ้ำ (MC004)
---      - central: rows ต้องเป็นสาขาส่วนกลางครบ 24 ไม่ซ้ำ ค่าไม่ติดลบ (MC005) · ยังไม่ยืนยันครบ + ไม่มีเหตุผล (MC006,
---        DETAIL = JSON รายชื่อ) · เหตุผลสั้น/ยาวเกิน 5–500 ตัว (MC007) · มีแถว legacy/manual ของสาขาส่วนกลางเดือนนั้น (MC008)
---        → upsert แถว computed (คง confirmed_at/by) + แถวปิด + แถว override (ถ้าใช้)
---      - province: rows ต้องว่าง (MC005) · สาขาที่ยังใช้ค่ายกมา (ไม่มีแถว manual ที่ยืนยันแล้ว) ต้องติ๊กรับทราบ (MC009,
---        DETAIL = JSON รายชื่อ) → แถวปิดอย่างเดียว (ค่ายกมาประกอบตอนส่งตาม 5.12/5.12a ใน buildDashboardData)
---      - lock ต่อ เดือน+ส่วน กันกดพร้อมกัน · ชน PK = MC004
---   5. resync_month_part(month, scope, rows) — host · เฉพาะส่วนที่ปิดแล้ว (MC010)
---      central: เขียนทับแถว computed (audit ข้อ 2) · province: ไม่มีอะไรคำนวณ (แถว manual) → บันทึกเวลาอย่างเดียวแล้วส่งใหม่
---      ทั้ง 2 ส่วน: last_resync_at/by = now()/ผู้กด (ลง audit ด้วย trigger audit_month_closures เดิม)
---   6. set_month_closer(month, scope, closed_by, closed_at) — host (DECISIONS 5.8) · ลง audit ด้วย trigger เดิม
---      ผู้ปิดต้องมีโปรไฟล์: central = host/recorder · province = host (MC011) · เวลา ≥ ต้นเดือนถัดไป (ไทย) และไม่เกินตอนนี้ (MC012)
---   7. get_sync_status() — host/admin/recorder · รอบล่าสุดต่อช่องทาง: เวลาเริ่ม/จบ ผล error_code เท่านั้น
---      (ไม่มี error_message / triggered_by) · viewer/anon → 42501 · sync_logs RLS คง host เท่านั้น
---   8. list_month_closures(from, to) — host/admin/recorder · เดือน ส่วน เวลาปิด ชื่อผู้ปิด เท่านั้น
---   9. แทน start_sync_log / finish_sync_log (เนื้อจาก 20261115250000 · แก้เฉพาะบล็อก "M39"):
---      'close' / 'resync' = host เท่านั้น (เหมือน manual) · ผู้เปิดรอบปิดรอบของตัวเองได้
---   * resync กันเขียนทับด้วยตัวเลขเก่า: route ส่งเวลาที่เริ่มคำนวณ (p_computed_at) · มีคนอื่น resync สำเร็จหลังเวลานั้น → MC013
---     (การแก้ทะเบียนระหว่างคำนวณกับเขียน = เหมือนแก้หลังปิด · กด resync อีกครั้งได้ · ไม่ล็อกข้อมูลตามกฎ 7)
---   * ข้อจำกัดที่รู้: ย้ายสาขาระหว่างส่วนกลาง/ต่างจังหวัดหลังปิดเดือน → resync เดือนนั้นจะ MC005 (ตรวจกับรายชื่อปัจจุบัน)
---     · value_annual ของแถว computed = 0 (ยังไม่มีที่ใช้ · §9.1 ไม่ส่ง)
---   * error ใหม่: MC001–MC013 (ไม่ชนชุดเดิม) · 42501 = ไม่มีสิทธิ์
---   * ⚠ ที่ยังไม่ได้ทำ (รอ BE/เจ้าของ): month_closures ยังเขียนตรงผ่าน REST ได้ตาม RLS เดิม (host ทุกส่วน · recorder
---     ส่วนกลาง) = ข้ามด่านในไฟล์นี้ได้ · เสนอทำ RPC-only ในงานถัดไป (เปลี่ยนสิทธิ์ตารางเดิม ต้องให้เจ้าของยืนยัน)
+--   6. close_month_part(p_actor, month, scope, rows, override_reason, ack_carried) — service role
+--      MC001 เดือนผิด · MC002 ยังไม่จบ (ไทย) · MC003 ก่อน go-live · MC004 ปิดแล้ว · MC005 แถวผิด · MC006 ยังไม่พร้อม ·
+--      MC007 เหตุผล 5–500 · MC008 มีแถว legacy/manual · MC009 ค่ายกมายังไม่รับทราบ · MC014 recorder ส่งเหตุผลปิดข้าม
+--      province: ไม่มีตัวเลข (แถว manual + ค่ายกมาประกอบตอนส่งตาม 5.12/5.12a) → แถวปิดอย่างเดียว
+--   7. resync_month_part(p_actor, month, scope, rows, computed_at) — service role · actor host · MC010 ยังไม่ปิด ·
+--      MC013 มี resync ที่ใหม่กว่าเวลาเริ่มคำนวณ (กันเขียนทับด้วยตัวเลขเก่า) · province = บันทึกเวลาแล้วส่งใหม่
+--   8. set_month_closer(month, scope, closed_by, closed_at) — host (JWT ผู้ใช้ · DECISIONS 5.8) · MC010–MC012
+--   9. get_sync_status() / list_month_closures() — host/admin/recorder · ไม่มี error_message / triggered_by
+--  10. start_sync_log(p_source, p_actor) แทนตัวเดิม (DROP + CREATE เพราะเพิ่มพารามิเตอร์) · close/resync = service role + actor
+--      finish_sync_log: service role ปิดรอบ auto/close/resync · ผู้ใช้ปิดรอบ manual ของตัวเอง (เหมือนเดิม)
+--   * error ใหม่: MC001–MC014 · 42501 = ไม่มีสิทธิ์
+--   * ข้อจำกัดที่รู้: ย้ายสาขาข้ามส่วนกลาง/ต่างจังหวัดหลังปิด → resync เดือนนั้น MC005 · value_annual ของแถว computed = 0
+--   * ไม่แทน audit_trigger · ตาราง month_closure_overrides ไม่อยู่ใน CASE ของ audit_trigger → audit_log.month_key ว่าง
 
 -- =====================================================================
 -- 1. month_closure_overrides
@@ -113,7 +115,17 @@ CREATE TRIGGER audit_snapshots_computed_insert_closed
   EXECUTE FUNCTION public.audit_trigger();
 
 -- =====================================================================
--- 3. helper: เดือน / สาขาที่ยังไม่ยืนยัน / ตรวจแถว
+-- 3. month_closures เขียนผ่าน RPC เท่านั้น (เจ้าของ + HQ 18 พ.ย. 2026)
+--    เดิม: month_closures_host_write (FOR ALL host) · month_closures_recorder_insert / _update (central)
+--    ใหม่: เหลือ month_closures_select (อ่าน host/admin/recorder) · ไม่มีสิทธิ์เขียนตาราง (RPC SECURITY DEFINER เขียนแทน)
+-- =====================================================================
+DROP POLICY month_closures_host_write ON public.month_closures;
+DROP POLICY month_closures_recorder_insert ON public.month_closures;
+DROP POLICY month_closures_recorder_update ON public.month_closures;
+REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON public.month_closures FROM authenticated, service_role;
+
+-- =====================================================================
+-- 4. helper
 -- =====================================================================
 -- ตรวจเดือนที่จะปิด: รูปแบบ · จบแล้ว (ไทย) · ≥ go-live
 CREATE FUNCTION public.month_close_check_month(p_month text)
@@ -137,21 +149,99 @@ BEGIN
 END;
 $$;
 
--- สาขาส่วนกลางที่ยังไม่ยืนยันตัวเลขของเดือนนั้น (ไม่มีแถว snapshot หรือ confirmed_at ว่าง)
--- ⚠ นิยาม "ยืนยัน" รอเจ้าของ (ดูรายงาน M39) — เปลี่ยนนิยามแก้ที่ฟังก์ชันนี้ที่เดียว
-CREATE FUNCTION public.central_unconfirmed_branches(p_month text)
-RETURNS uuid[]
+-- สิทธิ์ของผู้ใช้ (อ่านจาก profiles ตรง ไม่พึ่ง auth.uid()) · action: close | resync | override
+CREATE FUNCTION public.month_close_actor_can(p_actor uuid, p_scope public.closure_scope, p_action text)
+RETURNS boolean
 LANGUAGE sql
 STABLE
 SECURITY DEFINER
 SET search_path = public, pg_temp
 AS $$
-  SELECT coalesce(array_agg(b.id ORDER BY b.name), '{}')
-    FROM branches b
-   WHERE b.division = 'central'
-     AND NOT EXISTS (
-       SELECT 1 FROM monthly_branch_snapshots s
-        WHERE s.month_key = p_month AND s.branch_id = b.id AND s.confirmed_at IS NOT NULL);
+  SELECT coalesce((
+    SELECT CASE
+             WHEN p.role = 'host' THEN p_action IN ('close', 'resync', 'override')
+             WHEN p.role = 'recorder' THEN p_action = 'close' AND p_scope = 'central'
+                                         AND 'central'::division = ANY (p.division_scope)
+             ELSE false
+           END
+      FROM profiles p
+     WHERE p.user_id = p_actor AND p.is_active), false);
+$$;
+
+-- route ถามก่อนใช้ service role: ผู้ใช้ที่ล็อกอินอยู่ปิดส่วนนี้ได้ไหม
+CREATE FUNCTION public.can_close_month_part(p_scope public.closure_scope)
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+  SELECT auth.uid() IS NOT NULL AND p_scope IS NOT NULL
+         AND public.month_close_actor_can(auth.uid(), p_scope, 'close');
+$$;
+
+-- ผู้เรียกต้องเป็น service role (ตรวจซ้ำนอกเหนือจาก GRANT)
+CREATE FUNCTION public.month_close_require_service()
+RETURNS void
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+BEGIN
+  IF NOT (coalesce(current_setting('role', true), '') = 'service_role'
+          OR coalesce(auth.role(), '') = 'service_role') THEN
+    RAISE EXCEPTION 'เรียกได้เฉพาะฝั่ง server' USING ERRCODE = '42501';
+  END IF;
+END;
+$$;
+
+-- ตั้งผู้กระทำของ transaction นี้ = p_actor (ให้ audit_trigger บันทึกคนกดจริง) · role ใน claims คงเดิม
+CREATE FUNCTION public.month_close_as_actor(p_actor uuid)
+RETURNS void
+LANGUAGE plpgsql
+VOLATILE
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  v_claims jsonb := coalesce(nullif(current_setting('request.jwt.claims', true), ''), '{}')::jsonb;
+BEGIN
+  PERFORM set_config('request.jwt.claim.sub', p_actor::text, true);
+  PERFORM set_config('request.jwt.claims', (v_claims || jsonb_build_object('sub', p_actor::text))::text, true);
+END;
+$$;
+
+-- สาขาส่วนกลางที่ยังมีสัญญาค้างบริการของเดือนนั้น (นิยามในหัวไฟล์ข้อ 3)
+CREATE FUNCTION public.central_unready_branches(p_month text)
+RETURNS TABLE (branch_id uuid, branch_name text, pending_count int)
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+  WITH m AS (SELECT to_date(p_month || '-01', 'YYYY-MM-DD') AS d)
+  SELECT b.id, b.name, count(*)::int
+    FROM contracts ct
+    JOIN customers cu ON cu.id = ct.customer_id
+    JOIN branches b ON b.id = cu.branch_id AND b.division = 'central'
+    CROSS JOIN m
+   WHERE ct.status <> 'cancelled' AND ct.cancelled_at IS NULL
+     AND NOT contract_is_renewed(ct.id)
+     AND ct.stations_initialized_at IS NOT NULL
+     AND missed_tracking_start_month(ct.start_date, ct.stations_initialized_at) <= m.d
+     AND (date_trunc('month', ct.start_date) + make_interval(months => ct.term_months - 1))::date >= m.d
+     AND NOT EXISTS (SELECT 1 FROM visits vi
+                      WHERE vi.contract_id = ct.id AND vi.visit_type = 'routine'
+                        AND vi.makeup_for_month IS NULL
+                        AND vi.visit_date >= m.d
+                        AND vi.visit_date < (m.d + interval '1 month')::date)
+     AND NOT EXISTS (SELECT 1 FROM visits vi
+                      WHERE vi.contract_id = ct.id AND vi.makeup_for_month = m.d)
+     AND NOT EXISTS (SELECT 1 FROM missed_service_resolutions r
+                      WHERE r.contract_id = ct.id AND r.missed_month = m.d AND r.kind = 'waived')
+   GROUP BY b.id, b.name
+   ORDER BY b.name;
 $$;
 
 -- ตรวจแถวส่วนกลางที่ route คำนวณมา → คืนตารางชั่วคราวในรูป jsonb ที่ cast แล้ว
@@ -262,9 +352,10 @@ END;
 $$;
 
 -- =====================================================================
--- 4. close_month_part
+-- 5. close_month_part (service role)
 -- =====================================================================
 CREATE FUNCTION public.close_month_part(
+  p_actor           uuid,
   p_month           text,
   p_scope           public.closure_scope,
   p_rows            jsonb DEFAULT NULL,
@@ -278,20 +369,21 @@ SECURITY DEFINER
 SET search_path = public, pg_temp
 AS $$
 DECLARE
-  v_uid         uuid := auth.uid();
-  v_unconfirmed uuid[] := '{}';
-  v_carried     uuid[] := '{}';
-  v_reason      text := nullif(regexp_replace(p_override_reason, '^\s+|\s+$', '', 'g'), '');
-  v_closed_at   timestamptz;
+  v_reason    text := nullif(regexp_replace(p_override_reason, '^\s+|\s+$', '', 'g'), '');
+  v_unready   jsonb := '[]';
+  v_unready_n int := 0;
+  v_carried   uuid[] := '{}';
+  v_override  boolean := false;
+  v_closed_at timestamptz;
 BEGIN
-  IF v_uid IS NULL OR NOT public.is_host() THEN
-    RAISE EXCEPTION 'ปิดเดือนได้เฉพาะ OM/PM (host)' USING ERRCODE = '42501';
-  END IF;
-  IF p_scope IS NULL THEN
-    RAISE EXCEPTION 'ต้องระบุส่วนที่จะปิด (central / province)' USING ERRCODE = 'MC001';
+  PERFORM public.month_close_require_service();
+  IF p_actor IS NULL OR p_scope IS NULL OR NOT public.month_close_actor_can(p_actor, p_scope, 'close') THEN
+    RAISE EXCEPTION 'ไม่มีสิทธิ์ปิดส่วนนี้ (ส่วนกลาง: OM/PM หรือหัวหน้างานส่วนกลาง · ต่างจังหวัด: OM/PM)'
+      USING ERRCODE = '42501';
   END IF;
 
   PERFORM public.month_close_check_month(p_month);
+  PERFORM public.month_close_as_actor(p_actor);
 
   -- กันกดปิดส่วนเดียวกันพร้อมกัน (คนที่ 2 รอแล้วเห็นแถวของคนแรก → MC004)
   PERFORM pg_advisory_xact_lock(hashtext('public.month_closures:' || p_month || ':' || p_scope::text));
@@ -304,19 +396,30 @@ BEGIN
   IF p_scope = 'central' THEN
     PERFORM public.month_close_check_central_rows(p_rows);
 
-    v_unconfirmed := public.central_unconfirmed_branches(p_month);
-    IF cardinality(v_unconfirmed) > 0 THEN
-      IF v_reason IS NULL THEN
-        RAISE EXCEPTION 'ยังมีสาขาส่วนกลางที่ไม่ยืนยันตัวเลข % สาขา — รอให้ยืนยันครบ หรือพิมพ์เหตุผลเพื่อปิดข้าม',
-          cardinality(v_unconfirmed)
+    SELECT coalesce(jsonb_agg(jsonb_build_object('id', u.branch_id, 'name', u.branch_name, 'pending', u.pending_count)
+                              ORDER BY u.branch_name), '[]'),
+           count(*)::int
+      INTO v_unready, v_unready_n
+      FROM public.central_unready_branches(p_month) u;
+
+    IF v_unready_n > 0 THEN
+      IF NOT public.month_close_actor_can(p_actor, p_scope, 'override') THEN
+        IF v_reason IS NOT NULL THEN
+          RAISE EXCEPTION 'ปิดข้ามด้วยเหตุผลได้เฉพาะ OM/PM (host)' USING ERRCODE = 'MC014';
+        END IF;
+        RAISE EXCEPTION 'ยังมี % สาขาส่วนกลางที่บันทึกบริการไม่ครบ — รอให้ครบ หรือให้ OM/PM ปิดข้ามพร้อมเหตุผล', v_unready_n
           USING ERRCODE = 'MC006',
-                DETAIL = (SELECT jsonb_build_object('branches',
-                            coalesce(jsonb_agg(jsonb_build_object('id', b.id, 'name', b.name) ORDER BY b.name), '[]'))::text
-                            FROM branches b WHERE b.id = ANY (v_unconfirmed));
+                DETAIL = jsonb_build_object('branches', v_unready, 'can_override', false)::text;
+      END IF;
+      IF v_reason IS NULL THEN
+        RAISE EXCEPTION 'ยังมี % สาขาส่วนกลางที่บันทึกบริการไม่ครบ — รอให้ครบ หรือพิมพ์เหตุผลเพื่อปิดข้าม', v_unready_n
+          USING ERRCODE = 'MC006',
+                DETAIL = jsonb_build_object('branches', v_unready, 'can_override', true)::text;
       END IF;
       IF char_length(v_reason) NOT BETWEEN 5 AND 500 THEN
         RAISE EXCEPTION 'เหตุผลต้องยาว 5–500 ตัวอักษร' USING ERRCODE = 'MC007';
       END IF;
+      v_override := true;
     END IF;
 
     PERFORM public.month_close_write_central_rows(p_month, p_rows);
@@ -343,35 +446,38 @@ BEGIN
 
   BEGIN
     INSERT INTO month_closures (month_key, scope, closed_by, closed_at)
-    VALUES (p_month, p_scope, v_uid, now())
+    VALUES (p_month, p_scope, p_actor, now())
     RETURNING closed_at INTO v_closed_at;
   EXCEPTION WHEN unique_violation THEN
     RAISE EXCEPTION 'เดือน % ส่วน % ปิดไปแล้ว', p_month, p_scope USING ERRCODE = 'MC004';
   END;
 
-  IF p_scope = 'central' AND cardinality(v_unconfirmed) > 0 THEN
+  IF v_override THEN
     INSERT INTO month_closure_overrides (month_key, scope, reason, unconfirmed_branch_ids, overridden_by)
-    VALUES (p_month, p_scope, v_reason, v_unconfirmed, v_uid);
+    SELECT p_month, p_scope, v_reason,
+           coalesce(array_agg((e ->> 'id')::uuid), '{}'), p_actor
+      FROM jsonb_array_elements(v_unready) e;
   END IF;
 
   RETURN jsonb_build_object(
     'month', p_month,
     'scope', p_scope,
     'closed_at', v_closed_at,
-    'overridden', p_scope = 'central' AND cardinality(v_unconfirmed) > 0,
-    'unconfirmed_count', cardinality(v_unconfirmed),
+    'overridden', v_override,
+    'unready_count', v_unready_n,
     'carried_count', cardinality(v_carried)
   );
 END;
 $$;
 
-COMMENT ON FUNCTION public.close_month_part(text, public.closure_scope, jsonb, text, boolean) IS
-  'M39: ปิดเดือน 1 ส่วน (host) — central เก็บ snapshot 24 สาขาที่ route คำนวณด้วย lib/rules · province ปิดอย่างเดียว · MC001–MC009';
+COMMENT ON FUNCTION public.close_month_part(uuid, text, public.closure_scope, jsonb, text, boolean) IS
+  'M39: ปิดเดือน 1 ส่วน (service role · ผู้กด p_actor: central = host/recorder ส่วนกลาง · province = host) — MC001–MC009, MC014';
 
 -- =====================================================================
--- 5. resync_month_part
+-- 6. resync_month_part (service role · actor = host)
 -- =====================================================================
 CREATE FUNCTION public.resync_month_part(
+  p_actor       uuid,
   p_month       text,
   p_scope       public.closure_scope,
   p_rows        jsonb DEFAULT NULL,
@@ -384,17 +490,18 @@ SECURITY DEFINER
 SET search_path = public, pg_temp
 AS $$
 DECLARE
-  v_uid     uuid := auth.uid();
   v_changed int := 0;
   v_last    timestamptz;
 BEGIN
-  IF v_uid IS NULL OR NOT public.is_host() THEN
+  PERFORM public.month_close_require_service();
+  IF p_actor IS NULL OR p_scope IS NULL OR NOT public.month_close_actor_can(p_actor, p_scope, 'resync') THEN
     RAISE EXCEPTION 'คำนวณ snapshot ใหม่ได้เฉพาะ OM/PM (host)' USING ERRCODE = '42501';
   END IF;
-  IF p_month IS NULL OR p_month !~ '^\d{4}-(0[1-9]|1[0-2])$' OR p_scope IS NULL THEN
-    RAISE EXCEPTION 'เดือน/ส่วนไม่ถูกต้อง' USING ERRCODE = 'MC001';
+  IF p_month IS NULL OR p_month !~ '^\d{4}-(0[1-9]|1[0-2])$' THEN
+    RAISE EXCEPTION 'เดือนไม่ถูกต้อง' USING ERRCODE = 'MC001';
   END IF;
 
+  PERFORM public.month_close_as_actor(p_actor);
   PERFORM pg_advisory_xact_lock(hashtext('public.month_closures:' || p_month || ':' || p_scope::text));
 
   SELECT mc.last_resync_at INTO v_last
@@ -416,18 +523,18 @@ BEGIN
   END IF;
 
   UPDATE month_closures
-     SET last_resync_at = now(), last_resync_by = v_uid
+     SET last_resync_at = now(), last_resync_by = p_actor
    WHERE month_key = p_month AND scope = p_scope;
 
   RETURN jsonb_build_object('month', p_month, 'scope', p_scope, 'changed_branches', v_changed);
 END;
 $$;
 
-COMMENT ON FUNCTION public.resync_month_part(text, public.closure_scope, jsonb, timestamptz) IS
-  'M39: คำนวณ snapshot ใหม่ (host · เฉพาะส่วนที่ปิดแล้ว MC010) — central เขียนทับแถว computed (audit ค่าเก่า/ใหม่) · province บันทึกเวลาอย่างเดียว';
+COMMENT ON FUNCTION public.resync_month_part(uuid, text, public.closure_scope, jsonb, timestamptz) IS
+  'M39: คำนวณ snapshot ใหม่ (service role · ผู้กด host · ส่วนที่ปิดแล้ว MC010 · MC013 กันตัวเลขเก่า) — central เขียนทับแถว computed · province บันทึกเวลาอย่างเดียว';
 
 -- =====================================================================
--- 6. set_month_closer (DECISIONS 5.8)
+-- 7. set_month_closer (DECISIONS 5.8)
 -- =====================================================================
 CREATE FUNCTION public.set_month_closer(
   p_month     text,
@@ -485,7 +592,7 @@ COMMENT ON FUNCTION public.set_month_closer(text, public.closure_scope, uuid, ti
   'M39 (DECISIONS 5.8): host แก้ชื่อ/เวลาผู้ปิดเดือน · ลง audit ด้วย audit_month_closures · MC010–MC012';
 
 -- =====================================================================
--- 7. get_sync_status (DECISIONS 2.72)
+-- 8. get_sync_status (DECISIONS 2.72)
 -- =====================================================================
 CREATE FUNCTION public.get_sync_status()
 RETURNS TABLE (source text, started_at timestamptz, finished_at timestamptz, result text, error_code text)
@@ -510,7 +617,7 @@ COMMENT ON FUNCTION public.get_sync_status() IS
   'M39 (DECISIONS 2.72): รอบส่ง Dashboard ล่าสุดต่อช่องทาง (เวลา/ผล/error_code เท่านั้น) — host/admin/recorder';
 
 -- =====================================================================
--- 8. list_month_closures
+-- 9. list_month_closures
 -- =====================================================================
 CREATE FUNCTION public.list_month_closures(p_from text DEFAULT NULL, p_to text DEFAULT NULL)
 RETURNS TABLE (month_key text, scope public.closure_scope, closed_at timestamptz, closed_by_name text)
@@ -538,9 +645,11 @@ COMMENT ON FUNCTION public.list_month_closures(text, text) IS
   'M39: สถานะปิดเดือน (เดือน/ส่วน/เวลาปิด/ชื่อผู้ปิด) — host/admin/recorder';
 
 -- =====================================================================
--- 9. start_sync_log / finish_sync_log — เนื้อจาก 20261115250000 แก้เฉพาะบล็อก "M39"
+-- 10. start_sync_log (DROP + CREATE: เพิ่ม p_actor) / finish_sync_log — เนื้อจาก 20261115250000 แก้เฉพาะบล็อก "M39"
 -- =====================================================================
-CREATE OR REPLACE FUNCTION public.start_sync_log(p_source text)
+DROP FUNCTION public.start_sync_log(text);
+
+CREATE FUNCTION public.start_sync_log(p_source text, p_actor uuid DEFAULT NULL)   -- M39: + p_actor
 RETURNS bigint
 LANGUAGE plpgsql
 VOLATILE
@@ -558,11 +667,21 @@ BEGIN
       RAISE EXCEPTION 'Auto Sync เรียกได้เฉพาะระบบ (cron)' USING ERRCODE = '42501';
     END IF;
     v_uid := NULL;
-  ELSIF p_source IN ('manual', 'close', 'resync') THEN   -- M39: + close / resync (host กดปิดเดือน / คำนวณใหม่)
+  ELSIF p_source = 'manual' THEN
     -- service_role ห้ามเปิดรอบ manual แม้มี sub ของ host ติดมา (manual = คนกดจริงเท่านั้น)
     IF v_is_service OR v_uid IS NULL OR NOT public.is_host() THEN
       RAISE EXCEPTION 'ส่งข้อมูลเข้า Dashboard ได้เฉพาะ OM/PM (host)' USING ERRCODE = '42501';
     END IF;
+  -- M39: ส่งหลังปิดเดือน / คำนวณใหม่ — server (service role) เปิดรอบในนามผู้กด (p_actor) ที่มีสิทธิ์ทำรายการนั้น
+  ELSIF p_source IN ('close', 'resync') THEN
+    IF NOT v_is_service OR p_actor IS NULL
+       OR NOT (CASE WHEN p_source = 'resync'
+                    THEN public.month_close_actor_can(p_actor, 'central', 'resync')
+                    ELSE public.month_close_actor_can(p_actor, 'central', 'close')
+                         OR public.month_close_actor_can(p_actor, 'province', 'close') END) THEN
+      RAISE EXCEPTION 'ไม่มีสิทธิ์เปิดรอบส่ง "%"', p_source USING ERRCODE = '42501';
+    END IF;
+    v_uid := p_actor;
   ELSE
     -- export: ยังไม่มีหน้าจอ — เปิดเมื่อทำ Export (แก้ฟังก์ชันนี้ ไม่ต้องแก้ตาราง)   -- M39
     RAISE EXCEPTION 'ช่องทางส่ง "%" ยังไม่รองรับ', p_source USING ERRCODE = 'SY002';
@@ -597,8 +716,8 @@ BEGIN
 END;
 $$;
 
-COMMENT ON FUNCTION public.start_sync_log(text) IS
-  'M27/M39: เริ่มรอบส่ง Dashboard — auto = service_role · manual/close/resync = host · กันส่งซ้อน (SY001) · คืน id (auto ที่ชนรอบอื่น = NULL + แถว skipped/busy)';
+COMMENT ON FUNCTION public.start_sync_log(text, uuid) IS
+  'M27/M39: เริ่มรอบส่ง Dashboard — auto = service_role · manual = host · close/resync = service_role ในนาม p_actor · กันส่งซ้อน (SY001)';
 
 CREATE OR REPLACE FUNCTION public.finish_sync_log(
   p_id            bigint,
@@ -631,11 +750,11 @@ BEGIN
   END IF;
 
   IF v_is_service THEN
-    IF v_row.source <> 'auto' THEN
-      RAISE EXCEPTION 'ระบบปิดได้เฉพาะรอบ Auto Sync' USING ERRCODE = '42501';
+    IF v_row.source NOT IN ('auto', 'close', 'resync') THEN   -- M39: + close / resync (server เปิดรอบให้)
+      RAISE EXCEPTION 'ระบบปิดได้เฉพาะรอบ Auto Sync / ปิดเดือน / คำนวณใหม่' USING ERRCODE = '42501';
     END IF;
   -- ผู้เปิดรอบปิดรอบของตัวเองได้แม้ถูกถอดสิทธิ์ host ระหว่างทาง (ไม่งั้น commit แล้วแต่ log ค้างเป็น timeout)
-  ELSIF v_row.source NOT IN ('manual', 'close', 'resync')   -- M39: + close / resync
+  ELSIF v_row.source <> 'manual'
         OR auth.uid() IS NULL
         OR v_row.triggered_by IS DISTINCT FROM auth.uid() THEN
     RAISE EXCEPTION 'ไม่มีสิทธิ์บันทึกผลรอบนี้' USING ERRCODE = '42501';
@@ -654,28 +773,40 @@ END;
 $$;
 
 COMMENT ON FUNCTION public.finish_sync_log(bigint, text, text, text, text[], int, text) IS
-  'M27/M39: จบรอบส่ง Dashboard — service_role ปิดรอบ auto · host ปิดรอบ manual/close/resync ของตัวเอง · แก้ได้ครั้งเดียว (SY003)';
+  'M27/M39: จบรอบส่ง Dashboard — service_role ปิดรอบ auto/close/resync · host ปิดรอบ manual ของตัวเอง · แก้ได้ครั้งเดียว (SY003)';
 
 -- =====================================================================
--- 10. สิทธิ์ function
+-- 11. สิทธิ์ function
 -- =====================================================================
 -- helper ภายใน: เรียกได้จาก RPC (SECURITY DEFINER เจ้าของเดียวกัน) เท่านั้น
 REVOKE ALL ON FUNCTION public.month_close_check_month(text) FROM PUBLIC, anon, authenticated, service_role;
 REVOKE ALL ON FUNCTION public.month_close_check_central_rows(jsonb) FROM PUBLIC, anon, authenticated, service_role;
 REVOKE ALL ON FUNCTION public.month_close_write_central_rows(text, jsonb) FROM PUBLIC, anon, authenticated, service_role;
-REVOKE ALL ON FUNCTION public.central_unconfirmed_branches(text) FROM PUBLIC, anon, authenticated, service_role;
+REVOKE ALL ON FUNCTION public.central_unready_branches(text) FROM PUBLIC, anon, authenticated, service_role;
+REVOKE ALL ON FUNCTION public.month_close_actor_can(uuid, public.closure_scope, text) FROM PUBLIC, anon, authenticated, service_role;
+REVOKE ALL ON FUNCTION public.month_close_require_service() FROM PUBLIC, anon, authenticated, service_role;
+REVOKE ALL ON FUNCTION public.month_close_as_actor(uuid) FROM PUBLIC, anon, authenticated, service_role;
 
+-- trigger WHEN ของ snapshot เรียกด้วยสิทธิ์ผู้เขียนแถว
 REVOKE ALL ON FUNCTION public.snapshot_month_is_closed(text, uuid) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.snapshot_month_is_closed(text, uuid) TO authenticated, service_role;
 
-REVOKE ALL ON FUNCTION public.close_month_part(text, public.closure_scope, jsonb, text, boolean) FROM PUBLIC, anon;
-REVOKE ALL ON FUNCTION public.resync_month_part(text, public.closure_scope, jsonb, timestamptz) FROM PUBLIC, anon;
+-- เขียน (service role เท่านั้น — route ตรวจสิทธิ์ผู้ใช้ก่อน · RPC ตรวจ p_actor ซ้ำ)
+REVOKE ALL ON FUNCTION public.close_month_part(uuid, text, public.closure_scope, jsonb, text, boolean) FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.resync_month_part(uuid, text, public.closure_scope, jsonb, timestamptz) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.close_month_part(uuid, text, public.closure_scope, jsonb, text, boolean) TO service_role;
+GRANT EXECUTE ON FUNCTION public.resync_month_part(uuid, text, public.closure_scope, jsonb, timestamptz) TO service_role;
+
+-- ผู้ใช้ที่ล็อกอิน (ตรวจในเนื้อฟังก์ชัน)
+REVOKE ALL ON FUNCTION public.can_close_month_part(public.closure_scope) FROM PUBLIC, anon;
 REVOKE ALL ON FUNCTION public.set_month_closer(text, public.closure_scope, uuid, timestamptz) FROM PUBLIC, anon;
 REVOKE ALL ON FUNCTION public.get_sync_status() FROM PUBLIC, anon;
 REVOKE ALL ON FUNCTION public.list_month_closures(text, text) FROM PUBLIC, anon;
-
-GRANT EXECUTE ON FUNCTION public.close_month_part(text, public.closure_scope, jsonb, text, boolean) TO authenticated;
-GRANT EXECUTE ON FUNCTION public.resync_month_part(text, public.closure_scope, jsonb, timestamptz) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.can_close_month_part(public.closure_scope) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.set_month_closer(text, public.closure_scope, uuid, timestamptz) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.get_sync_status() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.list_month_closures(text, text) TO authenticated;
+
+-- start_sync_log ถูก DROP + CREATE ใหม่ → ให้สิทธิ์ใหม่ (finish_sync_log คงสิทธิ์เดิม)
+REVOKE ALL ON FUNCTION public.start_sync_log(text, uuid) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.start_sync_log(text, uuid) TO authenticated, service_role;

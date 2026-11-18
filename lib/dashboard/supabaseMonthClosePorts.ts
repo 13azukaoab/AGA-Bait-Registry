@@ -1,8 +1,11 @@
 /**
  * ตัวเชื่อม `MonthClosePorts` กับ Supabase จริง (M39) — ใช้ฝั่ง server เท่านั้น
- * - รับ client ของผู้ใช้ (JWT ของ host) · ไม่ใช้ service role · RPC ตรวจ host ซ้ำเองที่ฐานข้อมูล
- * - คำนวณแถวส่วนกลางด้วยทะเบียนชุดเดียวกับตอนส่ง Dashboard (`loadCentralRegistry`)
- * - ส่ง Dashboard ด้วย `runDashboardSync` + ports เดิมของ M27 (GitHub mock ได้ผ่าน options ในเทส)
+ *
+ * - `client` = **service role** (สร้างใน lib/admin/monthCloseAdmin.ts เท่านั้น) · `actor` = user id ของผู้กด
+ *   ที่ route ได้จาก auth.getUser() และผ่านด่านสิทธิ์ที่ DB มาแล้ว · RPC ตรวจสิทธิ์ของ actor ซ้ำเอง
+ *   และบันทึก audit ในนาม actor
+ * - อ่านทะเบียนด้วย service role (ไม่ใช่ RLS ของ recorder) → ตัวเลขครบทุกสัญญา
+ * - ส่ง Dashboard ด้วย `runDashboardSync` + ports เดิมของ M27 (เปิดรอบในนาม actor · GitHub mock ได้ผ่าน options ในเทส)
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
 
@@ -29,17 +32,19 @@ function rpcError(error: { message: string; code?: string; details?: string | nu
 type Json = Record<string, unknown>;
 
 export function supabaseMonthClosePorts(
-  client: SupabaseClient,
-  options: SupabaseSyncPortsOptions = {},
+  serviceClient: SupabaseClient,
+  actor: string,
+  options: Omit<SupabaseSyncPortsOptions, "actor"> = {},
 ): MonthClosePorts {
   return {
     async centralRows(month: string) {
-      const loaded = await loadCentralRegistry(client);
+      const loaded = await loadCentralRegistry(serviceClient);
       return centralSnapshotPayload(loaded.registry, loaded.branchIdByName, month);
     },
 
     async closePart(args: ClosePartArgs): Promise<ClosePartResult> {
-      const { data, error } = await client.rpc("close_month_part", {
+      const { data, error } = await serviceClient.rpc("close_month_part", {
+        p_actor: actor,
         p_month: args.month,
         p_scope: args.scope,
         p_rows: args.rows,
@@ -53,13 +58,14 @@ export function supabaseMonthClosePorts(
         scope: d.scope as ClosureScope,
         closedAt: String(d.closed_at),
         overridden: d.overridden === true,
-        unconfirmedCount: Number(d.unconfirmed_count ?? 0),
+        unreadyCount: Number(d.unready_count ?? 0),
         carriedCount: Number(d.carried_count ?? 0),
       };
     },
 
     async resyncPart(args): Promise<ResyncPartResult> {
-      const { data, error } = await client.rpc("resync_month_part", {
+      const { data, error } = await serviceClient.rpc("resync_month_part", {
+        p_actor: actor,
         p_month: args.month,
         p_scope: args.scope,
         p_rows: args.rows,
@@ -74,11 +80,11 @@ export function supabaseMonthClosePorts(
       };
     },
 
-    sync: (source) => runDashboardSync(source, supabaseSyncPorts(client, options)),
+    sync: (source) => runDashboardSync(source, supabaseSyncPorts(serviceClient, { ...options, actor })),
   };
 }
 
-/** แก้ชื่อ/เวลาผู้ปิด (DECISIONS 5.8) — RPC ตรวจ host + ลง audit */
+/** แก้ชื่อ/เวลาผู้ปิด (DECISIONS 5.8) — client ของผู้ใช้ (host) · RPC ตรวจ host + ลง audit */
 export async function setMonthCloser(
   client: SupabaseClient,
   args: { month: string; scope: ClosureScope; closedBy: string; closedAt: string },

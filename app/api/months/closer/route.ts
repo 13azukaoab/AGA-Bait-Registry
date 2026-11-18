@@ -15,8 +15,8 @@ export const dynamic = "force-dynamic";
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export async function POST(request: Request) {
-  const guard = await requireHost(request);
-  if (guard instanceof Response) return guard;
+  const signedIn = await requireHost(request);
+  if (signedIn instanceof Response) return signedIn;
 
   const body = await readJson(request);
   if (!body) return fail(400, "invalid_body", "ต้องส่งข้อมูลแบบ JSON");
@@ -32,7 +32,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    await setMonthCloser(guard, { ...target, closedBy, closedAt: new Date(closedAt).toISOString() });
+    await setMonthCloser(signedIn.supabase, { ...target, closedBy, closedAt: new Date(closedAt).toISOString() });
     return NextResponse.json({ ok: true });
   } catch (error) {
     return errorResponse(error);
