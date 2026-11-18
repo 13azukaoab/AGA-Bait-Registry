@@ -17,7 +17,7 @@
    2) แต่ละขั้นชี้ไปที่ element ด้วย attribute data-tour="..." บนหน้าจริง (target = CSS selector)
    3) หน้าจอในไฟล์นี้เป็นหน้าจำลองย่อ (ข้อมูลตัวอย่างทั้งหมด) · หน้าจริงใช้ปุ่ม/ช่องของจริงแทน
    4) โหมดฝึก: ไม่เรียก API · ไม่เขียน localStorage · ปุ่มบันทึกทุกปุ่มแค่แสดงข้อความ "โหมดฝึก ไม่บันทึก"
-   5) "แบบ ก / แบบ ข" = ตัวสลับเฉพาะ mockup (แถบเทาบนสุด) เพื่อให้เจ้าของเลือก — หน้าจริงใช้แบบเดียว
+   5) แบบที่เจ้าของเลือก = กล่องลอยชี้ปุ่ม (18 พ.ย. 2026) · แถบเทาบนสุดเป็นของ mockup เท่านั้น (เลือกตำแหน่ง/เริ่มใหม่) ห้ามเอาไปหน้าจริง
    คีย์ลัด: ← ย้อน · → ถัดไป · Esc ข้ามทั้งหมด
    ===================================================================== */
 :root{
@@ -70,9 +70,6 @@ button{cursor:pointer}
 #strip{position:sticky;top:0;z-index:70;height:var(--strip);display:flex;align-items:center;gap:10px;padding:0 12px;background:var(--surface-3);border-bottom:1px dashed var(--border-strong);font-size:12px;color:var(--fg-muted);overflow-x:auto;white-space:nowrap}
 #strip b{color:var(--warn);font-weight:600}
 #strip select,#strip button{font-size:12px;padding:3px 8px;border:1px solid var(--border-strong);border-radius:8px;background:var(--surface);min-height:30px}
-.seg{display:inline-flex;border:1px solid var(--border-strong);border-radius:8px;overflow:hidden}
-.seg button{border:0;border-radius:0;background:var(--surface)}
-.seg button[aria-pressed=true]{background:var(--accent);color:var(--accent-fg)}
 
 /* ---------- แอปจำลอง ---------- */
 .topbar{position:sticky;top:var(--strip);z-index:30;height:var(--tb);display:flex;align-items:center;gap:10px;padding:0 14px;background:var(--surface);border-bottom:1px solid var(--border)}
@@ -141,7 +138,7 @@ body.tour-on #pbanner{display:block}
 
 /* ---------- ไฮไลต์ + กล่องบทเรียน ---------- */
 #spot{position:fixed;z-index:55;pointer-events:none;border-radius:8px;outline:3px solid var(--accent);outline-offset:2px;display:none;transition:left .2s,top .2s,width .2s,height .2s}
-body.m-a #spot{box-shadow:0 0 0 9999px var(--scrim)}
+#spot{box-shadow:0 0 0 9999px var(--scrim)}
 #tip{position:fixed;z-index:60;width:332px;max-width:calc(100vw - 16px);background:var(--surface);border:1px solid var(--border-strong);border-radius:12px;box-shadow:var(--pop-shadow);padding:14px 16px 12px}
 #tip[hidden]{display:none}
 #tip .prog{display:flex;gap:3px;margin-bottom:8px}
@@ -160,21 +157,13 @@ body.m-a #spot{box-shadow:0 0 0 9999px var(--scrim)}
 #tip[data-side=right] .arw{display:block;left:-7px;top:var(--ay,30px);border-right:0;border-top:0}
 #tip[data-side=left] .arw{display:block;right:-7px;top:var(--ay,30px);border-left:0;border-bottom:0}
 #tip.center{left:50%;top:50%;transform:translate(-50%,-50%)}
-/* แบบ ข: แผงข้าง */
-body.m-b.tour-on:not(.small) .app{padding-right:var(--panel)}
-body.m-b:not(.small) #tip{top:calc(var(--strip) + var(--tb));right:0;bottom:0;left:auto;width:var(--panel);max-width:none;border-radius:0;border-width:0 0 0 1px;box-shadow:none;display:flex;flex-direction:column;padding:16px;transform:none}
-body.m-b:not(.small) #tip[hidden]{display:none}
-body.m-b:not(.small) #tip .arw{display:none !important}
-body.m-b:not(.small) #tip h2{font-size:17px}
-body.m-b:not(.small) #tip .acts{margin-top:auto;padding-top:14px}
-body.m-b:not(.small) #tip .link{margin-top:6px}
-body.m-b #spot{outline-offset:3px}
 
 /* ---------- จอเล็ก ---------- */
 @media (max-width:860px){
   .navtoggle{display:inline-flex}
-  .nav{position:fixed;left:0;top:calc(var(--strip) + var(--tb));bottom:0;height:auto;z-index:40;transform:translateX(-102%);transition:transform .2s;width:260px}
+  .nav{position:fixed;left:0;top:calc(var(--strip) + var(--tb));height:calc(100vh - var(--strip) - var(--tb));z-index:40;transform:translateX(-102%);transition:transform .2s;width:260px}
   body.nav-open .nav{transform:none;box-shadow:var(--pop-shadow)}
+  body.tour-on .nav{padding-bottom:400px} /* เว้นที่ให้เมนูเลื่อนพ้นกล่องบทเรียนด้านล่าง */
   body.tour-on .nav{transition:none} /* ระหว่างบทเรียนให้ลิ้นชักเปิดทันที ไฮไลต์จะได้วางตำแหน่งถูก */
   body.nav-open .nav-backdrop{display:block;position:fixed;inset:calc(var(--strip) + var(--tb)) 0 0 0;background:var(--scrim);z-index:35}
   .tb-title span{display:none}
@@ -183,7 +172,6 @@ body.m-b #spot{outline-offset:3px}
   .grid3{grid-template-columns:1fr}.split,.two{grid-template-columns:1fr}
   #tip{left:8px !important;right:8px !important;top:auto !important;bottom:8px !important;width:auto;max-width:none;transform:none !important;max-height:62vh;overflow:auto}
   #tip .arw{display:none !important}
-  body.m-b #tip{border-radius:12px;border-width:1px}
 }
 @media (max-width:767px){
   :root{--strip:56px}
@@ -201,16 +189,11 @@ body.m-b #spot{outline-offset:3px}
 #toast[hidden]{display:none}
 </style>
 </head>
-<body class="m-a">
+<body>
 
 <!-- เฉพาะ mockup -->
 <div id="strip" role="region" aria-label="ตัวควบคุมเฉพาะ mockup">
   <b>เฉพาะ mockup</b>
-  <span>รูปแบบ</span>
-  <div class="seg" role="group" aria-label="เลือกรูปแบบบทเรียน">
-    <button type="button" data-mode="a" aria-pressed="true">แบบ ก กล่องลอย</button>
-    <button type="button" data-mode="b" aria-pressed="false">แบบ ข แผงข้าง</button>
-  </div>
   <label for="roleSel">ตำแหน่งผู้ใช้</label>
   <select id="roleSel"><option value="admin">Admin (เปิดงาน)</option><option value="recorder" selected>หัวหน้างาน</option><option value="pmom">PM / OM</option></select>
   <button type="button" id="restart">เริ่มใหม่ตั้งแต่ล็อกอิน</button>
@@ -303,7 +286,7 @@ var $$=function(s,r){return Array.prototype.slice.call((r||document).querySelect
 var body=document.body, tip=$('#tip'), spot=$('#spot');
 var reduce=matchMedia('(prefers-reduced-motion:reduce)').matches;
 var small=matchMedia('(max-width:860px)');
-var st={mode:'a',role:'recorder',lesson:null,i:0,screen:'login',tour:false};
+var st={role:'recorder',lesson:null,i:0,screen:'login',tour:false};
 
 /* ---------- เมนู (กรองตามตำแหน่ง) ---------- */
 var IC={
@@ -409,7 +392,7 @@ function show(i){
   else { nx.textContent=s.cta||(last?'เสร็จสิ้น':'ถัดไป'); nx.classList.add('pri'); }
   tip.hidden=false;
   $('#live').textContent='ขั้น '+(i+1)+' จาก '+L.steps.length+': '+s.title;
-  requestAnimationFrame(function(){ place(); requestAnimationFrame(place); });
+  place(); setTimeout(place,60); setTimeout(place,250); /* ซ้ำกันกันเลย์เอาต์ขยับ (ไม่พึ่ง rAF) */
   if(inNav) setTimeout(place,280); /* รอลิ้นชักเมนูเลื่อนเข้าก่อนวางไฮไลต์ */
   nx.focus({preventScroll:true});
 }
@@ -438,6 +421,8 @@ var HOME={admin:'registry',recorder:'todo',pmom:'todo'};
 function vis(el){ var r=el.getBoundingClientRect(); return r.width>0&&r.height>0; }
 function reveal(el){
   var r=el.getBoundingClientRect(), top=(parseInt(getComputedStyle(document.documentElement).getPropertyValue('--strip'))||44)+56+44, sheet=small.matches?Math.min(tip.offsetHeight,window.innerHeight*.62)+20:20;
+  var nv=el.closest('#nav');
+  if(nv){ if(r.bottom>window.innerHeight-sheet) nv.scrollTop+=r.bottom-(window.innerHeight-sheet); return; } /* เมนูเลื่อนในลิ้นชัก ไม่ใช่เลื่อนทั้งหน้า */
   if(r.bottom>window.innerHeight-sheet) window.scrollBy(0,r.bottom-(window.innerHeight-sheet));
   else if(r.top<top) window.scrollBy(0,r.top-top);
 }
@@ -447,10 +432,10 @@ function place(){
   body.classList.toggle('small',small.matches);
   var el=s.target&&$(s.target);
   tip.classList.remove('center'); tip.removeAttribute('data-side');
-  if(!small.matches&&st.mode==='a'){ tip.style.left=tip.style.top=''; } else { tip.style.left=tip.style.top=''; }
+  tip.style.left=tip.style.top='';
   if(!el||!vis(el)){
     spot.style.display='none';
-    if(!small.matches&&st.mode==='a') tip.classList.add('center');
+    if(!small.matches) tip.classList.add('center');
     return;
   }
   reveal(el);
@@ -458,7 +443,7 @@ function place(){
   spot.style.display='block';
   spot.style.left=(r.left-pad)+'px'; spot.style.top=(r.top-pad)+'px';
   spot.style.width=(r.width+pad*2)+'px'; spot.style.height=(r.height+pad*2)+'px';
-  if(small.matches||st.mode==='b') return;
+  if(small.matches) return;
   var tw=tip.offsetWidth, th=tip.offsetHeight, vw=window.innerWidth, vh=window.innerHeight, g=16, side;
   var inNav=!!el.closest('#nav');
   var fits={bottom:r.bottom+g+th<vh-8, top:r.top-g-th>8, right:r.right+g+tw<vw-8, left:r.left-g-tw>8};
@@ -473,6 +458,9 @@ function place(){
   tip.style.setProperty('--ax',Math.max(16,Math.min(tw-32,r.left+r.width/2-x-6))+'px');
   tip.style.setProperty('--ay',Math.max(16,Math.min(th-32,r.top+Math.min(r.height,40)/2-y-6))+'px');
 }
+/* เลย์เอาต์ขยับหลังฟอนต์โหลด/ปรับขนาด → วางไฮไลต์ใหม่ */
+if(window.ResizeObserver) new ResizeObserver(function(){ if(st.tour) place(); }).observe($('#main'));
+if(document.fonts&&document.fonts.ready) document.fonts.ready.then(function(){ if(st.tour) place(); });
 window.addEventListener('resize',place); window.addEventListener('scroll',function(){ if(st.tour) place(); },{passive:true});
 $('#nav').addEventListener('transitionend',function(){ if(st.tour) place(); });
 small.addEventListener('change',function(){ if(st.tour) show(st.i); });
@@ -534,12 +522,6 @@ $('#helpMenu').addEventListener('click',function(e){
 });
 document.addEventListener('click',function(e){ if(!e.target.closest('.helpwrap')) closeHelp(); });
 /* ---------- แถบ mockup + ธีม ---------- */
-$$('#strip [data-mode]').forEach(function(b){ b.addEventListener('click',function(){ setMode(b.getAttribute('data-mode')); }); });
-function setMode(m){
-  st.mode=m; body.classList.remove('m-a','m-b'); body.classList.add('m-'+m);
-  $$('#strip [data-mode]').forEach(function(b){ b.setAttribute('aria-pressed',b.getAttribute('data-mode')===m?'true':'false'); });
-  if(st.tour) show(st.i);
-}
 $('#roleSel').addEventListener('change',function(){ st.role=this.value; renderNav(); });
 $('#restart').addEventListener('click',function(){ st.role=$('#roleSel').value; setScreen('login'); start('central'); });
 $('#themeBtn').addEventListener('click',function(){
@@ -551,7 +533,6 @@ var tt; function toast(m){ var t=$('#toast'); t.textContent=m; t.hidden=false; c
 /* ---------- เริ่ม ---------- */
 buildHelp();
 var q=new URLSearchParams(location.search);
-if(q.get('m')==='b') setMode('b');
 if(q.get('role')&&LESSONS[q.get('role')]){ st.role=q.get('role'); $('#roleSel').value=st.role; }
 setScreen('login'); start('central');
 })();
