@@ -19,10 +19,10 @@ import {
 
 // ข้อมูลสมมติ
 const TYPES: CustomerTypeRow[] = [
-  { code: "a", label: "วัด", groupLabel: "ศาสนา", sortOrder: 1 },
-  { code: "b", label: "โบสถ์", groupLabel: "ศาสนา", sortOrder: 2 },
-  { code: "c", label: "ร้านอาหาร", groupLabel: "ธุรกิจ", sortOrder: 3 },
-  { code: "d", label: "โรงแรม", groupLabel: "ธุรกิจ", sortOrder: 4 },
+  { code: "a", label: "วัด", groupLabel: "ศาสนา", sortOrder: 1, isActive: true, hint: null },
+  { code: "b", label: "โบสถ์", groupLabel: "ศาสนา", sortOrder: 2, isActive: true, hint: null },
+  { code: "c", label: "ร้านอาหาร", groupLabel: "ธุรกิจ", sortOrder: 3, isActive: true, hint: null },
+  { code: "d", label: "โรงแรม", groupLabel: "ธุรกิจ", sortOrder: 4, isActive: true, hint: null },
 ];
 
 describe("validateWorkload", () => {
@@ -75,9 +75,9 @@ describe("ประเภทลูกค้า", () => {
   });
   it("sort_order สลับกันหมวดก็ยังจัดตามลำดับสมาชิกแรก", () => {
     const g = groupTypes([
-      { code: "x", label: "X", groupLabel: "G2", sortOrder: 1 },
-      { code: "y", label: "Y", groupLabel: "G1", sortOrder: 2 },
-      { code: "z", label: "Z", groupLabel: "G2", sortOrder: 3 },
+      { code: "x", label: "X", groupLabel: "G2", sortOrder: 1, isActive: true, hint: null },
+      { code: "y", label: "Y", groupLabel: "G1", sortOrder: 2, isActive: true, hint: null },
+      { code: "z", label: "Z", groupLabel: "G2", sortOrder: 3, isActive: true, hint: null },
     ]);
     expect(g.map((x) => [x.label, x.items.map((i) => i.code)])).toEqual([["G2", ["x", "z"]], ["G1", ["y"]]]);
   });

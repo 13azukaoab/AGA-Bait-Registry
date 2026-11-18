@@ -6,7 +6,8 @@
  *     จึงตรวจที่ client + server) · สร้างแล้วแก้รหัสไม่ได้ · ประเภททีมต้องเลือก (TEAM_KINDS) ·
  *     จำนวนคนภาคสนาม 0–99 (`teams.headcount`) · **0 = แสดง "—"** (ชม./คน หารศูนย์ไม่ได้ M25)
  *   * ทีมระบบ (is_system, ตอนนี้ Sup): ลบ/ปิดไม่ได้ · เปลี่ยนรหัส/ประเภทไม่ได้ (แก้ชื่อ/จำนวนคนได้)
- *   * ประเภทลูกค้า: โครงสร้างจริงมีแค่ code / label / group_label / sort_order (ยังไม่มี is_active / hint — ดูรายงาน)
+ *   * ประเภทลูกค้า: code / label / group_label / sort_order + is_active (ปิดใช้) + hint (≤ 120 ตัวอักษร · M38)
+ *     ปิดใช้ = ไม่โผล่ใน dropdown แต่ลูกค้าเดิมคงค่าเดิม (`selectableTypes`) · hint เว้นว่าง = null
  *     ชื่อไม่ซ้ำทั้งระบบ (ไม่สนเว้นวรรค/ตัวพิมพ์) · หมวด = group_label ที่เรียงตาม sort_order ต่ำสุดของสมาชิก
  *     · ลำดับใหม่ส่ง RPC `reorder_customer_types` เป็น "รหัสทุกตัวตามลำดับใหม่" ครั้งเดียว
  *   * Workload: ชม./คน/เดือน > 0 และ ≤ 300 ทศนิยมไม่เกิน 2 ตำแหน่ง (ตรง WL001)
@@ -103,7 +104,16 @@ export function canOfferDelete(t: Pick<TeamRow, "isSystem">): boolean {
 // ประเภทลูกค้า
 // ---------------------------------------------------------------------------
 
-export type CustomerTypeRow = { code: string; label: string; groupLabel: string; sortOrder: number };
+export type CustomerTypeRow = {
+  code: string;
+  label: string;
+  groupLabel: string;
+  sortOrder: number;
+  /** M38: false = ปิดใช้ (ไม่โผล่ใน dropdown · ลูกค้าเดิมคงค่าเดิม) */
+  isActive: boolean;
+  /** M38: คำอธิบาย (tooltip) ≤ 120 ตัวอักษร · null = ไม่มี */
+  hint: string | null;
+};
 export type TypeGroup = { label: string; items: CustomerTypeRow[] };
 
 /** จัดกลุ่มตามหมวด: ลำดับหมวด = sort_order ต่ำสุดของสมาชิก · ในหมวดเรียงตาม sort_order */
@@ -146,11 +156,38 @@ export function moveGroup(groups: readonly TypeGroup[], gi: number, delta: -1 | 
 }
 
 export const TYPE_LABEL_MAX = 60;
+/** ตรง CHECK `customer_types_hint_check` (char_length ≤ 120 และต้องมีตัวอักษรที่ไม่ใช่ช่องว่าง) */
+export const TYPE_HINT_MAX = 120;
 
-export type TypeErrors = Partial<Record<"label" | "group", string>>;
+/** นับเป็นจุดรหัส (code point) เหมือน char_length ของ Postgres */
+export function hintLength(raw: string): number {
+  return Array.from(raw).length;
+}
+
+/**
+ * คำอธิบายประเภทที่จะส่ง DB: ตัดช่องว่างหัวท้าย · เว้นว่าง/ช่องว่างล้วน → null (DB ห้ามเก็บช่องว่างล้วน)
+ * · ยาวเกิน 120 → "invalid" (หน้าจอแจ้งผู้ใช้ · server ปฏิเสธซ้ำ)
+ */
+export function normalizeHint(raw: string): { ok: true; value: string | null } | { ok: false } {
+  const s = raw.trim();
+  if (s === "") return { ok: true, value: null };
+  return hintLength(s) > TYPE_HINT_MAX ? { ok: false } : { ok: true, value: s };
+}
+
+/**
+ * ประเภทที่เลือกได้ในฟอร์มเปิดงาน/ลูกค้า: เฉพาะที่ใช้งาน + ประเภทที่เลือกอยู่ตอนนี้ (ลูกค้าเดิมที่ใช้ประเภทที่ปิดแล้วยังต้องแสดงชื่อ)
+ */
+export function selectableTypes<T extends { code: string; isActive: boolean }>(
+  rows: readonly T[],
+  currentCode: string | null | undefined,
+): T[] {
+  return rows.filter((r) => r.isActive || r.code === currentCode);
+}
+
+export type TypeErrors = Partial<Record<"label" | "group" | "hint", string>>;
 
 export function validateType(
-  d: { label: string; group: string },
+  d: { label: string; group: string; hint?: string },
   all: readonly CustomerTypeRow[],
   exceptCode?: string,
 ): TypeErrors {
@@ -164,6 +201,7 @@ export function validateType(
   const group = d.group.trim();
   if (group === "") errors.group = "เลือกหรือกรอกชื่อหมวด";
   else if (group.length > TYPE_LABEL_MAX) errors.group = `ยาวได้ไม่เกิน ${TYPE_LABEL_MAX} ตัวอักษร`;
+  if (d.hint !== undefined && !normalizeHint(d.hint).ok) errors.hint = `คำอธิบายยาวได้ไม่เกิน ${TYPE_HINT_MAX} ตัวอักษร`;
   return errors;
 }
 

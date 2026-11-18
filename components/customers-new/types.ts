@@ -44,6 +44,10 @@ export interface CustomerTypeOption {
   code: string;
   label: string;
   groupLabel: string;
+  /** M38: false = ปิดใช้ — ไม่โผล่ในตัวเลือก (ยกเว้นที่ลูกค้า/แถวนี้เลือกอยู่แล้ว) · DB ตอบ CT002 ถ้าเลือกให้ลูกค้าใหม่ */
+  isActive: boolean;
+  /** M38: คำอธิบาย (tooltip) · null = ไม่มี */
+  hint: string | null;
 }
 
 /** ข้อมูลอ้างอิง (master) ที่ทุกแถวใช้ร่วมกัน — อ่านจากฐานข้อมูลฝั่ง server ครั้งเดียวต่อหน้า */

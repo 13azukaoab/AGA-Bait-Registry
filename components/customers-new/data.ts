@@ -92,7 +92,7 @@ export async function loadMasterData(
     supabase.from("teams").select("id, code, kind, is_active, branch_id").is("branch_id", null).order("code"),
     supabase
       .from("customer_types")
-      .select("code, label, group_label, sort_order")
+      .select("code, label, group_label, sort_order, is_active, hint")
       .order("sort_order"),
     supabase.from("tier_rules").select(TIER_RULE_COLUMNS).order("effective_month").order("min_annual"),
     // M28: นโยบาย Renew ไม่ผูกสัญญาเก่า — ล้ม = ไม่ทำให้หน้าล่ม (ถือว่าปิด · DB ตัดสินซ้ำตอนบันทึก)
@@ -131,8 +131,8 @@ export async function loadMasterData(
         })),
       ),
       customerTypes: (
-        (types.data ?? []) as { code: string; label: string; group_label: string }[]
-      ).map((t) => ({ code: t.code, label: t.label, groupLabel: t.group_label })),
+        (types.data ?? []) as { code: string; label: string; group_label: string; is_active: boolean; hint: string | null }[]
+      ).map((t) => ({ code: t.code, label: t.label, groupLabel: t.group_label, isActive: t.is_active, hint: t.hint })),
       tierRules,
       renewPolicy: parseRenewPolicy(unlinkedOpen, unlinkedUntil),
     },

@@ -24,6 +24,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { CustomerLink } from "@/components/links/CustomerLink";
+import { selectableTypes } from "@/components/settings/settingsLogic";
 import { useUnsavedWork } from "@/components/shell/unsaved-work";
 
 import { Alert, Button, Chip, Field, TierBadge, Toast, cx } from "@/components/ui";
@@ -1170,11 +1171,12 @@ function DraftTableRow({
   const termLocked3 = d.value1y.trim() !== "";
   const groups = useMemo(() => {
     const map = new Map<string, CustomerTypeOption[]>();
-    for (const t of master.customerTypes) {
+    // M38: เฉพาะประเภทที่ใช้งาน + ประเภทที่แถวนี้เลือกอยู่แล้ว (ลูกค้าเดิม/แถวแก้ไขต้องยังเห็นชื่อ แม้ประเภทถูกปิดใช้)
+    for (const t of selectableTypes(master.customerTypes, d.customerTypeCode)) {
       map.set(t.groupLabel, [...(map.get(t.groupLabel) ?? []), t]);
     }
     return [...map.entries()];
-  }, [master.customerTypes]);
+  }, [master.customerTypes, d.customerTypeCode]);
 
   // ช่องมูลค่า: 1 = ช่อง "1 ปี" (รวม Custom) · 3 = ช่อง "3 ปี"
   const money = (value: string, term: 1 | 3) => {
@@ -1458,8 +1460,9 @@ function DraftTableRow({
             {groups.map(([label, items]) => (
               <optgroup key={label} label={label}>
                 {items.map((t) => (
-                  <option key={t.code} value={t.code}>
+                  <option key={t.code} value={t.code} title={t.hint ?? undefined}>
                     {t.label}
+                    {t.isActive ? "" : " (ปิดใช้)"}
                   </option>
                 ))}
               </optgroup>

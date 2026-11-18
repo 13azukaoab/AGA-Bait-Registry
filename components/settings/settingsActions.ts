@@ -28,6 +28,7 @@ import {
   CONFIRM_PHRASE,
   groupTypes,
   newTypeCode,
+  normalizeHint,
   orderWithNewAtGroupEnd,
   parseHeadcount,
   validateTeam,
@@ -40,6 +41,8 @@ import {
   REASON_MIN,
   buildSavePayload,
   isDraftValid,
+  parseImpactRows,
+  type ImpactRow,
   type TierThresholds,
 } from "./tierLogic";
 
@@ -89,6 +92,41 @@ export async function saveTierRuleSetAction(input: {
   if (error) return dbFailure("save_tier_rule_set", error);
   revalidatePath(SETTINGS_PATH);
   return { ok: true };
+}
+
+/**
+ * ดูผลกระทบก่อนบันทึกเกณฑ์ (ดูอย่างเดียว ไม่เขียนข้อมูล) — RPC `preview_tier_rule_change(p_effective_month, p_rules)`
+ * ได้เฉพาะ host (DB ตรวจซ้ำ 42501) · ตัวเลขประมาณ: นับทุกสัญญาที่ยังไม่ถูกยกเลิก (DECISIONS 2.74) · ไม่มีชื่อลูกค้า
+ */
+export async function previewTierRuleChangeAction(input: {
+  effectiveMonth: string;
+  m: number;
+  l: number;
+  xl: number;
+}): Promise<ActionResult<{ rows: ImpactRow[] }>> {
+  const guard = await requireHostAction();
+  if (!guard.ok) return guard;
+
+  const t: TierThresholds = { m: Number(input?.m), l: Number(input?.l), xl: Number(input?.xl) };
+  if (
+    typeof input?.effectiveMonth !== "string" ||
+    !/^\d{4}-(0[1-9]|1[0-2])$/.test(input.effectiveMonth) ||
+    !isDraftValid(t)
+  ) {
+    return failure("INVALID_INPUT");
+  }
+
+  const { data, error } = await guard.supabase.rpc("preview_tier_rule_change", {
+    p_effective_month: `${input.effectiveMonth}-01`,
+    p_rules: { min_m: t.m, min_l: t.l, min_xl: t.xl },
+  });
+  if (error) return dbFailure("preview_tier_rule_change", error);
+  const rows = parseImpactRows(data);
+  if (rows === null) {
+    logCode("preview_tier_rule_change(shape)", "BAD_SHAPE");
+    return failure("UPSTREAM_ERROR");
+  }
+  return { ok: true, rows };
 }
 
 // ---------------------------------------------------------------------------
@@ -226,12 +264,19 @@ export async function deleteTeamAction(teamId: string): Promise<ActionResult> {
 // ประเภทลูกค้า
 // ---------------------------------------------------------------------------
 
-type TypeDb = { code: string; label: string; group_label: string; sort_order: number };
+type TypeDb = {
+  code: string;
+  label: string;
+  group_label: string;
+  sort_order: number;
+  is_active: boolean;
+  hint: string | null;
+};
 
 async function loadTypes(guard: HostContext): Promise<CustomerTypeRow[] | ActionFailure> {
   const { data, error } = await guard.supabase
     .from("customer_types")
-    .select("code, label, group_label, sort_order")
+    .select("code, label, group_label, sort_order, is_active, hint")
     .order("sort_order");
   if (error) return dbFailure("customer_types.select", error);
   return ((data ?? []) as TypeDb[]).map((r) => ({
@@ -239,17 +284,33 @@ async function loadTypes(guard: HostContext): Promise<CustomerTypeRow[] | Action
     label: r.label,
     groupLabel: r.group_label,
     sortOrder: r.sort_order,
+    isActive: r.is_active,
+    hint: r.hint,
   }));
+}
+
+/** hint ที่ส่งมา (ไม่ส่ง = ไม่แตะ) → ค่าที่จะเขียน DB · ผิดรูปแบบ = null ให้ผู้เรียกตอบ INVALID_INPUT */
+function parseHintInput(raw: unknown): { ok: true; value: string | null | undefined } | { ok: false } {
+  if (raw === undefined) return { ok: true, value: undefined };
+  if (typeof raw !== "string") return { ok: false };
+  const n = normalizeHint(raw);
+  return n.ok ? { ok: true, value: n.value } : { ok: false };
 }
 
 export async function createCustomerTypeAction(input: {
   label: string;
   groupLabel: string;
+  hint?: string;
+  isActive?: boolean;
 }): Promise<ActionResult> {
   const guard = await requireHostAction();
   if (!guard.ok) return guard;
   const label = String(input?.label ?? "").trim();
   const groupLabel = String(input?.groupLabel ?? "").trim();
+  const hint = parseHintInput(input?.hint);
+  if (!hint.ok || (input?.isActive !== undefined && typeof input.isActive !== "boolean")) {
+    return failure("INVALID_INPUT");
+  }
 
   const all = await loadTypes(guard);
   if (!Array.isArray(all)) return all;
@@ -257,9 +318,14 @@ export async function createCustomerTypeAction(input: {
 
   const code = newTypeCode(all.map((r) => r.code));
   const sortOrder = all.reduce((max, r) => Math.max(max, r.sortOrder), 0) + 1;
-  const { error } = await guard.supabase
-    .from("customer_types")
-    .insert({ code, label, group_label: groupLabel, sort_order: sortOrder });
+  const { error } = await guard.supabase.from("customer_types").insert({
+    code,
+    label,
+    group_label: groupLabel,
+    sort_order: sortOrder,
+    hint: hint.value ?? null,
+    is_active: input?.isActive ?? true,
+  });
   if (error) return dbFailure("customer_types.insert", error);
 
   // วางท้ายหมวดของมัน (ล้มได้ — ประเภทยังอยู่ท้ายสุด ผู้ใช้จัดเรียงเองได้)
@@ -275,24 +341,53 @@ export async function updateCustomerTypeAction(input: {
   code: string;
   label: string;
   groupLabel: string;
+  hint?: string;
+  isActive?: boolean;
 }): Promise<ActionResult> {
   const guard = await requireHostAction();
   if (!guard.ok) return guard;
   const code = String(input?.code ?? "");
   const label = String(input?.label ?? "").trim();
   const groupLabel = String(input?.groupLabel ?? "").trim();
+  const hint = parseHintInput(input?.hint);
+  if (!hint.ok || (input?.isActive !== undefined && typeof input.isActive !== "boolean")) {
+    return failure("INVALID_INPUT");
+  }
 
   const all = await loadTypes(guard);
   if (!Array.isArray(all)) return all;
   if (!all.some((r) => r.code === code)) return failure("NOT_FOUND");
   if (Object.keys(validateType({ label, group: groupLabel }, all, code)).length > 0) return failure("INVALID_INPUT");
 
+  // ส่งเฉพาะฟิลด์ที่ผู้เรียกระบุ (ไม่ส่ง = ไม่แตะค่าเดิม)
+  const values: Record<string, unknown> = { label, group_label: groupLabel };
+  if (hint.value !== undefined) values.hint = hint.value;
+  if (input?.isActive !== undefined) values.is_active = input.isActive;
+
   const { data, error } = await guard.supabase
     .from("customer_types")
-    .update({ label, group_label: groupLabel })
+    .update(values)
     .eq("code", code)
     .select("code");
   if (error) return dbFailure("customer_types.update", error);
+  if (!data || data.length === 0) return failure("NOT_FOUND");
+  revalidatePath(SETTINGS_PATH);
+  return { ok: true };
+}
+
+/** สวิตช์ "ใช้งาน/ปิดใช้" ของแถวประเภท — แก้ `is_active` ตัวเดียว (ไม่แตะชื่อ/หมวด) · host เท่านั้น (RLS + audit เดิม) */
+export async function setCustomerTypeActiveAction(code: string, active: boolean): Promise<ActionResult> {
+  const guard = await requireHostAction();
+  if (!guard.ok) return guard;
+  if (typeof code !== "string" || code === "" || code.length > 60 || typeof active !== "boolean") {
+    return failure("INVALID_INPUT");
+  }
+  const { data, error } = await guard.supabase
+    .from("customer_types")
+    .update({ is_active: active })
+    .eq("code", code)
+    .select("code");
+  if (error) return dbFailure("customer_types.set_active", error);
   if (!data || data.length === 0) return failure("NOT_FOUND");
   revalidatePath(SETTINGS_PATH);
   return { ok: true };

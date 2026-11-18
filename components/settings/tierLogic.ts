@@ -190,6 +190,84 @@ export function validateSaveForm(args: {
 }
 
 // ---------------------------------------------------------------------------
+// ผลกระทบต่อสัญญา (RPC `preview_tier_rule_change` · M38 · DECISIONS 2.74)
+// ---------------------------------------------------------------------------
+
+export const TIER_ORDER: readonly Tier[] = ["S", "M", "L", "XL"];
+
+/** 1 แถวจาก RPC: จำนวนสัญญาที่ย้ายจาก Tier เดิม → Tier ใหม่ (กลุ่มสี 1 = 1 ปี/Custom · 3 = 3 ปี) — ไม่มีชื่อลูกค้า */
+export type ImpactRow = { from: Tier; to: Tier; termGroup: "1" | "3"; count: number };
+
+function isTier(v: unknown): v is Tier {
+  return typeof v === "string" && (TIER_ORDER as readonly string[]).includes(v);
+}
+
+/** แปลงผล RPC เป็นแถวที่ปลอดภัย — รูปแบบแปลก (ไม่ใช่ array / tier ผิด / จำนวนติดลบ) = null (หน้าจอแจ้ง "คำนวณไม่ได้" ไม่เดา) */
+export function parseImpactRows(data: unknown): ImpactRow[] | null {
+  if (!Array.isArray(data)) return null;
+  const out: ImpactRow[] = [];
+  for (const r of data) {
+    if (typeof r !== "object" || r === null) return null;
+    const o = r as Record<string, unknown>;
+    const count = Number(o.contract_count);
+    if (
+      !isTier(o.from_tier) ||
+      !isTier(o.to_tier) ||
+      (o.term_group !== "1" && o.term_group !== "3") ||
+      !Number.isInteger(count) ||
+      count < 0
+    ) {
+      return null;
+    }
+    out.push({ from: o.from_tier, to: o.to_tier, termGroup: o.term_group, count });
+  }
+  return out;
+}
+
+export type ImpactTierLine = { tier: Tier; before: number; after: number; diff: number };
+export type ImpactMove = { from: Tier; to: Tier; y1: number; y3: number; total: number };
+export type ImpactSummary = {
+  total: number;
+  moved: number;
+  perTier: ImpactTierLine[];
+  /** เฉพาะคู่ที่ Tier เปลี่ยนจริง (from ≠ to) เรียง S→XL */
+  moves: ImpactMove[];
+};
+
+/** จัดกลุ่มแถวผลกระทบ: ตารางก่อน/หลังต่อ Tier + รายการคู่ที่ย้าย (แยก 1 ปี/3 ปี) */
+export function summarizeImpact(rows: readonly ImpactRow[]): ImpactSummary {
+  const before = new Map<Tier, number>();
+  const after = new Map<Tier, number>();
+  const moveMap = new Map<string, ImpactMove>();
+  let total = 0;
+  let moved = 0;
+  for (const r of rows) {
+    total += r.count;
+    before.set(r.from, (before.get(r.from) ?? 0) + r.count);
+    after.set(r.to, (after.get(r.to) ?? 0) + r.count);
+    if (r.from === r.to) continue;
+    moved += r.count;
+    const key = `${r.from}>${r.to}`;
+    const m = moveMap.get(key) ?? { from: r.from, to: r.to, y1: 0, y3: 0, total: 0 };
+    if (r.termGroup === "3") m.y3 += r.count;
+    else m.y1 += r.count;
+    m.total += r.count;
+    moveMap.set(key, m);
+  }
+  const idx = (t: Tier) => TIER_ORDER.indexOf(t);
+  return {
+    total,
+    moved,
+    perTier: TIER_ORDER.map((tier) => {
+      const b = before.get(tier) ?? 0;
+      const a = after.get(tier) ?? 0;
+      return { tier, before: b, after: a, diff: a - b };
+    }),
+    moves: [...moveMap.values()].sort((a, b) => idx(a.from) - idx(b.from) || idx(a.to) - idx(b.to)),
+  };
+}
+
+// ---------------------------------------------------------------------------
 // ตัวอย่างตรวจสอบ (คำนวณสดจากร่าง)
 // ---------------------------------------------------------------------------
 

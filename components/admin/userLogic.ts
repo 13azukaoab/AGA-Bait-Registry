@@ -33,7 +33,51 @@ export type UserRow = {
   isActive: boolean;
   mustChangePassword: boolean;
   lastLogin: string | null;
+  /** M38: มีแจ้งเตือน "ตำแหน่งถูกเปลี่ยน" ที่ผู้ใช้ยังไม่อ่าน (RPC list_notification_read_status) */
+  hasUnreadPositionChange?: boolean;
+  unreadCount?: number;
+  oldestUnreadAt?: string | null;
 };
+
+/** แถวจาก RPC `list_notification_read_status()` (host เท่านั้น · ไม่มีเนื้อหาแจ้งเตือน) */
+export type ReadStatusRow = {
+  userId: string;
+  hasUnread: boolean;
+  unreadCount: number;
+  oldestUnreadAt: string | null;
+};
+
+/** แปลงผล RPC — รูปแบบแปลก = null (หน้าจอไม่แสดงป้าย ไม่เดา) */
+export function parseReadStatusRows(data: unknown): ReadStatusRow[] | null {
+  if (!Array.isArray(data)) return null;
+  const out: ReadStatusRow[] = [];
+  for (const r of data) {
+    if (typeof r !== "object" || r === null) return null;
+    const o = r as Record<string, unknown>;
+    const n = Number(o.unread_count);
+    if (typeof o.user_id !== "string" || typeof o.has_unread_position_change !== "boolean" || !Number.isInteger(n) || n < 0) {
+      return null;
+    }
+    out.push({
+      userId: o.user_id,
+      hasUnread: o.has_unread_position_change,
+      unreadCount: n,
+      oldestUnreadAt: typeof o.oldest_unread_at === "string" ? o.oldest_unread_at : null,
+    });
+  }
+  return out;
+}
+
+/** ผนวกสถานะอ่านเข้าแถวผู้ใช้ (ผู้ใช้ที่ไม่มีในผลลัพธ์ = ไม่มีป้าย) */
+export function mergeReadStatus(users: readonly UserRow[], rows: readonly ReadStatusRow[]): UserRow[] {
+  const byId = new Map(rows.map((r) => [r.userId, r]));
+  return users.map((u) => {
+    const s = byId.get(u.userId);
+    return s
+      ? { ...u, hasUnreadPositionChange: s.hasUnread, unreadCount: s.unreadCount, oldestUnreadAt: s.oldestUnreadAt }
+      : u;
+  });
+}
 
 /** ชื่อที่แสดง: ไม่มีชื่อ = ใช้ username */
 export function nameOf(u: Pick<UserRow, "displayName" | "username">): string {
