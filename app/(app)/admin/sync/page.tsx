@@ -1,5 +1,5 @@
 /**
- * /admin/dashboard-sync — Dashboard Sync (SPEC §9.2 จอ 10 · mockup FINAL `docs/mockup/dashboard-sync.html`)
+ * /admin/sync — Dashboard Sync (SPEC §9.2 จอ 10 · mockup FINAL `docs/mockup/dashboard-sync.html`)
  *
  * Logic summary:
  *   * เฉพาะ host — ด่าน middleware (กลุ่ม /admin) + ตรวจซ้ำที่นี่ · ปุ่ม "ส่งตอนนี้" เรียก POST /api/dashboard/sync
@@ -21,7 +21,7 @@ export const dynamic = "force-dynamic";
 
 export default async function DashboardSyncPage() {
   const profile = await requireProfile();
-  if (!canAccessPath(profile.role, "/admin/dashboard-sync")) redirect(homeForRole(profile.role));
+  if (!canAccessPath(profile.role, "/admin/sync")) redirect(homeForRole(profile.role));
 
   const { data } = await loadSyncLogs(await createClient());
   if (!data) {
