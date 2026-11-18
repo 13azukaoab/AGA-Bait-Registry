@@ -258,3 +258,56 @@ export function formatBangkok(iso: string | null | undefined): string {
   const get = (t: string) => parts.find((p) => p.type === t)?.value ?? "";
   return `${get("day")}/${get("month")}/${get("year")} ${get("hour")}:${get("minute")}`;
 }
+
+// ---------------------------------------------------------------------------
+// กล่อง "สถานะส่ง Dashboard" (ดูอย่างเดียว · host + recorder · DECISIONS 2.72)
+// ---------------------------------------------------------------------------
+
+const SOURCE_LABEL: Record<string, string> = {
+  auto: "ส่งอัตโนมัติ (06:00 น.)",
+  manual: "ส่งด้วยมือ",
+  close: "ส่งหลังปิดเดือน",
+  resync: "ส่งหลังคำนวณ snapshot ใหม่",
+  export: "ส่งออก",
+};
+const SOURCE_ORDER = ["auto", "manual", "close", "resync", "export"];
+
+const SYNC_ERROR_TEXT: Record<string, string> = {
+  invalid_data: "ข้อมูลที่สร้างไม่ผ่านการตรวจรูปแบบ",
+  months_dropped: "ถูกระงับ — ข้อมูลเดือนเก่าบน Dashboard จะหาย",
+  value_drop: "ถูกระงับ — มูลค่ารวมลดลงผิดปกติ รอคนตรวจ",
+  legacy_missing: "ไม่พบข้อมูลเดือนก่อนเริ่มใช้ระบบ",
+  closed_snapshot_missing: "เดือนที่ปิดแล้วไม่มี snapshot ที่เก็บไว้",
+  index_missing: "ไม่พบไฟล์หน้า Dashboard ปลายทาง",
+  index_marker_missing: "โครงหน้า Dashboard ปลายทางเปลี่ยน",
+  load_failed: "อ่านข้อมูลจากระบบไม่สำเร็จ",
+};
+
+export interface SyncRowView {
+  source: string;
+  label: string;
+  tone: "ok" | "warn" | "danger" | "na";
+  status: string;
+  detail: string | null;
+  at: string | null;
+}
+
+/** แปลง 1 แถวจาก get_sync_status เป็นข้อความไทย (ไม่โชว์ error ดิบ · config_missing = ยังไม่ตั้งค่า ไม่ใช่ error) */
+export function describeSyncRow(r: SyncStatusRow): SyncRowView {
+  const label = SOURCE_LABEL[r.source] ?? "ส่ง Dashboard";
+  const base = { source: r.source, label, at: r.finished_at ?? r.started_at };
+  if (!r.finished_at || r.result === null) return { ...base, tone: "warn", status: "กำลังส่ง…", detail: null };
+  if (r.result === "success") return { ...base, tone: "ok", status: "สำเร็จ", detail: null };
+  if (r.result === "skipped") return { ...base, tone: "ok", status: "ข้อมูลไม่เปลี่ยน ไม่ต้องส่ง", detail: null };
+  if (r.error_code === "config_missing") return { ...base, tone: "na", status: "ยังไม่ได้ตั้งค่าการเชื่อมต่อ", detail: null };
+  return { ...base, tone: "danger", status: "ไม่สำเร็จ", detail: (r.error_code && SYNC_ERROR_TEXT[r.error_code]) || "ติดต่อ OM/PM ให้ตรวจที่หน้า Dashboard Sync" };
+}
+
+/** ทุกช่องทางที่เคยส่ง เรียงตามลำดับคงที่ */
+export function describeSyncRows(rows: readonly SyncStatusRow[]): SyncRowView[] {
+  const rank = (s: string) => {
+    const i = SOURCE_ORDER.indexOf(s);
+    return i < 0 ? SOURCE_ORDER.length : i;
+  };
+  return [...rows].sort((a, b) => rank(a.source) - rank(b.source)).map(describeSyncRow);
+}

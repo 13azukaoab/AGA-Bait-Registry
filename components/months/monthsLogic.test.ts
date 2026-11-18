@@ -193,3 +193,30 @@ describe("formatBangkok", () => {
     expect(formatBangkok("xx")).toBe("—");
   });
 });
+
+describe("describeSyncRow", () => {
+  const row = (over: Partial<import("./monthsLogic").SyncStatusRow>) => ({ source: "auto", started_at: "s", finished_at: "f", result: "success", error_code: null, ...over });
+  it("สำเร็จ / ข้าม / กำลังส่ง", async () => {
+    const { describeSyncRow } = await import("./monthsLogic");
+    expect(describeSyncRow(row({})).tone).toBe("ok");
+    expect(describeSyncRow(row({ result: "skipped" })).tone).toBe("ok");
+    expect(describeSyncRow(row({ finished_at: null, result: null })).status).toContain("กำลังส่ง");
+  });
+  it("config_missing = ยังไม่ตั้งค่า ไม่ใช่ error", async () => {
+    const { describeSyncRow } = await import("./monthsLogic");
+    const v = describeSyncRow(row({ result: "failed", error_code: "config_missing" }));
+    expect(v.tone).toBe("na");
+    expect(v.status).toBe("ยังไม่ได้ตั้งค่าการเชื่อมต่อ");
+  });
+  it("ล้มเหลว: code รู้จัก = ข้อความไทย · ไม่รู้จัก = ข้อความกลาง ไม่โชว์ดิบ", async () => {
+    const { describeSyncRow } = await import("./monthsLogic");
+    expect(describeSyncRow(row({ result: "failed", error_code: "value_drop" })).detail).toContain("มูลค่า");
+    const u = describeSyncRow(row({ result: "failed", error_code: "ghp_secret_xyz" }));
+    expect(u.tone).toBe("danger");
+    expect(u.detail).not.toContain("ghp_");
+  });
+  it("เรียงช่องทางตามลำดับคงที่", async () => {
+    const { describeSyncRows } = await import("./monthsLogic");
+    expect(describeSyncRows([row({ source: "resync" }), row({ source: "auto" }), row({ source: "close" })]).map((r) => r.source)).toEqual(["auto", "close", "resync"]);
+  });
+});

@@ -20,6 +20,7 @@ import { Alert, Button, Chip, Toast, cx } from "@/components/ui";
 import { useUnsavedWork } from "@/components/shell/unsaved-work";
 
 import { MissedReview } from "./MissedReview";
+import { SyncStatusBox } from "./SyncStatusBox";
 import { postClose, postResync, type BranchRef } from "./monthsApi";
 import type { MonthsPageData } from "./monthsData";
 import {
@@ -187,12 +188,7 @@ export function MonthsClient({ data }: { data: MonthsPageData }) {
           <div className="text-[12px] text-fg-muted">ส่ง Dashboard สำเร็จล่าสุด</div>
           <div className="mt-1 text-[17px] font-semibold tabular-nums">{formatBangkok(syncInfo.lastSuccessAt)}</div>
         </div>
-        <div className={cx("rounded-[10px] border p-3", syncInfo.latestFailed ? "border-danger bg-danger-soft" : "border-border bg-surface")}>
-          <div className="text-[12px] text-fg-muted">สถานะรอบส่งล่าสุด</div>
-          <div className={cx("mt-1 text-[15px] font-semibold", syncInfo.latestFailed ? "text-danger" : "text-ok")}>
-            {syncInfo.latestFailed ? "ล้มเหลว — รอรอบอัตโนมัติ 06:00 น. หรือให้ OM/PM กดส่งตอนนี้" : "ปกติ"}
-          </div>
-        </div>
+        <SyncStatusBox rows={data.syncRows} />
       </div>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-[300px_minmax(0,1fr)]">

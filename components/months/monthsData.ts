@@ -24,6 +24,7 @@ export interface MonthsPageData {
   perms: Perms;
   months: MonthEntry[];
   goLiveMonth: string | null;
+  syncRows: SyncStatusRow[];
   sync: { lastSuccessAt: string | null; latestFailed: boolean };
 }
 
@@ -56,6 +57,7 @@ export async function loadMonthsData(
       goLiveMonth,
       closures: (closures.data ?? []) as ClosureRow[],
     }),
+    syncRows: (status.data ?? []) as SyncStatusRow[],
     sync: summarizeSync((status.data ?? []) as SyncStatusRow[]),
   };
 }
