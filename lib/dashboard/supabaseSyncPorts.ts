@@ -21,6 +21,7 @@ import {
   bangkokMonth,
   previousMonth,
   type BranchContract,
+  type CentralRegistry,
   type StoredSnapshotRow,
 } from "./sources";
 import { syncDashboardData, type DashboardRepoTarget } from "./sync";
@@ -129,27 +130,19 @@ async function goLiveMonth(client: SupabaseClient): Promise<string> {
   return month;
 }
 
-/** อ่านฐานข้อมูลทั้งหมดที่ต้องใช้ แล้วประกอบไฟล์ Dashboard (ไม่เขียนอะไรลงฐานข้อมูล) */
-export async function loadDashboardData(
-  client: SupabaseClient,
-  now: Date = new Date(),
-): Promise<DashboardData> {
-  const goLive = await goLiveMonth(client);
-  const lastMonth = previousMonth(bangkokMonth(now));
+/** ทะเบียนส่วนกลางที่อ่านจากฐานข้อมูล + ตัวแปลงชื่อสาขา ↔ id (ใช้ทั้งส่ง Dashboard และปิดเดือน M39) */
+export interface LoadedRegistry {
+  registry: CentralRegistry;
+  /** id สาขา → ชื่อสาขา (throw `load_failed` ถ้าไม่พบ) */
+  nameOf(branchId: unknown): string;
+  /** ชื่อสาขา → id สาขา */
+  branchIdByName: ReadonlyMap<string, string>;
+}
 
-  const [branches, snapshots, closures, tierRows, customers, contracts, visits] = await Promise.all([
+/** อ่านทะเบียน (สาขา เกณฑ์ Tier ลูกค้า สัญญา การเข้า routine) สำหรับคำนวณส่วนกลางด้วย lib/rules — อ่านอย่างเดียว */
+export async function loadCentralRegistry(client: SupabaseClient): Promise<LoadedRegistry> {
+  const [branches, tierRows, customers, contracts, visits] = await Promise.all([
     fetchAll(client, "branches", "id, name", KEYSET),
-    fetchAll(client, "monthly_branch_snapshots", SNAPSHOT_COLUMNS, {
-      orderBy: ["month_key", "branch_id"],
-      dedupeKey: (r) => `${String(r.month_key)}|${String(r.branch_id)}`,
-    }),
-    fetchAll(client, "month_closures", "month_key, scope", {
-      orderBy: ["month_key", "scope"],
-      dedupeKey: (r) => `${String(r.month_key)}|${String(r.scope)}`,
-    }, {
-      eq: ["scope", "central"],
-      notNull: "closed_at",
-    }),
     fetchAll(client, "tier_rules", TIER_RULE_COLUMNS, {
       orderBy: ["effective_month", "tier"],
       dedupeKey: (r) => `${String(r.effective_month)}|${String(r.tier)}`,
@@ -168,24 +161,13 @@ export async function loadDashboardData(
   ]);
 
   const branchName = new Map(branches.map((b) => [String(b.id), String(b.name)]));
+  const branchIdByName = new Map(branches.map((b) => [String(b.name), String(b.id)]));
   const customerBranch = new Map(customers.map((c) => [String(c.id), String(c.branch_id)]));
   const nameOf = (branchId: unknown): string => {
     const name = branchName.get(String(branchId));
     if (!name) throw new DashboardSyncError("load_failed", `ไม่พบสาขา id ${String(branchId)}`);
     return name;
   };
-
-  const storedRows: StoredSnapshotRow[] = snapshots.map((s) => ({
-    month: String(s.month_key),
-    source: s.source as StoredSnapshotRow["source"],
-    area: "", // buildDashboardData ใส่เขตปัจจุบันตามรายชื่อ 43 สาขาเอง (DECISIONS 6.7)
-    branch: nameOf(s.branch_id),
-    s1: num(s.s1), s3: num(s.s3), m1: num(s.m1), m3: num(s.m3),
-    l1: num(s.l1), l3: num(s.l3), xl1: num(s.xl1), xl3: num(s.xl3),
-    cust: num(s.cust),
-    vS: num(s.vS), vM: num(s.vM), vL: num(s.vL), vXL: num(s.vXL),
-    value: num(s.value),
-  }));
 
   const registryContracts: BranchContract[] = contracts.map((c) => {
     const contract: Contract = {
@@ -209,16 +191,58 @@ export async function loadDashboardData(
     makeupForMonth: str(v.makeup_for_month),
   }));
 
-  const sources = assembleDashboardSources({
-    goLiveMonth: goLive,
-    lastMonth,
-    snapshots: storedRows,
-    closedCentralMonths: new Set(closures.map((c) => String(c.month_key))),
+  return {
     registry: {
       contracts: registryContracts,
       visits: registryVisits,
       rules: toTierRules(tierRows as unknown as TierRuleRow[]),
     },
+    nameOf,
+    branchIdByName,
+  };
+}
+
+/** อ่านฐานข้อมูลทั้งหมดที่ต้องใช้ แล้วประกอบไฟล์ Dashboard (ไม่เขียนอะไรลงฐานข้อมูล) */
+export async function loadDashboardData(
+  client: SupabaseClient,
+  now: Date = new Date(),
+): Promise<DashboardData> {
+  const goLive = await goLiveMonth(client);
+  const lastMonth = previousMonth(bangkokMonth(now));
+
+  const [loaded, snapshots, closures] = await Promise.all([
+    loadCentralRegistry(client),
+    fetchAll(client, "monthly_branch_snapshots", SNAPSHOT_COLUMNS, {
+      orderBy: ["month_key", "branch_id"],
+      dedupeKey: (r) => `${String(r.month_key)}|${String(r.branch_id)}`,
+    }),
+    fetchAll(client, "month_closures", "month_key, scope", {
+      orderBy: ["month_key", "scope"],
+      dedupeKey: (r) => `${String(r.month_key)}|${String(r.scope)}`,
+    }, {
+      eq: ["scope", "central"],
+      notNull: "closed_at",
+    }),
+  ]);
+
+  const storedRows: StoredSnapshotRow[] = snapshots.map((s) => ({
+    month: String(s.month_key),
+    source: s.source as StoredSnapshotRow["source"],
+    area: "", // buildDashboardData ใส่เขตปัจจุบันตามรายชื่อ 43 สาขาเอง (DECISIONS 6.7)
+    branch: loaded.nameOf(s.branch_id),
+    s1: num(s.s1), s3: num(s.s3), m1: num(s.m1), m3: num(s.m3),
+    l1: num(s.l1), l3: num(s.l3), xl1: num(s.xl1), xl3: num(s.xl3),
+    cust: num(s.cust),
+    vS: num(s.vS), vM: num(s.vM), vL: num(s.vL), vXL: num(s.vXL),
+    value: num(s.value),
+  }));
+
+  const sources = assembleDashboardSources({
+    goLiveMonth: goLive,
+    lastMonth,
+    snapshots: storedRows,
+    closedCentralMonths: new Set(closures.map((c) => String(c.month_key))),
+    registry: loaded.registry,
   });
 
   return buildDashboardData(sources, { goLiveMonth: goLive });
@@ -228,6 +252,11 @@ export interface SupabaseSyncPortsOptions {
   env?: Record<string, string | undefined>;
   fetchImpl?: typeof fetch;
   now?: () => Date;
+  /**
+   * M39: ผู้กด (user id) เมื่อ server เปิดรอบ `close` / `resync` ด้วย service role —
+   * DB ตรวจสิทธิ์ของผู้นี้เองและบันทึกเป็น triggered_by
+   */
+  actor?: string;
 }
 
 /** ports จริง: log ผ่าน RPC start_sync_log / finish_sync_log (ไม่มีสิทธิ์เขียนตารางตรง) */
@@ -237,7 +266,10 @@ export function supabaseSyncPorts(
 ): DashboardSyncPorts {
   return {
     async startLog(source: SyncSource) {
-      const { data, error } = await client.rpc("start_sync_log", { p_source: source });
+      const { data, error } = await client.rpc(
+        "start_sync_log",
+        options.actor ? { p_source: source, p_actor: options.actor } : { p_source: source },
+      );
       if (error) throw Object.assign(new Error(error.message), { code: error.code });
       return data === null ? null : Number(data);
     },

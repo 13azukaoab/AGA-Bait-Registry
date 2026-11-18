@@ -14,12 +14,13 @@ SELECT unnest(ARRAY[
   'station_checks', 'profiles', 'audit_log', 'month_closures'
 ]) AS tbl;
 
--- ตารางทั้งหมดที่ authenticated/service_role ต้องเข้าถึงได้ (ยกเว้น audit_log ที่อ่านอย่างเดียว)
+-- ตารางทั้งหมดที่ authenticated/service_role ต้องเข้าถึงได้ (ยกเว้น audit_log ที่อ่านอย่างเดียว ·
+-- M39: month_closures เขียนผ่าน RPC เท่านั้น → ย้ายออก ทดสอบสิทธิ์ใน 10/53)
 CREATE TEMP VIEW writable_tables AS
 SELECT unnest(ARRAY[
   'zones', 'branches', 'teams', 'customer_types', 'tier_rules', 'positions',
   'profiles', 'customers', 'contracts', 'contract_teams', 'stations',
-  'visits', 'station_checks', 'month_closures', 'monthly_branch_snapshots'
+  'visits', 'station_checks', 'monthly_branch_snapshots'
 ]) AS tbl;
 
 -- ---------- anon ----------
@@ -57,8 +58,8 @@ SELECT is(
        AND has_table_privilege('authenticated', 'public.' || tbl, 'INSERT')
        AND has_table_privilege('authenticated', 'public.' || tbl, 'UPDATE')
        AND has_table_privilege('authenticated', 'public.' || tbl, 'DELETE'))::int,
-  15,
-  'authenticated มีสิทธิ์ครบ 4 action ทั้ง 15 ตาราง (RLS เป็นตัวคุมจริง)');
+  14,
+  'authenticated มีสิทธิ์ครบ 4 action ทั้ง 14 ตาราง (RLS เป็นตัวคุมจริง)');
 
 SELECT ok(
   has_table_privilege('authenticated', 'public.audit_log', 'SELECT'),
@@ -77,8 +78,8 @@ SELECT is(
        AND has_table_privilege('service_role', 'public.' || tbl, 'INSERT')
        AND has_table_privilege('service_role', 'public.' || tbl, 'UPDATE')
        AND has_table_privilege('service_role', 'public.' || tbl, 'DELETE'))::int,
-  15,
-  'service_role มีสิทธิ์ครบ 4 action ทั้ง 15 ตาราง (งานเบื้องหลัง/cron)');
+  14,
+  'service_role มีสิทธิ์ครบ 4 action ทั้ง 14 ตาราง (งานเบื้องหลัง/cron)');
 
 SELECT ok(
   has_table_privilege('service_role', 'public.audit_log', 'INSERT'),

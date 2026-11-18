@@ -131,11 +131,11 @@ SELECT lives_ok(
 -- ===================== M6 (ง) closed_by / closed_at can be corrected, with history =====================
 SET LOCAL ROLE authenticated;
 SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a1', true);
+-- M39: month_closures เขียนผ่าน RPC เท่านั้น → แก้ผู้ปิดผ่าน set_month_closer (เวลาต้อง ≥ ต้นเดือนถัดไป และ ≤ ตอนนี้)
 SELECT lives_ok(
-  format($$UPDATE month_closures SET closed_by = %L, closed_at = '2026-10-01 09:00+07'
-            WHERE month_key = %L AND scope = 'central'$$,
-         '00000000-0000-0000-0000-0000000000a3',
-         to_char((now() AT TIME ZONE 'Asia/Bangkok') - interval '1 month', 'YYYY-MM')),
+  format($$SELECT public.set_month_closer(%L, 'central', %L, now())$$,
+         to_char((now() AT TIME ZONE 'Asia/Bangkok') - interval '1 month', 'YYYY-MM'),
+         '00000000-0000-0000-0000-0000000000a3'),
   'host corrects who closed the month and when');
 RESET ROLE;
 SELECT ok((SELECT count(*) FROM audit_log
