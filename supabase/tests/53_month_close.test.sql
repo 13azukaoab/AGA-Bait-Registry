@@ -1,4 +1,4 @@
--- M39 (20261115270000): ปิดเดือน 2 ส่วน · คำนวณ snapshot ใหม่ · แก้ผู้ปิด · สถานะแบบแคบ · month_closures RPC-only
+-- M39 (20261115270000 + 20261115271000 M39b): ปิดเดือน 2 ส่วน · คำนวณ snapshot ใหม่ · แก้ผู้ปิด · สถานะแบบแคบ · month_closures RPC-only
 --   * close_month_part / resync_month_part: service role เท่านั้น + ตรวจสิทธิ์ผู้กด (p_actor) ซ้ำ · audit ในนามผู้กด
 --   * ปิดส่วนกลาง = host หรือ recorder ส่วนกลาง · ต่างจังหวัด / คำนวณใหม่ / ปิดข้าม = host
 --   * "พร้อมปิด" = ไม่มีสัญญาส่วนกลางค้างบริการเดือนนั้น (เกณฑ์เดียวกับ list_pending_missed_services)

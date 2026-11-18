@@ -22,10 +22,7 @@
 --      สัญญาไม่ยกเลิก · ไม่ถูกแทน (contract_is_renewed) · ตั้งสถานีแล้ว · เดือนอยู่ในช่วง
 --      missed_tracking_start_month … เดือนสุดท้ายของสัญญา (term_months) · ไม่มีการเข้า routine (ไม่ใช่ชดเชย) ในเดือนนั้น ·
 --      ไม่มีการเข้าชดเชยให้เดือนนั้น · ไม่มีผลตัดสิน "ไม่ชดเชย" (waived)
---      → **หมายเหตุตกบริการ (missed_service_notes) ของเดือนนั้น นับว่าบันทึกแล้ว** (เจ้าของเลือก ก 18 พ.ย. 2026 —
---        หัวหน้างานกรอกเหตุผลตกบริการครบ = ปิดเองได้ ไม่ต้องให้ host ปิดข้าม) · ไม่ใช้ confirmed_at (เจ้าของ: ไม่บังคับ)
---      → ต่างจาก list_pending_missed_services ข้อเดียว: หมายเหตุนับเฉพาะ "ความพร้อมปิดเดือน" — สัญญานั้นยังเป็น
---        "ตกบริการรอตัดสิน" ในรายการเดิมตามปกติ (pgTAP เทียบ 2 ฟังก์ชันตอนไม่มีหมายเหตุ ต้องได้สาขาเดียวกัน)
+--      → หมายเหตุตกบริการ (missed_service_notes) **ไม่นับ** ว่าบันทึกแล้ว · ไม่ใช้ confirmed_at (เจ้าของ: ไม่บังคับ)
 --      → `central_unready_branches(month)` (เรียก helper เดิมตามชื่อ ได้เนื้อล่าสุดเสมอ · ไม่กรองขอบเขต recorder)
 --      ไม่พร้อม → host ปิดได้พร้อมเหตุผล (MC006/MC007) · recorder ปิดไม่ได้ (MC006 · ส่งเหตุผลมา = MC014)
 --   4. month_closure_overrides — เหตุผลปิดข้าม · host อ่านคนเดียว · เขียนผ่าน close_month_part · ลง audit (trigger เดิม)
@@ -243,9 +240,6 @@ AS $$
                       WHERE vi.contract_id = ct.id AND vi.makeup_for_month = m.d)
      AND NOT EXISTS (SELECT 1 FROM missed_service_resolutions r
                       WHERE r.contract_id = ct.id AND r.missed_month = m.d AND r.kind = 'waived')
-     -- ต่างจาก list_pending_missed_services: มีหมายเหตุตกบริการของเดือนนั้น = บันทึกแล้ว (เจ้าของ 18 พ.ย. 2026)
-     AND NOT EXISTS (SELECT 1 FROM missed_service_notes n
-                      WHERE n.contract_id = ct.id AND n.missed_month = m.d)
    GROUP BY b.id, b.name
    ORDER BY b.name;
 $$;
