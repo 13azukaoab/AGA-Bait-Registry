@@ -323,7 +323,7 @@ SELECT is((SELECT array_agg(table_name || ':' || action ORDER BY changed_at) FRO
   'host central: only edits after the later of closed_at / last_resync_at · no other month / null branch / closure rows');
 SELECT is((SELECT row(branch_id, branch_name, actor_name, actor_position_code, actor_position_name)::text
              FROM public.list_post_close_edits('2026-10', 'central') WHERE action = 'update'),
-  (SELECT row(cen_id, (SELECT name FROM branches WHERE id = cen_id), 'host', 'pm', 'Project Manager')::text FROM _b),
+  (SELECT row(cen_id, (SELECT name FROM branches WHERE id = cen_id), 'host', 'pm', (SELECT name_th FROM positions WHERE code = 'pm'))::text FROM _b),
   'row carries branch name + actor name + position');
 SELECT is((SELECT array_agg(table_name) FROM public.list_post_close_edits('2026-10', 'province')),
   ARRAY['monthly_branch_snapshots'], 'host province: only the province edit after close');
