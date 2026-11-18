@@ -1,4 +1,4 @@
--- M39 (20261115270000): ปิดเดือน 2 ส่วน · คำนวณ snapshot ใหม่ · แก้ผู้ปิด · สถานะแบบแคบ · month_closures RPC-only
+-- M39 (20261115270000 + 20261115271000 M39b): ปิดเดือน 2 ส่วน · คำนวณ snapshot ใหม่ · แก้ผู้ปิด · สถานะแบบแคบ · month_closures RPC-only
 --   * close_month_part / resync_month_part: service role เท่านั้น + ตรวจสิทธิ์ผู้กด (p_actor) ซ้ำ · audit ในนามผู้กด
 --   * ปิดส่วนกลาง = host หรือ recorder ส่วนกลาง · ต่างจังหวัด / คำนวณใหม่ / ปิดข้าม = host
 --   * "พร้อมปิด" = ไม่มีสัญญาส่วนกลางค้างบริการเดือนนั้น (เกณฑ์เดียวกับ list_pending_missed_services)
@@ -7,7 +7,7 @@
 -- go-live ในเทส = 2026-09 → ปิดได้ 2026-09 (recorder หลังบันทึกครบ) และ 2026-10 (host ปิดข้าม)
 -- ข้อมูลสมมติทั้งหมด
 BEGIN;
-SELECT plan(107);
+SELECT plan(109);
 
 INSERT INTO auth.users (id, instance_id, aud, role, email) VALUES
   ('00000000-0000-0000-0000-0000000000b1', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'host@test.local'),
@@ -175,7 +175,16 @@ SELECT is((SELECT array_agg(branch_id ORDER BY branch_id) FROM _pending WHERE mi
   'drift guard: same branches as list_pending_missed_services for 2026-10');
 INSERT INTO missed_service_notes (contract_id, missed_month, note)
   VALUES ('00000000-0000-0000-0000-0000000000d1', '2026-10-01', 'ลูกค้าไม่อยู่');
-SELECT is((SELECT count(*)::int FROM public.central_unready_branches('2026-10')), 1, 'a missed-service note does not count as recorded');
+SELECT is((SELECT count(*)::int FROM public.central_unready_branches('2026-10')), 0,
+  'missed + missed-service note → recorded, branch ready (owner 18 Nov: notes count for readiness only)');
+SET LOCAL ROLE authenticated;
+SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000b1', true);
+SELECT is((SELECT count(*)::int FROM public.list_pending_missed_services(NULL, '2026-11-01')
+            WHERE missed_month = '2026-10-01' AND contract_id = '00000000-0000-0000-0000-0000000000d1'),
+  1, 'the noted month is still pending in list_pending_missed_services (note only affects readiness)');
+RESET ROLE;
+DELETE FROM missed_service_notes WHERE contract_id = '00000000-0000-0000-0000-0000000000d1';
+SELECT is((SELECT count(*)::int FROM public.central_unready_branches('2026-10')), 1, 'missed without a note → not ready');
 INSERT INTO missed_service_resolutions (contract_id, missed_month, kind, reason)
   VALUES ('00000000-0000-0000-0000-0000000000d1', '2026-10-01', 'waived', 'ลูกค้าขอเลื่อน');
 SELECT is((SELECT count(*)::int FROM public.central_unready_branches('2026-10')), 0, 'a waived month counts as recorded');
