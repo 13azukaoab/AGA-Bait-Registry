@@ -69,7 +69,7 @@ RESET ROLE;
 SET LOCAL ROLE authenticated;
 SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a1', true);
 SELECT throws_ok($$SELECT public.start_sync_log('auto')$$, '42501', NULL, 'host cannot start an auto run');
-SELECT throws_ok($$SELECT public.start_sync_log('close')$$, 'SY002', NULL, 'unsupported source → SY002');
+SELECT throws_ok($$SELECT public.start_sync_log('export')$$, 'SY002', NULL, 'unsupported source (export) → SY002 (M39 opened close/resync)');
 SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a2', true);
 SELECT throws_ok($$SELECT public.start_sync_log('manual')$$, '42501', NULL, 'admin cannot start manual');
 SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a3', true);

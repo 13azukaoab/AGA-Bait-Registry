@@ -13,7 +13,7 @@ import { DashboardSyncError } from "./errors";
 import type { SyncLogRecord } from "./sync";
 import type { DashboardData } from "./types";
 
-export type SyncSource = "auto" | "manual";
+export type SyncSource = "auto" | "manual" | "close" | "resync";
 export type SyncLogResult = "success" | "skipped" | "failed";
 
 export interface FinishLogInput {
