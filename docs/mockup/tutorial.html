@@ -1,0 +1,560 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>บทเรียนเริ่มใช้งานครั้งแรก (E1) · AGA Bait Registry</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap">
+<style>
+/* =====================================================================
+   mockup: บทเรียนสอนใช้งานครั้งแรก (E1 · SPEC §8.3 · DECISIONS หมวด 8)
+   ---------------------------------------------------------------------
+   วิธีทำงาน (สรุปสำหรับทีม):
+   1) เนื้อหาบทเรียนอยู่ใน <script type="application/json" id="lessons"> (1 ชุดต่อ position_code)
+      หน้าจริงให้ย้ายเป็นไฟล์ข้อมูลแยก (เพิ่มตำแหน่ง/แก้ข้อความโดยไม่แตะโค้ดหน้าจอ)
+   2) แต่ละขั้นชี้ไปที่ element ด้วย attribute data-tour="..." บนหน้าจริง (target = CSS selector)
+   3) หน้าจอในไฟล์นี้เป็นหน้าจำลองย่อ (ข้อมูลตัวอย่างทั้งหมด) · หน้าจริงใช้ปุ่ม/ช่องของจริงแทน
+   4) โหมดฝึก: ไม่เรียก API · ไม่เขียน localStorage · ปุ่มบันทึกทุกปุ่มแค่แสดงข้อความ "โหมดฝึก ไม่บันทึก"
+   5) "แบบ ก / แบบ ข" = ตัวสลับเฉพาะ mockup (แถบเทาบนสุด) เพื่อให้เจ้าของเลือก — หน้าจริงใช้แบบเดียว
+   คีย์ลัด: ← ย้อน · → ถัดไป · Esc ข้ามทั้งหมด
+   ===================================================================== */
+:root{
+  --bg:#eef2f7; --surface:#ffffff; --surface-2:#f4f7fb; --surface-3:#e9eff6;
+  --fg:#17212e; --fg-muted:#5a6b7e; --fg-faint:#626c77;
+  --border:#d8e0ea; --border-strong:#c3cedb;
+  --accent:#1f5fa8; --accent-strong:#164a85; --accent-fg:#ffffff; --accent-soft:#e6f0fb;
+  --ok:#177a51; --ok-soft:#e3f4ec; --warn:#935f08; --warn-soft:#fbf0db; --danger:#be392d; --danger-soft:#fbe8e5;
+  --tier-s:#1f5fa8; --tier-s-soft:#e6f0fb; --tier-m:#157a50; --tier-m-soft:#e3f4ec;
+  --tier-l:#a86c07; --tier-l-soft:#fbf0db; --tier-xl:#c2561f; --tier-xl-soft:#fce6da; --on-tier:#ffffff;
+  --tier-s-ink:#1f5fa8; --tier-m-ink:#157a50; --tier-l-ink:#976106; --tier-xl-ink:#ab4c1b;
+  --radius:10px; --shadow:0 1px 2px rgba(20,40,70,.06),0 1px 3px rgba(20,40,70,.05);
+  --pop-shadow:0 8px 28px rgba(20,40,70,.22); --scrim:rgba(0,0,0,.45);
+  --strip:44px; --tb:56px; --panel:320px;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0e1621; --surface:#16202c; --surface-2:#1b2733; --surface-3:#222f3d;
+  --fg:#e7eef5; --fg-muted:#9fb0c1; --fg-faint:#8798a9;
+  --border:#2a3744; --border-strong:#36485a;
+  --accent:#4a90d9; --accent-strong:#5fa0e3; --accent-fg:#0b1420; --accent-soft:#16304a;
+  --ok:#3bb183; --ok-soft:#133227; --warn:#d99b3e; --warn-soft:#332713; --danger:#e57466; --danger-soft:#331a16;
+  --tier-s:#4a90d9; --tier-s-soft:#16304a; --tier-m:#3bb183; --tier-m-soft:#133227;
+  --tier-l:#d99b3e; --tier-l-soft:#332713; --tier-xl:#e07a4e; --tier-xl-soft:#3a2016; --on-tier:#0b1420;
+  --tier-s-ink:#5c9bdd; --tier-m-ink:#3bb183; --tier-l-ink:#d99b3e; --tier-xl-ink:#e07a4e;
+  --pop-shadow:0 8px 28px rgba(0,0,0,.55); --scrim:rgba(0,0,0,.6);
+  color-scheme:dark;
+}}
+:root[data-theme="dark"]{
+  --bg:#0e1621; --surface:#16202c; --surface-2:#1b2733; --surface-3:#222f3d;
+  --fg:#e7eef5; --fg-muted:#9fb0c1; --fg-faint:#8798a9;
+  --border:#2a3744; --border-strong:#36485a;
+  --accent:#4a90d9; --accent-strong:#5fa0e3; --accent-fg:#0b1420; --accent-soft:#16304a;
+  --ok:#3bb183; --ok-soft:#133227; --warn:#d99b3e; --warn-soft:#332713; --danger:#e57466; --danger-soft:#331a16;
+  --tier-s:#4a90d9; --tier-s-soft:#16304a; --tier-m:#3bb183; --tier-m-soft:#133227;
+  --tier-l:#d99b3e; --tier-l-soft:#332713; --tier-xl:#e07a4e; --tier-xl-soft:#3a2016; --on-tier:#0b1420;
+  --tier-s-ink:#5c9bdd; --tier-m-ink:#3bb183; --tier-l-ink:#d99b3e; --tier-xl-ink:#e07a4e;
+  --pop-shadow:0 8px 28px rgba(0,0,0,.55); --scrim:rgba(0,0,0,.6);
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:"Noto Sans Thai","Segoe UI",system-ui,sans-serif;font-size:14px;line-height:1.55;-webkit-font-smoothing:antialiased}
+h1,h2,h3,p{margin:0}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+/* ---------- แถบเฉพาะ mockup ---------- */
+#strip{position:sticky;top:0;z-index:70;height:var(--strip);display:flex;align-items:center;gap:10px;padding:0 12px;background:var(--surface-3);border-bottom:1px dashed var(--border-strong);font-size:12px;color:var(--fg-muted);overflow-x:auto;white-space:nowrap}
+#strip b{color:var(--warn);font-weight:600}
+#strip select,#strip button{font-size:12px;padding:3px 8px;border:1px solid var(--border-strong);border-radius:8px;background:var(--surface);min-height:30px}
+.seg{display:inline-flex;border:1px solid var(--border-strong);border-radius:8px;overflow:hidden}
+.seg button{border:0;border-radius:0;background:var(--surface)}
+.seg button[aria-pressed=true]{background:var(--accent);color:var(--accent-fg)}
+
+/* ---------- แอปจำลอง ---------- */
+.topbar{position:sticky;top:var(--strip);z-index:30;height:var(--tb);display:flex;align-items:center;gap:10px;padding:0 14px;background:var(--surface);border-bottom:1px solid var(--border)}
+.tb-logo{height:30px;width:auto;display:block}
+:root[data-theme="dark"] .tb-logo{filter:brightness(0) invert(.93)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .tb-logo{filter:brightness(0) invert(.93)}}
+.tb-title{line-height:1.2}.tb-title b{display:block;font-size:13px;font-weight:600}.tb-title span{font-size:12px;color:var(--fg-muted)}
+.sp{flex:1}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:36px;padding:6px 14px;border-radius:8px;border:1px solid var(--border-strong);background:var(--surface);font-weight:500;font-size:14px}
+.btn:hover{background:var(--surface-2)}
+.btn.pri{background:var(--accent);border-color:var(--accent);color:var(--accent-fg)}
+.btn.pri:hover{background:var(--accent-strong)}
+.btn.sm{min-height:30px;padding:3px 10px;font-size:12px}
+.ixs{width:1em;height:1em;vertical-align:-.14em;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.navtoggle{display:none;width:44px;height:44px;border:1px solid var(--border);border-radius:8px;background:var(--surface);align-items:center;justify-content:center}
+.helpwrap{position:relative}
+#helpMenu{position:absolute;right:0;top:calc(100% + 6px);min-width:250px;background:var(--surface);border:1px solid var(--border-strong);border-radius:10px;box-shadow:var(--pop-shadow);padding:6px;z-index:80}
+#helpMenu[hidden]{display:none}
+#helpMenu h3{font-size:12px;color:var(--fg-muted);padding:6px 10px 2px;font-weight:600}
+#helpMenu button,#helpMenu a{display:block;width:100%;text-align:left;padding:8px 10px;border:0;border-radius:8px;background:none;color:var(--fg);text-decoration:none;font-size:14px}
+#helpMenu button:hover,#helpMenu a:hover{background:var(--accent-soft)}
+#helpMenu hr{border:0;border-top:1px solid var(--border);margin:6px 0}
+
+.app{display:flex;min-height:calc(100vh - var(--strip) - var(--tb))}
+.nav{width:232px;flex:none;background:var(--surface);border-right:1px solid var(--border);padding:10px 8px;position:sticky;top:calc(var(--strip) + var(--tb));align-self:flex-start;height:calc(100vh - var(--strip) - var(--tb));overflow-y:auto}
+.nav .group{font-size:12px;font-weight:600;color:var(--fg-muted);padding:12px 10px 4px}
+.nav a{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:8px;color:var(--fg);text-decoration:none;font-size:14px}
+.nav a:hover{background:var(--surface-2)}
+.nav a.active{background:var(--accent-soft);color:var(--accent);font-weight:600}
+.nav .ic svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;display:block}
+.nav-backdrop{display:none}
+main{flex:1;min-width:0;padding:18px 20px 60px}
+#pbanner{display:none;position:sticky;top:calc(var(--strip) + var(--tb));z-index:20;margin:-18px -20px 16px;padding:7px 20px;background:var(--warn-soft);color:var(--warn);border-bottom:1px solid var(--border);font-size:13px;font-weight:600}
+body.tour-on #pbanner{display:block}
+.ph{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+.ph h1{font-size:20px;font-weight:600}
+.samp{display:inline-block;font-size:12px;padding:1px 8px;border-radius:99px;background:var(--warn-soft);color:var(--warn);font-weight:600}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;box-shadow:var(--shadow);margin-bottom:14px}
+.grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:14px}
+.stat b{display:block;font-size:24px;font-weight:600}.stat span{font-size:12px;color:var(--fg-muted)}
+.tbl{width:100%;border-collapse:collapse;font-size:14px}
+.tbl th{font-size:12px;color:var(--fg-muted);text-align:left;font-weight:600;padding:6px 8px;border-bottom:1px solid var(--border)}
+.tbl td{padding:9px 8px;border-bottom:1px solid var(--border)}
+.chip{display:inline-block;padding:1px 9px;border-radius:99px;font-size:12px;font-weight:600}
+.chip.ok{background:var(--ok-soft);color:var(--ok)}.chip.warn{background:var(--warn-soft);color:var(--warn)}.chip.bad{background:var(--danger-soft);color:var(--danger)}
+.tier{display:inline-block;padding:1px 10px;border-radius:6px;font-size:12px;font-weight:700}
+.tier.xl1{background:var(--tier-xl-soft);color:var(--tier-xl-ink)}.tier.s3{background:var(--tier-s);color:var(--on-tier)}.tier.m1{background:var(--tier-m-soft);color:var(--tier-m-ink)}
+.field{display:block;margin-bottom:12px}.field>span{display:block;font-size:12px;color:var(--fg-muted);font-weight:600;margin-bottom:3px}
+.field input,.field select{width:100%;min-height:38px;padding:6px 10px;border:1px solid var(--border-strong);border-radius:8px;background:var(--surface)}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.chk{display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--border);border-radius:8px;margin-bottom:8px;background:var(--surface-2)}
+.chk input{width:18px;height:18px}
+.split{display:grid;grid-template-columns:240px minmax(0,1fr);gap:14px}
+.list button{display:block;width:100%;text-align:left;padding:9px 10px;border:1px solid var(--border);background:var(--surface);border-radius:8px;margin-bottom:6px}
+.list button[aria-current=true]{border-color:var(--accent);background:var(--accent-soft)}
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--border);margin-bottom:12px;flex-wrap:wrap}
+.tabs button{border:0;background:none;padding:8px 12px;border-bottom:2px solid transparent;color:var(--fg-muted);font-weight:600}
+.tabs button[aria-selected=true]{color:var(--accent);border-bottom-color:var(--accent)}
+.drop{border:2px dashed var(--border-strong);border-radius:var(--radius);padding:22px;text-align:center;color:var(--fg-muted)}
+.center-card{max-width:380px;margin:30px auto}
+.rules{list-style:none;padding:0;margin:6px 0 12px;font-size:13px;color:var(--fg-muted)}
+.rules li::before{content:"○ ";color:var(--fg-faint)}
+.rules li.ok{color:var(--ok)}.rules li.ok::before{content:"✓ ";color:var(--ok)}
+.err{color:var(--danger);font-size:13px;min-height:1.2em}
+.pwrow{display:flex;gap:6px}.pwrow input{flex:1}
+
+/* ---------- ไฮไลต์ + กล่องบทเรียน ---------- */
+#spot{position:fixed;z-index:55;pointer-events:none;border-radius:8px;outline:3px solid var(--accent);outline-offset:2px;display:none;transition:left .2s,top .2s,width .2s,height .2s}
+body.m-a #spot{box-shadow:0 0 0 9999px var(--scrim)}
+#tip{position:fixed;z-index:60;width:332px;max-width:calc(100vw - 16px);background:var(--surface);border:1px solid var(--border-strong);border-radius:12px;box-shadow:var(--pop-shadow);padding:14px 16px 12px}
+#tip[hidden]{display:none}
+#tip .prog{display:flex;gap:3px;margin-bottom:8px}
+#tip .prog i{flex:1;height:4px;border-radius:2px;background:var(--border)}
+#tip .prog i.on{background:var(--accent)}
+#tip .meta{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:12px;color:var(--fg-muted);margin-bottom:4px}
+#tip h2{font-size:16px;font-weight:600;line-height:1.35;margin-bottom:4px}
+#tip p{font-size:14px;color:var(--fg)}
+#tip p.hint{margin-top:6px;color:var(--accent);font-weight:600;font-size:13px}
+#tip .acts{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+#tip .acts .btn{flex:1}
+#tip .link{display:block;margin:8px auto 0;border:0;background:none;color:var(--fg-muted);text-decoration:underline;padding:6px 8px;font-size:13px}
+#tip .arw{position:absolute;width:12px;height:12px;background:var(--surface);border:1px solid var(--border-strong);transform:rotate(45deg);display:none}
+#tip[data-side=bottom] .arw{display:block;top:-7px;left:var(--ax,40px);border-right:0;border-bottom:0}
+#tip[data-side=top] .arw{display:block;bottom:-7px;left:var(--ax,40px);border-left:0;border-top:0}
+#tip[data-side=right] .arw{display:block;left:-7px;top:var(--ay,30px);border-right:0;border-top:0}
+#tip[data-side=left] .arw{display:block;right:-7px;top:var(--ay,30px);border-left:0;border-bottom:0}
+#tip.center{left:50%;top:50%;transform:translate(-50%,-50%)}
+/* แบบ ข: แผงข้าง */
+body.m-b.tour-on:not(.small) .app{padding-right:var(--panel)}
+body.m-b:not(.small) #tip{top:calc(var(--strip) + var(--tb));right:0;bottom:0;left:auto;width:var(--panel);max-width:none;border-radius:0;border-width:0 0 0 1px;box-shadow:none;display:flex;flex-direction:column;padding:16px;transform:none}
+body.m-b:not(.small) #tip[hidden]{display:none}
+body.m-b:not(.small) #tip .arw{display:none !important}
+body.m-b:not(.small) #tip h2{font-size:17px}
+body.m-b:not(.small) #tip .acts{margin-top:auto;padding-top:14px}
+body.m-b:not(.small) #tip .link{margin-top:6px}
+body.m-b #spot{outline-offset:3px}
+
+/* ---------- จอเล็ก ---------- */
+@media (max-width:860px){
+  .navtoggle{display:inline-flex}
+  .nav{position:fixed;left:0;top:calc(var(--strip) + var(--tb));bottom:0;height:auto;z-index:40;transform:translateX(-102%);transition:transform .2s;width:260px}
+  body.nav-open .nav{transform:none;box-shadow:var(--pop-shadow)}
+  body.tour-on .nav{transition:none} /* ระหว่างบทเรียนให้ลิ้นชักเปิดทันที ไฮไลต์จะได้วางตำแหน่งถูก */
+  body.nav-open .nav-backdrop{display:block;position:fixed;inset:calc(var(--strip) + var(--tb)) 0 0 0;background:var(--scrim);z-index:35}
+  .tb-title span{display:none}
+  main{padding:14px 12px 280px}
+  #pbanner{margin:-14px -12px 14px;padding:7px 12px}
+  .grid3{grid-template-columns:1fr}.split,.two{grid-template-columns:1fr}
+  #tip{left:8px !important;right:8px !important;top:auto !important;bottom:8px !important;width:auto;max-width:none;transform:none !important;max-height:62vh;overflow:auto}
+  #tip .arw{display:none !important}
+  body.m-b #tip{border-radius:12px;border-width:1px}
+}
+@media (max-width:767px){
+  :root{--strip:56px}
+  input:not([type=checkbox]),select{font-size:16px !important}
+  button,.btn,select,.nav a,.tabs button{min-height:44px}
+  #strip select,#strip button{min-height:44px}
+  .btn.sm{min-height:44px}
+  .chk input{width:22px;height:22px}
+  .topbar .btn .lbl{display:none}
+}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation:none !important;transition:none !important;scroll-behavior:auto !important}
+}
+#toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);z-index:90;background:var(--fg);color:var(--bg);padding:8px 16px;border-radius:99px;font-size:13px;max-width:92vw;text-align:center}
+#toast[hidden]{display:none}
+</style>
+</head>
+<body class="m-a">
+
+<!-- เฉพาะ mockup -->
+<div id="strip" role="region" aria-label="ตัวควบคุมเฉพาะ mockup">
+  <b>เฉพาะ mockup</b>
+  <span>รูปแบบ</span>
+  <div class="seg" role="group" aria-label="เลือกรูปแบบบทเรียน">
+    <button type="button" data-mode="a" aria-pressed="true">แบบ ก กล่องลอย</button>
+    <button type="button" data-mode="b" aria-pressed="false">แบบ ข แผงข้าง</button>
+  </div>
+  <label for="roleSel">ตำแหน่งผู้ใช้</label>
+  <select id="roleSel"><option value="admin">Admin (เปิดงาน)</option><option value="recorder" selected>หัวหน้างาน</option><option value="pmom">PM / OM</option></select>
+  <button type="button" id="restart">เริ่มใหม่ตั้งแต่ล็อกอิน</button>
+</div>
+
+<header class="topbar">
+  <button class="navtoggle" id="navToggle" type="button" aria-label="เปิดเมนู" aria-expanded="false" aria-controls="nav"><svg class="ixs" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
+  <img class="tb-logo" src="Logo Advance Group Asia.png" alt="Advance Group Asia (AGA)">
+  <div class="tb-title"><b>ข้อมูลหลังบ้านระบบเหยื่อ</b><span>ส่วนกลาง</span></div>
+  <span class="sp"></span>
+  <div class="helpwrap">
+    <button class="btn" id="helpBtn" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="helpMenu" data-tour="help-btn"><svg class="ixs" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.6 2.2c-.7.4-1.1 1-1.1 1.8M12 17h.01"/></svg><span class="lbl">สอนใช้งาน</span></button>
+    <div id="helpMenu" hidden></div>
+  </div>
+  <button class="btn" id="themeBtn" type="button" aria-label="สลับโหมดสี สว่าง/มืด"><svg class="ixs" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8z"/></svg></button>
+</header>
+
+<div class="app" id="appRoot">
+  <nav class="nav" id="nav" aria-label="เมนูหลัก"></nav>
+  <div class="nav-backdrop" id="navBackdrop"></div>
+  <main id="main" tabindex="-1">
+    <div id="pbanner" role="status">โหมดฝึก · ข้อมูลทั้งหมดเป็นข้อมูลตัวอย่าง ไม่บันทึกลงระบบจริง</div>
+    <div id="screen"></div>
+  </main>
+</div>
+
+<div id="spot" aria-hidden="true"></div>
+<div id="tip" role="dialog" aria-modal="false" aria-labelledby="tTitle" aria-describedby="tBody" hidden>
+  <i class="arw" aria-hidden="true"></i>
+  <div class="prog" id="tProg" aria-hidden="true"></div>
+  <div class="meta"><span id="tCount"></span><span class="samp">โหมดฝึก</span></div>
+  <h2 id="tTitle"></h2>
+  <p id="tBody"></p>
+  <p class="hint" id="tHint" hidden></p>
+  <div class="acts"><button class="btn" id="tBack" type="button">ย้อน</button><button class="btn pri" id="tNext" type="button">ถัดไป</button></div>
+  <button class="link" id="tSkipAll" type="button">ข้ามทั้งหมด (Esc)</button>
+</div>
+<div id="toast" role="status" aria-live="polite" hidden></div>
+<div class="sr-only" id="live" aria-live="polite"></div>
+
+<!-- เนื้อหาบทเรียน: 1 ชุดต่อ position_code · หน้าจริงเก็บเป็นข้อมูลแยกจากโค้ด -->
+<script type="application/json" id="lessons">
+{
+ "central": {"title":"เริ่มใช้งานครั้งแรก","positions":["ทุกตำแหน่ง"],"next":"@role","steps":[
+  {"screen":"login","target":"[data-tour=login-user]","title":"ชื่อผู้ใช้ คือรหัสพนักงาน","body":"พิมพ์รหัสพนักงานของคุณ ไม่ต้องพิมพ์อีเมล (ในตัวอย่างนี้ใส่ให้แล้ว เป็นรหัสสมมติ)"},
+  {"screen":"login","target":"[data-tour=login-pass]","title":"รหัสผ่านชั่วคราว","body":"ใส่รหัสชั่วคราวที่ส่วนกลางให้ ใช้ได้ครั้งแรกครั้งเดียว กดรูปตาเพื่อตรวจว่าพิมพ์ถูก"},
+  {"screen":"login","target":"[data-tour=login-btn]","act":"click","title":"กดเข้าสู่ระบบ","body":"พร้อมแล้วกดปุ่มนี้ ระบบจะพาไปตั้งรหัสผ่านใหม่ทันที","hint":"ลองกดปุ่มที่ไฮไลต์ดูได้เลย"},
+  {"screen":"chpw","target":"[data-tour=chpw-new]","title":"ตั้งรหัสผ่านใหม่ (ข้ามไม่ได้)","body":"รหัสต้องยาวอย่างน้อย 8 ตัว มีตัวพิมพ์ใหญ่ ตัวพิมพ์เล็ก และตัวเลข ข้อที่ผ่านแล้วจะขึ้นเป็นสีเขียว","hint":"ลองพิมพ์ หรือกด “ใส่รหัสตัวอย่าง”"},
+  {"screen":"chpw","target":"[data-tour=chpw-confirm]","title":"พิมพ์ซ้ำอีกครั้ง","body":"พิมพ์รหัสเดิมซ้ำให้ตรงกัน กันพิมพ์ผิด"},
+  {"screen":"chpw","target":"[data-tour=chpw-save]","act":"click","guard":"pw","title":"บันทึกรหัสผ่านใหม่","body":"กดปุ่มนี้เมื่อรหัสผ่านทุกข้อเป็นสีเขียว","hint":"ต้องกรอกรหัสให้ผ่านก่อนถึงจะไปต่อได้"},
+  {"screen":"chpw","target":null,"title":"เข้าระบบสำเร็จ","body":"ต่อไปคือบทเรียนของตำแหน่งคุณ ใช้เวลาไม่ถึง 3 นาที ข้ามได้ทุกเมื่อ","cta":"เริ่มบทเรียนของฉัน"}
+ ]},
+ "admin": {"title":"Admin (เปิดงาน)","positions":["แอดมิน"],"home":"registry","steps":[
+  {"screen":"registry","target":"[data-tour=nav-new]","act":"click","title":"เปิดงานใหม่ที่เมนูนี้","body":"สัญญาใหม่ทุกฉบับเริ่มที่เมนู “เปิดงานเข้าทะเบียนบริการ”","hint":"กดเมนูที่ไฮไลต์"},
+  {"screen":"new","target":"[data-tour=new-form]","title":"กรอกข้อมูลลูกค้าและสัญญา","body":"ชื่อลูกค้า วันเริ่มสัญญา และระยะสัญญา (12 เดือน = 1 ปี · 36 เดือน = 3 ปี · อื่นๆ ใส่ 1–35 เดือน)"},
+  {"screen":"new","target":"[data-tour=new-tier]","title":"ระบบจัด Tier ให้เอง","body":"กรอกมูลค่าแล้วระบบคำนวณ Tier ให้ ไม่ต้องจัดเอง และไม่ต้องกรอก F1–F10"},
+  {"screen":"new","target":"[data-tour=new-save]","act":"click","title":"บันทึกสัญญา","body":"ตรวจข้อมูลแล้วกดบันทึก (ในบทเรียนนี้กดแล้วไม่บันทึกจริง)","hint":"ลองกดปุ่มที่ไฮไลต์"},
+  {"screen":"customer","target":"[data-tour=cust-upload]","title":"แนบไฟล์สัญญา (PDF)","body":"เปิดหน้ารายละเอียดลูกค้า แล้วแนบไฟล์สัญญาและ Site plan ที่ปุ่มนี้"},
+  {"screen":"registry","target":"[data-tour=reg-search]","title":"ค้นหาในทะเบียน","body":"พิมพ์ชื่อลูกค้าเพื่อค้นหา กดชื่อเพื่อดูรายละเอียดหรือแก้ไขสัญญา"},
+  {"screen":"registry","target":"[data-tour=help-btn]","title":"จบบทเรียน Admin","body":"ดูซ้ำได้ทุกเมื่อที่ปุ่ม “สอนใช้งาน” มุมขวาบน มีลิงก์ไปคู่มือด้วย","cta":"เสร็จสิ้น"}
+ ]},
+ "recorder": {"title":"หัวหน้างาน","positions":["หัวหน้างาน","Supervisor"],"home":"todo","steps":[
+  {"screen":"todo","target":"[data-tour=todo-stats]","title":"ดูงานของเดือนนี้","body":"หน้านี้บอกว่าเดือนนี้มีลูกค้ากี่ราย ทำแล้วกี่ราย เหลือกี่ราย"},
+  {"screen":"todo","target":"[data-tour=nav-service]","act":"click","title":"ไปกรอกผลบริการ","body":"เมนู “ลงข้อมูลทำบริการประจำเดือน” ใช้กรอกผลทีละรายหลังเข้าบริการ","hint":"กดเมนูที่ไฮไลต์"},
+  {"screen":"service","target":"[data-tour=svc-allok]","act":"click","title":"ทุกอย่างปกติ กดทีเดียว","body":"ถ้า IG / IC ทุกสถานีปกติ กดปุ่มนี้ปุ่มเดียวแทนการกรอกทีละสถานี","hint":"ลองกดปุ่มที่ไฮไลต์"},
+  {"screen":"service","target":"[data-tour=svc-termite]","title":"พบปลวก","body":"ถ้าสถานีไหนพบปลวก ติ๊กช่องนี้ แล้วระบุสถานีที่พบ"},
+  {"screen":"service","target":"[data-tour=svc-ag]","title":"กล่อง AG ในรอบบริการ","body":"ถ้าเปลี่ยนหรือวางกล่อง AG พร้อมรอบบริการ ให้ติ๊กตรงนี้"},
+  {"screen":"bait","target":"[data-tour=bait-add]","title":"กล่อง AG นอกรอบ","body":"ถ้าไปวาง AG แยกจากรอบประจำเดือน บันทึกที่หน้านี้"},
+  {"screen":"collect","target":"[data-tour=collect-list]","title":"ลูกค้ารอเก็บสถานี","body":"ลูกค้าที่หมดสัญญาจะขึ้นที่นี่ เก็บสถานีเสร็จแล้วกดยืนยันรายตัว"},
+  {"screen":"closure","target":"[data-tour=clo-send]","title":"ส่งข้อมูลปลายเดือน","body":"สิ้นเดือนกดส่งข้อมูลและดูสรุปงานของสาขา","cta":"เสร็จสิ้น","hint":"ดูซ้ำได้ที่ปุ่ม “สอนใช้งาน” มุมขวาบน"}
+ ]},
+ "pmom": {"title":"PM / OM","positions":["Project Manager","OM"],"home":"todo","steps":[
+  {"screen":"todo","target":"[data-tour=nav-admin-group]","title":"เห็นครบทุกเมนู","body":"PM / OM เห็นเมนูทุกกลุ่ม รวมกลุ่ม “ดูแลระบบ” ที่ตำแหน่งอื่นไม่เห็น"},
+  {"screen":"todo","target":"[data-tour=nav-users]","act":"click","title":"จัดการผู้ใช้","body":"สร้างบัญชี รีเซ็ตรหัส และปิดบัญชีทำที่นี่","hint":"กดเมนูที่ไฮไลต์"},
+  {"screen":"users","target":"[data-tour=usr-add]","title":"สร้างบัญชีใหม่","body":"เลือกตำแหน่ง ระบบกำหนดสิทธิ์ให้เอง และออกรหัสชั่วคราวให้ส่งต่อผู้ใช้"},
+  {"screen":"settings","target":"[data-tour=set-tabs]","title":"ตั้งค่า","body":"เกณฑ์ Tier ประเภทลูกค้า และทีม แก้ที่แท็บเหล่านี้ ระบบอ่านเกณฑ์จากที่นี่ทุกครั้ง"},
+  {"screen":"port","target":"[data-tour=port-save]","title":"ลงข้อมูล Port ต่างจังหวัด","body":"สาขาต่างจังหวัดที่ยังไม่ใช้ระบบ ลงตัวเลขประจำเดือนที่หน้านี้"},
+  {"screen":"sync","target":"[data-tour=sync-run]","title":"Dashboard Sync","body":"ส่งข้อมูลไป AGA Bait Dashboard อัตโนมัติทุกเช้า 06:00 กดเองได้ที่ปุ่มนี้"},
+  {"screen":"history","target":"[data-tour=help-btn]","title":"ประวัติการแก้ไข และจบบทเรียน","body":"ดูว่าใครแก้อะไรเมื่อไหร่ได้ที่เมนู “ประวัติการแก้ไข” · ดูบทเรียนซ้ำได้ที่ปุ่ม “สอนใช้งาน”","cta":"เสร็จสิ้น"}
+ ]}
+}
+</script>
+
+<script>
+(function(){
+'use strict';
+var LESSONS=JSON.parse(document.getElementById('lessons').textContent);
+var $=function(s,r){return (r||document).querySelector(s)};
+var $$=function(s,r){return Array.prototype.slice.call((r||document).querySelectorAll(s))};
+var body=document.body, tip=$('#tip'), spot=$('#spot');
+var reduce=matchMedia('(prefers-reduced-motion:reduce)').matches;
+var small=matchMedia('(max-width:860px)');
+var st={mode:'a',role:'recorder',lesson:null,i:0,screen:'login',tour:false};
+
+/* ---------- เมนู (กรองตามตำแหน่ง) ---------- */
+var IC={
+ todo:'<path d="M9 11l3 3 8-8"/><path d="M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h9"/>',
+ service:'<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/>',
+ bait:'<rect x="3" y="3" width="18" height="18" rx="3"/><path d="M12 8v8M8 12h8"/>',
+ collect:'<path d="M12 3v12"/><path d="M7 11l5 5 5-5"/><path d="M4 20h16"/>',
+ registry:'<path d="M4 5h16M4 10h16M4 15h16M4 20h10"/>',
+ 'new':'<circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/>',
+ closure:'<path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4z"/>',
+ port:'<path d="M3 21h18M5 21V8l7-5 7 5v13"/>',
+ sync:'<path d="M21 12a9 9 0 0 1-15.5 6.2M3 12a9 9 0 0 1 15.5-6.2"/><path d="M18 2v4h-4M6 22v-4h4"/>',
+ history:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+ users:'<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0M16 4.5a3.5 3.5 0 0 1 0 7M21.5 20a6 6 0 0 0-4-5.6"/>',
+ settings:'<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/>'
+};
+var NAV=[
+ ['งานประจำวัน',[['todo','สถานะทะเบียนบริการ','recorder pmom'],['service','ลงข้อมูลทำบริการประจำเดือน','recorder pmom'],['bait','กล่อง AG นอกรอบประจำเดือน','recorder pmom'],['collect','ลูกค้ารอเก็บสถานี','admin recorder pmom']]],
+ ['ทะเบียนและสรุป',[['registry','ทะเบียนลูกค้า/สัญญา','admin recorder pmom'],['new','เปิดงานเข้าทะเบียนบริการ','admin pmom']]],
+ ['ดูแลระบบ',[['closure','ส่งข้อมูล และสรุปงานประจำเดือน','recorder pmom'],['port','ลงข้อมูล Port ต่างจังหวัด','pmom'],['sync','Dashboard Sync','pmom'],['history','ประวัติการแก้ไข','pmom'],['users','จัดการผู้ใช้','pmom'],['settings','ตั้งค่า','pmom']]]
+];
+function renderNav(){
+  var h='';
+  NAV.forEach(function(g){
+    var items=g[1].filter(function(x){return x[2].split(' ').indexOf(st.role)>-1});
+    if(!items.length) return;
+    h+='<div class="group"'+(g[0]==='ดูแลระบบ'?' data-tour="nav-admin-group"':'')+'>'+g[0]+'</div>';
+    items.forEach(function(x){
+      h+='<a href="#'+x[0]+'" data-nav="'+x[0]+'" data-tour="nav-'+x[0]+'"'+(st.screen===x[0]?' class="active" aria-current="page"':'')+'><span class="ic"><svg viewBox="0 0 24 24" aria-hidden="true">'+IC[x[0]]+'</svg></span> '+x[1]+'</a>';
+    });
+  });
+  $('#nav').innerHTML=h;
+}
+/* ---------- หน้าจำลอง (ข้อมูลตัวอย่างทั้งหมด) ---------- */
+var P='<span class="samp">ข้อมูลตัวอย่าง</span>';
+var SCR={
+login:function(){return '<div class="card center-card"><h1 style="font-size:20px;margin-bottom:12px">เข้าสู่ระบบ</h1>'+
+ '<label class="field" data-tour="login-user"><span>ชื่อผู้ใช้ (รหัสพนักงาน)</span><input value="AG-01234" readonly aria-readonly="true"></label>'+
+ '<label class="field" data-tour="login-pass"><span>รหัสผ่านชั่วคราว</span><div class="pwrow"><input type="password" value="tempPass1" readonly aria-readonly="true"><button class="btn sm" type="button" aria-label="แสดงรหัสผ่าน" data-eye>👁</button></div></label>'+
+ '<button class="btn pri" style="width:100%" type="button" data-tour="login-btn">เข้าสู่ระบบ</button><p style="margin-top:10px;font-size:12px;color:var(--fg-muted)">รหัสพนักงานในตัวอย่างเป็นข้อมูลสมมติ</p></div>'},
+chpw:function(){return '<div class="card center-card"><h1 style="font-size:20px;margin-bottom:4px">ตั้งรหัสผ่านใหม่ก่อนเริ่มใช้งาน</h1><p style="font-size:13px;color:var(--fg-muted);margin-bottom:12px">บัญชีนี้ยังใช้รหัสชั่วคราว ต้องตั้งรหัสใหม่ก่อนเข้าหน้าอื่น</p>'+
+ '<label class="field" data-tour="chpw-new"><span>รหัสผ่านใหม่</span><input id="pw1" type="password" autocomplete="new-password"></label>'+
+ '<ul class="rules" id="rules" aria-live="polite"><li data-r="len">อย่างน้อย 8 ตัว</li><li data-r="up">มีตัวพิมพ์ใหญ่</li><li data-r="lo">มีตัวพิมพ์เล็ก</li><li data-r="num">มีตัวเลข</li></ul>'+
+ '<label class="field" data-tour="chpw-confirm"><span>ยืนยันรหัสผ่านใหม่</span><input id="pw2" type="password" autocomplete="new-password"></label>'+
+ '<div class="err" id="pwErr" role="alert"></div>'+
+ '<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn pri" type="button" data-tour="chpw-save" style="flex:1">บันทึกรหัสผ่านใหม่</button><button class="btn" type="button" id="pwDemo">ใส่รหัสตัวอย่าง</button></div></div>'},
+todo:function(){return '<div class="ph"><h1>สถานะทะเบียนบริการ</h1>'+P+'</div><div class="grid3" data-tour="todo-stats"><div class="card stat"><b>12</b><span>ลูกค้าเดือนนี้</span></div><div class="card stat"><b>7</b><span>ทำแล้ว</span></div><div class="card stat"><b>5</b><span>ยังไม่ได้ทำ</span></div></div>'+
+ '<div class="card"><table class="tbl"><tr><th>ลูกค้า</th><th>สถานะ</th></tr><tr><td>ร้านอาหารตัวอย่าง A</td><td><span class="chip ok">ทำแล้ว</span></td></tr><tr><td>โรงงานตัวอย่าง B</td><td><span class="chip warn">รอเข้าบริการ</span></td></tr><tr><td>คอนโดตัวอย่าง C</td><td><span class="chip warn">รอเข้าบริการ</span></td></tr></table></div>'},
+service:function(){return '<div class="ph"><h1>ลงข้อมูลทำบริการประจำเดือน</h1>'+P+'</div><div class="split"><div class="list card"><button type="button" aria-current="true">โรงงานตัวอย่าง B</button><button type="button">คอนโดตัวอย่าง C</button></div><div class="card"><h2 style="font-size:16px;margin-bottom:10px">โรงงานตัวอย่าง B · เดือนนี้</h2>'+
+ '<button class="btn pri" type="button" data-tour="svc-allok" style="margin-bottom:12px">IG / IC ปกติทั้งหมด</button>'+
+ '<label class="chk" data-tour="svc-termite"><input type="checkbox"> พบปลวก</label><label class="chk" data-tour="svc-ag"><input type="checkbox"> เปลี่ยน/วางกล่อง AG ในรอบนี้</label>'+
+ '<button class="btn" type="button" data-save>บันทึกผลบริการ</button></div></div>'},
+bait:function(){return '<div class="ph"><h1>กล่อง AG นอกรอบประจำเดือน</h1>'+P+'</div><div class="card"><div class="two"><label class="field"><span>ลูกค้า</span><select><option>ร้านอาหารตัวอย่าง A</option></select></label><label class="field"><span>จำนวนกล่อง</span><input type="number" value="2"></label></div><button class="btn pri" type="button" data-tour="bait-add" data-save>บันทึกกล่อง AG นอกรอบ</button></div>'},
+collect:function(){return '<div class="ph"><h1>ลูกค้ารอเก็บสถานี</h1>'+P+'</div><div class="card" data-tour="collect-list"><table class="tbl"><tr><th>ลูกค้า</th><th>หมดสัญญา</th><th></th></tr><tr><td>ร้านตัวอย่าง D</td><td>31 ต.ค. 2026</td><td><button class="btn sm" type="button" data-save>เก็บสถานีแล้ว</button></td></tr><tr><td>สำนักงานตัวอย่าง E</td><td>30 พ.ย. 2026</td><td><button class="btn sm" type="button" data-save>เก็บสถานีแล้ว</button></td></tr></table></div>'},
+registry:function(){return '<div class="ph"><h1>ทะเบียนลูกค้า/สัญญา</h1>'+P+'</div><div class="card"><label class="field" data-tour="reg-search"><span>ค้นหาลูกค้า</span><input type="search" placeholder="พิมพ์ชื่อลูกค้า"></label><table class="tbl"><tr><th>ลูกค้า</th><th>Tier</th></tr><tr><td><a href="#customer" data-nav="customer">ร้านอาหารตัวอย่าง A</a></td><td><span class="tier s3">S3</span></td></tr><tr><td>โรงงานตัวอย่าง B</td><td><span class="tier xl1">XL1</span></td></tr><tr><td>คอนโดตัวอย่าง C</td><td><span class="tier m1">M1</span></td></tr></table></div>'},
+customer:function(){return '<div class="ph"><h1>ร้านอาหารตัวอย่าง A</h1>'+P+'</div><div class="card"><div class="tabs" role="tablist"><button role="tab" aria-selected="false">ภาพรวม</button><button role="tab" aria-selected="true">ไฟล์สัญญา</button></div><div class="drop" data-tour="cust-upload"><p style="margin-bottom:10px">ยังไม่มีไฟล์สัญญา</p><button class="btn pri" type="button" data-save>แนบไฟล์ PDF</button></div></div>'},
+'new':function(){return '<div class="ph"><h1>เปิดงานเข้าทะเบียนบริการ</h1>'+P+'</div><div class="card"><div data-tour="new-form"><label class="field"><span>ชื่อลูกค้า</span><input value="บริษัท ตัวอย่าง จำกัด (สมมติ)"></label><div class="two"><label class="field"><span>วันเริ่มสัญญา</span><input type="date" value="2026-12-01"></label><label class="field"><span>ระยะสัญญา (เดือน)</span><select><option>12 (1 ปี)</option><option>36 (3 ปี)</option><option>Custom 1–35</option></select></label></div></div>'+
+ '<div class="two"><label class="field"><span>มูลค่าสัญญารวม (บาท)</span><input value="150,000"></label><div class="field" data-tour="new-tier"><span>Tier ที่ระบบคำนวณให้</span><div style="min-height:38px;display:flex;align-items:center;gap:8px"><span class="tier xl1">XL1</span><small style="font-size:12px;color:var(--fg-muted)">ตัวอย่าง · ระบบอ่านเกณฑ์จากหน้า “ตั้งค่า”</small></div></div></div><button class="btn pri" type="button" data-tour="new-save" data-save>บันทึกสัญญา</button></div>'},
+closure:function(){return '<div class="ph"><h1>ส่งข้อมูล และสรุปงานประจำเดือน</h1>'+P+'</div><div class="card"><p style="margin-bottom:12px">เดือนนี้ทำแล้ว 7 จาก 12 ราย</p><button class="btn pri" type="button" data-tour="clo-send" data-save>ส่งข้อมูลประจำเดือน</button></div>'},
+users:function(){return '<div class="ph"><h1>จัดการผู้ใช้</h1>'+P+'<span class="sp"></span><button class="btn pri" type="button" data-tour="usr-add" data-save>สร้างบัญชีใหม่</button></div><div class="card"><table class="tbl"><tr><th>ชื่อ</th><th>ตำแหน่ง</th></tr><tr><td>สมชาย ตัวอย่าง</td><td>หัวหน้างาน</td></tr><tr><td>สมหญิง ตัวอย่าง</td><td>Admin</td></tr></table></div>'},
+settings:function(){return '<div class="ph"><h1>ตั้งค่า</h1>'+P+'</div><div class="card"><div class="tabs" role="tablist" data-tour="set-tabs"><button role="tab" aria-selected="true">เกณฑ์ Tier</button><button role="tab" aria-selected="false">ประเภทลูกค้า</button><button role="tab" aria-selected="false">ทีม</button></div><p style="color:var(--fg-muted)">ตารางเกณฑ์ Tier (ตัวอย่าง)</p></div>'},
+port:function(){return '<div class="ph"><h1>ลงข้อมูล Port ต่างจังหวัด</h1>'+P+'</div><div class="card"><div class="two"><label class="field"><span>สาขา</span><select><option>สาขาตัวอย่าง</option></select></label><label class="field"><span>จำนวนลูกค้า</span><input type="number" value="30"></label></div><button class="btn pri" type="button" data-tour="port-save" data-save>บันทึก Port</button></div>'},
+sync:function(){return '<div class="ph"><h1>Dashboard Sync</h1>'+P+'</div><div class="card"><p style="margin-bottom:12px">ส่งล่าสุด: วันนี้ 06:00 · สำเร็จ</p><button class="btn pri" type="button" data-tour="sync-run" data-save>ซิงก์ตอนนี้</button></div>'},
+history:function(){return '<div class="ph"><h1>ประวัติการแก้ไข</h1>'+P+'</div><div class="card"><table class="tbl"><tr><th>เวลา</th><th>ผู้แก้</th><th>รายการ</th></tr><tr><td>วันนี้ 09:12</td><td>สมชาย ตัวอย่าง</td><td>แก้ผลบริการ โรงงานตัวอย่าง B</td></tr></table></div>'}
+};
+function setScreen(id){
+  st.screen=id; $('#screen').innerHTML=SCR[id]();
+  renderNav();
+  var pw1=$('#pw1'); if(pw1){ pw1.addEventListener('input',checkPw); $('#pw2').addEventListener('input',checkPw); }
+}
+function pwState(){
+  var a=($('#pw1')||{}).value||'', b=($('#pw2')||{}).value||'';
+  return {len:a.length>=8,up:/[A-Z]/.test(a),lo:/[a-z]/.test(a),num:/\d/.test(a),same:a.length>0&&a===b};
+}
+function checkPw(){
+  var s=pwState();
+  $$('#rules li').forEach(function(li){li.classList.toggle('ok',!!s[li.getAttribute('data-r')])});
+  $('#pwErr').textContent='';
+}
+/* ---------- ทัวร์ ---------- */
+function lesson(){return LESSONS[st.lesson]}
+function cur(){return st.tour?lesson().steps[st.i]:null}
+function start(id){
+  if(id==='@role') id=st.role;
+  st.lesson=id; st.i=0; st.tour=true; body.classList.add('tour-on'); closeHelp();
+  show(0);
+}
+function show(i){
+  var L=lesson(); if(i<0) i=0; if(i>=L.steps.length){ return end('done'); }
+  st.i=i; var s=L.steps[i];
+  if(st.screen!==s.screen) setScreen(s.screen);
+  var inNav=s.target&&s.target.indexOf('nav-')>-1&&small.matches;
+  setNavOpen(!!inNav);
+  var last=i===L.steps.length-1;
+  var pr=''; for(var k=0;k<L.steps.length;k++) pr+='<i class="'+(k<=i?'on':'')+'"></i>';
+  $('#tProg').innerHTML=pr;
+  $('#tCount').textContent=L.title+' · ขั้น '+(i+1)+' / '+L.steps.length;
+  $('#tTitle').textContent=s.title; $('#tBody').textContent=s.body;
+  var hint=$('#tHint'); hint.hidden=!s.hint; hint.textContent=s.hint||'';
+  $('#tBack').disabled=(i===0); $('#tBack').style.opacity=i===0?'.45':'1';
+  var nx=$('#tNext');
+  if(s.act==='click'){ nx.textContent='ข้ามขั้นนี้'; nx.classList.remove('pri'); }
+  else { nx.textContent=s.cta||(last?'เสร็จสิ้น':'ถัดไป'); nx.classList.add('pri'); }
+  tip.hidden=false;
+  $('#live').textContent='ขั้น '+(i+1)+' จาก '+L.steps.length+': '+s.title;
+  requestAnimationFrame(function(){ place(); requestAnimationFrame(place); });
+  if(inNav) setTimeout(place,280); /* รอลิ้นชักเมนูเลื่อนเข้าก่อนวางไฮไลต์ */
+  nx.focus({preventScroll:true});
+}
+function next(){
+  var s=cur(); if(!s) return;
+  if(s.guard==='pw'){
+    var p=pwState();
+    if(!(p.len&&p.up&&p.lo&&p.num)){ $('#pwErr').textContent='รหัสผ่านยังไม่ผ่านเงื่อนไข ดูข้อที่ยังไม่เป็นสีเขียว'; return; }
+    if(!p.same){ $('#pwErr').textContent='รหัสผ่านทั้งสองช่องไม่ตรงกัน'; return; }
+  }
+  if(st.i>=lesson().steps.length-1){ return end('done'); }
+  show(st.i+1);
+}
+function back(){ if(st.tour&&st.i>0) show(st.i-1); }
+function end(kind){
+  var L=lesson(), nxt=L&&L.next, home=L&&L.home;
+  if(kind==='done'&&nxt){ return start(nxt); }
+  st.tour=false; tip.hidden=true; spot.style.display='none'; body.classList.remove('tour-on'); setNavOpen(false);
+  if(st.screen==='login'||st.screen==='chpw') setScreen(HOME[st.role]);
+  else if(home&&kind==='done'){}
+  toast(kind==='skip'?'ข้ามบทเรียนแล้ว · เปิดดูซ้ำได้ที่ปุ่ม “สอนใช้งาน” มุมขวาบน':'จบบทเรียนแล้ว · เปิดดูซ้ำได้ที่ปุ่ม “สอนใช้งาน”');
+  $('#helpBtn').focus();
+}
+var HOME={admin:'registry',recorder:'todo',pmom:'todo'};
+/* ---------- วางไฮไลต์ + กล่อง ---------- */
+function vis(el){ var r=el.getBoundingClientRect(); return r.width>0&&r.height>0; }
+function reveal(el){
+  var r=el.getBoundingClientRect(), top=(parseInt(getComputedStyle(document.documentElement).getPropertyValue('--strip'))||44)+56+44, sheet=small.matches?Math.min(tip.offsetHeight,window.innerHeight*.62)+20:20;
+  if(r.bottom>window.innerHeight-sheet) window.scrollBy(0,r.bottom-(window.innerHeight-sheet));
+  else if(r.top<top) window.scrollBy(0,r.top-top);
+}
+function place(){
+  if(!st.tour) return;
+  var s=cur(); if(!s) return;
+  body.classList.toggle('small',small.matches);
+  var el=s.target&&$(s.target);
+  tip.classList.remove('center'); tip.removeAttribute('data-side');
+  if(!small.matches&&st.mode==='a'){ tip.style.left=tip.style.top=''; } else { tip.style.left=tip.style.top=''; }
+  if(!el||!vis(el)){
+    spot.style.display='none';
+    if(!small.matches&&st.mode==='a') tip.classList.add('center');
+    return;
+  }
+  reveal(el);
+  var r=el.getBoundingClientRect(), pad=4;
+  spot.style.display='block';
+  spot.style.left=(r.left-pad)+'px'; spot.style.top=(r.top-pad)+'px';
+  spot.style.width=(r.width+pad*2)+'px'; spot.style.height=(r.height+pad*2)+'px';
+  if(small.matches||st.mode==='b') return;
+  var tw=tip.offsetWidth, th=tip.offsetHeight, vw=window.innerWidth, vh=window.innerHeight, g=16, side;
+  var inNav=!!el.closest('#nav');
+  var fits={bottom:r.bottom+g+th<vh-8, top:r.top-g-th>8, right:r.right+g+tw<vw-8, left:r.left-g-tw>8};
+  side=inNav?(fits.right?'right':'bottom'):(fits.bottom?'bottom':fits.top?'top':fits.right?'right':fits.left?'left':'bottom');
+  var x,y;
+  if(side==='bottom'){x=r.left;y=r.bottom+g}
+  else if(side==='top'){x=r.left;y=r.top-g-th}
+  else if(side==='right'){x=r.right+g;y=r.top}
+  else {x=r.left-g-tw;y=r.top}
+  x=Math.max(8,Math.min(x,vw-tw-8)); y=Math.max(8,Math.min(y,vh-th-8));
+  tip.style.left=x+'px'; tip.style.top=y+'px'; tip.setAttribute('data-side',side);
+  tip.style.setProperty('--ax',Math.max(16,Math.min(tw-32,r.left+r.width/2-x-6))+'px');
+  tip.style.setProperty('--ay',Math.max(16,Math.min(th-32,r.top+Math.min(r.height,40)/2-y-6))+'px');
+}
+window.addEventListener('resize',place); window.addEventListener('scroll',function(){ if(st.tour) place(); },{passive:true});
+$('#nav').addEventListener('transitionend',function(){ if(st.tour) place(); });
+small.addEventListener('change',function(){ if(st.tour) show(st.i); });
+/* ---------- เหตุการณ์ ---------- */
+function setNavOpen(o){ body.classList.toggle('nav-open',o); $('#navToggle').setAttribute('aria-expanded',o?'true':'false'); }
+$('#navToggle').addEventListener('click',function(){ setNavOpen(!body.classList.contains('nav-open')); });
+$('#navBackdrop').addEventListener('click',function(){ if(!st.tour) setNavOpen(false); });
+document.addEventListener('click',function(e){
+  var t=e.target, s=cur();
+  var a=t.closest('[data-nav]');
+  if(a){
+    e.preventDefault();
+    if(st.tour){
+      if(s&&s.act==='click'&&s.target&&a.matches(s.target)){ next(); }
+      else toast('ตอนนี้ให้กดตามช่องที่ไฮไลต์ หรือกด “ข้ามทั้งหมด”');
+      return;
+    }
+    setScreen(a.getAttribute('data-nav')); setNavOpen(false); return;
+  }
+  if(t.closest('[data-eye]')){ var inp=$('input',t.closest('.pwrow')); inp.type=inp.type==='password'?'text':'password'; return; }
+  if(t.closest('#pwDemo')){ $('#pw1').value='Bait2026ok'; $('#pw2').value='Bait2026ok'; checkPw(); return; }
+  if(st.tour&&s&&s.act==='click'&&s.target){
+    var hit=t.closest(s.target);
+    if(hit){ if(hit.hasAttribute('data-save')) toast('โหมดฝึก · ไม่บันทึกข้อมูลจริง'); next(); return; }
+  }
+  if(t.closest('[data-save]')) toast('โหมดฝึก · ไม่บันทึกข้อมูลจริง');
+});
+$('#tNext').addEventListener('click',next);
+$('#tBack').addEventListener('click',back);
+$('#tSkipAll').addEventListener('click',function(){ end('skip'); });
+document.addEventListener('keydown',function(e){
+  var typing=/^(INPUT|SELECT|TEXTAREA)$/.test((e.target||{}).tagName);
+  if(e.key==='Escape'){
+    if(!$('#helpMenu').hidden){ closeHelp(); $('#helpBtn').focus(); return; }
+    if(st.tour){ e.preventDefault(); end('skip'); }
+    return;
+  }
+  if(!st.tour||typing) return;
+  if(e.key==='ArrowRight'){ e.preventDefault(); var s=cur(); if(s&&s.act==='click'&&!s.guard) show(st.i+1); else next(); }
+  else if(e.key==='ArrowLeft'){ e.preventDefault(); back(); }
+});
+/* ---------- เมนู "สอนใช้งาน" (ดูซ้ำ) ---------- */
+function buildHelp(){
+  var h='<h3>เปิดดูบทเรียนซ้ำ</h3><button type="button" data-l="central">เริ่มใช้งานครั้งแรก (ล็อกอิน / เปลี่ยนรหัส)</button>';
+  ['admin','recorder','pmom'].forEach(function(k){ h+='<button type="button" data-l="'+k+'">'+LESSONS[k].title+'</button>'; });
+  h+='<hr><a href="../คู่มือผู้ใช้/README.md" target="_blank" rel="noopener">เปิดคู่มือผู้ใช้</a>';
+  $('#helpMenu').innerHTML=h;
+}
+function closeHelp(){ $('#helpMenu').hidden=true; $('#helpBtn').setAttribute('aria-expanded','false'); }
+$('#helpBtn').addEventListener('click',function(){
+  var m=$('#helpMenu'), open=m.hidden; m.hidden=!open; this.setAttribute('aria-expanded',open?'true':'false');
+  if(open) $('button',m).focus();
+});
+$('#helpMenu').addEventListener('click',function(e){
+  var b=e.target.closest('[data-l]'); if(!b) return;
+  var id=b.getAttribute('data-l'); closeHelp();
+  if(id==='central'){ setScreen('login'); start('central'); return; }
+  st.role=id; $('#roleSel').value=id; setScreen(HOME[id]); start(id);
+});
+document.addEventListener('click',function(e){ if(!e.target.closest('.helpwrap')) closeHelp(); });
+/* ---------- แถบ mockup + ธีม ---------- */
+$$('#strip [data-mode]').forEach(function(b){ b.addEventListener('click',function(){ setMode(b.getAttribute('data-mode')); }); });
+function setMode(m){
+  st.mode=m; body.classList.remove('m-a','m-b'); body.classList.add('m-'+m);
+  $$('#strip [data-mode]').forEach(function(b){ b.setAttribute('aria-pressed',b.getAttribute('data-mode')===m?'true':'false'); });
+  if(st.tour) show(st.i);
+}
+$('#roleSel').addEventListener('change',function(){ st.role=this.value; renderNav(); });
+$('#restart').addEventListener('click',function(){ st.role=$('#roleSel').value; setScreen('login'); start('central'); });
+$('#themeBtn').addEventListener('click',function(){
+  var el=document.documentElement, c=el.getAttribute('data-theme');
+  el.setAttribute('data-theme',c==='dark'?'light':(c==='light'?'dark':(matchMedia('(prefers-color-scheme:dark)').matches?'light':'dark')));
+  setTimeout(place,0);
+});
+var tt; function toast(m){ var t=$('#toast'); t.textContent=m; t.hidden=false; clearTimeout(tt); tt=setTimeout(function(){ t.hidden=true; },3200); }
+/* ---------- เริ่ม ---------- */
+buildHelp();
+var q=new URLSearchParams(location.search);
+if(q.get('m')==='b') setMode('b');
+if(q.get('role')&&LESSONS[q.get('role')]){ st.role=q.get('role'); $('#roleSel').value=st.role; }
+setScreen('login'); start('central');
+})();
+</script>
+</body>
+</html>
