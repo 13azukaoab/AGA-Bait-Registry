@@ -10,6 +10,7 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { CENTRAL_REGISTRY_FILES_OCT26, REGISTRY_IMPORT_OPTIONS, resolveRegistrySheet, type RegistryFileSpec } from "./centralRegistrySheets";
+import { applyContractNoCorrections, unusedCorrections, type ContractNoCorrection } from "./centralRegistryCorrections";
 import { findCrossBranchDuplicates } from "./crossBranchDuplicates";
 import type { HoldRow } from "./registryDryRun";
 import { parseRegistrySheet, type CellValue, type RegistrySheetResult } from "./registrySheet";
@@ -43,6 +44,7 @@ export function hasAllCentralFiles(dir: string): boolean {
 export function loadCentralRegistry(dir: string): CentralRegistry {
   const sheets: CentralSheet[] = [];
   const skipped: CentralRegistry["skipped"] = [];
+  const applied: ContractNoCorrection[] = [];
   for (const spec of CENTRAL_REGISTRY_FILES_OCT26) {
     for (const s of readXlsx(join(dir, spec.file))) {
       const target = resolveRegistrySheet(spec, s.name);
@@ -50,9 +52,16 @@ export function loadCentralRegistry(dir: string): CentralRegistry {
         skipped.push({ file: spec.file, sheet: s.name, reason: target.reason });
         continue;
       }
-      const parsed = parseRegistrySheet(s.rows, target.branch, { readDateRangeText: REGISTRY_IMPORT_OPTIONS.readDateRangeText });
-      sheets.push({ spec, sheet: s.name, branch: target.branch, grid: s.rows, parsed });
+      // แก้เลขสัญญาตามตารางที่ระบุเอง (2.80) ก่อนทุกขั้น → dry-run / หาเลขซ้ำ / นำเข้าจริง เห็นเลขเดียวกัน
+      const fixed = applyContractNoCorrections(spec.file, s.name, s.rows);
+      applied.push(...fixed.applied);
+      const parsed = parseRegistrySheet(fixed.grid, target.branch, { readDateRangeText: REGISTRY_IMPORT_OPTIONS.readDateRangeText });
+      sheets.push({ spec, sheet: s.name, branch: target.branch, grid: fixed.grid, parsed });
     }
+  }
+  const unused = unusedCorrections(applied);
+  if (unused.length > 0) {
+    throw new Error(`ตารางแก้เลขสัญญา: ไม่พบไฟล์/ชีทของรายการ ${unused.map((c) => `${c.sheet} แถว ${c.excelRow}`).join(", ")} — หยุด`);
   }
   const holds = findCrossBranchDuplicates(sheets.map((s) => ({ branch: s.branch, rows: s.parsed.rows })));
   return { sheets, skipped, holds };

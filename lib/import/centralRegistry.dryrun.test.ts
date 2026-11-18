@@ -5,7 +5,7 @@
  * - ไฟล์จริงอยู่ใน fixtures/ (ไม่ commit · มีข้อมูลลูกค้า) → ไม่ครบ = skip เอง (CI ไม่มีไฟล์)
  * - ตำแหน่งไฟล์: env AGA_FIXTURES_DIR หรือ <repo>/fixtures
  * - ตัวเลือกนำเข้า = REGISTRY_IMPORT_OPTIONS (ก1 อ่านช่วงวันที่ข้อความ · ข3 ประเภทว่าง → อื่นๆ · ค1 เลขสัญญาผิดรูปมีมูลค่า = ต้องแก้)
- *   + holdRows = เลขสัญญาซ้ำข้ามสาขา (ง1) จากทั้ง 24 สาขา · ลพบุรีข้ามตาม SPEC §6.5 · ชีทไม่อยู่ในตาราง = throw
+ *   + holdRows = เลขสัญญาซ้ำข้ามสาขา (ง1) จากทั้ง 24 สาขา (หลังแก้เลขตาม 2.80 ไม่เหลือแถวกัน) · ลพบุรีข้ามตาม SPEC §6.5 · ชีทไม่อยู่ในตาราง = throw
  * - strict = นำเข้าจริง · lenient = ตัดปัญหาประเภทลูกค้า/ทีมออก (แยก "สูตรผิด" ออกจาก "ข้อมูลไม่สะอาด")
  * - เทียบยอด OCT.26 (lenient) กับบล็อกสรุปท้ายชีท: ส่วนต่าง = แถวกรอกมือที่มีมูลค่า + สัญญาหมดก่อน ต.ค. (Excel นับทุกแถว)
  * - env (ไม่บังคับ): AGA_CENTRAL_DRYRUN_OUT=<path>.json (ตัวเลข + เลขแถวเท่านั้น · เขียนนอก repo)
@@ -17,7 +17,6 @@ import { describe, expect, it } from "vitest";
 import { TIER_RULES } from "../rules/__fixtures__/tierRules";
 import { hasAllCentralFiles, loadCentralRegistry, type CentralRegistry } from "./centralRegistry.testkit";
 import { REGISTRY_IMPORT_OPTIONS } from "./centralRegistrySheets";
-import { DUPLICATE_ACROSS_BRANCH_REASON } from "./crossBranchDuplicates";
 import { dryRunRegistrySheet, type BranchDryRun } from "./registryDryRun";
 import { buildSellerIndex, mergeSellerIndexes } from "./sellerLookup";
 import { readXlsx } from "./xlsx/readXlsx";
@@ -132,12 +131,13 @@ describe.skipIf(!HAS_FILES)("dry-run ทะเบียนส่วนกลา�
     for (const r of results) expect(extras.get(r.branch)!.typeOnlyRows, r.branch).toEqual([]);
   });
 
-  it("ง1: เลขสัญญาซ้ำข้ามสาขา — สุวินทวงศ์ แถว 77 ไม่นำเข้า (คู่กับพุทธมณฑล แถว 225 ในเขต 1)", () => {
-    expect([...central.holds.keys()].sort()).toEqual(["พุทธมณฑล", "สุวินทวงศ์"].sort());
-    expect(central.holds.get("พุทธมณฑล")!.map((h) => h.excelRow)).toEqual([225]);
-    const suwin = results.find((r) => r.branch === "สุวินทวงศ์")!;
-    expect(suwin.heldRows).toEqual([{ excelRow: 77, reason: DUPLICATE_ACROSS_BRANCH_REASON }]);
-    for (const r of results.filter((x) => x.branch !== "สุวินทวงศ์")) expect(r.heldRows, r.branch).toEqual([]);
+  it("2.80: สุวินทวงศ์ แถว 77 แก้เลขผ่านตาราง (centralRegistryCorrections.ts) → นำเข้า · ไม่เหลือเลขซ้ำข้ามสาขา", () => {
+    expect(central.holds.size).toBe(0);
+    for (const r of results) expect(r.heldRows, r.branch).toEqual([]);
+    const suwin = central.sheets.find((s) => s.branch === "สุวินทวงศ์")!;
+    const row77 = suwin.parsed.rows.find((r) => r.excelRow === 77)!.raw as Record<string, string>;
+    expect(row77["เลขที่สัญญา"]).toBe("CT26-0018912");
+    expect(results.find((r) => r.branch === "สุวินทวงศ์")!.strictProblems.map((p) => p.excelRow)).not.toContain(77);
   });
 
   it("snapshot ภายในสอดคล้องกัน (cust = ผลรวมจำนวน tier · value = ผลรวมมูลค่า tier)", () => {
@@ -186,7 +186,7 @@ describe.skipIf(!HAS_FILES)("dry-run ทะเบียนส่วนกลา�
     expect(total((r) => r.blankTypeFilledRows.length)).toBe(13);
     expect(total((r) => r.strict.ready)).toBe(EXPECTED_READY);
     expect(total((r) => r.strict.mustFix)).toBe(EXPECTED_MUSTFIX);
-    expect(total((r) => r.strict.held.length)).toBe(1);
+    expect(total((r) => r.strict.held.length)).toBe(0);
   });
 
   it("เขียนผลสรุป (ถ้าตั้ง env)", () => {
@@ -225,6 +225,6 @@ describe.skipIf(!HAS_FILES)("dry-run ทะเบียนส่วนกลา�
   });
 });
 
-/** ตัวเลขหลังผลตัดสิน 18 พ.ย. (ตรวจจากผลจริงแล้ว) */
-const EXPECTED_READY = 2036;
+/** ตัวเลขหลังผลตัดสิน 18 พ.ย. + 2.80 (ตรวจจากผลจริงแล้ว) */
+const EXPECTED_READY = 2037; // 2.80: สุวินทวงศ์ แถว 77 นำเข้า (+1)
 const EXPECTED_MUSTFIX = 106;
