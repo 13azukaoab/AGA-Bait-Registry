@@ -1,5 +1,5 @@
 /**
- * /admin/months — ส่งข้อมูล และสรุปงานประจำเดือน (ปิดเดือน · SPEC §8.2 · mockup FINAL `docs/mockup/month-closure.html`)
+ * /admin/closure — ส่งข้อมูล และสรุปงานประจำเดือน (ปิดเดือน · SPEC §8.2 · mockup FINAL `docs/mockup/month-closure.html`)
  *
  * Logic summary:
  *   * host + recorder (หัวหน้างาน) เข้าได้ — ด่านที่ middleware จากตารางเมนู · ที่นี่ตรวจซ้ำเป็นด่านสำรอง
@@ -20,7 +20,7 @@ export const dynamic = "force-dynamic";
 
 export default async function AdminMonthsPage() {
   const profile = await requireProfile();
-  if (!canAccessPath(profile.role, "/admin/months")) redirect(homeForRole(profile.role));
+  if (!canAccessPath(profile.role, "/admin/closure")) redirect(homeForRole(profile.role));
 
   const data = await loadMonthsData(await createClient(), profile.role);
   if (!data) {

@@ -1,5 +1,5 @@
 /**
- * ตรรกะล้วน (pure) ของหน้า "ส่งข้อมูล และสรุปงานประจำเดือน" (/admin/months · SPEC §7.7, §8.2, §9 · M39)
+ * ตรรกะล้วน (pure) ของหน้า "ส่งข้อมูล และสรุปงานประจำเดือน" (/admin/closure · SPEC §7.7, §8.2, §9 · M39)
  *
  * Logic summary:
  *   * หน้าเว็บไม่ส่งตัวเลขใดๆ ให้ server — ส่งแค่ {month, scope, confirmKey, overrideReason?, acknowledgeCarried?}
