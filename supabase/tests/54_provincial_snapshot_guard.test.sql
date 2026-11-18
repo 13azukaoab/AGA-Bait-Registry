@@ -5,7 +5,7 @@
 --   (d) list_post_close_edits(p_month, p_scope)
 -- go-live ในเทส = 2026-09 · ข้อมูลสมมติทั้งหมด
 BEGIN;
-SELECT plan(78);
+SELECT plan(83);
 
 INSERT INTO auth.users (id, instance_id, aud, role, email) VALUES
   ('00000000-0000-0000-0000-0000000000e1', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'host@test.local'),
@@ -109,6 +109,12 @@ SELECT throws_ok($$UPDATE monthly_branch_snapshots SET source = 'computed' WHERE
   'SN001', NULL, 'host cannot change a manual row into computed');
 SELECT throws_ok($$UPDATE monthly_branch_snapshots SET branch_id = (SELECT cen_id FROM _b) WHERE month_key = '2026-10' AND source = 'manual'$$,
   'SN002', NULL, 'host cannot move a manual row to a central branch');
+SELECT throws_ok($$UPDATE monthly_branch_snapshots SET branch_id = (SELECT prov2_id FROM _b) WHERE month_key = '2026-10' AND source = 'manual'$$,
+  'SN003', NULL, 'host cannot move a manual row to another province branch (delete + insert instead)');
+SELECT throws_ok($$UPDATE monthly_branch_snapshots SET month_key = '2026-11' WHERE month_key = '2026-10' AND source = 'manual'$$,
+  'SN003', NULL, 'host cannot move a manual row to another month');
+SELECT throws_ok($$INSERT INTO monthly_branch_snapshots (month_key, branch_id, source) SELECT 'SEP.26', prov2_id, 'manual' FROM _b$$,
+  'SN004', NULL, 'manual month_key must be YYYY-MM');
 SELECT lives_ok(
   $$INSERT INTO monthly_branch_snapshots (month_key, branch_id, source, s1, v_s1) SELECT '2026-09', prov2_id, 'manual', 1, 1000 FROM _b$$,
   'host inserts a second manual row');
@@ -261,6 +267,22 @@ SELECT is((SELECT row(new_data ->> 'cust', new_data ->> 'value', new_data ->> 'c
             WHERE table_name = 'monthly_branch_snapshots' AND action = 'insert'),
   row('2', '4000.00', '00000000-0000-0000-0000-0000000000e1', '00000000-0000-0000-0000-0000000000e1'::uuid)::text,
   'audit stores the recomputed totals and the server stamp');
+
+-- บันทึกซ้ำโดยไม่แก้ (PATCH ค่าเดิม / upsert ค่าเดิมแบบ merge-duplicates) → ไม่มีแถว audit ใหม่ · คงค่าประทับเดิม
+UPDATE monthly_branch_snapshots SET confirmed_at = '2026-11-02 09:00+07' WHERE month_key = '2027-02';
+DELETE FROM audit_log;
+SET LOCAL ROLE authenticated;
+SELECT pg_temp.as_user('00000000-0000-0000-0000-0000000000e1');
+UPDATE monthly_branch_snapshots SET s1 = 2, confirmed_at = now() WHERE month_key = '2027-02';
+INSERT INTO monthly_branch_snapshots (month_key, branch_id, source, s1, s3, v_s1, v_s3, confirmed_at)
+  SELECT '2027-02', prov2_id, 'manual', 2, 1, 4000, 500, now() FROM _b
+  ON CONFLICT (month_key, branch_id) DO UPDATE
+    SET s1 = EXCLUDED.s1, s3 = EXCLUDED.s3, v_s1 = EXCLUDED.v_s1, v_s3 = EXCLUDED.v_s3, confirmed_at = EXCLUDED.confirmed_at;
+RESET ROLE;
+SELECT is((SELECT count(*)::int FROM audit_log WHERE table_name = 'monthly_branch_snapshots'), 0,
+  'saving unchanged values (PATCH or upsert) writes no audit row (no fake post-close edit)');
+SELECT is((SELECT confirmed_at FROM monthly_branch_snapshots WHERE month_key = '2027-02'),
+  '2026-11-02 09:00+07'::timestamptz, 'unchanged upsert keeps the original confirmation stamp');
 
 -- =====================================================================
 -- 6. RPC ของ M39 (SECURITY DEFINER) ยังเขียนแถว computed ได้

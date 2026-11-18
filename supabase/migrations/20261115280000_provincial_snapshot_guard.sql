@@ -11,6 +11,11 @@
 --         - แถวเดิม (OLD: UPDATE/DELETE รวมถึง upsert ที่ชนแถวเดิม) และแถวใหม่ (NEW: INSERT/UPDATE) ต้องผ่านทั้งคู่
 --           → เปลี่ยน source / branch_id / month_key เพื่อหนีกฎไม่ได้
 --         - SN001 = แถวไม่ใช่ manual (computed / legacy) · SN002 = สาขาไม่ใช่ต่างจังหวัด (หรือไม่พบสาขา)
+--         - SN003 = UPDATE ย้ายแถวไปเดือน/สาขาอื่น (ให้ลบแล้วเพิ่มใหม่ — audit ลงทั้งเดือนเดิมและเดือนใหม่)
+--         - SN004 = month_key ไม่ใช่ YYYY-MM
+--       * หมายเหตุ: ด่านดู current_user — RPC SECURITY DEFINER ที่ผู้ใช้เรียกได้และเขียนตารางนี้ในอนาคต จะข้ามด่านนี้
+--         (ตอนนี้ไม่มี) · หน้า Port ต้องบันทึกด้วย JWT ของผู้ใช้ ไม่ใช่ service role (ไม่งั้นข้าม (a) และ (c))
+--   audit: แทน trigger audit_snapshots_manual_update (ไม่ใช่ฟังก์ชัน) ให้ลงเฉพาะ UPDATE ที่ค่าเปลี่ยนจริง
 --   (b) ยอดรวมคำนวณที่ฐานข้อมูล (แถว manual · ทุก role)
 --       cust = s1+…+xl3 · vS = v_s1+v_s3 · vM = v_m1+v_m3 · vL = v_l1+v_l3 · vXL = v_xl1+v_xl3 · value = vS+vM+vL+vXL
 --       (สูตรเดียวกับ lib/dashboard/manualRow.ts `buildManualRow` · ค่าที่ client ส่งมาในช่องเหล่านี้ถูกเขียนทับ)
@@ -42,7 +47,7 @@
 --         **ไม่มี old_data / new_data / row_id / contract_id / ข้อมูลลูกค้า**
 --       * ข้อจำกัดที่รู้: การเข้าบริการที่ถูกย้ายออกจากเดือนที่ปิด ลง audit ด้วยเดือนใหม่ → ไม่อยู่ในรายการของเดือนเดิม
 --         (แก้ได้เฉพาะตอนแทน audit_trigger — ไม่ทำในรอบนี้)
---   * error ใหม่: SN001, SN002 (ไม่ชนชุดเดิม AG/AS/CC/CL/CT/MC/MS/PS/SV/SY/TM/TR/WL) · ใช้ซ้ำ MC001 (เดือน/ส่วนผิด) · 42501
+--   * error ใหม่: SN001–SN004 (ไม่ชนชุดเดิม AG/AS/CC/CL/CT/MC/MS/PS/SV/SY/TM/TR/WL) · ใช้ซ้ำ MC001 (เดือน/ส่วนผิด) · 42501
 --   * ไม่แทน audit_trigger และไม่แทนฟังก์ชันเดิมตัวใด · REVOKE TRUNCATE/REFERENCES/TRIGGER ของ authenticated บนตารางนี้
 --     (TRUNCATE ข้ามทั้ง RLS และ row trigger — ในเครื่องได้มาจาก default privileges)
 --   * ลำดับ cloud: หลัง 20261115271000_month_close_ready_notes.sql
@@ -69,7 +74,7 @@ BEGIN
     END IF;
 
     IF TG_OP IN ('UPDATE', 'DELETE') THEN
-      IF OLD.source <> 'manual' THEN
+      IF OLD.source IS DISTINCT FROM 'manual' THEN
         RAISE EXCEPTION 'แถว snapshot แบบ % แก้/ลบผ่านหน้านี้ไม่ได้ (เฉพาะตัวเลขต่างจังหวัดที่กรอกมือ)', OLD.source
           USING ERRCODE = 'SN001';
       END IF;
@@ -80,7 +85,7 @@ BEGIN
     END IF;
 
     IF TG_OP IN ('INSERT', 'UPDATE') THEN
-      IF NEW.source <> 'manual' THEN
+      IF NEW.source IS DISTINCT FROM 'manual' THEN
         RAISE EXCEPTION 'บันทึกได้เฉพาะแถวตัวเลขต่างจังหวัดที่กรอกมือ (source = manual) — ได้ %', NEW.source
           USING ERRCODE = 'SN001';
       END IF;
@@ -88,6 +93,17 @@ BEGIN
       IF v_division IS DISTINCT FROM 'province' THEN
         RAISE EXCEPTION 'บันทึกตัวเลขกรอกมือได้เฉพาะสาขาต่างจังหวัด (ส่วนกลางคำนวณจากทะเบียน)' USING ERRCODE = 'SN002';
       END IF;
+      -- เดือนต้องเป็น YYYY-MM (กันแถวซ้ำต่างรูปแบบ เช่น 'SEP.26' กับ '2026-09' · sync เทียบ string)
+      IF NEW.month_key IS NULL OR NEW.month_key !~ '^\d{4}-(0[1-9]|1[0-2])$' THEN
+        RAISE EXCEPTION 'เดือนต้องเป็นรูปแบบ YYYY-MM (ได้ %)', coalesce(NEW.month_key, 'ว่าง') USING ERRCODE = 'SN004';
+      END IF;
+    END IF;
+
+    -- ย้ายแถวไปเดือน/สาขาอื่นด้วย UPDATE ไม่ได้ (audit ลงแค่เดือน/สาขาใหม่ → "แก้หลังปิด" ของเดือนเดิมหาย)
+    -- ต้องลบแล้วเพิ่มใหม่ ซึ่งลง audit แยกตามเดือน/สาขาของแต่ละฝั่ง
+    IF TG_OP = 'UPDATE'
+       AND (NEW.month_key, NEW.branch_id) IS DISTINCT FROM (OLD.month_key, OLD.branch_id) THEN
+      RAISE EXCEPTION 'ย้ายแถวไปเดือน/สาขาอื่นไม่ได้ — ลบแล้วบันทึกใหม่' USING ERRCODE = 'SN003';
     END IF;
   END IF;
 
@@ -95,7 +111,7 @@ BEGIN
     RETURN OLD;
   END IF;
 
-  IF NEW.source <> 'manual' THEN
+  IF NEW.source IS DISTINCT FROM 'manual' THEN
     RETURN NEW;   -- legacy / computed: เก็บตามที่ส่งมา (เขียนได้เฉพาะ service_role / postgres / RPC)
   END IF;
 
@@ -148,6 +164,16 @@ CREATE TRIGGER snapshots_manual_guard
   FOR EACH ROW EXECUTE FUNCTION public.snapshots_manual_guard();
 
 REVOKE ALL ON FUNCTION public.snapshots_manual_guard() FROM PUBLIC, anon;
+
+-- audit ของแถว manual: ลงเฉพาะ UPDATE ที่ค่าเปลี่ยนจริง (เดิม 20261110090400 ไม่มีเงื่อนไขนี้ →
+-- กด "บันทึก" ซ้ำโดยไม่แก้ / upsert ค่าเดิม = แถว audit ปลอม = "แก้หลังปิด" พอง) · ฟังก์ชัน audit_trigger เดิม ไม่แตะ
+-- (แพทเทิร์นเดียวกับ audit_snapshots_computed_update ของ M39)
+DROP TRIGGER audit_snapshots_manual_update ON public.monthly_branch_snapshots;
+CREATE TRIGGER audit_snapshots_manual_update
+  AFTER UPDATE ON public.monthly_branch_snapshots
+  FOR EACH ROW
+  WHEN ((OLD.source = 'manual' OR NEW.source = 'manual') AND OLD.* IS DISTINCT FROM NEW.*)
+  EXECUTE FUNCTION public.audit_trigger();
 
 -- TRUNCATE ข้าม RLS + row trigger · ไม่มีหน้าจอใดใช้ (PostgREST ไม่มี TRUNCATE) — ตัดทิ้งให้ชัด
 REVOKE TRUNCATE, REFERENCES, TRIGGER ON public.monthly_branch_snapshots FROM authenticated;
