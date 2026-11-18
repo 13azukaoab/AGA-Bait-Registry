@@ -10,6 +10,20 @@
  *   - ไม่มีข้อมูลลูกค้า (มีแค่ชื่อไฟล์/ชื่อชีท/ชื่อสาขา)
  */
 
+/**
+ * ตัวเลือกนำเข้าทะเบียนส่วนกลาง (ทั้ง 24 สาขา รวมเขต 1) ตามผลตัดสินเจ้าของ 18 พ.ย. 2026
+ * - readDateRangeText (ก1): ช่องวันที่ว่าง → อ่านช่วงวันที่ "วว/ดด/ปปปป-วว/ดด/ปปปป" จากคอลัมน์ข้างซ้าย · รูปอื่น = กรอกมือ
+ * - blankCustomerTypeAsOther (ข3): ประเภทลูกค้าว่าง → "อื่นๆ (ระบุในหมายเหตุ)"
+ * - flagMalformedContractWithValue (ค1): เลขสัญญาผิดรูป/ว่างแต่มีมูลค่า+วันที่ → ต้องแก้ (ไม่ข้ามเงียบ)
+ * - ง1 (เลขสัญญาซ้ำข้ามสาขา → ไม่นำเข้า) ทำผ่าน holdRows จาก findCrossBranchDuplicates (crossBranchDuplicates.ts)
+ * ใช้ค่านี้ทั้ง dry-run และขั้นนำเข้าจริง — อย่าเขียนตัวเลือกซ้ำที่อื่น
+ */
+export const REGISTRY_IMPORT_OPTIONS = {
+  readDateRangeText: true,
+  blankCustomerTypeAsOther: true,
+  flagMalformedContractWithValue: true,
+} as const;
+
 /** ชีทที่ตั้งใจข้าม */
 export interface SkipSheet {
   skip: string;

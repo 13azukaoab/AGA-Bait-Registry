@@ -14,6 +14,8 @@
  *   3. รวบรวมปัญหาเป็น "จำนวน + เลขแถว Excel" เท่านั้น — ห้ามมีชื่อ/เบอร์/ที่อยู่ในผลลัพธ์ (PDPA)
  *      · ลูกค้าซ้ำ (2.59) ตรวจด้วยเบอร์โทร/ชื่อในหน่วยความจำ แล้วคืนแค่เลขแถว
  *      · ผู้ขาย รายงานเป็น "จำนวน" เท่านั้น (ไม่มีชื่อผู้ขาย)
+ *   ตัวเลือกตามผลตัดสินเจ้าของ 18 พ.ย. 2026 (ทะเบียนส่วนกลาง · ค่าที่ใช้จริงอยู่ที่ REGISTRY_IMPORT_OPTIONS):
+ *      readDateRangeText (ก1) · blankCustomerTypeAsOther (ข3) · flagMalformedContractWithValue (ค1) · holdRows = เลขสัญญาซ้ำข้ามสาขา (ง1)
  *   4. ไม่ตัดสินวิธีล้างข้อมูลเอง — รายงานอย่างเดียว (เจ้าของเลือกวิธีแก้)
  *      รายการแถวที่ต้องกรอกมือ + ตารางแปลงประเภทสร้างต่อใน registryReport.ts
  */
@@ -21,6 +23,7 @@ import { buildBranchSnapshot } from "../rules/snapshot";
 import { annualValueForTerm, serviceMonthsForTerm } from "../rules/term";
 import type { Contract, SnapshotRow, TierRule } from "../rules/types";
 import { normalizeBranch } from "./branches";
+import { BLANK_CUSTOMER_TYPE_FALLBACK } from "./customerTypes";
 import { importContracts } from "./importContracts";
 import {
   parseRegistrySheet,
@@ -106,6 +109,10 @@ export interface BranchDryRun {
   contractRows: number;
   /** เลขแถว Excel ที่วันที่อ่านจากข้อความช่วงวันที่ (เฉพาะเมื่อเปิด readDateRangeText · ปิด = ว่าง) */
   dateFromRangeTextRows: number[];
+  /** เลขแถว Excel ที่ประเภทลูกค้าว่างและถูกเติม "อื่นๆ (ระบุในหมายเหตุ)" (เฉพาะแถวที่ไม่ใช่แถวข้าม) */
+  blankTypeFilledRows: number[];
+  /** เลขแถว Excel ที่เลขสัญญาผิดรูป/ว่างแต่มีมูลค่า → อยู่ใน strictProblems (ไม่นับใน contractRows) */
+  malformedContractRows: number[];
   strict: ImportRunSummary;
   lenient: ImportRunSummary;
   /** แถวที่ไม่ผ่าน strict รายแถว (สำหรับรายการแถวที่ต้องกรอกมือ) */
@@ -216,8 +223,12 @@ export interface DryRunOptions {
    * ต้องสะกดตรง master ทุกตัวอักษร · ไม่ส่ง = ใช้ชื่อชีท (แบบเขต 1)
    */
   branch?: string;
-  /** ⚠ ข้อเสนอ (ปิดไว้) — อ่านวันที่จากข้อความช่วงวันที่ เมื่อช่องวันที่ว่าง (RegistrySheetOptions.readDateRangeText) */
+  /** อ่านวันที่จากข้อความช่วงวันที่ เมื่อช่องวันที่ว่าง (RegistrySheetOptions.readDateRangeText · ก1) */
   readDateRangeText?: boolean;
+  /** ประเภทลูกค้าว่าง → "อื่นๆ (ระบุในหมายเหตุ)" อัตโนมัติ (ข3) · รายงานเลขแถวใน blankTypeFilledRows */
+  blankCustomerTypeAsOther?: boolean;
+  /** เลขสัญญาผิดรูป/ว่าง แต่มีมูลค่า + วันที่ → ต้องแก้ แทนข้ามเงียบ (ค1 · ImportOptions) */
+  flagMalformedContractWithValue?: boolean;
 }
 
 /** dry-run 1 ชีท (1 สาขา) */
@@ -246,11 +257,20 @@ export function dryRunRegistrySheet(sheetName: string, grid: CellValue[][], opts
     const found = opts.sellerIndex ? lookupSeller(opts.sellerIndex, raw["เลขที่สัญญา"] ?? "") : null;
     const matched = found?.status === "matched" ? found.seller : null;
     // ตำแหน่งใช้แยก sale_name / am_name (sellerColumns) · ไม่ใช้อนุมาน New/Renew
-    return { ...raw, ผู้ขาย: matched?.name ?? "", ตำแหน่ง: matched?.position ?? "" };
+    const type = (raw["ประเภท"] ?? "").trim();
+    const filled = opts.blankCustomerTypeAsOther && type === "";
+    return {
+      ...raw,
+      ...(filled ? { ประเภท: BLANK_CUSTOMER_TYPE_FALLBACK } : {}),
+      ผู้ขาย: matched?.name ?? "",
+      ตำแหน่ง: matched?.position ?? "",
+    };
   });
-  const rawStrict = importContracts(strictRows, {
+  const importOpts = {
     allowMissingSeller: true,
-  });
+    flagMalformedContractWithValue: opts.flagMalformedContractWithValue,
+  };
+  const rawStrict = importContracts(strictRows, importOpts);
   // กันแถวที่สั่งไว้ (ผ่านกฎแต่ต้องตรวจก่อน) ออกจากกลุ่มพร้อมนำเข้า
   const holdSet = new Set((opts.holdRows ?? []).map((h) => h.excelRow));
   const readyExcelRows = new Set(rawStrict.ready.map((r) => excelOf(r.rowIndex)));
@@ -263,7 +283,7 @@ export function dryRunRegistrySheet(sheetName: string, grid: CellValue[][], opts
   };
 
   const lenientRows = rows.map((r) => ({ ...(r.raw as Record<string, string>), ประเภท: LENIENT_TYPE, ทีม: "" }));
-  const lenientResult = importContracts(lenientRows, { allowMissingSeller: true });
+  const lenientResult = importContracts(lenientRows, importOpts);
 
   const strictContracts = strictResult.ready.map(toContract);
   const lenientContracts = lenientResult.ready.map(toContract);
@@ -370,6 +390,18 @@ export function dryRunRegistrySheet(sheetName: string, grid: CellValue[][], opts
     dataRows: rows.length,
     contractRows: contractRows.length,
     dateFromRangeTextRows: rows.filter((r) => r.dateFromRangeText).map((r) => r.excelRow),
+    blankTypeFilledRows: opts.blankCustomerTypeAsOther
+      ? [...rawStrict.ready, ...rawStrict.mustFix]
+          .map((r) => r.rowIndex)
+          .filter((i) => ((rows[i - 1]?.raw as Record<string, string>)["ประเภท"] ?? "").trim() === "")
+          .map(excelOf)
+          .sort((a, b) => a - b)
+      : [],
+    malformedContractRows: strictResult.mustFix
+      .map((r) => r.rowIndex)
+      .filter((i) => !CONTRACT_LIKE.test(((rows[i - 1]?.raw as Record<string, string>)["เลขที่สัญญา"] ?? "").replace(/\s+/g, "").toUpperCase()))
+      .map(excelOf)
+      .sort((a, b) => a - b),
     strict: summarize(strictResult, rows, heldRows.map((h) => h.excelRow)),
     lenient: summarize(lenientResult, rows),
     strictProblems,

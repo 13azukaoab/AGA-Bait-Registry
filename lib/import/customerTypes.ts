@@ -67,7 +67,28 @@ export const CUSTOMER_TYPE_MAPPINGS: readonly CustomerTypeMapping[] = [
   { from: "ออฟฟิิต", to: "ออฟฟิต", source: "registry" }, // สระอิซ้อน 2 ตัว
   { from: "โรงาน", to: "โรงงาน", source: "registry" },
   { from: "ศาลเจ้า", to: "สถานที่ทางศาสนา", source: "registry" },
+  // ทะเบียนส่วนกลาง 21 สาขา OCT.26 (เจ้าของตัดสิน ข1 · 18 พ.ย. 2026) — ค่าที่ไม่ชัด/มีหลายทาง → อื่นๆ
+  { from: "คอนโด", to: "คอนโด / อพาร์ตเมนต์ / หอพัก", source: "registry" },
+  { from: "หอพัก", to: "คอนโด / อพาร์ตเมนต์ / หอพัก", source: "registry" },
+  { from: "ออฟิต", to: "ออฟฟิต", source: "registry" }, // ขาด ฟ
+  { from: "ร้านอาหาร", to: "ห้าง / ร้านค้า", source: "registry" },
+  { from: "ศูนย์การค้า", to: "ห้าง / ร้านค้า", source: "registry" },
+  { from: "วัด", to: "สถานที่ทางศาสนา", source: "registry" },
+  { from: "กุฏิ", to: "สถานที่ทางศาสนา", source: "registry" },
+  { from: "สถานฑูต", to: "อื่นๆ (ระบุในหมายเหตุ)", source: "registry" },
+  { from: "โรงพยาบาลสัตว์", to: "อื่นๆ (ระบุในหมายเหตุ)", source: "registry" },
+  { from: "กองไม้ซุง", to: "อื่นๆ (ระบุในหมายเหตุ)", source: "registry" },
+  { from: "คลับเฮาส์", to: "อื่นๆ (ระบุในหมายเหตุ)", source: "registry" },
+  { from: "สนามกอล์ฟ", to: "อื่นๆ (ระบุในหมายเหตุ)", source: "registry" },
+  { from: "สวน", to: "อื่นๆ (ระบุในหมายเหตุ)", source: "registry" },
+  { from: "ห้องน้ำ", to: "อื่นๆ (ระบุในหมายเหตุ)", source: "registry" },
 ];
+
+/**
+ * ค่าที่ใช้แทน "ไม่มีประเภทลูกค้า" ตอนนำเข้าทะเบียนรายสาขา (เจ้าของตัดสิน ข3 · 18 พ.ย. 2026)
+ * ใช้เฉพาะเส้นทางทะเบียน (registryDryRun · option blankCustomerTypeAsOther) — หน้าเปิดงานยังบังคับกรอกประเภทเหมือนเดิม
+ */
+export const BLANK_CUSTOMER_TYPE_FALLBACK = "อื่นๆ (ระบุในหมายเหตุ)";
 
 const CANONICAL = new Set(CUSTOMER_TYPES);
 
