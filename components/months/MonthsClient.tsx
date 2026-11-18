@@ -194,7 +194,7 @@ export function MonthsClient({ data }: { data: MonthsPageData }) {
       <div className="grid grid-cols-1 gap-4 md:grid-cols-[300px_minmax(0,1fr)]">
         <section aria-label="รายการเดือน" className="rounded-[10px] border border-border bg-surface p-3">
           <h2 className="m-0 mb-2 text-[14px] font-semibold">
-            รายการเดือน <span className="ml-1 rounded-full bg-surface-3 px-1.5 py-0.5 text-[11.5px] text-fg-muted">{data.months.length}</span>
+            รายการเดือน <span className="ml-1 rounded-full bg-surface-3 px-1.5 py-0.5 text-xs text-fg-muted">{data.months.length}</span>
           </h2>
           <div className="flex flex-col gap-1.5">
             {data.months.map((m) => (
