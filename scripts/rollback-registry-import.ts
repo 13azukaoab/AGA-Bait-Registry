@@ -96,9 +96,11 @@ async function main(): Promise<void> {
     const out: GuardedRunResult<unknown, unknown> = batch ? await rollbackRegistry(ctx, batch) : await rollbackLegacy(ctx);
     log.status = out.status;
     if (out.status === "aborted") {
-      Object.assign(log, { reason: out.reason, dryRun: out.dry });
-      console.log(out.reason);
-      process.exitCode = 3;
+      const blocked = batch !== undefined && (out.dry as RegistryRollbackPlan).blocked;
+      const reason = blocked ? "⛔ ถอยไม่ได้ — มีด่านหยุด (ดูบรรทัด 'ด่านหยุด' ด้านบน) → ใช้ทางกู้จากสำรอง (แผน 5.3) · ไม่มีอะไรถูกลบ" : out.reason;
+      Object.assign(log, { status: blocked ? "blocked" : "aborted", reason, dryRun: out.dry });
+      console.log(reason);
+      process.exitCode = blocked ? 2 : 3;
       return;
     }
     if (out.status === "dry-run") {
