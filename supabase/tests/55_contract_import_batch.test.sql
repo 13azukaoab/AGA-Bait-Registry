@@ -70,10 +70,10 @@ SELECT is((SELECT array_agg(tgname::text ORDER BY tgname::text) FILTER (WHERE tg
   NULL::text[], 'the import_batch guard is the last BEFORE trigger (existing errors still win)');
 
 -- CHECK รูปแบบ (postgres ข้าม trigger guard แต่ CHECK ยังบังคับ)
-SELECT throws_ok(pg_temp.ins('x1', 'c1', ''), '23514', NULL, 'blank import_batch is rejected (CHECK)');
-SELECT throws_ok(pg_temp.ins('x2', 'c1', 'registry OCT26'), '23514', NULL, 'import_batch with a space is rejected (CHECK)');
-SELECT throws_ok(pg_temp.ins('x3', 'c1', repeat('a', 65)), '23514', NULL, 'import_batch longer than 64 chars is rejected (CHECK)');
-SELECT lives_ok(pg_temp.ins('x4', 'c1', repeat('a', 64)), '64-char import_batch is accepted');
+SELECT throws_ok(pg_temp.ins('e1', 'c1', ''), '23514', NULL, 'blank import_batch is rejected (CHECK)');
+SELECT throws_ok(pg_temp.ins('e2', 'c1', 'registry OCT26'), '23514', NULL, 'import_batch with a space is rejected (CHECK)');
+SELECT throws_ok(pg_temp.ins('e3', 'c1', repeat('a', 65)), '23514', NULL, 'import_batch longer than 64 chars is rejected (CHECK)');
+SELECT lives_ok(pg_temp.ins('e4', 'c1', repeat('a', 64)), '64-char import_batch is accepted');
 
 -- =====================================================================
 -- service_role (ตัวนำเข้า) ตั้งค่าได้ · audit ลง
@@ -94,7 +94,7 @@ SELECT ok(EXISTS (SELECT 1 FROM audit_log
                    WHERE table_name = 'contracts' AND row_id = pg_temp.id('b1') AND action = 'insert'
                      AND new_data->>'import_batch' = 'registry-OCT26'),
   'the imported insert is recorded in audit_log with import_batch');
-SELECT lives_ok(pg_temp.upd('x4', 'manual-fix'), 'postgres (DB admin / migration) can set import_batch');
+SELECT lives_ok(pg_temp.upd('e4', 'manual-fix'), 'postgres (DB admin / migration) can set import_batch');
 
 -- =====================================================================
 -- list_unlinked_renewals: ซ่อนสัญญานำเข้า · ที่เปิดในแอปยังขึ้น
@@ -114,9 +114,9 @@ SELECT is((SELECT count(*)::int FROM public.list_unlinked_renewals()), 1, 'admin
 -- =====================================================================
 -- host
 SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a1', true);
-SELECT throws_ok(pg_temp.ins('h1', 'c1', 'registry-OCT26'), 'AG020', NULL, 'host cannot insert a contract with import_batch');
-SELECT lives_ok(pg_temp.ins('h2', 'c1', NULL), 'host inserts a normal contract (import_batch NULL) as before');
-SELECT throws_ok(pg_temp.upd('h2', 'registry-OCT26'), 'AG020', NULL, 'host cannot set import_batch on an app contract');
+SELECT throws_ok(pg_temp.ins('f1', 'c1', 'registry-OCT26'), 'AG020', NULL, 'host cannot insert a contract with import_batch');
+SELECT lives_ok(pg_temp.ins('f2', 'c1', NULL), 'host inserts a normal contract (import_batch NULL) as before');
+SELECT throws_ok(pg_temp.upd('f2', 'registry-OCT26'), 'AG020', NULL, 'host cannot set import_batch on an app contract');
 SELECT throws_ok(pg_temp.upd('b3', 'other-batch'), 'AG020', NULL, 'host cannot change import_batch');
 SELECT throws_ok(pg_temp.upd('b3', NULL), 'AG020', NULL, 'host cannot clear import_batch');
 SELECT lives_ok(format('UPDATE public.contracts SET note = %L WHERE id = %L', 'แก้หมายเหตุ', pg_temp.id('b3')),
@@ -124,18 +124,18 @@ SELECT lives_ok(format('UPDATE public.contracts SET note = %L WHERE id = %L', '�
 SELECT is(pg_temp.batch('b3'), 'registry-OCT26', 'import_batch unchanged after host edits');
 -- admin (ในขอบเขต)
 SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a2', true);
-SELECT throws_ok(pg_temp.ins('m1', 'c1', 'registry-OCT26'), 'AG020', NULL, 'admin cannot insert a contract with import_batch');
+SELECT throws_ok(pg_temp.ins('f3', 'c1', 'registry-OCT26'), 'AG020', NULL, 'admin cannot insert a contract with import_batch');
 SELECT throws_ok(pg_temp.upd('b3', 'other-batch'), 'AG020', NULL, 'admin (in scope) cannot change import_batch');
 SELECT throws_ok(pg_temp.upd('b3', NULL), 'AG020', NULL, 'admin (in scope) cannot clear import_batch');
 -- recorder (ไม่มีสิทธิ์ UPDATE ตาม RLS → 0 แถว ค่าเดิม · INSERT ติด guard ก่อน RLS WITH CHECK)
 SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a3', true);
-SELECT throws_ok(pg_temp.ins('r1', 'c1', 'registry-OCT26'), 'AG020', NULL, 'recorder cannot insert a contract with import_batch');
+SELECT throws_ok(pg_temp.ins('f4', 'c1', 'registry-OCT26'), 'AG020', NULL, 'recorder cannot insert a contract with import_batch');
 SELECT lives_ok(pg_temp.upd('b3', NULL), 'recorder update matches no row (no UPDATE policy)');
 RESET ROLE;
 SELECT is(pg_temp.batch('b3'), 'registry-OCT26', 'import_batch unchanged after admin/recorder attempts');
-SELECT is((SELECT count(*)::int FROM contracts WHERE id IN (pg_temp.id('h1'), pg_temp.id('m1'), pg_temp.id('r1'))), 0,
+SELECT is((SELECT count(*)::int FROM contracts WHERE id IN (pg_temp.id('f1'), pg_temp.id('f3'), pg_temp.id('f4'))), 0,
   'refused inserts wrote nothing');
-SELECT is(pg_temp.batch('h2'), NULL, 'app contract keeps import_batch NULL');
+SELECT is(pg_temp.batch('f2'), NULL, 'app contract keeps import_batch NULL');
 
 SELECT * FROM finish();
 ROLLBACK;
