@@ -19,9 +19,9 @@ import {
   gramsPerAgBox,
   pctChange,
   sumByBranch,
-  sumMaterials,
+  sumUsage,
   type CustomerBreakdown,
-  type MaterialVisit,
+  type UsageRow,
   type Materials,
   type WorkBreakdown,
 } from "./logic";
@@ -69,7 +69,7 @@ export interface MaterialView {
   truncated: boolean;
 }
 
-function inBranch(v: MaterialVisit, branchId: string | null): boolean {
+function inBranch(v: { branchId: string }, branchId: string | null): boolean {
   return branchId === null || v.branchId === branchId;
 }
 
@@ -77,14 +77,16 @@ export function buildMaterialView(data: MaterialPageData, branchId: string | nul
   const cur = data.current.visits.filter((v) => inBranch(v, branchId));
   const prev = data.previous.visits.filter((v) => inBranch(v, branchId));
 
-  const curByBranch = sumByBranch(cur);
-  const prevByBranch = sumByBranch(prev);
+  const curUsage: UsageRow[] = data.current.usage.filter((u) => inBranch(u, branchId));
+  const prevUsage: UsageRow[] = data.previous.usage.filter((u) => inBranch(u, branchId));
+  const curByBranch = sumByBranch(curUsage);
+  const prevByBranch = sumByBranch(prevUsage);
   const agByBranch = new Map<string, AgBoxRow>(data.agBoxes.map((a) => [a.branchId, a]));
 
   const branches: BranchRow[] = data.branches
     .filter((b) => curByBranch.has(b.id) || prevByBranch.has(b.id))
     .map((branch) => {
-      const now = curByBranch.get(branch.id) ?? sumMaterials([]);
+      const now = curByBranch.get(branch.id) ?? sumUsage([]);
       const before = prevByBranch.get(branch.id);
       const ag = agByBranch.get(branch.id);
       return {
@@ -124,12 +126,12 @@ export function buildMaterialView(data: MaterialPageData, branchId: string | nul
       const count = insTeam.get(team.id);
       return count ? [{ team, count }] : [];
     }),
-    work: breakdownByWork(cur),
-    workPrev: breakdownByWork(prev),
-    customer: breakdownByCustomer(cur),
-    customerPrev: breakdownByCustomer(prev),
-    all: sumMaterials(cur),
-    allPrev: sumMaterials(prev),
+    work: breakdownByWork(curUsage),
+    workPrev: breakdownByWork(prevUsage),
+    customer: breakdownByCustomer(curUsage),
+    customerPrev: breakdownByCustomer(prevUsage),
+    all: sumUsage(curUsage),
+    allPrev: sumUsage(prevUsage),
     branches,
     teams,
     truncated: data.current.truncated || data.previous.truncated,

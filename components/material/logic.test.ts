@@ -5,31 +5,23 @@ import {
   breakdownByCustomer,
   breakdownByWork,
   countInternalInspection,
-  inspectionByKey,
-  customerGroupOf,
   gramsPerAgBox,
+  inspectionByKey,
   pctChange,
   sharePct,
   sumByBranch,
-  sumMaterials,
-  workGroupOf,
+  sumUsage,
   type MaterialVisit,
+  type UsageRow,
 } from "./logic";
 import { evaluateWorkload, minutesToHours, thresholdForTeam } from "./workload";
 
-let seq = 0;
-function visit(over: Partial<MaterialVisit> = {}): MaterialVisit {
-  seq += 1;
+function row(over: Partial<UsageRow> = {}): UsageRow {
   return {
-    visitId: `v${seq}`,
     branchId: "b1",
-    customerId: "c1",
-    internalInspection: false,
-    visitType: "routine",
-    makeupForMonth: null,
+    workGroup: "routine",
     saleType: "renew",
-    teamIds: ["t1"],
-    durationMin: 60,
+    visitCount: 1,
     outsideG: 0,
     insideG: 0,
     installBaitG: 0,
@@ -39,89 +31,86 @@ function visit(over: Partial<MaterialVisit> = {}): MaterialVisit {
   };
 }
 
-describe("workGroupOf — จัดกลุ่มประเภทงาน", () => {
-  it("routine ปกติ = routine", () => {
-    expect(workGroupOf({ visitType: "routine", makeupForMonth: null })).toBe("routine");
-  });
-  it("routine ที่มี makeup_for_month = ชดเชย", () => {
-    expect(workGroupOf({ visitType: "routine", makeupForMonth: "2026-09-01" })).toBe("makeup");
-  });
-  it("problem และ follow_up = แก้ไขปัญหา", () => {
-    expect(workGroupOf({ visitType: "problem", makeupForMonth: null })).toBe("problem");
-    expect(workGroupOf({ visitType: "follow_up", makeupForMonth: null })).toBe("problem");
-  });
-  it("การเข้าแก้ปัญหาที่มี makeup_for_month ยังนับเป็นแก้ไขปัญหา (ชดเชยแยกเฉพาะในประจำเดือน)", () => {
-    expect(workGroupOf({ visitType: "problem", makeupForMonth: "2026-09-01" })).toBe("problem");
-  });
-});
+let seq = 0;
+function visit(over: Partial<MaterialVisit> = {}): MaterialVisit {
+  seq += 1;
+  return {
+    visitId: `v${seq}`,
+    branchId: "b1",
+    customerId: "c1",
+    internalInspection: false,
+    teamIds: ["t1"],
+    durationMin: 60,
+    ...over,
+  };
+}
 
-describe("breakdownByWork", () => {
-  const visits = [
-    visit({ outsideG: 500, insideG: 300, powderPoints: 10, timberPcs: 40 }),
-    visit({ outsideG: 100, insideG: 50, powderPoints: 2, timberPcs: 5, makeupForMonth: "2026-09-01" }),
-    visit({ visitType: "problem", outsideG: 200, insideG: 400, installBaitG: 250, powderPoints: 5, timberPcs: 8 }),
-    visit({ visitType: "follow_up", outsideG: 50, insideG: 100, powderPoints: 0, timberPcs: 2 }),
+describe("breakdownByWork — จัดกลุ่มประเภทงานจากแถว RPC", () => {
+  const rows = [
+    row({ workGroup: "routine", visitCount: 10, outsideG: 500, insideG: 300, powderPoints: 10, timberPcs: 40 }),
+    row({ workGroup: "makeup", visitCount: 2, outsideG: 100, insideG: 50, powderPoints: 2, timberPcs: 5 }),
+    row({ workGroup: "problem", visitCount: 4, outsideG: 250, insideG: 500, installBaitG: 250, powderPoints: 5, timberPcs: 10 }),
   ];
-  const b = breakdownByWork(visits);
+  const b = breakdownByWork(rows);
 
   it("ประจำเดือนรวมชดเชย · ชดเชยเป็นเซ็ตย่อย", () => {
-    expect(b.routine.visits).toBe(2);
+    expect(b.routine.visits).toBe(12);
     expect(b.routine.outsideG).toBe(600);
-    expect(b.makeup.visits).toBe(1);
+    expect(b.makeup.visits).toBe(2);
     expect(b.makeup.outsideG).toBe(100);
   });
-  it("แก้ไขปัญหารวม problem + follow_up และเหยื่อติดตั้ง AG", () => {
-    expect(b.problem.visits).toBe(2);
-    expect(b.problem.outsideG).toBe(250);
+  it("แก้ไขปัญหาแยกต่างหาก รวมเหยื่อติดตั้ง AG", () => {
+    expect(b.problem.visits).toBe(4);
     expect(b.problem.insideG).toBe(500);
     expect(b.problem.installBaitG).toBe(250);
   });
-  it("routine + problem = ยอดรวมทุกการเข้า", () => {
+  it("routine + problem = ยอดรวมทั้งหมด", () => {
     expect(b.routine.outsideG + b.problem.outsideG).toBe(b.all.outsideG);
     expect(b.routine.insideG + b.problem.insideG).toBe(b.all.insideG);
     expect(b.routine.timberPcs + b.problem.timberPcs).toBe(b.all.timberPcs);
+    expect(b.routine.visits + b.problem.visits).toBe(b.all.visits);
   });
-  it("ไม่มีการเข้า = ศูนย์ทุกช่อง", () => {
-    expect(breakdownByWork([]).all).toEqual(sumMaterials([]));
+  it("ไม่มีแถว = ศูนย์ทุกช่อง", () => {
+    expect(breakdownByWork([]).all).toEqual(sumUsage([]));
     expect(breakdownByWork([]).all.visits).toBe(0);
   });
 });
 
 describe("เคมีผง", () => {
-  it("คิดกรัม = จุด × 0.3 จากยอดรวม (ไม่ปัดทีละการเข้า)", () => {
-    const m = sumMaterials([visit({ powderPoints: 1 }), visit({ powderPoints: 1 }), visit({ powderPoints: 1 })]);
+  it("คิดกรัม = จุด × 0.3 จากยอดรวม", () => {
+    const m = sumUsage([row({ powderPoints: 1 }), row({ powderPoints: 1 }), row({ powderPoints: 1 })]);
     expect(m.powderPoints).toBe(3);
     expect(m.powderG).toBe(0.9);
   });
 });
 
-describe("breakdownByCustomer — New / Renew", () => {
-  const visits = [
-    visit({ saleType: "new", outsideG: 100, insideG: 100 }),
-    visit({ saleType: "new", visitType: "problem", outsideG: 50, insideG: 0 }),
-    visit({ saleType: "renew", outsideG: 300, insideG: 200 }),
-    visit({ saleType: null, outsideG: 10, insideG: 10 }),
+describe("breakdownByCustomer — New / Renew / ไม่ระบุ", () => {
+  const rows = [
+    row({ saleType: "new", workGroup: "routine", outsideG: 100, insideG: 100, visitCount: 3 }),
+    row({ saleType: "new", workGroup: "problem", outsideG: 50, visitCount: 1 }),
+    row({ saleType: "renew", outsideG: 300, insideG: 200, visitCount: 5 }),
+    row({ saleType: "unknown", outsideG: 10, insideG: 10, visitCount: 1 }),
   ];
-  const b = breakdownByCustomer(visits);
+  const b = breakdownByCustomer(rows);
 
-  it("แยก New / Renew นับวัสดุทั้งหมดของกลุ่ม (ทุกประเภทงาน)", () => {
-    expect(b.new.visits).toBe(2);
+  it("แยก New / Renew นับวัสดุทุกประเภทงานของกลุ่มนั้น", () => {
+    expect(b.new.visits).toBe(4);
     expect(b.new.outsideG).toBe(150);
     expect(b.renew.outsideG).toBe(300);
   });
-  it("ไม่มี sale_type อยู่กลุ่ม unknown และยอดรวมตรงเสมอ", () => {
-    expect(customerGroupOf({ saleType: null })).toBe("unknown");
+  it("ไม่ระบุไม่ถูกทิ้ง และยอดรวมตรงเสมอ", () => {
     expect(b.unknown.outsideG).toBe(10);
     expect(b.new.outsideG + b.renew.outsideG + b.unknown.outsideG).toBe(b.all.outsideG);
+    expect(b.new.visits + b.renew.visits + b.unknown.visits).toBe(b.all.visits);
   });
 });
 
 describe("sumByBranch", () => {
-  it("รวมแยกตาม branchId", () => {
+  it("รวมแยกตาม branchId (ทุกประเภทงาน/ลูกค้า)", () => {
     const m = sumByBranch([
-      visit({ branchId: "a", outsideG: 100 }),
-      visit({ branchId: "a", outsideG: 50 }),
-      visit({ branchId: "b", outsideG: 7 }),
+      row({ branchId: "a", outsideG: 100 }),
+      row({ branchId: "a", workGroup: "problem", outsideG: 50 }),
+      row({ branchId: "b", outsideG: 7 }),
     ]);
     expect(m.get("a")?.outsideG).toBe(150);
     expect(m.get("b")?.visits).toBe(1);
@@ -136,10 +125,11 @@ describe("เทียบเดือนก่อน", () => {
     expect(pctChange(100, 100)).toBe(0);
     expect(pctChange(2, 3)).toBe(-33);
   });
-  it("เดือนก่อนเป็น 0 / ไม่มีข้อมูล = null (ไม่หารศูนย์)", () => {
+  it("เดือนก่อนเป็น 0 / ไม่มีข้อมูล = null (ไม่หารศูนย์ ไม่ NaN/∞)", () => {
     expect(pctChange(50, 0)).toBeNull();
     expect(pctChange(50, null)).toBeNull();
     expect(pctChange(50, undefined)).toBeNull();
+    expect(pctChange(0, 0)).toBeNull();
   });
   it("สัดส่วน", () => {
     expect(sharePct(25, 100)).toBe(25);
@@ -147,7 +137,7 @@ describe("เทียบเดือนก่อน", () => {
     expect(sharePct(5, 0)).toBe(0);
   });
   it("เหยื่อรวม และ ก./กล่อง AG", () => {
-    expect(baitTotalG(sumMaterials([visit({ outsideG: 10, insideG: 5 })]))).toBe(15);
+    expect(baitTotalG(sumUsage([row({ outsideG: 10, insideG: 5 })]))).toBe(15);
     expect(gramsPerAgBox(450, 100)).toBe(4.5);
     expect(gramsPerAgBox(450, 0)).toBeNull();
   });
