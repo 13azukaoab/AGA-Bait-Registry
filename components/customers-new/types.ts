@@ -106,6 +106,8 @@ export interface SavedContract {
   renewUnlinkedReason: string | null;
   /** M28b: เวลาที่ host/admin ปิดรายการ "ไม่มีสัญญาเก่าในระบบ" (null/ไม่มี = ยังไม่ปิด) */
   unlinkedClosedAt?: string | null;
+  /** M41 (DECISIONS 2.86): ชุดนำเข้า — มีค่า = สัญญาที่นำเข้า ไม่ขึ้นป้าย "ยังไม่ผูก" และเชื่อมสัญญาเก่าผ่านหน้านี้ไม่ได้ (null/ไม่มี = บันทึกในระบบ) */
+  importBatch?: string | null;
   mailReceivedDate: string;
   /** วันที่นัดบริการครั้งแรก — ว่าง = "รอนัดบริการ" */
   firstServiceDate: string;

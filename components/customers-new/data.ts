@@ -30,7 +30,7 @@ const FILE_COLUMNS =
   "id, kind, version, is_current, storage_path, file_name, size_bytes, was_compressed, reason, uploaded_at";
 
 const CONTRACT_SELECT = `id, customer_id, contract_no, start_date, end_date, term_months, value_total, sale_type, status, sale_name, am_name,
-       is_urgent, renewed_from_contract_id, renew_unlinked_reason, unlinked_closed_at, mail_received_date, first_service_date, first_service_time, note, updated_at,
+       is_urgent, renewed_from_contract_id, renew_unlinked_reason, unlinked_closed_at, import_batch, mail_received_date, first_service_date, first_service_time, note, updated_at,
        customers ( name, customer_type, branch_id ),
        contract_teams ( team_id ),
        contract_files ( ${FILE_COLUMNS} )`;
@@ -161,6 +161,8 @@ type ContractRowDb = {
   renewed_from_contract_id: string | null;
   renew_unlinked_reason: string | null;
   unlinked_closed_at: string | null;
+  /** M41: ชื่อชุดนำเข้า (null = บันทึกในระบบ) */
+  import_batch: string | null;
   mail_received_date: string | null;
   first_service_date: string | null;
   first_service_time: string | null;
@@ -248,6 +250,7 @@ async function toSavedContracts(
         : null,
       renewUnlinkedReason: r.renew_unlinked_reason?.trim() ? r.renew_unlinked_reason : null,
       unlinkedClosedAt: r.unlinked_closed_at ?? null,
+      importBatch: r.import_batch ?? null,
       mailReceivedDate: r.mail_received_date ?? "",
       firstServiceDate: r.first_service_date ?? "",
       firstServiceTime: (r.first_service_time ?? "").slice(0, 5),
