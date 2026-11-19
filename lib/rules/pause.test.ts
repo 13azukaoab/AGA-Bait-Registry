@@ -156,6 +156,10 @@ describe("pausedServiceMonths / pauseMakeupMonths (2.87: ต้องชดเ�
       { month: "2026-05", madeUpMonth: undefined },
     ]);
   });
+  it("ช่วงที่ยังพักอยู่ยังไม่ขึ้นรายการค้างชดเชย (ตรงกับ SQL list_pause_makeups)", () => {
+    const open: Contract = { ...base, pauses: [{ from: "2026-03-10" }] };
+    expect(pauseMakeupMonths(open, [], "2026-08")).toEqual([]);
+  });
   it("ยังไม่ตั้งสถานี / สัญญายกเลิก → ไม่มีรายการค้างชดเชย", () => {
     expect(pauseMakeupMonths({ ...c, stationsInitializedAt: undefined }, [], "2026-08")).toEqual([]);
     expect(pauseMakeupMonths({ ...c, cancelledAt: "2026-07-01" }, [], "2026-08")).toEqual([]);

@@ -39,6 +39,7 @@ export interface PauseMakeupMonth {
 
 /**
  * เดือนที่ต้อง "ชดเชยจากพักสัญญา" (2.87) ก่อนเดือน currentMonth + สถานะชดเชยของแต่ละเดือน
+ * นับเฉพาะช่วงพักที่กลับมาต่อแล้ว (ช่วงที่ยังพักอยู่ยังไม่ถึงเวลาชดเชย)
  * ยังไม่ตั้งสถานี / สัญญายกเลิก → [] (ไม่มีเรื่องให้ตาม — เกณฑ์เดียวกับ missedMonths)
  */
 export function pauseMakeupMonths(
@@ -48,7 +49,9 @@ export function pauseMakeupMonths(
 ): PauseMakeupMonth[] {
   const from = trackingStartMonth(contract);
   if (from === null || contract.cancelledAt) return [];
-  return pausedServiceMonths(contract, currentMonth)
+  // เฉพาะช่วงพักที่กลับมาต่อแล้ว (ตรงกับ SQL list_pause_makeups: end_kind = 'resumed') — ยังพักอยู่ = ยังชดเชยไม่ได้
+  const resumed = (contract.pauses ?? []).filter((p) => p.resumedAt !== undefined);
+  return pausedServiceMonths({ ...contract, pauses: resumed }, currentMonth)
     .filter((m) => m >= from)
     .map((m) => {
       const v = linkedMakeupVisit(contract.id, m, [...visits]);

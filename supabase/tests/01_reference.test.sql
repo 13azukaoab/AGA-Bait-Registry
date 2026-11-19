@@ -7,7 +7,7 @@ SELECT plan(25);
 SELECT enum_has_labels('public', 'division',        ARRAY['central', 'province']);
 SELECT enum_has_labels('public', 'user_role',       ARRAY['host', 'admin', 'recorder', 'viewer']);
 SELECT enum_has_labels('public', 'sale_type',       ARRAY['new', 'renew']);
-SELECT enum_has_labels('public', 'contract_status', ARRAY['active', 'expired_pending_collection', 'closed', 'cancelled']);
+SELECT enum_has_labels('public', 'contract_status', ARRAY['active', 'expired_pending_collection', 'closed', 'cancelled', 'paused']);
 SELECT enum_has_labels('public', 'station_type',    ARRAY['IG', 'AG', 'IC']);
 SELECT enum_has_labels('public', 'station_status',  ARRAY['active', 'eliminated', 'pending_removal', 'removed', 'lost', 'withdrawn']);  -- lost/withdrawn: 20261112130000
 SELECT enum_has_labels('public', 'visit_type',      ARRAY['routine', 'problem', 'follow_up']);
