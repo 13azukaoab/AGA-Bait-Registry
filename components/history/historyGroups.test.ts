@@ -32,7 +32,7 @@ describe("groupVisits", () => {
     expect([...u1day5.branchIds].sort()).toEqual(["b1", "b2"]);
     expect(u1day5.firstAt).toBe("2026-11-05T02:00:00+00:00");
     expect(u1day5.at).toBe("2026-11-05T09:00:00+00:00");
-    expect(g[0].day).toBe("2026-11-06"); // ใหม่สุดมาก่อน
+    expect(g[0]?.day).toBe("2026-11-06"); // ใหม่สุดมาก่อน
   });
 });
 

@@ -69,7 +69,7 @@ describe("diffRecord", () => {
   });
   it("ช่องที่ไม่รู้จักใช้ชื่อคอลัมน์ ไม่พัง", () => {
     const d = diffRecord({ zzz_new: 1 }, { zzz_new: 2 }, ctx);
-    expect(d[0].label).toBe("zzz_new");
+    expect(d[0]?.label).toBe("zzz_new");
   });
   it("jsonb ซ้อนที่เหมือนกันไม่นับว่าเปลี่ยน", () => {
     expect(diffRecord({ a: [1, 2] }, { a: [1, 2] }, ctx)).toEqual([]);

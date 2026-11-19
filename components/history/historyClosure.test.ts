@@ -21,7 +21,7 @@ describe("tsToMicros", () => {
 
 describe("closureSince", () => {
   it("ใช้ค่ามากสุดของ closed_at / last_resync_at", () => {
-    expect(closureSince(closures[1])).toBe("2026-10-20T03:00:00+00:00");
+    expect(closureSince(closures[1]!)).toBe("2026-10-20T03:00:00+00:00");
     expect(closureSince({ monthKey: "x", scope: "central", closedAt: null, lastResyncAt: null })).toBeNull();
   });
 });

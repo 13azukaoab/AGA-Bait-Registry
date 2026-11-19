@@ -58,7 +58,7 @@ export function kindLabel(kind: DataKind): string {
 
 /** ตารางที่อยู่ในกลุ่มนี้ (ใช้สร้างตัวกรอง table_name IN) */
 export function tablesOfKinds(kinds: readonly string[]): string[] {
-  return Object.keys(TABLE_KIND).filter((t) => kinds.includes(TABLE_KIND[t]));
+  return Object.keys(TABLE_KIND).filter((t) => kinds.includes(TABLE_KIND[t] as DataKind));
 }
 
 /** ตารางทั้งหมดที่รู้จัก (ใช้กับตัวกรอง "อื่นๆ" = table_name NOT IN รายการนี้) */
@@ -207,7 +207,7 @@ export function fieldLabel(key: string): string {
   const hit = FIELD_LABEL[key];
   if (hit) return hit;
   const m = V_FIELDS.exec(key);
-  if (m) return `มูลค่า ${TIER_NAME[m[1]]}${m[2]}`;
+  if (m) return `มูลค่า ${TIER_NAME[m[1] ?? ""]}${m[2]}`;
   return key;
 }
 

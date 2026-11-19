@@ -61,7 +61,7 @@ export function mergeEntries(
   const auditEntries: HistoryEntry[] = audit.map((row) => ({ type: "audit", key: `a:${row.id}`, at: row.changedAt, row }));
   let visibleGroups: readonly VisitGroupEntry[] = groups;
   if (hasMoreAudit && audit.length > 0) {
-    const oldest = tsToMicros(audit[audit.length - 1].changedAt);
+    const oldest = tsToMicros((audit[audit.length - 1]?.changedAt ?? ""));
     visibleGroups = groups.filter((g) => tsToMicros(g.at) >= oldest);
   }
   return [...auditEntries, ...visibleGroups].sort((a, b) => {

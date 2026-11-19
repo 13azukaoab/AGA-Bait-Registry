@@ -117,13 +117,13 @@ describe("ตัวกรอง → query", () => {
   it("ประเภท 'อื่นๆ' อย่างเดียว → NOT IN ตารางที่รู้จัก", () => {
     const r = new Rec();
     applyAuditFilters(r, { ...F, kinds: ["other"] }, { branches, closures }, null);
-    expect(r.find("not")[0][1]).toBe("table_name");
-    expect(r.find("not")[0][2]).toBe("in");
+    expect(r.find("not")[0]?.[1]).toBe("table_name");
+    expect(r.find("not")[0]?.[2]).toBe("in");
   });
   it("อื่นๆ + ประเภทอื่น → OR group", () => {
     const r = new Rec();
     applyAuditFilters(r, { ...F, kinds: ["other", "contract"] }, { branches, closures }, null);
-    expect(String(r.find("or")[0][1])).toContain("table_name.not.in.");
+    expect(String(r.find("or")[0]?.[1])).toContain("table_name.not.in.");
   });
 });
 
@@ -146,7 +146,7 @@ describe("แก้หลังปิด", () => {
     const r = new Rec();
     applyAuditFilters(r, { ...F, postCloseOnly: true }, { branches, closures }, { changedAt: "T", id: "i" });
     expect(r.find("or")).toHaveLength(1);
-    expect(String(r.find("or")[0][1])).toMatch(/^and\(or\(and\(month_key/);
+    expect(String(r.find("or")[0]?.[1])).toMatch(/^and\(or\(and\(month_key/);
   });
   it("combineOrGroups", () => {
     expect(combineOrGroups([])).toBeNull();

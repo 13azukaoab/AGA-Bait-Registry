@@ -16,7 +16,7 @@ import type { AuditRow, BranchRef, ClosureRef } from "./historyTypes";
 /** ISO timestamp (อาจมีเศษวินาทีถึง 6 หลัก) → ไมโครวินาทีนับจาก epoch · อ่านไม่ได้ = NaN */
 export function tsToMicros(ts: string): number {
   const m = /\.(\d+)/.exec(ts);
-  const frac = m ? m[1].padEnd(6, "0").slice(0, 6) : "000000";
+  const frac = m ? (m[1] ?? "").padEnd(6, "0").slice(0, 6) : "000000";
   const trimmed = m ? ts.replace(/\.\d+/, `.${frac.slice(0, 3)}`) : ts;
   const ms = Date.parse(trimmed);
   return ms * 1000 + Number(frac.slice(3));

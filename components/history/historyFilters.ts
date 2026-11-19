@@ -19,7 +19,7 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 const ACTIONS: readonly AuditAction[] = ["insert", "update", "delete"];
 
 function ymdToUtcDay(ymd: string): number {
-  const [y, m, d] = ymd.split("-").map(Number);
+  const [y = 0, m = 1, d = 1] = ymd.split("-").map(Number);
   return Math.floor(Date.UTC(y, m - 1, d) / 86_400_000);
 }
 

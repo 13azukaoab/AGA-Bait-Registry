@@ -53,7 +53,7 @@ describe("buildCsv", () => {
 
   it("ขึ้นต้นด้วย BOM + หัวตารางครบ", () => {
     expect(csv.charCodeAt(0)).toBe(0xfeff);
-    expect(lines[0].slice(1)).toBe(EXPORT_HEADERS.map((h) => `"${h}"`).join(","));
+    expect(lines[0]!.slice(1)).toBe(EXPORT_HEADERS.map((h) => `"${h}"`).join(","));
   });
   it("แถว audit: เวลาไทย · ตำแหน่งตอนแก้ · แก้หลังปิด · ชื่อลูกค้าที่เป็นสูตรถูกกัน", () => {
     expect(lines[1]).toContain(`"2026-11-05","14:20","สมชาย","หัวหน้างาน","ลาดพร้าว","CT26-1","'=HYPERLINK(""x"")"`);

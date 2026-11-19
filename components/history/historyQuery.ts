@@ -45,7 +45,7 @@ export function bangkokRangeUtc(from: string, to: string): { gte: string; lt: st
 
 /** เดือน YYYY-MM → ช่วงวันที่ [start, endExclusive) ของ visit_date */
 export function monthDateRange(ym: string): { start: string; endExclusive: string } {
-  const [y, m] = ym.split("-").map(Number);
+  const [y = 0, m = 1] = ym.split("-").map(Number);
   const next = m === 12 ? `${y + 1}-01` : `${y}-${String(m + 1).padStart(2, "0")}`;
   return { start: `${ym}-01`, endExclusive: `${next}-01` };
 }
@@ -80,7 +80,7 @@ export function postCloseClause(closures: readonly ClosureRef[], branches: reado
 /** รวมก้อน OR หลายก้อนเป็นนิพจน์เดียวสำหรับ `.or()` */
 export function combineOrGroups(groups: readonly string[]): string | null {
   if (groups.length === 0) return null;
-  if (groups.length === 1) return groups[0];
+  if (groups.length === 1) return groups[0] ?? null;
   return `and(${groups.map((g) => `or(${g})`).join(",")})`;
 }
 
