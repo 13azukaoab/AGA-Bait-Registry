@@ -1,0 +1,349 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ตัวอย่างหน้าตา: Dashboard งานขาย (New/Renew) — แบบ A / แบบ B</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@300;400;500;600;700&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<!--
+  Mockup (DECISIONS 2.91 ข้อ 2+4) · หน้า "Dashboard งานขาย (New/Renew)" · เห็นได้เฉพาะ host + admin
+  ข้อมูลทั้งหมดเป็นข้อมูลสมมติ (ก.ย.–พ.ย. 2026) · ชื่อลูกค้า/ผู้ขาย/สาขาเป็นชื่อสมมติ ไม่ใช่ข้อมูลจริง
+  เปิดแบบเดียว: ?v=a หรือ ?v=b · โหมดมืด: ?theme=dark
+  แบบ A = ตาราง + แท่ง เน้นเทียบสาขา · แบบ B = การ์ด KPI + กราฟ + อันดับผู้ขาย
+  กติกา "ต่อสัญญาล่าช้า": งาน Renew ที่ mail_received_date เป็นวันที่ > 15 ของเดือนนั้น (แสดงแดง + ชี้แล้วขึ้นคำอธิบาย)
+  ลิงก์ชื่อลูกค้า = /customers/<id> (ของจริงสร้างด้วย lib/links/customerLink.ts) · ในไฟล์นี้กดแล้วแค่แสดงข้อความ
+  ที่มาของตัวเลขเมื่อทำหน้าจริง: contracts (sale_type, sale_name, am_name, mail_received_date, value_total) + customers + branches + zones
+-->
+<style>
+:root{
+  --bg:#eef2f7; --surface:#ffffff; --surface-2:#f4f7fb; --surface-3:#e9eff6;
+  --fg:#17212e; --fg-muted:#5a6b7e; --border:#d8e0ea; --border-strong:#c3cedb;
+  --accent:#1f5fa8; --accent-soft:#e6f0fb; --accent-fg:#ffffff;
+  --new:#1f5fa8; --new-soft:#e6f0fb; --renew:#6d47b8; --renew-soft:#efe9fa;
+  --ok:#177a51; --ok-soft:#e3f4ec; --warn:#935f08; --warn-soft:#fbf0db;
+  --danger:#be392d; --danger-soft:#fbe6e3;
+  --radius:10px; --shadow:0 1px 2px rgba(20,40,70,.06),0 1px 3px rgba(20,40,70,.05);
+  color-scheme:light;
+}
+:root[data-theme="dark"]{
+  --bg:#0e1621; --surface:#16202c; --surface-2:#1b2733; --surface-3:#222f3d;
+  --fg:#e7eef5; --fg-muted:#9fb0c1; --border:#2a3744; --border-strong:#36485a;
+  --accent:#4a90d9; --accent-soft:#16304a; --accent-fg:#0b1420;
+  --new:#4a90d9; --new-soft:#16304a; --renew:#a588e0; --renew-soft:#2a2240;
+  --ok:#3bb183; --ok-soft:#133227; --warn:#d99b3e; --warn-soft:#332713;
+  --danger:#e57466; --danger-soft:#3a1d1a;
+  --shadow:0 1px 2px rgba(0,0,0,.3); color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{font-family:"Noto Sans Thai",system-ui,sans-serif;background:var(--bg);color:var(--fg);font-size:15px;line-height:1.55;overflow-x:hidden}
+a{color:var(--accent)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.topbar{display:flex;align-items:center;gap:12px;padding:10px 20px;background:var(--surface);border-bottom:1px solid var(--border);flex-wrap:wrap}
+.logo{display:flex;align-items:center;gap:10px;font-weight:700}
+.logo .mark{width:34px;height:34px;border-radius:8px;background:var(--accent);color:var(--accent-fg);display:grid;place-items:center;font-size:13px;letter-spacing:.5px}
+.logo .txt small{display:block;font-weight:400;color:var(--fg-muted);font-size:12px;line-height:1.2}
+.logo .txt b{font-size:15px;line-height:1.2}
+.spacer{flex:1}
+.tools{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.seg{display:inline-flex;border:1px solid var(--border-strong);border-radius:8px;overflow:hidden;background:var(--surface)}
+.seg a,.seg button{font:inherit;font-size:13px;padding:7px 14px;border:0;background:transparent;color:var(--fg);text-decoration:none;cursor:pointer;min-height:36px;display:inline-flex;align-items:center}
+.seg .on{background:var(--accent);color:var(--accent-fg);font-weight:600}
+.wrap{max-width:1200px;margin:0 auto;padding:18px 20px 60px}
+.note{background:var(--warn-soft);color:var(--warn);border:1px solid var(--border);border-radius:8px;padding:8px 12px;font-size:13px;margin-bottom:14px}
+h1{font-size:22px;margin:0 0 2px}
+.sub{color:var(--fg-muted);font-size:13px;margin:0 0 14px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:14px 16px}
+.card h2{font-size:15px;margin:0 0 2px}
+.card .hint{font-size:12.5px;color:var(--fg-muted);margin:0 0 10px}
+.stack{display:grid;gap:14px;grid-template-columns:minmax(0,1fr)}
+.stack>*,.grid2>*{min-width:0}
+.strip .v small{display:block}
+.filters{display:grid;grid-template-columns:repeat(5,minmax(0,1fr)) auto;gap:10px;align-items:end;margin-bottom:14px}
+.filters label{display:grid;gap:3px;font-size:12.5px;color:var(--fg-muted)}
+.filters select{font:inherit;font-size:14px;padding:8px 10px;min-height:40px;border:1px solid var(--border-strong);border-radius:8px;background:var(--surface);color:var(--fg);width:100%}
+.btn{font:inherit;font-size:13.5px;padding:8px 14px;min-height:40px;border:1px solid var(--border-strong);border-radius:8px;background:var(--surface);color:var(--fg);cursor:pointer}
+.btn:hover{background:var(--surface-3)}
+.pill{display:inline-flex;align-items:center;gap:4px;border-radius:999px;padding:1px 9px;font-size:12px;font-weight:600;white-space:nowrap}
+.pill.new{background:var(--new-soft);color:var(--new)}
+.pill.renew{background:var(--renew-soft);color:var(--renew)}
+.pill.late{background:var(--danger-soft);color:var(--danger)}
+.cc.late .pill.late,tr.late .pill.late{background:var(--surface);border:1px solid var(--danger)}
+.num{font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
+.muted{color:var(--fg-muted)}
+.zone{display:inline-block;font-size:12px;padding:0 7px;border-radius:6px;background:var(--surface-3);color:var(--fg-muted);margin-left:4px}
+/* tooltip: ใช้ได้ทั้งเมาส์และแตะ (tabindex) */
+.tip{position:relative;cursor:help;outline-offset:3px}
+.tip::after{content:attr(data-tip);position:absolute;left:0;bottom:calc(100% + 6px);background:var(--fg);color:var(--bg);font-size:12.5px;font-weight:500;padding:5px 9px;border-radius:6px;white-space:nowrap;opacity:0;pointer-events:none;transition:opacity .12s;z-index:5}
+.tip:hover::after,.tip:focus::after{opacity:1}
+.late-date{color:var(--danger);font-weight:700}
+.late-date svg{vertical-align:-2px;margin-right:3px}
+/* ตาราง */
+table{border-collapse:collapse;width:100%;font-size:14px}
+th{font-size:12.5px;font-weight:600;color:var(--fg-muted);text-align:left;padding:8px 10px;border-bottom:1px solid var(--border-strong);white-space:nowrap}
+th.num{text-align:right}
+td{padding:8px 10px;border-bottom:1px solid var(--border);vertical-align:middle}
+tr.zrow td{background:var(--surface-2);font-weight:600}
+tr.tot td{font-weight:700;border-top:2px solid var(--border-strong);background:var(--surface-2)}
+.tablewrap{overflow-x:auto}
+td small{display:block;color:var(--fg-muted);font-size:12px;line-height:1.3}
+.cust a{font-weight:600;text-decoration:none}
+.cust a:hover{text-decoration:underline}
+/* KPI (แบบ B) */
+.kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.kpi{padding:14px 16px;border-left:4px solid var(--border-strong)}
+.kpi.new{border-left-color:var(--new)} .kpi.renew{border-left-color:var(--renew)} .kpi.late{border-left-color:var(--danger);background:var(--danger-soft)}
+.kpi .l{font-size:13px;color:var(--fg-muted)}
+.kpi .v{font-size:28px;font-weight:700;line-height:1.2;font-variant-numeric:tabular-nums}
+.kpi .v small{font-size:14px;font-weight:500;color:var(--fg-muted)}
+.kpi .s{font-size:13px;color:var(--fg-muted)}
+.kpi.late .v,.kpi.late .l{color:var(--danger)}
+.strip{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:0;padding:0}
+.strip>div{padding:10px 16px;border-right:1px solid var(--border)}
+.strip>div:last-child{border-right:0}
+.strip .l{font-size:12.5px;color:var(--fg-muted)}
+.strip .v{font-size:18px;font-weight:700;font-variant-numeric:tabular-nums}
+.strip .v small{font-size:12.5px;font-weight:500;color:var(--fg-muted)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.chartbox{position:relative;width:100%}
+/* แท่ง CSS (อันดับ/สาขา) */
+.rank{display:grid;gap:8px}
+.rk{display:grid;grid-template-columns:26px minmax(0,1fr) auto;gap:10px;align-items:center}
+.rk .n{width:26px;height:26px;border-radius:50%;background:var(--surface-3);display:grid;place-items:center;font-size:12.5px;font-weight:700}
+.rk:first-child .n{background:var(--accent);color:var(--accent-fg)}
+.rk .nm{font-size:14px;font-weight:600;display:flex;justify-content:space-between;flex-wrap:wrap;column-gap:8px}
+.rk .nm>b,.rk .nm{white-space:normal}
+.rk .nm span{font-weight:400;color:var(--fg-muted);font-size:12.5px}
+.bar{height:8px;border-radius:4px;background:var(--surface-3);display:flex;overflow:hidden;margin-top:3px}
+.bar i{display:block;height:100%}
+.bar .bn{background:var(--new)} .bar .br{background:var(--renew)}
+.rk .val{font-weight:700;font-variant-numeric:tabular-nums;font-size:14px;text-align:right}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.chip{font:inherit;font-size:13px;padding:6px 12px;min-height:36px;border-radius:999px;border:1px solid var(--border-strong);background:var(--surface);color:var(--fg);cursor:pointer}
+.chip.on{background:var(--accent);border-color:var(--accent);color:var(--accent-fg);font-weight:600}
+.cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.cc{border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px;background:var(--surface-2);display:grid;gap:4px}
+.cc.late{border-color:var(--danger);background:var(--danger-soft)}
+.cc .top{display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+.cc .meta{font-size:13px;color:var(--fg-muted)}
+.cc .val{font-weight:700;font-variant-numeric:tabular-nums}
+.legend{display:flex;gap:14px;font-size:13px;color:var(--fg-muted);margin-bottom:8px;flex-wrap:wrap}
+.legend i{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+.empty{padding:24px;text-align:center;color:var(--fg-muted)}
+.toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:var(--fg);color:var(--bg);padding:10px 16px;border-radius:8px;font-size:13.5px;max-width:90vw;display:none;z-index:20}
+
+@media (max-width:1000px){
+  .filters{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .grid2{grid-template-columns:1fr}
+}
+@media (max-width:767px){
+  .topbar{padding:10px 16px}
+  .wrap{padding:14px 16px 60px}
+  .filters{grid-template-columns:1fr 1fr}
+  .filters select{font-size:16px;min-height:44px}
+  .btn,.chip,.seg a,.seg button{min-height:44px}
+  .strip{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+  .grid2{grid-template-columns:minmax(0,1fr)}
+  .strip>div{border-right:0;border-bottom:1px solid var(--border)}
+  .strip>div:nth-child(odd){border-right:1px solid var(--border)}
+  .strip>div:nth-last-child(-n+2){border-bottom:0}
+  .kpi .v{font-size:24px}
+  .cards{grid-template-columns:1fr}
+  .tablewrap th,.tablewrap td{padding:7px 5px;font-size:13px}
+  .tablewrap th{font-size:12px}
+  h1{font-size:19px}
+  /* รายชื่อลูกค้า: ตาราง → การ์ด */
+  table.cl,table.cl tbody,table.cl tr,table.cl td{display:block;width:100%}
+  table.cl thead{display:none}
+  table.cl tr{border:1px solid var(--border);border-radius:var(--radius);padding:8px 10px;margin-bottom:8px;background:var(--surface-2)}
+  table.cl tr.late{border-color:var(--danger);background:var(--danger-soft)}
+  table.cl td{border:0;padding:2px 0;display:flex;justify-content:space-between;gap:10px;text-align:right}
+  table.cl td::before{content:attr(data-l);color:var(--fg-muted);font-size:12.5px;text-align:left;flex:none}
+  .tip::after{left:auto;right:0}
+}
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="logo"><span class="mark">AGA</span><span class="txt"><b>Advance Group Asia (AGA)</b><small>AGA Bait Registry</small></span></div>
+  <div class="spacer"></div>
+  <div class="tools">
+    <div class="seg" role="group" aria-label="เลือกแบบ">
+      <a id="va" href="?v=a">แบบ A</a><a id="vb" href="?v=b">แบบ B</a>
+    </div>
+    <div class="seg" role="group" aria-label="โหมดสี">
+      <button id="tl" type="button">สว่าง</button><button id="td" type="button">มืด</button>
+    </div>
+  </div>
+</header>
+<main class="wrap">
+  <div class="note">ตัวอย่างหน้าตา — ข้อมูลทั้งหมดเป็นข้อมูลสมมติ (ก.ย.–พ.ย. 2026) ชื่อลูกค้า/ผู้ขายไม่ใช่ข้อมูลจริง · เห็นได้เฉพาะ Admin และ PM/OM</div>
+  <h1>Dashboard งานขาย (New/Renew)</h1>
+  <p class="sub">ยอดงานใหม่ (New) และต่อสัญญา (Renew) แยกตามสาขา เขต และผู้ขาย · นับตามเดือนที่รับ Mail</p>
+  <section class="filters" aria-label="ตัวกรอง">
+    <label>ตั้งแต่เดือน<select id="fFrom"></select></label>
+    <label>ถึงเดือน<select id="fTo"></select></label>
+    <label>เขต<select id="fZone"></select></label>
+    <label>สาขา<select id="fBranch"></select></label>
+    <label>ผู้ขาย<select id="fSeller"></select></label>
+    <button class="btn" id="fReset" type="button">ล้างตัวกรอง</button>
+  </section>
+  <div id="app"></div>
+</main>
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+/* ---------- ข้อมูลสมมติ (seed คงที่ ได้ผลเหมือนเดิมทุกครั้ง) ---------- */
+var BR=[["สาขาตัวอย่าง 1",1],["สาขาตัวอย่าง 2",1],["สาขาตัวอย่าง 3",1],["สาขาตัวอย่าง 4",2],["สาขาตัวอย่าง 5",2],["สาขาตัวอย่าง 6",2],["สาขาตัวอย่าง 7",3],["สาขาตัวอย่าง 8",3],["สาขาตัวอย่าง 9",3]];
+var MON=["2026-09","2026-10","2026-11"], MTH={"2026-09":"ก.ย. 2026","2026-10":"ต.ค. 2026","2026-11":"พ.ย. 2026"};
+var SELLER=["ผู้ขายตัวอย่าง 1","ผู้ขายตัวอย่าง 2","ผู้ขายตัวอย่าง 3","ผู้ขายตัวอย่าง 4","ผู้ขายตัวอย่าง 5","ผู้ขายตัวอย่าง 6"];
+var AM=["AM ตัวอย่าง 1","AM ตัวอย่าง 2","AM ตัวอย่าง 3"];
+var seed=20261119; function rnd(){seed=(seed*1664525+1013904223)%4294967296;return seed/4294967296}
+var DATA=[];(function(){for(var i=0;i<96;i++){
+  var b=Math.floor(rnd()*BR.length), m=MON[Math.floor(rnd()*3)], renew=rnd()<.55, day=1+Math.floor(rnd()*28);
+  var val=Math.round((20+rnd()*380)*1000/500)*500;
+  DATA.push({id:"00000000-0000-4000-8000-"+("000000000000"+(i+1)).slice(-12),cust:"ลูกค้าตัวอย่าง "+("00"+(i+1)).slice(-3),
+    branch:BR[b][0],zone:BR[b][1],type:renew?"Renew":"New",mail:m+"-"+("0"+day).slice(-2),value:val,
+    sale:SELLER[Math.floor(rnd()*SELLER.length)],am:AM[Math.floor(rnd()*AM.length)]});
+}})();
+DATA.forEach(function(c){c.late=c.type==="Renew"&&Number(c.mail.slice(8,10))>15});
+DATA.sort(function(a,b){return a.mail<b.mail?1:-1});
+
+/* ---------- ตัวช่วย ---------- */
+var $=function(s){return document.querySelector(s)};
+var Q=new URLSearchParams(location.search), V=Q.get("v")==="b"?"b":"a", DARK=Q.get("theme")==="dark";
+var fmt=function(n){return n.toLocaleString("th-TH")};
+var fmtM=function(n){return n>=1e6?(n/1e6).toFixed(2)+" ล้าน":fmt(n)};
+var esc=function(s){return String(s).replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]})};
+var dateTh=function(d){var p=d.split("-");return Number(p[2])+" "+MTH[p[0]+"-"+p[1]].split(" ")[0]+" "+p[0]};
+var cssv=function(n){return getComputedStyle(document.documentElement).getPropertyValue(n).trim()};
+var ICON_LATE='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>';
+function toast(t){var e=$("#toast");e.textContent=t;e.style.display="block";clearTimeout(toast.t);toast.t=setTimeout(function(){e.style.display="none"},2600)}
+
+var S={from:MON[0],to:MON[2],zone:"",branch:"",seller:"",chip:"all",metric:"n"};
+var charts=[];
+function rows(){return DATA.filter(function(c){var m=c.mail.slice(0,7);
+  return m>=S.from&&m<=S.to&&(!S.zone||String(c.zone)===S.zone)&&(!S.branch||c.branch===S.branch)&&(!S.seller||c.sale===S.seller)})}
+function sum(a){var r={nN:0,nV:0,rN:0,rV:0,late:0,lateV:0};a.forEach(function(c){
+  if(c.type==="New"){r.nN++;r.nV+=c.value}else{r.rN++;r.rV+=c.value;if(c.late){r.late++;r.lateV+=c.value}}});return r}
+function groupBy(a,key){var m={};a.forEach(function(c){var k=key(c);(m[k]=m[k]||[]).push(c)});return m}
+
+/* ---------- ตัวกรอง ---------- */
+function opt(sel,items,cur){sel.innerHTML=items.map(function(i){return'<option value="'+esc(i[0])+'"'+(i[0]===cur?" selected":"")+'>'+esc(i[1])+'</option>'}).join("")}
+function buildFilters(){
+  var ms=MON.map(function(m){return[m,MTH[m]]});
+  opt($("#fFrom"),ms,S.from);opt($("#fTo"),ms,S.to);
+  opt($("#fZone"),[["","ทุกเขต"]].concat([1,2,3].map(function(z){return[String(z),"เขต "+z]})),S.zone);
+  opt($("#fBranch"),[["","ทุกสาขา"]].concat(BR.filter(function(b){return!S.zone||String(b[1])===S.zone}).map(function(b){return[b[0],b[0]]})),S.branch);
+  opt($("#fSeller"),[["","ทุกคน"]].concat(SELLER.map(function(s){return[s,s]})),S.seller);
+}
+function bind(id,key){$(id).addEventListener("change",function(e){S[key]=e.target.value;
+  if(key==="zone"){S.branch=""}
+  if(S.from>S.to){if(key==="from")S.to=S.from;else S.from=S.to}
+  buildFilters();render()})}
+bind("#fFrom","from");bind("#fTo","to");bind("#fZone","zone");bind("#fBranch","branch");bind("#fSeller","seller");
+$("#fReset").addEventListener("click",function(){S={from:MON[0],to:MON[2],zone:"",branch:"",seller:"",chip:"all",metric:S.metric};buildFilters();render()});
+
+/* ---------- ชิ้นส่วนที่ใช้ร่วม ---------- */
+function mailCell(c){
+  if(c.late)return'<span class="late-date tip" tabindex="0" data-tip="ต่อสัญญาล่าช้า">'+ICON_LATE+dateTh(c.mail)+'</span>';
+  return dateTh(c.mail)}
+function typePill(c){return'<span class="pill '+(c.type==="New"?"new":"renew")+'">'+c.type+'</span>'+(c.late?' <span class="pill late">ล่าช้า</span>':'')}
+function custLink(c){return'<a href="#" data-id="'+c.id+'" title="เปิดหน้าลูกค้า /customers/&lt;id&gt;">'+esc(c.cust)+'</a>'}
+function customerTable(a,limit){
+  if(!a.length)return'<div class="empty">ไม่พบงานตามตัวกรองนี้ — ลองขยายช่วงเดือนหรือกด "ล้างตัวกรอง"</div>';
+  var shown=a.slice(0,limit);
+  return'<table class="cl"><thead><tr><th>ลูกค้า</th><th>ประเภท</th><th>สาขา / เขต</th><th>ผู้ขาย / AM</th><th>วันที่รับ Mail</th><th class="num">มูลค่า (บาท)</th></tr></thead><tbody>'+
+  shown.map(function(c){return'<tr class="'+(c.late?"late":"")+'"><td class="cust" data-l="ลูกค้า">'+custLink(c)+'</td><td data-l="ประเภท"><span>'+typePill(c)+'</span></td><td data-l="สาขา / เขต"><span>'+esc(c.branch)+'<span class="zone">เขต '+c.zone+'</span></span></td><td data-l="ผู้ขาย / AM"><span>'+esc(c.sale)+'<small>'+esc(c.am)+'</small></span></td><td data-l="วันที่รับ Mail">'+mailCell(c)+'</td><td class="num" data-l="มูลค่า">'+fmt(c.value)+'</td></tr>'}).join("")+
+  '</tbody></table>'+(a.length>limit?'<p class="muted" style="font-size:13px;margin:8px 0 0">แสดง '+limit+' จาก '+fmt(a.length)+' รายการ — ของจริงแบ่งหน้า/โหลดเพิ่ม</p>':'')}
+function wireLinks(){document.querySelectorAll("a[data-id]").forEach(function(a){a.onclick=function(e){e.preventDefault();toast("ของจริง: ไปหน้า /customers/"+a.dataset.id.slice(0,8)+"…")}})}
+function themeColors(){return{new:cssv("--new"),renew:cssv("--renew"),fg:cssv("--fg-muted"),grid:cssv("--border")}}
+function killCharts(){charts.forEach(function(c){c.destroy()});charts=[]}
+function mkChart(id,cfg){var el=document.getElementById(id);if(!el||!window.Chart)return;
+  var c=themeColors();Chart.defaults.font.family='"Noto Sans Thai",sans-serif';Chart.defaults.font.size=12;Chart.defaults.color=c.fg;Chart.defaults.animation=false;
+  charts.push(new Chart(el,cfg))}
+
+/* ---------- แบบ A: ตาราง + แท่ง เทียบสาขา ---------- */
+function renderA(a){
+  var t=sum(a), byB=groupBy(a,function(c){return c.branch}), metricV=S.metric==="v";
+  var brs=BR.filter(function(b){return(!S.zone||String(b[1])===S.zone)&&(!S.branch||b[0]===S.branch)});
+  var h='<div class="stack">';
+  h+='<div class="card strip"><div><div class="l">New</div><div class="v">'+fmt(t.nN)+' <small>ราย · '+fmtM(t.nV)+'</small></div></div>'+
+     '<div><div class="l">Renew</div><div class="v">'+fmt(t.rN)+' <small>ราย · '+fmtM(t.rV)+'</small></div></div>'+
+     '<div><div class="l" style="color:var(--danger)">ต่อสัญญาล่าช้า</div><div class="v" style="color:var(--danger)">'+t.late+' <small>ราย · '+fmtM(t.lateV)+'</small></div></div>'+
+     '<div><div class="l">ทั้งหมด</div><div class="v">'+fmt(t.nN+t.rN)+' <small>ราย · '+fmtM(t.nV+t.rV)+'</small></div></div></div>';
+  h+='<div class="card"><div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:flex-start"><div><h2>เทียบรายสาขา: New กับ Renew</h2><p class="hint">'+(metricV?"มูลค่า (บาท)":"จำนวนราย")+'</p></div>'+
+     '<div class="seg" role="group" aria-label="หน่วย"><button type="button" data-m="n" class="'+(metricV?"":"on")+'">จำนวนราย</button><button type="button" data-m="v" class="'+(metricV?"on":"")+'">มูลค่า</button></div></div>'+
+     '<div class="legend"><span><i style="background:var(--new)"></i>New</span><span><i style="background:var(--renew)"></i>Renew</span></div>'+
+     '<div class="chartbox" style="height:'+Math.max(180,brs.length*44+50)+'px"><canvas id="chA" role="img" aria-label="กราฟแท่งเทียบ New กับ Renew รายสาขา"></canvas></div></div>';
+  h+='<div class="card"><h2>สรุปรายสาขา แยกตามเขต</h2><p class="hint">รวมเขตอยู่ในแถวหัวเขต · ล่าช้า = Renew ที่รับ Mail หลังวันที่ 15</p><div class="tablewrap"><table><thead><tr><th>เขต / สาขา</th><th class="num">New</th><th class="num">Renew</th><th class="num">ล่าช้า</th><th class="num">รวม (บาท)</th></tr></thead><tbody>';
+  [1,2,3].forEach(function(z){
+    if(S.zone&&String(z)!==S.zone)return;
+    var zs=brs.filter(function(b){return b[1]===z});if(!zs.length)return;
+    var za=a.filter(function(c){return c.zone===z}),zt=sum(za);
+    h+='<tr class="zrow"><td>เขต '+z+'</td><td class="num">'+zt.nN+' ราย<small>'+fmtM(zt.nV)+'</small></td><td class="num">'+zt.rN+' ราย<small>'+fmtM(zt.rV)+'</small></td><td class="num" style="color:var(--danger)">'+zt.late+'</td><td class="num">'+fmt(zt.nV+zt.rV)+'</td></tr>';
+    zs.forEach(function(b){var s=sum(byB[b[0]]||[]);
+      h+='<tr><td>&nbsp;&nbsp;'+esc(b[0])+'</td><td class="num">'+s.nN+' ราย<small>'+fmtM(s.nV)+'</small></td><td class="num">'+s.rN+' ราย<small>'+fmtM(s.rV)+'</small></td><td class="num" '+(s.late?'style="color:var(--danger);font-weight:700"':'')+'>'+s.late+'</td><td class="num">'+fmt(s.nV+s.rV)+'</td></tr>'})});
+  h+='<tr class="tot"><td>รวมทั้งหมด</td><td class="num">'+t.nN+' ราย<small>'+fmtM(t.nV)+'</small></td><td class="num">'+t.rN+' ราย<small>'+fmtM(t.rV)+'</small></td><td class="num" style="color:var(--danger)">'+t.late+'</td><td class="num">'+fmt(t.nV+t.rV)+'</td></tr></tbody></table></div></div>';
+  h+='<div class="card"><h2>รายชื่อลูกค้า</h2><p class="hint">กดชื่อเพื่อเปิดหน้าลูกค้า · วันที่สีแดง = ต่อสัญญาล่าช้า</p>'+customerTable(a,12)+'</div></div>';
+  $("#app").innerHTML=h;
+  document.querySelectorAll("[data-m]").forEach(function(b){b.onclick=function(){S.metric=b.dataset.m;render()}});
+  var c=themeColors();
+  mkChart("chA",{type:"bar",data:{labels:brs.map(function(b){return b[0]}),datasets:[
+    {label:"New",backgroundColor:c.new,borderRadius:3,data:brs.map(function(b){var s=sum(byB[b[0]]||[]);return metricV?s.nV:s.nN})},
+    {label:"Renew",backgroundColor:c.renew,borderRadius:3,data:brs.map(function(b){var s=sum(byB[b[0]]||[]);return metricV?s.rV:s.rN})}]},
+    options:{indexAxis:"y",responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{color:c.grid},ticks:{callback:function(v){return metricV&&v>=1e6?v/1e6+" ล้าน":v}}},y:{grid:{display:false}}}}});
+  wireLinks();
+}
+
+/* ---------- แบบ B: การ์ด KPI + กราฟ + อันดับผู้ขาย ---------- */
+function renderB(a){
+  var t=sum(a), pct=t.rN?Math.round(t.late/t.rN*100):0;
+  var h='<div class="stack"><div class="kpis">'+
+   '<div class="card kpi new"><div class="l">งานใหม่ (New)</div><div class="v">'+fmt(t.nN)+' <small>ราย</small></div><div class="s">มูลค่า '+fmt(t.nV)+' บาท</div></div>'+
+   '<div class="card kpi renew"><div class="l">ต่อสัญญา (Renew)</div><div class="v">'+fmt(t.rN)+' <small>ราย</small></div><div class="s">มูลค่า '+fmt(t.rV)+' บาท</div></div>'+
+   '<div class="card kpi late"><div class="l">ต่อสัญญาล่าช้า</div><div class="v">'+t.late+' <small>ราย</small></div><div class="s">'+pct+'% ของ Renew · '+fmt(t.lateV)+' บาท</div></div>'+
+   '<div class="card kpi"><div class="l">รวมทั้งหมด</div><div class="v">'+fmt(t.nN+t.rN)+' <small>ราย</small></div><div class="s">มูลค่า '+fmt(t.nV+t.rV)+' บาท</div></div></div>';
+  h+='<div class="grid2"><div class="card"><h2>แนวโน้มรายเดือน</h2><p class="hint">จำนวนราย New กับ Renew</p><div class="legend"><span><i style="background:var(--new)"></i>New</span><span><i style="background:var(--renew)"></i>Renew</span></div><div class="chartbox" style="height:230px"><canvas id="chB1" role="img" aria-label="กราฟแท่งซ้อนรายเดือน"></canvas></div></div>'+
+   '<div class="card"><h2>แยกตามเขต</h2><p class="hint">มูลค่า (ล้านบาท)</p><div class="legend"><span><i style="background:var(--new)"></i>New</span><span><i style="background:var(--renew)"></i>Renew</span></div><div class="chartbox" style="height:230px"><canvas id="chB2" role="img" aria-label="กราฟแท่งซ้อนแยกเขต"></canvas></div></div></div>';
+  var sellers=Object.entries(groupBy(a,function(c){return c.sale})).map(function(e){var s=sum(e[1]);return{name:e[0],s:s,tot:s.nV+s.rV,n:e[1].length,ams:[...new Set(e[1].map(function(c){return c.am}))]}}).sort(function(x,y){return y.tot-x.tot});
+  var maxS=sellers.length?sellers[0].tot:1;
+  var brsAgg=Object.entries(groupBy(a,function(c){return c.branch})).map(function(e){var s=sum(e[1]);return{name:e[0],zone:e[1][0].zone,s:s,tot:s.nV+s.rV}}).sort(function(x,y){return y.tot-x.tot});
+  var maxB=brsAgg.length?brsAgg[0].tot:1;
+  h+='<div class="grid2"><div class="card"><h2>อันดับผู้ขาย</h2><p class="hint">เรียงตามมูลค่ารวม (sale_name) · แถบ = สัดส่วน New / Renew</p><div class="rank">'+
+    (sellers.length?sellers.map(function(x,i){return'<div class="rk"><span class="n">'+(i+1)+'</span><div><div class="nm">'+esc(x.name)+'<span>'+x.n+' ราย'+(x.s.late?' · <b style="color:var(--danger)">ล่าช้า '+x.s.late+'</b>':'')+'</span></div><div class="bar" style="width:'+Math.max(6,Math.round(x.tot/maxS*100))+'%"><i class="bn" style="flex:'+x.s.nV+'"></i><i class="br" style="flex:'+x.s.rV+'"></i></div></div><div class="val">'+fmtM(x.tot)+'</div></div>'}).join(""):'<div class="empty">ไม่มีข้อมูล</div>')+'</div></div>'+
+   '<div class="card"><h2>ยอดรายสาขา</h2><p class="hint">เรียงตามมูลค่ารวม · แถบ = สัดส่วน New / Renew</p><div class="rank">'+
+    (brsAgg.length?brsAgg.map(function(x,i){return'<div class="rk"><span class="n">'+(i+1)+'</span><div><div class="nm">'+esc(x.name)+'<span>เขต '+x.zone+' · New '+x.s.nN+' / Renew '+x.s.rN+'</span></div><div class="bar" style="width:'+Math.max(6,Math.round(x.tot/maxB*100))+'%"><i class="bn" style="flex:'+x.s.nV+'"></i><i class="br" style="flex:'+x.s.rV+'"></i></div></div><div class="val">'+fmtM(x.tot)+'</div></div>'}).join(""):'<div class="empty">ไม่มีข้อมูล</div>')+'</div></div></div>';
+  var list=a.filter(function(c){return S.chip==="all"||(S.chip==="new"&&c.type==="New")||(S.chip==="renew"&&c.type==="Renew")||(S.chip==="late"&&c.late)});
+  h+='<div class="card"><h2>รายชื่อลูกค้า</h2><p class="hint">กดชื่อเพื่อเปิดหน้าลูกค้า</p><div class="chips" role="group" aria-label="กรองประเภท">'+
+   [["all","ทั้งหมด"],["new","New"],["renew","Renew"],["late","ต่อสัญญาล่าช้า"]].map(function(c){return'<button type="button" class="chip '+(S.chip===c[0]?"on":"")+'" data-chip="'+c[0]+'">'+c[1]+'</button>'}).join("")+'</div>'+
+   (list.length?'<div class="cards">'+list.slice(0,12).map(function(c){return'<div class="cc '+(c.late?"late":"")+'"><div class="top"><span class="cust">'+custLink(c)+'</span><span>'+typePill(c)+'</span></div><div class="meta">'+esc(c.branch)+' · เขต '+c.zone+'</div><div class="meta">Sale: '+esc(c.sale)+' · AM: '+esc(c.am)+'</div><div class="top"><span class="meta">รับ Mail '+mailCell(c)+'</span><span class="val">'+fmt(c.value)+' บาท</span></div></div>'}).join("")+'</div>'+(list.length>12?'<p class="muted" style="font-size:13px;margin:8px 0 0">แสดง 12 จาก '+fmt(list.length)+' รายการ — ของจริงแบ่งหน้า/โหลดเพิ่ม</p>':''):'<div class="empty">ไม่พบงานตามตัวกรองนี้ — ลองกดชิป "ทั้งหมด" หรือ "ล้างตัวกรอง"</div>')+'</div></div>';
+  $("#app").innerHTML=h;
+  document.querySelectorAll("[data-chip]").forEach(function(b){b.onclick=function(){S.chip=b.dataset.chip;render()}});
+  var c=themeColors(), byM=groupBy(a,function(x){return x.mail.slice(0,7)}), ms=MON.filter(function(m){return m>=S.from&&m<=S.to});
+  mkChart("chB1",{type:"bar",data:{labels:ms.map(function(m){return MTH[m]}),datasets:[
+    {label:"New",backgroundColor:c.new,data:ms.map(function(m){return sum(byM[m]||[]).nN}),borderRadius:3},
+    {label:"Renew",backgroundColor:c.renew,data:ms.map(function(m){return sum(byM[m]||[]).rN}),borderRadius:3}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true,grid:{color:c.grid},ticks:{precision:0}}}}});
+  var byZ=groupBy(a,function(x){return x.zone}), zs=[1,2,3].filter(function(z){return!S.zone||String(z)===S.zone});
+  mkChart("chB2",{type:"bar",data:{labels:zs.map(function(z){return"เขต "+z}),datasets:[
+    {label:"New",backgroundColor:c.new,data:zs.map(function(z){return sum(byZ[z]||[]).nV/1e6}),borderRadius:3},
+    {label:"Renew",backgroundColor:c.renew,data:zs.map(function(z){return sum(byZ[z]||[]).rV/1e6}),borderRadius:3}]},
+    options:{indexAxis:"y",responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{stacked:true,grid:{color:c.grid}},y:{stacked:true,grid:{display:false}}}}});
+  wireLinks();
+}
+
+function render(){killCharts();var a=rows();(V==="b"?renderB:renderA)(a)}
+function setTheme(d){DARK=d;document.documentElement.dataset.theme=d?"dark":"light";$("#tl").classList.toggle("on",!d);$("#td").classList.toggle("on",d);render()}
+$("#tl").onclick=function(){setTheme(false)};$("#td").onclick=function(){setTheme(true)};
+$("#va").classList.toggle("on",V==="a");$("#vb").classList.toggle("on",V==="b");
+["va","vb"].forEach(function(id){var a=$("#"+id);a.href=a.getAttribute("href")+(DARK?"&theme=dark":"")});
+document.documentElement.dataset.theme=DARK?"dark":"light";$("#tl").classList.toggle("on",!DARK);$("#td").classList.toggle("on",DARK);
+buildFilters();
+if(window.Chart)render();else window.addEventListener("load",render);
+</script>
+</body>
+</html>
