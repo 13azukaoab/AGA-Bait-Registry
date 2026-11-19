@@ -30,6 +30,7 @@ import { useUnsavedWork } from "@/components/shell/unsaved-work";
 import { Alert, Button, Chip, Field, TierBadge, Toast, cx } from "@/components/ui";
 import type { UserRole } from "@/lib/db/types";
 import { customerLinkContexts } from "@/lib/links/customerLink";
+import { isLateRenewal } from "@/lib/rules/lateRenewal";
 import { createClient } from "@/lib/supabase/client";
 
 import { resolveBranch } from "./branchMatch";
@@ -850,7 +851,15 @@ export function NewContractsClient({
                   <td className={TD}>{s.sellerRole === "am" ? "AM" : "Sale"}</td>
                   <td className={TD}>{v.branch?.name ?? "—"}</td>
                   <td className={TD}>{v.branch?.zoneName.replace("เขต ", "") ?? "—"}</td>
-                  <td className={cx(TD, "num")}>{s.mailReceivedDate || "—"}</td>
+                  <td className={cx(TD, "num")}>
+                    {isLateRenewal(s.saleType, s.mailReceivedDate) ? (
+                      <span className="font-semibold text-danger" title="ต่อสัญญาล่าช้า" aria-label={`${s.mailReceivedDate} ต่อสัญญาล่าช้า`}>
+                        {s.mailReceivedDate}
+                      </span>
+                    ) : (
+                      s.mailReceivedDate || "—"
+                    )}
+                  </td>
                   <td className={cx(TD, "num")}>
                     {s.firstServiceDate || <Chip tone="pend">รอนัด</Chip>}
                   </td>
@@ -1403,10 +1412,11 @@ function DraftTableRow({
         <td className={TD}>
           <input
             type="date"
-            aria-label="วันที่รับ Mail"
+            aria-label={isLateRenewal(d.saleType, d.mailReceivedDate) ? "วันที่รับ Mail (ต่อสัญญาล่าช้า)" : "วันที่รับ Mail"}
             value={d.mailReceivedDate}
             onChange={(e) => onPatch({ mailReceivedDate: e.target.value })}
-            className={cx(INPUT, "num", border(err("mailDate")))}
+            title={isLateRenewal(d.saleType, d.mailReceivedDate) ? "ต่อสัญญาล่าช้า" : undefined}
+            className={cx(INPUT, "num", border(err("mailDate")), isLateRenewal(d.saleType, d.mailReceivedDate) && "font-semibold text-danger")}
           />
         </td>
         <td className={TD}>
