@@ -20,6 +20,7 @@
 --      * พัก: สัญญาต้อง active (CP001) · ยังไม่พัก (CP002) · เหตุผลบังคับ ≤ 500 (CP003)
 --        · วันเริ่มพัก ≤ วันนี้ อยู่ในอายุสัญญา และไม่ก่อนวันกลับมาต่อครั้งก่อน (CP004)
 --        · admin/recorder ย้อนวันเริ่มพัก/กลับมาต่อได้ไม่เกินเดือนก่อนหน้า · host ย้อนได้ (CP004)
+--        · ย้อนเข้าเดือนที่ปิดแล้ว: host / recorder เท่านั้น · admin → CP013 (เจ้าของ 19 พ.ย. 2026)
 --        · ตั้งแต่เดือนที่เริ่มพักต้องยังไม่มีการเข้า routine (รวมชดเชย) (CP005 · DETAIL = เดือน)
 --        · ตั้งแต่เดือนที่เริ่มพักต้องยังไม่มีผลตัดสิน/หมายเหตุตกบริการ (CP006)
 --      * กลับมาต่อ: สัญญาต้องพักอยู่ (CP007) · วันกลับมาต่อ ≥ วันเริ่มพัก และ ≤ วันนี้ (CP004)
@@ -48,12 +49,12 @@
 --        list_pending_missed_services (เนื้อ 20261115200000) · list_voided_missed_services (20261115220000)
 --        · central_unready_branches (20261115271000)
 --   7. อ่านอย่างเดียว:
---      * `v_paused_branch_summary` (/summary · ยอดรวมรายสาขา×เดือน ไม่มี PII · anon อ่านได้แบบ v_branch_summary)
+--      * `v_paused_branch_summary` (/summary · ยอดรวมรายสาขา×เดือน ไม่มี PII · เฉพาะผู้ login — anon ไม่เห็น)
 --      * `list_paused_contracts(p_branch_id)` (/todo · สัญญาที่พักอยู่ + เดือนที่พัก + warn เมื่อพักเกิน 3 เดือน — 2.63)
 --      * `list_pause_makeups(p_branch_id)` (ค้าง/ชดเชยแล้ว รายเดือนที่พัก)
 --   * Dashboard (2.87): คำนวณฝั่ง server ด้วย lib/rules (buildBranchSnapshot ข้ามเดือนที่พัก) — ไม่มี SQL snapshot
 --     · dashboard_data.json ไม่เปลี่ยน (กฎ 4) · เดือนที่ปิดแล้วไม่คำนวณใหม่เอง (กฎ 7)
---   * error ใหม่ CP001–CP012 (ข้อความไทยใน HINT)
+--   * error ใหม่ CP001–CP013 (ข้อความไทยใน HINT)
 -- =====================================================================
 
 CREATE EXTENSION IF NOT EXISTS btree_gist WITH SCHEMA extensions;
@@ -133,6 +134,30 @@ REVOKE ALL ON FUNCTION public.contract_month_paused(uuid, date) FROM PUBLIC, ano
 GRANT EXECUTE ON FUNCTION public.contract_month_paused(uuid, date) TO authenticated, service_role;
 
 -- =====================================================================
+-- 1c. helper: มีเดือนที่ปิดแล้ว (month_closures · scope ตามส่วนงานของสาขาสัญญา · closed_at มีค่า)
+--     ในช่วง [p_from_month, เดือนปัจจุบัน) ไหม — ใช้กันแอดมินย้อนพัก/กลับมาต่อเข้าเดือนที่ปิดแล้ว (เจ้าของ 19 พ.ย. 2026)
+-- =====================================================================
+CREATE FUNCTION public.contract_pause_touches_closed_month(p_contract_id uuid, p_from_month date)
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+  SELECT EXISTS (
+    SELECT 1
+      FROM contracts ct
+      JOIN customers cu ON cu.id = ct.customer_id
+      JOIN branches b ON b.id = cu.branch_id
+      JOIN month_closures mc ON mc.scope::text = b.division::text
+     WHERE ct.id = p_contract_id
+       AND mc.closed_at IS NOT NULL
+       AND mc.month_key >= to_char(p_from_month, 'YYYY-MM')
+       AND mc.month_key <  to_char((now() AT TIME ZONE 'Asia/Bangkok'), 'YYYY-MM'))
+$$;
+REVOKE ALL ON FUNCTION public.contract_pause_touches_closed_month(uuid, date) FROM PUBLIC, anon, authenticated;
+
+-- =====================================================================
 -- 2. RPC พัก / กลับมาต่อ
 -- =====================================================================
 CREATE FUNCTION public.pause_contract(p_contract_id uuid, p_from date, p_reason text)
@@ -197,6 +222,12 @@ BEGIN
     RAISE EXCEPTION 'only host can backdate a pause before the previous month'
       USING ERRCODE = 'CP004',
             HINT = 'ย้อนวันเริ่มพักได้ไม่เกินเดือนก่อนหน้า — ย้อนมากกว่านั้นให้ผู้ดูแลระบบ (host) ทำ';
+  END IF;
+  -- เจ้าของ 19 พ.ย. 2026 (กฎ 7): ย้อนเข้าเดือนที่ปิดแล้ว = host / recorder เท่านั้น · admin → CP013
+  IF current_app_role() = 'admin' AND contract_pause_touches_closed_month(p_contract_id, v_from_month) THEN
+    RAISE EXCEPTION 'admin cannot backdate a pause into a closed month'
+      USING ERRCODE = 'CP013',
+            HINT = 'เดือนที่เลือกปิดแล้ว — ย้อนพักเข้าเดือนที่ปิดแล้วได้เฉพาะหัวหน้างานหรือผู้ดูแลระบบ (host)';
   END IF;
 
   -- เดือนที่เริ่มพักขึ้นไปต้องยังไม่มีบริการ routine (ปกติหรือชดเชย) — เดือนที่พักต้องไม่มีบริการ
@@ -276,6 +307,13 @@ BEGIN
     RAISE EXCEPTION 'only host can backdate a resume before the previous month'
       USING ERRCODE = 'CP004',
             HINT = 'ย้อนวันกลับมาต่อได้ไม่เกินเดือนก่อนหน้า — ย้อนมากกว่านั้นให้ผู้ดูแลระบบ (host) ทำ';
+  END IF;
+  -- เจ้าของ 19 พ.ย. 2026 (กฎ 7): ย้อนวันกลับมาต่อเข้าเดือนที่ปิดแล้ว = host / recorder เท่านั้น · admin → CP013
+  IF current_app_role() = 'admin'
+     AND contract_pause_touches_closed_month(p_contract_id, date_trunc('month', p_at::timestamp)::date) THEN
+    RAISE EXCEPTION 'admin cannot backdate a resume into a closed month'
+      USING ERRCODE = 'CP013',
+            HINT = 'เดือนที่เลือกปิดแล้ว — ย้อนวันกลับมาต่อเข้าเดือนที่ปิดแล้วได้เฉพาะหัวหน้างานหรือผู้ดูแลระบบ (host)';
   END IF;
 
   UPDATE contract_pauses p
@@ -702,11 +740,11 @@ $$;
 REVOKE ALL ON FUNCTION public.central_unready_branches(text) FROM PUBLIC, anon, authenticated, service_role;
 
 -- =====================================================================
--- 7a. /summary — ยอดพักสัญญารายสาขา × เดือน (ไม่มี PII · สิทธิ์แบบ v_branch_summary: anon + authenticated)
+-- 7a. /summary — ยอดพักสัญญารายสาขา × เดือน (ไม่มี PII · เจ้าของ 19 พ.ย. 2026: เฉพาะผู้ที่ login · anon ไม่เห็น)
 --   นับเฉพาะเดือนบริการ (ไม่ก่อนเดือนเริ่ม · ไม่เกินเดือนบริการสุดท้าย) ถึงเดือนปัจจุบัน · ไม่นับตั้งแต่เดือนที่ยกเลิก
 --   paused_contracts = จำนวนสัญญาที่พักในเดือนนั้น (= ไม่อยู่ใน cust ของ Dashboard) · paused_value = มูลค่าสัญญาเต็มรวม
 --   "พักไปกี่เดือน" รวม = ผลรวม paused_contracts ทุกเดือน (สัญญา-เดือน)
---   ไม่ใช่ security_invoker (เหมือน v_branch_summary) เพื่อให้ anon อ่านยอดรวมได้โดยไม่เห็นตารางต้นทาง
+--   ไม่ใช่ security_invoker (เหมือน v_branch_summary) เพื่อให้ผู้ login ทุกบทบาท (รวม viewer) อ่านยอดรวมได้โดยไม่เห็นตารางต้นทาง
 -- =====================================================================
 CREATE VIEW public.v_paused_branch_summary AS
 WITH pm AS (
@@ -738,8 +776,8 @@ SELECT to_char(pm.month, 'YYYY-MM') AS month_key,
 COMMENT ON VIEW public.v_paused_branch_summary IS
   'M29 (DECISIONS 2.87): paused contracts per branch per month (count + full contract value). Aggregates only, no PII.';
 
-REVOKE ALL ON public.v_paused_branch_summary FROM PUBLIC;
-GRANT SELECT ON public.v_paused_branch_summary TO anon, authenticated, service_role;
+REVOKE ALL ON public.v_paused_branch_summary FROM PUBLIC, anon;
+GRANT SELECT ON public.v_paused_branch_summary TO authenticated, service_role;
 
 -- =====================================================================
 -- 7b. /todo — สัญญาที่พักอยู่ (เตือนเมื่อพักเกิน 3 เดือน · 2.63 ระบบไม่ยกเลิกเอง)

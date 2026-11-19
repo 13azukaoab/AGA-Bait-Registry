@@ -4,10 +4,11 @@
 --   * ด่าน: สถานะเปลี่ยนตรงไม่ได้ (CP008) · ยกเลิกจากพักได้ (ปิดช่วงพักเอง) · routine ช่วงพัก (CP009)
 --     · เก็บ IG ช่วงพัก (CP010) · ชดเชยจากพักเกินอายุสัญญา (CP011 recorder) · ไม่ชดเชย/หมายเหตุเดือนพัก (CP012)
 --   * ตกบริการ: list_pending / list_voided / central_unready ไม่นับเดือนที่พัก · เดือนที่กลับมาต่อนับตามปกติ
---   * อ่าน: list_paused_contracts (warn > 3 เดือน) · list_pause_makeups · v_paused_branch_summary (anon อ่านได้)
+--   * อ่าน: list_paused_contracts (warn > 3 เดือน) · list_pause_makeups · v_paused_branch_summary (เฉพาะผู้ login · anon ไม่เห็น)
+--   * เจ้าของ 19 พ.ย.: admin ย้อนพัก/กลับมาต่อเข้าเดือนที่ปิดแล้วไม่ได้ (CP013) · recorder/host ได้
 -- ข้อมูลสมมติทั้งหมด (ไม่ใช่ข้อมูลลูกค้าจริง)
 BEGIN;
-SELECT plan(82);
+SELECT plan(89);
 
 INSERT INTO auth.users (id, instance_id, aud, role, email) VALUES
   ('00000000-0000-0000-0000-0000000000a1', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'host@test.local'),
@@ -68,7 +69,8 @@ INSERT INTO contracts (id, customer_id, contract_no, start_date, term_months, va
   (pg_temp.id('d3'), pg_temp.id('c1'), 'P-3', pg_temp.m(-14), 12, 24000, pg_temp.m(-14) + 2, 'active'),
   (pg_temp.id('d4'), pg_temp.id('c2'), 'P-4', pg_temp.m(-6),  12, 24000, pg_temp.m(-6) + 2,  'active'),
   (pg_temp.id('d5'), pg_temp.id('c2'), 'P-5', pg_temp.m(-6),  12, 24000, pg_temp.m(-6) + 2,  'active'),
-  (pg_temp.id('d6'), pg_temp.id('c2'), 'P-6', pg_temp.m(-6),  12, 24000, pg_temp.m(-6) + 2,  'closed');
+  (pg_temp.id('d6'), pg_temp.id('c2'), 'P-6', pg_temp.m(-6),  12, 24000, pg_temp.m(-6) + 2,  'closed'),
+  (pg_temp.id('d7'), pg_temp.id('c2'), 'P-7', pg_temp.m(-6),  12, 24000, pg_temp.m(-6) + 2,  'active');
 INSERT INTO visits (id, contract_id, visit_date, visit_type, start_time, end_time) VALUES
   (pg_temp.id('e1'), pg_temp.id('d1'), pg_temp.m(-6) + 9, 'routine', '09:00', '10:00'),
   (pg_temp.id('e2'), pg_temp.id('d1'), pg_temp.m(-5) + 9, 'routine', '09:00', '10:00'),
@@ -100,8 +102,9 @@ SELECT ok(NOT has_function_privilege('authenticated', 'public.contracts_pause_st
           AND NOT has_function_privilege('authenticated', 'public.visits_pause_guard()', 'EXECUTE')
           AND NOT has_function_privilege('authenticated', 'public.missed_resolutions_pause_origin()', 'EXECUTE'),
   'trigger functions are not callable directly');
-SELECT ok(has_table_privilege('anon', 'public.v_paused_branch_summary', 'SELECT'),
-  'anon can read the aggregate v_paused_branch_summary (like v_branch_summary)');
+SELECT ok(NOT has_table_privilege('anon', 'public.v_paused_branch_summary', 'SELECT')
+          AND has_table_privilege('authenticated', 'public.v_paused_branch_summary', 'SELECT'),
+  'v_paused_branch_summary: logged-in users only (anon cannot read — owner 19 Nov)');
 
 -- =====================================================================
 -- พักสัญญา: สิทธิ์ + ด่าน
@@ -190,20 +193,24 @@ SELECT is((SELECT pending_count FROM central_unready_branches(to_char(pg_temp.m(
             WHERE branch_id = (SELECT branch_id FROM customers WHERE id = pg_temp.id('c1'))),
   4, 'central_unready_branches skips the paused contract (d2, d3, d4, d6 count · d1 paused · d5 has a note)');
 
--- /summary (anon)
+-- /summary (ผู้ login · viewer ก็อ่านยอดรวมได้)
 CREATE TEMP TABLE _b AS SELECT name FROM branches WHERE division = 'central' ORDER BY name LIMIT 1;
 GRANT SELECT ON _b TO PUBLIC;
-SET LOCAL ROLE anon;
+SET LOCAL ROLE authenticated;
+SELECT pg_temp.as_user('a5');
 SELECT is((SELECT paused_contracts FROM v_paused_branch_summary
             WHERE month_key = to_char(pg_temp.m(-4), 'YYYY-MM')
               AND branch_name = (SELECT name FROM _b)),
-  1, 'anon: v_paused_branch_summary counts the paused contract in the paused month');
+  1, 'logged-in viewer: v_paused_branch_summary counts the paused contract in the paused month');
 SELECT is((SELECT paused_value FROM v_paused_branch_summary
             WHERE month_key = to_char(pg_temp.m(0), 'YYYY-MM')
               AND branch_name = (SELECT name FROM _b)),
-  24000.00::numeric, 'anon: paused value = full contract value (open pause counts to the current month)');
+  24000.00::numeric, 'paused value = full contract value (open pause counts to the current month)');
 SELECT is((SELECT count(*)::int FROM v_paused_branch_summary WHERE month_key = to_char(pg_temp.m(-5), 'YYYY-MM')),
   0, 'months before the pause are not in the summary');
+RESET ROLE;
+SET LOCAL ROLE anon;
+SELECT throws_ok('SELECT * FROM v_paused_branch_summary', '42501', NULL, 'anon cannot read v_paused_branch_summary');
 SELECT throws_ok('SELECT * FROM contract_pauses', '42501', NULL, 'anon cannot read contract_pauses');
 RESET ROLE;
 
@@ -292,6 +299,24 @@ SELECT throws_ok($$UPDATE contracts SET status = 'paused' WHERE id = pg_temp.id(
 SET LOCAL ROLE authenticated;
 SELECT pg_temp.as_user('a5');
 SELECT ok(NOT contract_month_paused(pg_temp.id('d4'), pg_temp.m(0)), 'viewer always gets false from contract_month_paused');
+RESET ROLE;
+
+-- เดือนที่ปิดแล้ว (เจ้าของ 19 พ.ย.): admin ย้อนเข้าไม่ได้ · recorder ได้
+INSERT INTO month_closures (month_key, scope, closed_at) VALUES (to_char(pg_temp.m(-1), 'YYYY-MM'), 'central', now());
+SET LOCAL ROLE authenticated;
+SELECT pg_temp.as_user('a2');
+SELECT throws_ok(pg_temp.pause('d7', pg_temp.m(-1) + 1), 'CP013', NULL, 'admin cannot backdate a pause into a closed month');
+SELECT lives_ok(pg_temp.pause('d7', pg_temp.td()), 'admin can still pause from today (open month)');
+RESET ROLE;
+SELECT pg_temp.as_user('a1');
+SELECT lives_ok($$UPDATE contract_pauses SET paused_from = pg_temp.m(-1) + 1 WHERE contract_id = pg_temp.id('d7')$$,
+  'test setup: move the open pause start into the closed month (postgres)');
+SET LOCAL ROLE authenticated;
+SELECT pg_temp.as_user('a2');
+SELECT throws_ok(pg_temp.resume('d7', pg_temp.m(-1) + 5), 'CP013', NULL, 'admin cannot backdate a resume into a closed month');
+SELECT pg_temp.as_user('a3');
+SELECT lives_ok(pg_temp.resume('d7', pg_temp.m(-1) + 5), 'recorder can backdate a resume into a closed month');
+SELECT lives_ok(pg_temp.pause('d7', pg_temp.m(-1) + 6), 'recorder can backdate a pause into a closed month');
 RESET ROLE;
 
 -- audit
