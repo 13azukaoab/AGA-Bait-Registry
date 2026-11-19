@@ -330,7 +330,7 @@ export function PortEditor(p: PortEditorProps) {
           <div aria-live="polite">
             {ev.reportState === "ok" && ev.match ? <Pill tone="ok"><Icon name="check" /> ตรงกับรายงาน ({fmt0(ev.report!.cust)} ราย · {fmt2(ev.report!.value)} บาท)</Pill> : null}
             {ev.reportState === "ok" && !ev.match ? <Pill tone="miss"><Icon name="x" /> ไม่ตรง — จำนวนต่าง {ev.dn} ราย · มูลค่าต่าง {fmtSigned(ev.dCents / 100)} บาท</Pill> : null}
-            {ev.reportState === "none" ? <Pill tone="pend" className="whitespace-normal">ยังไม่ได้เทียบยอดรายงาน — บันทึกได้ แต่แนะนำให้กรอกยอดจากรายงานเพื่อตรวจ</Pill> : null}
+            {ev.reportState === "none" ? <Pill tone="pend" wrap>ยังไม่ได้เทียบยอดรายงาน — บันทึกได้ แต่แนะนำให้กรอกยอดจากรายงานเพื่อตรวจ</Pill> : null}
             {ev.reportState === "partial" || ev.reportState === "bad" ? <Pill tone="miss">ยอดรายงานกรอกไม่ครบ/ผิดรูปแบบ</Pill> : null}
           </div>
         </div>
@@ -378,7 +378,7 @@ export function PortEditor(p: PortEditorProps) {
             {st.updated ? "บันทึกการแก้ไข" : "บันทึกเป็น “อัปเดตแล้ว”"}
           </Button>
           {st.canKeepSame && !dirty && !st.updated ? (
-            <Button disabled={p.saving} onClick={p.onKeep} className="max-md:min-h-11">ยืนยันใช้ค่าเดิม (ไม่มีการเปลี่ยนแปลง)</Button>
+            <Button disabled={p.saving} onClick={p.onKeep} className="max-md:min-h-11">ยืนยันใช้ค่าเดิม<span className="max-md:hidden"> (ไม่มีการเปลี่ยนแปลง)</span></Button>
           ) : null}
           {dirty ? <Button disabled={p.saving} onClick={p.onRevert} className="max-md:min-h-11">คืนค่าเดิม</Button> : null}
           {dirty ? <span className="text-xs text-warn">● มีการแก้ไขที่ยังไม่บันทึก</span> : null}

@@ -44,9 +44,10 @@ const PILL_TONE: Record<PillTone, string> = {
   info: "bg-accent-soft text-accent-strong",
 };
 
-export function Pill({ tone, children, title, className }: { tone: PillTone; children: ReactNode; title?: string; className?: string }) {
+/** wrap = ข้อความยาวให้ขึ้นบรรทัดใหม่ได้ (ปกติไม่ตัดบรรทัด) */
+export function Pill({ tone, children, title, className, wrap }: { tone: PillTone; children: ReactNode; title?: string; className?: string; wrap?: boolean }) {
   return (
-    <span title={title} className={cx("inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs", PILL_TONE[tone], className)}>
+    <span title={title} className={cx("inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs", wrap ? "rounded-xl" : "whitespace-nowrap", PILL_TONE[tone], className)}>
       {children}
     </span>
   );

@@ -225,7 +225,7 @@ export function PortClient({ data }: { data: PortPageData }) {
       </div>
 
       {/* สถิติ */}
-      <div className="mb-4 grid grid-cols-[repeat(auto-fit,minmax(190px,1fr))] gap-3">
+      <div className="mb-4 grid grid-cols-2 gap-3 min-[640px]:grid-cols-[repeat(auto-fit,minmax(190px,1fr))]">
         <StatButton tone="ok" label="อัปเดตแล้ว" value={`${sum.updated} / ${rows.length}`} sub={`สาขาต่างจังหวัดเดือน ${data.monthLabelKey}`} onClick={() => { setSt("ok"); setQ(""); setZone("all"); }} />
         <StatButton tone={sum.pending ? "warn" : "ok"} label="ยังไม่อัปเดต" value={String(sum.pending)} sub={sum.pending ? "ใช้ค่ายกมาไปก่อน" : "ครบทุกสาขาแล้ว"} onClick={() => { setSt("pend"); setQ(""); setZone("all"); }} />
         <div className="rounded-[10px] border border-border bg-surface px-4 py-3 shadow-[var(--shadow)]">
@@ -338,7 +338,7 @@ export function PortClient({ data }: { data: PortPageData }) {
         </section>
 
         {/* แผงแก้ไข */}
-        <section id="port-editor" aria-label="แก้ไขข้อมูลสาขา" className="min-w-0 rounded-[10px] border border-border bg-surface shadow-[var(--shadow)] min-[1181px]:sticky min-[1181px]:top-4">
+        <section id="port-editor" aria-label="แก้ไขข้อมูลสาขา" className="min-w-0 rounded-[10px] border border-border bg-surface shadow-[var(--shadow)] min-[1181px]:sticky min-[1181px]:top-[76px] min-[1181px]:max-h-[calc(100vh-92px)] min-[1181px]:overflow-y-auto">
           {branch && draft && savedDraft && ev ? (
             <PortEditor
               key={`${branch.id}:${data.month}`}
