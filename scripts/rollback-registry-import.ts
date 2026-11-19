@@ -17,6 +17,7 @@
  *   เพิ่ม `--target cloud --project-ref <ref> --log-dir "<โฟลเดอร์นอก repo>"`
  *   --apply บน cloud: dry-run ในตัวก่อน แสดงตัวเลข แล้วต้องพิมพ์ `ลบ <จำนวน>` ตรงตัว
  *   (ทะเบียน = จำนวนสัญญา เช่น `ลบ 2369` · legacy = จำนวนแถว เช่น `ลบ 903`) · ไม่ตรง/ไม่พิมพ์ = ไม่ลบ · ไม่มี flag ข้าม
+ *   ซ้อมพิมพ์คำยืนยันกับ DB ในเครื่อง: ใส่ `--apply --confirm` (localhost จะถามแบบเดียวกับ cloud)
  *
  * env: NEXT_PUBLIC_SUPABASE_URL · SUPABASE_SERVICE_ROLE_KEY · (cloud) AGA_CLOUD_PROJECT_REF · AGA_IMPORT_LOG_DIR หรือ --log-dir
  * ต่อผ่าน PostgREST ด้วย service_role เท่านั้น (ห้าม role postgres) · พิมพ์/บันทึกเฉพาะตัวเลข (+ id ลูกค้าที่ค้างถ้าลบไม่ครบ)
@@ -62,6 +63,7 @@ function rollbackRegistry(ctx: ScriptContext, batch: string) {
     write: async (dry) => applyRegistryRollback(ctx.client, batch, (dry ?? (await planRegistryRollback(ctx.client, batch))).contracts),
     ask: ctx.ask,
     isTTY: ctx.isTTY,
+    forceConfirm: ctx.forceConfirm,
     print: (t) => console.log(t),
   });
 }
@@ -77,6 +79,7 @@ function rollbackLegacy(ctx: ScriptContext) {
     write: async (dry) => applyLegacyRollback(ctx.client, (dry ?? (await planLegacyRollback(ctx.client))).legacyRows),
     ask: ctx.ask,
     isTTY: ctx.isTTY,
+    forceConfirm: ctx.forceConfirm,
     print: (t) => console.log(t),
   });
 }

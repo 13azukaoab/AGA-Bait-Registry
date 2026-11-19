@@ -10,6 +10,7 @@
  *      - ข้อความหยุดของ cloud ไม่พิมพ์ URL / ref (กันหลุดไปอยู่ในแชท/ภาพหน้าจอ)
  *   2. runGuarded — ลำดับ dry-run → ยืนยัน → เขียน
  *      - local: เหมือนเดิมทุกอย่าง (ไม่ใส่ --apply = dry-run · ใส่ = เขียนทันที ไม่ถาม)
+ *        ยกเว้นใส่ --confirm (forceConfirm) = ถามแบบ cloud ทุกขั้น — ไว้ซ้อมพิมพ์คำยืนยันกับ DB ในเครื่อง
  *      - cloud ไม่ใส่ --apply = dry-run อย่างเดียว
  *      - cloud + --apply: input ต้องเป็นเทอร์มินัล (กัน `echo … |`) → dry-run ในตัว → แสดงตัวเลข →
  *        ต้องพิมพ์วลีตรงตัว `นำเข้า <n>` / `ลบ <n>` (n มาจากผล dry-run) · ผิด/ว่าง/EOF = ไม่เขียน
@@ -166,6 +167,11 @@ export interface GuardedRunOptions<D, A> {
   /** stdin เป็นเทอร์มินัลหรือไม่ */
   isTTY: boolean;
   print: (text: string) => void;
+  /**
+   * --confirm: ให้ localhost ถามยืนยันแบบเดียวกับ cloud (ไว้ซ้อมพิมพ์คำยืนยันกับ DB ในเครื่อง)
+   * เพิ่มด่านได้อย่างเดียว ไม่มีผลกับ cloud (cloud ถามเสมอ)
+   */
+  forceConfirm?: boolean;
 }
 
 export type GuardedRunResult<D, A> =
@@ -175,7 +181,7 @@ export type GuardedRunResult<D, A> =
 
 /** ดู Logic summary ข้อ 2 */
 export async function runGuarded<D, A>(o: GuardedRunOptions<D, A>): Promise<GuardedRunResult<D, A>> {
-  if (o.target.kind === "local") {
+  if (o.target.kind === "local" && !o.forceConfirm) {
     if (o.apply) return { status: "applied", result: await o.write() };
     return { status: "dry-run", dry: await o.dryRun() };
   }
@@ -184,7 +190,7 @@ export async function runGuarded<D, A>(o: GuardedRunOptions<D, A>): Promise<Guar
 
   if (!o.isTTY) {
     throw new Error(
-      "หยุด: --apply บน cloud ต้องรันในเทอร์มินัลที่พิมพ์ได้ (PowerShell / Windows Terminal) — ห้ามส่งคำยืนยันผ่าน pipe/ไฟล์ · Git Bash (mintty) ใช้ไม่ได้",
+      "หยุด: --apply ที่ต้องพิมพ์ยืนยัน ต้องรันในเทอร์มินัลที่พิมพ์ได้ (PowerShell / Windows Terminal) — ห้ามส่งคำยืนยันผ่าน pipe/ไฟล์ · Git Bash (mintty) ใช้ไม่ได้",
     );
   }
 

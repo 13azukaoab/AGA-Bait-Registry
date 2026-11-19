@@ -13,6 +13,7 @@
  *   ... -- --target cloud --project-ref <ref> --log-dir "<โฟลเดอร์นอก repo>" --file "<path>/dashboard_data.json" --apply   (เขียน)
  *   --apply บน cloud: สคริปต์ dry-run ในตัวก่อน แสดงตัวเลข แล้วต้องพิมพ์ `นำเข้า <จำนวนแถว>` ตรงตัว (เช่น `นำเข้า 903`)
  *   ไม่ตรง/ไม่พิมพ์ = ไม่เขียน · ไม่มี flag ข้ามการยืนยัน
+ *   ซ้อมพิมพ์คำยืนยันกับ DB ในเครื่อง: ใส่ `--apply --confirm` (localhost จะถามแบบเดียวกับ cloud)
  *
  *   (`--config vitest.config.ts` กัน vite โหลด PostCSS ของ Tailwind ซึ่งพังนอก Next.js)
  *
@@ -71,6 +72,7 @@ async function main(): Promise<void> {
       write: () => importLegacySnapshots(ctx.client, data),
       ask: ctx.ask,
       isTTY: ctx.isTTY,
+    forceConfirm: ctx.forceConfirm,
       print: (t) => console.log(t),
     });
 

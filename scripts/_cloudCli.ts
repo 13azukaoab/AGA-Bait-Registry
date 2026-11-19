@@ -26,6 +26,8 @@ export interface ScriptContext {
   target: ImportTarget;
   client: SupabaseClient;
   apply: boolean;
+  /** --confirm: localhost ถามยืนยันแบบ cloud (ซ้อมพิมพ์คำยืนยัน) */
+  forceConfirm: boolean;
   /** ข้อความที่ผ่านตัวลบค่าลับ (URL/key/ref) */
   redact: (text: string) => string;
   /** เขียน log (ถ้ามีโฟลเดอร์) — เรียกครั้งเดียวตอนจบ */
@@ -82,6 +84,7 @@ export function setupScript(script: string): ScriptContext {
     target,
     client,
     apply,
+    forceConfirm: hasFlag("--confirm"),
     redact,
     ask: askLine,
     isTTY: process.stdin.isTTY === true,

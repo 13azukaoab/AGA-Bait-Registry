@@ -14,6 +14,7 @@
  *   เพิ่ม `--target cloud --project-ref <ref> --log-dir "<โฟลเดอร์นอก repo>"` ต่อท้ายคำสั่งข้างบน (dry-run / --apply / --verify-only)
  *   --apply บน cloud: dry-run ในตัวก่อน แสดงตัวเลข แล้วต้องพิมพ์ `นำเข้า <จำนวนสัญญา>` ตรงตัว (เช่น `นำเข้า 2369`)
  *   ไม่ตรง/ไม่พิมพ์ = ไม่เขียน · ไม่มี flag ข้ามการยืนยัน
+ *   ซ้อมพิมพ์คำยืนยันกับ DB ในเครื่อง: ใส่ `--apply --confirm` (localhost จะถามแบบเดียวกับ cloud)
  *
  * env ที่ต้องมี (ตั้งในเทอร์มินัลตอนรันเท่านั้น · ห้าม commit · ห้ามวางในแชท):
  *   NEXT_PUBLIC_SUPABASE_URL   local เช่น http://127.0.0.1:54321 · cloud = https://<ref>.supabase.co
@@ -117,6 +118,7 @@ async function main(): Promise<void> {
         write: () => importRegistryPlan(ctx.client, plan),
         ask: ctx.ask,
         isTTY: ctx.isTTY,
+    forceConfirm: ctx.forceConfirm,
         print: (t) => console.log(t),
       });
       if (out.status === "aborted") {

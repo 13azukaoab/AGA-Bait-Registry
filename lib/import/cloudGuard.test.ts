@@ -171,6 +171,41 @@ describe("runGuarded — localhost (ทางเดิม)", () => {
   });
 });
 
+describe("runGuarded — localhost + --confirm (ซ้อมพิมพ์ยืนยัน)", () => {
+  function run(answer: string | null, isTTY = true) {
+    let wrote = 0;
+    let asked = 0;
+    const p = runGuarded({
+      target: { kind: "local" },
+      apply: true,
+      forceConfirm: true,
+      action: "import",
+      dryRun: async () => ({ rows: 5 }),
+      confirmCount: (d) => d.rows,
+      describe: () => "",
+      write: async () => {
+        wrote++;
+      },
+      ask: async () => {
+        asked++;
+        return answer;
+      },
+      isTTY,
+      print: () => {},
+    });
+    return { p, counts: () => ({ wrote, asked }) };
+  }
+  it("พิมพ์ตรง = เขียน · พิมพ์ผิด = ไม่เขียน · ไม่ใช่ TTY = หยุด", async () => {
+    const ok = run("นำเข้า 5");
+    await expect(ok.p).resolves.toMatchObject({ status: "applied" });
+    expect(ok.counts()).toEqual({ wrote: 1, asked: 1 });
+    const bad = run("นำเข้า 4");
+    await expect(bad.p).resolves.toMatchObject({ status: "aborted" });
+    expect(bad.counts()).toEqual({ wrote: 0, asked: 1 });
+    await expect(run("นำเข้า 5", false).p).rejects.toThrow(/เทอร์มินัลที่พิมพ์ได้/);
+  });
+});
+
 describe("runGuarded — cloud", () => {
   const cloud: ImportTarget = { kind: "cloud", ref: REF };
 
