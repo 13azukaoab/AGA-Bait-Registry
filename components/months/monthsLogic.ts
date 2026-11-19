@@ -211,14 +211,150 @@ export function summarizeSync(rows: readonly SyncStatusRow[]): { lastSuccessAt: 
 }
 
 // ---------------------------------------------------------------------------
-// แก้หลังปิด (RPC list_post_close_edits ยังไม่มีบน main — ซ่อนไว้จนกว่า BE ส่ง)
+// ตรวจความครบ (ขั้นแรกของส่วนกลาง · RPC get_central_readiness · M40)
 // ---------------------------------------------------------------------------
 
-export const POST_CLOSE_EDITS_AVAILABLE = false;
+/** สาขาส่วนกลางที่ "ยังไม่พร้อมปิด" 1 แถว (RPC คืนเฉพาะสาขาที่ยังไม่พร้อม · 0 แถว = พร้อมทุกสาขา) */
+export interface ReadinessBranch {
+  branchId: string;
+  name: string;
+  /** จำนวนสัญญาที่ยังค้าง (ไม่มีข้อมูลลูกค้า/สัญญา) */
+  pending: number;
+}
 
-const TABLE_TH: Record<string, string> = { visits: "ผลบริการ", station_checks: "ผลตรวจสถานี" };
+export interface ReadinessSummary {
+  ready: boolean;
+  branchCount: number;
+  pendingTotal: number;
+}
+
+/** แปลงผล RPC get_central_readiness — รูปแบบผิด = null (ให้หน้าจอแจ้ง error ไม่แสดงเหมือน "พร้อม") */
+export function parseReadinessRows(data: unknown): ReadinessBranch[] | null {
+  if (!Array.isArray(data)) return null;
+  const out: ReadinessBranch[] = [];
+  for (const r of data) {
+    if (typeof r !== "object" || r === null) return null;
+    const o = r as Record<string, unknown>;
+    if (typeof o.branch_id !== "string" || typeof o.branch_name !== "string") return null;
+    const pending = typeof o.pending_count === "number" && Number.isFinite(o.pending_count) ? Math.max(0, Math.trunc(o.pending_count)) : null;
+    if (pending === null) return null;
+    out.push({ branchId: o.branch_id, name: o.branch_name, pending });
+  }
+  return out;
+}
+
+export function summarizeReadiness(rows: readonly ReadinessBranch[]): ReadinessSummary {
+  return { ready: rows.length === 0, branchCount: rows.length, pendingTotal: rows.reduce((n, r) => n + r.pending, 0) };
+}
+
+/** ดูขั้น "ตรวจความครบ" ได้ = ผู้ปิดส่วนกลางได้ (host + recorder ส่วนกลาง) — ซ่อนเฉยๆ server/DB ตรวจซ้ำ */
+export function canViewReadiness(p: Perms): boolean {
+  return p.canCloseCentral;
+}
+
+// ---------------------------------------------------------------------------
+// แก้หลังปิด (RPC list_post_close_edits · M40)
+// ---------------------------------------------------------------------------
+
+export const POST_CLOSE_EDITS_AVAILABLE = true;
+
+const TABLE_TH: Record<string, string> = {
+  visits: "ผลบริการ",
+  station_checks: "ผลตรวจสถานี",
+  monthly_branch_snapshots: "ตัวเลขต่างจังหวัด (กรอกมือ)",
+};
 export function tableLabelTh(table: string): string {
-  return TABLE_TH[table] ?? "ข้อมูลบริการ";
+  return Object.prototype.hasOwnProperty.call(TABLE_TH, table) ? TABLE_TH[table]! : "ข้อมูลบริการ";
+}
+
+const ACTION_TH: Record<string, string> = { insert: "เพิ่ม", update: "แก้ไข", delete: "ลบ" };
+export function actionLabelTh(action: string): string {
+  return Object.prototype.hasOwnProperty.call(ACTION_TH, action) ? ACTION_TH[action]! : "แก้ไข";
+}
+
+/** แถวจาก list_post_close_edits (ไม่มีค่าเก่า/ใหม่ ไม่มีข้อมูลลูกค้า) */
+export interface PostCloseEdit {
+  changedAt: string;
+  table: string;
+  action: string;
+  branchId: string | null;
+  branchName: string | null;
+  actorName: string | null;
+  actorPositionName: string | null;
+}
+
+/** แปลงผล RPC — รูปแบบผิด = null (หน้าจอแจ้ง error ไม่แสดงเหมือน "ไม่มีการแก้") */
+export function parsePostCloseEdits(data: unknown): PostCloseEdit[] | null {
+  if (!Array.isArray(data)) return null;
+  const str = (v: unknown): string | null => (typeof v === "string" && v !== "" ? v : null);
+  const out: PostCloseEdit[] = [];
+  for (const r of data) {
+    if (typeof r !== "object" || r === null) return null;
+    const o = r as Record<string, unknown>;
+    const changedAt = str(o.changed_at);
+    const table = str(o.table_name);
+    if (!changedAt || !table) return null;
+    out.push({
+      changedAt,
+      table,
+      action: str(o.action) ?? "update",
+      branchId: str(o.branch_id),
+      branchName: str(o.branch_name),
+      actorName: str(o.actor_name),
+      actorPositionName: str(o.actor_position_name),
+    });
+  }
+  return out;
+}
+
+/** N บนป้าย "แก้หลังปิด N" = จำนวนแถวจาก RPC (server นับเอง ไม่คำนวณซ้ำฝั่งเว็บ) */
+export function countPostCloseEdits(rows: readonly PostCloseEdit[]): number {
+  return rows.length;
+}
+
+/** scope ที่ role นี้เรียก list_post_close_edits ได้: host = ทั้งคู่ · recorder (ผู้ปิดส่วนกลาง) = central เท่านั้น · อื่นๆ ไม่มี */
+export function postCloseScopesFor(p: Perms): Scope[] {
+  if (p.isHost) return ["central", "province"];
+  return p.canCloseCentral ? ["central"] : [];
+}
+export function canListPostCloseEdits(p: Perms, scope: Scope): boolean {
+  return postCloseScopesFor(p).includes(scope);
+}
+
+export interface PostCloseEditView {
+  when: string;
+  what: string;
+  actionText: string;
+  branch: string;
+  by: string;
+}
+
+/** แถวพร้อมแสดงผลเป็นภาษาไทย (ชื่อผู้แก้ + ตำแหน่ง · ไม่มีชื่อ = "ไม่ทราบผู้แก้") */
+export function describePostCloseEdit(e: PostCloseEdit): PostCloseEditView {
+  const by = e.actorName ? (e.actorPositionName ? `${e.actorName} (${e.actorPositionName})` : e.actorName) : "ไม่ทราบผู้แก้";
+  return {
+    when: formatBangkok(e.changedAt),
+    what: tableLabelTh(e.table),
+    actionText: actionLabelTh(e.action),
+    branch: e.branchName ?? "—",
+    by,
+  };
+}
+
+/** ป้ายต่อ scope/เดือน: key `${month}|${scope}` → จำนวนแถว · null = โหลดไม่ได้ (ไม่แสดงป้าย) */
+export type PostCloseCounts = Record<string, number | null>;
+export function postCloseKey(month: string, scope: Scope): string {
+  return `${month}|${scope}`;
+}
+/** N ที่แสดงบนป้าย — 0/ไม่รู้/ไม่มีสิทธิ์ = ไม่แสดงป้าย (undefined) */
+export function badgeCount(counts: PostCloseCounts, month: string, scope: Scope): number | undefined {
+  const n = counts[postCloseKey(month, scope)];
+  return typeof n === "number" && n > 0 ? n : undefined;
+}
+/** รวมป้ายของเดือนในรายการเดือน (เฉพาะ scope ที่มีสิทธิ์เห็น) */
+export function badgeCountForMonth(counts: PostCloseCounts, month: string): number | undefined {
+  const t = (badgeCount(counts, month, "central") ?? 0) + (badgeCount(counts, month, "province") ?? 0);
+  return t > 0 ? t : undefined;
 }
 
 // ---------------------------------------------------------------------------
