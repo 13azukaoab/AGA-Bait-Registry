@@ -4,6 +4,7 @@
  * Logic summary:
  *   * แถวที่บันทึกแล้วเป็น Renew + ไม่ผูกสัญญาเก่า → host / admin เปิดกล่องตรวจได้ (`canReviewUnlinked`)
  *     ซ่อน/แสดงปุ่มตาม role เท่านั้น — สิทธิ์จริง (admin ในขอบเขตสาขา) DB ตัดสินด้วย 42501
+ *   * M41: Renew ที่นำเข้า (importBatch ไม่ null) ข้าม — state "imported" ไม่ขึ้นป้าย "ยังไม่ผูก" และเปิดกล่องตรวจไม่ได้
  *   * เชื่อมสัญญาเก่า → RPC `link_renewal_contract(p_contract_id, p_renewed_from_contract_id)`
  *   * ปิดรายการ "ไม่มีสัญญาเก่าในระบบ" → RPC `close_unlinked_renewal(p_contract_id, p_note)` (หมายเหตุไม่บังคับ)
  *     ปิดแล้วยังเชื่อมสัญญาเก่าทีหลังได้ (DB ล้างสถานะปิดให้เอง)
@@ -24,18 +25,22 @@ export const CLOSE_NOTE_WARNING =
 export const CLOSE_NOTE_MAX = 500;
 
 /** สถานะรายการของแถว Renew ที่บันทึกแล้ว */
-export type UnlinkedState = "linked" | "open" | "closed" | "not-renew";
+export type UnlinkedState = "linked" | "open" | "closed" | "imported" | "not-renew";
 
-export function unlinkedStateOf(s: Pick<SavedContract, "saleType" | "renewedFrom" | "unlinkedClosedAt">): UnlinkedState {
+type UnlinkedInput = Pick<SavedContract, "saleType" | "renewedFrom" | "unlinkedClosedAt" | "importBatch">;
+
+export function unlinkedStateOf(s: UnlinkedInput): UnlinkedState {
   if (s.saleType !== "renew") return "not-renew";
   if (s.renewedFrom) return "linked";
+  // M41: Renew ที่นำเข้า (import_batch มีค่า) ไม่ผูกสัญญาเก่าได้ตามปกติ — ไม่ถือเป็น "ยังไม่ผูก" ที่ต้องตรวจ
+  if (s.importBatch != null) return "imported";
   return s.unlinkedClosedAt ? "closed" : "open";
 }
 
 /** host / admin เท่านั้นที่เปิดกล่องตรวจได้ · เฉพาะ Renew ที่ยังไม่ผูก (ทั้งที่ยังเปิดและที่ปิดแล้ว) */
 export function canReviewUnlinked(
   role: UserRole,
-  s: Pick<SavedContract, "saleType" | "renewedFrom" | "unlinkedClosedAt">,
+  s: UnlinkedInput,
 ): boolean {
   if (role !== "host" && role !== "admin") return false;
   const state = unlinkedStateOf(s);

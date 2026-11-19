@@ -126,3 +126,26 @@ describe("filterByContractNo", () => {
     expect(filterByContractNo(list, "zzz")).toEqual([]);
   });
 });
+
+describe("M41: Renew ที่นำเข้า (import_batch)", () => {
+  const importedRenew = { saleType: "renew", renewedFrom: null, unlinkedClosedAt: null, importBatch: "central-2026-11" } as const;
+  const newRenew = { saleType: "renew", renewedFrom: null, unlinkedClosedAt: null, importBatch: null } as const;
+  it("Renew ที่นำเข้า → state imported ไม่ใช่ open (ไม่ขึ้นป้ายยังไม่ผูก)", () => {
+    expect(unlinkedStateOf(importedRenew)).toBe("imported");
+  });
+  it("Renew ที่นำเข้า → ทุก role กดเชื่อมไม่ได้", () => {
+    for (const role of ["host", "admin", "recorder", "viewer"] as const) {
+      expect(canReviewUnlinked(role, importedRenew)).toBe(false);
+    }
+  });
+  it("Renew ใหม่ import_batch = null → ยังเป็น open + host/admin กดได้ เหมือนเดิม", () => {
+    expect(unlinkedStateOf(newRenew)).toBe("open");
+    expect(canReviewUnlinked("host", newRenew)).toBe(true);
+    expect(canReviewUnlinked("admin", newRenew)).toBe(true);
+    expect(canReviewUnlinked("recorder", newRenew)).toBe(false);
+  });
+  it("นำเข้าแต่ผูกสัญญาเก่าอยู่แล้ว → linked · ไม่ใช่ Renew → not-renew", () => {
+    expect(unlinkedStateOf({ ...linked, importBatch: "b" })).toBe("linked");
+    expect(unlinkedStateOf({ ...isNew, importBatch: "b" })).toBe("not-renew");
+  });
+});

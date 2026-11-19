@@ -826,7 +826,9 @@ export function NewContractsClient({
                         )}
                       </Chip>
                     ) : s.saleType === "renew" ? (
-                      unlinkedStateOf(s) === "closed" ? (
+                      unlinkedStateOf(s) === "imported" ? (
+                        <Chip tone="na">— นำเข้า —</Chip>
+                      ) : unlinkedStateOf(s) === "closed" ? (
                         <Chip
                           tone="na"
                           onClick={canReviewUnlinked(role, s) ? () => setReviewFor(s) : undefined}
