@@ -191,7 +191,7 @@ RESET ROLE;
 SELECT pg_temp.as_user('a1');   -- close_month_part เรียกในนามผู้ปิด (host/recorder)
 SELECT is((SELECT pending_count FROM central_unready_branches(to_char(pg_temp.m(-3), 'YYYY-MM'))
             WHERE branch_id = (SELECT branch_id FROM customers WHERE id = pg_temp.id('c1'))),
-  4, 'central_unready_branches skips the paused contract (d2, d3, d4, d6 count · d1 paused · d5 has a note)');
+  5, 'central_unready_branches skips the paused contract (d2, d3, d4, d6, d7 count · d1 paused · d5 has a note)');
 
 -- /summary (ผู้ login · viewer ก็อ่านยอดรวมได้)
 CREATE TEMP TABLE _b AS SELECT name FROM branches WHERE division = 'central' ORDER BY name LIMIT 1;
