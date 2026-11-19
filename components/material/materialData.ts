@@ -252,6 +252,15 @@ export async function loadMaterialPage(
       isActive: t.is_active ?? true,
     }));
 
+  // RLS ของ visits อ่านได้ทุกส่วนงาน แต่วัสดุ (RPC) จำกัดตามขอบเขตส่วนงานของผู้ใช้ → ตัดการเข้า/สาขานอกขอบเขตออก
+  // ให้ทุกส่วนของหน้าใช้ขอบเขตเดียวกัน (ขอบเขต = สาขาที่ ag_box_counts_by_branch คืนมา ซึ่งกรองตามส่วนงานแล้ว)
+  const inScope = new Set(ag.data.map((a) => a.branchId));
+  const scopeMonth = (m: MonthData): MonthData => ({
+    ...m,
+    usage: m.usage.filter((u) => inScope.has(u.branchId)),
+    visits: m.visits.filter((v) => inScope.has(v.branchId)),
+  });
+
   const thresholds = await loadThresholds(
     supabase,
     teams.map((t) => t.id),
@@ -262,13 +271,11 @@ export async function loadMaterialPage(
     data: {
       month,
       prevMonth,
-      current: current.data,
-      previous: previous.data,
-      branches: ((branches.data ?? []) as { id: string; name: string; division: "central" | "province" }[]).map((b) => ({
-        id: b.id,
-        name: b.name,
-        division: b.division,
-      })),
+      current: scopeMonth(current.data),
+      previous: scopeMonth(previous.data),
+      branches: ((branches.data ?? []) as { id: string; name: string; division: "central" | "province" }[])
+        .filter((b) => inScope.has(b.id))
+        .map((b) => ({ id: b.id, name: b.name, division: b.division })),
       teams,
       thresholds: thresholds.data,
       agBoxes: ag.data,

@@ -104,7 +104,7 @@ interface UsageRow {
 }
 
 function UsageTable({ caption, rows, total, totalLabel }: { caption: string; rows: UsageRow[]; total: Materials; totalLabel: string }) {
-  const th = "bg-surface-2 px-2.5 py-2 text-right text-xs font-semibold text-fg-muted whitespace-nowrap";
+  const th = "bg-surface-2 px-2.5 py-2 text-xs font-semibold text-fg-muted whitespace-nowrap";
   const td = "num border-b border-border px-2.5 py-2 text-right whitespace-nowrap";
   return (
     <div className="overflow-x-auto rounded-card border border-border">
@@ -113,18 +113,18 @@ function UsageTable({ caption, rows, total, totalLabel }: { caption: string; row
         <thead>
           <tr>
             <th scope="col" className={`${th} text-left`}>กลุ่ม</th>
-            <th scope="col" className={th}>เหยื่อนอก IG+IC (ก.)</th>
-            <th scope="col" className={th}>เหยื่อใน AG (ก.)</th>
-            <th scope="col" className={th}>เคมีผง (จุด)</th>
-            <th scope="col" className={th}>เคมีผง (ก.)</th>
-            <th scope="col" className={th}>ไม้ล่อ (ชิ้น)</th>
-            <th scope="col" className={th}>เทียบเดือนก่อน</th>
+            <th scope="col" className={`${th} text-right`}>เหยื่อนอก IG+IC (ก.)</th>
+            <th scope="col" className={`${th} text-right`}>เหยื่อใน AG (ก.)</th>
+            <th scope="col" className={`${th} text-right`}>เคมีผง (จุด)</th>
+            <th scope="col" className={`${th} text-right`}>เคมีผง (ก.)</th>
+            <th scope="col" className={`${th} text-right`}>ไม้ล่อ (ชิ้น)</th>
+            <th scope="col" className={`${th} text-right`}>เทียบเดือนก่อน</th>
           </tr>
         </thead>
         <tbody>
           {rows.map((r) => (
             <tr key={r.key}>
-              <th scope="row" className={`border-b border-border px-2.5 py-2 text-left font-normal ${r.sub ? "pl-7 text-fg-muted" : "font-semibold"}`}>
+              <th scope="row" className={`min-w-[170px] border-b border-border px-2.5 py-2 text-left font-normal ${r.sub ? "pl-7 text-fg-muted" : "font-semibold"}`}>
                 {r.label}
                 <span className="num ml-1.5 text-xs font-normal text-fg-muted">({fmtInt(r.now.visits)} ครั้ง)</span>
               </th>
@@ -141,7 +141,7 @@ function UsageTable({ caption, rows, total, totalLabel }: { caption: string; row
         </tbody>
         <tfoot>
           <tr className="bg-surface-2 font-bold">
-            <th scope="row" className="px-2.5 py-2 text-left">{totalLabel}</th>
+            <th scope="row" className="min-w-[170px] px-2.5 py-2 text-left">{totalLabel}</th>
             <td className={`${td} border-b-0`}>{fmtInt(total.outsideG)}</td>
             <td className={`${td} border-b-0`}>{fmtInt(total.insideG)}</td>
             <td className={`${td} border-b-0`}>{fmtInt(total.powderPoints)}</td>
@@ -226,7 +226,7 @@ function CompareChart({ view }: { view: MaterialView }) {
 
 function InspectionSection({ view }: { view: MaterialView }) {
   const { inspection, inspectionPrev } = view;
-  const th = "bg-surface-2 px-2.5 py-2 text-right text-xs font-semibold text-fg-muted whitespace-nowrap";
+  const th = "bg-surface-2 px-2.5 py-2 text-xs font-semibold text-fg-muted whitespace-nowrap";
   const td = "num border-b border-border px-2.5 py-2 text-right whitespace-nowrap";
   const table = (caption: string, head: string, rows: { key: string; name: string; c: { visits: number; customers: number } }[]) => (
     <div className="overflow-x-auto rounded-card border border-border">
@@ -235,8 +235,8 @@ function InspectionSection({ view }: { view: MaterialView }) {
         <thead>
           <tr>
             <th scope="col" className={`${th} text-left`}>{head}</th>
-            <th scope="col" className={th}>เข้า (ครั้ง)</th>
-            <th scope="col" className={th}>ลูกค้า (ราย)</th>
+            <th scope="col" className={`${th} text-right`}>เข้า (ครั้ง)</th>
+            <th scope="col" className={`${th} text-right`}>ลูกค้า (ราย)</th>
           </tr>
         </thead>
         <tbody>
@@ -268,7 +268,7 @@ function InspectionSection({ view }: { view: MaterialView }) {
           <div className="text-xs"><Delta pct={pctChange(inspection.customers, inspectionPrev.customers)} /></div>
         </div>
       </div>
-      <div className="grid grid-cols-2 gap-3 max-[767px]:grid-cols-1">
+      <div className="grid grid-cols-2 gap-3 max-[767px]:grid-cols-1 [&>*]:min-w-0">
         {table("ตรวจภายในแยกสาขา", "สาขา", view.inspectionByBranch.map((r) => ({ key: r.branch.id, name: r.branch.name, c: r.count })))}
         {table("ตรวจภายในแยกทีม", "ทีม", view.inspectionByTeam.map((r) => ({ key: r.team.id, name: r.team.name, c: r.count })))}
       </div>
@@ -312,7 +312,7 @@ function CustomerSection({ view }: { view: MaterialView }) {
 }
 
 function BranchTable({ view }: { view: MaterialView }) {
-  const th = "bg-surface-2 px-2.5 py-2 text-right text-xs font-semibold text-fg-muted whitespace-nowrap";
+  const th = "bg-surface-2 px-2.5 py-2 text-xs font-semibold text-fg-muted whitespace-nowrap";
   const td = "num border-b border-border px-2.5 py-2 text-right whitespace-nowrap";
   return (
     <section aria-labelledby="mat-branch">
@@ -323,15 +323,15 @@ function BranchTable({ view }: { view: MaterialView }) {
           <thead>
             <tr>
               <th scope="col" className={`${th} text-left`}>สาขา</th>
-              <th scope="col" className={th}>เหยื่อนอก (ก.)</th>
-              <th scope="col" className={th}>เหยื่อใน (ก.)</th>
-              <th scope="col" className={th}>เหยื่อรวม (ก.)</th>
-              <th scope="col" className={th}>เทียบเดือนก่อน</th>
-              <th scope="col" className={th}>เคมีผง (จุด)</th>
-              <th scope="col" className={th}>เคมีผง (ก.)</th>
-              <th scope="col" className={th}>ไม้ล่อ (ชิ้น)</th>
-              <th scope="col" className={th}>กล่อง AG ที่ตรวจ</th>
-              <th scope="col" className={th}>ก./กล่อง AG</th>
+              <th scope="col" className={`${th} text-right`}>เหยื่อนอก (ก.)</th>
+              <th scope="col" className={`${th} text-right`}>เหยื่อใน (ก.)</th>
+              <th scope="col" className={`${th} text-right`}>เหยื่อรวม (ก.)</th>
+              <th scope="col" className={`${th} text-right`}>เทียบเดือนก่อน</th>
+              <th scope="col" className={`${th} text-right`}>เคมีผง (จุด)</th>
+              <th scope="col" className={`${th} text-right`}>เคมีผง (ก.)</th>
+              <th scope="col" className={`${th} text-right`}>ไม้ล่อ (ชิ้น)</th>
+              <th scope="col" className={`${th} text-right`}>กล่อง AG ที่ตรวจ</th>
+              <th scope="col" className={`${th} text-right`}>ก./กล่อง AG</th>
             </tr>
           </thead>
           <tbody>
@@ -340,7 +340,7 @@ function BranchTable({ view }: { view: MaterialView }) {
             )}
             {view.branches.map((r) => (
               <tr key={r.branch.id}>
-                <th scope="row" className="border-b border-border px-2.5 py-2 text-left font-semibold">{r.branch.name}</th>
+                <th scope="row" className="min-w-[100px] border-b border-border px-2.5 py-2 text-left font-semibold">{r.branch.name}</th>
                 <td className={td}>{fmtInt(r.now.outsideG)}</td>
                 <td className={td}>{fmtInt(r.now.insideG)}</td>
                 <td className={td}>{fmtInt(baitTotalG(r.now))}</td>
@@ -368,7 +368,7 @@ function MaterialTabContent({ data, view }: { data: MaterialPageData; view: Mate
   const { all, allPrev } = view;
   const hasPrev = allPrev.visits > 0;
   return (
-    <div className="grid gap-4">
+    <div className="grid grid-cols-[minmax(0,1fr)] gap-4">
       <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,220px),1fr))] gap-3.5">
         <StatCard
           label="NEMESIS (เหยื่อ) ที่ใช้"
@@ -407,12 +407,12 @@ function MaterialTabContent({ data, view }: { data: MaterialPageData; view: Mate
 }
 
 function TeamTabContent({ data, view }: { data: MaterialPageData; view: MaterialView }) {
-  const th = "bg-surface-2 px-2.5 py-2 text-right text-xs font-semibold text-fg-muted whitespace-nowrap";
+  const th = "bg-surface-2 px-2.5 py-2 text-xs font-semibold text-fg-muted whitespace-nowrap";
   const td = "num border-b border-border px-2.5 py-2 text-right whitespace-nowrap";
   const maxPer = Math.max(data.thresholds.central, ...view.teams.map((t) => t.workload.perPerson ?? 0), 1);
   const over = view.teams.filter((t) => t.workload.level === "over");
   return (
-    <div className="grid gap-4">
+    <div className="grid grid-cols-[minmax(0,1fr)] gap-4">
       {over.length > 0 && (
         <Alert variant="warn" title="มีทีมเกินเกณฑ์ภาระงาน">
           {over.map((t) => `${t.team.name} (${fmtDec1(t.workload.perPerson ?? 0)} ชม./คน)`).join(" · ")}
@@ -428,10 +428,10 @@ function TeamTabContent({ data, view }: { data: MaterialPageData; view: Material
           <thead>
             <tr>
               <th scope="col" className={`${th} text-left`}>ทีม</th>
-              <th scope="col" className={th}>ประเภท</th>
-              <th scope="col" className={th}>เข้า (ครั้ง)</th>
-              <th scope="col" className={th}>เวลารวม (ชม.)</th>
-              <th scope="col" className={th}>จำนวนคน</th>
+              <th scope="col" className={`${th} text-right`}>ประเภท</th>
+              <th scope="col" className={`${th} text-right`}>เข้า (ครั้ง)</th>
+              <th scope="col" className={`${th} text-right`}>เวลารวม (ชม.)</th>
+              <th scope="col" className={`${th} text-right`}>จำนวนคน</th>
               <th scope="col" className={`${th} min-w-[180px] text-left`}>ชม./คน เทียบเกณฑ์</th>
             </tr>
           </thead>
@@ -494,7 +494,7 @@ export function MaterialPage({ data, view, tab, branchId, currentMonth }: Props)
   );
   const ctl = `${styles.ctl} min-h-10 rounded-lg border border-border-strong bg-surface px-2.5 text-[13px] text-fg`;
   return (
-    <div className={styles.root}>
+    <div className={`${styles.root} min-w-0 max-w-full p-4 max-[640px]:p-3`}>
       <div className="mb-3">
         <h1 className="m-0 text-[22px] font-bold text-fg max-[600px]:text-xl">สรุปงานบริการรายเดือน</h1>
         <p className="mt-1 text-[13px] text-fg-muted">
