@@ -371,7 +371,11 @@ export async function loadVisit(
   visitId: string,
 ): Promise<{ visit: LoadedVisit | null; error: string | null }> {
   const [v, teams, checks, works, removals] = await Promise.all([
-    supabase.from("visits").select("id, visit_date, visit_type, start_time, end_time").eq("id", visitId).maybeSingle(),
+    supabase
+      .from("visits")
+      .select("id, visit_date, visit_type, start_time, end_time, internal_inspection")
+      .eq("id", visitId)
+      .maybeSingle(),
     supabase.from("visit_teams").select("team_id").eq("visit_id", visitId),
     supabase
       .from("station_checks")
@@ -390,6 +394,7 @@ export async function loadVisit(
   return {
     visit: {
       ...toVisit(v.data as unknown as VisitDb),
+      internalInspection: (v.data as unknown as { internal_inspection: boolean | null }).internal_inspection ?? null,
       teamIds: ((teams.data ?? []) as { team_id: string }[]).map((t) => t.team_id),
       removedStationIds: ((removals.data ?? []) as { station_id: string }[]).map((r) => r.station_id),
       checks: ((checks.data ?? []) as unknown as {
