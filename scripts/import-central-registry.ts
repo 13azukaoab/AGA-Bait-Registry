@@ -1,8 +1,8 @@
 /**
- * นำเข้าทะเบียนส่วนกลาง OCT.26 (24 สาขา · 8 ไฟล์) → customers / contracts / contract_teams · **ฐานข้อมูลในเครื่องเท่านั้น**
- * (ตรรกะ: lib/import/registryImportPlan.ts = แผน · lib/import/registryDbImport.ts = เขียน + ตรวจยอด)
+ * นำเข้าทะเบียนส่วนกลาง OCT.26 (24 สาขา · 8 ไฟล์) → customers / customer_phones / contracts / contract_teams
+ * (ตรรกะ: lib/import/registryImportPlan.ts = แผน · lib/import/registryDbImport.ts = เขียน + ตรวจยอด · lib/import/cloudGuard.ts = ด่าน cloud)
  *
- * วิธีรัน (ต้องได้คิวฐานข้อมูลในเครื่องจาก HQ ก่อน — DB local มีตัวเดียว ใช้ร่วมกันทุก worktree):
+ * วิธีรัน — ฐานข้อมูลในเครื่อง (ต้องได้คิว DB local จาก HQ ก่อน — มีตัวเดียว ใช้ร่วมกันทุก worktree):
  *   ตรวจอย่างเดียว (ค่าเริ่มต้น ไม่เขียน):
  *     npx vite-node --config vitest.config.ts scripts/import-central-registry.ts -- --fixtures "<path>/fixtures"
  *   เขียนจริง (แล้วตรวจยอดต่อทันที):
@@ -10,32 +10,36 @@
  *   ตรวจยอดอย่างเดียว (หลังนำเข้าแล้ว · อ่านอย่างเดียว):
  *     npx vite-node --config vitest.config.ts scripts/import-central-registry.ts -- --fixtures "<path>/fixtures" --verify-only
  *
- * env ที่ต้องมี (ค่าจาก `npx supabase status` ของเครื่องตัวเอง · ห้าม commit):
- *   NEXT_PUBLIC_SUPABASE_URL   เช่น http://127.0.0.1:54321
- *   SUPABASE_SERVICE_ROLE_KEY  service role ของ Supabase local
+ * วิธีรัน — cloud (**เฉพาะวันที่เจ้าของสั่ง** · แผน docs/แผนนำเข้า-cloud-23พย2569.md · รันใน PowerShell / Windows Terminal):
+ *   เพิ่ม `--target cloud --project-ref <ref> --log-dir "<โฟลเดอร์นอก repo>"` ต่อท้ายคำสั่งข้างบน (dry-run / --apply / --verify-only)
+ *   --apply บน cloud: dry-run ในตัวก่อน แสดงตัวเลข แล้วต้องพิมพ์ `นำเข้า <จำนวนสัญญา>` ตรงตัว (เช่น `นำเข้า 2369`)
+ *   ไม่ตรง/ไม่พิมพ์ = ไม่เขียน · ไม่มี flag ข้ามการยืนยัน
+ *
+ * env ที่ต้องมี (ตั้งในเทอร์มินัลตอนรันเท่านั้น · ห้าม commit · ห้ามวางในแชท):
+ *   NEXT_PUBLIC_SUPABASE_URL   local เช่น http://127.0.0.1:54321 · cloud = https://<ref>.supabase.co
+ *   SUPABASE_SERVICE_ROLE_KEY  service role ของปลายทาง
+ *   AGA_CLOUD_PROJECT_REF      (cloud) ref เดียวกับ --project-ref และ subdomain ของ URL
+ *   AGA_IMPORT_LOG_DIR         (ทางเลือกแทน --log-dir) โฟลเดอร์ log นอก repo · cloud บังคับมี
  *
  * ด่านกันพลาด:
- *   - URL ต้องเป็น localhost / 127.0.0.1 เท่านั้น — ชี้ cloud = หยุดทันที (cloud ต้องเจ้าของอนุมัติแยก)
+ *   - ไม่ใส่ --target = localhost / 127.0.0.1 เท่านั้น (เหมือนเดิม) · --target cloud = ตรวจ ref 3 ที่ + ยืนยันพิมพ์
  *   - ต่อผ่าน PostgREST (service_role) ไม่ต่อด้วย role postgres (CLAUDE.md กฎ Deploy) · ไม่ import lib/supabase/admin.ts (M21b)
  *   - เกณฑ์ Tier อ่านจาก tier_rules ใน DB (กฎ 3) · ตัวเลือกนำเข้า = REGISTRY_IMPORT_OPTIONS ตัวเดียวกับ dry-run
  *   - มีลูกค้าในสาขาเป้าหมาย / มีเลขสัญญาในแผนอยู่แล้ว = หยุด (รันซ้ำไม่เกิดแถวซ้ำ)
- *   - พิมพ์เฉพาะตัวเลขรวม/เลขแถว ไม่พิมพ์ชื่อลูกค้า เบอร์ ผู้ขาย หรือ key (PDPA)
+ *   - พิมพ์/บันทึกเฉพาะตัวเลขรวม/เลขแถว/ชื่อสาขา ไม่พิมพ์ชื่อลูกค้า เบอร์ ผู้ขาย หรือ key/URL (PDPA · log ผ่านตัวลบค่าลับ)
+ *   - ถอยกลับ: scripts/rollback-registry-import.ts --batch registry-OCT26
  */
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { loadCentralRegistry, loadSellerIndex, hasAllCentralFiles } from "../lib/import/centralRegistryFiles";
-import { importRegistryPlan, safeDbError, verifyRegistryImport } from "../lib/import/registryDbImport";
+import { runGuarded } from "../lib/import/cloudGuard";
+import { importRegistryPlan, safeDbError, verifyRegistryImport, type RegistryDbImportResult } from "../lib/import/registryDbImport";
 import { REGISTRY_IMPORT_BATCH_OCT26 } from "../lib/import/centralRegistrySheets";
-import { planRegistryImport } from "../lib/import/registryImportPlan";
+import { planRegistryImport, type RegistryImportPlan } from "../lib/import/registryImportPlan";
 import { TIER_RULE_COLUMNS, toTierRules, type TierRuleRow } from "../lib/tierRules";
+import { errorText, flag, hasFlag, setupScript } from "./_cloudCli";
 
-const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]"]);
 const MONTH = "2026-10";
-
-function arg(name: string): string | undefined {
-  const i = process.argv.indexOf(name);
-  return i >= 0 ? process.argv[i + 1] : undefined;
-}
 
 async function readTierRules(client: SupabaseClient) {
   const { data, error } = await client.from("tier_rules").select(TIER_RULE_COLUMNS);
@@ -45,31 +49,10 @@ async function readTierRules(client: SupabaseClient) {
   return rules;
 }
 
-async function main(): Promise<void> {
-  const dir = arg("--fixtures") ?? process.env.AGA_FIXTURES_DIR;
-  const apply = process.argv.includes("--apply");
-  const verifyOnly = process.argv.includes("--verify-only");
-  if (!dir) throw new Error("ต้องระบุ --fixtures <โฟลเดอร์ fixtures> (หรือ env AGA_FIXTURES_DIR)");
-  if (apply && verifyOnly) throw new Error("ใช้ --apply กับ --verify-only พร้อมกันไม่ได้");
-  if (!hasAllCentralFiles(dir)) throw new Error("ไฟล์ทะเบียน OCT.26 ไม่ครบ 8 ไฟล์ในโฟลเดอร์ที่ระบุ");
-
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) throw new Error("ต้องตั้ง NEXT_PUBLIC_SUPABASE_URL และ SUPABASE_SERVICE_ROLE_KEY");
-  if (!LOCAL_HOSTS.has(new URL(url).hostname)) {
-    throw new Error(`หยุด: ${new URL(url).hostname} ไม่ใช่ฐานข้อมูลในเครื่อง (สคริปต์นี้ห้ามเขียน cloud)`);
-  }
-  const client = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
-
-  const central = loadCentralRegistry(dir);
-  const plan = planRegistryImport(
-    central.sheets.map((s) => ({ sheet: s.sheet, branch: s.branch, grid: s.grid })),
-    { rules: await readTierRules(client), month: MONTH, sellerIndex: loadSellerIndex(dir), importBatch: REGISTRY_IMPORT_BATCH_OCT26 },
-  );
-
-  const summary: Record<string, unknown> = {
+function planSummary(plan: RegistryImportPlan, skipped: string[]): Record<string, unknown> {
+  return {
     month: MONTH,
-    skippedSheets: central.skipped.map((s) => `${s.sheet} (${s.reason})`),
+    skippedSheets: skipped,
     plan: {
       branches: plan.branches.length,
       ...plan.totals,
@@ -88,39 +71,103 @@ async function main(): Promise<void> {
       },
     },
   };
+}
 
-  if (!verifyOnly) {
-    const res = await importRegistryPlan(client, plan, { dryRun: !apply });
-    summary.mode = res.dryRun ? "dry-run (ไม่เขียน)" : "apply";
-    summary.existing = res.existing;
-    summary.planned = res.planned;
-    summary.written = res.written;
-  } else {
-    summary.mode = "verify-only (อ่านอย่างเดียว)";
-  }
+function importSummary(res: RegistryDbImportResult): Record<string, unknown> {
+  return {
+    mode: res.dryRun ? "dry-run (ไม่เขียน)" : "apply",
+    existing: res.existing,
+    planned: res.planned,
+    written: res.written,
+  };
+}
 
-  if (apply || verifyOnly) {
-    const v = await verifyRegistryImport(client, plan);
-    summary.verify = {
-      ok: v.ok,
-      totals: v.totals,
-      branches: v.branches.map((b) => ({
-        branch: b.branch,
-        contracts: `${b.dbContracts}/${b.plannedContracts}`,
-        expected: `${b.expected.cust} / ${b.expected.value.toFixed(2)}`,
-        actual: `${b.actual.cust} / ${b.actual.value.toFixed(2)}`,
-        mismatches: b.mismatches,
-      })),
-    };
+async function main(): Promise<void> {
+  const dir = flag("--fixtures") ?? process.env.AGA_FIXTURES_DIR;
+  const verifyOnly = hasFlag("--verify-only");
+  if (!dir) throw new Error("ต้องระบุ --fixtures <โฟลเดอร์ fixtures> (หรือ env AGA_FIXTURES_DIR)");
+  if (hasFlag("--apply") && verifyOnly) throw new Error("ใช้ --apply กับ --verify-only พร้อมกันไม่ได้");
+  if (!hasAllCentralFiles(dir)) throw new Error("ไฟล์ทะเบียน OCT.26 ไม่ครบ 8 ไฟล์ในโฟลเดอร์ที่ระบุ");
+
+  const ctx = setupScript("import-central-registry");
+  const log: Record<string, unknown> = { status: "error", verifyOnly };
+  try {
+    const central = loadCentralRegistry(dir);
+    const plan = planRegistryImport(
+      central.sheets.map((s) => ({ sheet: s.sheet, branch: s.branch, grid: s.grid })),
+      { rules: await readTierRules(ctx.client), month: MONTH, sellerIndex: loadSellerIndex(dir), importBatch: REGISTRY_IMPORT_BATCH_OCT26 },
+    );
+    const summary = planSummary(plan, central.skipped.map((s) => `${s.sheet} (${s.reason})`));
+    log.plan = summary.plan;
+
+    let applied = false;
+    if (!verifyOnly) {
+      const out = await runGuarded({
+        target: ctx.target,
+        apply: ctx.apply,
+        action: "import",
+        dryRun: () => importRegistryPlan(ctx.client, plan, { dryRun: true }),
+        confirmCount: (d) => d.planned.contracts,
+        describe: (d) =>
+          `[cloud dry-run] สาขา ${plan.branches.length} · จะเขียน ลูกค้า ${d.planned.customers} · เบอร์ ${d.planned.customerPhones}` +
+          ` · สัญญา ${d.planned.contracts} · ทีม ${d.planned.contractTeams}` +
+          ` · ข้อมูลเดิม: ลูกค้า ${d.existing.customersInBranches} / เลขสัญญา ${d.existing.contractNos}` +
+          ` · ยอดคาด ${plan.month}: cust ${plan.branches.reduce((n, b) => n + b.expected.cust, 0)}` +
+          ` / ${plan.branches.reduce((n, b) => n + b.expected.value, 0).toFixed(2)}`,
+        write: () => importRegistryPlan(ctx.client, plan),
+        ask: ctx.ask,
+        isTTY: ctx.isTTY,
+        print: (t) => console.log(t),
+      });
+      if (out.status === "aborted") {
+        Object.assign(log, { status: "aborted", reason: out.reason, dryRun: importSummary(out.dry) });
+        console.log(out.reason);
+        process.exitCode = 3;
+        return;
+      }
+      applied = out.status === "applied";
+      const res = out.status === "applied" ? out.result : out.dry;
+      Object.assign(summary, importSummary(res));
+      log.status = out.status;
+      log.result = importSummary(res);
+    } else {
+      summary.mode = "verify-only (อ่านอย่างเดียว)";
+      log.status = "verify-only";
+    }
+
+    if (applied || verifyOnly) {
+      const v = await verifyRegistryImport(ctx.client, plan);
+      summary.verify = {
+        ok: v.ok,
+        totals: v.totals,
+        branches: v.branches.map((b) => ({
+          branch: b.branch,
+          contracts: `${b.dbContracts}/${b.plannedContracts}`,
+          expected: `${b.expected.cust} / ${b.expected.value.toFixed(2)}`,
+          actual: `${b.actual.cust} / ${b.actual.value.toFixed(2)}`,
+          mismatches: b.mismatches,
+        })),
+      };
+      log.verify = summary.verify;
+      console.log(JSON.stringify(summary, null, 2));
+      if (!v.ok) {
+        log.status = `${String(log.status)} · verify ไม่ผ่าน`;
+        process.exitCode = 2;
+      }
+      return;
+    }
+    summary.expectedOct = plan.branches.map((b) => ({ branch: b.branch, contracts: b.contracts.length, cust: b.expected.cust, value: b.expected.value.toFixed(2) }));
+    log.expectedOct = summary.expectedOct;
     console.log(JSON.stringify(summary, null, 2));
-    if (!v.ok) process.exit(2);
-    return;
+  } catch (e) {
+    log.error = errorText(e, ctx.redact);
+    throw e;
+  } finally {
+    ctx.finishLog(log);
   }
-  summary.expectedOct = plan.branches.map((b) => ({ branch: b.branch, contracts: b.contracts.length, cust: b.expected.cust, value: b.expected.value.toFixed(2) }));
-  console.log(JSON.stringify(summary, null, 2));
 }
 
 main().catch((e: unknown) => {
-  console.error(e instanceof Error ? e.message : e);
+  console.error(errorText(e));
   process.exit(1);
 });
