@@ -112,7 +112,7 @@ SELECT is((SELECT count(*)::int FROM audit_log
   'exactly one audit row (old NULL → new 35.50, by the host); the no-op save wrote none');
 
 SELECT is((SELECT coalesce(workload_hours::text, 'null') || '|' || effective_hours FROM public.save_team_workload_hours('00000000-0000-0000-0000-0000000000b1', NULL, true)),
-  'null|28', 'reset to NULL returns NULL + the global value');
+  'null|28.00', 'reset to NULL returns NULL + the global value');
 SELECT is(public.team_workload_hours('00000000-0000-0000-0000-0000000000b1'), 28::numeric, 'after reset the team follows the global value again');
 RESET ROLE;
 
