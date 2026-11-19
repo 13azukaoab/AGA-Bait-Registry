@@ -7,7 +7,7 @@ import { TIER_RULES } from "../rules/__fixtures__/tierRules";
 import { REGISTRY_IMPORT_OPTIONS } from "./centralRegistrySheets";
 import { DUPLICATE_ACROSS_BRANCH_REASON } from "./crossBranchDuplicates";
 import { dryRunRegistrySheet } from "./registryDryRun";
-import { planRegistryImport, type RegistrySheetInput } from "./registryImportPlan";
+import { importStatusOf, planRegistryImport, type RegistrySheetInput } from "./registryImportPlan";
 import type { CellValue } from "./registrySheet";
 import { buildSellerIndex } from "./sellerLookup";
 
@@ -106,6 +106,9 @@ describe("planRegistryImport", () => {
     expect(c3).toMatchObject({ startDate: "2026-03-01", endDate: "2027-02-28", customerTypeLabel: "อื่นๆ (ระบุในหมายเหตุ)" });
     expect(c7).toMatchObject({ saleType: null, customerTypeLabel: "คอนโด / อพาร์ตเมนต์ / หอพัก" });
     expect(c8).toMatchObject({ termMonths: 5, teamCodes: [] });
+    // สถานะ: หมดก่อน ต.ค. (2024) = หมดอายุ รอเก็บสถานี · จบกลาง ต.ค. (5 เดือน 14 ต.ค.) ยัง active
+    expect(c7).toMatchObject({ status: "expired_pending_collection" });
+    expect([c1, c2, c3, c8].map((c) => c!.status)).toEqual(["active", "active", "active", "active"]);
     expect(pathumwan.contracts[0]).toMatchObject({ customerTypeLabel: "ออฟฟิต" });
     expect(c1!.phones).toEqual([{ phone: "0810000001", label: "คุณสมมติ" }]);
     expect(c2!.phones).toEqual([]);
@@ -136,5 +139,13 @@ describe("planRegistryImport", () => {
 
   it("เดือนผิดรูป = หยุด", () => {
     expect(() => planRegistryImport(INPUT, { rules: TIER_RULES, month: "OCT.26" })).toThrow();
+  });
+});
+
+describe("importStatusOf", () => {
+  it("วันสิ้นสุดก่อนวันแรกของเดือนที่นำเข้า = expired_pending_collection · วันแรกพอดี/หลังจากนั้น = active", () => {
+    expect(importStatusOf("2026-09-30", "2026-10")).toBe("expired_pending_collection");
+    expect(importStatusOf("2026-10-01", "2026-10")).toBe("active");
+    expect(importStatusOf("2026-10-14", "2026-10")).toBe("active");
   });
 });

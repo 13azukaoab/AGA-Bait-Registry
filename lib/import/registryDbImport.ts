@@ -177,6 +177,7 @@ function contractRow(c: PlannedContract, id: string, customerId: string): Row {
     sale_name: c.saleName,
     am_name: c.amName,
     is_urgent: c.isUrgent,
+    status: c.status,
   };
 }
 
@@ -286,14 +287,14 @@ async function readBackAndCompare(client: SupabaseClient, rows: InsertRows): Pro
   for (const part of chunks([...wantContract.keys()])) {
     const { data, error } = await client
       .from("contracts")
-      .select("id, customer_id, contract_no, start_date, end_date, term_months, value_total, sale_type, sale_name, am_name, is_urgent")
+      .select("id, customer_id, contract_no, start_date, end_date, term_months, value_total, sale_type, sale_name, am_name, is_urgent, status")
       .in("id", part);
     if (error) throw new Error(`นำเข้า: อ่านกลับ contracts ไม่สำเร็จ: ${safeDbError(error)}`);
     for (const got of (data ?? []) as unknown as Row[]) {
       const want = wantContract.get(String(got.id));
       if (!want) continue;
       found++;
-      for (const k of ["customer_id", "contract_no", "start_date", "end_date", "sale_type", "sale_name", "am_name", "is_urgent"]) {
+      for (const k of ["customer_id", "contract_no", "start_date", "end_date", "sale_type", "sale_name", "am_name", "is_urgent", "status"]) {
         if ((got[k] ?? null) !== (want[k] ?? null)) mismatches++;
       }
       if (Number(got.term_months) !== want.term_months) mismatches++;

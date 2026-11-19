@@ -10,6 +10,9 @@
  *   3. ยอดที่คาดของเดือน (expected) = buildBranchSnapshot (lib/rules) ของแถวในแผน — ใช้เทียบกับยอดที่คำนวณจาก DB หลังนำเข้า
  *   4. หยุด (throw) เมื่อ: สาขาส่งมาซ้ำ · เลขสัญญาซ้ำในแผน · มูลค่าทศนิยมเกิน 2 ตำแหน่ง (DB เก็บ numeric(12,2) — ห้ามปัดเงียบ)
  *   5. ลูกค้า: 1 แถวสัญญา = 1 ลูกค้า (ไม่รวมชื่อซ้ำเอง · DECISIONS 2.59 แอดมินแก้เอง) — นับกลุ่มชื่อซ้ำไว้รายงาน
+ *   7. สถานะสัญญา (เจ้าของตัดสิน 19 พ.ย. 2026): วันสิ้นสุด < วันแรกของเดือนที่นำเข้า (opts.month)
+ *      → 'expired_pending_collection' (หมดอายุ รอเก็บสถานี · SPEC §7.8) · อื่นๆ = 'active'
+ *      (จบต้นเดือนที่นำเข้า เช่น 14 ต.ค. ยัง active · ไม่กระทบยอด — snapshot นับตามเดือนบริการ ไม่ดูสถานะ)
  *   6. เบอร์โทร: parseThaiPhones (phones.ts) ของช่องเบอร์แถวเดียวกัน — รูปแบบไม่ถูก = ไม่เก็บ (นับใน phones)
  *   ⚠ PlannedContract มีชื่อลูกค้า/ผู้ขาย (หน่วยความจำเท่านั้น) — ห้าม log · รายงานใช้ได้แค่ heldRows / mustFixRows / ตัวเลข
  */
@@ -60,8 +63,17 @@ export interface PlannedContract {
   isUrgent: boolean;
   /** รหัสทีม (ไม่ซ้ำ) เช่น ["B", "C"] */
   teamCodes: string[];
+  /** สถานะตอนนำเข้า (ข้อ 7 ใน Logic summary) */
+  status: ContractImportStatus;
   /** เบอร์โทร → customer_phones (phones.ts · รูปแบบไม่ถูก/ว่าง = []) · ⚠ เบอร์จริง */
   phones: ParsedPhone[];
+}
+
+export type ContractImportStatus = "active" | "expired_pending_collection";
+
+/** สถานะตอนนำเข้า: วันสิ้นสุดก่อนวันแรกของเดือนที่นำเข้า = หมดอายุ รอเก็บสถานี */
+export function importStatusOf(endDate: string, month: string): ContractImportStatus {
+  return endDate < `${month}-01` ? "expired_pending_collection" : "active";
 }
 
 export interface PlannedBranch {
@@ -156,6 +168,7 @@ export function planRegistryImport(sheets: RegistrySheetInput[], opts: PlanOptio
         amName: r.amName,
         isUrgent: r.urgent,
         teamCodes: [...new Set(r.teams)],
+        status: importStatusOf(r.endDate, opts.month),
         phones: phoneResults[i]!.phones,
       };
     });

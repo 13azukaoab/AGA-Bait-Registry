@@ -170,7 +170,7 @@ describe("importRegistryPlan", () => {
     ]);
     const c1 = f.db.contracts!.find((c) => c.contract_no === "CT26-0000001")!;
     expect(c1).toMatchObject({ value_total: "15000.50", term_months: 12, sale_type: "new", start_date: "2026-01-15", end_date: "2027-01-14", is_urgent: false });
-    expect(f.db.contracts!.find((c) => c.contract_no === "CT26-0000003")).toMatchObject({ term_months: 5, sale_type: null });
+    expect(f.db.contracts!.find((c) => c.contract_no === "CT26-0000003")).toMatchObject({ term_months: 5, sale_type: null, status: "active" });
     // ทีม A ของสาทร = ทีมประจำสาขา · ปทุมวันไม่มีทีมประจำ → ทีมกลาง
     const teamOf = (no: string) =>
       f.db.contract_teams!.filter((t) => t.contract_id === f.db.contracts!.find((c) => c.contract_no === no)!.id).map((t) => t.team_id);

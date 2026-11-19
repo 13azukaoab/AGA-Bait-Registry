@@ -83,6 +83,9 @@ describe.skipIf(!HAS_FILES)("แผนนำเข้าทะเบียนส
     // เบอร์โทร (phones.ts · ผิดรูป = ไม่เก็บ) — ทุกชีทมีคอลัมน์เบอร์ (ปากช่องหัว "เบอร์ติดต่อ")
     const ph = (k: "rowsWithPhones" | "phones" | "emptyRows" | "invalidRows" | "labelTooLong") => plan.branches.reduce((n, b) => n + b.phones[k], 0);
     expect(plan.branches.every((b) => b.phones.hasPhoneColumn)).toBe(true);
+    // สถานะ (เจ้าของ 19 พ.ย.): หมดก่อน ต.ค. มีสัญญาเดียว = พระราม 2 แถว 6 → expired_pending_collection
+    const expired = plan.branches.flatMap((b) => b.contracts.filter((c) => c.status === "expired_pending_collection").map((c) => `${b.branch}:${c.excelRow}`));
+    expect(expired).toEqual(["พระราม 2:6"]);
     expect([ph("rowsWithPhones"), ph("phones"), ph("emptyRows"), ph("invalidRows"), ph("labelTooLong")]).toEqual([2273, 2278, 54, 42, 0]);
     expect(plan.branches.reduce((n, b) => n + b.expected.cust, 0)).toBe(CUST_OCT_TOTAL);
     expect(plan.branches.reduce((n, b) => n + Math.round(b.expected.value * 100), 0)).toBe(VALUE_OCT_TOTAL_CENTS);
