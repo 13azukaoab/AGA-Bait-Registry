@@ -53,15 +53,15 @@ INSERT INTO visits (id, contract_id, visit_date, visit_type, makeup_for_month, s
   ('00000000-0000-0000-0000-0000000000e6', '00000000-0000-0000-0000-0000000000d2', pg_temp.m(-1) + 5, 'routine',   NULL,          '09:00', '10:00'),
   ('00000000-0000-0000-0000-0000000000e7', '00000000-0000-0000-0000-0000000000d1', pg_temp.m(-2) + 5, 'routine',   NULL,          '09:00', '10:00');
 INSERT INTO station_checks (visit_id, station_id, checked, bait_added_g, powder_points, timber_replaced) VALUES
-  ('00000000-0000-0000-0000-0000000000e1', '00000000-0000-0000-0000-0000000000f1', true, 100, 0, false),
-  ('00000000-0000-0000-0000-0000000000e1', '00000000-0000-0000-0000-0000000000f2', true,  40, 0, false),
-  ('00000000-0000-0000-0000-0000000000e1', '00000000-0000-0000-0000-0000000000f3', true,   0, 2, true),
-  ('00000000-0000-0000-0000-0000000000e2', '00000000-0000-0000-0000-0000000000f1', true,  50, 0, false),
-  ('00000000-0000-0000-0000-0000000000e3', '00000000-0000-0000-0000-0000000000f1', true,  10, 3, false),
-  ('00000000-0000-0000-0000-0000000000e4', '00000000-0000-0000-0000-0000000000f1', true,   5, 0, false),
-  ('00000000-0000-0000-0000-0000000000e5', '00000000-0000-0000-0000-0000000000f4', true,  70, 0, true),
-  ('00000000-0000-0000-0000-0000000000e6', '00000000-0000-0000-0000-0000000000f5', true,  30, 0, false),
-  ('00000000-0000-0000-0000-0000000000e7', '00000000-0000-0000-0000-0000000000f1', true, 999, 9, true);
+  ('00000000-0000-0000-0000-0000000000e1', '00000000-0000-0000-0000-0000000000f1', true, 150, NULL, false),
+  ('00000000-0000-0000-0000-0000000000e1', '00000000-0000-0000-0000-0000000000f2', true,  50, NULL, false),
+  ('00000000-0000-0000-0000-0000000000e1', '00000000-0000-0000-0000-0000000000f3', true, NULL, 2, true),
+  ('00000000-0000-0000-0000-0000000000e2', '00000000-0000-0000-0000-0000000000f1', true,  50, NULL, false),
+  ('00000000-0000-0000-0000-0000000000e3', '00000000-0000-0000-0000-0000000000f1', true,  50, 3, false),
+  ('00000000-0000-0000-0000-0000000000e4', '00000000-0000-0000-0000-0000000000f1', true,  50, NULL, false),
+  ('00000000-0000-0000-0000-0000000000e5', '00000000-0000-0000-0000-0000000000f4', true, 100, NULL, true),
+  ('00000000-0000-0000-0000-0000000000e6', '00000000-0000-0000-0000-0000000000f5', true,  50, NULL, false),
+  ('00000000-0000-0000-0000-0000000000e7', '00000000-0000-0000-0000-0000000000f1', true, 950, 9, true);
 
 -- =====================================================================
 -- 1. สิทธิ์ + ตรวจ input
@@ -92,27 +92,27 @@ SELECT throws_ok($$SELECT * FROM public.material_usage_summary(NULL)$$, 'MU001',
 -- =====================================================================
 SELECT is((SELECT count(*)::int FROM public.material_usage_summary(pg_temp.m(-1))), 5, 'host: 5 groups in the month');
 SELECT is(pg_temp.rows(),
-  'makeup/new:1,50,0,0,0.0,0,0 ; problem/new:2,15,0,3,0.9,0,0 ; routine/new:1,100,40,2,0.6,1,0 ; routine/new:1,30,0,0,0.0,0,0 ; routine/renew:1,70,0,0,0.0,2,0',
+  'makeup/new:1,50,0,0,0.0,0,0 ; problem/new:2,100,0,3,0.9,0,0 ; routine/new:1,150,50,2,0.6,1,0 ; routine/new:1,50,0,0,0.0,0,0 ; routine/renew:1,100,0,0,0.0,2,0',
   'host: grouped values per work_group / sale_type / branch');
 SELECT is((SELECT visit_count FROM public.material_usage_summary(pg_temp.m(-1)) WHERE work_group = 'problem'), 2,
   'problem + follow_up visits are one work group');
 SELECT is((SELECT count(*)::int FROM public.material_usage_summary(pg_temp.m(-1)) WHERE work_group = 'makeup'), 1,
   'a routine visit with makeup_for_month is the makeup group');
-SELECT is((SELECT sum(bait_outside_g) FROM public.material_usage_summary(pg_temp.m(-1))),
-          (SELECT sum(bait_outside_g) FROM v_service_materials WHERE visit_date >= pg_temp.m(-1) AND visit_date < pg_temp.m(0)),
+SELECT is((SELECT sum(bait_outside_g)::numeric FROM public.material_usage_summary(pg_temp.m(-1))),
+          (SELECT sum(bait_outside_g)::numeric FROM v_service_materials WHERE visit_date >= pg_temp.m(-1) AND visit_date < pg_temp.m(0)),
   'totals equal the underlying v_service_materials rows (bait outside)');
-SELECT is((SELECT sum(visit_count) FROM public.material_usage_summary(pg_temp.m(-1))),
+SELECT is((SELECT sum(visit_count)::bigint FROM public.material_usage_summary(pg_temp.m(-1))),
           (SELECT count(*) FROM visits WHERE visit_date >= pg_temp.m(-1) AND visit_date < pg_temp.m(0)),
   'visit counts add up to the visits in the month');
-SELECT is((SELECT sum(timber_pcs) + sum(powder_points) FROM public.material_usage_summary(pg_temp.m(-1))),
-          (SELECT sum(timber_pcs) + sum(powder_points) FROM v_service_materials WHERE visit_date >= pg_temp.m(-1) AND visit_date < pg_temp.m(0)),
+SELECT is((SELECT (sum(timber_pcs) + sum(powder_points))::numeric FROM public.material_usage_summary(pg_temp.m(-1))),
+          (SELECT (sum(timber_pcs) + sum(powder_points))::numeric FROM v_service_materials WHERE visit_date >= pg_temp.m(-1) AND visit_date < pg_temp.m(0)),
   'totals equal the underlying rows (timber + powder points)');
 SELECT is((SELECT count(*)::int FROM public.material_usage_summary(pg_temp.m(-2))), 1, 'another month only returns its own visits');
 SELECT is((SELECT count(*)::int FROM public.material_usage_summary(pg_temp.m(-3))), 0, 'a month with no visits → no rows');
 
 -- ตัวกรองสาขา
 SELECT is(pg_temp.rows((SELECT branch_id FROM customers WHERE id = '00000000-0000-0000-0000-0000000000c2')),
-  'routine/new:1,30,0,0,0.0,0,0', 'host: branch filter → province only');
+  'routine/new:1,50,0,0,0.0,0,0', 'host: branch filter → province only');
 SELECT is((SELECT count(*)::int FROM public.material_usage_summary(pg_temp.m(-1), '00000000-0000-0000-0000-0000000000ff')), 0,
   'unknown branch → no rows');
 SELECT is((SELECT count(DISTINCT branch_id)::int FROM public.material_usage_summary(pg_temp.m(-1))), 2, 'host sees both branches');
@@ -128,7 +128,7 @@ SELECT is((SELECT count(*)::int FROM public.material_usage_summary(pg_temp.m(-1)
             (SELECT branch_id FROM customers WHERE id = '00000000-0000-0000-0000-0000000000c2'))), 0,
   'recorder asking for an out-of-scope branch gets nothing');
 SELECT is(pg_temp.rows((SELECT branch_id FROM customers WHERE id = '00000000-0000-0000-0000-0000000000c1')),
-  'makeup/new:1,50,0,0,0.0,0,0 ; problem/new:2,15,0,3,0.9,0,0 ; routine/new:1,100,40,2,0.6,1,0 ; routine/renew:1,70,0,0,0.0,2,0',
+  'makeup/new:1,50,0,0,0.0,0,0 ; problem/new:2,100,0,3,0.9,0,0 ; routine/new:1,150,50,2,0.6,1,0 ; routine/renew:1,100,0,0,0.0,2,0',
   'recorder: in-scope branch values');
 SELECT pg_temp.as_user('a2');
 SELECT is((SELECT count(*)::int FROM public.material_usage_summary(pg_temp.m(-1))), 4, 'admin (central): 4 groups');
