@@ -12,6 +12,9 @@ import type { AgBoxRow, BranchInfo, MaterialPageData, TeamInfo } from "./materia
 import {
   baitTotalG,
   breakdownByCustomer,
+  countInternalInspection,
+  inspectionByKey,
+  type InspectionCount,
   breakdownByWork,
   gramsPerAgBox,
   pctChange,
@@ -40,7 +43,21 @@ export interface TeamRow {
   workload: WorkloadResult;
 }
 
+export interface InspectionBranchRow {
+  branch: BranchInfo;
+  count: InspectionCount;
+}
+
+export interface InspectionTeamRow {
+  team: TeamInfo;
+  count: InspectionCount;
+}
+
 export interface MaterialView {
+  inspection: InspectionCount;
+  inspectionPrev: InspectionCount;
+  inspectionByBranch: InspectionBranchRow[];
+  inspectionByTeam: InspectionTeamRow[];
   work: WorkBreakdown;
   workPrev: WorkBreakdown;
   customer: CustomerBreakdown;
@@ -93,7 +110,20 @@ export function buildMaterialView(data: MaterialPageData, branchId: string | nul
     })
     .filter((r) => r.visits > 0 || (r.team.isActive && r.team.headcount > 0));
 
+  const insBranch = inspectionByKey(cur, (v) => [v.branchId]);
+  const insTeam = inspectionByKey(cur, (v) => v.teamIds);
+
   return {
+    inspection: countInternalInspection(cur),
+    inspectionPrev: countInternalInspection(prev),
+    inspectionByBranch: data.branches.flatMap((branch) => {
+      const count = insBranch.get(branch.id);
+      return count ? [{ branch, count }] : [];
+    }),
+    inspectionByTeam: data.teams.flatMap((team) => {
+      const count = insTeam.get(team.id);
+      return count ? [{ team, count }] : [];
+    }),
     work: breakdownByWork(cur),
     workPrev: breakdownByWork(prev),
     customer: breakdownByCustomer(cur),

@@ -24,6 +24,10 @@ export const POWDER_G_PER_POINT = 0.3;
 export interface MaterialVisit {
   visitId: string;
   branchId: string;
+  /** ลูกค้าของการเข้า (ใช้นับจำนวนลูกค้าไม่ซ้ำ · ไม่ส่งชื่อออกหน้าจอ) */
+  customerId: string;
+  /** ติ๊ก "ตรวจภายใน" (visits.internal_inspection) · DECISIONS 2.93 */
+  internalInspection: boolean;
   visitType: VisitType;
   /** 'YYYY-MM-DD' วันแรกของเดือนที่ชดเชย · null = ไม่ใช่การเข้าชดเชย */
   makeupForMonth: string | null;
@@ -145,4 +149,34 @@ export function sharePct(part: number, total: number): number {
 /** ก./กล่อง AG = เหยื่อใน AG ÷ จำนวนกล่อง AG ที่ตรวจจริง (1 ทศนิยม) · ไม่มีกล่อง = null */
 export function gramsPerAgBox(insideG: number, agChecked: number): number | null {
   return agChecked > 0 ? Math.round((insideG / agChecked) * 10) / 10 : null;
+}
+
+export interface InspectionCount {
+  /** จำนวนการเข้าที่ติ๊กตรวจภายใน */
+  visits: number;
+  /** จำนวนลูกค้าไม่ซ้ำ (ลูกค้าเดียวกันเข้าหลายครั้งนับ 1 ราย) */
+  customers: number;
+}
+
+/** นับ "ตรวจภายใน" (DECISIONS 2.93): การเข้า = จำนวนแถวที่ติ๊ก · ลูกค้า = customerId ไม่ซ้ำ */
+export function countInternalInspection(visits: readonly MaterialVisit[]): InspectionCount {
+  const hit = visits.filter((v) => v.internalInspection);
+  return { visits: hit.length, customers: new Set(hit.map((v) => v.customerId)).size };
+}
+
+/** ตรวจภายในแยกกลุ่ม (key เช่น branchId) — เฉพาะกลุ่มที่มีการตรวจ */
+export function inspectionByKey(
+  visits: readonly MaterialVisit[],
+  keysOf: (v: MaterialVisit) => readonly string[],
+): Map<string, InspectionCount> {
+  const groups = new Map<string, MaterialVisit[]>();
+  for (const v of visits) {
+    if (!v.internalInspection) continue;
+    for (const k of keysOf(v)) {
+      const list = groups.get(k);
+      if (list) list.push(v);
+      else groups.set(k, [v]);
+    }
+  }
+  return new Map([...groups].map(([k, list]) => [k, countInternalInspection(list)]));
 }

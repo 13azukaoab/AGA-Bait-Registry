@@ -8,6 +8,8 @@ function v(over: Partial<MaterialVisit>): MaterialVisit {
   return {
     visitId: Math.random().toString(36).slice(2),
     branchId: "b1",
+    customerId: "c1",
+    internalInspection: false,
     visitType: "routine",
     makeupForMonth: null,
     saleType: "renew",

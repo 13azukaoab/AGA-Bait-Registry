@@ -98,7 +98,8 @@ interface VisitMetaRow {
   visit_type: VisitType;
   makeup_for_month: string | null;
   duration_min: number | null;
-  contracts: { sale_type: SaleType | null; customers: { branch_id: string } | null } | null;
+  internal_inspection: boolean | null;
+  contracts: { sale_type: SaleType | null; customer_id: string; customers: { branch_id: string } | null } | null;
   visit_teams: { team_id: string }[] | null;
 }
 
@@ -125,7 +126,7 @@ export async function loadMonthVisits(
       supabase
         .from("visits")
         .select(
-          "id, visit_type, makeup_for_month, duration_min, contracts ( sale_type, customers ( branch_id ) ), visit_teams ( team_id )",
+          "id, visit_type, makeup_for_month, duration_min, internal_inspection, contracts ( sale_type, customer_id, customers ( branch_id ) ), visit_teams ( team_id )",
         )
         .gte("visit_date", from)
         .lt("visit_date", toExclusive)
@@ -145,6 +146,8 @@ export async function loadMonthVisits(
     visits.push({
       visitId: meta.id,
       branchId,
+      customerId: meta.contracts?.customer_id ?? meta.id,
+      internalInspection: meta.internal_inspection === true,
       visitType: meta.visit_type,
       makeupForMonth: meta.makeup_for_month,
       saleType: meta.contracts?.sale_type ?? null,

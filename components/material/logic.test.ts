@@ -4,6 +4,8 @@ import {
   baitTotalG,
   breakdownByCustomer,
   breakdownByWork,
+  countInternalInspection,
+  inspectionByKey,
   customerGroupOf,
   gramsPerAgBox,
   pctChange,
@@ -21,6 +23,8 @@ function visit(over: Partial<MaterialVisit> = {}): MaterialVisit {
   return {
     visitId: `v${seq}`,
     branchId: "b1",
+    customerId: "c1",
+    internalInspection: false,
     visitType: "routine",
     makeupForMonth: null,
     saleType: "renew",
@@ -172,5 +176,32 @@ describe("ภาระงานรายทีม", () => {
   it("นาที → ชั่วโมง", () => {
     expect(minutesToHours(90)).toBe(1.5);
     expect(minutesToHours(100)).toBe(1.67);
+  });
+});
+
+describe("ตรวจภายใน (2.93)", () => {
+  const visits = [
+    visit({ customerId: "c1", internalInspection: true, branchId: "a", teamIds: ["t1"] }),
+    visit({ customerId: "c1", internalInspection: true, branchId: "a", teamIds: ["t1", "t2"] }), // ลูกค้าเดิม เข้าอีกครั้ง
+    visit({ customerId: "c2", internalInspection: true, branchId: "b", teamIds: ["t2"] }),
+    visit({ customerId: "c3", internalInspection: false, branchId: "b", teamIds: ["t2"] }),
+  ];
+  it("ลูกค้าเดียวกันเข้าหลายครั้ง นับการเข้าทุกครั้ง แต่นับลูกค้า 1 ราย", () => {
+    expect(countInternalInspection(visits)).toEqual({ visits: 3, customers: 2 });
+  });
+  it("ไม่ติ๊ก = ไม่นับ · ไม่มีการเข้า = 0", () => {
+    expect(countInternalInspection([visit({ internalInspection: false })])).toEqual({ visits: 0, customers: 0 });
+    expect(countInternalInspection([])).toEqual({ visits: 0, customers: 0 });
+  });
+  it("แยกตามสาขา", () => {
+    const m = inspectionByKey(visits, (v) => [v.branchId]);
+    expect(m.get("a")).toEqual({ visits: 2, customers: 1 });
+    expect(m.get("b")).toEqual({ visits: 1, customers: 1 });
+  });
+  it("แยกตามทีม: เข้าพร้อมหลายทีมนับให้ทุกทีม · ทีมที่ไม่มีตรวจไม่มีแถว", () => {
+    const m = inspectionByKey(visits, (v) => v.teamIds);
+    expect(m.get("t1")).toEqual({ visits: 2, customers: 1 });
+    expect(m.get("t2")).toEqual({ visits: 2, customers: 2 });
+    expect(m.has("t9")).toBe(false);
   });
 });
