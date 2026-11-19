@@ -17,7 +17,7 @@ import { monthChoices, monthLabel } from "@/lib/service/months";
 import { TEAM_KIND_LABEL } from "@/lib/service/teamKind";
 
 import { fmtDec1, fmtHours, fmtInt, fmtPct } from "./format";
-import { baitTotalG, pctChange, type Materials } from "./logic";
+import { baitTotalG, pctChange, sharePct, type Materials } from "./logic";
 import styles from "./material.module.css";
 import type { MaterialPageData } from "./materialData";
 import type { MaterialView } from "./viewModel";
@@ -152,6 +152,49 @@ function UsageTable({ caption, rows, total, totalLabel }: { caption: string; row
         </tfoot>
       </table>
     </div>
+  );
+}
+
+function WorkCards({ view }: { view: MaterialView }) {
+  const { work, workPrev } = view;
+  const items: { key: string; label: string; now: Materials; prev: Materials }[] = [
+    { key: "routine", label: "บริการประจำเดือน", now: work.routine, prev: workPrev.routine },
+    { key: "makeup", label: "ชดเชย (ส่วนหนึ่งของประจำเดือน)", now: work.makeup, prev: workPrev.makeup },
+    { key: "problem", label: "แก้ไขปัญหา", now: work.problem, prev: workPrev.problem },
+  ];
+  return (
+    <section aria-labelledby="mat-cards">
+      <h2 id="mat-cards" className="mt-0 mb-2 text-base font-bold">สรุปตามประเภทงาน</h2>
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,240px),1fr))] gap-3.5">
+        {items.map((r) => {
+          const bait = baitTotalG(r.now);
+          const row = "flex justify-between gap-2 text-[13px] text-fg-muted";
+          return (
+            <div key={r.key} className={CARD}>
+              <div className="text-[13px] font-semibold text-fg-muted">{r.label}</div>
+              <div className="num mt-1 text-[24px] leading-tight font-bold">
+                {fmtInt(bait)} <span className="text-sm font-normal text-fg-muted">ก. เหยื่อรวม</span>
+              </div>
+              <div
+                className={`${styles.track} my-2`}
+                role="img"
+                aria-label={`เหยื่อนอก ${sharePct(r.now.outsideG, bait)}% เหยื่อใน ${sharePct(r.now.insideG, bait)}%`}
+              >
+                <div className={`${styles.seg} ${styles.segOut}`} style={{ width: `${sharePct(r.now.outsideG, bait)}%` }} />
+                <div className={`${styles.seg} ${styles.segIn}`} style={{ width: `${sharePct(r.now.insideG, bait)}%` }} />
+              </div>
+              <div className={row}><span>นอก IG+IC</span><b className="num text-fg">{fmtInt(r.now.outsideG)} ก.</b></div>
+              <div className={row}><span>ใน AG</span><b className="num text-fg">{fmtInt(r.now.insideG)} ก.</b></div>
+              <div className={row}><span>เคมีผง</span><b className="num text-fg">{fmtInt(r.now.powderPoints)} จุด</b></div>
+              <div className={row}><span>ไม้ล่อ</span><b className="num text-fg">{fmtInt(r.now.timberPcs)} ชิ้น</b></div>
+              <div className="mt-2 text-xs">
+                <Delta pct={pctChange(bait, r.prev.visits > 0 ? baitTotalG(r.prev) : null)} />
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </section>
   );
 }
 
@@ -290,6 +333,7 @@ function MaterialTabContent({ data, view }: { data: MaterialPageData; view: Mate
         งานซ่อมที่ทำในการเข้ารอบปกติถูกนับเป็น &ldquo;บริการประจำเดือน&rdquo; · วัสดุตอนเปิดงาน/ติดตั้งยังไม่ได้บันทึกในระบบ
         (เพิ่มหลังเปิดใช้งาน) จึงยังไม่รวมในตัวเลข ยกเว้นเหยื่อติดตั้ง AG ที่บันทึกตอนติดตั้งแล้ว · เทียบกับ {monthLabel(data.prevMonth)}
       </Alert>
+      <WorkCards view={view} />
       <WorkSection view={view} />
       <CustomerSection view={view} />
       <BranchTable view={view} />
