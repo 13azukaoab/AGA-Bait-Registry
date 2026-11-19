@@ -74,7 +74,7 @@ INSERT INTO visits (id, contract_id, visit_date, visit_type, start_time, end_tim
   (pg_temp.id('e2'), pg_temp.id('d1'), pg_temp.m(-5) + 9, 'routine', '09:00', '10:00'),
   (pg_temp.id('e3'), pg_temp.id('d2'), pg_temp.m(-2) + 9, 'routine', '09:00', '10:00');
 INSERT INTO stations (id, contract_id, type, station_no, status) VALUES
-  (pg_temp.id('s1'), pg_temp.id('d1'), 'IG', 1, 'active');
+  (pg_temp.id('b1'), pg_temp.id('d1'), 'IG', 1, 'active');
 INSERT INTO missed_service_notes (contract_id, missed_month, note) VALUES
   (pg_temp.id('d5'), pg_temp.m(-3), 'ลูกค้าไม่อยู่ (สมมติ)');
 
@@ -154,9 +154,9 @@ SELECT lives_ok($$INSERT INTO visits (id, contract_id, visit_date, visit_type, s
   'a problem visit can still be recorded while paused');
 SELECT throws_ok($$UPDATE visits SET visit_type = 'routine' WHERE id = pg_temp.id('e9')$$,
   'CP009', NULL, 'turning a visit in a paused month into routine is refused');
-SELECT throws_ok($$UPDATE stations SET collected_at = now() WHERE id = pg_temp.id('s1')$$,
+SELECT throws_ok($$UPDATE stations SET collected_at = now() WHERE id = pg_temp.id('b1')$$,
   'CP010', NULL, 'IG of a paused contract cannot be collected');
-SELECT throws_ok($$UPDATE stations SET not_collected_on = pg_temp.td(), not_collected_reason = 'x' WHERE id = pg_temp.id('s1')$$,
+SELECT throws_ok($$UPDATE stations SET not_collected_on = pg_temp.td(), not_collected_reason = 'x' WHERE id = pg_temp.id('b1')$$,
   'CP010', NULL, 'IG of a paused contract cannot be marked not collected');
 SELECT throws_ok($$INSERT INTO missed_service_resolutions (contract_id, missed_month, kind, reason)
                    VALUES (pg_temp.id('d1'), pg_temp.m(-3), 'waived', 'x')$$,
@@ -185,19 +185,22 @@ SELECT ok((SELECT warn FROM list_paused_contracts() WHERE contract_id = pg_temp.
 SELECT pg_temp.as_user('a5');
 SELECT throws_ok('SELECT * FROM list_paused_contracts()', '42501', NULL, 'viewer cannot list paused contracts');
 RESET ROLE;
+SELECT pg_temp.as_user('a1');   -- close_month_part เรียกในนามผู้ปิด (host/recorder)
 SELECT is((SELECT pending_count FROM central_unready_branches(to_char(pg_temp.m(-3), 'YYYY-MM'))
             WHERE branch_id = (SELECT branch_id FROM customers WHERE id = pg_temp.id('c1'))),
   4, 'central_unready_branches skips the paused contract (d2, d3, d4, d6 count · d1 paused · d5 has a note)');
 
 -- /summary (anon)
+CREATE TEMP TABLE _b AS SELECT name FROM branches WHERE division = 'central' ORDER BY name LIMIT 1;
+GRANT SELECT ON _b TO PUBLIC;
 SET LOCAL ROLE anon;
 SELECT is((SELECT paused_contracts FROM v_paused_branch_summary
             WHERE month_key = to_char(pg_temp.m(-4), 'YYYY-MM')
-              AND branch_name = (SELECT name FROM branches WHERE division = 'central' ORDER BY name LIMIT 1)),
+              AND branch_name = (SELECT name FROM _b)),
   1, 'anon: v_paused_branch_summary counts the paused contract in the paused month');
 SELECT is((SELECT paused_value FROM v_paused_branch_summary
             WHERE month_key = to_char(pg_temp.m(0), 'YYYY-MM')
-              AND branch_name = (SELECT name FROM branches WHERE division = 'central' ORDER BY name LIMIT 1)),
+              AND branch_name = (SELECT name FROM _b)),
   24000.00::numeric, 'anon: paused value = full contract value (open pause counts to the current month)');
 SELECT is((SELECT count(*)::int FROM v_paused_branch_summary WHERE month_key = to_char(pg_temp.m(-5), 'YYYY-MM')),
   0, 'months before the pause are not in the summary');

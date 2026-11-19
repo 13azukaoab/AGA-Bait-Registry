@@ -125,8 +125,8 @@ AS $$
      WHERE p.contract_id = p_contract_id
        AND p.paused_month <= date_trunc('month', p_month::timestamp)::date
        AND (p.resume_month IS NULL OR date_trunc('month', p_month::timestamp)::date < p.resume_month)
-       -- ผู้ใช้ที่ไม่ใช่ host/admin/recorder (viewer) ได้ false เสมอ · ระบบ/trigger ที่ไม่มีผู้ใช้ (auth.uid() NULL) ใช้ได้
-       AND (auth.uid() IS NULL OR current_app_role() IN ('host', 'admin', 'recorder')))
+       -- ผลตรวจ security L3: viewer เรียกตรงได้ false เสมอ (ไม่ใช้ส่องสถานะสัญญา) · บทบาทอื่น/ระบบ/trigger ใช้ได้ตามปกติ
+       AND current_app_role() IS DISTINCT FROM 'viewer')
 $$;
 
 REVOKE ALL ON FUNCTION public.contract_month_paused(uuid, date) FROM PUBLIC, anon;
