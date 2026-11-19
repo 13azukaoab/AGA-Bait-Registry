@@ -8,9 +8,9 @@
  *      หาไม่เจอแม้ตัวเดียว = หยุดก่อนเขียน (ไม่เดา)
  *   2. ด่านกันนำเข้าซ้ำ: มีลูกค้าในสาขาเป้าหมายอยู่แล้ว หรือมีเลขสัญญาในแผนอยู่แล้ว = หยุด (รันซ้ำไม่เกิดแถวซ้ำ)
  *   3. dryRun = จบตรงนี้ (ไม่เขียน)
- *   4. เขียนทีละตาราง customers → contracts → contract_teams (แบ่งชุดละ CHUNK แถว · id สร้างฝั่งนี้)
+ *   4. เขียนทีละตาราง customers → customer_phones → contracts → contract_teams (แบ่งชุดละ CHUNK แถว · id สร้างฝั่งนี้)
  *      PostgREST 1 คำขอ = 1 transaction แต่ "ข้ามตาราง" ไม่ใช่ transaction เดียว → ถ้าคำขอไหนพัง
- *      ลบที่เขียนไปแล้วคืน (contracts ก่อน → contract_teams หายตาม cascade → customers) แล้ว throw
+ *      ลบที่เขียนไปแล้วคืน (contracts ก่อน → contract_teams หายตาม cascade → customers → customer_phones หายตาม cascade) แล้ว throw
  *      (การลบคืนลง audit_log ด้วย — ยอมรับได้ · DB ในเครื่องเท่านั้น)
  *   5. อ่านกลับแล้วเทียบทุกช่อง (เลขสัญญา/วันที่/เดือน/มูลค่าสตางค์/ประเภทขาย/ผู้ขาย/ลูกค้า/ทีม) ไม่ตรง = throw
  *
@@ -158,6 +158,8 @@ export async function findExistingData(
 
 export interface InsertRows {
   customers: Row[];
+  /** เบอร์โทร (M19a) · ⚠ เบอร์จริง */
+  customerPhones: Row[];
   contracts: Row[];
   contractTeams: Row[];
 }
@@ -180,13 +182,16 @@ function contractRow(c: PlannedContract, id: string, customerId: string): Row {
 
 /** แผน → แถวของ 3 ตาราง (1 แถวสัญญา = ลูกค้า 1 ราย · DECISIONS 2.59) */
 export function buildInsertRows(plan: RegistryImportPlan, refs: ReferenceIds, newId: () => string): InsertRows {
-  const out: InsertRows = { customers: [], contracts: [], contractTeams: [] };
+  const out: InsertRows = { customers: [], customerPhones: [], contracts: [], contractTeams: [] };
   for (const b of plan.branches) {
     const bid = refs.branchId.get(b.branch)!;
     for (const c of b.contracts) {
       const customerId = newId();
       const contractId = newId();
       out.customers.push({ id: customerId, branch_id: bid, name: c.customerName, customer_type: refs.typeCode.get(c.customerTypeLabel)! });
+      c.phones.forEach((p, i) =>
+        out.customerPhones.push({ customer_id: customerId, phone: p.phone, label: p.label, sort_order: i }),
+      );
       out.contracts.push(contractRow(c, contractId, customerId));
       for (const code of c.teamCodes) out.contractTeams.push({ contract_id: contractId, team_id: refs.teamId.get(`${bid}|${code}`)! });
     }
@@ -208,8 +213,8 @@ export interface RegistryDbImportOptions {
 export interface RegistryDbImportResult {
   dryRun: boolean;
   existing: ExistingData;
-  planned: { customers: number; contracts: number; contractTeams: number };
-  written: { customers: number; contracts: number; contractTeams: number };
+  planned: { customers: number; customerPhones: number; contracts: number; contractTeams: number };
+  written: { customers: number; customerPhones: number; contracts: number; contractTeams: number };
 }
 
 async function deleteByIds(client: SupabaseClient, table: string, ids: string[]): Promise<string | null> {
@@ -235,12 +240,20 @@ export async function importRegistryPlan(
     );
   }
   const rows = buildInsertRows(plan, refs, opts.newId ?? (() => crypto.randomUUID()));
-  const planned = { customers: rows.customers.length, contracts: rows.contracts.length, contractTeams: rows.contractTeams.length };
-  if (dryRun) return { dryRun, existing, planned, written: { customers: 0, contracts: 0, contractTeams: 0 } };
+  const planned = {
+    customers: rows.customers.length,
+    customerPhones: rows.customerPhones.length,
+    contracts: rows.contracts.length,
+    contractTeams: rows.contractTeams.length,
+  };
+  if (dryRun) {
+    return { dryRun, existing, planned, written: { customers: 0, customerPhones: 0, contracts: 0, contractTeams: 0 } };
+  }
 
-  const written = { customers: 0, contracts: 0, contractTeams: 0 };
+  const written = { customers: 0, customerPhones: 0, contracts: 0, contractTeams: 0 };
   const steps: [keyof typeof written, string, Row[]][] = [
     ["customers", "customers", rows.customers],
+    ["customerPhones", "customer_phones", rows.customerPhones],
     ["contracts", "contracts", rows.contracts],
     ["contractTeams", "contract_teams", rows.contractTeams],
   ];
@@ -302,6 +315,17 @@ async function readBackAndCompare(client: SupabaseClient, rows: InsertRows): Pro
     }
   }
 
+  const wantPhones = new Set(rows.customerPhones.map((p) => `${String(p.customer_id)}|${String(p.phone)}|${String(p.label ?? "")}|${String(p.sort_order)}`));
+  let phonesFound = 0;
+  for (const part of chunks([...wantCustomer.keys()])) {
+    const { data, error } = await client.from("customer_phones").select("customer_id, phone, label, sort_order").in("customer_id", part);
+    if (error) throw new Error(`นำเข้า: อ่านกลับ customer_phones ไม่สำเร็จ: ${safeDbError(error)}`);
+    for (const got of (data ?? []) as unknown as Row[]) {
+      phonesFound++;
+      if (!wantPhones.has(`${String(got.customer_id)}|${String(got.phone)}|${String(got.label ?? "")}|${String(got.sort_order)}`)) mismatches++;
+    }
+  }
+
   let teamsFound = 0;
   for (const part of chunks([...wantContract.keys()])) {
     const res = await client.from("contract_teams").select("contract_id", { count: "exact", head: true }).in("contract_id", part);
@@ -313,11 +337,13 @@ async function readBackAndCompare(client: SupabaseClient, rows: InsertRows): Pro
     found !== rows.contracts.length ||
     customersFound !== rows.customers.length ||
     teamsFound !== rows.contractTeams.length ||
+    phonesFound !== rows.customerPhones.length ||
     mismatches > 0
   ) {
     throw new Error(
       `นำเข้า: อ่านกลับไม่ตรง (สัญญา ${found}/${rows.contracts.length} · ลูกค้า ${customersFound}/${rows.customers.length}` +
-        ` · ทีม ${teamsFound}/${rows.contractTeams.length} · ช่องไม่ตรง ${mismatches}) — ข้อมูลอยู่ใน DB แล้ว ตรวจแล้ว db reset`,
+        ` · ทีม ${teamsFound}/${rows.contractTeams.length} · เบอร์ ${phonesFound}/${rows.customerPhones.length}` +
+        ` · ช่องไม่ตรง ${mismatches}) — ข้อมูลอยู่ใน DB แล้ว ตรวจแล้ว db reset`,
     );
   }
 }
@@ -396,6 +422,7 @@ export async function verifyRegistryImport(client: SupabaseClient, plan: Registr
     "customer_id",
     [...customerBranch.keys()],
   );
+  const phones = await selectIn(client, "customer_phones", "id, customer_id", "customer_id", [...customerBranch.keys()]);
   const teams = await selectIn(client, "contract_teams", "contract_id, team_id", "contract_id", contracts.map((c) => String(c.id)), [
     "contract_id",
     "team_id",
@@ -442,6 +469,8 @@ export async function verifyRegistryImport(client: SupabaseClient, plan: Registr
     if (mine.filter((c) => c.am_name).length !== b.sellers.amName) mismatches.push("am_name");
     const dbTeams = mine.reduce((n, c) => n + (teamCount.get(String(c.id)) ?? 0), 0);
     if (dbTeams !== b.contracts.reduce((n, c) => n + c.teamCodes.length, 0)) mismatches.push("ทีม");
+    const dbPhones = phones.filter((p) => customerBranch.get(String(p.customer_id)) === b.branch).length;
+    if (dbPhones !== b.phones.phones) mismatches.push("เบอร์โทร");
     return {
       branch: b.branch,
       plannedContracts: b.contracts.length,

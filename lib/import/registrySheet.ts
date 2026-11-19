@@ -179,7 +179,8 @@ function findColumns(headerRows: CellValue[][]): RegistryColumns {
     seq: first((s) => s === "ลำดับ"),
     name: first((s) => s === "ชื่อลูกค้า"),
     contractNo: need("เลขที่สัญญา", (s) => s === "เลขที่สัญญา"),
-    phone: first((s) => s.startsWith("เบอร์โทร")),
+    // "เบอร์โทรลูกค้า" (ส่วนใหญ่) · "เบอร์ติดต่อ" (เขต 9 ปากช่อง)
+    phone: first((s) => s.startsWith("เบอร์โทร") || s.startsWith("เบอร์ติดต่อ")),
     startDate: need("เริ่ม", (s) => START_LABELS.includes(s)),
     endDate: need("สิ้นสุด", (s) => END_LABELS.includes(s)),
     value1y: need("1 ปี", (s) => s === "1 ปี"),

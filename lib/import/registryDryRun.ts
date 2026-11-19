@@ -32,6 +32,7 @@ import {
   type RegistryRow,
   type RegistryTierSummary,
 } from "./registrySheet";
+import { parseThaiPhones, summarizePhones, type PhoneSummary } from "./phones";
 import { lookupSeller, type SellerIndex } from "./sellerLookup";
 import type { CleanedRow, ImportResult } from "./types";
 
@@ -123,6 +124,8 @@ export interface BranchDryRun {
   customerTypeValues: Record<string, number>;
   /** null = ไม่ได้ส่งไฟล์เปิดงานมา */
   sellers: SellerMatchSummary | null;
+  /** เบอร์โทรของแถวที่จะนำเข้า (strict ready) — จำนวนเท่านั้น · hasPhoneColumn = ชีทมีคอลัมน์เบอร์ */
+  phones: PhoneSummary & { hasPhoneColumn: boolean };
   snapshots: Record<string, MonthlySnapshot>;
   /** บล็อกสรุปท้ายชีท (สูตร Excel ของสาขาเอง) */
   inSheetSummary: RegistryTierSummary | null;
@@ -249,6 +252,8 @@ export interface StrictImport {
   heldRows: HoldRow[];
   /** rowIndex (เริ่ม 1) → เลขแถว Excel */
   excelOf: (rowIndex: number) => number;
+  /** rowIndex → ค่าดิบในช่องเบอร์โทร (ชีทไม่มีคอลัมน์เบอร์ = null) · ⚠ เบอร์จริง ห้าม log */
+  phoneCellOf: (rowIndex: number) => CellValue;
 }
 
 /**
@@ -299,12 +304,15 @@ export function prepareStrictImport(sheetName: string, grid: CellValue[][], opts
     ready: strictReady,
     summary: { ...rawStrict.summary, ready: strictReady.length },
   };
-  return { ref, parsed, rawStrict, strictResult, heldRows, excelOf };
+  const phoneCol = parsed.columns.phone;
+  const phoneCellOf = (rowIndex: number): CellValue =>
+    phoneCol === null ? null : (grid[excelOf(rowIndex) - 1]?.[phoneCol] ?? null);
+  return { ref, parsed, rawStrict, strictResult, heldRows, excelOf, phoneCellOf };
 }
 
 /** dry-run 1 ชีท (1 สาขา) */
 export function dryRunRegistrySheet(sheetName: string, grid: CellValue[][], opts: DryRunOptions): BranchDryRun {
-  const { ref, parsed, rawStrict, strictResult, heldRows, excelOf } = prepareStrictImport(sheetName, grid, opts);
+  const { ref, parsed, rawStrict, strictResult, heldRows, excelOf, phoneCellOf } = prepareStrictImport(sheetName, grid, opts);
   const rows = parsed.rows;
   const contractRows = rows.filter((r) => {
     const raw = r.raw as Record<string, string>;
@@ -440,6 +448,10 @@ export function dryRunRegistrySheet(sheetName: string, grid: CellValue[][], opts
     heldRows,
     customerTypeValues,
     sellers,
+    phones: {
+      ...summarizePhones(strictResult.ready.map((r) => parseThaiPhones(phoneCellOf(r.rowIndex)))),
+      hasPhoneColumn: parsed.columns.phone !== null,
+    },
     snapshots,
     inSheetSummary: readRegistryTierSummary(grid),
     termMonths,

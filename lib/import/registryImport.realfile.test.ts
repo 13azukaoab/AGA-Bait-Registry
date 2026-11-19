@@ -80,6 +80,10 @@ describe.skipIf(!HAS_FILES)("แผนนำเข้าทะเบียนส
     expect(all.filter((c) => c.saleType === "renew").length).toBe(840);
     expect(all.filter((c) => c.saleType === null).length).toBe(585);
     expect(all.filter((c) => c.teamCodes.length > 0).length).toBe(2365);
+    // เบอร์โทร (phones.ts · ผิดรูป = ไม่เก็บ) — ทุกชีทมีคอลัมน์เบอร์ (ปากช่องหัว "เบอร์ติดต่อ")
+    const ph = (k: "rowsWithPhones" | "phones" | "emptyRows" | "invalidRows" | "labelTooLong") => plan.branches.reduce((n, b) => n + b.phones[k], 0);
+    expect(plan.branches.every((b) => b.phones.hasPhoneColumn)).toBe(true);
+    expect([ph("rowsWithPhones"), ph("phones"), ph("emptyRows"), ph("invalidRows"), ph("labelTooLong")]).toEqual([2273, 2278, 54, 42, 0]);
     expect(plan.branches.reduce((n, b) => n + b.expected.cust, 0)).toBe(CUST_OCT_TOTAL);
     expect(plan.branches.reduce((n, b) => n + Math.round(b.expected.value * 100), 0)).toBe(VALUE_OCT_TOTAL_CENTS);
   });
