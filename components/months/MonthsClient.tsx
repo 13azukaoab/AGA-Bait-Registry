@@ -5,12 +5,13 @@
  *
  * Logic summary:
  *   * ซ้าย = รายการเดือน · ขวา = การ์ดคู่ ส่วนกลาง 24 สาขา / ต่างจังหวัด 19 สาขา (แต่ละส่วนปิดแยก)
- *   * ส่วนกลาง 2 ขั้น: ทบทวนตกบริการ → ยืนยันปิด · ต่างจังหวัด: ยืนยันปิดขั้นเดียว (ไม่มีทะเบียนให้ทบทวน)
+ *   * ส่วนกลาง 3 ขั้น: ตรวจความครบ (get_central_readiness) → ทบทวนตกบริการ → ยืนยันปิด · ต่างจังหวัด: ยืนยันปิดขั้นเดียว (ไม่มีทะเบียนให้ทบทวน)
  *   * ยืนยัน = พิมพ์ key เดือน (OCT.26) · ส่งแค่ {month, scope, confirmKey, overrideReason?, acknowledgeCarried?}
  *   * server ตัดสิน "ส่วนกลางพร้อม": ถ้ายังไม่พร้อมตอบ 409 พร้อมรายชื่อสาขา → host พิมพ์เหตุผลแล้วกดซ้ำ (ปิดข้าม) · recorder เห็นรายชื่อเท่านั้น
  *     ต่างจังหวัดมีสาขาใช้ค่ายกมา → 409 → ติ๊กรับทราบแล้วกดซ้ำ
  *   * ปิดสำเร็จแต่ส่ง Dashboard ไม่สำเร็จ = เดือนปิดแล้ว แสดงสถานะส่งแยก · คำนวณ snapshot ใหม่ = host เท่านั้น
- *   * "แก้หลังปิด" (list_post_close_edits) ซ่อนไว้จนกว่า BE ส่ง RPC — ดู PostCloseEdits + POST_CLOSE_EDITS_AVAILABLE
+ *   * "แก้หลังปิด" (list_post_close_edits · M40): ป้าย N บนการ์ด/รายการเดือน (นับที่ server ตอนโหลดหน้า) + รายการในหน้ารายละเอียดส่วนที่ปิดแล้ว
+ *     host เห็นทั้ง 2 ส่วน · recorder เห็นเฉพาะส่วนกลาง (ไม่เรียก/ไม่แสดงของต่างจังหวัด)
  *   * ซ่อนปุ่มตามสิทธิ์เฉยๆ — ความปลอดภัยจริงอยู่ที่ server/DB
  */
 import { useRouter } from "next/navigation";
@@ -20,6 +21,8 @@ import { Alert, Button, Chip, Toast, cx } from "@/components/ui";
 import { useUnsavedWork } from "@/components/shell/unsaved-work";
 
 import { MissedReview } from "./MissedReview";
+import { ReadinessStep } from "./ReadinessStep";
+import { PostCloseEdits } from "./PostCloseEdits";
 import { SyncStatusBox } from "./SyncStatusBox";
 import { postClose, postResync, type BranchRef } from "./monthsApi";
 import type { MonthsPageData } from "./monthsData";
@@ -35,7 +38,11 @@ import {
   describeError,
   formatBangkok,
   syncLabel,
-  tableLabelTh,
+  badgeCount,
+  badgeCountForMonth,
+  canListPostCloseEdits,
+  postCloseKey,
+  type Perms,
   type MonthEntry,
   type Scope,
   type ScopeState,
@@ -71,7 +78,7 @@ export function MonthsClient({ data }: { data: MonthsPageData }) {
   const firstOpen = data.months.find((m) => m.central.status === "open" || m.province.status === "open");
   const [sel, setSel] = useState<string>((firstOpen ?? data.months[0])?.month ?? "");
   const [scopeSel, setScopeSel] = useState<Scope | null>(null);
-  const [step, setStep] = useState<1 | 2>(1);
+  const [step, setStep] = useState<1 | 2 | 3>(1);
   const [typed, setTyped] = useState("");
   const [ack, setAck] = useState(false);
   const [reason, setReason] = useState("");
@@ -141,7 +148,7 @@ export function MonthsClient({ data }: { data: MonthsPageData }) {
       router.refresh();
     } else if (out.kind === "not_ready") {
       setNotReady({ branches: out.branches, canOverride: out.canOverride });
-      setStep(2);
+      setStep(3);
       setError(describeError("branches_not_ready"));
     } else if (out.kind === "carried") {
       setCarried(out.branches);
@@ -217,6 +224,9 @@ export function MonthsClient({ data }: { data: MonthsPageData }) {
                   <Chip tone={statusTone(m.province)}>ตจว. · {statusText(m.province)}</Chip>
                 </span>
                 {m.complete ? <small className="font-semibold text-ok">อัพเดทข้อมูลครบทุกสาขา</small> : null}
+                {badgeCountForMonth(data.postCloseCounts, m.month) !== undefined ? (
+                  <Chip tone="pend">แก้หลังปิด {badgeCountForMonth(data.postCloseCounts, m.month)}</Chip>
+                ) : null}
               </button>
             ))}
             {data.goLiveMonth ? (
@@ -251,6 +261,7 @@ export function MonthsClient({ data }: { data: MonthsPageData }) {
                     state={month[s]}
                     selected={scopeSel === s}
                     canClose={canCloseScope(data.perms, s)}
+                    editCount={POST_CLOSE_EDITS_AVAILABLE ? badgeCount(data.postCloseCounts, month.month, s) : undefined}
                     onOpen={() => openScope(s)}
                   />
                 ))}
@@ -269,7 +280,10 @@ export function MonthsClient({ data }: { data: MonthsPageData }) {
 
                   {month[scopeSel].status === "closed" ? (
                     <ClosedPanel
+                      month={month.month}
                       scope={scopeSel}
+                      perms={data.perms}
+                      editCount={data.postCloseCounts[postCloseKey(month.month, scopeSel)]}
                       state={month[scopeSel]}
                       latestFailed={syncInfo.latestFailed}
                       canResync={canResync(data.perms)}
@@ -280,6 +294,7 @@ export function MonthsClient({ data }: { data: MonthsPageData }) {
                   ) : month[scopeSel].status === "open" ? (
                     <OpenPanel
                       entry={month}
+                      perms={data.perms}
                       scope={scopeSel}
                       step={step}
                       setStep={setStep}
@@ -319,13 +334,14 @@ export function MonthsClient({ data }: { data: MonthsPageData }) {
   );
 }
 
-function ScopeCard(props: { scope: Scope; state: ScopeState; selected: boolean; canClose: boolean; onOpen: () => void }) {
-  const { scope, state, selected, canClose, onOpen } = props;
+function ScopeCard(props: { scope: Scope; state: ScopeState; selected: boolean; canClose: boolean; editCount: number | undefined; onOpen: () => void }) {
+  const { scope, state, selected, canClose, editCount, onOpen } = props;
   const closed = state.status === "closed";
   return (
     <div aria-current={selected} className={cx("rounded-[10px] border p-3", selected ? "border-accent bg-accent-soft" : "border-border bg-surface-2")}>
       <h3 className="m-0 mb-1 flex flex-wrap items-center gap-2 text-[13.5px] font-semibold">
         {SCOPE_NAME[scope]} {SCOPE_BRANCHES[scope]} สาขา <Chip tone={statusTone(state)}>{statusText(state)}</Chip>
+        {editCount !== undefined ? <Chip tone="pend">แก้หลังปิด {editCount}</Chip> : null}
       </h3>
       <p className="m-0 mb-3 text-[12px] leading-relaxed text-fg-muted">
         {closed
@@ -362,7 +378,10 @@ function ScopeCard(props: { scope: Scope; state: ScopeState; selected: boolean; 
 }
 
 function ClosedPanel(props: {
+  month: string;
   scope: Scope;
+  perms: Perms;
+  editCount: number | null | undefined;
   state: ScopeState;
   latestFailed: boolean;
   canResync: boolean;
@@ -370,7 +389,7 @@ function ClosedPanel(props: {
   error: string;
   onResync: () => void;
 }) {
-  const { scope, state, latestFailed, canResync: allowResync, busy, error, onResync } = props;
+  const { month, scope, perms, editCount, state, latestFailed, canResync: allowResync, busy, error, onResync } = props;
   return (
     <div>
       {latestFailed ? (
@@ -401,26 +420,9 @@ function ClosedPanel(props: {
         <p className="mb-3 text-[12px] text-fg-muted">การคำนวณ snapshot ใหม่ทำได้เฉพาะ OM/PM</p>
       )}
       {error ? <p role="alert" className="mb-3 text-[13px] text-danger">{error}</p> : null}
-      {POST_CLOSE_EDITS_AVAILABLE ? <PostCloseEdits rows={[]} /> : null}
-    </div>
-  );
-}
-
-/** รายการแก้หลังปิด — รอ RPC list_post_close_edits จาก BE (ตอนนี้ซ่อนด้วย POST_CLOSE_EDITS_AVAILABLE = false) */
-export function PostCloseEdits({ rows }: { rows: { table: string; branch: string; changedAt: string; by: string }[] }) {
-  return (
-    <div>
-      <h4 className="m-0 mb-2 text-[13px] font-semibold">แก้หลังปิด ({rows.length})</h4>
-      <ul className="m-0 list-none p-0 text-[12.5px]">
-        {rows.map((r, i) => (
-          <li key={i} className="flex gap-3 border-t border-border py-2">
-            <span className="w-32 flex-none tabular-nums text-fg-muted">{formatBangkok(r.changedAt)}</span>
-            <span>
-              <b>{tableLabelTh(r.table)}</b> · {r.branch} · {r.by}
-            </span>
-          </li>
-        ))}
-      </ul>
+      {POST_CLOSE_EDITS_AVAILABLE && canListPostCloseEdits(perms, scope) ? (
+        <PostCloseEdits month={month} scope={scope} perms={perms} version={`${state.closedAt ?? ""}|${editCount ?? "x"}`} />
+      ) : null}
     </div>
   );
 }
@@ -428,8 +430,9 @@ export function PostCloseEdits({ rows }: { rows: { table: string; branch: string
 function OpenPanel(props: {
   entry: MonthEntry;
   scope: Scope;
-  step: 1 | 2;
-  setStep: (s: 1 | 2) => void;
+  step: 1 | 2 | 3;
+  setStep: (s: 1 | 2 | 3) => void;
+  perms: Perms;
   typed: string;
   setTyped: (v: string) => void;
   ack: boolean;
@@ -446,8 +449,8 @@ function OpenPanel(props: {
 }) {
   const { entry, scope, step, setStep, notReady, carried, canClose, canOverride, busy, error } = props;
   const central = scope === "central";
-  const names = central ? ["ทบทวนตกบริการ", "ยืนยันปิด"] : [];
-  const showConfirm = !central || step === 2;
+  const names = central ? ["ตรวจความครบ", "ทบทวนตกบริการ", "ยืนยันปิด"] : [];
+  const showConfirm = !central || step === 3;
   const inputCls = "w-52 max-w-full rounded-lg border border-border-strong bg-surface px-2.5 py-2 font-mono text-[15px] tracking-wider text-fg max-[767px]:text-base";
 
   if (!canClose) {
@@ -463,7 +466,7 @@ function OpenPanel(props: {
       {central ? (
         <ol className="m-0 mb-4 flex list-none gap-2 p-0 max-[640px]:flex-col">
           {names.map((n, i) => {
-            const no = (i + 1) as 1 | 2;
+            const no = (i + 1) as 1 | 2 | 3;
             return (
               <li key={n} className="flex-1">
                 <button
@@ -486,9 +489,23 @@ function OpenPanel(props: {
 
       {central && step === 1 ? (
         <div>
-          <MissedReview month={entry.month} />
+          <ReadinessStep month={entry.month} perms={props.perms} />
           <div className="mt-4 flex justify-end">
             <Button variant="primary" onClick={() => setStep(2)} className="max-[767px]:min-h-11">
+              ถัดไป: ทบทวนตกบริการ →
+            </Button>
+          </div>
+        </div>
+      ) : null}
+
+      {central && step === 2 ? (
+        <div>
+          <MissedReview month={entry.month} />
+          <div className="mt-4 flex flex-wrap justify-between gap-2">
+            <Button onClick={() => setStep(1)} className="max-[767px]:min-h-11">
+              ← ย้อนกลับ
+            </Button>
+            <Button variant="primary" onClick={() => setStep(3)} className="max-[767px]:min-h-11">
               ถัดไป: ยืนยันปิด →
             </Button>
           </div>
@@ -580,7 +597,7 @@ function OpenPanel(props: {
 
           <div data-sticky-savebar className="sticky bottom-0 -mx-1 mt-2 flex flex-wrap items-center justify-between gap-2 bg-surface px-1 py-2 max-[767px]:border-t max-[767px]:border-border">
             {central ? (
-              <Button onClick={() => setStep(1)} className="max-[767px]:min-h-11">
+              <Button onClick={() => setStep(2)} className="max-[767px]:min-h-11">
                 ← ย้อนกลับ
               </Button>
             ) : (
