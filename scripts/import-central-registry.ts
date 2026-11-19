@@ -25,6 +25,7 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 import { loadCentralRegistry, loadSellerIndex, hasAllCentralFiles } from "../lib/import/centralRegistryFiles";
 import { importRegistryPlan, safeDbError, verifyRegistryImport } from "../lib/import/registryDbImport";
+import { REGISTRY_IMPORT_BATCH_OCT26 } from "../lib/import/centralRegistrySheets";
 import { planRegistryImport } from "../lib/import/registryImportPlan";
 import { TIER_RULE_COLUMNS, toTierRules, type TierRuleRow } from "../lib/tierRules";
 
@@ -63,7 +64,7 @@ async function main(): Promise<void> {
   const central = loadCentralRegistry(dir);
   const plan = planRegistryImport(
     central.sheets.map((s) => ({ sheet: s.sheet, branch: s.branch, grid: s.grid })),
-    { rules: await readTierRules(client), month: MONTH, sellerIndex: loadSellerIndex(dir) },
+    { rules: await readTierRules(client), month: MONTH, sellerIndex: loadSellerIndex(dir), importBatch: REGISTRY_IMPORT_BATCH_OCT26 },
   );
 
   const summary: Record<string, unknown> = {
@@ -78,6 +79,13 @@ async function main(): Promise<void> {
       sameNameGroups: plan.branches.reduce((n, b) => n + b.sameNameGroups.groups, 0),
       sameNameRows: plan.branches.reduce((n, b) => n + b.sameNameGroups.rows, 0),
       heldRows: plan.branches.filter((b) => b.heldRows.length).map((b) => `${b.branch}: ${b.heldRows.map((h) => h.excelRow).join(", ")}`),
+      phones: {
+        rowsWithPhones: plan.branches.reduce((n, b) => n + b.phones.rowsWithPhones, 0),
+        phones: plan.branches.reduce((n, b) => n + b.phones.phones, 0),
+        emptyRows: plan.branches.reduce((n, b) => n + b.phones.emptyRows, 0),
+        invalidRows: plan.branches.reduce((n, b) => n + b.phones.invalidRows, 0),
+        byBranch: plan.branches.map((b) => `${b.branch}: เบอร์ ${b.phones.phones} · ว่าง ${b.phones.emptyRows} · ผิดรูป ${b.phones.invalidRows}`),
+      },
     },
   };
 

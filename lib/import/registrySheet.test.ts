@@ -93,6 +93,7 @@ describe("parseRegistrySheet", () => {
     expect(res.columns).toMatchObject({ contractNo: 3, startDate: 7, endDate: 8, value1y: 9, value3y: 10, customerType: 11, isNew: 12, isRenew: 13, team: 14 });
     expect(res.rows).toHaveLength(1);
     expect(res.rows[0]!.raw).toMatchObject({ เริ่ม: "2026-02-01", สิ้นสุด: "2027-01-31", New: "TRUE" });
+    expect(res.columns.phone).toBe(4); // หัว "เบอร์ติดต่อ" ก็คือคอลัมน์เบอร์
   });
 
   it("หัวตาราง 3 แถว (แบบเขต 9 สระบุรี): แถวที่ 3 เป็นหัวย่อย ไม่ถือเป็นข้อมูล — ข้อมูลสมมติ", () => {

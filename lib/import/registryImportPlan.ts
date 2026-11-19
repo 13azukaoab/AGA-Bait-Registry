@@ -10,12 +10,17 @@
  *   3. ยอดที่คาดของเดือน (expected) = buildBranchSnapshot (lib/rules) ของแถวในแผน — ใช้เทียบกับยอดที่คำนวณจาก DB หลังนำเข้า
  *   4. หยุด (throw) เมื่อ: สาขาส่งมาซ้ำ · เลขสัญญาซ้ำในแผน · มูลค่าทศนิยมเกิน 2 ตำแหน่ง (DB เก็บ numeric(12,2) — ห้ามปัดเงียบ)
  *   5. ลูกค้า: 1 แถวสัญญา = 1 ลูกค้า (ไม่รวมชื่อซ้ำเอง · DECISIONS 2.59 แอดมินแก้เอง) — นับกลุ่มชื่อซ้ำไว้รายงาน
+ *   7. สถานะสัญญา (เจ้าของตัดสิน 19 พ.ย. 2026): วันสิ้นสุด < วันแรกของเดือนที่นำเข้า (opts.month)
+ *      → 'expired_pending_collection' (หมดอายุ รอเก็บสถานี · SPEC §7.8) · อื่นๆ = 'active'
+ *      (จบต้นเดือนที่นำเข้า เช่น 14 ต.ค. ยัง active · ไม่กระทบยอด — snapshot นับตามเดือนบริการ ไม่ดูสถานะ)
+ *   6. เบอร์โทร: parseThaiPhones (phones.ts) ของช่องเบอร์แถวเดียวกัน — รูปแบบไม่ถูก = ไม่เก็บ (นับใน phones)
  *   ⚠ PlannedContract มีชื่อลูกค้า/ผู้ขาย (หน่วยความจำเท่านั้น) — ห้าม log · รายงานใช้ได้แค่ heldRows / mustFixRows / ตัวเลข
  */
 import { buildBranchSnapshot } from "../rules/snapshot";
 import type { Contract, SnapshotRow, TierRule } from "../rules/types";
 import { REGISTRY_IMPORT_OPTIONS } from "./centralRegistrySheets";
 import { findCrossBranchDuplicates } from "./crossBranchDuplicates";
+import { parseThaiPhones, summarizePhones, type ParsedPhone, type PhoneSummary } from "./phones";
 import { prepareStrictImport, type HoldRow } from "./registryDryRun";
 import { parseRegistrySheet, type CellValue } from "./registrySheet";
 import type { SellerIndex } from "./sellerLookup";
@@ -39,6 +44,8 @@ export interface PlanOptions {
   month: string;
   /** ดัชนีผู้ขายจากไฟล์เปิดงาน · ไม่ส่ง = ผู้ขายว่างทุกแถว */
   sellerIndex?: SellerIndex;
+  /** ค่า contracts.import_batch ของทุกสัญญาในรอบนี้ (เช่น REGISTRY_IMPORT_BATCH_OCT26) */
+  importBatch: string;
 }
 
 /** 1 แถวที่จะเขียน (ลูกค้า 1 ราย + สัญญา 1 ฉบับ + ทีม) — ⚠ มีชื่อลูกค้า/ผู้ขาย */
@@ -58,6 +65,17 @@ export interface PlannedContract {
   isUrgent: boolean;
   /** รหัสทีม (ไม่ซ้ำ) เช่น ["B", "C"] */
   teamCodes: string[];
+  /** สถานะตอนนำเข้า (ข้อ 7 ใน Logic summary) */
+  status: ContractImportStatus;
+  /** เบอร์โทร → customer_phones (phones.ts · รูปแบบไม่ถูก/ว่าง = []) · ⚠ เบอร์จริง */
+  phones: ParsedPhone[];
+}
+
+export type ContractImportStatus = "active" | "expired_pending_collection";
+
+/** สถานะตอนนำเข้า: วันสิ้นสุดก่อนวันแรกของเดือนที่นำเข้า = หมดอายุ รอเก็บสถานี */
+export function importStatusOf(endDate: string, month: string): ContractImportStatus {
+  return endDate < `${month}-01` ? "expired_pending_collection" : "active";
 }
 
 export interface PlannedBranch {
@@ -77,10 +95,14 @@ export interface PlannedBranch {
   placeholderNames: number;
   /** กลุ่มชื่อลูกค้าซ้ำในสาขา (ชื่อเทียบแบบ customer_name_key) — จำนวนกลุ่ม / แถวในกลุ่ม */
   sameNameGroups: { groups: number; rows: number };
+  /** สรุปเบอร์โทร (จำนวนเท่านั้น) · hasPhoneColumn = ชีทมีคอลัมน์เบอร์ */
+  phones: PhoneSummary & { hasPhoneColumn: boolean };
 }
 
 export interface RegistryImportPlan {
   month: string;
+  /** ค่า contracts.import_batch ที่จะเขียน (DECISIONS 2.86) */
+  importBatch: string;
   branches: PlannedBranch[];
   totals: { contracts: number; held: number; mustFix: number };
 }
@@ -106,6 +128,9 @@ function assertCents(value: number, excelRow: number, branch: string): void {
 /** สร้างแผนนำเข้าจากชีททั้งหมด (ดู Logic summary หัวไฟล์) */
 export function planRegistryImport(sheets: RegistrySheetInput[], opts: PlanOptions): RegistryImportPlan {
   if (!MONTH_RE.test(opts.month)) throw new Error(`แผนนำเข้า: เดือน "${opts.month}" ต้องเป็น YYYY-MM`);
+  if (!opts.importBatch || opts.importBatch.trim() !== opts.importBatch) {
+    throw new Error("แผนนำเข้า: ต้องระบุ importBatch (ไม่มีช่องว่างหัวท้าย)");
+  }
   const seenBranch = new Set<string>();
   for (const s of sheets) {
     if (seenBranch.has(s.branch)) throw new Error(`แผนนำเข้า: สาขา "${s.branch}" ส่งมาซ้ำ`);
@@ -128,7 +153,8 @@ export function planRegistryImport(sheets: RegistrySheetInput[], opts: PlanOptio
       holdRows: holds.get(s.branch),
       ...REGISTRY_IMPORT_OPTIONS,
     });
-    const contracts = prep.strictResult.ready.map((r): PlannedContract => {
+    const phoneResults = prep.strictResult.ready.map((r) => parseThaiPhones(prep.phoneCellOf(r.rowIndex)));
+    const contracts = prep.strictResult.ready.map((r, i): PlannedContract => {
       const excelRow = prep.excelOf(r.rowIndex);
       assertCents(r.valueTotal, excelRow, s.branch);
       if (seenContract.has(r.contractNo)) {
@@ -149,6 +175,8 @@ export function planRegistryImport(sheets: RegistrySheetInput[], opts: PlanOptio
         amName: r.amName,
         isUrgent: r.urgent,
         teamCodes: [...new Set(r.teams)],
+        status: importStatusOf(r.endDate, opts.month),
+        phones: phoneResults[i]!.phones,
       };
     });
     const asRules: Contract[] = contracts.map((c) => ({
@@ -177,11 +205,13 @@ export function planRegistryImport(sheets: RegistrySheetInput[], opts: PlanOptio
       },
       placeholderNames: contracts.filter((c) => c.customerName === NO_NAME_PLACEHOLDER).length,
       sameNameGroups: { groups: dupGroups.length, rows: dupGroups.reduce((a, n) => a + n, 0) },
+      phones: { ...summarizePhones(phoneResults), hasPhoneColumn: prep.parsed.columns.phone !== null },
     };
   });
 
   return {
     month: opts.month,
+    importBatch: opts.importBatch,
     branches,
     totals: {
       contracts: branches.reduce((n, b) => n + b.contracts.length, 0),

@@ -10,7 +10,7 @@ import { join, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { TIER_RULES } from "../rules/__fixtures__/tierRules";
 import { JOB_OPENING_FILES, hasAllCentralFiles, loadCentralRegistry, loadSellerIndex } from "./centralRegistryFiles";
-import { REGISTRY_IMPORT_OPTIONS } from "./centralRegistrySheets";
+import { REGISTRY_IMPORT_BATCH_OCT26, REGISTRY_IMPORT_OPTIONS } from "./centralRegistrySheets";
 import { dryRunRegistrySheet } from "./registryDryRun";
 import { planRegistryImport, type RegistryImportPlan } from "./registryImportPlan";
 
@@ -24,9 +24,9 @@ describe.skipIf(!HAS_FILES)("แผนนำเข้าทะเบียนส
   const plan: RegistryImportPlan = HAS_FILES
     ? planRegistryImport(
         central.sheets.map((s) => ({ sheet: s.sheet, branch: s.branch, grid: s.grid })),
-        { rules: TIER_RULES, month: OCT, sellerIndex },
+        { rules: TIER_RULES, month: OCT, sellerIndex, importBatch: REGISTRY_IMPORT_BATCH_OCT26 },
       )
-    : { month: OCT, branches: [], totals: { contracts: 0, held: 0, mustFix: 0 } };
+    : { month: OCT, importBatch: REGISTRY_IMPORT_BATCH_OCT26, branches: [], totals: { contracts: 0, held: 0, mustFix: 0 } };
 
   it("ทุกสาขา: แผน = dry-run strict (จำนวน · แถวกรอกมือ · แถวที่กันไว้ · ยอด OCT.26 · ผู้ขาย)", () => {
     expect(plan.branches).toHaveLength(24);
@@ -80,6 +80,13 @@ describe.skipIf(!HAS_FILES)("แผนนำเข้าทะเบียนส
     expect(all.filter((c) => c.saleType === "renew").length).toBe(840);
     expect(all.filter((c) => c.saleType === null).length).toBe(585);
     expect(all.filter((c) => c.teamCodes.length > 0).length).toBe(2365);
+    // เบอร์โทร (phones.ts · ผิดรูป = ไม่เก็บ) — ทุกชีทมีคอลัมน์เบอร์ (ปากช่องหัว "เบอร์ติดต่อ")
+    const ph = (k: "rowsWithPhones" | "phones" | "emptyRows" | "invalidRows" | "labelTooLong") => plan.branches.reduce((n, b) => n + b.phones[k], 0);
+    expect(plan.branches.every((b) => b.phones.hasPhoneColumn)).toBe(true);
+    // สถานะ (เจ้าของ 19 พ.ย.): หมดก่อน ต.ค. มีสัญญาเดียว = พระราม 2 แถว 6 → expired_pending_collection
+    const expired = plan.branches.flatMap((b) => b.contracts.filter((c) => c.status === "expired_pending_collection").map((c) => `${b.branch}:${c.excelRow}`));
+    expect(expired).toEqual(["พระราม 2:6"]);
+    expect([ph("rowsWithPhones"), ph("phones"), ph("emptyRows"), ph("invalidRows"), ph("labelTooLong")]).toEqual([2273, 2278, 54, 42, 0]);
     expect(plan.branches.reduce((n, b) => n + b.expected.cust, 0)).toBe(CUST_OCT_TOTAL);
     expect(plan.branches.reduce((n, b) => n + Math.round(b.expected.value * 100), 0)).toBe(VALUE_OCT_TOTAL_CENTS);
   });

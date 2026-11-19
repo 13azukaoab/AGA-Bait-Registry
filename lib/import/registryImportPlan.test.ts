@@ -7,7 +7,7 @@ import { TIER_RULES } from "../rules/__fixtures__/tierRules";
 import { REGISTRY_IMPORT_OPTIONS } from "./centralRegistrySheets";
 import { DUPLICATE_ACROSS_BRANCH_REASON } from "./crossBranchDuplicates";
 import { dryRunRegistrySheet } from "./registryDryRun";
-import { planRegistryImport, type RegistrySheetInput } from "./registryImportPlan";
+import { importStatusOf, planRegistryImport, type RegistrySheetInput } from "./registryImportPlan";
 import type { CellValue } from "./registrySheet";
 import { buildSellerIndex } from "./sellerLookup";
 
@@ -26,8 +26,8 @@ function sheet(rows: CellValue[][]): CellValue[][] {
 
 // สาขา ก (สาทร): 1 ปี · 3 ปี · ช่วงวันที่ข้อความ (ก1) · ประเภทว่าง (ข3) · เลขซ้ำข้ามสาขา (ง1) · เลขผิดรูปมีมูลค่า (ค1) · วันสิ้นสุดผิด (กรอกมือ) · หมดก่อน ต.ค.
 const SATHORN = sheet([
-  [1, "ลูกค้าสมมติ 1", "", "CT26-0000001", "", 4, serial("2026-01-15"), serial("2027-01-14"), 15000, null, "H", true, false, "A"],
-  [2, "ลูกค้าสมมติ 2", "", "CT25-0000002", "", 4, serial("2025-06-01"), serial("2028-05-31"), null, 150000, "T", false, true, "B,C"],
+  [1, "ลูกค้าสมมติ 1", "", "CT26-0000001", "081-000-0001 คุณสมมติ", 4, serial("2026-01-15"), serial("2027-01-14"), 15000, null, "H", true, false, "A"],
+  [2, "ลูกค้าสมมติ 2", "", "CT25-0000002", "12345", 4, serial("2025-06-01"), serial("2028-05-31"), null, 150000, "T", false, true, "B,C"],
   [3, "ลูกค้าสมมติ 3", "", "CT26-0000003", "", "01/03/2026-28/02/2027", null, null, 60000, null, "", true, false, "A"],
   [4, "ลูกค้าสมมติ 4", "", "CT26-0000099", "", 4, serial("2026-02-01"), serial("2027-01-31"), 20000, null, "H", true, false, "A"],
   [5, "ลูกค้าสมมติ 5", "", "CT26-00006", "", 4, serial("2026-02-01"), serial("2027-01-31"), 20000, null, "H", true, false, "A"],
@@ -58,9 +58,10 @@ const INPUT: RegistrySheetInput[] = [
   { sheet: "ปทุมวัน", branch: "ปทุมวัน", grid: PATHUMWAN },
 ];
 const MONTH = "2026-10";
+const BATCH = "registry-TEST";
 
 describe("planRegistryImport", () => {
-  const plan = planRegistryImport(INPUT, { rules: TIER_RULES, month: MONTH, sellerIndex: SELLERS });
+  const plan = planRegistryImport(INPUT, { rules: TIER_RULES, month: MONTH, sellerIndex: SELLERS, importBatch: BATCH });
   const sathorn = plan.branches.find((b) => b.branch === "สาทร")!;
   const pathumwan = plan.branches.find((b) => b.branch === "ปทุมวัน")!;
 
@@ -80,6 +81,7 @@ describe("planRegistryImport", () => {
       expect(b.mustFixRows, input.branch).toEqual(dry.strictProblems.map((p) => p.excelRow).sort((x, y) => x - y));
       expect(b.expected, input.branch).toEqual(dry.snapshots[MONTH]!.strict);
       expect(b.sellers, input.branch).toEqual({ saleName: dry.sellers!.saleName, amName: dry.sellers!.amName });
+      expect(b.phones, input.branch).toEqual(dry.phones);
     }
   });
 
@@ -105,7 +107,13 @@ describe("planRegistryImport", () => {
     expect(c3).toMatchObject({ startDate: "2026-03-01", endDate: "2027-02-28", customerTypeLabel: "อื่นๆ (ระบุในหมายเหตุ)" });
     expect(c7).toMatchObject({ saleType: null, customerTypeLabel: "คอนโด / อพาร์ตเมนต์ / หอพัก" });
     expect(c8).toMatchObject({ termMonths: 5, teamCodes: [] });
+    // สถานะ: หมดก่อน ต.ค. (2024) = หมดอายุ รอเก็บสถานี · จบกลาง ต.ค. (5 เดือน 14 ต.ค.) ยัง active
+    expect(c7).toMatchObject({ status: "expired_pending_collection" });
+    expect([c1, c2, c3, c8].map((c) => c!.status)).toEqual(["active", "active", "active", "active"]);
     expect(pathumwan.contracts[0]).toMatchObject({ customerTypeLabel: "ออฟฟิต" });
+    expect(c1!.phones).toEqual([{ phone: "0810000001", label: "คุณสมมติ" }]);
+    expect(c2!.phones).toEqual([]);
+    expect(sathorn.phones).toEqual({ rows: 5, rowsWithPhones: 1, phones: 1, emptyRows: 3, invalidRows: 1, labelTooLong: 0, hasPhoneColumn: true });
   });
 
   it("ยอดที่คาดของเดือน: นับเฉพาะสัญญาที่ครอบคลุมเดือน (หมดก่อน ต.ค. ไม่นับ)", () => {
@@ -115,21 +123,36 @@ describe("planRegistryImport", () => {
   });
 
   it("ไม่มีชื่อลูกค้า/เบอร์ใน heldRows / mustFixRows / totals (PDPA)", () => {
-    const text = JSON.stringify({ h: plan.branches.map((b) => [b.heldRows, b.mustFixRows, b.expected]), t: plan.totals });
+    const text = JSON.stringify({ h: plan.branches.map((b) => [b.heldRows, b.mustFixRows, b.expected, b.phones]), t: plan.totals });
+    expect(text).not.toContain("081");
     expect(text).not.toContain("ลูกค้าสมมติ");
     expect(text).not.toContain("ผู้ขายสมมติ");
   });
 
   it("สาขาเดียวกันส่งมา 2 ครั้ง = หยุด", () => {
-    expect(() => planRegistryImport([INPUT[0]!, INPUT[0]!], { rules: TIER_RULES, month: MONTH })).toThrow(/ซ้ำ/);
+    expect(() => planRegistryImport([INPUT[0]!, INPUT[0]!], { rules: TIER_RULES, month: MONTH, importBatch: BATCH })).toThrow(/ซ้ำ/);
   });
 
   it("มูลค่าที่ทศนิยมเกิน 2 ตำแหน่ง = หยุด (ไม่ปัดเงียบ)", () => {
     const grid = sheet([[1, "ลูกค้าสมมติ", "", "CT26-0000001", "", 4, serial("2026-01-15"), serial("2027-01-14"), 15000.125, null, "H", true, false, "A"]]);
-    expect(() => planRegistryImport([{ sheet: "สาทร", branch: "สาทร", grid }], { rules: TIER_RULES, month: MONTH })).toThrow(/ทศนิยม/);
+    expect(() => planRegistryImport([{ sheet: "สาทร", branch: "สาทร", grid }], { rules: TIER_RULES, month: MONTH, importBatch: BATCH })).toThrow(/ทศนิยม/);
+  });
+
+  it("importBatch ติดไปกับแผน · ว่าง/มีช่องว่างหัวท้าย = หยุด", () => {
+    expect(plan.importBatch).toBe(BATCH);
+    expect(() => planRegistryImport(INPUT, { rules: TIER_RULES, month: MONTH, importBatch: "" })).toThrow(/importBatch/);
+    expect(() => planRegistryImport(INPUT, { rules: TIER_RULES, month: MONTH, importBatch: " x" })).toThrow(/importBatch/);
   });
 
   it("เดือนผิดรูป = หยุด", () => {
-    expect(() => planRegistryImport(INPUT, { rules: TIER_RULES, month: "OCT.26" })).toThrow();
+    expect(() => planRegistryImport(INPUT, { rules: TIER_RULES, month: "OCT.26", importBatch: BATCH })).toThrow();
+  });
+});
+
+describe("importStatusOf", () => {
+  it("วันสิ้นสุดก่อนวันแรกของเดือนที่นำเข้า = expired_pending_collection · วันแรกพอดี/หลังจากนั้น = active", () => {
+    expect(importStatusOf("2026-09-30", "2026-10")).toBe("expired_pending_collection");
+    expect(importStatusOf("2026-10-01", "2026-10")).toBe("active");
+    expect(importStatusOf("2026-10-14", "2026-10")).toBe("active");
   });
 });

@@ -24,6 +24,12 @@ export const REGISTRY_IMPORT_OPTIONS = {
   flagMalformedContractWithValue: true,
 } as const;
 
+/**
+ * ค่า contracts.import_batch ของสัญญาที่นำเข้าจากทะเบียน OCT.26 (DECISIONS 2.86 · migration M41 ของ BE)
+ * ใช้แยกสัญญานำเข้าออกจากสัญญาที่เปิดในแอป (เช่น ไม่ขึ้นรายการ Renew ไม่ผูกสัญญาเก่า · M28b)
+ */
+export const REGISTRY_IMPORT_BATCH_OCT26 = "registry-OCT26";
+
 /** ชีทที่ตั้งใจข้าม */
 export interface SkipSheet {
   skip: string;
