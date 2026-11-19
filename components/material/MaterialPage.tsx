@@ -198,14 +198,38 @@ function WorkCards({ view }: { view: MaterialView }) {
   );
 }
 
+function CompareChart({ view }: { view: MaterialView }) {
+  const { work, customer } = view;
+  const rows = [
+    { key: "routine", label: "บริการประจำเดือน", m: work.routine },
+    { key: "problem", label: "แก้ไขปัญหา", m: work.problem },
+    { key: "new", label: "ลูกค้า New", m: customer.new },
+    { key: "renew", label: "ลูกค้า Renew", m: customer.renew },
+  ];
+  const max = Math.max(...rows.map((r) => r.m.outsideG + r.m.insideG + r.m.powderG), 1);
+  return (
+    <section className={CARD} aria-labelledby="mat-compare">
+      <h2 id="mat-compare" className="m-0 text-base font-bold">กราฟเปรียบเทียบ</h2>
+      <p className="mt-1 mb-3 text-[13px] text-fg-muted">วัสดุที่ใช้ แยกเป็น 4 กลุ่ม (ตัวเลขละเอียดดูในตารางด้านล่าง)</p>
+      <div className="grid gap-3">
+        <BarLegend />
+        {rows.map((r) => (
+          <Bar key={r.key} label={r.label} m={r.m} max={max} />
+        ))}
+      </div>
+      <p className="mt-3 mb-0 text-xs text-fg-muted">
+        New/Renew กับประเภทงานเป็นคนละมุม ตัวเลขจึงทับกัน รวมกันไม่ได้
+      </p>
+    </section>
+  );
+}
+
 function WorkSection({ view }: { view: MaterialView }) {
   const { work, workPrev } = view;
   const routine: UsageRow = { key: "routine", label: "บริการประจำเดือน", now: work.routine, prev: workPrev.routine };
   const makeup: UsageRow = { key: "makeup", label: "└ ชดเชย (ตกบริการเดือนก่อน)", sub: true, now: work.makeup, prev: workPrev.makeup };
   const problem: UsageRow = { key: "problem", label: "แก้ไขปัญหา (รวมเหยื่อติดตั้ง AG)", now: work.problem, prev: workPrev.problem };
   const rows = [routine, makeup, problem];
-  const bars = [routine, problem];
-  const max = Math.max(...bars.map((r) => r.now.outsideG + r.now.insideG + r.now.powderG), 1);
   return (
     <section className={CARD} aria-labelledby="mat-work">
       <h2 id="mat-work" className="m-0 text-base font-bold">มุมมอง 1 · ตามประเภทงาน</h2>
@@ -213,12 +237,6 @@ function WorkSection({ view }: { view: MaterialView }) {
         บริการประจำเดือน = การเข้ารอบ (รวมชดเชย) · แก้ไขปัญหา = เข้าแก้ปัญหา/ติดตามผล รวมเหยื่อที่ติดตั้งกล่อง AG
       </p>
       <UsageTable caption="การใช้วัสดุแยกตามประเภทงาน" rows={rows} total={work.all} totalLabel="รวมทุกประเภทงาน" />
-      <div className="mt-4 grid gap-3">
-        <BarLegend />
-        {bars.map((r) => (
-          <Bar key={r.key} label={r.label} m={r.now} max={max} />
-        ))}
-      </div>
     </section>
   );
 }
@@ -232,18 +250,11 @@ function CustomerSection({ view }: { view: MaterialView }) {
   if (customer.unknown.visits > 0) {
     rows.push({ key: "unknown", label: "ไม่ระบุประเภท", now: customer.unknown, prev: customerPrev.unknown });
   }
-  const max = Math.max(...rows.map((r) => r.now.outsideG + r.now.insideG + r.now.powderG), 1);
   return (
     <section className={CARD} aria-labelledby="mat-cust">
       <h2 id="mat-cust" className="m-0 text-base font-bold">มุมมอง 2 · ตามประเภทลูกค้า (New / Renew)</h2>
       <p className="mt-1 mb-3 text-[13px] text-fg-muted">วัสดุทั้งหมดที่ใช้กับลูกค้ากลุ่มนั้น (ทั้งรอบประจำเดือนและแก้ปัญหา)</p>
       <UsageTable caption="การใช้วัสดุแยกตามประเภทลูกค้า" rows={rows} total={customer.all} totalLabel="รวมทุกกลุ่มลูกค้า" />
-      <div className="mt-4 grid gap-3">
-        <BarLegend />
-        {rows.map((r) => (
-          <Bar key={r.key} label={r.label} m={r.now} max={max} />
-        ))}
-      </div>
     </section>
   );
 }
@@ -334,6 +345,7 @@ function MaterialTabContent({ data, view }: { data: MaterialPageData; view: Mate
         (เพิ่มหลังเปิดใช้งาน) จึงยังไม่รวมในตัวเลข ยกเว้นเหยื่อติดตั้ง AG ที่บันทึกตอนติดตั้งแล้ว · เทียบกับ {monthLabel(data.prevMonth)}
       </Alert>
       <WorkCards view={view} />
+      <CompareChart view={view} />
       <WorkSection view={view} />
       <CustomerSection view={view} />
       <BranchTable view={view} />
