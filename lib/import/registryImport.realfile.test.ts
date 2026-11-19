@@ -10,7 +10,7 @@ import { join, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { TIER_RULES } from "../rules/__fixtures__/tierRules";
 import { JOB_OPENING_FILES, hasAllCentralFiles, loadCentralRegistry, loadSellerIndex } from "./centralRegistryFiles";
-import { REGISTRY_IMPORT_OPTIONS } from "./centralRegistrySheets";
+import { REGISTRY_IMPORT_BATCH_OCT26, REGISTRY_IMPORT_OPTIONS } from "./centralRegistrySheets";
 import { dryRunRegistrySheet } from "./registryDryRun";
 import { planRegistryImport, type RegistryImportPlan } from "./registryImportPlan";
 
@@ -24,9 +24,9 @@ describe.skipIf(!HAS_FILES)("แผนนำเข้าทะเบียนส
   const plan: RegistryImportPlan = HAS_FILES
     ? planRegistryImport(
         central.sheets.map((s) => ({ sheet: s.sheet, branch: s.branch, grid: s.grid })),
-        { rules: TIER_RULES, month: OCT, sellerIndex },
+        { rules: TIER_RULES, month: OCT, sellerIndex, importBatch: REGISTRY_IMPORT_BATCH_OCT26 },
       )
-    : { month: OCT, branches: [], totals: { contracts: 0, held: 0, mustFix: 0 } };
+    : { month: OCT, importBatch: REGISTRY_IMPORT_BATCH_OCT26, branches: [], totals: { contracts: 0, held: 0, mustFix: 0 } };
 
   it("ทุกสาขา: แผน = dry-run strict (จำนวน · แถวกรอกมือ · แถวที่กันไว้ · ยอด OCT.26 · ผู้ขาย)", () => {
     expect(plan.branches).toHaveLength(24);

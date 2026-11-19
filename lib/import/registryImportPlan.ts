@@ -44,6 +44,8 @@ export interface PlanOptions {
   month: string;
   /** ดัชนีผู้ขายจากไฟล์เปิดงาน · ไม่ส่ง = ผู้ขายว่างทุกแถว */
   sellerIndex?: SellerIndex;
+  /** ค่า contracts.import_batch ของทุกสัญญาในรอบนี้ (เช่น REGISTRY_IMPORT_BATCH_OCT26) */
+  importBatch: string;
 }
 
 /** 1 แถวที่จะเขียน (ลูกค้า 1 ราย + สัญญา 1 ฉบับ + ทีม) — ⚠ มีชื่อลูกค้า/ผู้ขาย */
@@ -99,6 +101,8 @@ export interface PlannedBranch {
 
 export interface RegistryImportPlan {
   month: string;
+  /** ค่า contracts.import_batch ที่จะเขียน (DECISIONS 2.86) */
+  importBatch: string;
   branches: PlannedBranch[];
   totals: { contracts: number; held: number; mustFix: number };
 }
@@ -124,6 +128,9 @@ function assertCents(value: number, excelRow: number, branch: string): void {
 /** สร้างแผนนำเข้าจากชีททั้งหมด (ดู Logic summary หัวไฟล์) */
 export function planRegistryImport(sheets: RegistrySheetInput[], opts: PlanOptions): RegistryImportPlan {
   if (!MONTH_RE.test(opts.month)) throw new Error(`แผนนำเข้า: เดือน "${opts.month}" ต้องเป็น YYYY-MM`);
+  if (!opts.importBatch || opts.importBatch.trim() !== opts.importBatch) {
+    throw new Error("แผนนำเข้า: ต้องระบุ importBatch (ไม่มีช่องว่างหัวท้าย)");
+  }
   const seenBranch = new Set<string>();
   for (const s of sheets) {
     if (seenBranch.has(s.branch)) throw new Error(`แผนนำเข้า: สาขา "${s.branch}" ส่งมาซ้ำ`);
@@ -204,6 +211,7 @@ export function planRegistryImport(sheets: RegistrySheetInput[], opts: PlanOptio
 
   return {
     month: opts.month,
+    importBatch: opts.importBatch,
     branches,
     totals: {
       contracts: branches.reduce((n, b) => n + b.contracts.length, 0),

@@ -58,9 +58,10 @@ const INPUT: RegistrySheetInput[] = [
   { sheet: "ปทุมวัน", branch: "ปทุมวัน", grid: PATHUMWAN },
 ];
 const MONTH = "2026-10";
+const BATCH = "registry-TEST";
 
 describe("planRegistryImport", () => {
-  const plan = planRegistryImport(INPUT, { rules: TIER_RULES, month: MONTH, sellerIndex: SELLERS });
+  const plan = planRegistryImport(INPUT, { rules: TIER_RULES, month: MONTH, sellerIndex: SELLERS, importBatch: BATCH });
   const sathorn = plan.branches.find((b) => b.branch === "สาทร")!;
   const pathumwan = plan.branches.find((b) => b.branch === "ปทุมวัน")!;
 
@@ -129,16 +130,22 @@ describe("planRegistryImport", () => {
   });
 
   it("สาขาเดียวกันส่งมา 2 ครั้ง = หยุด", () => {
-    expect(() => planRegistryImport([INPUT[0]!, INPUT[0]!], { rules: TIER_RULES, month: MONTH })).toThrow(/ซ้ำ/);
+    expect(() => planRegistryImport([INPUT[0]!, INPUT[0]!], { rules: TIER_RULES, month: MONTH, importBatch: BATCH })).toThrow(/ซ้ำ/);
   });
 
   it("มูลค่าที่ทศนิยมเกิน 2 ตำแหน่ง = หยุด (ไม่ปัดเงียบ)", () => {
     const grid = sheet([[1, "ลูกค้าสมมติ", "", "CT26-0000001", "", 4, serial("2026-01-15"), serial("2027-01-14"), 15000.125, null, "H", true, false, "A"]]);
-    expect(() => planRegistryImport([{ sheet: "สาทร", branch: "สาทร", grid }], { rules: TIER_RULES, month: MONTH })).toThrow(/ทศนิยม/);
+    expect(() => planRegistryImport([{ sheet: "สาทร", branch: "สาทร", grid }], { rules: TIER_RULES, month: MONTH, importBatch: BATCH })).toThrow(/ทศนิยม/);
+  });
+
+  it("importBatch ติดไปกับแผน · ว่าง/มีช่องว่างหัวท้าย = หยุด", () => {
+    expect(plan.importBatch).toBe(BATCH);
+    expect(() => planRegistryImport(INPUT, { rules: TIER_RULES, month: MONTH, importBatch: "" })).toThrow(/importBatch/);
+    expect(() => planRegistryImport(INPUT, { rules: TIER_RULES, month: MONTH, importBatch: " x" })).toThrow(/importBatch/);
   });
 
   it("เดือนผิดรูป = หยุด", () => {
-    expect(() => planRegistryImport(INPUT, { rules: TIER_RULES, month: "OCT.26" })).toThrow();
+    expect(() => planRegistryImport(INPUT, { rules: TIER_RULES, month: "OCT.26", importBatch: BATCH })).toThrow();
   });
 });
 

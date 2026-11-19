@@ -34,7 +34,7 @@ const PLAN: RegistryImportPlan = planRegistryImport(
       grid: sheet([[1, "ลูกค้าสมมติ 4", "", "CT26-0000004", "089-000-0004", 4, serial("2026-07-01"), serial("2027-06-30"), 45000, null, "H", true, false, "A"]]),
     },
   ],
-  { rules: TIER_RULES, month: "2026-10" },
+  { rules: TIER_RULES, month: "2026-10", importBatch: "registry-TEST" },
 );
 
 interface FakeInit {
@@ -169,6 +169,7 @@ describe("importRegistryPlan", () => {
       ["b-sathorn", "house"], ["b-sathorn", "townhome"], ["b-sathorn", "condo"], ["b-pathum", "house"],
     ]);
     const c1 = f.db.contracts!.find((c) => c.contract_no === "CT26-0000001")!;
+    expect(f.db.contracts!.every((c) => c.import_batch === "registry-TEST")).toBe(true);
     expect(c1).toMatchObject({ value_total: "15000.50", term_months: 12, sale_type: "new", start_date: "2026-01-15", end_date: "2027-01-14", is_urgent: false });
     expect(f.db.contracts!.find((c) => c.contract_no === "CT26-0000003")).toMatchObject({ term_months: 5, sale_type: null, status: "active" });
     // ทีม A ของสาทร = ทีมประจำสาขา · ปทุมวันไม่มีทีมประจำ → ทีมกลาง
@@ -256,6 +257,14 @@ describe("verifyRegistryImport", () => {
     const v = await verifyRegistryImport(f.client, PLAN);
     expect(v.ok).toBe(false);
     expect(v.branches[0]!.mismatches).toEqual(["vS", "value"]);
+  });
+
+  it("สัญญาใน DB ไม่มี import_batch ตามแผน → ไม่ผ่าน", async () => {
+    const f = fakeClient();
+    await importRegistryPlan(f.client, PLAN, { newId: f.newId });
+    f.db.contracts!.find((c) => c.contract_no === "CT26-0000004")!.import_batch = null;
+    const v = await verifyRegistryImport(f.client, PLAN);
+    expect(v.branches.map((b) => b.mismatches)).toEqual([[], ["import_batch"]]);
   });
 
   it("เบอร์ใน DB ไม่ครบตามแผน → ไม่ผ่าน", async () => {

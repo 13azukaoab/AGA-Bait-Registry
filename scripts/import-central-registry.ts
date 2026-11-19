@@ -25,6 +25,7 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 import { loadCentralRegistry, loadSellerIndex, hasAllCentralFiles } from "../lib/import/centralRegistryFiles";
 import { importRegistryPlan, safeDbError, verifyRegistryImport } from "../lib/import/registryDbImport";
+import { REGISTRY_IMPORT_BATCH_OCT26 } from "../lib/import/centralRegistrySheets";
 import { planRegistryImport } from "../lib/import/registryImportPlan";
 import { TIER_RULE_COLUMNS, toTierRules, type TierRuleRow } from "../lib/tierRules";
 
@@ -63,7 +64,7 @@ async function main(): Promise<void> {
   const central = loadCentralRegistry(dir);
   const plan = planRegistryImport(
     central.sheets.map((s) => ({ sheet: s.sheet, branch: s.branch, grid: s.grid })),
-    { rules: await readTierRules(client), month: MONTH, sellerIndex: loadSellerIndex(dir) },
+    { rules: await readTierRules(client), month: MONTH, sellerIndex: loadSellerIndex(dir), importBatch: REGISTRY_IMPORT_BATCH_OCT26 },
   );
 
   const summary: Record<string, unknown> = {
