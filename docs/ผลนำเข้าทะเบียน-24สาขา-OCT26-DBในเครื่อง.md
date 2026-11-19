@@ -188,11 +188,22 @@ npx vite-node --config vitest.config.ts scripts/import-central-registry.ts -- --
 - ข้อความต่อท้ายเบอร์ในทะเบียนเป็นของเบอร์นั้นๆ → **เก็บใน `customer_phones.label`** (ค่าที่ทำไว้แล้ว · หน้าจอแสดงได้ทันที · ≤ 40 ตัว ไม่มีแถวยาวเกิน) · ไม่แยกชื่อคน/หน้าที่เอง ใส่ข้อความตามไฟล์
 - `customers.contact_name` **ปล่อยว่าง** — ✅ **เจ้าของตัดสินแล้ว (19 พ.ย. 2026 ผ่านหมวด 4): แบบ ก** ชื่อผู้ติดต่อเก็บใน `customer_phones.label` คู่เบอร์อย่างเดียว · `contact_name` ว่าง (ไม่ต้องแก้โค้ด)
 
-## 16. ช่อง `import_batch` (DECISIONS 2.86 · รอ migration M41 ของ BE)
+## 16. ช่อง `import_batch` (DECISIONS 2.86 · M41 · รันกับ DB แล้ว หัวข้อ 17)
 - ทุกสัญญาที่นำเข้าจากทะเบียนเขียน `contracts.import_batch = 'registry-OCT26'` (`REGISTRY_IMPORT_BATCH_OCT26` ใน `centralRegistrySheets.ts` · แผนบังคับต้องระบุค่า)
 - อ่านกลับเทียบช่องนี้ · ตรวจยอดเช็กว่าทุกสัญญาของสาขามีค่านี้ (ไม่ตรง = `import_batch` ใน mismatches)
 - **ยังไม่ได้รันกับ DB** — คอลัมน์ยังไม่มีใน schema จนกว่า M41 รวมเข้า main · ถ้ารันก่อนจะได้ error จาก PostgREST (ไม่มีคอลัมน์) และไม่มีอะไรถูกเขียน (ด่านแรกคือ insert customers ซึ่งผ่าน แต่ contracts ล้ม → ลบคืนอัตโนมัติ) — อย่ารันจนกว่า HQ ส่ง "ได้"
 - เมื่อได้คิว: rebase บน main → db reset → legacy → `--apply` → SQL ตรวจว่า 2,369 สัญญามี `import_batch = 'registry-OCT26'` และ `list_unlinked_renewals` ไม่คืนสัญญานำเข้า
+
+## 17. ผลรันกับ DB ในเครื่อง รอบสุดท้าย (19 พ.ย. 2026 · ได้คิวจาก HQ · มี M41)
+1. rebase บน `main` d12c437 (migration ถึง 20261115290000 = M41 `import_batch`) → `db reset` → legacy 903 แถว
+2. `--apply`: customers 2,369 · customer_phones 2,278 · contracts 2,369 · contract_teams 2,369 → อ่านกลับทุกช่อง (รวม `import_batch`, `status`) ตรง
+3. ตรวจยอด: OCT.26 จาก DB = แผน **ทุกสาขาทุกช่อง** 2,366 / 132,947,645.82 (ไม่เปลี่ยนจากรอบก่อน)
+4. SQL อ่านอย่างเดียว:
+   - `import_batch = 'registry-OCT26'` **2,369 / 2,369** (NULL 0)
+   - Renew ที่ไม่ผูกสัญญาเก่า 840 สัญญา → ใช้เงื่อนไขเดียวกับ `list_unlinked_renewals` (เพิ่ม `import_batch IS NULL`) ได้ **0** · ตรวจเนื้อ function ใน DB ว่ามีเงื่อนไขนี้จริง
+   - ⚠ ไม่ได้เรียก `list_unlinked_renewals` ด้วยผู้ใช้ host จริง (DB หลัง reset ไม่มีผู้ใช้) — ตรวจด้วยเงื่อนไขเดียวกัน + เนื้อ function
+   - status: active 2,368 · expired_pending_collection 1 · legacy 903 ไม่ถูกแตะ
+5. `db reset` คืน DB สะอาด · แจ้ง HQ + หมวด 4 แล้ว
 
 ## 11. ไฟล์ที่แตะ
 - ใหม่: `lib/import/phones.ts` (+ test) · `lib/import/registryImportPlan.ts` (+ test) · `lib/import/registryDbImport.ts` (+ test) · `lib/import/centralRegistryFiles.ts` · `lib/import/centralRegistryCorrections.ts` (+ test) · `lib/import/registryImport.realfile.test.ts` · `scripts/import-central-registry.ts` · เอกสารนี้
