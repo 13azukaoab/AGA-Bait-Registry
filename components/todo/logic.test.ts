@@ -150,6 +150,27 @@ describe("ลูกค้ารอเก็บสถานี", () => {
     expect(isContractEnded({ status: "active", endDate: "2026-11-16" }, today)).toBe(true);
     expect(isContractEnded({ status: "expired_pending_collection", endDate: "2027-01-01" }, today)).toBe(true);
   });
+  it("paused (พัก · M29): ไม่นับว่าจบ ทั้งที่ยังไม่หมดอายุและที่เลยวันสิ้นสุดแล้ว (DB กันเก็บ CP010)", () => {
+    expect(isContractEnded({ status: "paused", endDate: "2026-12-31" }, today)).toBe(false);
+    expect(isContractEnded({ status: "paused", endDate: "2026-01-31" }, today)).toBe(false);
+  });
+  it("closed / cancelled = จบ ไม่ว่าวันสิ้นสุดอยู่ที่ไหน · active หมดอายุ = จบ · active วันสุดท้ายวันนี้ = ยังไม่จบ", () => {
+    expect(isContractEnded({ status: "closed", endDate: "2027-12-31" }, today)).toBe(true);
+    expect(isContractEnded({ status: "cancelled", endDate: "2027-12-31" }, today)).toBe(true);
+    expect(isContractEnded({ status: "active", endDate: "2026-11-16" }, today)).toBe(true);
+    expect(isContractEnded({ status: "active", endDate: today }, today)).toBe(false);
+  });
+  it("summarizeCollect ไม่นับ IG ของสัญญาพัก (ไม่โผล่ในยอด/รายการรอเก็บ)", () => {
+    const s = summarizeCollect(
+      [
+        { customerId: "p", remaining: 6, status: "paused", endDate: "2026-12-31" },
+        { customerId: "q", remaining: 4, status: "paused", endDate: "2026-01-31" },
+        { customerId: "r", remaining: 2, status: "expired_pending_collection", endDate: "2026-09-30" },
+      ],
+      today,
+    );
+    expect(s).toEqual({ customers: 1, stations: 2 });
+  });
   it("นับลูกค้าไม่ซ้ำ + IG ค้าง เฉพาะสัญญาที่จบแล้วและมีค้าง", () => {
     const s = summarizeCollect(
       [
