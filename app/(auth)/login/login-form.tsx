@@ -48,7 +48,7 @@ export function LoginForm({ next }: { next: string }) {
           name="username"
           type="text"
           className={inputClass}
-          placeholder="เช่น somsri.k"
+          placeholder="เช่น ag-01234"
           autoComplete="username"
           autoCapitalize="none"
           spellCheck={false}

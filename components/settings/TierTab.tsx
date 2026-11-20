@@ -146,7 +146,7 @@ export function TierTab({ data, onToast }: { data: SettingsData; onToast: (m: st
 
       <div className="grid grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)] gap-4 max-[900px]:grid-cols-1">
         <div className="flex flex-col gap-4">
-          <Card title="เกณฑ์แบ่ง Tier" sub="มูลค่าต่อปี = มูลค่าสัญญา ÷ จำนวนปี">
+          <Card title="เกณฑ์แบ่ง Tier" sub="มูลค่าต่อปี = มูลค่าสัญญา ÷ (จำนวนเดือน ÷ 12) · สัญญาสั้นกว่า 12 เดือนใช้มูลค่าจริง">
             <p className="m-0 px-4 pb-1.5 pt-3 text-[13px] text-fg-muted">
               แก้เฉพาะ <b className="text-fg">จุดเริ่มของ M, L, XL</b> — ปลายช่วงของ Tier ก่อนหน้าระบบคำนวณให้
               (จุดเริ่มถัดไป − 0.01) จึงไม่มีช่องว่างหรือช่วงทับกัน
