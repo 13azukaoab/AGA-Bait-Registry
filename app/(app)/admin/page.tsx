@@ -1,12 +1,13 @@
-import { ScreenStub } from "@/components/ScreenStub";
+/*
+ * /admin ไม่มีหน้าของตัวเอง — ส่งไปเมนูแรกของกลุ่ม "ดูแลระบบ" ที่ตำแหน่งผู้ใช้เข้าได้
+ * (ตรรกะเลือกปลายทางอยู่ใน components/admin/adminLanding.ts · ไม่มีเมนูที่เข้าได้ → หน้าแรกของตำแหน่ง)
+ */
+import { redirect } from "next/navigation";
 
-// SPEC §8 จอ 8/10/11/12 — งานฝั่ง Host: ปิดเดือน · Dashboard Sync · จัดการผู้ใช้ · ตั้งค่า
-export default function AdminPage() {
-  return (
-    <ScreenStub
-      no={8}
-      title="ผู้ดูแลระบบ (Host)"
-      note="ปิดเดือน (จอ 8) · Dashboard Sync + Export สำรอง (จอ 10) · จัดการผู้ใช้ (จอ 11) · ตั้งค่าเกณฑ์ Tier/ประเภท/ทีม (จอ 12)"
-    />
-  );
+import { adminLandingPath } from "@/components/admin/adminLanding";
+import { requireProfile } from "@/lib/auth/session";
+
+export default async function AdminPage() {
+  const profile = await requireProfile();
+  redirect(adminLandingPath(profile.role));
 }

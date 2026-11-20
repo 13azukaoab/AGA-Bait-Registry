@@ -175,7 +175,7 @@ export function validateCreate(
   const errors: FieldErrors = {};
   const username = normalizeUsername(d.username);
   if (!isValidUsername(username)) {
-    errors.username = "รหัสพนักงานต้องเป็นตัวอักษร/ตัวเลข (a-z 0-9 . _ -) ยาว 3–20 ตัว เช่น AG-01234";
+    errors.username = "รหัสพนักงานต้องเป็นตัวอักษร/ตัวเลข (a-z 0-9 . _ -) ยาว 3–20 ตัว เช่น ag-01234";
   } else if (existingUsernames.some((x) => x.toLowerCase() === username)) {
     errors.username = "รหัสพนักงานนี้มีบัญชีแล้ว";
   }
