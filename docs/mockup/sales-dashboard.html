@@ -172,7 +172,7 @@ td small{display:block;color:var(--fg-muted);font-size:12px;line-height:1.3}
   <div class="spacer"></div>
   <div class="tools">
     <div class="seg" role="group" aria-label="เลือกแบบ">
-      <a id="va" href="?v=a">แบบ A</a><a id="vb" href="?v=b">แบบ B</a>
+      <a id="va" href="?v=a">แบบ A</a><a id="vb" href="?v=b">แบบ B</a><a id="vc" href="?v=c">แบบ A+B</a>
     </div>
     <div class="seg" role="group" aria-label="โหมดสี">
       <button id="tl" type="button">สว่าง</button><button id="td" type="button">มืด</button>
@@ -214,7 +214,7 @@ DATA.sort(function(a,b){return a.mail<b.mail?1:-1});
 
 /* ---------- ตัวช่วย ---------- */
 var $=function(s){return document.querySelector(s)};
-var Q=new URLSearchParams(location.search), V=Q.get("v")==="b"?"b":"a", DARK=Q.get("theme")==="dark";
+var Q=new URLSearchParams(location.search), V=["a","b","c"].indexOf(Q.get("v"))>=0?Q.get("v"):"a", DARK=Q.get("theme")==="dark";
 var fmt=function(n){return n.toLocaleString("th-TH")};
 var fmtM=function(n){return n>=1e6?(n/1e6).toFixed(2)+" ล้าน":fmt(n)};
 var esc=function(s){return String(s).replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]})};
@@ -309,6 +309,13 @@ function renderB(a){
    '<div class="card kpi"><div class="l">รวมทั้งหมด</div><div class="v">'+fmt(t.nN+t.rN)+' <small>ราย</small></div><div class="s">มูลค่า '+fmt(t.nV+t.rV)+' บาท</div></div></div>';
   h+='<div class="grid2"><div class="card"><h2>แนวโน้มรายเดือน</h2><p class="hint">จำนวนราย New กับ Renew</p><div class="legend"><span><i style="background:var(--new)"></i>New</span><span><i style="background:var(--renew)"></i>Renew</span></div><div class="chartbox" style="height:230px"><canvas id="chB1" role="img" aria-label="กราฟแท่งซ้อนรายเดือน"></canvas></div></div>'+
    '<div class="card"><h2>แยกตามเขต</h2><p class="hint">มูลค่า (ล้านบาท)</p><div class="legend"><span><i style="background:var(--new)"></i>New</span><span><i style="background:var(--renew)"></i>Renew</span></div><div class="chartbox" style="height:230px"><canvas id="chB2" role="img" aria-label="กราฟแท่งซ้อนแยกเขต"></canvas></div></div></div>';
+  if(V==="c"){
+    var nb=BR.filter(function(b){return(!S.zone||String(b[1])===S.zone)&&(!S.branch||b[0]===S.branch)}).length, mv0=S.metric==="v";
+    h+='<div class="card"><div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:flex-start"><div><h2>เทียบรายสาขา: New กับ Renew</h2><p class="hint">'+(mv0?"มูลค่า (บาท)":"จำนวนราย")+'</p></div>'+
+     '<div class="seg" role="group" aria-label="หน่วย"><button type="button" data-m="n" class="'+(mv0?"":"on")+'">จำนวนราย</button><button type="button" data-m="v" class="'+(mv0?"on":"")+'">มูลค่า</button></div></div>'+
+     '<div class="legend"><span><i style="background:var(--new)"></i>New</span><span><i style="background:var(--renew)"></i>Renew</span></div>'+
+     '<div class="chartbox" style="height:'+Math.max(180,nb*44+50)+'px"><canvas id="chA" role="img" aria-label="กราฟแท่งเทียบ New กับ Renew รายสาขา"></canvas></div></div>';
+  }
   var sellers=Object.entries(groupBy(a,function(c){return c.sale})).map(function(e){var s=sum(e[1]);return{name:e[0],s:s,tot:s.nV+s.rV,n:e[1].length,ams:[...new Set(e[1].map(function(c){return c.am}))]}}).sort(function(x,y){return y.tot-x.tot});
   var maxS=sellers.length?sellers[0].tot:1;
   var brsAgg=Object.entries(groupBy(a,function(c){return c.branch})).map(function(e){var s=sum(e[1]);return{name:e[0],zone:e[1][0].zone,s:s,tot:s.nV+s.rV}}).sort(function(x,y){return y.tot-x.tot});
@@ -333,14 +340,22 @@ function renderB(a){
     {label:"New",backgroundColor:c.new,data:zs.map(function(z){return sum(byZ[z]||[]).nV/1e6}),borderRadius:3},
     {label:"Renew",backgroundColor:c.renew,data:zs.map(function(z){return sum(byZ[z]||[]).rV/1e6}),borderRadius:3}]},
     options:{indexAxis:"y",responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{stacked:true,grid:{color:c.grid}},y:{stacked:true,grid:{display:false}}}}});
+  if(V==="c"){
+    var brs=BR.filter(function(b){return(!S.zone||String(b[1])===S.zone)&&(!S.branch||b[0]===S.branch)}), byB=groupBy(a,function(x){return x.branch}), mv=S.metric==="v";
+    document.querySelectorAll("[data-m]").forEach(function(b){b.onclick=function(){S.metric=b.dataset.m;render()}});
+    mkChart("chA",{type:"bar",data:{labels:brs.map(function(b){return b[0]}),datasets:[
+      {label:"New",backgroundColor:c.new,borderRadius:3,data:brs.map(function(b){var s=sum(byB[b[0]]||[]);return mv?s.nV:s.nN})},
+      {label:"Renew",backgroundColor:c.renew,borderRadius:3,data:brs.map(function(b){var s=sum(byB[b[0]]||[]);return mv?s.rV:s.rN})}]},
+      options:{indexAxis:"y",responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{color:c.grid},ticks:{callback:function(v){return mv&&v>=1e6?v/1e6+" ล้าน":v}}},y:{grid:{display:false}}}}});
+  }
   wireLinks();
 }
 
-function render(){killCharts();var a=rows();(V==="b"?renderB:renderA)(a)}
+function render(){killCharts();var a=rows();(V==="a"?renderA:renderB)(a)}
 function setTheme(d){DARK=d;document.documentElement.dataset.theme=d?"dark":"light";$("#tl").classList.toggle("on",!d);$("#td").classList.toggle("on",d);render()}
 $("#tl").onclick=function(){setTheme(false)};$("#td").onclick=function(){setTheme(true)};
-$("#va").classList.toggle("on",V==="a");$("#vb").classList.toggle("on",V==="b");
-["va","vb"].forEach(function(id){var a=$("#"+id);a.href=a.getAttribute("href")+(DARK?"&theme=dark":"")});
+$("#va").classList.toggle("on",V==="a");$("#vb").classList.toggle("on",V==="b");$("#vc").classList.toggle("on",V==="c");
+["va","vb","vc"].forEach(function(id){var a=$("#"+id);a.href=a.getAttribute("href")+(DARK?"&theme=dark":"")});
 document.documentElement.dataset.theme=DARK?"dark":"light";$("#tl").classList.toggle("on",!DARK);$("#td").classList.toggle("on",DARK);
 buildFilters();
 if(window.Chart)render();else window.addEventListener("load",render);
