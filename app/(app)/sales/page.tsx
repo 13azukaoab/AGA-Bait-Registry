@@ -3,8 +3,9 @@
  *
  * Logic summary:
  *   * เฉพาะ host + admin — ด่านที่ middleware (สิทธิ์ตามเมนูใน nav-items.ts) + ตรวจซ้ำที่นี่ (recorder/viewer เด้งกลับหน้าแรกของตน)
- *     และขอบเขตข้อมูลจริงบังคับด้วย RLS (host เห็นทุกสาขา · admin เห็นตามสาขาของตน)
- *   * server โหลดสัญญา New/Renew 12 เดือนล่าสุด (ตามวันที่รับ Mail) ด้วย Supabase client ของผู้ใช้จริง (ไม่ใช้ service role)
+ *     RLS ให้ host/admin/recorder อ่านสัญญาได้ทุกสาขาโดยตั้งใจ (M21 · ขอบเขตสาขาของ admin ใช้กับ "การแก้ไข" เท่านั้น)
+ *     จึงหน้านี้ host และ admin เห็นข้อมูลทุกสาขาเหมือนกัน
+ *   * server โหลดสัญญา New/Renew 12 เดือนล่าสุด (เฉพาะที่มีวันที่รับ Mail · แถวที่ไม่มีวันที่แค่นับจำนวน) ด้วย Supabase client ของผู้ใช้จริง (ไม่ใช้ service role)
  *     แล้วส่งให้ SalesDashboardClient กรอง/รวมยอดฝั่ง client · ต่อสัญญาล่าช้าคำนวณด้วย isLateRenewal (lib/rules)
  *   * อ่านพลาด = หน้าแจ้งข้อผิดพลาดเป็นภาษาไทย (แสดงแค่รหัส ไม่แสดงตัวเลขสมมติ)
  *   * ⚠ PDPA: มีชื่อลูกค้า — ห้าม console.log ข้อมูล · error log ได้แค่ code
@@ -42,5 +43,5 @@ export default async function SalesDashboardPage() {
     );
   }
 
-  return <SalesDashboardClient rows={result.rows} truncated={result.truncated} currentMonth={currentMonth} />;
+  return <SalesDashboardClient rows={result.rows} truncated={result.truncated} noMailCount={result.noMailCount} currentMonth={currentMonth} />;
 }

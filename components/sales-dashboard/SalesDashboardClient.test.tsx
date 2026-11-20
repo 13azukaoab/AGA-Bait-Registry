@@ -40,7 +40,7 @@ const F: SalesFilters = { fromMonth: "2026-09", toMonth: "2026-11", zoneId: null
 const html = (el: React.ReactElement) => renderToStaticMarkup(el);
 
 describe("SalesDashboardClient (render ฝั่ง server)", () => {
-  const out = html(<SalesDashboardClient rows={ROWS} truncated={false} currentMonth="2026-11" />);
+  const out = html(<SalesDashboardClient rows={ROWS} truncated={false} noMailCount={1} currentMonth="2026-11" />);
 
   it("มีหัวเรื่อง ตัวกรอง แถบ sticky การ์ดสรุป กราฟ อันดับ และรายชื่อ", () => {
     expect(out).toContain("Dashboard งานขาย (New/Renew)");
@@ -60,17 +60,17 @@ describe("SalesDashboardClient (render ฝั่ง server)", () => {
   it("ต่อสัญญาล่าช้า: ป้ายตัวหนังสือ + tooltip · หมายเหตุไม่มีวันที่รับ Mail", () => {
     expect(out).toContain("ล่าช้า");
     expect(out).toContain('title="ต่อสัญญาล่าช้า"');
-    expect(out).toContain("ไม่มีวันที่รับ Mail 1 ราย");
+    expect(out).toContain("ไม่มีวันที่รับ Mail 1 ราย ทั้งระบบ");
   });
   it("ผู้ขายไม่มีชื่อแสดงเป็น 'ไม่ระบุผู้ขาย' · ไม่มีรหัสสี hex ในผลลัพธ์", () => {
     expect(out).toContain("ไม่ระบุผู้ขาย");
     expect(out).not.toMatch(/#[0-9a-fA-F]{6}\b/);
   });
   it("ข้อมูลถูกตัด → แสดงคำเตือนภาษาไทย", () => {
-    expect(html(<SalesDashboardClient rows={ROWS} truncated currentMonth="2026-11" />)).toContain("แสดงข้อมูลบางส่วน");
+    expect(html(<SalesDashboardClient rows={ROWS} truncated noMailCount={0} currentMonth="2026-11" />)).toContain("แสดงข้อมูลบางส่วน");
   });
   it("ไม่มีแถว → ข้อความว่างภาษาไทย ไม่ error", () => {
-    const empty = html(<SalesDashboardClient rows={[]} truncated={false} currentMonth="2026-11" />);
+    const empty = html(<SalesDashboardClient rows={[]} truncated={false} noMailCount={0} currentMonth="2026-11" />);
     expect(empty).toContain("ไม่พบงานตามตัวกรองนี้");
   });
 });

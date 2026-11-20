@@ -11,7 +11,6 @@
  *   * ชิปรายชื่อมีแค่ "all" | "late"
  */
 import {
-  countNoMailDate,
   filterSales,
   groupByBranch,
   groupByMonth,
@@ -41,8 +40,6 @@ export interface SalesView {
   branches: BranchSales[];
   /** รายชื่อสัญญา (เรียงรับ Mail ใหม่→เก่า) ตาม type + ชิป */
   list: SalesRow[];
-  /** จำนวนสัญญาไม่มีวันที่รับ Mail (ตามตัวกรองเขต/สาขา/ผู้ขาย) */
-  noMailCount: number;
 }
 
 export function filterByType(rows: readonly SalesRow[], type: SalesTypeFilter): SalesRow[] {
@@ -74,6 +71,5 @@ export function buildSalesView(allRows: readonly SalesRow[], filters: SalesFilte
     sellers: rankSellers(typed, "sale"),
     branches,
     list: chip === "late" ? typed.filter((r) => r.isLate) : typed,
-    noMailCount: countNoMailDate(allRows, filters),
   };
 }

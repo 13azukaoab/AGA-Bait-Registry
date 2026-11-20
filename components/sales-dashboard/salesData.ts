@@ -2,10 +2,16 @@
  * ชั้นอ่านข้อมูลหน้า "Dashboard งานขาย (New/Renew)" — ใช้ฝั่ง server (page.tsx)
  *
  * Logic summary:
- *   * ใช้ client ของผู้ใช้จริงเสมอ (ไม่ใช้ service role) — RLS บังคับขอบเขต: host เห็นทุกสาขา · admin เห็นตามสาขาของตน
- *   * ดึง "สัญญาที่มี sale_type" (New/Renew) ที่วันที่รับ Mail อยู่ในหน้าต่างเวลา (windowStart ขึ้นไป) + สัญญาที่ยังไม่มีวันที่รับ Mail
- *     (ไว้แสดงหมายเหตุ "ไม่มีวันที่รับ Mail N ราย") · ทีละ 1,000 แถว สูงสุด MAX_ROWS · เกินนี้ตัดและบอกผู้ใช้ (truncated)
- *   * ตัวกรอง/รวมยอดทำฝั่ง client ใน salesAggregate.ts (ตัวกรองผู้ขายเป็นข้อความอิสระ จึงไม่ใส่ใน URL — PDPA)
+ *   * ใช้ client ของผู้ใช้จริงเสมอ (ไม่ใช้ service role) — RLS: host/admin/recorder อ่านสัญญาได้ **ทุกสาขา** โดยตั้งใจ (M21)
+ *     ขอบเขตสาขา (admin) ใช้กับ "การแก้ไข" เท่านั้น ไม่ใช่การอ่าน → หน้านี้จึงเห็นทุกสาขาสำหรับ host/admin
+ *     (หน้านี้ให้เฉพาะ host + admin เข้า — ด่านที่ middleware + page)
+ *   * query หลัก: สัญญา New/Renew ที่ "มีวันที่รับ Mail" ตั้งแต่ `windowStart` ขึ้นไป เท่านั้น — ไม่โหลดแถวที่ไม่มีวันที่รับ Mail มาทั้งชุด
+ *     (หลังนำเข้าข้อมูลมีสัญญานำเข้าหลักพันที่ไม่มีวันที่รับ Mail · ถ้าโหลดมาจะกินเพดานแล้วข้อมูลขายจริงถูกตัด)
+ *   * จำนวนสัญญาที่ไม่มีวันที่รับ Mail = query นับอย่างเดียว (`head: true` ไม่ส่งแถวกลับ) แสดงเป็นหมายเหตุ
+ *   * เพดาน SALES_MAX_ROWS แถว: เกินแล้ว `truncated = true` (ใช้ count จาก query หลัก — ไม่ตัดเงียบ หน้าแสดงคำเตือน)
+ *     โหลดทีละ SALES_PAGE_CHUNK แถว
+ *   * ตัวกรองสัญญายกเลิก / สัญญานำเข้า รวมที่จุดเดียว (`EXCLUDE_CANCELLED` / `EXCLUDE_IMPORTED`) — **ตอนนี้ปิดทั้งคู่ = นับทุกสัญญา**
+ *     ห้ามเปลี่ยนค่าจนกว่าเจ้าของตัดสิน (รอ HQ แจ้งผล) · ใช้กับทั้ง query หลักและ query นับ
  *   * ต่อสัญญาล่าช้า: ผู้เรียกส่งฟังก์ชัน `isLate` (= isLateRenewal จาก lib/rules) เข้ามา — ที่นี่ไม่มีสูตรของตัวเอง
  *   * ⚠ PDPA: ผลลัพธ์มีชื่อลูกค้า — ห้าม console.log · error คืนแค่ code (ไม่คืน message ดิบ)
  */
@@ -16,8 +22,30 @@ import type { SaleKind, SalesRow } from "./salesTypes";
 export const SALES_PAGE_CHUNK = 1000;
 export const SALES_MAX_ROWS = 5000;
 
+/** ไม่นับสัญญายกเลิก (contracts.status = 'cancelled') · false = นับ (พฤติกรรมปัจจุบัน) — รอเจ้าของตัดสิน */
+export const EXCLUDE_CANCELLED = false;
+/** ไม่นับสัญญานำเข้า (contracts.import_batch ไม่ว่าง) · false = นับ (พฤติกรรมปัจจุบัน) — รอเจ้าของตัดสิน */
+export const EXCLUDE_IMPORTED = false;
+
+export interface SalesLoadOptions {
+  excludeCancelled: boolean;
+  excludeImported: boolean;
+}
+
+export const DEFAULT_SALES_LOAD_OPTIONS: SalesLoadOptions = {
+  excludeCancelled: EXCLUDE_CANCELLED,
+  excludeImported: EXCLUDE_IMPORTED,
+};
+
 export type SalesLoadResult =
-  | { ok: true; rows: SalesRow[]; truncated: boolean }
+  | {
+      ok: true;
+      rows: SalesRow[];
+      /** มีสัญญาในช่วงมากกว่า SALES_MAX_ROWS (โหลดมาแค่ส่วนแรก) */
+      truncated: boolean;
+      /** จำนวนสัญญา New/Renew ที่ไม่มีวันที่รับ Mail (นับอย่างเดียว ไม่รวมในยอด) */
+      noMailCount: number;
+    }
   | { ok: false; code: string };
 
 /** แถวดิบจาก Supabase (embed ลูกค้า → สาขา → เขต) */
@@ -76,31 +104,74 @@ export function toSalesRow(raw: SalesRowDb, isLate: LateFn): SalesRow | null {
   };
 }
 
+/** ตัวสร้าง query ที่ต่อเงื่อนไขได้ (ใช้ร่วมระหว่าง query หลักกับ query นับ) */
+interface Chainable {
+  neq(column: string, value: string): Chainable;
+  is(column: string, value: null): Chainable;
+}
+
+/** ต่อเงื่อนไขกรองสัญญายกเลิก/นำเข้าตามตัวเลือก — จุดเดียวของทั้งสอง query */
+function applyScope<T>(query: T, opt: SalesLoadOptions): T {
+  let q = query as unknown as Chainable;
+  if (opt.excludeCancelled) q = q.neq("status", "cancelled");
+  if (opt.excludeImported) q = q.is("import_batch", null);
+  return q as unknown as T;
+}
+
 /**
- * โหลดสัญญา New/Renew ที่วันที่รับ Mail ตั้งแต่ `windowStart` ('YYYY-MM-DD') ขึ้นไป + สัญญาที่ยังไม่มีวันที่รับ Mail
+ * โหลดสัญญา New/Renew ที่วันที่รับ Mail ตั้งแต่ `windowStart` ('YYYY-MM-DD') ขึ้นไป + นับสัญญาที่ไม่มีวันที่รับ Mail
  * `windowStart` ต้องเป็นวันที่รูปแบบ YYYY-MM-DD (ตรวจก่อนต่อเข้า query — ไม่รับข้อความอิสระ)
  */
-export async function loadSalesRows(supabase: SupabaseClient, windowStart: string, isLate: LateFn): Promise<SalesLoadResult> {
+export async function loadSalesRows(
+  supabase: SupabaseClient,
+  windowStart: string,
+  isLate: LateFn,
+  options: SalesLoadOptions = DEFAULT_SALES_LOAD_OPTIONS,
+): Promise<SalesLoadResult> {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(windowStart)) return { ok: false, code: "bad_window" };
 
+  const page = (from: number, withCount: boolean) =>
+    applyScope(
+      supabase
+        .from("contracts")
+        .select(SELECT, withCount ? { count: "exact" } : undefined)
+        .not("sale_type", "is", null)
+        .gte("mail_received_date", windowStart)
+        .order("id", { ascending: true })
+        .range(from, from + SALES_PAGE_CHUNK - 1),
+      options,
+    );
+
+  // query นับอย่างเดียว (head) — ไม่ส่งแถวกลับ
+  const noMailQuery = applyScope(
+    supabase.from("contracts").select("id", { count: "exact", head: true }).not("sale_type", "is", null).is("mail_received_date", null),
+    options,
+  );
+
+  const [first, noMail] = await Promise.all([page(0, true), noMailQuery]);
+  if (first.error) return { ok: false, code: first.error.code ?? "query_failed" };
+  if (noMail.error) return { ok: false, code: noMail.error.code ?? "query_failed" };
+
   const out: SalesRow[] = [];
-  let truncated = false;
-  for (let from = 0; from < SALES_MAX_ROWS; from += SALES_PAGE_CHUNK) {
-    const { data, error } = await supabase
-      .from("contracts")
-      .select(SELECT)
-      .not("sale_type", "is", null)
-      .or(`mail_received_date.is.null,mail_received_date.gte.${windowStart}`)
-      .order("id", { ascending: true })
-      .range(from, from + SALES_PAGE_CHUNK - 1);
-    if (error) return { ok: false, code: error.code ?? "query_failed" };
-    const batch = (data ?? []) as unknown as SalesRowDb[];
+  const collect = (batch: SalesRowDb[]) => {
     for (const raw of batch) {
       const r = toSalesRow(raw, isLate);
       if (r) out.push(r);
     }
-    if (batch.length < SALES_PAGE_CHUNK) return { ok: true, rows: out, truncated };
+  };
+  const firstBatch = (first.data ?? []) as unknown as SalesRowDb[];
+  collect(firstBatch);
+
+  const total = first.count ?? firstBatch.length;
+  const truncated = total > SALES_MAX_ROWS;
+  const limit = Math.min(total, SALES_MAX_ROWS);
+  for (let from = SALES_PAGE_CHUNK; from < limit; from += SALES_PAGE_CHUNK) {
+    const next = await page(from, false);
+    if (next.error) return { ok: false, code: next.error.code ?? "query_failed" };
+    const batch = (next.data ?? []) as unknown as SalesRowDb[];
+    collect(batch);
+    if (batch.length < SALES_PAGE_CHUNK) break;
   }
-  truncated = true;
-  return { ok: true, rows: out, truncated };
+
+  return { ok: true, rows: out, truncated, noMailCount: noMail.count ?? 0 };
 }

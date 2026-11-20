@@ -29,11 +29,13 @@ export interface SalesDashboardClientProps {
   rows: readonly SalesRow[];
   /** ข้อมูลเกินเพดานที่โหลด (ตัดบางส่วน) */
   truncated: boolean;
+  /** จำนวนสัญญาที่ไม่มีวันที่รับ Mail (นับอย่างเดียวจาก server · ไม่แยกตามตัวกรองของหน้า) */
+  noMailCount: number;
   /** เดือนปัจจุบันตามเวลาไทย 'YYYY-MM' */
   currentMonth: string;
 }
 
-export function SalesDashboardClient({ rows, truncated, currentMonth }: SalesDashboardClientProps) {
+export function SalesDashboardClient({ rows, truncated, noMailCount, currentMonth }: SalesDashboardClientProps) {
   const [filters, setFilters] = useState<SalesFilters>(() => defaultSalesFilters(currentMonth));
   const [type, setType] = useState<SalesTypeFilter>("all");
   const [chip, setChip] = useState<ListChip>("all");
@@ -103,8 +105,8 @@ export function SalesDashboardClient({ rows, truncated, currentMonth }: SalesDas
       <div className="grid gap-3.5">
         <SalesKpis kpis={view.kpis} highlight={view.highlight} />
 
-        {view.noMailCount > 0 && (
-          <p className="m-0 text-[12.5px] text-fg-muted">ไม่มีวันที่รับ Mail {view.noMailCount.toLocaleString("th-TH")} ราย (ไม่นับในยอดและกราฟรายเดือน)</p>
+        {noMailCount > 0 && (
+          <p className="m-0 text-[12.5px] text-fg-muted">ไม่มีวันที่รับ Mail {noMailCount.toLocaleString("th-TH")} ราย ทั้งระบบ (ไม่นับในยอดและกราฟรายเดือน · ไม่แยกตามตัวกรอง)</p>
         )}
 
         <div className="grid grid-cols-2 gap-3.5 max-[1000px]:grid-cols-1 [&>*]:min-w-0">
