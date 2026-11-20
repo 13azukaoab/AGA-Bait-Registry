@@ -64,13 +64,13 @@ INSERT INTO contracts (id, customer_id, contract_no, start_date, term_months, va
   (pg_temp.id('da'), pg_temp.id('c2'), 'X-A', pg_temp.m(-3),  12, 24000, pg_temp.m(-3) + 2,  'active'),
   (pg_temp.id('db'), pg_temp.id('c2'), 'X-B', pg_temp.m(-3),  12, 24000, pg_temp.m(-3) + 2,  'active');
 UPDATE contracts SET import_batch = 'registry-TEST' WHERE id = pg_temp.id('d5');
--- dd สัญญาเก่า + de Renew (กฎ 2 เดือนตอนเปิดกลับ) · dg Renew ไม่ผูก (วันกำหนดตอนเปิดกลับ)
+-- dd สัญญาเก่า + de Renew (กฎ 2 เดือนตอนเปิดกลับ) · dc Renew ไม่ผูก (วันกำหนดตอนเปิดกลับ)
 INSERT INTO contracts (id, customer_id, contract_no, start_date, term_months, value_total, stations_initialized_at, status) VALUES
   (pg_temp.id('dd'), pg_temp.id('c2'), 'X-D', pg_temp.m(-11), 12, 24000, pg_temp.m(-11) + 2, 'active');
 INSERT INTO contracts (id, customer_id, contract_no, start_date, term_months, value_total, status, sale_type, renewed_from_contract_id, renew_unlinked_reason) VALUES
   (pg_temp.id('d7'), pg_temp.id('c2'), 'X-7', pg_temp.m(1), 12, 24000, 'active', 'renew', pg_temp.id('d6'), NULL),
   (pg_temp.id('de'), pg_temp.id('c2'), 'X-E', pg_temp.m(1), 12, 24000, 'active', 'renew', pg_temp.id('dd'), NULL),
-  (pg_temp.id('dg'), pg_temp.id('c2'), 'X-G', pg_temp.m(-3), 12, 24000, 'active', 'renew', NULL, 'สัญญาเก่าอยู่ในกระดาษ (สมมติ)');
+  (pg_temp.id('dc'), pg_temp.id('c2'), 'X-G', pg_temp.m(-3), 12, 24000, 'active', 'renew', NULL, 'สัญญาเก่าอยู่ในกระดาษ (สมมติ)');
 INSERT INTO stations (id, contract_id, type, station_no, status) VALUES
   (pg_temp.id('b1'), pg_temp.id('da'), 'IG', 1, 'active'),
   (pg_temp.id('b2'), pg_temp.id('da'), 'IG', 2, 'active'),
@@ -300,12 +300,12 @@ SET LOCAL ROLE authenticated;
 SELECT pg_temp.as_user('a1');
 SELECT throws_ok(pg_temp.reopen('de'), 'AG010', NULL,
   'reopening a Renew that now starts outside the 2-month window is refused (AG010)');
-SELECT lives_ok(pg_temp.cancel('dg'), 'host cancels unlinked Renew dg');
+SELECT lives_ok(pg_temp.cancel('dc'), 'host cancels unlinked Renew dc');
 RESET ROLE;
 UPDATE app_settings SET allow_unlinked_renew_until = pg_temp.td();           -- วันนี้ = เลยวันกำหนดแล้ว
 SET LOCAL ROLE authenticated;
 SELECT pg_temp.as_user('a1');
-SELECT throws_ok(pg_temp.reopen('dg'), 'AG013', NULL,
+SELECT throws_ok(pg_temp.reopen('dc'), 'AG013', NULL,
   'reopening an unlinked Renew past the cut-off is refused (AG013)');
 
 -- =====================================================================
