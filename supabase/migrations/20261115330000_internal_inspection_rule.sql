@@ -11,10 +11,10 @@
 --            + RAISE NOTICE จำนวนแถว · ⚠ แถวเก่าที่ผิดกฎ จะ UPDATE ไม่ได้จนกว่าจะแก้ค่านั้น
 --              (ให้เจ้าของ/ผู้ดูแลฐานข้อมูลตัดสิน แล้วค่อย VALIDATE CONSTRAINT)
 --   2. `inside_inspection_summary(p_month, p_branch_id DEFAULT NULL)` — สรุปตรวจภายในรายเดือน (หน้า /material)
---      · แถวต่อ สาขา × ทีม · เฉพาะ routine ที่ internal_inspection = true และ visit_date อยู่ในเดือนนั้น
+--      · แถวต่อ สาขา × ทีม + แถวรวมสาขา (is_branch_total = true · team_id/team_name NULL · นับ distinct ต่อสาขา ไม่ซ้ำข้ามทีม) · เฉพาะ routine ที่ internal_inspection = true และ visit_date อยู่ในเดือนนั้น
 --      · inspection_count = จำนวนการเข้า (visit) · contract_count = จำนวนสัญญาไม่ซ้ำ (≈ "กี่ราย")
---      · ทีมจาก `visit_teams` (การเข้าที่มีหลายทีม นับให้ทุกทีม ⚠ ห้ามบวกทุกแถวเป็นยอดรวมสาขา —
---        จะนับเกิน) · ไม่มีทีม → team_id/team_name = NULL
+--      · ทีมจาก `visit_teams` (การเข้าที่มีหลายทีม นับให้ทุกทีม · ยอดรวมสาขาใช้แถว is_branch_total
+--        ห้ามบวกแถวทีมเอง จะนับเกิน) · ไม่มีทีม → team_id/team_name = NULL
 --      · สาขา = สาขาของลูกค้า (ตรง material_usage_summary 2.90)
 --      · สิทธิ์ตรง material_usage_summary: host ทุกสาขา · admin / recorder เฉพาะสาขาในขอบเขต
 --        (branch_in_scope) · viewer / anon / ไม่มีโปรไฟล์ → 42501 · p_branch_id นอกขอบเขต = ไม่คืนแถว
@@ -57,6 +57,7 @@ RETURNS TABLE (
   branch_name      text,
   team_id          uuid,
   team_name        text,
+  is_branch_total  boolean,
   inspection_count int,
   contract_count   int
 )
@@ -81,6 +82,7 @@ BEGIN
          b.name,
          t.id,
          t.name,
+         (GROUPING(t.id) = 1),
          count(DISTINCT v.id)::int,
          count(DISTINCT v.contract_id)::int
     FROM visits v
@@ -94,8 +96,8 @@ BEGIN
      AND v.visit_date >= p_month AND v.visit_date < (p_month + interval '1 month')::date
      AND (p_branch_id IS NULL OR b.id = p_branch_id)
      AND (v_role = 'host' OR branch_in_scope(b.id))
-   GROUP BY b.id, b.name, t.id, t.name
-   ORDER BY b.name, t.name NULLS LAST;
+   GROUP BY GROUPING SETS ((b.id, b.name, t.id, t.name), (b.id, b.name))
+   ORDER BY b.name, (GROUPING(t.id) = 1) DESC, t.name NULLS LAST;
 END;
 $$;
 

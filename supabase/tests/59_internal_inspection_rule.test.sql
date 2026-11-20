@@ -5,7 +5,7 @@
 --     host ทุกสาขา · admin/recorder เฉพาะขอบเขต · viewer/anon → 42501 · p_month ไม่ใช่วันที่ 1 → II001
 -- ข้อมูลสมมติทั้งหมด
 BEGIN;
-SELECT plan(40);
+SELECT plan(43);
 
 INSERT INTO auth.users (id, instance_id, aud, role, email) VALUES
   ('00000000-0000-0000-0000-0000000000a1', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'host@test.local'),
@@ -127,7 +127,10 @@ INSERT INTO visits (id, contract_id, visit_date, visit_type, start_time, end_tim
   (pg_temp.id('f3'), pg_temp.id('d2'), '2026-03-12', 'routine', '09:00', '10:00', true),
   (pg_temp.id('f6'), pg_temp.id('d3'), '2026-03-08', 'routine', '09:00', '10:00', true),
   (pg_temp.id('f7'), pg_temp.id('d2'), '2026-03-14', 'routine', '09:00', '10:00', false),
-  (pg_temp.id('f8'), pg_temp.id('d2'), '2026-04-10', 'routine', '09:00', '10:00', true);
+  (pg_temp.id('f8'), pg_temp.id('d2'), '2026-04-10', 'routine', '09:00', '10:00', true),
+  (pg_temp.id('f9'), pg_temp.id('d3'), '2026-05-01', 'routine', '09:00', '10:00', true),
+  (pg_temp.id('fa'), pg_temp.id('d3'), '2026-05-31', 'routine', '09:00', '10:00', true),
+  (pg_temp.id('fb'), pg_temp.id('d3'), '2026-06-01', 'routine', '09:00', '10:00', true);
 INSERT INTO visit_teams (visit_id, team_id) VALUES
   (pg_temp.id('f1'), pg_temp.team('A')),
   (pg_temp.id('f2'), pg_temp.team('A')),
@@ -140,8 +143,15 @@ CREATE FUNCTION pg_temp.sum_row(p_branch uuid, p_team text) RETURNS text LANGUAG
   SELECT s.inspection_count || '/' || s.contract_count
     FROM public.inside_inspection_summary('2026-03-01') s
    WHERE s.branch_id = p_branch
+     AND NOT s.is_branch_total
      AND s.team_id IS NOT DISTINCT FROM (CASE WHEN p_team IS NULL THEN NULL ELSE pg_temp.team(p_team) END)
 $$;
+CREATE FUNCTION pg_temp.tot_row(p_branch uuid) RETURNS text LANGUAGE sql AS $$
+  SELECT s.inspection_count || '/' || s.contract_count
+    FROM public.inside_inspection_summary('2026-03-01') s
+   WHERE s.branch_id = p_branch AND s.is_branch_total AND s.team_id IS NULL AND s.team_name IS NULL
+$$;
+GRANT EXECUTE ON FUNCTION pg_temp.tot_row(uuid) TO PUBLIC;
 GRANT EXECUTE ON FUNCTION pg_temp.sum_row(uuid, text) TO PUBLIC;
 
 -- โครงสร้าง / สิทธิ์ฟังก์ชัน
@@ -161,22 +171,27 @@ SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a1
 SELECT is(pg_temp.sum_row(pg_temp.bc(), 'A'), '4/3', 'host: central team A = 4 inspections / 3 distinct contracts');
 SELECT is(pg_temp.sum_row(pg_temp.bc(), 'B'), '1/1', 'host: central team B = 1 / 1 (multi-team visit counted for each team)');
 SELECT is(pg_temp.sum_row(pg_temp.bp(), NULL), '1/1', 'host: province visit without a team = 1 / 1 with NULL team');
-SELECT is((SELECT count(*)::int FROM public.inside_inspection_summary('2026-03-01')), 3,
-  'host: 3 rows in March (non-routine / false / other months are not counted)');
-SELECT is((SELECT count(*)::int FROM public.inside_inspection_summary('2026-03-01', pg_temp.bc())), 2,
-  'host: branch filter (central) = 2 rows');
-SELECT is((SELECT count(*)::int FROM public.inside_inspection_summary('2026-03-01', pg_temp.bp())), 1,
-  'host: branch filter (province) = 1 row');
-SELECT is((SELECT inspection_count || '/' || contract_count FROM public.inside_inspection_summary('2026-04-01') WHERE team_id = pg_temp.team('A')),
+SELECT is(pg_temp.tot_row(pg_temp.bc()), '4/3',
+  'host: central branch total = 4 / 3 (multi-team visit counted once, not 5 / 4)');
+SELECT is(pg_temp.tot_row(pg_temp.bp()), '1/1', 'host: province branch total = 1 / 1');
+SELECT is((SELECT count(*)::int FROM public.inside_inspection_summary('2026-03-01')), 5,
+  'host: 5 rows in March (3 team rows + 2 branch totals; non-routine / false / other months not counted)');
+SELECT is((SELECT count(*)::int FROM public.inside_inspection_summary('2026-03-01', pg_temp.bc())), 3,
+  'host: branch filter (central) = 3 rows (A, B, total)');
+SELECT is((SELECT count(*)::int FROM public.inside_inspection_summary('2026-03-01', pg_temp.bp())), 2,
+  'host: branch filter (province) = 2 rows (no-team row + total)');
+SELECT is((SELECT inspection_count || '/' || contract_count FROM public.inside_inspection_summary('2026-04-01') WHERE team_id = pg_temp.team('A') AND NOT is_branch_total),
   '1/1', 'host: April counts only its own visit (1 / 1)');
-SELECT is((SELECT count(*)::int FROM public.inside_inspection_summary('2026-06-01')), 0, 'host: month without data = no rows');
+SELECT is((SELECT inspection_count FROM public.inside_inspection_summary('2026-05-01', pg_temp.bp()) WHERE is_branch_total), 2,
+  'host: month boundaries — May 1st and May 31st counted, June 1st not');
+SELECT is((SELECT count(*)::int FROM public.inside_inspection_summary('2026-07-01')), 0, 'host: month without data = no rows');
 SELECT ok((SELECT branch_name IS NOT NULL AND (team_id IS NULL OR team_name IS NOT NULL)
              FROM public.inside_inspection_summary('2026-03-01') LIMIT 1),
   'rows carry branch name and team name (no customer / contract identifiers in the columns)');
 
 -- admin (central)
 SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a2', true);
-SELECT is((SELECT count(*)::int FROM public.inside_inspection_summary('2026-03-01')), 2, 'admin (central): sees central rows only');
+SELECT is((SELECT count(*)::int FROM public.inside_inspection_summary('2026-03-01')), 3, 'admin (central): sees central rows only (A, B, total)');
 SELECT is((SELECT count(*)::int FROM public.inside_inspection_summary('2026-03-01', pg_temp.bp())), 0,
   'admin (central): out-of-scope branch filter returns no rows');
 
@@ -188,7 +203,7 @@ SELECT is((SELECT count(*)::int FROM public.inside_inspection_summary('2026-03-0
 
 -- recorder (province)
 SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a5', true);
-SELECT is((SELECT count(*)::int FROM public.inside_inspection_summary('2026-03-01')), 1, 'recorder (province): sees only the province row');
+SELECT is((SELECT count(*)::int FROM public.inside_inspection_summary('2026-03-01')), 2, 'recorder (province): sees only province rows (no-team row + total)');
 SELECT is((SELECT count(*)::int FROM public.inside_inspection_summary('2026-03-01', pg_temp.bc())), 0,
   'recorder (province): central branch returns no rows');
 
