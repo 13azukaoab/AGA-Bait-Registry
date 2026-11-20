@@ -61,6 +61,11 @@ h1{font-size:22px;margin:0 0 2px}
 .stack{display:grid;gap:14px;grid-template-columns:minmax(0,1fr)}
 .stack>*,.grid2>*{min-width:0}
 .strip .v small{display:block}
+.typeseg{grid-column:1/-1;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.typeseg .lbl{font-size:12.5px;color:var(--fg-muted)}
+.typeseg .seg button{min-width:84px;justify-content:center}
+.card.kpi.sel{box-shadow:0 0 0 2px var(--accent),var(--shadow)}
+.kpi.dim{opacity:.55}
 .filters{display:grid;grid-template-columns:repeat(5,minmax(0,1fr)) auto;gap:10px;align-items:end;margin-bottom:14px}
 .filters label{display:grid;gap:3px;font-size:12.5px;color:var(--fg-muted)}
 .filters select{font:inherit;font-size:14px;padding:8px 10px;min-height:40px;border:1px solid var(--border-strong);border-radius:8px;background:var(--surface);color:var(--fg);width:100%}
@@ -145,6 +150,9 @@ td small{display:block;color:var(--fg-muted);font-size:12px;line-height:1.3}
   .filters{grid-template-columns:1fr 1fr}
   .filters select{font-size:16px;min-height:44px}
   .btn,.chip,.seg a,.seg button{min-height:44px}
+  .typeseg{display:grid;gap:4px}
+  .typeseg .seg{display:flex;width:100%}
+  .typeseg .seg button{flex:1;min-width:0}
   .strip{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
   .grid2{grid-template-columns:minmax(0,1fr)}
   .strip>div{border-right:0;border-bottom:1px solid var(--border)}
@@ -184,6 +192,7 @@ td small{display:block;color:var(--fg-muted);font-size:12px;line-height:1.3}
   <h1>Dashboard งานขาย (New/Renew)</h1>
   <p class="sub">ยอดงานใหม่ (New) และต่อสัญญา (Renew) แยกตามสาขา เขต และผู้ขาย · นับตามเดือนที่รับ Mail</p>
   <section class="filters" aria-label="ตัวกรอง">
+    <div class="typeseg" id="typeSeg" role="group" aria-label="ประเภทงาน"><span class="lbl">ประเภทงาน</span><div class="seg"><button type="button" data-t="all">ทั้งหมด</button><button type="button" data-t="new">New</button><button type="button" data-t="renew">Renew</button></div></div>
     <label>ตั้งแต่เดือน<select id="fFrom"></select></label>
     <label>ถึงเดือน<select id="fTo"></select></label>
     <label>เขต<select id="fZone"></select></label>
@@ -223,7 +232,7 @@ var cssv=function(n){return getComputedStyle(document.documentElement).getProper
 var ICON_LATE='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>';
 function toast(t){var e=$("#toast");e.textContent=t;e.style.display="block";clearTimeout(toast.t);toast.t=setTimeout(function(){e.style.display="none"},2600)}
 
-var S={from:MON[0],to:MON[2],zone:"",branch:"",seller:"",chip:"all",metric:"n"};
+var S={from:MON[0],to:MON[2],zone:"",branch:"",seller:"",chip:"all",metric:"n",type:"all"};
 var charts=[];
 function rows(){return DATA.filter(function(c){var m=c.mail.slice(0,7);
   return m>=S.from&&m<=S.to&&(!S.zone||String(c.zone)===S.zone)&&(!S.branch||c.branch===S.branch)&&(!S.seller||c.sale===S.seller)})}
@@ -245,7 +254,9 @@ function bind(id,key){$(id).addEventListener("change",function(e){S[key]=e.targe
   if(S.from>S.to){if(key==="from")S.to=S.from;else S.from=S.to}
   buildFilters();render()})}
 bind("#fFrom","from");bind("#fTo","to");bind("#fZone","zone");bind("#fBranch","branch");bind("#fSeller","seller");
-$("#fReset").addEventListener("click",function(){S={from:MON[0],to:MON[2],zone:"",branch:"",seller:"",chip:"all",metric:S.metric};buildFilters();render()});
+function syncType(){document.querySelectorAll("#typeSeg [data-t]").forEach(function(b){b.classList.toggle("on",b.dataset.t===S.type)});$("#typeSeg").style.display=V==="a"?"none":""}
+document.querySelectorAll("#typeSeg [data-t]").forEach(function(b){b.onclick=function(){S.type=b.dataset.t;syncType();render()}});
+$("#fReset").addEventListener("click",function(){S={from:MON[0],to:MON[2],zone:"",branch:"",seller:"",chip:"all",metric:S.metric,type:"all"};syncType();buildFilters();render()});
 
 /* ---------- ชิ้นส่วนที่ใช้ร่วม ---------- */
 function mailCell(c){
@@ -301,13 +312,16 @@ function renderA(a){
 
 /* ---------- แบบ B: การ์ด KPI + กราฟ + อันดับผู้ขาย ---------- */
 function renderB(a){
-  var t=sum(a), pct=t.rN?Math.round(t.late/t.rN*100):0;
+  var t=sum(a), pct=t.rN?Math.round(t.late/t.rN*100):0, ty=S.type;
+  var all=a; a=ty==="all"?a:a.filter(function(c){return c.type.toLowerCase()===ty});
+  if(S.chip==="new"||S.chip==="renew"||(S.chip==="late"&&ty==="new"))S.chip="all";
+  var kc=function(k){return ty===k?" sel":(ty!=="all"&&k!=="x"?"":"")};
   var h='<div class="stack"><div class="kpis">'+
-   '<div class="card kpi new"><div class="l">งานใหม่ (New)</div><div class="v">'+fmt(t.nN)+' <small>ราย</small></div><div class="s">มูลค่า '+fmt(t.nV)+' บาท</div></div>'+
-   '<div class="card kpi renew"><div class="l">ต่อสัญญา (Renew)</div><div class="v">'+fmt(t.rN)+' <small>ราย</small></div><div class="s">มูลค่า '+fmt(t.rV)+' บาท</div></div>'+
-   '<div class="card kpi late"><div class="l">ต่อสัญญาล่าช้า</div><div class="v">'+t.late+' <small>ราย</small></div><div class="s">'+pct+'% ของ Renew · '+fmt(t.lateV)+' บาท</div></div>'+
+   '<div class="card kpi new'+kc("new")+'"><div class="l">งานใหม่ (New)</div><div class="v">'+fmt(t.nN)+' <small>ราย</small></div><div class="s">มูลค่า '+fmt(t.nV)+' บาท</div></div>'+
+   '<div class="card kpi renew'+kc("renew")+'"><div class="l">ต่อสัญญา (Renew)</div><div class="v">'+fmt(t.rN)+' <small>ราย</small></div><div class="s">มูลค่า '+fmt(t.rV)+' บาท</div></div>'+
+   '<div class="card kpi late'+(ty==="new"?" dim":"")+'"><div class="l">ต่อสัญญาล่าช้า</div><div class="v">'+t.late+' <small>ราย</small></div><div class="s">'+pct+'% ของ Renew · '+fmt(t.lateV)+' บาท</div></div>'+
    '<div class="card kpi"><div class="l">รวมทั้งหมด</div><div class="v">'+fmt(t.nN+t.rN)+' <small>ราย</small></div><div class="s">มูลค่า '+fmt(t.nV+t.rV)+' บาท</div></div></div>';
-  h+='<div class="grid2"><div class="card"><h2>แนวโน้มรายเดือน</h2><p class="hint">จำนวนราย New กับ Renew</p><div class="legend"><span><i style="background:var(--new)"></i>New</span><span><i style="background:var(--renew)"></i>Renew</span></div><div class="chartbox" style="height:230px"><canvas id="chB1" role="img" aria-label="กราฟแท่งซ้อนรายเดือน"></canvas></div></div>'+
+  h+='<div class="grid2"><div class="card"><h2>แนวโน้มรายเดือน</h2><p class="hint">จำนวนราย '+(ty==="all"?"New กับ Renew":ty==="new"?"New":"Renew")+'</p><div class="legend"><span><i style="background:var(--new)"></i>New</span><span><i style="background:var(--renew)"></i>Renew</span></div><div class="chartbox" style="height:230px"><canvas id="chB1" role="img" aria-label="กราฟแท่งซ้อนรายเดือน"></canvas></div></div>'+
    '<div class="card"><h2>แยกตามเขต</h2><p class="hint">มูลค่า (ล้านบาท)</p><div class="legend"><span><i style="background:var(--new)"></i>New</span><span><i style="background:var(--renew)"></i>Renew</span></div><div class="chartbox" style="height:230px"><canvas id="chB2" role="img" aria-label="กราฟแท่งซ้อนแยกเขต"></canvas></div></div></div>';
   if(V==="c"){
     var nb=BR.filter(function(b){return(!S.zone||String(b[1])===S.zone)&&(!S.branch||b[0]===S.branch)}).length, mv0=S.metric==="v";
@@ -320,25 +334,26 @@ function renderB(a){
   var maxS=sellers.length?sellers[0].tot:1;
   var brsAgg=Object.entries(groupBy(a,function(c){return c.branch})).map(function(e){var s=sum(e[1]);return{name:e[0],zone:e[1][0].zone,s:s,tot:s.nV+s.rV}}).sort(function(x,y){return y.tot-x.tot});
   var maxB=brsAgg.length?brsAgg[0].tot:1;
-  h+='<div class="grid2"><div class="card"><h2>อันดับผู้ขาย</h2><p class="hint">เรียงตามมูลค่ารวม (sale_name) · แถบ = สัดส่วน New / Renew</p><div class="rank">'+
-    (sellers.length?sellers.map(function(x,i){return'<div class="rk"><span class="n">'+(i+1)+'</span><div><div class="nm">'+esc(x.name)+'<span>'+x.n+' ราย'+(x.s.late?' · <b style="color:var(--danger)">ล่าช้า '+x.s.late+'</b>':'')+'</span></div><div class="bar" style="width:'+Math.max(6,Math.round(x.tot/maxS*100))+'%"><i class="bn" style="flex:'+x.s.nV+'"></i><i class="br" style="flex:'+x.s.rV+'"></i></div></div><div class="val">'+fmtM(x.tot)+'</div></div>'}).join(""):'<div class="empty">ไม่มีข้อมูล</div>')+'</div></div>'+
-   '<div class="card"><h2>ยอดรายสาขา</h2><p class="hint">เรียงตามมูลค่ารวม · แถบ = สัดส่วน New / Renew</p><div class="rank">'+
-    (brsAgg.length?brsAgg.map(function(x,i){return'<div class="rk"><span class="n">'+(i+1)+'</span><div><div class="nm">'+esc(x.name)+'<span>เขต '+x.zone+' · New '+x.s.nN+' / Renew '+x.s.rN+'</span></div><div class="bar" style="width:'+Math.max(6,Math.round(x.tot/maxB*100))+'%"><i class="bn" style="flex:'+x.s.nV+'"></i><i class="br" style="flex:'+x.s.rV+'"></i></div></div><div class="val">'+fmtM(x.tot)+'</div></div>'}).join(""):'<div class="empty">ไม่มีข้อมูล</div>')+'</div></div></div>';
+  h+='<div class="grid2"><div class="card"><h2>อันดับผู้ขาย</h2><p class="hint">เรียงตามมูลค่า'+(ty==="all"?"รวม":ty==="new"?" New":" Renew")+' (sale_name) · '+(ty==="all"?"แถบ = สัดส่วน New / Renew":"แถบสีเดียว")+'</p><div class="rank">'+
+    (sellers.length?sellers.map(function(x,i){return'<div class="rk"><span class="n">'+(i+1)+'</span><div><div class="nm">'+esc(x.name)+'<span>'+x.n+' ราย'+(x.s.late&&ty!=="new"?' · <b style="color:var(--danger)">ล่าช้า '+x.s.late+'</b>':'')+'</span></div><div class="bar" style="width:'+Math.max(6,Math.round(x.tot/maxS*100))+'%"><i class="bn" style="flex:'+x.s.nV+'"></i><i class="br" style="flex:'+x.s.rV+'"></i></div></div><div class="val">'+fmtM(x.tot)+'</div></div>'}).join(""):'<div class="empty">ไม่มีข้อมูล</div>')+'</div></div>'+
+   '<div class="card"><h2>ยอดรายสาขา</h2><p class="hint">เรียงตามมูลค่า'+(ty==="all"?"รวม":ty==="new"?" New":" Renew")+' · '+(ty==="all"?"แถบ = สัดส่วน New / Renew":"แถบสีเดียว")+'</p><div class="rank">'+
+    (brsAgg.length?brsAgg.map(function(x,i){return'<div class="rk"><span class="n">'+(i+1)+'</span><div><div class="nm">'+esc(x.name)+'<span>เขต '+x.zone+' · '+(ty==="new"?x.s.nN+' ราย':ty==="renew"?x.s.rN+' ราย':'New '+x.s.nN+' / Renew '+x.s.rN)+'</span></div><div class="bar" style="width:'+Math.max(6,Math.round(x.tot/maxB*100))+'%"><i class="bn" style="flex:'+x.s.nV+'"></i><i class="br" style="flex:'+x.s.rV+'"></i></div></div><div class="val">'+fmtM(x.tot)+'</div></div>'}).join(""):'<div class="empty">ไม่มีข้อมูล</div>')+'</div></div></div>';
   var list=a.filter(function(c){return S.chip==="all"||(S.chip==="new"&&c.type==="New")||(S.chip==="renew"&&c.type==="Renew")||(S.chip==="late"&&c.late)});
   h+='<div class="card"><h2>รายชื่อลูกค้า</h2><p class="hint">กดชื่อเพื่อเปิดหน้าลูกค้า</p><div class="chips" role="group" aria-label="กรองประเภท">'+
-   [["all","ทั้งหมด"],["new","New"],["renew","Renew"],["late","ต่อสัญญาล่าช้า"]].map(function(c){return'<button type="button" class="chip '+(S.chip===c[0]?"on":"")+'" data-chip="'+c[0]+'">'+c[1]+'</button>'}).join("")+'</div>'+
+   [["all","ทั้งหมด"]].concat(ty==="new"?[]:[["late","ต่อสัญญาล่าช้า"]]).map(function(c){return'<button type="button" class="chip '+(S.chip===c[0]?"on":"")+'" data-chip="'+c[0]+'">'+c[1]+'</button>'}).join("")+'</div>'+
    (list.length?'<div class="cards">'+list.slice(0,12).map(function(c){return'<div class="cc '+(c.late?"late":"")+'"><div class="top"><span class="cust">'+custLink(c)+'</span><span>'+typePill(c)+'</span></div><div class="meta">'+esc(c.branch)+' · เขต '+c.zone+'</div><div class="meta">Sale: '+esc(c.sale)+' · AM: '+esc(c.am)+'</div><div class="top"><span class="meta">รับ Mail '+mailCell(c)+'</span><span class="val">'+fmt(c.value)+' บาท</span></div></div>'}).join("")+'</div>'+(list.length>12?'<p class="muted" style="font-size:13px;margin:8px 0 0">แสดง 12 จาก '+fmt(list.length)+' รายการ — ของจริงแบ่งหน้า/โหลดเพิ่ม</p>':''):'<div class="empty">ไม่พบงานตามตัวกรองนี้ — ลองกดชิป "ทั้งหมด" หรือ "ล้างตัวกรอง"</div>')+'</div></div>';
   $("#app").innerHTML=h;
   document.querySelectorAll("[data-chip]").forEach(function(b){b.onclick=function(){S.chip=b.dataset.chip;render()}});
   var c=themeColors(), byM=groupBy(a,function(x){return x.mail.slice(0,7)}), ms=MON.filter(function(m){return m>=S.from&&m<=S.to});
-  mkChart("chB1",{type:"bar",data:{labels:ms.map(function(m){return MTH[m]}),datasets:[
+  var only=function(ds){return ds.filter(function(d){return ty==="all"||d.label.toLowerCase()===ty})};
+  mkChart("chB1",{type:"bar",data:{labels:ms.map(function(m){return MTH[m]}),datasets:only([
     {label:"New",backgroundColor:c.new,data:ms.map(function(m){return sum(byM[m]||[]).nN}),borderRadius:3},
-    {label:"Renew",backgroundColor:c.renew,data:ms.map(function(m){return sum(byM[m]||[]).rN}),borderRadius:3}]},
+    {label:"Renew",backgroundColor:c.renew,data:ms.map(function(m){return sum(byM[m]||[]).rN}),borderRadius:3}])},
     options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true,grid:{color:c.grid},ticks:{precision:0}}}}});
   var byZ=groupBy(a,function(x){return x.zone}), zs=[1,2,3].filter(function(z){return!S.zone||String(z)===S.zone});
-  mkChart("chB2",{type:"bar",data:{labels:zs.map(function(z){return"เขต "+z}),datasets:[
+  mkChart("chB2",{type:"bar",data:{labels:zs.map(function(z){return"เขต "+z}),datasets:only([
     {label:"New",backgroundColor:c.new,data:zs.map(function(z){return sum(byZ[z]||[]).nV/1e6}),borderRadius:3},
-    {label:"Renew",backgroundColor:c.renew,data:zs.map(function(z){return sum(byZ[z]||[]).rV/1e6}),borderRadius:3}]},
+    {label:"Renew",backgroundColor:c.renew,data:zs.map(function(z){return sum(byZ[z]||[]).rV/1e6}),borderRadius:3}])},
     options:{indexAxis:"y",responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{stacked:true,grid:{color:c.grid}},y:{stacked:true,grid:{display:false}}}}});
   if(V==="c"){
     var brs=BR.filter(function(b){return(!S.zone||String(b[1])===S.zone)&&(!S.branch||b[0]===S.branch)}), byB=groupBy(a,function(x){return x.branch}), mv=S.metric==="v";
@@ -357,7 +372,7 @@ $("#tl").onclick=function(){setTheme(false)};$("#td").onclick=function(){setThem
 $("#va").classList.toggle("on",V==="a");$("#vb").classList.toggle("on",V==="b");$("#vc").classList.toggle("on",V==="c");
 ["va","vb","vc"].forEach(function(id){var a=$("#"+id);a.href=a.getAttribute("href")+(DARK?"&theme=dark":"")});
 document.documentElement.dataset.theme=DARK?"dark":"light";$("#tl").classList.toggle("on",!DARK);$("#td").classList.toggle("on",DARK);
-buildFilters();
+syncType();buildFilters();
 if(window.Chart)render();else window.addEventListener("load",render);
 </script>
 </body>
