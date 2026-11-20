@@ -12,8 +12,9 @@ import type { AgBoxRow, BranchInfo, MaterialPageData, TeamInfo } from "./materia
 import {
   baitTotalG,
   breakdownByCustomer,
-  countInternalInspection,
-  inspectionByKey,
+  inspectionByBranchMap,
+  inspectionByTeamMap,
+  inspectionTotal,
   type InspectionCount,
   breakdownByWork,
   gramsPerAgBox,
@@ -75,7 +76,6 @@ function inBranch(v: { branchId: string }, branchId: string | null): boolean {
 
 export function buildMaterialView(data: MaterialPageData, branchId: string | null): MaterialView {
   const cur = data.current.visits.filter((v) => inBranch(v, branchId));
-  const prev = data.previous.visits.filter((v) => inBranch(v, branchId));
 
   const curUsage: UsageRow[] = data.current.usage.filter((u) => inBranch(u, branchId));
   const prevUsage: UsageRow[] = data.previous.usage.filter((u) => inBranch(u, branchId));
@@ -112,12 +112,14 @@ export function buildMaterialView(data: MaterialPageData, branchId: string | nul
     })
     .filter((r) => r.visits > 0 || (r.team.isActive && r.team.headcount > 0));
 
-  const insBranch = inspectionByKey(cur, (v) => [v.branchId]);
-  const insTeam = inspectionByKey(cur, (v) => v.teamIds);
+  const curIns = data.current.inspection.filter((r) => inBranch(r, branchId));
+  const prevIns = data.previous.inspection.filter((r) => inBranch(r, branchId));
+  const insBranch = inspectionByBranchMap(curIns);
+  const insTeam = inspectionByTeamMap(curIns);
 
   return {
-    inspection: countInternalInspection(cur),
-    inspectionPrev: countInternalInspection(prev),
+    inspection: inspectionTotal(curIns),
+    inspectionPrev: inspectionTotal(prevIns),
     inspectionByBranch: data.branches.flatMap((branch) => {
       const count = insBranch.get(branch.id);
       return count ? [{ branch, count }] : [];

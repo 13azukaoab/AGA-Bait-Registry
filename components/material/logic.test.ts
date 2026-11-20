@@ -4,14 +4,16 @@ import {
   baitTotalG,
   breakdownByCustomer,
   breakdownByWork,
-  countInternalInspection,
   gramsPerAgBox,
-  inspectionByKey,
+  inspectionByBranchMap,
+  inspectionByTeamMap,
+  inspectionErrorMessage,
+  inspectionTotal,
   pctChange,
   sharePct,
   sumByBranch,
   sumUsage,
-  type MaterialVisit,
+  type InspectionRow,
   type UsageRow,
 } from "./logic";
 import { evaluateWorkload, minutesToHours, thresholdForTeam } from "./workload";
@@ -27,20 +29,6 @@ function row(over: Partial<UsageRow> = {}): UsageRow {
     installBaitG: 0,
     powderPoints: 0,
     timberPcs: 0,
-    ...over,
-  };
-}
-
-let seq = 0;
-function visit(over: Partial<MaterialVisit> = {}): MaterialVisit {
-  seq += 1;
-  return {
-    visitId: `v${seq}`,
-    branchId: "b1",
-    customerId: "c1",
-    internalInspection: false,
-    teamIds: ["t1"],
-    durationMin: 60,
     ...over,
   };
 }
@@ -169,29 +157,47 @@ describe("ภาระงานรายทีม", () => {
   });
 });
 
-describe("ตรวจภายใน (2.93)", () => {
-  const visits = [
-    visit({ customerId: "c1", internalInspection: true, branchId: "a", teamIds: ["t1"] }),
-    visit({ customerId: "c1", internalInspection: true, branchId: "a", teamIds: ["t1", "t2"] }), // ลูกค้าเดิม เข้าอีกครั้ง
-    visit({ customerId: "c2", internalInspection: true, branchId: "b", teamIds: ["t2"] }),
-    visit({ customerId: "c3", internalInspection: false, branchId: "b", teamIds: ["t2"] }),
+function ins(over: Partial<InspectionRow>): InspectionRow {
+  return { branchId: "a", teamId: null, isBranchTotal: false, inspectionCount: 0, contractCount: 0, ...over };
+}
+
+describe("ตรวจภายใน (2.93 / M43) — อ่านจากแถว RPC", () => {
+  // สาขา a: การเข้า 3 ครั้ง (สัญญา 2) · ครั้งหนึ่งไปสองทีม t1+t2 → แถวทีมรวมกัน 4 ครั้ง แต่แถวรวมสาขา 3 ครั้ง
+  // สาขา b: การเข้า 1 ครั้ง (สัญญา 1) ทีม t2
+  const rows: InspectionRow[] = [
+    ins({ branchId: "a", isBranchTotal: true, inspectionCount: 3, contractCount: 2 }),
+    ins({ branchId: "a", teamId: "t1", inspectionCount: 2, contractCount: 1 }),
+    ins({ branchId: "a", teamId: "t2", inspectionCount: 2, contractCount: 2 }),
+    ins({ branchId: "b", isBranchTotal: true, inspectionCount: 1, contractCount: 1 }),
+    ins({ branchId: "b", teamId: "t2", inspectionCount: 1, contractCount: 1 }),
   ];
-  it("ลูกค้าเดียวกันเข้าหลายครั้ง นับการเข้าทุกครั้ง แต่นับลูกค้า 1 ราย", () => {
-    expect(countInternalInspection(visits)).toEqual({ visits: 3, customers: 2 });
+
+  it("ยอดรวมใช้เฉพาะแถวรวมสาขา — การเข้าหลายทีมไม่นับซ้ำ", () => {
+    expect(inspectionTotal(rows)).toEqual({ visits: 4, contracts: 3 });
   });
-  it("ไม่ติ๊ก = ไม่นับ · ไม่มีการเข้า = 0", () => {
-    expect(countInternalInspection([visit({ internalInspection: false })])).toEqual({ visits: 0, customers: 0 });
-    expect(countInternalInspection([])).toEqual({ visits: 0, customers: 0 });
+  it("รายสาขาใช้แถวรวมสาขา ไม่ใช่ผลรวมแถวทีม", () => {
+    const m = inspectionByBranchMap(rows);
+    expect(m.get("a")).toEqual({ visits: 3, contracts: 2 });
+    expect(m.get("b")).toEqual({ visits: 1, contracts: 1 });
   });
-  it("แยกตามสาขา", () => {
-    const m = inspectionByKey(visits, (v) => [v.branchId]);
-    expect(m.get("a")).toEqual({ visits: 2, customers: 1 });
-    expect(m.get("b")).toEqual({ visits: 1, customers: 1 });
+  it("รายทีมใช้แถวทีม · ทีมเดียวกันหลายสาขารวมข้ามสาขา · ไม่เอาแถวรวมสาขา", () => {
+    const m = inspectionByTeamMap(rows);
+    expect(m.get("t1")).toEqual({ visits: 2, contracts: 1 });
+    expect(m.get("t2")).toEqual({ visits: 3, contracts: 3 });
+    expect(m.size).toBe(2);
   });
-  it("แยกตามทีม: เข้าพร้อมหลายทีมนับให้ทุกทีม · ทีมที่ไม่มีตรวจไม่มีแถว", () => {
-    const m = inspectionByKey(visits, (v) => v.teamIds);
-    expect(m.get("t1")).toEqual({ visits: 2, customers: 1 });
-    expect(m.get("t2")).toEqual({ visits: 2, customers: 2 });
-    expect(m.has("t9")).toBe(false);
+  it("แถวที่ไม่มีทีม (team_id null ที่ไม่ใช่แถวรวม) ไม่ถูกนับเป็นทีม", () => {
+    expect(inspectionByTeamMap([ins({ branchId: "a", teamId: null, inspectionCount: 5 })]).size).toBe(0);
+  });
+  it("ไม่มีแถว = 0", () => {
+    expect(inspectionTotal([])).toEqual({ visits: 0, contracts: 0 });
+    expect(inspectionByBranchMap([]).size).toBe(0);
+  });
+  it("แปลง error เป็นข้อความไทย ไม่ส่งข้อความดิบ", () => {
+    expect(inspectionErrorMessage("II001")).toContain("เดือน");
+    expect(inspectionErrorMessage("42501")).toContain("สิทธิ์");
+    expect(inspectionErrorMessage("XX999")).toContain("ไม่สำเร็จ");
+    expect(inspectionErrorMessage(undefined)).toContain("ไม่สำเร็จ");
+    expect(inspectionErrorMessage("II001")).not.toMatch(/[A-Za-z]{4,}/);
   });
 });
