@@ -48,7 +48,67 @@ export type TeamRow = {
   headcount: number;
   /** จำนวนสัญญาที่ใช้งานอยู่ผูกกับทีมนี้ (null = อ่านไม่ได้) */
   activeContracts: number | null;
+  /** เกณฑ์ Workload ที่ตั้งเฉพาะทีม (teams.workload_hours) · null = ใช้ค่ากลาง */
+  workloadHours: number | null;
+  /** ค่าที่ใช้จริง จาก RPC `team_workload_hours` (ห้ามคิดเอง) · null = อ่านไม่ได้ */
+  effectiveWorkloadHours: number | null;
 };
+
+// ---------------------------------------------------------------------------
+// เกณฑ์ Workload รายทีม (DECISIONS 2.88 · BE M42)
+//   teams.workload_hours NULL = ใช้ค่ากลาง · บันทึกผ่าน RPC save_team_workload_hours เท่านั้น
+// ---------------------------------------------------------------------------
+
+/** ข้อความในตาราง: ตั้งเฉพาะทีม = แสดงค่าทีม · ไม่ตั้ง = "ใช้ค่ากลาง (N ชม.)" */
+export function teamWorkloadLabel(t: Pick<TeamRow, "workloadHours" | "effectiveWorkloadHours">): {
+  custom: boolean;
+  text: string;
+} {
+  const fmt = (n: number) => n.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+  if (t.workloadHours !== null) return { custom: true, text: `${fmt(t.workloadHours)} ชม.` };
+  return {
+    custom: false,
+    text: t.effectiveWorkloadHours === null ? "ใช้ค่ากลาง" : `ใช้ค่ากลาง (${fmt(t.effectiveWorkloadHours)} ชม.)`,
+  };
+}
+
+/** ช่องกรอก → ค่าที่จะส่ง: ติ๊กใช้ค่ากลาง = null · ไม่ติ๊ก = ตัวเลข (ผิด = null พร้อม error จาก validateTeamWorkloadDraft) */
+export function teamWorkloadDraftValue(text: string, useCentral: boolean): number | null {
+  if (useCentral) return null;
+  const s = text.replace(/[,\s]/g, "");
+  if (s === "" || !/^\d+(\.\d+)?$/.test(s)) return null;
+  const n = Number(s);
+  return Number.isFinite(n) ? n : null;
+}
+
+/** ตรวจฟอร์ม: ใช้ค่ากลาง = ผ่านเสมอ · ไม่ใช้ = ต้องเป็นตัวเลขในช่วง (ตรง WL001 / CHECK ของ DB) */
+export function validateTeamWorkloadDraft(text: string, useCentral: boolean): string | null {
+  if (useCentral) return null;
+  return validateWorkload(teamWorkloadDraftValue(text, false));
+}
+
+/** ตรวจ input ของ server action: null = ใช้ค่ากลาง (ผ่าน) · อื่นๆ ต้องเป็นเลขจริงในช่วง */
+export function validateTeamWorkloadInput(hours: unknown): boolean {
+  if (hours === null) return true;
+  return typeof hours === "number" && Number.isFinite(hours) && validateWorkload(hours) === null;
+}
+
+/** แปลงผลคืนของ RPC `save_team_workload_hours` (RETURNS TABLE → array หรือ object แถวเดียว) · รูปแบบแปลก = null */
+export function parseSaveTeamWorkloadResult(
+  data: unknown,
+): { workloadHours: number | null; effectiveHours: number } | null {
+  const row: unknown = Array.isArray(data) ? data[0] : data;
+  if (typeof row !== "object" || row === null) return null;
+  const r = row as { workload_hours?: unknown; effective_hours?: unknown };
+  const effective = r.effective_hours === null || r.effective_hours === undefined ? NaN : Number(r.effective_hours);
+  if (!Number.isFinite(effective)) return null;
+  if (r.workload_hours === null || r.workload_hours === undefined) return { workloadHours: null, effectiveHours: effective };
+  const own = Number(r.workload_hours);
+  return Number.isFinite(own) ? { workloadHours: own, effectiveHours: effective } : null;
+}
+
+/** ข้อความไทยของ error ที่มีเฉพาะการแก้เกณฑ์ทีม (TM007) · อื่นๆ ใช้ตัวแปลกลาง (WL001/AG004/TM006/42501) */
+export const TM007_MESSAGE = 'ต้องยืนยันก่อนแก้เกณฑ์ Workload ของทีม — พิมพ์คำว่า "ยืนยันแก้ไข" ให้ตรง';
 
 export const TEAM_CODE_PATTERN = /^[A-Za-z0-9]{1,4}$/;
 export const TEAM_NAME_MAX = 60;
