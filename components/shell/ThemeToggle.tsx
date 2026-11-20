@@ -33,7 +33,7 @@ export function ThemeToggle() {
       onClick={() => writeThemePreference(nextThemePreference(preference))}
       aria-label={`โหมดสี: ${current.label} (กดเพื่อเปลี่ยนเป็น${next.label})`}
       title={`โหมดสี: ${current.label}`}
-      className="inline-flex h-[34px] shrink-0 cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-border bg-surface-2 px-2.5 text-[13px] text-fg hover:bg-surface-3 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+      className="inline-flex h-[34px] max-[767px]:h-11 max-[767px]:min-w-11 shrink-0 cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-border bg-surface-2 px-2.5 text-[13px] text-fg hover:bg-surface-3 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
     >
       <span aria-hidden="true" className="text-base leading-none">
         {current.icon}
