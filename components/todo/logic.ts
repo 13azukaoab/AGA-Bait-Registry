@@ -10,6 +10,8 @@
  *   * หลักฐานของ "ไม่ชดเชย": ไฟล์ PDF/PNG/JPG ไม่เกิน 5 MB · path = `<contract_id>/<uuid>.<นามสกุล>` (ตรงกฎของ bucket missed-service-evidence)
  */
 import type { UserRole } from "@/lib/db/types";
+
+import { isContractEnded } from "./contractEnd";
 import { describeServiceError, type DbErrorLike, type ServiceError } from "@/components/service/errors";
 
 // ───────────────────────── เดือนของหน้า ─────────────────────────
@@ -216,18 +218,8 @@ export interface CollectContractInput {
   endDate: string;
 }
 
-/**
- * สัญญาจบแล้ว (เก็บสถานีได้) — ตรงเกณฑ์ collect_ig_stations (CL001) + ด่านสัญญาพัก (CP010 · M29)
- *   * paused = **ไม่นับว่าจบ** ไม่ว่าจะเลยวันสิ้นสุดหรือไม่ — สถานียังอยู่กับลูกค้า DB กันการเก็บ (CP010) จึงไม่ขึ้นรายการรอเก็บ
- *     (เก็บได้หลังสัญญาจบ/ยกเลิก หรือเมื่อกลับมาใช้งาน)
- *   * expired_pending_collection / closed / cancelled = จบ
- *   * active = จบเมื่อวันสิ้นสุดก่อนวันนี้ (เวลาไทย)
- */
-export function isContractEnded(c: Pick<CollectContractInput, "status" | "endDate">, today: string): boolean {
-  if (c.status === "paused") return false;
-  if (c.status === "active") return c.endDate < today;
-  return true;
-}
+// นิยาม "สัญญาจบ" อยู่ที่ไฟล์กลาง contractEnd.ts (ใช้ร่วม /todo · หน้าลูกค้า · /bait) — re-export ให้ผู้เรียกเดิมใช้ต่อได้
+export { isContractEnded } from "./contractEnd";
 
 export interface CollectSummary {
   /** จำนวนลูกค้า (ไม่ซ้ำ) ที่ยังมี IG รอเก็บ */
