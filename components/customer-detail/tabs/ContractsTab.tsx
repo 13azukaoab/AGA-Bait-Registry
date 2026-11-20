@@ -8,13 +8,19 @@
  *   * วันสิ้นสุดที่เก็บไว้ไม่ตรงกฎ (เริ่ม + N เดือน − 1 วัน) → ป้ายเตือน "ไม่ตรงกฎ"
  *   * Renew: บอกว่าต่อจากสัญญาไหน/ย้ายสถานีมากี่จุด และสัญญาเก่าชี้ไปสัญญาใหม่ · ดูประวัติสัญญาเก่าได้เสมอ
  *   * หมดสัญญารอเก็บ: แถบความคืบหน้าเก็บสถานี IG (IC มอบลูกค้า · AG ที่ค้างไม่ต้องเก็บ)
- *   * หน้านี้ดูอย่างเดียว — "แก้สัญญานี้" เป็นลิงก์ไปหน้าเปิดงาน (host/admin · admin แก้สัญญาปิดแล้ว/ยกเลิกไม่ได้)
+ *   * "แก้สัญญานี้" เป็นลิงก์ไปหน้าเปิดงาน (host/admin · admin แก้สัญญาปิดแล้ว/ยกเลิกไม่ได้)
+ *   * ปุ่ม "ยกเลิกสัญญา" / "เปิดสัญญากลับ" (DECISIONS 2.97 · M44 · host + admin) — เรียก RPC cancel_contract / reopen_contract ผ่านกล่องยืนยัน
+ *     เงื่อนไขปุ่มอยู่ที่ cancelContract.ts (ซ่อนตามสถานะ · ฐานข้อมูลตรวจซ้ำ) · สัญญาที่ยกเลิกแสดงเหตุผล/ผู้ยกเลิก/วันที่
  */
 import Link from "next/link";
+import { useState } from "react";
 
 import { TierBadge } from "@/components/ui";
 import { serviceMonthsForTerm } from "@/lib/rules";
+import { createClient } from "@/lib/supabase/client";
 
+import { CANCEL_REASON_LABEL, canShowCancel, canShowReopen, cancelContract, isCancelReasonCode, reopenContract } from "../cancelContract";
+import { CancelContractDialog, ReopenContractDialog } from "../ContractCancelDialogs";
 import type { GotoOpts, TabKey } from "../Header";
 import {
   canEditContract,
@@ -41,11 +47,17 @@ export function ContractsTab({
   selected,
   onPick,
   onGoto,
+  onToast,
+  onChanged,
 }: {
   data: CustomerDetailData;
   selected: string | null;
   onPick: (contractId: string) => void;
   onGoto: (tab: TabKey, opts?: GotoOpts) => void;
+  /** แสดงข้อความแจ้งผลมุมจอ */
+  onToast: (message: string) => void;
+  /** โหลดข้อมูลหน้าใหม่หลังยกเลิก/เปิดกลับสำเร็จ */
+  onChanged: () => void;
 }) {
   const cs = sortContracts(data.contracts);
   const sel = cs.find((c) => c.id === selected) ?? cs[0];
@@ -100,7 +112,7 @@ export function ContractsTab({
           </tbody>
         </table>
       </div>
-      <ContractDetail data={data} k={sel} onPick={onPick} onGoto={onGoto} />
+      <ContractDetail data={data} k={sel} onPick={onPick} onGoto={onGoto} onToast={onToast} onChanged={onChanged} />
     </div>
   );
 }
@@ -110,13 +122,20 @@ function ContractDetail({
   k,
   onPick,
   onGoto,
+  onToast,
+  onChanged,
 }: {
   data: CustomerDetailData;
   k: ContractRow;
   onPick: (id: string) => void;
   onGoto: (tab: TabKey, opts?: GotoOpts) => void;
+  onToast: (message: string) => void;
+  onChanged: () => void;
 }) {
   const perm = customerPermissions(data.role);
+  const [dialog, setDialog] = useState<"cancel" | "reopen" | null>(null);
+  const showCancel = canShowCancel(data.role, k, data.contracts);
+  const showReopen = canShowReopen(data.role, k);
   const ms = monthStates(k, data.visits, data.currentMonth);
   const cnt = { ok: ms.filter((x) => x.state === "ok").length, miss: ms.filter((x) => x.state === "miss").length, total: ms.length };
   const sc = stationCounts(data.stations.filter((s) => s.contractId === k.id));
@@ -219,6 +238,16 @@ function ContractDetail({
             <Icon name="moved" /> สัญญาใหม่ {succ.no}
           </button>
         ) : null}
+        {showCancel ? (
+          <button type="button" className={`${BTN} text-danger`} onClick={() => setDialog("cancel")}>
+            <Icon name="lock" /> ยกเลิกสัญญา
+          </button>
+        ) : null}
+        {showReopen ? (
+          <button type="button" className={BTN} onClick={() => setDialog("reopen")}>
+            <Icon name="back" /> เปิดสัญญากลับ
+          </button>
+        ) : null}
         {editable ? (
           <Link href={`/customers/new?month=${k.startDate.slice(0, 7)}`} className={`${BTN} ml-auto no-underline`} title="ไปหน้าเปิดงานเพื่อแก้สัญญานี้ (ทุกการแก้ลงประวัติ)">
             <Icon name="pencil" /> แก้สัญญานี้
@@ -235,6 +264,12 @@ function ContractDetail({
       {k.status === "cancelled" ? (
         <div className="mt-3 flex flex-wrap items-center gap-1.5 text-xs">
           <span className="rounded-full bg-danger-soft px-2.5 py-1 font-semibold text-danger">ยกเลิก</span>
+          {k.cancelledAt ? <span className="text-fg-muted">เมื่อ {fmtDate(k.cancelledAt)}</span> : null}
+          {isCancelReasonCode(k.cancelReasonCode) ? (
+            <span className="rounded-full bg-surface-3 px-2.5 py-1 text-fg">เหตุผล: {CANCEL_REASON_LABEL[k.cancelReasonCode]}</span>
+          ) : null}
+          {k.cancelledByName ? <span className="text-fg-muted">โดย {k.cancelledByName}</span> : null}
+          {k.cancelReason ? <p className="m-0 w-full text-fg-muted">{k.cancelReason}</p> : null}
         </div>
       ) : (
         <ol aria-label="สถานะสัญญา" className="m-0 mt-3 flex list-none flex-wrap items-center gap-1.5 p-0 text-xs">
@@ -267,6 +302,35 @@ function ContractDetail({
               : "IG จัดการครบทุกจุดแล้ว (เก็บแล้ว / ไม่เก็บ)"}
           </p>
         </div>
+      ) : null}
+
+      {dialog === "cancel" ? (
+        <CancelContractDialog
+          contractNo={k.no}
+          onClose={() => setDialog(null)}
+          onSubmit={async (reasonCode, reason) => {
+            const r = await cancelContract(createClient(), { contractId: k.id, reasonCode, reason });
+            if (!r.ok) return r.message;
+            setDialog(null);
+            onToast(`ยกเลิกสัญญา ${k.no} แล้ว (ลงประวัติการแก้ไข)`);
+            onChanged();
+            return null;
+          }}
+        />
+      ) : null}
+      {dialog === "reopen" ? (
+        <ReopenContractDialog
+          contractNo={k.no}
+          onClose={() => setDialog(null)}
+          onSubmit={async (reason) => {
+            const r = await reopenContract(createClient(), { contractId: k.id, reason });
+            if (!r.ok) return r.message;
+            setDialog(null);
+            onToast(`เปิดสัญญา ${k.no} กลับแล้ว (ลงประวัติการแก้ไข)`);
+            onChanged();
+            return null;
+          }}
+        />
       ) : null}
     </section>
   );

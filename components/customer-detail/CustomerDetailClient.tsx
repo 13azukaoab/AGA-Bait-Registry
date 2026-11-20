@@ -187,7 +187,7 @@ export function CustomerDetailClient({ data, initial }: { data: CustomerDetailDa
           </div>
           <div id="detail-panel" role="tabpanel" aria-labelledby={`tab-${tab}`} tabIndex={0} className="p-3.5 outline-none max-[640px]:p-3">
             {tab === "dash" ? <DashTab data={data} contractId={selected} onToast={setToast} /> : null}
-            {tab === "contracts" ? <ContractsTab data={data} selected={selected} onPick={setSelected} onGoto={goto} /> : null}
+            {tab === "contracts" ? <ContractsTab data={data} selected={selected} onPick={setSelected} onGoto={goto} onToast={setToast} onChanged={() => router.refresh()} /> : null}
             {tab === "stations" ? <StationsTab data={data} ui={stationUi} onUi={setStationUi} /> : null}
             {tab === "visits" ? <VisitsTab data={data} ui={visitUi} onUi={setVisitUi} missed={missed} onToast={setToast} onChanged={() => router.refresh()} /> : null}
             {tab === "files" ? <FilesTab data={data} onToast={setToast} /> : null}
