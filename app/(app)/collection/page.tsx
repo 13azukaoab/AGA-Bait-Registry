@@ -44,6 +44,7 @@ export default async function CollectionPage() {
       teams={result.teams}
       held={result.held}
       truncated={result.truncated}
+      pendingTruncated={result.pendingTruncated}
       role={profile.role}
       divisionScope={profile.divisionScope}
       currentMonth={currentBangkokMonth()}
