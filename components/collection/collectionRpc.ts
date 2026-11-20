@@ -88,7 +88,7 @@ export async function skipIgCollection(supabase: SupabaseClient, input: ActionIn
 // ───────────── ปิดสัญญา (รอ BE M44 · DECISIONS 2.99) ─────────────
 // ห้าม UPDATE contracts ตรง — เรียกผ่าน RPC เท่านั้น · ชื่อ/พารามิเตอร์ด้านล่างแก้ที่จุดเดียวเมื่อ BE แจ้ง signature จริง
 /** false = ซ่อนปุ่ม "ปิดสัญญา" (RPC ยังไม่มีบน main) — เปลี่ยนเป็น true เมื่อ RPC ขึ้นแล้ว */
-export const CLOSE_CONTRACT_AVAILABLE = false;
+export const CLOSE_CONTRACT_AVAILABLE = true;
 export const CLOSE_CONTRACT_RPC = "close_contract";
 export const CLOSE_CONTRACT_PARAM = "p_contract_id";
 export const CLOSE_CONTRACT_NOTE_PARAM = "p_note";

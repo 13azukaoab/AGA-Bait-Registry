@@ -316,7 +316,7 @@ describe("ซ่อนเรื่องรอชดเชย (splitHeld)", () =
 
 describe("ปิดสัญญา (รอ RPC)", () => {
   it("ค่าเริ่มต้นซ่อนปุ่ม · สิทธิ์ตาม role (2.99) · ปิดได้เฉพาะสัญญายังไม่ปิด/ยกเลิก", () => {
-    expect(CLOSE_CONTRACT_AVAILABLE).toBe(false);
+    expect(CLOSE_CONTRACT_AVAILABLE).toBe(true);
     const central = { division: "central" };
     expect(canCloseContract("host", [], { division: "province" })).toBe(true);
     expect(canCloseContract("recorder", ["central"], central)).toBe(true);
@@ -327,11 +327,17 @@ describe("ปิดสัญญา (รอ RPC)", () => {
     expect(isClosable("closed")).toBe(false);
     expect(isClosable("paused")).toBe(false);
   });
-  it("ยังไม่มี RPC → ไม่เรียก DB เลย", async () => {
-    let called = false;
-    const r = await closeContract({ rpc: async () => ((called = true), { error: null }) } as never, "c1");
+  it("เรียก close_contract พร้อม p_note · อ่าน ig_remaining จากผล", async () => {
+    const calls: { name: string; args: unknown }[] = [];
+    const fake = { rpc: async (name: string, args: unknown) => (calls.push({ name, args }), { data: [{ ig_remaining: 3 }], error: null }) };
+    const r = await closeContract(fake as never, "c1", " หมายเหตุ ");
+    expect(calls).toEqual([{ name: "close_contract", args: { p_contract_id: "c1", p_note: "หมายเหตุ" } }]);
+    expect(r).toEqual({ ok: true, igRemaining: 3 });
+  });
+  it("error จาก DB (CL006) → ข้อความไทย", async () => {
+    const r = await closeContract({ rpc: async () => ({ data: null, error: { code: "CL006", message: "raw" } }) } as never, "c1");
     expect(r.ok).toBe(false);
-    expect(called).toBe(false);
+    if (!r.ok) expect(r.error.message).toContain("ยังไม่หมดอายุ");
   });
 });
 
@@ -354,7 +360,7 @@ describe("close_contract (M44) — payload / error / ข้อความ", () 
     expect(buildClosePayload("c1", "  ")).toEqual({ p_contract_id: "c1", p_note: null });
     expect(buildClosePayload("c1", " ลูกค้าแจ้งเลิก ")).toEqual({ p_contract_id: "c1", p_note: "ลูกค้าแจ้งเลิก" });
   });
-  it.each(["42501", "22004", "AG004", "CL006", "CL007", "CL008", "CL009", "CL010", "CL011"])("%s → ข้อความไทย ไม่ใช่บั๊ก ไม่โชว์ดิบ", (code) => {
+  it.each(["42501", "22004", "AG004", "CL006", "CL007", "CL008", "CL009", "CL010", "CL011", "CL012"])("%s → ข้อความไทย ไม่ใช่บั๊ก ไม่โชว์ดิบ", (code) => {
     const e = describeCollectError({ code, message: "raw english hint" });
     expect(e.message).toMatch(/[ก-๙]/);
     expect(e.message).not.toContain("raw english");
