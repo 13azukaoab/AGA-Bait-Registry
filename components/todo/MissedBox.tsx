@@ -8,6 +8,8 @@
  *   * ปุ่มไหนกดได้ ตัดสินจาก missedActionState(role, pastDeadline) — เลยเพดานชดเชย หัวหน้างานกดชดเชยไม่ได้ (Host ได้)
  *   * เรื่องที่ปิดแล้ว: "ไม่ชดเชย" มีปุ่มเปิดเรื่องกลับ · "ชดเชยแล้ว" ดูอย่างเดียว
  *   * ข้อมูลทั้งหมดมาจากฐานข้อมูล (data.ts) — ไม่คำนวณสูตรตกบริการในหน้านี้
+ *   * ค้างเยอะ (F2): แสดง 50 เรื่องแรกตามลำดับเดิม (เดือนที่ตกเก่าสุดก่อน) + ปุ่ม "แสดงเพิ่ม" ครั้งละ 50 · ตัวเลขในหัวกล่อง/การ์ดนับจากทั้งหมดเสมอ
+ *   * เรื่องที่ปิดแล้วเป็นรายการ "ล่าสุด" CLOSED_LIMIT รายการ — เต็มเพดานแล้วเขียนกำกับให้ผู้ใช้รู้ ไม่ใช่ทั้งหมด
  */
 import Link from "next/link";
 import { useState } from "react";
@@ -19,7 +21,7 @@ import { customerLinkContexts } from "@/lib/links/customerLink";
 import { monthLabel } from "@/lib/service/months";
 import type { UserRole } from "@/lib/db/types";
 
-import { missedActionState, type ClosedMissed, type PendingMissed } from "./logic";
+import { CLOSED_LIMIT, MISSED_PAGE_SIZE, missedActionState, nextVisible, visibleSlice, type ClosedMissed, type PendingMissed } from "./logic";
 import { StatusChip } from "./StatusChip";
 
 export function MissedBox({
@@ -29,6 +31,7 @@ export function MissedBox({
   currentMonth,
   onWaive,
   onReopen,
+  initialVisible = MISSED_PAGE_SIZE,
 }: {
   pending: readonly PendingMissed[];
   closed: readonly ClosedMissed[];
@@ -37,10 +40,14 @@ export function MissedBox({
   currentMonth: string;
   onWaive: (item: PendingMissed) => void;
   onReopen: (item: ClosedMissed) => void;
+  /** จำนวนเรื่องที่แสดงตอนเริ่ม (ค่าเริ่มต้น 50 · ใช้ปรับในเทสต์) */
+  initialVisible?: number;
 }) {
   const [showClosed, setShowClosed] = useState(false);
+  const [visible, setVisible] = useState(initialVisible);
   const canDecide = role === "host" || role === "recorder";
   const need = pending.length;
+  const shown = visibleSlice(pending, visible);
 
   return (
     <section
@@ -54,13 +61,18 @@ export function MissedBox({
         <span className="text-xs font-normal text-fg-muted">
           ค้างจากเดือนก่อน · ไปบริการชดเชยแล้วกด “บันทึกบริการชดเชย” หรือลูกค้ายินยอมกด “ไม่ชดเชย”
         </span>
+        {need > shown.length ? (
+          <span className="text-xs font-normal text-fg-muted">
+            ค้าง {need.toLocaleString("th-TH")} เรื่อง · แสดง {shown.length.toLocaleString("th-TH")}
+          </span>
+        ) : null}
         {canDecide ? null : <span className="ml-auto text-xs font-normal text-fg-muted">ดูอย่างเดียว</span>}
       </h2>
 
       {need === 0 ? <p className="m-0 px-4 py-4 text-[13px] text-fg-muted">ไม่มีเรื่องตกบริการค้างตัดสิน</p> : null}
 
       <ul className="m-0 list-none p-0">
-        {pending.map((it) => {
+        {shown.map((it) => {
           const a = missedActionState(role, it.pastDeadline);
           const sub = it.pastDeadline
             ? `เลยเพดานชดเชยแล้ว (ครบ ${monthLabel(it.deadlineMonth)}) — ${
@@ -127,6 +139,17 @@ export function MissedBox({
         })}
       </ul>
 
+      {need > shown.length ? (
+        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border px-4 py-3">
+          <span aria-live="polite" className="text-[13px] text-fg-muted">
+            แสดง {shown.length.toLocaleString("th-TH")} จาก {need.toLocaleString("th-TH")} เรื่อง (เรียงเดือนที่ตกเก่าสุดก่อน)
+          </span>
+          <Button className="max-md:min-h-11 md:min-h-10" onClick={() => setVisible((v) => nextVisible(v, need))}>
+            แสดงเพิ่ม (อีก {Math.min(MISSED_PAGE_SIZE, need - shown.length)} เรื่อง)
+          </Button>
+        </div>
+      ) : null}
+
       {closed.length > 0 ? (
         <div className="border-t border-border px-4 py-2">
           <button
@@ -138,7 +161,9 @@ export function MissedBox({
             <svg viewBox="0 0 24 24" aria-hidden className={`size-4 fill-none stroke-current stroke-2 transition-transform ${showClosed ? "rotate-90" : ""}`}>
               <path d="M9 6l6 6-6 6" />
             </svg>
-            เรื่องที่ปิดแล้ว {closed.length} ราย (ไม่ชดเชย · ชดเชยแล้ว)
+            {closed.length >= CLOSED_LIMIT
+              ? `เรื่องที่ปิดล่าสุด ${CLOSED_LIMIT} รายการ (ไม่ชดเชย · ชดเชยแล้ว · แสดงเฉพาะล่าสุด)`
+              : `เรื่องที่ปิดแล้ว ${closed.length} ราย (ไม่ชดเชย · ชดเชยแล้ว)`}
           </button>
           {showClosed ? (
             <ul className="m-0 list-none p-0">

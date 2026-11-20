@@ -25,6 +25,7 @@ import { termMonthsOf } from "@/lib/service/termMonths";
 import { fetchAllKeyset, KEYSET_PAGE_SIZE } from "./keysetFetch";
 
 import {
+  CLOSED_LIMIT,
   computeProgress,
   pickPageScope,
   sortClosed,
@@ -39,7 +40,7 @@ import {
   type Progress,
 } from "./logic";
 
-export const CLOSED_LIMIT = 200;
+export { CLOSED_LIMIT };
 const CHUNK = 80;
 /** PostgREST max_rows (supabase/config.toml) — ผลที่ได้เต็มเพดานนี้ = อาจถูกตัด */
 const MAX_ROWS = KEYSET_PAGE_SIZE;
