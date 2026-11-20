@@ -137,6 +137,14 @@ describe("จุดชี้ data-tour ในหน้าจริง", () => {
     expect(fb("pmom")).toEqual(["port-save->port-list"]);
   });
 
+  it("ขั้นบันทึกสัญญาของ Admin มีข้อความสำรองเมื่อปุ่มถูกปิด · port-list ชี้หัวตาราง (thead)", () => {
+    const save = LESSONS.admin.steps.find((s) => s.target === "new-save")!;
+    expect(save.disabledBody).toContain("กรอก");
+    const port = readFileSync(join(process.cwd(), "components/port/PortClient.tsx"), "utf8");
+    expect(port).toMatch(/<thead data-tour="port-list">/);
+    expect(port).not.toMatch(/<table[^>]*data-tour="port-list"/);
+  });
+
   it("ข้อความขั้นท้าย Admin ไม่อ้างคู่มือที่ยังไม่มี", () => {
     expect(LESSONS.admin.steps.at(-1)!.body).not.toContain("คู่มือ");
   });

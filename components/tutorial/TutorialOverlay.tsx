@@ -37,6 +37,7 @@ import {
   nextAfterMissing,
   selectorFor,
   viewForStep,
+  viewWhenDisabled,
   type Placement,
   type Rect,
 } from "./tour-logic";
@@ -89,6 +90,9 @@ export function TutorialOverlay() {
   const pathname = usePathname();
   const small = useSyncExternalStore(subscribeSmall, getSmall, () => false);
   const mounted = useSyncExternalStore(noopSubscribe, () => true, () => false);
+  // กล่องโต้ตอบแบบ modal ของหน้า (<dialog>.showModal) อยู่ชั้นบนสุดของเบราว์เซอร์ + ทำให้ส่วนอื่นกดไม่ได้ (inert)
+  // → ระหว่างบทเรียนให้วางกล่อง/ไฮไลต์ "ข้างใน" dialog ที่เปิดอยู่ จะได้อยู่บนสุดและกดปุ่มของบทเรียนได้
+  const [host, setHost] = useState<HTMLElement | null>(null);
 
   const lesson = snapshot.lessonId ? getLesson(snapshot.lessonId) : undefined;
   const rawStep = snapshot.running ? lesson?.steps[snapshot.index] : undefined;
@@ -152,6 +156,25 @@ export function TutorialOverlay() {
         : { key: stepKeyRef.current, rect, placement },
     );
   }, []);
+
+  /* ---------- หา <dialog> modal ที่เปิดอยู่ (เปลี่ยนเมื่อเปิด/ปิด) ---------- */
+  useEffect(() => {
+    if (!running) return;
+    const find = () => {
+      const open = Array.from(document.querySelectorAll<HTMLDialogElement>("dialog[open]")).filter((d) =>
+        d.matches(":modal"),
+      );
+      const next = open.length ? open[open.length - 1]! : null;
+      setHost((prev) => (prev === next ? prev : next));
+    };
+    find();
+    const observer = new MutationObserver(find);
+    observer.observe(document.body, { subtree: true, childList: true, attributes: true, attributeFilter: ["open"] });
+    return () => {
+      observer.disconnect();
+      setHost(null);
+    };
+  }, [running]);
 
   /* ---------- ตั้ง/ล้างสถานะของหน้าตอนบทเรียนทำงาน ---------- */
   useEffect(() => {
@@ -372,6 +395,7 @@ export function TutorialOverlay() {
 
   const isLast = snapshot.index === stepCount - 1;
   const clickStep = isClickStep(step.act, targetDisabled);
+  const shown = viewWhenDisabled(step, targetDisabled); // ข้อความตามสถานะปุ่ม (ปิดอยู่ → ข้อความสำรอง)
   const nextLabel = clickStep ? "ข้ามขั้นนี้" : (step.cta ?? (isLast ? "เสร็จสิ้น" : "ถัดไป"));
   const screen = step.screen ?? "app";
 
@@ -427,9 +451,9 @@ export function TutorialOverlay() {
           {step.title}
         </h2>
         <p id="tutorial-body" className={styles.body}>
-          {step.body}
+          {shown.body}
         </p>
-        {step.hint && !(step.act === "click" && targetDisabled) ? <p className={styles.hint}>{step.hint}</p> : null}
+        {shown.hint ? <p className={styles.hint}>{shown.hint}</p> : null}
         {snapshot.guardError && screen === "app" ? (
           <p className={styles.error} role="alert">
             {snapshot.guardError}
@@ -462,6 +486,6 @@ export function TutorialOverlay() {
         </div>
       ) : null}
     </>,
-    document.body,
+    host ?? document.body,
   );
 }

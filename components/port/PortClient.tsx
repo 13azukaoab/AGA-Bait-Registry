@@ -269,9 +269,9 @@ export function PortClient({ data }: { data: PortPageData }) {
             </div>
           </div>
           <div className="overflow-x-auto">
-            <table data-tour="port-list" className="w-full border-collapse text-[13px]">
+            <table className="w-full border-collapse text-[13px]">
               <caption className="sr-only">ตารางสถานะการอัปเดต port ของสาขาต่างจังหวัดในเดือนที่เลือก</caption>
-              <thead>
+              <thead data-tour="port-list">
                 <tr>
                   <th scope="col" className={th}>สาขา</th>
                   <th scope="col" className={th}>สถานะ</th>

@@ -5,10 +5,12 @@ import {
   computePlacement,
   computeRevealDelta,
   decideClick,
+  DEFAULT_DISABLED_HINT,
   evaluatePassword,
   isClickStep,
   nextAfterMissing,
   viewForStep,
+  viewWhenDisabled,
   passwordGuardError,
   rectsOverlap,
   selectorFor,
@@ -122,6 +124,27 @@ describe("จุดสำรอง", () => {
   it("หัวข้อจุดสำรองไม่ระบุ → ใช้หัวข้อเดิม", () => {
     const v = viewForStep({ ...withFb, fallback: { target: "a", body: "b" } }, true);
     expect(v.title).toBe("ทุกอย่างปกติ");
+  });
+});
+
+describe("ข้อความตามสถานะปุ่ม (ปุ่มถูกปิด)", () => {
+  const step = { target: "new-save", act: "click" as const, title: "บันทึก", body: "กดบันทึก", hint: "ลองกดปุ่มที่ไฮไลต์", disabledBody: "จะกดได้เมื่อกรอกครบ" };
+  it("ปุ่มกดได้ → ข้อความเดิมทั้งหมด", () => {
+    expect(viewWhenDisabled(step, false)).toBe(step);
+  });
+  it("ปุ่มถูกปิด + มี disabledBody → ใช้ disabledBody และข้อความมาตรฐานแทนคำแนะนำให้ลองกด", () => {
+    const v = viewWhenDisabled(step, true);
+    expect(v.body).toBe("จะกดได้เมื่อกรอกครบ");
+    expect(v.hint).toBe(DEFAULT_DISABLED_HINT);
+  });
+  it("ปุ่มถูกปิด + ไม่มี disabledBody → คง body เดิม แต่เปลี่ยนคำแนะนำเป็นข้อความมาตรฐาน", () => {
+    const v = viewWhenDisabled({ ...step, disabledBody: undefined }, true);
+    expect(v.body).toBe("กดบันทึก");
+    expect(v.hint).toBe(DEFAULT_DISABLED_HINT);
+  });
+  it("ขั้นที่ไม่ใช่ act:click ไม่เปลี่ยนแม้จุดที่ชี้ถูกปิด", () => {
+    const read = { ...step, act: undefined };
+    expect(viewWhenDisabled(read, true)).toBe(read);
   });
 });
 
