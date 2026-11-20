@@ -10,8 +10,9 @@
  *   * จำนวนสัญญาที่ไม่มีวันที่รับ Mail = query นับอย่างเดียว (`head: true` ไม่ส่งแถวกลับ) แสดงเป็นหมายเหตุ
  *   * เพดาน SALES_MAX_ROWS แถว: เกินแล้ว `truncated = true` (ใช้ count จาก query หลัก — ไม่ตัดเงียบ หน้าแสดงคำเตือน)
  *     โหลดทีละ SALES_PAGE_CHUNK แถว
- *   * ตัวกรองสัญญายกเลิก / สัญญานำเข้า รวมที่จุดเดียว (`EXCLUDE_CANCELLED` / `EXCLUDE_IMPORTED`) — **ตอนนี้ปิดทั้งคู่ = นับทุกสัญญา**
- *     ห้ามเปลี่ยนค่าจนกว่าเจ้าของตัดสิน (รอ HQ แจ้งผล) · ใช้กับทั้ง query หลักและ query นับ
+ *   * ตัวกรองสัญญายกเลิก / สัญญานำเข้า รวมที่จุดเดียว (`EXCLUDE_CANCELLED` / `EXCLUDE_IMPORTED`) — เจ้าของเลือกวิธีนับแบบ ก (DECISIONS 2.91):
+ *     **ไม่นับสัญญายกเลิก · นับสัญญานำเข้าที่มีวันที่รับ Mail** · ใช้กับทั้ง query หลักและ query นับ
+ *     (หมวด 2 อาจแยกเหตุผลยกเลิก "ลงผิด/ลูกค้ายกเลิกจริง" ใน M44 — ถ้าเปลี่ยนวิธีนับ HQ จะแจ้ง)
  *   * ต่อสัญญาล่าช้า: ผู้เรียกส่งฟังก์ชัน `isLate` (= isLateRenewal จาก lib/rules) เข้ามา — ที่นี่ไม่มีสูตรของตัวเอง
  *   * ⚠ PDPA: ผลลัพธ์มีชื่อลูกค้า — ห้าม console.log · error คืนแค่ code (ไม่คืน message ดิบ)
  */
@@ -22,9 +23,9 @@ import type { SaleKind, SalesRow } from "./salesTypes";
 export const SALES_PAGE_CHUNK = 1000;
 export const SALES_MAX_ROWS = 5000;
 
-/** ไม่นับสัญญายกเลิก (contracts.status = 'cancelled') · false = นับ (พฤติกรรมปัจจุบัน) — รอเจ้าของตัดสิน */
-export const EXCLUDE_CANCELLED = false;
-/** ไม่นับสัญญานำเข้า (contracts.import_batch ไม่ว่าง) · false = นับ (พฤติกรรมปัจจุบัน) — รอเจ้าของตัดสิน */
+/** ไม่นับสัญญายกเลิก (contracts.status = 'cancelled') — เจ้าของเลือกแบบ ก (DECISIONS 2.91) */
+export const EXCLUDE_CANCELLED = true;
+/** ไม่นับสัญญานำเข้า (contracts.import_batch ไม่ว่าง) · false = นับสัญญานำเข้าที่มีวันที่รับ Mail (DECISIONS 2.91 แบบ ก) */
 export const EXCLUDE_IMPORTED = false;
 
 export interface SalesLoadOptions {

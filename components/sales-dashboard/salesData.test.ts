@@ -146,12 +146,22 @@ describe("loadSalesRows", () => {
     expect(await loadSalesRows(b.client, "2026-08-01", lateStub)).toEqual({ ok: false, code: "57014" });
   });
 
-  it("ค่าเริ่มต้น: ไม่กรองสัญญายกเลิก/นำเข้า (นับทุกสัญญา) ทั้ง 2 query", async () => {
-    expect(EXCLUDE_CANCELLED).toBe(false);
+  it("ค่าเริ่มต้น (2.91 แบบ ก): ไม่นับสัญญายกเลิก · นับสัญญานำเข้า — ทั้ง query หลักและ query นับ", async () => {
+    expect(EXCLUDE_CANCELLED).toBe(true);
     expect(EXCLUDE_IMPORTED).toBe(false);
-    expect(DEFAULT_SALES_LOAD_OPTIONS).toEqual({ excludeCancelled: false, excludeImported: false });
+    expect(DEFAULT_SALES_LOAD_OPTIONS).toEqual({ excludeCancelled: true, excludeImported: false });
     const { client, builders } = fakeSupabase({ pages: () => ({ data: [], count: 0 }) });
     await loadSalesRows(client, "2026-08-01", lateStub);
+    expect(builders).toHaveLength(2);
+    for (const b of builders) {
+      expect(hasCall(b, "neq", "status", "cancelled")).toBe(true);
+      expect(hasCall(b, "is", "import_batch", null)).toBe(false);
+    }
+  });
+
+  it("ตัวเลือกปิดทั้งคู่ (นับทุกสัญญา) ยังทำงานได้", async () => {
+    const { client, builders } = fakeSupabase({ pages: () => ({ data: [], count: 0 }) });
+    await loadSalesRows(client, "2026-08-01", lateStub, { excludeCancelled: false, excludeImported: false });
     for (const b of builders) {
       expect(names(b)).not.toContain("neq");
       expect(hasCall(b, "is", "import_batch", null)).toBe(false);
