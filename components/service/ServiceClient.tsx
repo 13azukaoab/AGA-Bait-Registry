@@ -13,6 +13,9 @@
  *   * เตือนก่อนออกจากรายที่ยังไม่บันทึก (ค่าเริ่มต้น = "กลับไปกรอกต่อ")
  *   * บันทึกสำเร็จ → ไปรายถัดไปที่ยังไม่กรอก (วนรอบรายชื่อ) · ไม่มีรายถัดไป = ข้อความ "กรอกครบทุกรายแล้ว"
  *   * ไม่มีข้อมูล = หน้าว่างที่บอกชัด (ไม่มีตัวเลขสมมติ)
+ *   * โหมดชดเชย (`makeup` · DECISIONS 2.96 · มาจาก /service?contract=&makeup=): มีรายเดียว (สัญญานั้น) · เปิดฟอร์มการเข้าใหม่เสมอ (ไม่โหลดการเข้าเดิม)
+ *     มีแถบบอก "บันทึกบริการชดเชยของเดือน … (ลูกค้า …)" · ซ่อนรายชื่อ/ตัวกรอง · บันทึกด้วย RPC ชดเชย · สำเร็จแล้วกลับหน้า /todo
+ *     ไม่ส่ง `makeup` = ทำงานเหมือนเดิมทุกอย่าง
  */
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -39,6 +42,15 @@ interface OpenState {
   chosenVisitId: string;
 }
 
+/** โหมดบันทึกบริการชดเชย (จาก query ของหน้า · ตรวจสิทธิ์/ความค้างที่ server แล้ว) */
+export interface MakeupMode {
+  /** 'YYYY-MM' เดือนที่ตกบริการ */
+  missedMonth: string;
+  /** 'YYYY-MM' เพดานชดเชยของหัวหน้างาน */
+  deadlineMonth: string;
+  pastDeadline: boolean;
+}
+
 export function ServiceClient({
   master,
   zoneId,
@@ -47,6 +59,7 @@ export function ServiceClient({
   currentMonth,
   initialItems,
   truncated,
+  makeup,
 }: {
   master: ServiceMaster;
   zoneId: string;
@@ -55,6 +68,7 @@ export function ServiceClient({
   currentMonth: string;
   initialItems: ContractListItem[];
   truncated: boolean;
+  makeup?: MakeupMode;
 }) {
   const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
@@ -133,14 +147,15 @@ export function ServiceClient({
         setLoading(false);
         return;
       }
-      const preferred = detail.visitsInMonth.find((v) => v.visitType === "routine") ?? detail.visitsInMonth[0];
+      // โหมดชดเชย: เปิดการเข้าใหม่เสมอ (ไม่แก้การเข้าเดิมของเดือนนี้)
+      const preferred = makeup ? undefined : (detail.visitsInMonth.find((v) => v.visitType === "routine") ?? detail.visitsInMonth[0]);
       const ok = await openVisit(item, detail, preferred ? preferred.id : "new", myReq);
       if (myReq === req.current) {
         setLoading(false);
         if (ok) setDirty(false);
       }
     },
-    [supabase, month, openVisit],
+    [supabase, month, openVisit, makeup],
   );
 
   // เปิดรายแรกที่ยังไม่กรอกเมื่อเข้าหน้า
@@ -205,6 +220,13 @@ export function ServiceClient({
       return;
     }
     const name = updated.find((c) => c.contractId === current)?.customerName ?? "";
+    if (makeup) {
+      // บันทึกชดเชยสำเร็จ → กลับหน้า "สถานะทะเบียนบริการ" (เดือนที่ตกหายจากรายการค้างแล้ว)
+      setToast(`บันทึกบริการชดเชยของเดือน ${monthLabel(makeup.missedMonth)} แล้ว`);
+      setDirty(false);
+      router.push("/todo");
+      return;
+    }
     setToast(`บันทึกผล “${name}” แล้ว`);
     const next = nextUndone(current, updated);
     setDirty(false);
@@ -266,13 +288,37 @@ export function ServiceClient({
     <div className="mx-auto flex max-w-[1500px] flex-col gap-3">
       <header>
         <h1 className="m-0 text-[20px] font-semibold">ลงข้อมูลทำบริการประจำเดือน</h1>
-        <p className="m-0 mt-1 text-[13px] text-fg-muted">
-          เลือกลูกค้าทางซ้าย แล้วกรอกทีละราย — ตั้งต้นว่าทุกจุดปกติ กรอกเฉพาะที่พบปลวก เปลี่ยนไม้ งานซ่อม/ฝังเพิ่ม ·
-          งานกล่องเหยื่อ AG กรอกในฟอร์มเดียวกัน · เดือน {monthLabel(month)}
-        </p>
+        {makeup ? null : (
+          <p className="m-0 mt-1 text-[13px] text-fg-muted">
+            เลือกลูกค้าทางซ้าย แล้วกรอกทีละราย — ตั้งต้นว่าทุกจุดปกติ กรอกเฉพาะที่พบปลวก เปลี่ยนไม้ งานซ่อม/ฝังเพิ่ม ·
+            งานกล่องเหยื่อ AG กรอกในฟอร์มเดียวกัน · เดือน {monthLabel(month)}
+          </p>
+        )}
       </header>
 
-      <div data-clarity-mask="True" className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[minmax(300px,380px)_minmax(0,1fr)]">
+      {makeup ? (
+        <div role="status" data-testid="makeup-banner" className="rounded-xl border-2 border-accent bg-accent-soft px-4 py-3 text-[13.5px]">
+          <b className="block text-[15px] text-accent-strong">
+            บันทึกบริการชดเชยของเดือน {monthLabel(makeup.missedMonth)} (ลูกค้า {items[0]?.customerName ?? "-"})
+          </b>
+          <span className="text-fg-muted">
+            ลงวันที่ที่ไปทำบริการจริง (ต้องอยู่หลังเดือนที่ตก และไม่ใช่วันล่วงหน้า) · ชดเชยได้ถึง {monthLabel(makeup.deadlineMonth)}
+            {makeup.pastDeadline ? " · เลยเพดานแล้ว — Host บันทึกเป็นกรณีพิเศษ" : ""}
+          </span>
+          <div className="mt-2">
+            <button
+              type="button"
+              onClick={() => guard(() => router.push("/todo"))}
+              className="min-h-11 cursor-pointer rounded-md border border-border-strong bg-surface px-3 text-[13px] hover:bg-surface-2 focus-visible:outline-2 focus-visible:outline-accent"
+            >
+              ยกเลิก กลับไปสถานะทะเบียนบริการ
+            </button>
+          </div>
+        </div>
+      ) : null}
+
+      <div data-clarity-mask="True" className={makeup ? "grid grid-cols-1 gap-4" : "grid grid-cols-1 items-start gap-4 lg:grid-cols-[minmax(300px,380px)_minmax(0,1fr)]"}>
+        {makeup ? null : (
         <ContractList
           zones={master.zones}
           branches={master.branches}
@@ -290,6 +336,7 @@ export function ServiceClient({
           onView={setView}
           onSelect={(id) => guard(() => void select(id))}
         />
+        )}
 
         <div className="min-w-0">
           {loadError ? (
@@ -313,7 +360,7 @@ export function ServiceClient({
               teams={master.teams}
               month={month}
               position={position}
-              visitChoices={open.detail.visitsInMonth}
+              visitChoices={makeup ? [] : open.detail.visitsInMonth}
               chosenVisitId={open.chosenVisitId}
               onChange={(patch) => {
                 setDirty(true);
@@ -337,6 +384,7 @@ export function ServiceClient({
               onPrev={goPrev}
               onSkip={goSkip}
               guardLeave={guard}
+              makeupMonth={makeup?.missedMonth ?? null}
             />
           ) : (
             <div className="rounded-xl border border-border bg-surface px-5 py-14 text-center">

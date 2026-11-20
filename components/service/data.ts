@@ -439,3 +439,75 @@ export async function loadVisit(
     error: null,
   };
 }
+
+// ───────────────────────── โหมดบันทึกบริการชดเชย (DECISIONS 2.96) ─────────────────────────
+
+/** ผลโหลดสัญญาเป้าหมายของโหมดชดเชย */
+export type MakeupTargetResult =
+  | {
+      ok: true;
+      item: ContractListItem;
+      zoneId: string;
+      /** 'YYYY-MM' เดือนสุดท้ายที่หัวหน้างานชดเชยได้ */
+      deadlineMonth: string;
+      pastDeadline: boolean;
+    }
+  | { ok: false; reason: "not_found" | "not_pending" | "load_error" };
+
+type PendingRowDb = { contract_id: string; missed_month: string; makeup_deadline_month: string; past_deadline: boolean };
+
+/**
+ * โหลดสัญญาที่จะบันทึกชดเชย + ตรวจว่า "เดือนที่ตก" ยังค้างอยู่จริง (list_pending_missed_services — สูตรตก/เพดานอยู่ที่ฐานข้อมูล)
+ * · รวมสัญญาที่จบ/ปิดแล้ว (รายการค้างรวมสัญญากลุ่มนี้) จึงอ่านสัญญาตรงๆ ไม่ผ่านรายชื่อของเดือน
+ * · ใช้ client ของผู้ใช้ (RLS) · error คืนแค่เหตุผล ไม่คืนข้อความดิบ
+ */
+export async function loadMakeupTarget(
+  supabase: SupabaseClient,
+  contractId: string,
+  missedMonth: string,
+  currentMonth: string,
+  zones: readonly ZoneOption[],
+  branches: readonly BranchOption[],
+  tierRules: readonly TierRule[],
+): Promise<MakeupTargetResult> {
+  const { data, error } = await supabase
+    .from("contracts")
+    .select(
+      `id, contract_no, customer_id, start_date, term_months, value_total, status, renewed_from_contract_id,
+       stations_initialized_at, customers!inner ( name, branch_id )`,
+    )
+    .eq("id", contractId)
+    .maybeSingle();
+  if (error) return { ok: false, reason: "load_error" };
+  const c = data as unknown as ContractDb | null;
+  if (!c || !c.customers) return { ok: false, reason: "not_found" };
+
+  const branchId = c.customers.branch_id;
+  const zoneId = branches.find((b) => b.id === branchId)?.zoneId ?? zones[0]?.id ?? "";
+
+  const pend = await supabase.rpc("list_pending_missed_services", { p_branch_id: branchId, p_month: `${currentMonth}-01` });
+  if (pend.error) return { ok: false, reason: "load_error" };
+  const row = ((pend.data ?? []) as PendingRowDb[]).find((r) => r.contract_id === contractId && r.missed_month.slice(0, 7) === missedMonth);
+  if (!row) return { ok: false, reason: "not_pending" };
+
+  const counts = await loadContractCounts(supabase, contractId, currentMonth);
+  if (!counts) return { ok: false, reason: "load_error" };
+
+  const termMonths = termMonthsOf(c.term_months);
+  const item: ContractListItem = {
+    contractId: c.id,
+    contractNo: c.contract_no,
+    customerId: c.customer_id,
+    customerName: c.customers.name,
+    branchId,
+    status: c.status,
+    tier: tierOf(annualValueForTerm(Number(c.value_total), termMonths), [...tierRules], monthOf(c.start_date)),
+    termMonths,
+    renewedFromContractId: c.renewed_from_contract_id,
+    stationsInitialized: counts.stationsInitialized,
+    agCount: counts.agCount,
+    routineCountInMonth: counts.routineCount,
+    monthTag: contractMonthTag(c.start_date, c.renewed_from_contract_id, currentMonth),
+  };
+  return { ok: true, item, zoneId, deadlineMonth: row.makeup_deadline_month.slice(0, 7), pastDeadline: row.past_deadline };
+}

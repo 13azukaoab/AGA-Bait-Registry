@@ -7,7 +7,7 @@
  *   * กล่อง "เดือนที่ตกบริการ" อยู่บนสุด: สถานะ 4 แบบ (รอตัดสิน · ชดเชยแล้ว · ไม่ชดเชย · โมฆะ) คำ/สีตรงกับหน้า /todo
  *       - สถานะคำนวณจาก lib/rules (computeMissed) · เพดานชดเชยอ่านจากฐานข้อมูล (ไม่ฮาร์ดโค้ด 12 เดือน)
  *       - "ไม่ชดเชย" = WaiveDialog + RPC resolve_missed_service (ใช้ร่วมกับ /todo) · "เปิดเรื่องกลับ" = reopen_missed_service
- *       - "บันทึกบริการชดเชย" = ลิงก์ไปหน้าลงข้อมูลบริการ (/service) เหมือน /todo — ไม่ทำแบบฟอร์มซ้ำในหน้านี้
+ *       - "บันทึกบริการชดเชย" = ลิงก์เข้าโหมดชดเชยของ /service (?contract=&makeup= · helper เดียวกับ /todo · DECISIONS 2.96) — ไม่ทำแบบฟอร์มซ้ำในหน้านี้
  *       - ปุ่มตามสิทธิ์ (missedActions): admin ดูอย่างเดียว (2.57) · เลยเพดาน หัวหน้างานชดเชยไม่ได้ · สัญญายกเลิกไม่มีปุ่ม
  *   * แถบเดือน: ✓ ครบ · ตก (+สถานะตัดสิน) · … เดือนนี้ · – ยังไม่ถึง · ก่อนเริ่มนับ (ยังไม่ตั้งสถานี) — กรองได้ (ทุกเดือน/ครบ/ตก)
  *   * ตารางการเข้า: วันที่+ประเภท · ทีม+เวลา · เหยื่อ IG/IC·AG · ไม้ล่อ/S · พบปลวก · หมายเหตุ · กางแถวดูรายสถานีที่พบปลวก
@@ -17,6 +17,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 
 import { ConfirmDialog } from "@/components/service/ConfirmDialog";
+import { makeupHref } from "@/components/service/makeup";
 import { Button, Pager, TierBadge } from "@/components/ui";
 import { reopenMissedService, waiveMissedService } from "@/components/todo/rpc";
 import { WaiveDialog } from "@/components/todo/WaiveDialog";
@@ -200,7 +201,7 @@ export function VisitsTab({
                           ไม่ชดเชย
                         </Button>
                         <Link
-                          href={serviceHref}
+                          href={makeupHref(m.contractId, m.month) ?? serviceHref}
                           aria-disabled={!a.record}
                           tabIndex={a.record ? undefined : -1}
                           title={a.record ? "ไปหน้าลงข้อมูลบริการ เพื่อบันทึกการเข้าชดเชย" : "เลยเพดานชดเชย — หัวหน้างานบันทึกไม่ได้ ต้องให้ Host"}

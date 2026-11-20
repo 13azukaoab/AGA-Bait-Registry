@@ -11,6 +11,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import type { SavePayload } from "./buildPayload";
+import { buildMakeupPayload } from "./makeup";
 import { describeServiceError, type DbErrorLike, type ServiceError } from "./errors";
 import type { InitPlan } from "./setup";
 
@@ -41,6 +42,18 @@ export async function initializeStations(
 export async function saveServiceVisit(supabase: SupabaseClient, payload: SavePayload): Promise<RpcResult> {
   const { error } = await supabase.rpc("save_service_visit", { p: payload });
   return error ? fail(error) : { ok: true };
+}
+
+/**
+ * บันทึกบริการชดเชย (DECISIONS 2.96): `save_makeup_service_visit(p)` = payload ของ save_service_visit + makeup_for_month
+ * ผูกการเข้าเข้ากับเดือนที่ตกใน transaction เดียว · error แปลเป็นไทย · log เฉพาะรหัส error (ไม่ log ข้อความดิบ/ข้อมูลลูกค้า — PDPA)
+ */
+export async function saveMakeupServiceVisit(supabase: SupabaseClient, payload: SavePayload, missedMonth: string): Promise<RpcResult> {
+  const { error } = await supabase.rpc("save_makeup_service_visit", { p: buildMakeupPayload(payload, missedMonth) });
+  if (!error) return { ok: true };
+  const described = describeServiceError(error);
+  if (described.isBug) console.error("[service] makeup RPC error code", error.code ?? "unknown");
+  return { ok: false, error: described };
 }
 
 export async function deleteServiceVisit(supabase: SupabaseClient, visitId: string): Promise<RpcResult> {
