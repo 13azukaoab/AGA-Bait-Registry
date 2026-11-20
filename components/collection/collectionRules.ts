@@ -44,14 +44,24 @@ export function splitHeld<T extends { contractId: string; customerName: string }
   return { visible, held };
 }
 
-/** ใครกด "ปิดสัญญา" ได้ — ค่าเริ่มต้น host เท่านั้น (รอ BE ยืนยันสิทธิ์ RPC) · แก้ที่จุดเดียวนี้ */
-export function canCloseContract(role: UserRole): boolean {
-  return role === "host";
+/**
+ * ใครกด "ปิดสัญญา" ได้ (DECISIONS 2.99 · เจ้าของเลือก): host ทุกแถว · recorder เฉพาะสาขาในขอบเขต · admin/viewer ไม่ได้
+ * (server ตรวจขอบเขตซ้ำ) — แก้ที่จุดเดียวนี้
+ */
+export function canCloseContract(role: UserRole, divisionScope: readonly string[], row: Pick<CollectionRow, "division">): boolean {
+  if (role === "host") return true;
+  if (role === "recorder") return divisionScope.includes(row.division);
+  return false;
 }
 
-/** แถวนี้ปิดสัญญาได้หรือไม่ (ยังไม่ปิด/ยกเลิก) */
+/** แถวนี้ปิดสัญญาได้หรือไม่ (ยังไม่ปิด/ยกเลิก/พัก) */
 export function isClosable(status: ContractStatus): boolean {
   return status === "active" || status === "expired_pending_collection";
+}
+
+/** ข้อความอธิบายเมื่อปิดสัญญาแถวนี้ไม่ได้เพราะสัญญายังไม่หมดอายุ (null = ปิดได้) · server ตรวจซ้ำ */
+export function closeBlockReason(row: Pick<CollectionRow, "endDate">, today: string): string | null {
+  return row.endDate >= today ? "สัญญายังไม่หมดอายุ ปิดไม่ได้ — ถ้าต้องการเลิกก่อนกำหนดให้ใช้ “ยกเลิกสัญญา”" : null;
 }
 
 function addDays(date: string, days: number): string {

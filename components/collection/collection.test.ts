@@ -315,10 +315,14 @@ describe("ซ่อนเรื่องรอชดเชย (splitHeld)", () =
 });
 
 describe("ปิดสัญญา (รอ RPC)", () => {
-  it("ค่าเริ่มต้นซ่อนปุ่ม · host เท่านั้น · ปิดได้เฉพาะสัญญายังไม่ปิด/ยกเลิก", () => {
+  it("ค่าเริ่มต้นซ่อนปุ่ม · สิทธิ์ตาม role (2.99) · ปิดได้เฉพาะสัญญายังไม่ปิด/ยกเลิก", () => {
     expect(CLOSE_CONTRACT_AVAILABLE).toBe(false);
-    expect(canCloseContract("host")).toBe(true);
-    for (const r of ["recorder", "admin", "viewer"] as const) expect(canCloseContract(r)).toBe(false);
+    const central = { division: "central" };
+    expect(canCloseContract("host", [], { division: "province" })).toBe(true);
+    expect(canCloseContract("recorder", ["central"], central)).toBe(true);
+    expect(canCloseContract("recorder", ["central"], { division: "province" })).toBe(false);
+    expect(canCloseContract("admin", ["central", "province"], central)).toBe(false);
+    expect(canCloseContract("viewer", ["central", "province"], central)).toBe(false);
     expect(isClosable("active")).toBe(true);
     expect(isClosable("closed")).toBe(false);
     expect(isClosable("paused")).toBe(false);
@@ -328,5 +332,15 @@ describe("ปิดสัญญา (รอ RPC)", () => {
     const r = await closeContract({ rpc: async () => ((called = true), { error: null }) } as never, "c1");
     expect(r.ok).toBe(false);
     expect(called).toBe(false);
+  });
+});
+
+import { closeBlockReason } from "./collectionRules";
+
+describe("ปิดสัญญาเมื่อยังไม่หมดอายุ", () => {
+  it("วันสิ้นสุด >= วันนี้ → ปิดไม่ได้ พร้อมข้อความ · < วันนี้ → ปิดได้", () => {
+    expect(closeBlockReason({ endDate: "2026-11-20" }, "2026-11-20")).toMatch(/ยังไม่หมดอายุ/);
+    expect(closeBlockReason({ endDate: "2027-01-01" }, "2026-11-20")).toMatch(/ยกเลิกสัญญา/);
+    expect(closeBlockReason({ endDate: "2026-11-19" }, "2026-11-20")).toBeNull();
   });
 });

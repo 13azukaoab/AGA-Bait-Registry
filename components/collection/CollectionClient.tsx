@@ -23,7 +23,7 @@ import { monthLabel } from "@/lib/service/months";
 import { createClient } from "@/lib/supabase/client";
 
 import { CollectDialog, ReasonDialog, type DialogKind, type DialogSubmit } from "./CollectDialog";
-import { applyActionResult, canCloseContract, canRecordRow, computeStats, endMonths, filterRows, igBase, isClosable } from "./collectionRules";
+import { applyActionResult, canCloseContract, canRecordRow, closeBlockReason, computeStats, endMonths, filterRows, igBase, isClosable } from "./collectionRules";
 import { CLOSE_CONTRACT_AVAILABLE, closeContract, collectIgStations, skipIgCollection } from "./collectionRpc";
 import type { CollectionRow, HeldContract, MonthFilter, StatusFilter, TeamOption } from "./collectionTypes";
 
@@ -157,7 +157,6 @@ export function CollectionClient({
     setCloseId(null);
     router.refresh();
   }
-  const showClose = CLOSE_CONTRACT_AVAILABLE && canCloseContract(role);
 
   const canAny = role === "host" || role === "recorder";
 
@@ -293,7 +292,8 @@ export function CollectionClient({
                   row={r}
                   canRecord={canRecordRow(role, divisionScope, r)}
                   showActions={canAny}
-                  showClose={showClose}
+                  showClose={CLOSE_CONTRACT_AVAILABLE && canCloseContract(role, divisionScope, r) && isClosable(r.status)}
+                  closeBlock={closeBlockReason(r, today)}
                   onClose={() => {
                     setCloseError(null);
                     setCloseId(r.contractId);
@@ -350,6 +350,7 @@ function Row({
   showActions,
   teamCode,
   showClose,
+  closeBlock,
   onClose,
   onOpen,
   onReason,
@@ -359,6 +360,7 @@ function Row({
   showActions: boolean;
   teamCode: string | null;
   showClose: boolean;
+  closeBlock: string | null;
   onClose: () => void;
   onOpen: (kind: DialogKind) => void;
   onReason: () => void;
@@ -447,7 +449,7 @@ function Row({
         </div>
       </td>
       <td className="px-3 py-2.5 text-right align-top max-[767px]:px-0 max-[767px]:pb-0 max-[767px]:pt-2 max-[767px]:text-left">
-        {showActions && (r.remaining > 0 || (showClose && isClosable(r.status))) ? (
+        {showActions && (r.remaining > 0 || showClose) ? (
           <div className="flex flex-wrap justify-end gap-1.5 max-[767px]:justify-start">
             {r.remaining > 0 ? (
               <>
@@ -459,14 +461,14 @@ function Row({
                 </Button>
               </>
             ) : null}
-            {showClose && isClosable(r.status) ? (
-              <Button size="sm" className="max-[767px]:min-h-11 max-[767px]:px-4" onClick={onClose}>
+            {showClose ? (
+              <Button size="sm" disabled={closeBlock !== null} title={closeBlock ?? undefined} className="max-[767px]:min-h-11 max-[767px]:px-4" onClick={onClose}>
                 ปิดสัญญา
               </Button>
             ) : null}
           </div>
         ) : null}
-        {finChip ? <div className={cx(showActions && (r.remaining > 0 || (showClose && isClosable(r.status))) && "mt-1.5")}>{finChip}</div> : null}
+        {finChip ? <div className={cx(showActions && (r.remaining > 0 || showClose) && "mt-1.5")}>{finChip}</div> : null}
       </td>
     </tr>
   );
