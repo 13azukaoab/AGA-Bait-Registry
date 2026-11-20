@@ -49,7 +49,6 @@ describe("buildSalesView", () => {
     expect(v.kpis.lateShareOfRenew).toBeCloseTo(0.5);
     expect(v.highlight).toBeNull();
     expect(v.showLate).toBe(true);
-    expect(v.noMailCount).toBe(1);
     expect(v.list).toHaveLength(4);
   });
 

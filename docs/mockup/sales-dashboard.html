@@ -10,8 +10,7 @@
 <!--
   Mockup (DECISIONS 2.91 ข้อ 2+4) · หน้า "Dashboard งานขาย (New/Renew)" · เห็นได้เฉพาะ host + admin
   ข้อมูลทั้งหมดเป็นข้อมูลสมมติ (ก.ย.–พ.ย. 2026) · ชื่อลูกค้า/ผู้ขาย/สาขาเป็นชื่อสมมติ ไม่ใช่ข้อมูลจริง
-  เปิดแบบเดียว: ?v=a หรือ ?v=b · โหมดมืด: ?theme=dark
-  แบบ A = ตาราง + แท่ง เน้นเทียบสาขา · แบบ B = การ์ด KPI + กราฟ + อันดับผู้ขาย
+  แบบสุดท้ายที่เจ้าของเลือก (แบบ B + ปุ่มกรองประเภทชุดเดียว + แถบ sticky) · โหมดมืด: ?theme=dark
   กติกา "ต่อสัญญาล่าช้า": งาน Renew ที่ mail_received_date เป็นวันที่ > 15 ของเดือนนั้น (แสดงแดง + ชี้แล้วขึ้นคำอธิบาย)
   ลิงก์ชื่อลูกค้า = /customers/<id> (ของจริงสร้างด้วย lib/links/customerLink.ts) · ในไฟล์นี้กดแล้วแค่แสดงข้อความ
   ที่มาของตัวเลขเมื่อทำหน้าจริง: contracts (sale_type, sale_name, am_name, mail_received_date, value_total) + customers + branches + zones
@@ -185,9 +184,7 @@ td small{display:block;color:var(--fg-muted);font-size:12px;line-height:1.3}
   <div class="logo"><span class="mark">AGA</span><span class="txt"><b>Advance Group Asia (AGA)</b><small>AGA Bait Registry</small></span></div>
   <div class="spacer"></div>
   <div class="tools">
-    <div class="seg" role="group" aria-label="เลือกแบบ">
-      <a id="va" href="?v=a">แบบ A</a><a id="vb" href="?v=b">แบบ B</a><a id="vc" href="?v=c">แบบ A+B</a>
-    </div>
+
     <div class="seg" role="group" aria-label="โหมดสี">
       <button id="tl" type="button">สว่าง</button><button id="td" type="button">มืด</button>
     </div>
@@ -232,7 +229,7 @@ DATA.sort(function(a,b){return a.mail<b.mail?1:-1});
 
 /* ---------- ตัวช่วย ---------- */
 var $=function(s){return document.querySelector(s)};
-var Q=new URLSearchParams(location.search), V=["a","b","c"].indexOf(Q.get("v"))>=0?Q.get("v"):"a", DARK=Q.get("theme")==="dark";
+var Q=new URLSearchParams(location.search), V="b", DARK=Q.get("theme")==="dark";
 var fmt=function(n){return n.toLocaleString("th-TH")};
 var fmtM=function(n){return n>=1e6?(n/1e6).toFixed(2)+" ล้าน":fmt(n)};
 var esc=function(s){return String(s).replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]})};
@@ -273,7 +270,7 @@ function updateStuck(){var b=$("#typeSeg");if(!b||!b.getBoundingClientRect)retur
 var tick=false;function onScroll(){if(tick)return;tick=true;(window.requestAnimationFrame||function(f){return setTimeout(f,16)})(function(){tick=false;updateStuck()});updateStuck()}
 ["scroll","resize","scrollend"].forEach(function(ev){window.addEventListener(ev,onScroll,{passive:true})});
 if(window.IntersectionObserver){var sent=document.createElement("div");sent.style.cssText="height:1px;margin-bottom:-1px;pointer-events:none";var bar0=$("#typeSeg");if(bar0&&bar0.parentNode&&bar0.parentNode.insertBefore){bar0.parentNode.insertBefore(sent,bar0);new IntersectionObserver(updateStuck,{rootMargin:"0px"}).observe(sent)}}
-function syncType(){document.querySelectorAll("#typeSeg [data-t]").forEach(function(b){b.classList.toggle("on",b.dataset.t===S.type)});$("#typeSeg").style.display=V==="a"?"none":"";syncBar()}
+function syncType(){document.querySelectorAll("#typeSeg [data-t]").forEach(function(b){b.classList.toggle("on",b.dataset.t===S.type)});syncBar()}
 document.querySelectorAll("#typeSeg [data-t]").forEach(function(b){b.onclick=function(){S.type=b.dataset.t;syncType();render()}});
 $("#fReset").addEventListener("click",function(){S={from:MON[0],to:MON[2],zone:"",branch:"",seller:"",chip:"all",metric:S.metric,type:"all"};syncType();buildFilters();render()});
 
@@ -296,39 +293,6 @@ function mkChart(id,cfg){var el=document.getElementById(id);if(!el||!window.Char
   var c=themeColors();Chart.defaults.font.family='"Noto Sans Thai",sans-serif';Chart.defaults.font.size=12;Chart.defaults.color=c.fg;Chart.defaults.animation=false;
   charts.push(new Chart(el,cfg))}
 
-/* ---------- แบบ A: ตาราง + แท่ง เทียบสาขา ---------- */
-function renderA(a){
-  var t=sum(a), byB=groupBy(a,function(c){return c.branch}), metricV=S.metric==="v";
-  var brs=BR.filter(function(b){return(!S.zone||String(b[1])===S.zone)&&(!S.branch||b[0]===S.branch)});
-  var h='<div class="stack">';
-  h+='<div class="card strip"><div><div class="l">New</div><div class="v">'+fmt(t.nN)+' <small>ราย · '+fmtM(t.nV)+'</small></div></div>'+
-     '<div><div class="l">Renew</div><div class="v">'+fmt(t.rN)+' <small>ราย · '+fmtM(t.rV)+'</small></div></div>'+
-     '<div><div class="l" style="color:var(--danger)">ต่อสัญญาล่าช้า</div><div class="v" style="color:var(--danger)">'+t.late+' <small>ราย · '+fmtM(t.lateV)+'</small></div></div>'+
-     '<div><div class="l">ทั้งหมด</div><div class="v">'+fmt(t.nN+t.rN)+' <small>ราย · '+fmtM(t.nV+t.rV)+'</small></div></div></div>';
-  h+='<div class="card"><div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:flex-start"><div><h2>เทียบรายสาขา: New กับ Renew</h2><p class="hint">'+(metricV?"มูลค่า (บาท)":"จำนวนราย")+'</p></div>'+
-     '<div class="seg" role="group" aria-label="หน่วย"><button type="button" data-m="n" class="'+(metricV?"":"on")+'">จำนวนราย</button><button type="button" data-m="v" class="'+(metricV?"on":"")+'">มูลค่า</button></div></div>'+
-     '<div class="legend"><span data-lg="new"><i style="background:var(--new)"></i>New</span><span data-lg="renew"><i style="background:var(--renew)"></i>Renew</span></div>'+
-     '<div class="chartbox" style="height:'+Math.max(180,brs.length*44+50)+'px"><canvas id="chA" role="img" aria-label="กราฟแท่งเทียบ New กับ Renew รายสาขา"></canvas></div></div>';
-  h+='<div class="card"><h2>สรุปรายสาขา แยกตามเขต</h2><p class="hint">รวมเขตอยู่ในแถวหัวเขต · ล่าช้า = Renew ที่รับ Mail หลังวันที่ 15</p><div class="tablewrap"><table><thead><tr><th>เขต / สาขา</th><th class="num">New</th><th class="num">Renew</th><th class="num">ล่าช้า</th><th class="num">รวม (บาท)</th></tr></thead><tbody>';
-  [1,2,3].forEach(function(z){
-    if(S.zone&&String(z)!==S.zone)return;
-    var zs=brs.filter(function(b){return b[1]===z});if(!zs.length)return;
-    var za=a.filter(function(c){return c.zone===z}),zt=sum(za);
-    h+='<tr class="zrow"><td>เขต '+z+'</td><td class="num">'+zt.nN+' ราย<small>'+fmtM(zt.nV)+'</small></td><td class="num">'+zt.rN+' ราย<small>'+fmtM(zt.rV)+'</small></td><td class="num" style="color:var(--danger)">'+zt.late+'</td><td class="num">'+fmt(zt.nV+zt.rV)+'</td></tr>';
-    zs.forEach(function(b){var s=sum(byB[b[0]]||[]);
-      h+='<tr><td>&nbsp;&nbsp;'+esc(b[0])+'</td><td class="num">'+s.nN+' ราย<small>'+fmtM(s.nV)+'</small></td><td class="num">'+s.rN+' ราย<small>'+fmtM(s.rV)+'</small></td><td class="num" '+(s.late?'style="color:var(--danger);font-weight:700"':'')+'>'+s.late+'</td><td class="num">'+fmt(s.nV+s.rV)+'</td></tr>'})});
-  h+='<tr class="tot"><td>รวมทั้งหมด</td><td class="num">'+t.nN+' ราย<small>'+fmtM(t.nV)+'</small></td><td class="num">'+t.rN+' ราย<small>'+fmtM(t.rV)+'</small></td><td class="num" style="color:var(--danger)">'+t.late+'</td><td class="num">'+fmt(t.nV+t.rV)+'</td></tr></tbody></table></div></div>';
-  h+='<div class="card"><h2>รายชื่อลูกค้า</h2><p class="hint">กดชื่อเพื่อเปิดหน้าลูกค้า · วันที่สีแดง = ต่อสัญญาล่าช้า</p>'+customerTable(a,12)+'</div></div>';
-  $("#app").innerHTML=h;
-  document.querySelectorAll("[data-m]").forEach(function(b){b.onclick=function(){S.metric=b.dataset.m;render()}});
-  var c=themeColors();
-  mkChart("chA",{type:"bar",data:{labels:brs.map(function(b){return b[0]}),datasets:[
-    {label:"New",backgroundColor:c.new,borderRadius:3,data:brs.map(function(b){var s=sum(byB[b[0]]||[]);return metricV?s.nV:s.nN})},
-    {label:"Renew",backgroundColor:c.renew,borderRadius:3,data:brs.map(function(b){var s=sum(byB[b[0]]||[]);return metricV?s.rV:s.rN})}]},
-    options:{indexAxis:"y",responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{color:c.grid},ticks:{callback:function(v){return metricV&&v>=1e6?v/1e6+" ล้าน":v}}},y:{grid:{display:false}}}}});
-  wireLinks();
-}
-
 /* ---------- แบบ B: การ์ด KPI + กราฟ + อันดับผู้ขาย ---------- */
 function renderB(a){
   var t=sum(a), pct=t.rN?Math.round(t.late/t.rN*100):0, ty=S.type;
@@ -342,13 +306,6 @@ function renderB(a){
    '<div class="card kpi"><div class="l">รวมทั้งหมด</div><div class="v">'+fmt(t.nN+t.rN)+' <small>ราย</small></div><div class="s">มูลค่า '+fmt(t.nV+t.rV)+' บาท</div></div></div>';
   h+='<div class="grid2"><div class="card"><h2>แนวโน้มรายเดือน</h2><p class="hint">จำนวนราย '+(ty==="all"?"New กับ Renew":ty==="new"?"New":"Renew")+'</p><div class="legend"><span data-lg="new"><i style="background:var(--new)"></i>New</span><span data-lg="renew"><i style="background:var(--renew)"></i>Renew</span></div><div class="chartbox" style="height:230px"><canvas id="chB1" role="img" aria-label="กราฟแท่งซ้อนรายเดือน"></canvas></div></div>'+
    '<div class="card"><h2>แยกตามเขต</h2><p class="hint">มูลค่า (ล้านบาท)</p><div class="legend"><span data-lg="new"><i style="background:var(--new)"></i>New</span><span data-lg="renew"><i style="background:var(--renew)"></i>Renew</span></div><div class="chartbox" style="height:230px"><canvas id="chB2" role="img" aria-label="กราฟแท่งซ้อนแยกเขต"></canvas></div></div></div>';
-  if(V==="c"){
-    var nb=BR.filter(function(b){return(!S.zone||String(b[1])===S.zone)&&(!S.branch||b[0]===S.branch)}).length, mv0=S.metric==="v";
-    h+='<div class="card"><div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:flex-start"><div><h2>เทียบรายสาขา: New กับ Renew</h2><p class="hint">'+(mv0?"มูลค่า (บาท)":"จำนวนราย")+'</p></div>'+
-     '<div class="seg" role="group" aria-label="หน่วย"><button type="button" data-m="n" class="'+(mv0?"":"on")+'">จำนวนราย</button><button type="button" data-m="v" class="'+(mv0?"on":"")+'">มูลค่า</button></div></div>'+
-     '<div class="legend"><span data-lg="new"><i style="background:var(--new)"></i>New</span><span data-lg="renew"><i style="background:var(--renew)"></i>Renew</span></div>'+
-     '<div class="chartbox" style="height:'+Math.max(180,nb*44+50)+'px"><canvas id="chA" role="img" aria-label="กราฟแท่งเทียบ New กับ Renew รายสาขา"></canvas></div></div>';
-  }
   var sellers=Object.entries(groupBy(a,function(c){return c.sale})).map(function(e){var s=sum(e[1]);return{name:e[0],s:s,tot:s.nV+s.rV,n:e[1].length,ams:[...new Set(e[1].map(function(c){return c.am}))]}}).sort(function(x,y){return y.tot-x.tot});
   var maxS=sellers.length?sellers[0].tot:1;
   var brsAgg=Object.entries(groupBy(a,function(c){return c.branch})).map(function(e){var s=sum(e[1]);return{name:e[0],zone:e[1][0].zone,s:s,tot:s.nV+s.rV}}).sort(function(x,y){return y.tot-x.tot});
@@ -375,22 +332,12 @@ function renderB(a){
     {label:"New",backgroundColor:c.new,data:zs.map(function(z){return sum(byZ[z]||[]).nV/1e6}),borderRadius:3},
     {label:"Renew",backgroundColor:c.renew,data:zs.map(function(z){return sum(byZ[z]||[]).rV/1e6}),borderRadius:3}])},
     options:{indexAxis:"y",responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{stacked:true,grid:{color:c.grid}},y:{stacked:true,grid:{display:false}}}}});
-  if(V==="c"){
-    var brs=BR.filter(function(b){return(!S.zone||String(b[1])===S.zone)&&(!S.branch||b[0]===S.branch)}), byB=groupBy(a,function(x){return x.branch}), mv=S.metric==="v";
-    document.querySelectorAll("[data-m]").forEach(function(b){b.onclick=function(){S.metric=b.dataset.m;render()}});
-    mkChart("chA",{type:"bar",data:{labels:brs.map(function(b){return b[0]}),datasets:[
-      {label:"New",backgroundColor:c.new,borderRadius:3,data:brs.map(function(b){var s=sum(byB[b[0]]||[]);return mv?s.nV:s.nN})},
-      {label:"Renew",backgroundColor:c.renew,borderRadius:3,data:brs.map(function(b){var s=sum(byB[b[0]]||[]);return mv?s.rV:s.rN})}]},
-      options:{indexAxis:"y",responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{color:c.grid},ticks:{callback:function(v){return mv&&v>=1e6?v/1e6+" ล้าน":v}}},y:{grid:{display:false}}}}});
-  }
   wireLinks();
 }
 
-function render(){syncBar();killCharts();var a=rows();(V==="a"?renderA:renderB)(a)}
+function render(){syncBar();killCharts();var a=rows();renderB(a)}
 function setTheme(d){DARK=d;document.documentElement.dataset.theme=d?"dark":"light";$("#tl").classList.toggle("on",!d);$("#td").classList.toggle("on",d);render()}
 $("#tl").onclick=function(){setTheme(false)};$("#td").onclick=function(){setTheme(true)};
-$("#va").classList.toggle("on",V==="a");$("#vb").classList.toggle("on",V==="b");$("#vc").classList.toggle("on",V==="c");
-["va","vb","vc"].forEach(function(id){var a=$("#"+id);a.href=a.getAttribute("href")+(DARK?"&theme=dark":"")});
 document.documentElement.dataset.theme=DARK?"dark":"light";$("#tl").classList.toggle("on",!DARK);$("#td").classList.toggle("on",DARK);
 syncType();buildFilters();
 if(window.Chart)render();else window.addEventListener("load",render);
