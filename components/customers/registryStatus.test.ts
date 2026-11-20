@@ -17,16 +17,17 @@ describe("registryStatus (การแสดงสถานะสัญญา)",
     expect(registryStatus("active", "2027-02-18", TODAY)).toBe("near_end"); // เหลือ 90 วันพอดี
     expect(daysBetween(TODAY, "2027-02-18")).toBe(NEAR_END_DAYS);
     expect(registryStatus("active", "2027-02-19", TODAY)).toBe("active"); // 91 วัน
-    expect(registryStatus("active", TODAY, TODAY)).toBe("near_end"); // หมดวันนี้ ยังไม่นับว่าจบ
-    expect(registryStatus("active", "2026-11-19", TODAY)).toBe("ended");
+    expect(registryStatus("active", TODAY, TODAY)).toBe("near_end"); // วันสุดท้าย = วันนี้ ยังไม่หมด
+    expect(registryStatus("paused", "2026-01-01", TODAY)).toBe("paused"); // paused ไม่จบแม้เลยวัน
+    expect(registryStatus("active", "2026-11-19", TODAY)).toBe("pending_collection"); // เลยวัน = รอเก็บสถานี (นิยามกลาง)
   });
 
   it("dbStatusesFor: บีบผลฝั่งฐานข้อมูล · ไม่เลือก = ไม่กรอง", () => {
     expect(dbStatusesFor([])).toBeNull();
     expect(dbStatusesFor(["active", "near_end"])).toEqual(["active"]);
-    expect(new Set(dbStatusesFor(["ended"]))).toEqual(new Set(["closed", "active"]));
-    expect(dbStatusesFor(["pending_collection"])).toEqual(["expired_pending_collection"]);
-    expect(new Set(dbStatusesFor(["paused", "cancelled", "pending_collection"]))).toEqual(new Set(["paused", "cancelled", "expired_pending_collection"]));
+    expect(dbStatusesFor(["ended"])).toEqual(["closed"]);
+    expect(new Set(dbStatusesFor(["pending_collection"]))).toEqual(new Set(["expired_pending_collection", "active"]));
+    expect(new Set(dbStatusesFor(["paused", "cancelled", "pending_collection"]))).toEqual(new Set(["paused", "cancelled", "expired_pending_collection", "active"]));
   });
 
   it("fmtDate เป็น DD/MM/YYYY (ค.ศ.)", () => {

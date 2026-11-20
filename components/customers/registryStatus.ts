@@ -4,12 +4,14 @@
  * Logic summary:
  *   * สถานะที่แสดง (mockup 4 แบบ + 2 แบบจากฐานข้อมูลจริง):
  *       cancelled / paused / pending_collection(expired_pending_collection) / ended(closed) มาจาก contracts.status ตรงๆ
- *       status = active → ดูวันจบเทียบ "วันนี้" (เวลาไทย): จบแล้ว = ended · เหลือ ≤ 90 วัน = near_end · อื่นๆ = active
+ *       status = active → ใช้ effectiveContractStatus (นิยามกลาง contractEnd.ts): เลยวันสิ้นสุด = pending_collection · เหลือ ≤ 90 วัน = near_end · อื่นๆ = active
+ *       ended = closed อย่างเดียว · paused ไม่จบเสมอ
  *   * ตัวกรองสถานีรองที่ฐานข้อมูลบอกได้ (contracts.status) ทำฝั่งฐานข้อมูล (dbStatusesFor) แล้ว **กรองซ้ำแบบแม่นยำ**
  *     ฝั่งแอปด้วย registryStatus (เพราะ active/near_end/ended แบ่งด้วยวันที่ ฐานข้อมูลแบ่งให้ไม่ได้) — ห้ามตัดเงียบ
  *     จึงมี cursor ต่อเนื่อง ดู registryData.ts
  *   * วันจบ/มูลค่า/Tier ไม่คำนวณซ้ำที่นี่ — ใช้ lib/rules (effectiveEndDate · annualValueForTerm · tierOf)
  */
+import { effectiveContractStatus } from "@/components/todo/contractEnd";
 import { rulesForMonth, type Tier, type TierRule } from "@/lib/rules";
 
 import type { DbContractStatus, RegistryStatus } from "./registryTypes";
@@ -23,7 +25,8 @@ export function daysBetween(a: string, b: string): number {
 }
 
 export function registryStatus(dbStatus: DbContractStatus, endDate: string, today: string): RegistryStatus {
-  switch (dbStatus) {
+  // นิยามกลาง (components/todo/contractEnd.ts): active ที่เลยวันสิ้นสุด = expired_pending_collection · paused ไม่จบ
+  switch (effectiveContractStatus(dbStatus, endDate, today)) {
     case "cancelled":
       return "cancelled";
     case "paused":
@@ -34,7 +37,6 @@ export function registryStatus(dbStatus: DbContractStatus, endDate: string, toda
       return "ended";
     case "active": {
       const left = daysBetween(today, endDate);
-      if (left < 0) return "ended";
       return left <= NEAR_END_DAYS ? "near_end" : "active";
     }
   }
@@ -46,10 +48,10 @@ export function dbStatusesFor(statuses: readonly RegistryStatus[]): DbContractSt
   const out = new Set<DbContractStatus>();
   for (const s of statuses) {
     if (s === "active" || s === "near_end") out.add("active");
-    else if (s === "ended") {
-      out.add("closed");
-      out.add("active"); // active ที่หมดวันแล้ว
-    } else if (s === "pending_collection") out.add("expired_pending_collection");
+    else if (s === "pending_collection") {
+      out.add("expired_pending_collection");
+      out.add("active"); // active ที่เลยวันสิ้นสุด (ยังเป็น active ใน DB — ไม่มีงานตั้งสถานะให้)
+    } else if (s === "ended") out.add("closed");
     else out.add(s);
   }
   return [...out];

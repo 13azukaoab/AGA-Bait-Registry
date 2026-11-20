@@ -124,7 +124,7 @@ export function RegistryList({ rows, today, role, sort, onSort }: Props) {
               <th scope="col" className={cx(TH, "text-left")}>สาขา · เขต</th>
               <SortTh col="value" sort={sort} onSort={onSort} align="right">มูลค่า</SortTh>
               <th scope="col" className={cx(TH, "text-center")}>
-                Tier <span className="ml-1 rounded bg-accent-soft px-1 text-[11px] font-normal text-accent-strong">อัตโนมัติ</span>
+                Tier <span className="ml-1 rounded bg-accent-soft px-1 text-xs font-normal text-accent-strong">อัตโนมัติ</span>
               </th>
               <th scope="col" className={cx(TH, "text-center")}>สถานะ</th>
             </tr>
