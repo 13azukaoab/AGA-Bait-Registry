@@ -11,8 +11,9 @@
  *   * เพดาน SALES_MAX_ROWS แถว: เกินแล้ว `truncated = true` (ใช้ count จาก query หลัก — ไม่ตัดเงียบ หน้าแสดงคำเตือน)
  *     โหลดทีละ SALES_PAGE_CHUNK แถว
  *   * ตัวกรองสัญญายกเลิก / สัญญานำเข้า รวมที่จุดเดียว (`EXCLUDE_CANCELLED` / `EXCLUDE_IMPORTED`) — เจ้าของเลือกวิธีนับแบบ ก (DECISIONS 2.91):
- *     **ไม่นับสัญญายกเลิก · นับสัญญานำเข้าที่มีวันที่รับ Mail** · ใช้กับทั้ง query หลักและ query นับ
- *     (หมวด 2 อาจแยกเหตุผลยกเลิก "ลงผิด/ลูกค้ายกเลิกจริง" ใน M44 — ถ้าเปลี่ยนวิธีนับ HQ จะแจ้ง)
+ *     (กฎล่าสุดของเจ้าของ · M44 แยกเหตุผลยกเลิก `contracts.cancel_reason_code`)
+ *     **ไม่นับเฉพาะสัญญาที่ status='cancelled' และเหตุผล = 'entry_error' (ลงข้อมูลผิด)** · ยกเลิกเพราะลูกค้ายกเลิกจริง/อื่นๆ/ไม่มีเหตุผล ยังนับ
+ *     **นับสัญญานำเข้าที่มีวันที่รับ Mail** · ใช้กับทั้ง query หลักและ query นับ
  *   * ต่อสัญญาล่าช้า: ผู้เรียกส่งฟังก์ชัน `isLate` (= isLateRenewal จาก lib/rules) เข้ามา — ที่นี่ไม่มีสูตรของตัวเอง
  *   * ⚠ PDPA: ผลลัพธ์มีชื่อลูกค้า — ห้าม console.log · error คืนแค่ code (ไม่คืน message ดิบ)
  */
@@ -23,8 +24,18 @@ import type { SaleKind, SalesRow } from "./salesTypes";
 export const SALES_PAGE_CHUNK = 1000;
 export const SALES_MAX_ROWS = 5000;
 
-/** ไม่นับสัญญายกเลิก (contracts.status = 'cancelled') — เจ้าของเลือกแบบ ก (DECISIONS 2.91) */
+/**
+ * ไม่นับสัญญาที่ยกเลิกเพราะ "ลงข้อมูลผิด" (status = 'cancelled' AND cancel_reason_code = 'entry_error') — DECISIONS 2.91 ล่าสุด
+ * (ชื่อค่าคงที่ใช้ EXCLUDE_CANCELLED เดิม) · ยกเลิกเหตุอื่น / ไม่มีเหตุผล ยังนับ
+ */
 export const EXCLUDE_CANCELLED = true;
+
+/**
+ * เงื่อนไข PostgREST `or` ที่ "เก็บ" แถวไว้ = NOT (status = 'cancelled' AND cancel_reason_code = 'entry_error')
+ *   = status ≠ cancelled  หรือ  เหตุผลว่าง  หรือ  เหตุผล ≠ entry_error
+ * ⚠ ต้องมี `is.null` ของเหตุผลด้วย — SQL เทียบ NULL <> 'entry_error' ได้ค่า "ไม่รู้" (ไม่ผ่าน) ถ้าไม่ใส่ สัญญายกเลิกที่ไม่มีเหตุผลจะหายจากยอดโดยผิด
+ */
+export const KEEP_UNLESS_ENTRY_ERROR_CANCELLED = "status.neq.cancelled,cancel_reason_code.is.null,cancel_reason_code.neq.entry_error";
 /** ไม่นับสัญญานำเข้า (contracts.import_batch ไม่ว่าง) · false = นับสัญญานำเข้าที่มีวันที่รับ Mail (DECISIONS 2.91 แบบ ก) */
 export const EXCLUDE_IMPORTED = false;
 
@@ -107,14 +118,14 @@ export function toSalesRow(raw: SalesRowDb, isLate: LateFn): SalesRow | null {
 
 /** ตัวสร้าง query ที่ต่อเงื่อนไขได้ (ใช้ร่วมระหว่าง query หลักกับ query นับ) */
 interface Chainable {
-  neq(column: string, value: string): Chainable;
+  or(filters: string): Chainable;
   is(column: string, value: null): Chainable;
 }
 
 /** ต่อเงื่อนไขกรองสัญญายกเลิก/นำเข้าตามตัวเลือก — จุดเดียวของทั้งสอง query */
 function applyScope<T>(query: T, opt: SalesLoadOptions): T {
   let q = query as unknown as Chainable;
-  if (opt.excludeCancelled) q = q.neq("status", "cancelled");
+  if (opt.excludeCancelled) q = q.or(KEEP_UNLESS_ENTRY_ERROR_CANCELLED);
   if (opt.excludeImported) q = q.is("import_batch", null);
   return q as unknown as T;
 }

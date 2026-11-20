@@ -74,7 +74,7 @@ export function SalesDashboardClient({ rows, truncated, noMailCount, currentMont
   return (
     <div className="mx-auto max-w-[1200px] p-4 max-[767px]:p-3">
       <h1 className="m-0 text-[22px] font-bold max-[767px]:text-xl">Dashboard งานขาย (New/Renew)</h1>
-      <p className="mb-3.5 mt-0.5 text-[13px] text-fg-muted">ยอดงานใหม่ (New) และต่อสัญญา (Renew) แยกตามสาขา เขต และผู้ขาย · นับตามเดือนที่รับ Mail · ไม่นับสัญญาที่ยกเลิก</p>
+      <p className="mb-3.5 mt-0.5 text-[13px] text-fg-muted">ยอดงานใหม่ (New) และต่อสัญญา (Renew) แยกตามสาขา เขต และผู้ขาย · นับตามเดือนที่รับ Mail · ไม่นับสัญญาที่ยกเลิกเพราะลงข้อมูลผิด</p>
 
       {truncated && (
         <Alert variant="warn" title="แสดงข้อมูลบางส่วน" className="mb-3">
