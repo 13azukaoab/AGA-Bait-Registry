@@ -134,6 +134,22 @@ export interface ClosedMissed {
 }
 
 /** เรื่องที่ปิดแล้ว: เดือนที่ตกใหม่→เก่า · ตามด้วยชื่อ */
+/** เรื่องที่ปิดแล้วที่หน้า /todo แสดงล่าสุดกี่รายการ (data.ts ดึงเท่านี้ · หน้าจอเขียนกำกับว่า "ล่าสุด N รายการ" เมื่อเต็มเพดาน) */
+export const CLOSED_LIMIT = 200;
+
+/** เรื่องตกบริการรอตัดสินที่แสดงต่อครั้ง (กล่องค้างเยอะ: แสดง 50 เรื่องแรก + "แสดงเพิ่ม" ครั้งละ 50 — F2) */
+export const MISSED_PAGE_SIZE = 50;
+
+/** รายการที่แสดงตอนนี้ (ตามลำดับเดิม ไม่เรียงใหม่) — ตัวเลขรวมต้องนับจากรายการทั้งหมด ไม่ใช่จากที่แสดง */
+export function visibleSlice<T>(rows: readonly T[], visible: number): T[] {
+  return rows.slice(0, Math.max(0, visible));
+}
+
+/** จำนวนที่แสดงหลังกด "แสดงเพิ่ม" (ไม่เกินทั้งหมด) */
+export function nextVisible(visible: number, total: number, step: number = MISSED_PAGE_SIZE): number {
+  return Math.min(total, visible + step);
+}
+
 export function sortClosed<T extends { missedMonth: string; customerName: string }>(rows: readonly T[]): T[] {
   return [...rows].sort((a, b) =>
     a.missedMonth !== b.missedMonth
