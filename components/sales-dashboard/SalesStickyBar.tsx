@@ -6,8 +6,8 @@
  * Logic summary:
  *   * ปุ่มแบบ segmented "ทั้งหมด | New | Renew" ชุดเดียวของทั้งหน้า (aria-pressed) + บรรทัดสรุปตัวกรองที่เหลือ 1 บรรทัด
  *   * กดบรรทัดสรุป = เลื่อนกลับไปที่ชุดตัวกรองเต็ม (id `sales-filters`) แล้วโฟกัสช่องแรก
- *   * ติดใต้ Topbar ของแอป: วัดความสูง <header> จริงด้วย ResizeObserver (บนมือถือ Topbar พับเป็น 2 แถวสูง ~103px ไม่ใช่ 57px ตาม `--topbar-h`)
- *     ตั้งเป็นตัวแปรเดียว `--sales-sticky-top` · วัดไม่ได้ = ใช้ `--topbar-h` ของ AppShell · ห้าม hardcode ความสูง
+ *   * ติดใต้ Topbar ของแอปด้วย `--topbar-h` ที่ AppShell วัดจริงและตั้งไว้ให้ (บนมือถือ Topbar พับเป็น 2 แถวสูง ~103px)
+ *     · ห้าม hardcode ความสูง และไม่วัดเอง
  *   * sticky ใช้ได้เพราะ ancestor ไม่มี overflow (ห้ามเพิ่ม overflow ให้ parent ของแถบนี้)
  *   * เงาตอนลอย: คำนวณจากตำแหน่งจริงทุกครั้งที่เลื่อน/ปรับขนาด + IntersectionObserver สำรอง
  *   * สูงรวมบนมือถือ ≈ 96px (ปุ่ม 44px สองแถว) · พื้นทึบ token `bg`
@@ -34,24 +34,12 @@ export function SalesStickyBar({ type, onTypeChange, summary }: SalesStickyBarPr
   const barRef = useRef<HTMLDivElement>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
   const [stuck, setStuck] = useState(false);
-  const [topPx, setTopPx] = useState<number | null>(null);
 
   const update = useCallback(() => {
     const bar = barRef.current;
     if (!bar) return;
     const topPx = parseFloat(getComputedStyle(bar).top) || 0;
     setStuck(window.scrollY > 0 && bar.getBoundingClientRect().top <= topPx + 1);
-  }, []);
-
-  // วัดความสูง Topbar จริง (เปลี่ยนตามขนาดจอ/การพับแถว) เพื่อให้แถบติดใต้ Topbar พอดี ไม่ถูกบัง
-  useEffect(() => {
-    const header = document.querySelector("header");
-    if (!header || typeof ResizeObserver === "undefined") return;
-    const measure = () => setTopPx(Math.round(header.getBoundingClientRect().height));
-    measure();
-    const ro = new ResizeObserver(measure);
-    ro.observe(header);
-    return () => ro.disconnect();
   }, []);
 
   useEffect(() => {
@@ -68,7 +56,7 @@ export function SalesStickyBar({ type, onTypeChange, summary }: SalesStickyBarPr
       window.removeEventListener("resize", update);
       observer?.disconnect();
     };
-  }, [update, topPx]);
+  }, [update]);
 
   const goToFilters = () => {
     const target = document.getElementById("sales-filters");
@@ -81,9 +69,8 @@ export function SalesStickyBar({ type, onTypeChange, summary }: SalesStickyBarPr
       <div ref={sentinelRef} aria-hidden="true" className="pointer-events-none -mb-px h-px" />
       <div
         ref={barRef}
-        style={{ ['--sales-sticky-top' as string]: topPx === null ? 'var(--topbar-h, 0px)' : `${topPx}px` }}
         className={cx(
-          "sticky top-[var(--sales-sticky-top)] z-10 -mx-4 mb-3 flex items-center gap-3 border-b border-border bg-bg px-4 py-1",
+          "sticky top-[var(--topbar-h)] z-10 -mx-4 mb-3 flex items-center gap-3 border-b border-border bg-bg px-4 py-1",
           "max-[767px]:-mx-3 max-[767px]:flex-col max-[767px]:items-stretch max-[767px]:gap-0 max-[767px]:px-3",
           stuck && "shadow-[0_3px_6px_var(--border-strong)]",
         )}

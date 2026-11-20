@@ -338,7 +338,7 @@ export function PortClient({ data }: { data: PortPageData }) {
         </section>
 
         {/* แผงแก้ไข */}
-        <section id="port-editor" aria-label="แก้ไขข้อมูลสาขา" className="min-w-0 rounded-[10px] border border-border bg-surface shadow-[var(--shadow)] min-[1181px]:sticky min-[1181px]:top-[76px] min-[1181px]:max-h-[calc(100vh-92px)] min-[1181px]:overflow-y-auto">
+        <section id="port-editor" aria-label="แก้ไขข้อมูลสาขา" className="min-w-0 scroll-mt-[calc(var(--topbar-h)+8px)] rounded-[10px] border border-border bg-surface shadow-[var(--shadow)] min-[1181px]:sticky min-[1181px]:top-[calc(var(--topbar-h)+16px)] min-[1181px]:max-h-[calc(100vh-92px)] min-[1181px]:overflow-y-auto">
           {branch && draft && savedDraft && ev ? (
             <PortEditor
               key={`${branch.id}:${data.month}`}

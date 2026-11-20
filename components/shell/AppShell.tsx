@@ -37,6 +37,7 @@ import {
   setMiniByUser,
   subscribeMini,
 } from "./nav-mini";
+import { DEFAULT_TOPBAR_HEIGHT, topbarHeightPx } from "./topbar-height";
 import { Topbar } from "./Topbar";
 import { UpdateBanner } from "./UpdateBanner";
 import type { MonthOption, Role } from "./types";
@@ -103,6 +104,22 @@ export function AppShell({
   const onToggleNav = () => setNavOpen(!navOpen);
 
   const toggleRef = useRef<HTMLButtonElement>(null);
+
+  // วัดความสูง <header> จริง (มือถือพับ 2 แถว ~103px) แล้วตั้ง --topbar-h ทั้งแอป · ค่าเริ่มต้น 57px จนกว่าจะวัดเสร็จ
+  const rootRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const root = rootRef.current;
+    const header = root?.querySelector("header");
+    if (!root || !header || typeof ResizeObserver === "undefined") return;
+    const apply = () => {
+      const px = topbarHeightPx(header.getBoundingClientRect().height);
+      if (px !== null) root.style.setProperty("--topbar-h", `${px}px`);
+    };
+    apply();
+    const observer = new ResizeObserver(apply);
+    observer.observe(header);
+    return () => observer.disconnect();
+  }, []);
   const navRef = useRef<HTMLElement>(null);
 
   // ปิดด้วย Esc (คืนโฟกัสให้ปุ่ม ☰) + กันเนื้อหาด้านหลังเลื่อนตอนลิ้นชักเปิด
@@ -138,8 +155,9 @@ export function AppShell({
     // TutorialProvider = บทเรียนเริ่มใช้งาน (E1) — เปิดครั้งแรกอัตโนมัติ + ปุ่ม “สอนใช้งาน” ใน Topbar (components/tutorial)
     <TutorialProvider role={role} initialProfile={tutorialProfile}>
     <div
+      ref={rootRef}
       className="min-h-dvh bg-bg text-fg"
-      style={{ "--topbar-h": "57px" } as CSSProperties}
+      style={{ "--topbar-h": `${DEFAULT_TOPBAR_HEIGHT}px` } as CSSProperties}
     >
       {/* ตั้ง data-nav-mini บน <html> ก่อนวาดเมนู กันกะพริบ/แอนิเมชันหุบตอนโหลด */}
       <script dangerouslySetInnerHTML={{ __html: NAV_MINI_INIT_SCRIPT }} />

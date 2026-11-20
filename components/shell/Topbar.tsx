@@ -26,7 +26,7 @@ type TopbarProps = {
 };
 
 const selectClass =
-  "h-[34px] min-w-0 cursor-pointer rounded-lg border border-border-strong bg-surface px-2 text-[13px] text-fg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent";
+  "h-[34px] max-[767px]:h-11 max-[767px]:text-base min-w-0 cursor-pointer rounded-lg border border-border-strong bg-surface px-2 text-[13px] text-fg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent";
 
 /**
  * แถบบน: โลโก้ AGA ซ้าย (จอเล็ก ≤860px มีปุ่ม ☰ ไอคอนล้วนนำหน้า · จอกว้างปุ่มย้ายไปบนสุดของเมนูซ้าย) · ขวา = เดือน / บทบาท (ชั่วคราว) / ธีม / ออกจากระบบ
@@ -47,7 +47,7 @@ export const Topbar = forwardRef<HTMLButtonElement, TopbarProps>(function Topbar
   toggleRef,
 ) {
   return (
-    <header className="sticky top-0 z-20 flex min-h-[var(--topbar-h)] flex-wrap items-center gap-x-3 gap-y-2 border-b border-border bg-surface px-[18px] py-[9px] max-[600px]:gap-x-2 max-[600px]:px-3 max-[600px]:py-2">
+    <header className="sticky top-0 z-20 flex min-h-[57px] flex-wrap items-center gap-x-3 gap-y-2 border-b border-border bg-surface px-[18px] py-[9px] max-[600px]:gap-x-2 max-[600px]:px-3 max-[600px]:py-2">
       <div className="flex min-w-0 flex-1 items-center gap-3 max-[600px]:gap-2">
         {/* จอเล็ก (≤860px) เท่านั้น: ปุ่มเปิด/ปิดลิ้นชัก · จอกว้างปุ่มอยู่บนสุดของเมนูซ้าย (NavDrawer) */}
         <MenuToggle
@@ -56,7 +56,7 @@ export const Topbar = forwardRef<HTMLButtonElement, TopbarProps>(function Topbar
           label={navOpen ? "ปิดเมนู" : "เปิดเมนู"}
           expanded={navOpen}
           onClick={onToggleNav}
-          className="min-[861px]:hidden max-[600px]:min-h-11 max-[600px]:min-w-11"
+          className="min-[861px]:hidden max-[767px]:min-h-11 max-[767px]:min-w-11"
         />
         <Link
           href="/todo"
@@ -138,7 +138,7 @@ export const Topbar = forwardRef<HTMLButtonElement, TopbarProps>(function Topbar
           href={logoutHref}
           aria-label="ออกจากระบบ"
           title="ออกจากระบบ"
-          className="inline-flex h-[34px] shrink-0 items-center justify-center gap-1.5 rounded-lg border border-border bg-surface-2 px-2.5 text-[13px] text-fg no-underline hover:bg-surface-3 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+          className="inline-flex h-[34px] max-[767px]:h-11 shrink-0 items-center justify-center gap-1.5 rounded-lg border border-border bg-surface-2 px-2.5 text-[13px] text-fg no-underline hover:bg-surface-3 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
         >
           <span aria-hidden="true" className="text-base leading-none">
             ⏻

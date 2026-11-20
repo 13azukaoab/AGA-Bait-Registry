@@ -50,7 +50,7 @@ export function TutorialButton() {
         aria-label="สอนใช้งาน"
         title="สอนใช้งาน"
         onClick={() => setOpen((v) => !v)}
-        className="inline-flex h-[34px] shrink-0 cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-border bg-surface-2 px-2.5 text-[13px] text-fg hover:bg-surface-3 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent max-[600px]:min-h-11 max-[600px]:min-w-11"
+        className="inline-flex h-[34px] shrink-0 cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-border bg-surface-2 px-2.5 text-[13px] text-fg hover:bg-surface-3 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent max-[767px]:h-11 max-[767px]:min-w-11"
       >
         <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
           <circle cx="12" cy="12" r="9" />
