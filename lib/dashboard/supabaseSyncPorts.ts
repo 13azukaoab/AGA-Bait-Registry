@@ -11,7 +11,7 @@
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-import type { Contract, Visit, VisitType } from "../rules/types";
+import type { Contract, ContractPause, Visit, VisitType } from "../rules/types";
 import { toTierRules, TIER_RULE_COLUMNS, type TierRuleRow } from "../tierRules";
 import { buildDashboardData } from "./buildDashboardData";
 import { DashboardSyncError } from "./errors";
@@ -139,9 +139,13 @@ export interface LoadedRegistry {
   branchIdByName: ReadonlyMap<string, string>;
 }
 
-/** อ่านทะเบียน (สาขา เกณฑ์ Tier ลูกค้า สัญญา การเข้า routine) สำหรับคำนวณส่วนกลางด้วย lib/rules — อ่านอย่างเดียว */
+/**
+ * อ่านทะเบียน (สาขา เกณฑ์ Tier ลูกค้า สัญญา การเข้า routine · M29 ช่วงพักสัญญา) สำหรับคำนวณส่วนกลางด้วย lib/rules — อ่านอย่างเดียว
+ * M29 (DECISIONS 2.87): contract_pauses ผูกเข้า Contract.pauses → buildBranchSnapshot ไม่นับเดือนที่พัก
+ *   ใช้ทั้ง Auto Sync / ส่งตอนนี้ / ปิดเดือน-คำนวณใหม่ M39 (ตัวโหลดเดียวกัน) · RLS ของ contract_pauses ให้ host อ่านได้
+ */
 export async function loadCentralRegistry(client: SupabaseClient): Promise<LoadedRegistry> {
-  const [branches, tierRows, customers, contracts, visits] = await Promise.all([
+  const [branches, tierRows, customers, contracts, visits, pauses] = await Promise.all([
     fetchAll(client, "branches", "id, name", KEYSET),
     fetchAll(client, "tier_rules", TIER_RULE_COLUMNS, {
       orderBy: ["effective_month", "tier"],
@@ -158,7 +162,15 @@ export async function loadCentralRegistry(client: SupabaseClient): Promise<Loade
     fetchAll(client, "visits", "id, contract_id, visit_date, visit_type, makeup_for_month", KEYSET, {
       eq: ["visit_type", "routine"],
     }),
+    fetchAll(client, "contract_pauses", "id, contract_id, paused_from, resumed_at", KEYSET),
   ]);
+
+  const pausesByContract = new Map<string, ContractPause[]>();
+  for (const p of pauses) {
+    const list = pausesByContract.get(String(p.contract_id)) ?? [];
+    list.push({ from: String(p.paused_from), resumedAt: str(p.resumed_at) });
+    pausesByContract.set(String(p.contract_id), list);
+  }
 
   const branchName = new Map(branches.map((b) => [String(b.id), String(b.name)]));
   const branchIdByName = new Map(branches.map((b) => [String(b.name), String(b.id)]));
@@ -180,6 +192,7 @@ export async function loadCentralRegistry(client: SupabaseClient): Promise<Loade
       renewedFromContractId: str(c.renewed_from_contract_id),
       customerId: String(c.customer_id),
       endDate: str(c.end_date),
+      pauses: pausesByContract.get(String(c.id)),
     };
     return { ...contract, branch: nameOf(customerBranch.get(String(c.customer_id))) };
   });

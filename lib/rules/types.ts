@@ -28,6 +28,21 @@ export interface Contract {
   customerId?: string;
   /** M28 / 2.51: วันสิ้นสุด 'YYYY-MM-DD' (contracts.end_date · ว่าง = วันเริ่ม + N เดือน − 1 วัน ชนปลายเดือน) */
   endDate?: string;
+  /**
+   * M29 (DECISIONS 2.52 · 2.87): ช่วงพักสัญญา (ตาราง contract_pauses) — ไม่ส่ง = ไม่เคยพัก
+   * เดือนที่พัก = ไม่นับตกบริการ + ไม่นับใน snapshot/Dashboard (ดู pause.ts)
+   */
+  pauses?: readonly ContractPause[];
+}
+
+/**
+ * M29: 1 ช่วงพักสัญญา (contract_pauses.paused_from / resumed_at)
+ * เดือนที่พัก = เดือนของ from … ก่อนเดือนของ resumedAt (เดือนที่กลับมาต่อ = ใช้งานตามปกติ)
+ * resumedAt ว่าง = ยังพักอยู่ (ทุกเดือนตั้งแต่ from)
+ */
+export interface ContractPause {
+  from: string; // 'YYYY-MM-DD' (หรือ timestamptz — monthOf แปลงเป็นเวลาไทย)
+  resumedAt?: string; // 'YYYY-MM-DD' | undefined
 }
 
 export interface Visit {

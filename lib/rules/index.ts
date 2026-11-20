@@ -7,3 +7,4 @@ export * from "./snapshot";
 export * from "./missedResolution";
 export * from "./renewalGap";
 export * from "./lateRenewal";
+export * from "./pause";

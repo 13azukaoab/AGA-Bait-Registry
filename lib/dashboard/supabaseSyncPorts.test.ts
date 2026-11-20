@@ -93,6 +93,7 @@ function baseTables(): Record<string, Row[]> {
       },
     ],
     visits: [],
+    contract_pauses: [],
   };
 }
 
@@ -124,6 +125,26 @@ describe("loadDashboardData", () => {
     expect(data["OCT.26"]!.find((r) => r.branch === "นครปฐม")).toMatchObject({ m1: 1, value: 40000 });
     // ต่างจังหวัดเดือน go-live ยังไม่มี manual → ยก legacy (5.12a)
     expect(data["OCT.26"]!.find((r) => r.branch === "เชียงใหม่")?.value).toBe(100);
+  });
+
+  it("M29: เดือนที่พักสัญญาไม่นับ (อ่าน contract_pauses ผูกกับสัญญา) · ไม่เปลี่ยนรูปแบบไฟล์", async () => {
+    const t = baseTables();
+    t.contract_pauses = [
+      { id: "p1", contract_id: "k1", paused_from: "2026-10-20", resumed_at: null },
+      { id: "p2", contract_id: "other", paused_from: "2026-01-01", resumed_at: null },
+    ];
+    const { client } = fakeClient(t, { go_live_month: "2026-10-01" });
+    const data = await loadDashboardData(client, NOV_6);
+    expect(data["OCT.26"]).toHaveLength(43);
+    expect(data["OCT.26"]!.find((r) => r.branch === "นครปฐม")).toMatchObject({ m1: 0, cust: 0, value: 0 });
+  });
+
+  it("M29: พักแล้วกลับมาต่อ → เดือนที่กลับมาต่อนับตามปกติ", async () => {
+    const t = baseTables();
+    t.contract_pauses = [{ id: "p1", contract_id: "k1", paused_from: "2026-09-01", resumed_at: "2026-10-03" }];
+    const { client } = fakeClient(t, { go_live_month: "2026-10-01" });
+    const data = await loadDashboardData(client, NOV_6);
+    expect(data["OCT.26"]!.find((r) => r.branch === "นครปฐม")).toMatchObject({ m1: 1, value: 40000 });
   });
 
   it("เดือนส่วนกลางที่ปิดแล้วใช้ snapshot ที่เก็บไว้ (กรองเฉพาะ scope central ที่ปิดจริง)", async () => {

@@ -4,12 +4,15 @@ import { annualValueForTerm, serviceMonthsForTerm, tierKey } from "./term";
 import { monthOf } from "./date";
 import { lastServiceMonth, trackingStartMonth } from "./missedResolution";
 import { isMissedService } from "./missedService";
+import { isPausedMonth } from "./pauseMonth";
 
 /**
  * สร้างแถว snapshot รูปแบบ Dashboard (SPEC §7.6, §9.1) สำหรับ 1 สาขา × 1 เดือน
  * นับสัญญาเมื่อ: month อยู่ในเดือนบริการ หรือ (M18 · DECISIONS 2.45) month อยู่หลังสัญญาจบ
  * และมีการเข้าชดเชยจริงในเดือนนั้น · ไม่ถูกยกเลิกก่อน/ในเดือนนั้น · นับต่อสัญญาไม่เกิน 1 ครั้งต่อเดือน
  * · Tier/มูลค่าเดิมของสัญญา
+ * M29 (DECISIONS 2.87): เดือนที่พักสัญญา (contract.pauses) ไม่นับ (ลูกค้า/มูลค่าไม่อยู่ในยอดเดือนนั้น) ·
+ *   การเข้า "ชดเชยจากพักสัญญา" หลังสัญญาจบ นับในเดือนที่เข้าจริงเหมือนชดเชยตกบริการ (2.45)
  * M30: ระยะเป็นเดือน (termMonths) · สัญญา Custom (ไม่ใช่ 12/36) นับในกลุ่ม 1 ปี (s1/m1/l1/xl1)
  *
  * ⚠ สำหรับคนต่อ Dashboard Sync (ผลตรวจ M2): loader ต้องส่ง
@@ -39,6 +42,7 @@ export function buildBranchSnapshot(
 
   for (const c of contracts) {
     if (c.cancelledAt && monthOf(c.cancelledAt) <= month) continue;
+    if (isPausedMonth(c, month)) continue; // M29
     const inService = serviceMonthsForTerm(c.startDate, c.termMonths).includes(month);
     // เดือนชดเชยในช่วงสัญญานับอยู่แล้ว ไม่นับซ้ำ · หลังสัญญาจบนับเมื่อมีการเข้าชดเชยจริงในเดือนนี้
     // เดือนที่ผูกต้องไม่ก่อนเดือนเริ่มนับตกบริการ (ตั้งสถานี) — เกณฑ์เดียวกับ DB (กันสัญญาเก่าดันตัวเลข)
@@ -64,7 +68,8 @@ export function buildBranchSnapshot(
           monthOf(v.makeupForMonth) >= trackFrom &&
           monthOf(v.visitDate) === month &&
           // เดือนที่ผูกต้องยัง "ตกจริง" (มี routine ปกติภายหลัง = การผูกนั้นไม่มีผล)
-          isMissedService(c, monthOf(v.makeupForMonth), visits),
+          (isMissedService(c, monthOf(v.makeupForMonth), visits) ||
+            isPausedMonth(c, v.makeupForMonth)), // M29: ชดเชยจากพักสัญญา
       );
     if (!inService && !countsAsMakeup) continue;
 
