@@ -33,14 +33,10 @@ export interface UsageRow {
   timberPcs: number;
 }
 
-/** การเข้า 1 ครั้ง (ไม่มีวัสดุ) — ใช้กับภาระงานรายทีมและตรวจภายใน */
+/** การเข้า 1 ครั้ง (ไม่มีวัสดุ) — ใช้กับภาระงานรายทีมเท่านั้น (ตรวจภายในใช้ RPC inside_inspection_summary แล้ว) */
 export interface MaterialVisit {
   visitId: string;
   branchId: string;
-  /** ลูกค้าของการเข้า (ใช้นับจำนวนลูกค้าไม่ซ้ำ · ไม่ส่งชื่อออกหน้าจอ) */
-  customerId: string;
-  /** ติ๊ก "ตรวจภายใน" (visits.internal_inspection) · DECISIONS 2.93 */
-  internalInspection: boolean;
   /** ทีมที่เข้าในครั้งนั้น (visit_teams) */
   teamIds: readonly string[];
   /** เวลาทำงานจริง (นาที) · null = ไม่มีข้อมูล */
@@ -144,32 +140,59 @@ export function gramsPerAgBox(insideG: number, agChecked: number): number | null
   return agChecked > 0 ? Math.round((insideG / agChecked) * 10) / 10 : null;
 }
 
+/** 1 แถวของ RPC inside_inspection_summary (สาขา × ทีม + แถวรวมสาขา) */
+export interface InspectionRow {
+  branchId: string;
+  /** null ในแถวรวมสาขา (หรือการเข้าที่ไม่มีทีม) */
+  teamId: string | null;
+  isBranchTotal: boolean;
+  /** จำนวนการเข้า (visit) ที่ติ๊กตรวจภายใน */
+  inspectionCount: number;
+  /** จำนวนสัญญาไม่ซ้ำ (≈ "กี่ราย") */
+  contractCount: number;
+}
+
 export interface InspectionCount {
-  /** จำนวนการเข้าที่ติ๊กตรวจภายใน */
+  /** จำนวนการเข้า (ครั้ง) */
   visits: number;
-  /** จำนวนลูกค้าไม่ซ้ำ (ลูกค้าเดียวกันเข้าหลายครั้งนับ 1 ราย) */
-  customers: number;
+  /** จำนวนสัญญาไม่ซ้ำ (ราย) */
+  contracts: number;
 }
 
-/** นับ "ตรวจภายใน" (DECISIONS 2.93): การเข้า = จำนวนแถวที่ติ๊ก · ลูกค้า = customerId ไม่ซ้ำ */
-export function countInternalInspection(visits: readonly MaterialVisit[]): InspectionCount {
-  const hit = visits.filter((v) => v.internalInspection);
-  return { visits: hit.length, customers: new Set(hit.map((v) => v.customerId)).size };
+const NO_INSPECTION: InspectionCount = { visits: 0, contracts: 0 };
+
+/** ยอดรวมทั้งหมด = ผลรวมแถวรวมสาขา (is_branch_total) เท่านั้น — สัญญาหนึ่งอยู่สาขาเดียว จึงบวกข้ามสาขาได้ไม่ซ้ำ */
+export function inspectionTotal(rows: readonly InspectionRow[]): InspectionCount {
+  return rows
+    .filter((r) => r.isBranchTotal)
+    .reduce((t, r) => ({ visits: t.visits + r.inspectionCount, contracts: t.contracts + r.contractCount }), NO_INSPECTION);
 }
 
-/** ตรวจภายในแยกกลุ่ม (key เช่น branchId) — เฉพาะกลุ่มที่มีการตรวจ */
-export function inspectionByKey(
-  visits: readonly MaterialVisit[],
-  keysOf: (v: MaterialVisit) => readonly string[],
-): Map<string, InspectionCount> {
-  const groups = new Map<string, MaterialVisit[]>();
-  for (const v of visits) {
-    if (!v.internalInspection) continue;
-    for (const k of keysOf(v)) {
-      const list = groups.get(k);
-      if (list) list.push(v);
-      else groups.set(k, [v]);
-    }
+/** ยอดรายสาขา (key = branchId) จากแถวรวมสาขาเท่านั้น */
+export function inspectionByBranchMap(rows: readonly InspectionRow[]): Map<string, InspectionCount> {
+  const out = new Map<string, InspectionCount>();
+  for (const r of rows) {
+    if (!r.isBranchTotal) continue;
+    const cur = out.get(r.branchId) ?? NO_INSPECTION;
+    out.set(r.branchId, { visits: cur.visits + r.inspectionCount, contracts: cur.contracts + r.contractCount });
   }
-  return new Map([...groups].map(([k, list]) => [k, countInternalInspection(list)]));
+  return out;
+}
+
+/** ยอดรายทีม (key = teamId) จากแถวรายทีม — ทีมกลางที่เข้าหลายสาขารวมข้ามสาขา · การเข้าหลายทีมนับให้ทุกทีม */
+export function inspectionByTeamMap(rows: readonly InspectionRow[]): Map<string, InspectionCount> {
+  const out = new Map<string, InspectionCount>();
+  for (const r of rows) {
+    if (r.isBranchTotal || r.teamId === null) continue;
+    const cur = out.get(r.teamId) ?? NO_INSPECTION;
+    out.set(r.teamId, { visits: cur.visits + r.inspectionCount, contracts: cur.contracts + r.contractCount });
+  }
+  return out;
+}
+
+/** แปลงรหัส error ของ inside_inspection_summary เป็นข้อความไทย (ห้ามแสดงข้อความดิบจากฐานข้อมูล) */
+export function inspectionErrorMessage(code: string | null | undefined): string {
+  if (code === "II001") return "เดือนที่เลือกไม่ถูกต้อง ลองเลือกเดือนใหม่";
+  if (code === "42501") return "ตำแหน่งของคุณไม่มีสิทธิ์ดูสรุปตรวจภายใน";
+  return "อ่านสรุปตรวจภายในไม่สำเร็จ ลองรีเฟรชหน้า";
 }

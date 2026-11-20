@@ -228,7 +228,7 @@ function InspectionSection({ view }: { view: MaterialView }) {
   const { inspection, inspectionPrev } = view;
   const th = "bg-surface-2 px-2.5 py-2 text-xs font-semibold text-fg-muted whitespace-nowrap";
   const td = "num border-b border-border px-2.5 py-2 text-right whitespace-nowrap";
-  const table = (caption: string, head: string, rows: { key: string; name: string; c: { visits: number; customers: number } }[]) => (
+  const table = (caption: string, head: string, rows: { key: string; name: string; c: { visits: number; contracts: number } }[]) => (
     <div className="overflow-x-auto rounded-card border border-border">
       <table className="w-full border-collapse text-[13px]">
         <caption className="sr-only">{caption}</caption>
@@ -236,7 +236,7 @@ function InspectionSection({ view }: { view: MaterialView }) {
           <tr>
             <th scope="col" className={`${th} text-left`}>{head}</th>
             <th scope="col" className={`${th} text-right`}>เข้า (ครั้ง)</th>
-            <th scope="col" className={`${th} text-right`}>ลูกค้า (ราย)</th>
+            <th scope="col" className={`${th} text-right`}>สัญญา (ราย)</th>
           </tr>
         </thead>
         <tbody>
@@ -247,7 +247,7 @@ function InspectionSection({ view }: { view: MaterialView }) {
             <tr key={r.key}>
               <th scope="row" className="border-b border-border px-2.5 py-2 text-left font-normal">{r.name}</th>
               <td className={td}>{fmtInt(r.c.visits)}</td>
-              <td className={td}>{fmtInt(r.c.customers)}</td>
+              <td className={td}>{fmtInt(r.c.contracts)}</td>
             </tr>
           ))}
         </tbody>
@@ -257,15 +257,15 @@ function InspectionSection({ view }: { view: MaterialView }) {
   return (
     <section className={CARD} aria-labelledby="mat-inspect">
       <h2 id="mat-inspect" className="m-0 text-base font-bold">ตรวจภายใน</h2>
-      <p className="mt-1 mb-3 text-[13px] text-fg-muted">การเข้าที่ติ๊ก &ldquo;ตรวจภายใน&rdquo; ในเดือนนี้ · ลูกค้าเดียวกันเข้าหลายครั้งนับเป็น 1 ราย</p>
+      <p className="mt-1 mb-3 text-[13px] text-fg-muted">การเข้าบริการประจำเดือนที่ติ๊ก &ldquo;ตรวจภายใน&rdquo; ในเดือนนี้ · ราย = จำนวนสัญญาไม่ซ้ำ · การเข้าที่ไปหลายทีมนับเป็น 1 ครั้งในยอดรวม (ในตารางรายทีมนับให้ทุกทีม)</p>
       <div className="mb-3 flex flex-wrap gap-x-8 gap-y-2">
         <div>
           <div className="num text-[26px] leading-tight font-bold">{fmtInt(inspection.visits)} <span className="text-sm font-normal text-fg-muted">ครั้ง</span></div>
           <div className="text-xs"><Delta pct={pctChange(inspection.visits, inspectionPrev.visits)} /></div>
         </div>
         <div>
-          <div className="num text-[26px] leading-tight font-bold">{fmtInt(inspection.customers)} <span className="text-sm font-normal text-fg-muted">ราย</span></div>
-          <div className="text-xs"><Delta pct={pctChange(inspection.customers, inspectionPrev.customers)} /></div>
+          <div className="num text-[26px] leading-tight font-bold">{fmtInt(inspection.contracts)} <span className="text-sm font-normal text-fg-muted">ราย</span></div>
+          <div className="text-xs"><Delta pct={pctChange(inspection.contracts, inspectionPrev.contracts)} /></div>
         </div>
       </div>
       <div className="grid grid-cols-2 gap-3 max-[767px]:grid-cols-1 [&>*]:min-w-0">

@@ -5,8 +5,10 @@
  *   * รับ Supabase client ของผู้ใช้จริง (RLS ทำงาน · ห้าม service role) · select ระบุคอลัมน์ทุกครั้ง
  *   * วัสดุ: RPC `material_usage_summary(p_month, p_branch_id)` (M42 · แถวต่อ สาขา × ประเภทงาน × sale_type) เรียก 2 ครั้ง
  *     (เดือนนี้ + เดือนก่อน เพื่อ % เทียบ) ที่ `loadMonthUsage()` — **จุดดึงวัสดุจุดเดียว** · MU001 = เดือนไม่ใช่วันที่ 1 (ไม่เกิดเพราะส่งวันที่ 1 เสมอ)
- *   * การเข้ารายครั้ง (ไม่มีวัสดุ) `loadMonthVisits()` ใช้เฉพาะภาระงานรายทีม (เวลา + ทีม) และ "ตรวจภายใน" (นับลูกค้าไม่ซ้ำ)
- *     — เมื่อ BE ส่ง RPC สรุปตรวจภายใน (M43 `inside_inspection_summary`) มา เปลี่ยนส่วนตรวจภายในที่ฟังก์ชันนี้
+ *   * ตรวจภายใน (M43 · 2.93): RPC `inside_inspection_summary(p_month, p_branch_id)` ที่ `loadMonthInspection()` (เรียกเดือนนี้ + เดือนก่อน) ·
+ *     error II001 / 42501 แปลงเป็นข้อความไทยที่ `inspectionErrorMessage` (ไม่ส่งข้อความดิบจากฐานข้อมูลออกหน้าจอ)
+ *   * การเข้ารายครั้ง (ไม่มีวัสดุ) `loadMonthVisits()` — **ยังอ่าน visits ตรง** เพื่อภาระงานรายทีมเท่านั้น (เวลา `duration_min` + ทีม `visit_teams`)
+ *     ซึ่งยังไม่มี RPC สรุป
  *   * PostgREST คืนสูงสุด 1,000 แถว/คำขอ → ดึงเป็นหน้าๆ (PAGE) ไม่เกิน MAX_PAGES · ถ้าชนเพดาน ตั้ง `truncated` ให้หน้าจอเตือน
  *   * เกณฑ์ภาระงาน: `team_workload_hours(team_id)` ต่อทีม (M42 · 2.88 · ค่าของทีมหรือค่ากลาง) ที่ `loadThresholds()` · จำนวนคนจาก `teams.headcount`
  *   * กล่อง AG ต่อสาขา: RPC `ag_box_counts_by_branch(p_month)` (M25)
@@ -17,7 +19,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { monthRange, shiftMonth } from "@/lib/service/months";
 import { isTeamKind, type TeamKind } from "@/lib/service/teamKind";
 
-import type { CustomerGroup, MaterialVisit, UsageRow, WorkGroup } from "./logic";
+import { inspectionErrorMessage, type CustomerGroup, type InspectionRow, type MaterialVisit, type UsageRow, type WorkGroup } from "./logic";
 import type { TeamThresholds } from "./workload";
 
 const PAGE = 1000;
@@ -52,7 +54,9 @@ export interface AgBoxRow {
 export interface MonthData {
   /** วัสดุรวมแล้วจาก RPC (สาขา × ประเภทงาน × sale_type) */
   usage: UsageRow[];
-  /** การเข้ารายครั้ง (ไม่มีวัสดุ) */
+  /** ตรวจภายในรวมแล้วจาก RPC (สาขา × ทีม + แถวรวมสาขา) */
+  inspection: InspectionRow[];
+  /** การเข้ารายครั้ง (ไม่มีวัสดุ) — ใช้เฉพาะภาระงานรายทีม */
   visits: MaterialVisit[];
   truncated: boolean;
 }
@@ -127,15 +131,38 @@ async function loadMonthUsage(supabase: SupabaseClient, month: string): Promise<
   return { data: rows, error: null };
 }
 
+interface InspectionRpcRow {
+  branch_id: string;
+  team_id: string | null;
+  is_branch_total: boolean | null;
+  inspection_count: number | string | null;
+  contract_count: number | string | null;
+}
+
+/** ตรวจภายใน 1 เดือนจาก RPC inside_inspection_summary — error แปลเป็นข้อความไทยแล้ว */
+async function loadMonthInspection(supabase: SupabaseClient, month: string): Promise<Result<InspectionRow[]>> {
+  const { data, error } = await supabase.rpc("inside_inspection_summary", { p_month: `${month}-01`, p_branch_id: null });
+  if (error) return { data: null, error: inspectionErrorMessage(error.code) };
+  return {
+    data: ((data ?? []) as InspectionRpcRow[]).map((r) => ({
+      branchId: r.branch_id,
+      teamId: r.team_id,
+      isBranchTotal: r.is_branch_total === true,
+      inspectionCount: num(r.inspection_count),
+      contractCount: num(r.contract_count),
+    })),
+    error: null,
+  };
+}
+
 interface VisitMetaRow {
   id: string;
   duration_min: number | null;
-  internal_inspection: boolean | null;
-  contracts: { customer_id: string; customers: { branch_id: string } | null } | null;
+  contracts: { customers: { branch_id: string } | null } | null;
   visit_teams: { team_id: string }[] | null;
 }
 
-/** การเข้ารายครั้งของ 1 เดือน (ไม่มีวัสดุ) — สำหรับภาระงานรายทีมและตรวจภายใน */
+/** การเข้ารายครั้งของ 1 เดือน (ไม่มีวัสดุ) — สำหรับภาระงานรายทีมเท่านั้น (ยังอ่าน visits ตรง) */
 async function loadMonthVisits(
   supabase: SupabaseClient,
   month: string,
@@ -144,7 +171,7 @@ async function loadMonthVisits(
   const metas = await fetchAll<VisitMetaRow>((a, b) =>
     supabase
       .from("visits")
-      .select("id, duration_min, internal_inspection, contracts ( customer_id, customers ( branch_id ) ), visit_teams ( team_id )")
+      .select("id, duration_min, contracts ( customers ( branch_id ) ), visit_teams ( team_id )")
       .gte("visit_date", from)
       .lt("visit_date", toExclusive)
       .order("id")
@@ -159,8 +186,6 @@ async function loadMonthVisits(
     visits.push({
       visitId: meta.id,
       branchId,
-      customerId: meta.contracts?.customer_id ?? meta.id,
-      internalInspection: meta.internal_inspection === true,
       teamIds: (meta.visit_teams ?? []).map((t) => t.team_id),
       durationMin: meta.duration_min,
     });
@@ -169,10 +194,18 @@ async function loadMonthVisits(
 }
 
 async function loadMonthData(supabase: SupabaseClient, month: string): Promise<Result<MonthData>> {
-  const [usage, visits] = await Promise.all([loadMonthUsage(supabase, month), loadMonthVisits(supabase, month)]);
+  const [usage, inspection, visits] = await Promise.all([
+    loadMonthUsage(supabase, month),
+    loadMonthInspection(supabase, month),
+    loadMonthVisits(supabase, month),
+  ]);
   if (usage.error !== null) return { data: null, error: usage.error };
+  if (inspection.error !== null) return { data: null, error: inspection.error };
   if (visits.error !== null) return { data: null, error: visits.error };
-  return { data: { usage: usage.data, visits: visits.data.visits, truncated: visits.data.truncated }, error: null };
+  return {
+    data: { usage: usage.data, inspection: inspection.data, visits: visits.data.visits, truncated: visits.data.truncated },
+    error: null,
+  };
 }
 
 /** เกณฑ์ภาระงานต่อทีม: ค่ากลาง + `team_workload_hours(team_id)` (M42 · ค่าของทีมหรือค่ากลาง) */
@@ -258,6 +291,7 @@ export async function loadMaterialPage(
   const scopeMonth = (m: MonthData): MonthData => ({
     ...m,
     usage: m.usage.filter((u) => inScope.has(u.branchId)),
+    inspection: m.inspection.filter((r) => inScope.has(r.branchId)),
     visits: m.visits.filter((v) => inScope.has(v.branchId)),
   });
 
