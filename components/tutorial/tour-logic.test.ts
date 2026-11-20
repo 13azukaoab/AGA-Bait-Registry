@@ -6,6 +6,7 @@ import {
   computeRevealDelta,
   decideClick,
   evaluatePassword,
+  isClickStep,
   passwordGuardError,
   rectsOverlap,
   selectorFor,
@@ -78,6 +79,15 @@ describe("โหมดฝึก: ตัดสินการคลิก", () =>
   });
   it("ลิงก์อื่นที่ไม่ใช่จุดที่ให้กด → บล็อก (ไม่พาออกนอกบทเรียน)", () => {
     expect(decideClick({ ...base, isLink: true, stepWantsClick: true })).toBe("block");
+  });
+});
+
+describe("ขั้นให้ลองกดแต่ปุ่มถูกปิด (disabled)", () => {
+  it("ปุ่มกดได้ → เป็นขั้นให้ลองกด · ปุ่มถูกปิด → เป็นขั้นอ่านธรรมดา · ขั้นที่ไม่มี act → ไม่ใช่ขั้นกด", () => {
+    expect(isClickStep("click", false)).toBe(true);
+    expect(isClickStep("click", true)).toBe(false);
+    expect(isClickStep(undefined, false)).toBe(false);
+    expect(isClickStep(undefined, true)).toBe(false);
   });
 });
 

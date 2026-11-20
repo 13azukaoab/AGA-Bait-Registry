@@ -88,6 +88,14 @@ export function decideClick(input: ClickInput): ClickDecision {
   return "block";
 }
 
+/**
+ * ขั้นนี้ “ให้ลองกด” ได้จริงหรือไม่ — ถ้าปุ่มที่ชี้ถูกปิดอยู่ (disabled เช่นปุ่มบันทึกตอนยังไม่มีแถว) เบราว์เซอร์จะไม่ส่งการคลิก
+ * ผู้ใช้กดแล้วไม่เกิดอะไร จึงต้องแสดงเป็นขั้นอ่านธรรมดา (ปุ่ม “ถัดไป” + ซ่อนคำแนะนำให้กด)
+ */
+export function isClickStep(act: "click" | undefined, targetDisabled: boolean): boolean {
+  return act === "click" && !targetDisabled;
+}
+
 /* ---------- เรขาคณิต ---------- */
 
 export type Rect = { left: number; top: number; right: number; bottom: number };

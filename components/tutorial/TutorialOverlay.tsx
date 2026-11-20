@@ -32,6 +32,7 @@ import {
   computePlacement,
   computeRevealDelta,
   decideClick,
+  isClickStep,
   selectorFor,
   type Placement,
   type Rect,
@@ -101,6 +102,8 @@ export function TutorialOverlay() {
   const navRequestedKey = useRef<string | null>(null);
   const [layout, setLayout] = useState<Layout | null>(null);
   const [targetVersion, setTargetVersion] = useState(0);
+  // จุดที่ชี้ถูกปิดอยู่ (disabled) → กดไม่ได้ ให้แสดงเป็นขั้นอ่านธรรมดา
+  const [targetDisabled, setTargetDisabled] = useState(false);
 
   const stepKeyRef = useRef(stepKey);
   useEffect(() => {
@@ -118,6 +121,8 @@ export function TutorialOverlay() {
     // ขั้นที่ชี้จุดแต่ยังหาจุดไม่เจอ → ยังไม่วางกล่อง (กันกล่องวูบกลางจอก่อนถูกข้าม)
     if (current.target && !(el && el.isConnected)) return;
     const rect = el && el.isConnected ? toRect(el.getBoundingClientRect()) : null;
+    const disabled = !!el && el.matches(':disabled, [aria-disabled="true"]');
+    setTargetDisabled((prev) => (prev === disabled ? prev : disabled));
     // หน้าจำลอง: ใช้ทั้งการ์ดเป็นกรอบวางกล่อง (กล่องอยู่ข้างการ์ด ไม่ทับปุ่มข้างเคียง)
     const card = el?.closest<HTMLElement>("[data-tutorial-card]") ?? null;
     const avoid = Array.from(document.querySelectorAll("[data-sticky-savebar]"))
@@ -171,7 +176,7 @@ export function TutorialOverlay() {
         insideTutorialUi: !!t.closest("[data-tutorial-ui]") || inSandboxFree,
         insideTarget: !!targetEl && targetEl.contains(t),
         isLink: !!t.closest("a[href]"),
-        stepWantsClick: current?.act === "click",
+        stepWantsClick: isClickStep(current?.act, !!targetEl?.matches(':disabled, [aria-disabled="true"]')),
       });
       if (decision === "allow") return;
       if (decision === "advance-link") {
@@ -354,7 +359,8 @@ export function TutorialOverlay() {
   }
 
   const isLast = snapshot.index === stepCount - 1;
-  const nextLabel = step.act === "click" ? "ข้ามขั้นนี้" : (step.cta ?? (isLast ? "เสร็จสิ้น" : "ถัดไป"));
+  const clickStep = isClickStep(step.act, targetDisabled);
+  const nextLabel = clickStep ? "ข้ามขั้นนี้" : (step.cta ?? (isLast ? "เสร็จสิ้น" : "ถัดไป"));
   const screen = step.screen ?? "app";
 
   return createPortal(
@@ -411,7 +417,7 @@ export function TutorialOverlay() {
         <p id="tutorial-body" className={styles.body}>
           {step.body}
         </p>
-        {step.hint ? <p className={styles.hint}>{step.hint}</p> : null}
+        {step.hint && !(step.act === "click" && targetDisabled) ? <p className={styles.hint}>{step.hint}</p> : null}
         {snapshot.guardError && screen === "app" ? (
           <p className={styles.error} role="alert">
             {snapshot.guardError}
@@ -424,7 +430,7 @@ export function TutorialOverlay() {
           <button
             ref={nextBtnRef}
             type="button"
-            className={`${styles.btn} ${step.act === "click" ? "" : styles.btnPri}`}
+            className={`${styles.btn} ${clickStep ? "" : styles.btnPri}`}
             onClick={() => controller.next()}
           >
             {nextLabel}
