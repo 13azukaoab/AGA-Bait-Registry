@@ -1,77 +1,100 @@
 /**
- * นำเข้า dashboard_data.json เดิม → monthly_branch_snapshots (source='legacy') · **ฐานข้อมูลในเครื่องเท่านั้น**
- * (DECISIONS 2.72 ก · ตรรกะอยู่ที่ lib/import/legacySnapshotImport.ts)
+ * นำเข้า dashboard_data.json เดิม → monthly_branch_snapshots (source='legacy')
+ * (DECISIONS 2.72 ก · ตรรกะอยู่ที่ lib/import/legacySnapshotImport.ts · ด่าน cloud อยู่ที่ lib/import/cloudGuard.ts)
  *
- * วิธีรัน (ต้องได้คิวฐานข้อมูลในเครื่องจาก HQ ก่อน — DB local มีตัวเดียว ใช้ร่วมกันทุก worktree):
+ * วิธีรัน — ฐานข้อมูลในเครื่อง (ต้องได้คิว DB local จาก HQ ก่อน — มีตัวเดียว ใช้ร่วมกันทุก worktree):
  *   ตรวจอย่างเดียว (ค่าเริ่มต้น ไม่เขียน):
  *     npx vite-node --config vitest.config.ts scripts/import-legacy-snapshots.ts -- --file "<path>/fixtures/dashboard_data.json"
  *   เขียนจริง:
  *     npx vite-node --config vitest.config.ts scripts/import-legacy-snapshots.ts -- --file "<path>/fixtures/dashboard_data.json" --apply
  *
+ * วิธีรัน — cloud (**เฉพาะวันที่เจ้าของสั่ง** · แผน docs/แผนนำเข้า-cloud-23พย2569.md · รันใน PowerShell / Windows Terminal):
+ *   ... -- --target cloud --project-ref <ref> --log-dir "<โฟลเดอร์นอก repo>" --file "<path>/dashboard_data.json"           (dry-run)
+ *   ... -- --target cloud --project-ref <ref> --log-dir "<โฟลเดอร์นอก repo>" --file "<path>/dashboard_data.json" --apply   (เขียน)
+ *   --apply บน cloud: สคริปต์ dry-run ในตัวก่อน แสดงตัวเลข แล้วต้องพิมพ์ `นำเข้า <จำนวนแถว>` ตรงตัว (เช่น `นำเข้า 903`)
+ *   ไม่ตรง/ไม่พิมพ์ = ไม่เขียน · ไม่มี flag ข้ามการยืนยัน
+ *   ซ้อมพิมพ์คำยืนยันกับ DB ในเครื่อง: ใส่ `--apply --confirm` (localhost จะถามแบบเดียวกับ cloud)
+ *
  *   (`--config vitest.config.ts` กัน vite โหลด PostCSS ของ Tailwind ซึ่งพังนอก Next.js)
  *
- * env ที่ต้องมี (ค่าจาก `npx supabase status` ของเครื่องตัวเอง · ห้าม commit):
- *   NEXT_PUBLIC_SUPABASE_URL   เช่น http://127.0.0.1:54321
- *   SUPABASE_SERVICE_ROLE_KEY  service role ของ Supabase local
+ * env ที่ต้องมี (ตั้งในเทอร์มินัลตอนรันเท่านั้น · ห้าม commit · ห้ามวางในแชท):
+ *   NEXT_PUBLIC_SUPABASE_URL   local เช่น http://127.0.0.1:54321 · cloud = https://<ref>.supabase.co
+ *   SUPABASE_SERVICE_ROLE_KEY  service role ของปลายทาง
+ *   AGA_CLOUD_PROJECT_REF      (cloud) ref เดียวกับ --project-ref และ subdomain ของ URL
+ *   AGA_IMPORT_LOG_DIR         (ทางเลือกแทน --log-dir) โฟลเดอร์ log นอก repo · cloud บังคับมี
  *
  * ด่านกันพลาด:
- *   - URL ต้องเป็น localhost / 127.0.0.1 เท่านั้น — ชี้ cloud = หยุดทันที (cloud เจ้าของสั่งทีหลัง)
+ *   - ไม่ใส่ --target = localhost / 127.0.0.1 เท่านั้น (เหมือนเดิม) · --target cloud = ตรวจ ref 3 ที่ + ยืนยันพิมพ์
  *   - ต่อผ่าน PostgREST (service_role) ไม่ต่อด้วย role postgres (CLAUDE.md กฎ Deploy)
- *   - ไม่ import lib/supabase/admin.ts (กฎ M21b) — สร้าง client เฉพาะในสคริปต์นี้ ใช้แค่ตาราง snapshot
- *   - พิมพ์เฉพาะตัวเลขรวม ไม่พิมพ์ key
+ *   - ไม่ import lib/supabase/admin.ts (กฎ M21b) — สร้าง client เฉพาะในสคริปต์ ใช้แค่ตาราง snapshot
+ *   - พิมพ์/บันทึกเฉพาะตัวเลขรวม ไม่พิมพ์ key/URL (log ผ่านตัวลบค่าลับ)
  */
 import { readFileSync } from "node:fs";
 
-import { createClient } from "@supabase/supabase-js";
+import { runGuarded } from "../lib/import/cloudGuard";
+import { importLegacySnapshots, type LegacyImportResult } from "../lib/import/legacySnapshotImport";
+import { errorText, flag, setupScript } from "./_cloudCli";
 
-import { importLegacySnapshots } from "../lib/import/legacySnapshotImport";
-
-const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]"]);
-
-function arg(name: string): string | undefined {
-  const i = process.argv.indexOf(name);
-  return i >= 0 ? process.argv[i + 1] : undefined;
+function summarize(res: LegacyImportResult): Record<string, unknown> {
+  const months = res.conversion.months;
+  return {
+    mode: res.dryRun ? "dry-run (ไม่เขียน)" : "apply",
+    goLiveMonth: res.goLiveMonth,
+    months: `${months[0]} … ${months[months.length - 1]} (${months.length})`,
+    skippedKeys: res.conversion.skippedKeys,
+    rows: res.conversion.rows.length,
+    existingLegacyBefore: res.existingLegacyBefore,
+    written: res.written,
+    areaDifferences: res.conversion.areaDifferences.length,
+    totalCust: res.totals.reduce((s, t) => s + t.cust, 0),
+    totalValue: res.totals.reduce((s, t) => s + t.valueCents, 0) / 100,
+    totals: res.totals.map((t) => ({ ...t, value: t.valueCents / 100 })),
+  };
 }
 
 async function main(): Promise<void> {
-  const file = arg("--file");
-  const apply = process.argv.includes("--apply");
+  const file = flag("--file");
   if (!file) throw new Error("ต้องระบุ --file <path ของ dashboard_data.json>");
+  const ctx = setupScript("import-legacy-snapshots");
+  const log: Record<string, unknown> = { status: "error" };
+  try {
+    const data: unknown = JSON.parse(readFileSync(file, "utf8"));
+    const out = await runGuarded({
+      target: ctx.target,
+      apply: ctx.apply,
+      action: "import",
+      dryRun: () => importLegacySnapshots(ctx.client, data, { dryRun: true }),
+      confirmCount: (d) => d.conversion.rows.length,
+      describe: (d) =>
+        `[cloud dry-run] จะเขียน snapshot legacy ${d.conversion.rows.length} แถว · ${d.conversion.months.length} เดือน` +
+        ` · legacy เดิม ${d.existingLegacyBefore} แถว · cust รวม ${d.totals.reduce((s, t) => s + t.cust, 0)}` +
+        ` · มูลค่ารวม ${(d.totals.reduce((s, t) => s + t.valueCents, 0) / 100).toFixed(2)}`,
+      write: () => importLegacySnapshots(ctx.client, data),
+      ask: ctx.ask,
+      isTTY: ctx.isTTY,
+    forceConfirm: ctx.forceConfirm,
+      print: (t) => console.log(t),
+    });
 
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) throw new Error("ต้องตั้ง NEXT_PUBLIC_SUPABASE_URL และ SUPABASE_SERVICE_ROLE_KEY");
-  if (!LOCAL_HOSTS.has(new URL(url).hostname)) {
-    throw new Error(`หยุด: ${new URL(url).hostname} ไม่ใช่ฐานข้อมูลในเครื่อง (สคริปต์นี้ห้ามเขียน cloud)`);
+    if (out.status === "aborted") {
+      Object.assign(log, { status: "aborted", reason: out.reason, dryRun: summarize(out.dry) });
+      console.log(out.reason);
+      process.exitCode = 3;
+      return;
+    }
+    const res = out.status === "applied" ? out.result : out.dry;
+    const summary = summarize(res);
+    Object.assign(log, { status: out.status, result: summary });
+    console.log(JSON.stringify(summary, null, 2));
+  } catch (e) {
+    log.error = errorText(e, ctx.redact);
+    throw e;
+  } finally {
+    ctx.finishLog(log);
   }
-
-  const data: unknown = JSON.parse(readFileSync(file, "utf8"));
-  const client = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
-  const res = await importLegacySnapshots(client, data, { dryRun: !apply });
-
-  const months = res.conversion.months;
-  console.log(
-    JSON.stringify(
-      {
-        mode: res.dryRun ? "dry-run (ไม่เขียน)" : "apply",
-        goLiveMonth: res.goLiveMonth,
-        months: `${months[0]} … ${months[months.length - 1]} (${months.length})`,
-        skippedKeys: res.conversion.skippedKeys,
-        rows: res.conversion.rows.length,
-        existingLegacyBefore: res.existingLegacyBefore,
-        written: res.written,
-        areaDifferences: res.conversion.areaDifferences.length,
-        totalCust: res.totals.reduce((s, t) => s + t.cust, 0),
-        totalValue: res.totals.reduce((s, t) => s + t.valueCents, 0) / 100,
-        totals: res.totals.map((t) => ({ ...t, value: t.valueCents / 100 })),
-      },
-      null,
-      2,
-    ),
-  );
 }
 
 main().catch((e: unknown) => {
-  console.error(e instanceof Error ? e.message : e);
+  console.error(errorText(e));
   process.exit(1);
 });
