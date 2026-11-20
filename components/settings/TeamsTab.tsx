@@ -128,7 +128,7 @@ export function TeamsTab({ data, onToast }: { data: SettingsData; onToast: (m: s
                     {headcountLabel(t.headcount)}
                   </td>
                   <td className="px-3.5 py-2.5" data-testid={`team-workload-${t.code}`}>
-                    <div className="flex flex-wrap items-center gap-1.5">
+                    <div className="flex items-center gap-1.5 whitespace-nowrap">
                       <WorkloadBadge team={t} />
                       <button
                         type="button"
