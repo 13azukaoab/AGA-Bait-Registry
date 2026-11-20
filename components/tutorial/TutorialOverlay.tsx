@@ -20,6 +20,7 @@ import { usePathname, useRouter } from "next/navigation";
 import {
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
   useSyncExternalStore,
@@ -33,7 +34,9 @@ import {
   computeRevealDelta,
   decideClick,
   isClickStep,
+  nextAfterMissing,
   selectorFor,
+  viewForStep,
   type Placement,
   type Rect,
 } from "./tour-logic";
@@ -88,9 +91,13 @@ export function TutorialOverlay() {
   const mounted = useSyncExternalStore(noopSubscribe, () => true, () => false);
 
   const lesson = snapshot.lessonId ? getLesson(snapshot.lessonId) : undefined;
-  const step = snapshot.running ? lesson?.steps[snapshot.index] : undefined;
-  const running = snapshot.running && !!lesson && !!step;
+  const rawStep = snapshot.running ? lesson?.steps[snapshot.index] : undefined;
   const stepKey = `${snapshot.lessonId}:${snapshot.index}`;
+  // ขั้นที่หาจุดหลักไม่เจอและมีจุดสำรอง → แสดงจุดสำรองแทน (จำไว้ต่อขั้น)
+  const [fallbackKey, setFallbackKey] = useState<string | null>(null);
+  const usingFallback = fallbackKey === stepKey;
+  const step = useMemo(() => (rawStep ? viewForStep(rawStep, usingFallback) : undefined), [rawStep, usingFallback]);
+  const running = snapshot.running && !!lesson && !!step;
   const stepCount = lesson?.steps.length ?? 0;
 
   const tipRef = useRef<HTMLDivElement>(null);
@@ -151,6 +158,7 @@ export function TutorialOverlay() {
     if (!running) return;
     document.body.dataset.tutorial = "on";
     return () => {
+      setFallbackKey(null); // รอบหน้าเริ่มจากจุดหลักใหม่
       delete document.body.dataset.tutorial;
       const nav = document.getElementById("app-nav");
       if (nav) nav.style.paddingBottom = "";
@@ -272,7 +280,11 @@ export function TutorialOverlay() {
         setTargetVersion((v) => v + 1);
       } else if (Date.now() > deadline) {
         clearInterval(timer);
-        controller.reportMissing(); // หาไม่เจอ → ข้ามขั้นนี้เงียบๆ
+        if (rawStep && nextAfterMissing(rawStep, usingFallback) === "fallback") {
+          setFallbackKey(stepKey); // หาจุดหลักไม่เจอ → ใช้จุดสำรอง
+        } else {
+          controller.reportMissing(); // หาไม่เจอทั้งคู่ → ข้ามขั้นนี้เงียบๆ
+        }
       }
     }, POLL_MS);
     // ตรวจทันที 1 ครั้ง (ไม่ต้องรอรอบแรก)
@@ -283,7 +295,7 @@ export function TutorialOverlay() {
       setTargetVersion((v) => v + 1);
     }
     return () => clearInterval(timer);
-  }, [running, step, stepKey, pathname, router, controller]);
+  }, [running, step, rawStep, usingFallback, stepKey, pathname, router, controller]);
 
   /* ---------- เมื่อเจอจุดชี้: เลื่อนให้เห็น (ครั้งเดียวต่อขั้น) แล้ววางกล่อง + ตามเลย์เอาต์ที่ขยับ ---------- */
   useEffect(() => {

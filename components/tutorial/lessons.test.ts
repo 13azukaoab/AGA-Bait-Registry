@@ -120,6 +120,7 @@ describe("จุดชี้ data-tour ในหน้าจริง", () => {
         if (step.target && !keys.has(step.target) && !PENDING_PAGES.has(step.target)) {
           missing.push(`${lesson.id}:${step.target}`);
         }
+        if (step.fallback && !keys.has(step.fallback.target)) missing.push(`${lesson.id}:fallback:${step.fallback.target}`);
       }
     }
     expect(missing).toEqual([]);
@@ -127,6 +128,17 @@ describe("จุดชี้ data-tour ในหน้าจริง", () => {
 
   it("รายการ “หน้ายังไม่เสร็จ” ต้องยังหาไม่เจอจริง (ถ้าเจอแล้วให้เอาออกจาก PENDING_PAGES)", () => {
     for (const key of PENDING_PAGES) expect(keys.has(key)).toBe(false);
+  });
+
+  it("หัวหน้างาน (svc-allok, bait-add) และ PM/OM (port-save) มีจุดสำรอง", () => {
+    const fb = (id: "recorder" | "pmom") =>
+      LESSONS[id].steps.filter((s) => s.fallback).map((s) => `${s.target}->${s.fallback!.target}`);
+    expect(fb("recorder")).toEqual(["svc-allok->contract-list", "bait-add->contract-list"]);
+    expect(fb("pmom")).toEqual(["port-save->port-list"]);
+  });
+
+  it("ข้อความขั้นท้าย Admin ไม่อ้างคู่มือที่ยังไม่มี", () => {
+    expect(LESSONS.admin.steps.at(-1)!.body).not.toContain("คู่มือ");
   });
 
   it("ปุ่ม “สอนใช้งาน” (help-btn) มีที่แถบบน", () => {

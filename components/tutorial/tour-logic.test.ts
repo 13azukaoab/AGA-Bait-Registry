@@ -7,6 +7,8 @@ import {
   decideClick,
   evaluatePassword,
   isClickStep,
+  nextAfterMissing,
+  viewForStep,
   passwordGuardError,
   rectsOverlap,
   selectorFor,
@@ -88,6 +90,38 @@ describe("ขั้นให้ลองกดแต่ปุ่มถูกป�
     expect(isClickStep("click", true)).toBe(false);
     expect(isClickStep(undefined, false)).toBe(false);
     expect(isClickStep(undefined, true)).toBe(false);
+  });
+});
+
+describe("จุดสำรอง", () => {
+  const withFb = {
+    target: "svc-allok",
+    act: "click" as const,
+    title: "ทุกอย่างปกติ",
+    body: "เดิม",
+    hint: "ลองกด",
+    fallback: { target: "contract-list", title: "เลือกลูกค้าก่อน", body: "สำรอง" },
+  };
+  it("หาจุดหลักไม่เจอ + มีจุดสำรอง → ใช้จุดสำรอง (เป็นขั้นอ่านธรรมดา ไม่ให้ลองกด)", () => {
+    expect(nextAfterMissing(withFb, false)).toBe("fallback");
+    const v = viewForStep(withFb, true);
+    expect(v).toMatchObject({ target: "contract-list", title: "เลือกลูกค้าก่อน", body: "สำรอง" });
+    expect(v.act).toBeUndefined();
+    expect(v.hint).toBeUndefined();
+    expect(v.fallback).toBeUndefined();
+  });
+  it("หาไม่เจอทั้งจุดหลักและจุดสำรอง → ข้ามขั้น", () => {
+    expect(nextAfterMissing(withFb, true)).toBe("skip");
+  });
+  it("ขั้นที่ไม่มีจุดสำรอง → ข้ามเมื่อหาไม่เจอ · ไม่ใช้จุดสำรอง → ข้อมูลขั้นเดิม", () => {
+    const plain = { target: "x", title: "t", body: "b" };
+    expect(nextAfterMissing(plain, false)).toBe("skip");
+    expect(viewForStep(withFb, false)).toBe(withFb);
+    expect(viewForStep(plain, true)).toBe(plain);
+  });
+  it("หัวข้อจุดสำรองไม่ระบุ → ใช้หัวข้อเดิม", () => {
+    const v = viewForStep({ ...withFb, fallback: { target: "a", body: "b" } }, true);
+    expect(v.title).toBe("ทุกอย่างปกติ");
   });
 });
 

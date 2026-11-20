@@ -4,7 +4,7 @@
  *   todo-stats → components/todo/SummaryCards.tsx · svc-* → components/service/ServiceForm.tsx / AgSection.tsx
  *   bait-add → components/bait/BaitForm.tsx · collect-list → หน้า /collection ยังเป็นหน้าตัวอย่าง (ข้ามเงียบๆ จนกว่าจะมีหน้าจริง)
  *   clo-send → components/months/MonthsClient.tsx
- * ⚠ ขั้น svc-* ต้องเลือกลูกค้าในรายการก่อนฟอร์มถึงจะโผล่ ถ้ายังไม่เลือก ขั้นเหล่านั้นจะถูกข้ามเงียบๆ
+ * ⚠ ขั้น svc-* ต้องเลือกลูกค้าในรายการก่อนฟอร์มถึงจะโผล่ svc-allok / bait-add มีจุดสำรองชี้รายการลูกค้า (contract-list) ส่วน svc-termite / svc-ag ถ้าฟอร์มยังไม่ขึ้นจะถูกข้ามเงียบๆ
  */
 import type { Lesson } from "./types";
 
@@ -33,6 +33,11 @@ export const recorderLesson: Lesson = {
       title: "ทุกอย่างปกติ กดทีเดียว",
       body: "ถ้า IG / IC ทุกสถานีปกติ กดปุ่มนี้ปุ่มเดียวแทนการกรอกทีละสถานี",
       hint: "ลองกดปุ่มที่ไฮไลต์",
+      fallback: {
+        target: "contract-list",
+        title: "เลือกลูกค้าก่อน",
+        body: "เลือกลูกค้าจากรายการนี้ก่อน แล้วฟอร์มกรอกผลบริการจะขึ้นมา (ปุ่ม “IG / IC ปกติทั้งหมด” อยู่ในฟอร์มนั้น)",
+      },
     },
     {
       path: "/service",
@@ -51,6 +56,11 @@ export const recorderLesson: Lesson = {
       target: "bait-add",
       title: "กล่อง AG นอกรอบ",
       body: "ถ้าไปวาง AG แยกจากรอบประจำเดือน บันทึกที่หน้านี้",
+      fallback: {
+        target: "contract-list",
+        title: "เลือกลูกค้าก่อน",
+        body: "เลือกลูกค้าที่ไปวาง AG นอกรอบจากรายการนี้ก่อน แล้วฟอร์มบันทึกกล่อง AG จะขึ้นมา",
+      },
     },
     {
       path: "/collection",

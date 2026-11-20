@@ -36,6 +36,11 @@ export type LessonStep = {
   hint?: string;
   /** ข้อความปุ่มหลักแทน “ถัดไป / เสร็จสิ้น” */
   cta?: string;
+  /**
+   * จุดสำรอง: ถ้าหา `target` ไม่เจอ (เช่น ฟอร์มยังไม่โผล่เพราะยังไม่ได้เลือกลูกค้า) ให้ชี้จุดนี้พร้อมข้อความนี้แทน
+   * (เป็นขั้นอ่านธรรมดา ไม่ให้ลองกด) · หาจุดสำรองไม่เจอด้วย = ข้ามขั้นเงียบๆ
+   */
+  fallback?: { target: string; title?: string; body: string; hint?: string };
 };
 
 export type Lesson = {

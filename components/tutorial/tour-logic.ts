@@ -5,6 +5,7 @@
  *  - ตัดสินว่าการคลิกระหว่างบทเรียนต้องทำอย่างไร (โหมดฝึก: ไม่ให้ปุ่มจริงทำงาน)
  *  - วางตำแหน่งกล่อง (หลบแถบบันทึก `data-sticky-savebar`) และคำนวณการเลื่อนหน้า
  */
+import type { LessonStep } from "./lessons/types";
 
 /* ---------- สถานะ onboarding ของผู้ใช้ ---------- */
 
@@ -51,6 +52,29 @@ export function passwordGuardError(password: string, confirm: string): string | 
   if (!(r.len && r.up && r.lo && r.num)) return "รหัสผ่านยังไม่ผ่านเงื่อนไข ดูข้อที่ยังไม่เป็นสีเขียว";
   if (!r.same) return "รหัสผ่านทั้งสองช่องไม่ตรงกัน";
   return null;
+}
+
+/* ---------- จุดสำรอง ---------- */
+
+/** ข้อมูลขั้นที่ใช้แสดงจริง: ใช้จุดสำรอง = เปลี่ยนจุดชี้/ข้อความ และเป็นขั้นอ่านธรรมดา (ไม่ให้ลองกด ไม่มี guard) */
+export function viewForStep(step: LessonStep, usingFallback: boolean): LessonStep {
+  if (!usingFallback || !step.fallback) return step;
+  const { fallback, ...rest } = step;
+  return {
+    ...rest,
+    target: fallback.target,
+    title: fallback.title ?? step.title,
+    body: fallback.body,
+    hint: fallback.hint,
+    act: undefined,
+    guard: undefined,
+    cta: undefined,
+  };
+}
+
+/** หาจุดไม่เจอแล้วทำอะไรต่อ: ยังมีจุดสำรองที่ไม่เคยลอง → `fallback` · ไม่มี/ลองแล้ว → `skip` (ข้ามขั้นเงียบๆ) */
+export function nextAfterMissing(step: LessonStep, usingFallback: boolean): "fallback" | "skip" {
+  return step.fallback && !usingFallback ? "fallback" : "skip";
 }
 
 /* ---------- ตัวเลือก element ---------- */

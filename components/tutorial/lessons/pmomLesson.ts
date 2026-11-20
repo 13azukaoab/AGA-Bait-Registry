@@ -43,6 +43,11 @@ export const pmomLesson: Lesson = {
       target: "port-save",
       title: "ลงข้อมูล Port ต่างจังหวัด",
       body: "สาขาต่างจังหวัดที่ยังไม่ใช้ระบบ ลงตัวเลขประจำเดือนที่หน้านี้",
+      fallback: {
+        target: "port-list",
+        title: "เลือกสาขาก่อน",
+        body: "เลือกสาขาต่างจังหวัดจากตารางนี้ก่อน แล้วฟอร์มลงตัวเลขประจำเดือนจะขึ้นมา",
+      },
     },
     {
       path: "/admin/sync",
