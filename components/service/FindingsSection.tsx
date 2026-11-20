@@ -73,7 +73,7 @@ export function FindingsSection({
 
   return (
     <>
-      <section data-field="findings" aria-label="พบปลวก" className={SECTION} hidden={!form.findings.length && form.normal}>
+      <section data-field="findings" data-tour="svc-termite" aria-label="พบปลวก" className={SECTION} hidden={!form.findings.length && form.normal}>
         <div className="flex flex-wrap items-center gap-2">
           <h3 className={SECTION_TITLE}>พบปลวก</h3>
           <Chip tone="ok">ที่เหลือปกติ</Chip>

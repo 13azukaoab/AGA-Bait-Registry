@@ -78,7 +78,7 @@ export function ContractList({
     : items.filter((c) => (offround ? view === "all" || c.agCount > 0 : (view === "done") === c.routineCountInMonth > 0));
 
   return (
-    <div className="flex flex-col gap-2.5 rounded-xl border border-border bg-surface p-3 lg:sticky lg:top-3 lg:max-h-[calc(100vh-24px)]">
+    <div data-tour="contract-list" className="flex flex-col gap-2.5 rounded-xl border border-border bg-surface p-3 lg:sticky lg:top-3 lg:max-h-[calc(100vh-24px)]">
       <div className="flex items-center gap-2">
         <h2 className="m-0 text-[14px] font-semibold">ลูกค้า</h2>
         <Chip tone="na">{total} ราย</Chip>

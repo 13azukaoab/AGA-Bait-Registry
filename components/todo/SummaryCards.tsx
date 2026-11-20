@@ -20,7 +20,7 @@ const LIST_LIMIT = 10;
 
 export function ProgressCard({ month, progress }: { month: string; progress: Progress }) {
   return (
-    <section aria-labelledby="progress-title" className={`${CARD} mb-4`}>
+    <section data-tour="todo-stats" aria-labelledby="progress-title" className={`${CARD} mb-4`}>
       <h2 id="progress-title" className="m-0 flex flex-wrap items-center gap-2 border-b border-border px-4 py-3 text-[15px] font-semibold">
         <span aria-hidden className="size-2.5 rounded-full bg-accent" />
         สถานะงานกรอกผล · {monthLabel(month)}

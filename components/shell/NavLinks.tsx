@@ -40,7 +40,12 @@ export function NavLinks({
       {visibleGroups.map((group) => {
         const headingId = `nav-group-${group.key}`;
         return (
-          <div key={group.key} role="group" aria-labelledby={headingId}>
+          <div
+            key={group.key}
+            role="group"
+            aria-labelledby={headingId}
+            data-tour={group.key === "system" ? "nav-admin-group" : undefined}
+          >
             <p
               id={headingId}
               className={cx(
@@ -56,6 +61,7 @@ export function NavLinks({
                 <Link
                   key={item.key}
                   href={item.href}
+                  data-tour={`nav-${item.key}`}
                   onClick={onNavigate}
                   aria-current={active ? "page" : undefined}
                   className={cx(

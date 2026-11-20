@@ -83,7 +83,7 @@ export function AgSection({
   };
 
   return (
-    <section data-field="ag" aria-label="กล่องเหยื่อ AG" className={SECTION}>
+    <section data-field="ag" data-tour="svc-ag" aria-label="กล่องเหยื่อ AG" className={SECTION}>
       <div className="flex flex-wrap items-center gap-2">
         <h3 className={SECTION_TITLE}>กล่องเหยื่อ AG</h3>
         {pendingCount > 0 ? <Chip tone="pend">ค้างติดตาม {pendingCount} จุด</Chip> : <Chip tone="na">ยังไม่มีกล่องค้างติดตาม</Chip>}

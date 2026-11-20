@@ -149,6 +149,7 @@ export function DashboardSyncClient({ logs, tokenConfigured, nowIso, canTrigger,
   const sendButton = (primary: boolean) =>
     canTrigger ? (
       <Button
+        data-tour="sync-run"
         variant={primary ? "primary" : "secondary"}
         loading={sending}
         disabled={notConfigured === true || state === "running"}

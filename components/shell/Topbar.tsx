@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { forwardRef } from "react";
+import { TutorialButton } from "@/components/tutorial";
 import { cx } from "./cx";
 import { MenuToggle } from "./MenuToggle";
 import styles from "./shell.module.css";
@@ -118,6 +119,7 @@ export const Topbar = forwardRef<HTMLButtonElement, TopbarProps>(function Topbar
       </div>
 
       <div className="flex shrink-0 items-center gap-2">
+        <TutorialButton />
         <ThemeToggle />
         <Link
           href={logoutHref}
