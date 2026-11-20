@@ -95,9 +95,11 @@ SELECT throws_ok($$DELETE FROM contract_teams WHERE contract_id = '00000000-0000
 SELECT throws_ok($$UPDATE stations SET contract_id = '00000000-0000-0000-0000-0000000000d2'
                    WHERE id = '00000000-0000-0000-0000-0000000000e1'$$,
   '42501', NULL, 'admin cannot move a station to another contract directly');
-SELECT lives_ok($$UPDATE contracts SET status = 'cancelled', cancelled_at = now()
+-- M44 ข้อยกเว้นที่ HQ อนุมัติ (DECISIONS 2.97 ข้อ 6): เดิมคาดว่า admin ยกเลิกผ่าน REST ได้ (lives_ok) → ตอนนี้ทุก role
+--   ต้องใช้ cancel_contract (บังคับเหตุผล + ไม่ย้อนวัน) จึงคาด CC009 · จำนวน plan เท่าเดิม
+SELECT throws_ok($$UPDATE contracts SET status = 'cancelled', cancelled_at = now()
                   WHERE id = '00000000-0000-0000-0000-0000000000d1'$$,
-  'admin may still cancel an active contract (lock applies once it is cancelled)');
+  'CC009', NULL, 'M44: admin cannot cancel through REST any more (cancel_contract only — reason required)');
 
 -- ---------- host แก้ได้ ----------
 SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a1', true);

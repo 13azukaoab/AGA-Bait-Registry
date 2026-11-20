@@ -192,7 +192,8 @@ SELECT throws_ok($$UPDATE contracts SET start_date = '2027-04-01' WHERE id = pg_
   'AG010', NULL, 'host: moving a Renew start past the window is refused too');
 
 -- ยกเลิก Renew → ย่อสัญญาเก่า → กลับมาใช้ Renew ไม่ได้ถ้าหลุดช่วง (ผลตรวจ security ข้อ 5)
-SELECT lives_ok($$UPDATE contracts SET status = 'cancelled' WHERE id = pg_temp.rid('r3')$$, 'host cancels Renew r3 (starts 1 Oct 2026)');
+-- M44 (DECISIONS 2.97 ข้อ 6): ผู้ใช้ล็อกอินเปลี่ยนสถานะเข้า/ออก cancelled ผ่าน REST ไม่ได้แล้ว (CC009) → แก้เฉพาะขั้นเตรียมข้อมูลให้ใช้ cancel_contract · assertion เดิม
+SELECT lives_ok($$SELECT * FROM public.cancel_contract(pg_temp.rid('r3'), 'other', 'ทดสอบ (สมมติ)')$$, 'host cancels Renew r3 (starts 1 Oct 2026)');
 SELECT lives_ok($$UPDATE contracts SET end_date = '2026-06-30' WHERE id = pg_temp.id('03')$$,
   'a cancelled Renew does not block shortening its old contract');
 SELECT throws_ok($$UPDATE contracts SET status = 'active' WHERE id = pg_temp.rid('r3')$$,
@@ -286,7 +287,7 @@ SELECT is(pg_temp.pending('b1'), 0, 'recorder does not see it either');
 
 -- ---------- สัญญา New ใหม่กว่าถูกยกเลิก → กลับเป็นรอตัดสิน (2.48 ②) ----------
 SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a1', true);
-SELECT lives_ok($$UPDATE contracts SET status = 'cancelled' WHERE id = pg_temp.id('e4')$$, 'host cancels the newer New contract');
+SELECT lives_ok($$SELECT * FROM public.cancel_contract(pg_temp.id('e4'), 'other', 'ทดสอบ (สมมติ)')$$, 'host cancels the newer New contract');
 SELECT ok(NOT contract_is_renewed(pg_temp.id('b1')) AND pg_temp.pending('b1') > 0,
   'a cancelled newer contract does not void: the open months are back');
 
@@ -296,7 +297,7 @@ INSERT INTO contracts (id, customer_id, contract_no, start_date, term_months, va
   (pg_temp.id('f9'), pg_temp.id('c3'), 'V-R9', pg_temp.m(-6), 12, 24000, 'renew', pg_temp.id('b3'));
 SET LOCAL ROLE authenticated;
 SELECT ok(contract_is_renewed(pg_temp.id('b3')) AND pg_temp.pending('b3') = 0, 'a Renew linked to the old contract voids it');
-SELECT lives_ok($$UPDATE contracts SET status = 'cancelled' WHERE id = pg_temp.id('f9')$$, 'host cancels the Renew');
+SELECT lives_ok($$SELECT * FROM public.cancel_contract(pg_temp.id('f9'), 'other', 'ทดสอบ (สมมติ)')$$, 'host cancels the Renew');
 SELECT ok(NOT contract_is_renewed(pg_temp.id('b3')) AND pg_temp.pending('b3') > 0, 'cancelled Renew: open months are back');
 
 -- ---------- Renew ของอีกหน้างาน (v5) ไม่ทำให้ v4 โมฆะ ----------
@@ -369,7 +370,7 @@ SELECT throws_ok($$UPDATE contracts SET renew_unlinked_reason = NULL WHERE id = 
 SELECT lives_ok($$UPDATE contracts SET note = 'ok' WHERE id = pg_temp.rid('u1')$$, 'other fields of an unlinked Renew are editable');
 SELECT lives_ok(pg_temp.unl('u3', 'จะยกเลิก'), 'RPC: another unlinked Renew (u3) inside the period');
 SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a1', true);
-SELECT lives_ok($$UPDATE contracts SET status = 'cancelled' WHERE id = pg_temp.rid('u3')$$, 'host cancels u3 before the cut-off');
+SELECT lives_ok($$SELECT * FROM public.cancel_contract(pg_temp.rid('u3'), 'other', 'ทดสอบ (สมมติ)')$$, 'host cancels u3 before the cut-off');
 SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a2', true);
 -- โหมดแก้ของ save_job_opening
 CREATE FUNCTION pg_temp.edit_u(p_tag text, p_sale text, p_reason text) RETURNS text LANGUAGE sql AS $$

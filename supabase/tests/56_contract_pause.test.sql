@@ -272,7 +272,8 @@ SELECT lives_ok(pg_temp.mk('f3', 'd3', pg_temp.m(-1) + 2, pg_temp.m(-5)), 'host 
 SELECT lives_ok(pg_temp.pause('d4', pg_temp.m(-2) + 1), 'host pauses d4');
 SET LOCAL ROLE authenticated;
 SELECT pg_temp.as_user('a2');
-SELECT lives_ok($$UPDATE contracts SET status = 'cancelled' WHERE id = pg_temp.id('d4')$$,
+-- M44 (DECISIONS 2.97 ข้อ 6): ผู้ใช้ล็อกอินเปลี่ยนสถานะเข้า/ออก cancelled ผ่าน REST ไม่ได้แล้ว (CC009) → แก้เฉพาะขั้นเตรียมข้อมูลให้ใช้ cancel_contract · assertion เดิม
+SELECT lives_ok($$SELECT * FROM public.cancel_contract(pg_temp.id('d4'), 'customer_cancelled', 'ไม่จ่าย (สมมติ)')$$,
   'admin can cancel a paused contract directly');
 RESET ROLE;
 SELECT is((SELECT end_kind FROM contract_pauses WHERE contract_id = pg_temp.id('d4')), 'cancelled',
