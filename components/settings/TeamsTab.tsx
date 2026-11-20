@@ -22,6 +22,7 @@ import { TEAM_KINDS, TEAM_KIND_LABEL, sortTeamsByKind, type TeamKind } from "@/l
 import {
   createTeamAction,
   deleteTeamAction,
+  saveTeamWorkloadAction,
   saveWorkloadAction,
   setTeamActiveAction,
   updateTeamAction,
@@ -34,7 +35,10 @@ import {
   canDeactivate,
   canOfferDelete,
   headcountLabel,
+  teamWorkloadDraftValue,
+  teamWorkloadLabel,
   validateTeam,
+  validateTeamWorkloadDraft,
   validateWorkload,
   type TeamDraft,
   type TeamRow,
@@ -43,7 +47,10 @@ import { formatMoney, parseMoney } from "./tierLogic";
 
 const KIND_TONE: Record<TeamKind, ChipTone> = { service: "info", install: "ok", supervisor: "pend" };
 
-type Dialog = { kind: "form"; team: TeamRow | null } | { kind: "delete"; team: TeamRow };
+type Dialog =
+  | { kind: "form"; team: TeamRow | null }
+  | { kind: "delete"; team: TeamRow }
+  | { kind: "workload"; team: TeamRow };
 
 export function TeamsTab({ data, onToast }: { data: SettingsData; onToast: (m: string) => void }) {
   const router = useRouter();
@@ -96,6 +103,7 @@ export function TeamsTab({ data, onToast }: { data: SettingsData; onToast: (m: s
                 <th scope="col" className="px-3.5 py-2 font-medium">ชื่อ / คำอธิบาย</th>
                 <th scope="col" className="px-3.5 py-2 font-medium">ประเภททีม</th>
                 <th scope="col" className="px-3.5 py-2 text-right font-medium">คนภาคสนาม</th>
+                <th scope="col" className="px-3.5 py-2 font-medium">ชม./คน/เดือน</th>
                 <th scope="col" className="px-3.5 py-2 text-right font-medium max-[640px]:hidden">สัญญาที่ใช้งานอยู่</th>
                 <th scope="col" className="px-3.5 py-2 font-medium">ใช้งาน</th>
                 <th scope="col" className="px-3.5 py-2"><span className="sr-only">จัดการ</span></th>
@@ -118,6 +126,23 @@ export function TeamsTab({ data, onToast }: { data: SettingsData; onToast: (m: s
                   </td>
                   <td className="px-3.5 py-2.5 text-right tabular-nums" aria-label={t.headcount > 0 ? undefined : "ยังไม่ระบุจำนวนคน"}>
                     {headcountLabel(t.headcount)}
+                  </td>
+                  <td className="px-3.5 py-2.5" data-testid={`team-workload-${t.code}`}>
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <WorkloadBadge team={t} />
+                      <button
+                        type="button"
+                        onClick={() => setDialog({ kind: "workload", team: t })}
+                        aria-label={`ตั้งเกณฑ์ภาระงานของทีม ${t.code}`}
+                        className={cx(
+                          "inline-flex min-h-7 items-center rounded-md px-1.5 text-xs font-medium text-accent underline-offset-2 hover:underline",
+                          "focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent",
+                          "max-[640px]:min-h-11",
+                        )}
+                      >
+                        ตั้งเกณฑ์
+                      </button>
+                    </div>
                   </td>
                   <td className="px-3.5 py-2.5 text-right tabular-nums max-[640px]:hidden">
                     {t.activeContracts === null ? "—" : formatMoney(t.activeContracts)}
@@ -178,6 +203,19 @@ export function TeamsTab({ data, onToast }: { data: SettingsData; onToast: (m: s
         />
       ) : null}
 
+      {dialog?.kind === "workload" ? (
+        <TeamWorkloadDialog
+          team={dialog.team}
+          centralHours={data.workloadHours}
+          onClose={close}
+          onSaved={(msg) => {
+            close();
+            onToast(msg);
+            router.refresh();
+          }}
+        />
+      ) : null}
+
       {dialog?.kind === "delete" ? (
         <Modal title={`ลบทีม ${dialog.team.code}`} onClose={close}>
           <p className="m-0 mb-2 text-[13px]">
@@ -208,6 +246,134 @@ export function TeamsTab({ data, onToast }: { data: SettingsData; onToast: (m: s
         </Modal>
       ) : null}
     </div>
+  );
+}
+
+function WorkloadBadge({ team }: { team: TeamRow }) {
+  const label = teamWorkloadLabel(team);
+  return label.custom ? (
+    <span className="font-semibold tabular-nums">{label.text}</span>
+  ) : (
+    <span className="text-xs text-fg-muted">{label.text}</span>
+  );
+}
+
+/**
+ * Dialog ตั้งเกณฑ์ภาระงานรายทีม (host) — ใส่ตัวเลข หรือกด "กลับไปใช้ค่ากลาง" (ส่ง null) · ต้องพิมพ์ "ยืนยันแก้ไข" ก่อนบันทึก
+ * บันทึกผ่าน saveTeamWorkloadAction → RPC save_team_workload_hours (DB ตรวจ host + ช่วงค่า + ยืนยันซ้ำ)
+ */
+function TeamWorkloadDialog({
+  team,
+  centralHours,
+  onClose,
+  onSaved,
+}: {
+  team: TeamRow;
+  centralHours: number;
+  onClose: () => void;
+  onSaved: (message: string) => void;
+}) {
+  const initialText = team.workloadHours === null ? "" : formatMoney(team.workloadHours);
+  const initialCentral = team.workloadHours === null;
+  const [text, setText] = useState(initialText);
+  const [useCentral, setUseCentral] = useState(initialCentral);
+  const [confirm, setConfirm] = useState("");
+  const [confirmError, setConfirmError] = useState("");
+  const [serverError, setServerError] = useState("");
+  const [pending, startTransition] = useTransition();
+
+  const fieldError = validateTeamWorkloadDraft(text, useCentral);
+  const value = teamWorkloadDraftValue(text, useCentral);
+  const dirty = useCentral !== initialCentral || (!useCentral && value !== team.workloadHours);
+  useUnsavedWork(dirty);
+
+  const save = () => {
+    if (confirm.trim() !== CONFIRM_PHRASE) {
+      setConfirmError(`พิมพ์คำว่า "${CONFIRM_PHRASE}" ให้ตรงก่อนจึงจะบันทึกได้`);
+      return;
+    }
+    setConfirmError("");
+    setServerError("");
+    startTransition(async () => {
+      const res = await saveTeamWorkloadAction({ teamId: team.id, hours: value, confirm });
+      if (!res.ok) return setServerError(res.message);
+      onSaved(
+        res.workloadHours === null
+          ? `ทีม ${team.code} กลับไปใช้ค่ากลางแล้ว · บันทึกลงประวัติการแก้ไข`
+          : `บันทึกเกณฑ์ทีม ${team.code} ${formatMoney(res.workloadHours)} ชม./คน/เดือนแล้ว · บันทึกลงประวัติการแก้ไข`,
+      );
+    });
+  };
+
+  return (
+    <Modal title={`เกณฑ์ภาระงานทีม ${team.code}`} onClose={onClose}>
+      <form
+        className="flex flex-col gap-3"
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (dirty && fieldError === null) save();
+        }}
+      >
+        <p className="m-0 text-xs text-fg-muted">
+          ค่ากลาง (ใช้กับทีมที่ไม่ได้ตั้งเอง) = <b className="tabular-nums">{formatMoney(centralHours)}</b> ชม./คน/เดือน
+        </p>
+        <Field
+          label="เกณฑ์ของทีมนี้ (ชม./คน/เดือน)"
+          error={dirty ? (fieldError ?? undefined) : undefined}
+          hint={useCentral ? "ตอนนี้ทีมนี้ใช้ค่ากลาง — พิมพ์ตัวเลขเพื่อตั้งเฉพาะทีม" : `ตั้งได้ 0.01–${WORKLOAD_MAX} ทศนิยมไม่เกิน 2 ตำแหน่ง`}
+        >
+          {(c) => (
+            <input
+              {...c}
+              className={cx(c.className, MOBILE_INPUT)}
+              type="text"
+              inputMode="decimal"
+              autoComplete="off"
+              placeholder="เช่น 40"
+              value={text}
+              onChange={(e) => {
+                setText(e.target.value);
+                setUseCentral(e.target.value.trim() === "");
+              }}
+            />
+          )}
+        </Field>
+        <div>
+          <Button
+            className={MOBILE_BTN}
+            size="sm"
+            disabled={useCentral}
+            onClick={() => {
+              setUseCentral(true);
+              setText("");
+            }}
+          >
+            กลับไปใช้ค่ากลาง
+          </Button>
+        </div>
+        {dirty && fieldError === null ? (
+          <Alert variant="warn">
+            {value === null
+              ? `ทีม ${team.code} จะกลับไปใช้ค่ากลาง ${formatMoney(centralHours)} ชม./คน/เดือน`
+              : `ทีม ${team.code} จะใช้เกณฑ์ ${formatMoney(value)} ชม./คน/เดือน แทนค่ากลาง`}
+          </Alert>
+        ) : null}
+        <ConfirmField phrase={CONFIRM_PHRASE} value={confirm} onChange={setConfirm} error={confirmError} />
+        <DialogError message={serverError} />
+        <DialogFooter>
+          <Button className={MOBILE_BTN} onClick={onClose}>ยกเลิก</Button>
+          <Button
+            className={MOBILE_BTN}
+            variant="primary"
+            type="submit"
+            loading={pending}
+            disabled={!dirty || fieldError !== null}
+          >
+            บันทึก
+          </Button>
+        </DialogFooter>
+      </form>
+    </Modal>
   );
 }
 

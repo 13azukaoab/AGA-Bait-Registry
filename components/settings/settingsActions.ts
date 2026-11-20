@@ -31,7 +31,10 @@ import {
   normalizeHint,
   orderWithNewAtGroupEnd,
   parseHeadcount,
+  parseSaveTeamWorkloadResult,
+  TM007_MESSAGE,
   validateTeam,
+  validateTeamWorkloadInput,
   validateType,
   validateWorkload,
   type CustomerTypeRow,
@@ -148,6 +151,41 @@ export async function saveWorkloadAction(input: {
   if (error) return dbFailure("save_workload_threshold", error);
   revalidatePath(SETTINGS_PATH);
   return { ok: true, saved: Number(data) };
+}
+
+/**
+ * เกณฑ์ Workload รายทีม (DECISIONS 2.88 · BE M42) — host เท่านั้น
+ * hours = null → กลับไปใช้ค่ากลาง · ต้องพิมพ์ "ยืนยันแก้ไข" (DB บังคับซ้ำด้วย p_confirm → TM007)
+ */
+export async function saveTeamWorkloadAction(input: {
+  teamId: string;
+  hours: number | null;
+  confirm: string;
+}): Promise<ActionResult<{ workloadHours: number | null; effectiveHours: number | null }>> {
+  const guard = await requireHostAction();
+  if (!guard.ok) return guard;
+
+  if (typeof input?.teamId !== "string" || !UUID_PATTERN.test(input.teamId)) return failure("INVALID_INPUT");
+  if (!validateTeamWorkloadInput(input.hours)) return failure("WL001");
+  if (String(input.confirm ?? "").trim() !== CONFIRM_PHRASE) return failure("BAD_CONFIRM");
+
+  const { data, error } = await guard.supabase.rpc("save_team_workload_hours", {
+    p_team_id: input.teamId,
+    p_hours: input.hours,
+    p_confirm: true,
+  });
+  if (error) {
+    logCode("save_team_workload_hours", error.code);
+    return error.code === "TM007" ? { ok: false, code: "TM007", message: TM007_MESSAGE } : failureFromDb(error);
+  }
+  revalidatePath(SETTINGS_PATH);
+  // บันทึกสำเร็จแล้ว — ถ้ารูปผลคืนแปลกก็ยังถือว่าสำเร็จ (หน้า refresh อ่านค่าใหม่เอง)
+  const parsed = parseSaveTeamWorkloadResult(data);
+  return {
+    ok: true,
+    workloadHours: parsed ? parsed.workloadHours : input.hours,
+    effectiveHours: parsed ? parsed.effectiveHours : null,
+  };
 }
 
 // ---------------------------------------------------------------------------

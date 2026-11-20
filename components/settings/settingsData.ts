@@ -35,6 +35,8 @@ type TeamDb = {
   is_system: boolean;
   is_active: boolean;
   headcount: number;
+  /** numeric(5,2) · null = ใช้ค่ากลาง */
+  workload_hours: number | string | null;
 };
 
 export async function loadSettingsData(
@@ -45,7 +47,7 @@ export async function loadSettingsData(
     supabase.from("tier_rules").select("tier, min_annual, effective_month, change_reason"),
     supabase.from("month_closures").select("month_key").order("month_key", { ascending: false }).limit(1),
     supabase.from("app_settings").select("go_live_month, workload_hours_per_person").maybeSingle(),
-    supabase.from("teams").select("id, code, name, kind, is_system, is_active, headcount").order("code"),
+    supabase.from("teams").select("id, code, name, kind, is_system, is_active, headcount, workload_hours").order("code"),
     supabase.from("customer_types").select("code, label, group_label, sort_order, is_active, hint").order("sort_order"),
   ]);
   if (tier.error || closures.error || app.error || teams.error || types.error || !app.data) {
@@ -61,6 +63,15 @@ export async function loadSettingsData(
         .eq("team_id", t.id)
         .eq("contracts.status", "active");
       return error ? null : (count ?? 0);
+    }),
+  );
+
+  // ค่าที่ใช้จริงต่อทีม อ่านจาก RPC จุดอ่านเดียว (ห้ามคิด COALESCE เอง) · พลาด = null (หน้าแสดง "ใช้ค่ากลาง" เฉยๆ)
+  const effective = await Promise.all(
+    teamRows.map(async (t) => {
+      const { data, error } = await supabase.rpc("team_workload_hours", { p_team_id: t.id });
+      const n = Number(data);
+      return error || data === null || !Number.isFinite(n) ? null : n;
     }),
   );
 
@@ -82,6 +93,8 @@ export async function loadSettingsData(
         isActive: t.is_active,
         headcount: t.headcount,
         activeContracts: counts[i] ?? null,
+        workloadHours: t.workload_hours === null || t.workload_hours === undefined ? null : Number(t.workload_hours),
+        effectiveWorkloadHours: effective[i] ?? null,
       })),
       customerTypes: (
         (types.data ?? []) as {
