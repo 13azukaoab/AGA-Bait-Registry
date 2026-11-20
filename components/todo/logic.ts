@@ -211,14 +211,22 @@ export interface CollectContractInput {
   customerId: string;
   /** IG ที่ยังค้างเก็บ (v_contract_ig_collection.remaining) */
   remaining: number;
-  status: "active" | "expired_pending_collection" | "closed" | "cancelled";
+  status: "active" | "paused" | "expired_pending_collection" | "closed" | "cancelled";
   /** วันจบสัญญา 'YYYY-MM-DD' (จาก lib/rules effectiveEndDate — ห้ามคำนวณเองในที่นี้) */
   endDate: string;
 }
 
-/** สัญญาจบแล้ว = สถานะไม่ใช่ active หรือวันจบก่อนวันนี้ (เวลาไทย) — ตรงเกณฑ์ collect_ig_stations (CL001) */
+/**
+ * สัญญาจบแล้ว (เก็บสถานีได้) — ตรงเกณฑ์ collect_ig_stations (CL001) + ด่านสัญญาพัก (CP010 · M29)
+ *   * paused = **ไม่นับว่าจบ** ไม่ว่าจะเลยวันสิ้นสุดหรือไม่ — สถานียังอยู่กับลูกค้า DB กันการเก็บ (CP010) จึงไม่ขึ้นรายการรอเก็บ
+ *     (เก็บได้หลังสัญญาจบ/ยกเลิก หรือเมื่อกลับมาใช้งาน)
+ *   * expired_pending_collection / closed / cancelled = จบ
+ *   * active = จบเมื่อวันสิ้นสุดก่อนวันนี้ (เวลาไทย)
+ */
 export function isContractEnded(c: Pick<CollectContractInput, "status" | "endDate">, today: string): boolean {
-  return c.status !== "active" || c.endDate < today;
+  if (c.status === "paused") return false;
+  if (c.status === "active") return c.endDate < today;
+  return true;
 }
 
 export interface CollectSummary {

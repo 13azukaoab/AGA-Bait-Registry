@@ -132,6 +132,7 @@ export async function loadContractCounts(
       .select("id", { count: "exact", head: true })
       .eq("contract_id", contractId)
       .eq("visit_type", "routine")
+      .is("makeup_for_month", null) // การเข้าชดเชยไม่นับเป็นรอบประจำเดือนของเดือนที่ไปทำ (DECISIONS 2.45/2.96)
       .gte("visit_date", from)
       .lt("visit_date", toExclusive),
     supabase.from("contracts").select("stations_initialized_at").eq("id", contractId).maybeSingle(),
@@ -187,6 +188,7 @@ export async function loadContractList(
           .select("contract_id")
           .in("contract_id", part)
           .eq("visit_type", "routine")
+          .is("makeup_for_month", null) // การเข้าชดเชยไม่นับเป็นรอบประจำเดือนของเดือนที่ไปทำ (DECISIONS 2.45/2.96)
           .gte("visit_date", from)
           .lt("visit_date", toExclusive),
         supabase
@@ -273,13 +275,14 @@ export async function loadStations(
   return { stations: rows.map(toStation), truncated: rows.length >= STATION_LIMIT, error: null };
 }
 
-type VisitDb = { id: string; visit_date: string; visit_type: VisitType; start_time: string; end_time: string };
+type VisitDb = { id: string; visit_date: string; visit_type: VisitType; start_time: string; end_time: string; makeup_for_month?: string | null };
 const toVisit = (v: VisitDb): VisitSummary => ({
   id: v.id,
   visitDate: v.visit_date,
   visitType: v.visit_type,
   startTime: trimDbTime(v.start_time),
   endTime: trimDbTime(v.end_time),
+  makeupForMonth: v.makeup_for_month ? v.makeup_for_month.slice(0, 7) : null,
 });
 
 /** รายละเอียดสัญญาที่เลือก (สถานี · การเข้าในเดือน · ทีมล่าสุด · ประวัติ F · สถานีสัญญาเก่า) */
@@ -295,7 +298,7 @@ export async function loadContractDetail(
     loadStations(supabase, item.contractId),
     supabase
       .from("visits")
-      .select("id, visit_date, visit_type, start_time, end_time")
+      .select("id, visit_date, visit_type, start_time, end_time, makeup_for_month")
       .eq("contract_id", item.contractId)
       .neq("visit_type", "follow_up") // ติดตามผลนอกรอบอยู่ที่หน้า "กล่อง AG นอกรอบประจำเดือน" (/bait)
       .gte("visit_date", from)
@@ -438,4 +441,76 @@ export async function loadVisit(
     },
     error: null,
   };
+}
+
+// ───────────────────────── โหมดบันทึกบริการชดเชย (DECISIONS 2.96) ─────────────────────────
+
+/** ผลโหลดสัญญาเป้าหมายของโหมดชดเชย */
+export type MakeupTargetResult =
+  | {
+      ok: true;
+      item: ContractListItem;
+      zoneId: string;
+      /** 'YYYY-MM' เดือนสุดท้ายที่หัวหน้างานชดเชยได้ */
+      deadlineMonth: string;
+      pastDeadline: boolean;
+    }
+  | { ok: false; reason: "not_found" | "not_pending" | "load_error" };
+
+type PendingRowDb = { contract_id: string; missed_month: string; makeup_deadline_month: string; past_deadline: boolean };
+
+/**
+ * โหลดสัญญาที่จะบันทึกชดเชย + ตรวจว่า "เดือนที่ตก" ยังค้างอยู่จริง (list_pending_missed_services — สูตรตก/เพดานอยู่ที่ฐานข้อมูล)
+ * · รวมสัญญาที่จบ/ปิดแล้ว (รายการค้างรวมสัญญากลุ่มนี้) จึงอ่านสัญญาตรงๆ ไม่ผ่านรายชื่อของเดือน
+ * · ใช้ client ของผู้ใช้ (RLS) · error คืนแค่เหตุผล ไม่คืนข้อความดิบ
+ */
+export async function loadMakeupTarget(
+  supabase: SupabaseClient,
+  contractId: string,
+  missedMonth: string,
+  currentMonth: string,
+  zones: readonly ZoneOption[],
+  branches: readonly BranchOption[],
+  tierRules: readonly TierRule[],
+): Promise<MakeupTargetResult> {
+  const { data, error } = await supabase
+    .from("contracts")
+    .select(
+      `id, contract_no, customer_id, start_date, term_months, value_total, status, renewed_from_contract_id,
+       stations_initialized_at, customers!inner ( name, branch_id )`,
+    )
+    .eq("id", contractId)
+    .maybeSingle();
+  if (error) return { ok: false, reason: "load_error" };
+  const c = data as unknown as ContractDb | null;
+  if (!c || !c.customers) return { ok: false, reason: "not_found" };
+
+  const branchId = c.customers.branch_id;
+  const zoneId = branches.find((b) => b.id === branchId)?.zoneId ?? zones[0]?.id ?? "";
+
+  const pend = await supabase.rpc("list_pending_missed_services", { p_branch_id: branchId, p_month: `${currentMonth}-01` });
+  if (pend.error) return { ok: false, reason: "load_error" };
+  const row = ((pend.data ?? []) as PendingRowDb[]).find((r) => r.contract_id === contractId && r.missed_month.slice(0, 7) === missedMonth);
+  if (!row) return { ok: false, reason: "not_pending" };
+
+  const counts = await loadContractCounts(supabase, contractId, currentMonth);
+  if (!counts) return { ok: false, reason: "load_error" };
+
+  const termMonths = termMonthsOf(c.term_months);
+  const item: ContractListItem = {
+    contractId: c.id,
+    contractNo: c.contract_no,
+    customerId: c.customer_id,
+    customerName: c.customers.name,
+    branchId,
+    status: c.status,
+    tier: tierOf(annualValueForTerm(Number(c.value_total), termMonths), [...tierRules], monthOf(c.start_date)),
+    termMonths,
+    renewedFromContractId: c.renewed_from_contract_id,
+    stationsInitialized: counts.stationsInitialized,
+    agCount: counts.agCount,
+    routineCountInMonth: counts.routineCount,
+    monthTag: contractMonthTag(c.start_date, c.renewed_from_contract_id, currentMonth),
+  };
+  return { ok: true, item, zoneId, deadlineMonth: row.makeup_deadline_month.slice(0, 7), pastDeadline: row.past_deadline };
 }

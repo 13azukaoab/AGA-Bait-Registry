@@ -4,7 +4,7 @@
  * MissedBox — กล่อง "เรื่องตกบริการรอตัดสิน" + ส่วนพับ "เรื่องที่ปิดแล้ว" (mockup #todo · DECISIONS 2.45–2.48)
  *
  * Logic summary:
- *   * แต่ละแถว = 1 เดือนที่ตกของ 1 สัญญา · ปุ่ม "บันทึกบริการชดเชย" (ลิงก์ไปหน้าลงข้อมูลบริการ) / "ไม่ชดเชย" (กล่องเหตุผล)
+ *   * แต่ละแถว = 1 เดือนที่ตกของ 1 สัญญา · ปุ่ม "บันทึกบริการชดเชย" (ลิงก์ /service?contract=&makeup= เข้าโหมดชดเชยที่ผูกเดือนที่ตก · DECISIONS 2.96) / "ไม่ชดเชย" (กล่องเหตุผล)
  *   * ปุ่มไหนกดได้ ตัดสินจาก missedActionState(role, pastDeadline) — เลยเพดานชดเชย หัวหน้างานกดชดเชยไม่ได้ (Host ได้)
  *   * เรื่องที่ปิดแล้ว: "ไม่ชดเชย" มีปุ่มเปิดเรื่องกลับ · "ชดเชยแล้ว" ดูอย่างเดียว
  *   * ข้อมูลทั้งหมดมาจากฐานข้อมูล (data.ts) — ไม่คำนวณสูตรตกบริการในหน้านี้
@@ -13,6 +13,7 @@ import Link from "next/link";
 import { useState } from "react";
 
 import { CustomerLink } from "@/components/links/CustomerLink";
+import { makeupHref } from "@/components/service/makeup";
 import { Button } from "@/components/ui";
 import { customerLinkContexts } from "@/lib/links/customerLink";
 import { monthLabel } from "@/lib/service/months";
@@ -70,7 +71,7 @@ export function MissedBox({
             : `ชดเชยได้ถึง ${monthLabel(it.deadlineMonth)}`;
           const record = (
             <Link
-              href={`/service?zone=${it.zoneId}&branch=${it.branchId}&month=${currentMonth}`}
+              href={makeupHref(it.contractId, it.missedMonth) ?? `/service?zone=${it.zoneId}&branch=${it.branchId}&month=${currentMonth}`}
               aria-disabled={!a.recordEnabled}
               tabIndex={a.recordEnabled ? undefined : -1}
               title={

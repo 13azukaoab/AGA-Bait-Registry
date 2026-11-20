@@ -11,6 +11,8 @@
  *   * ถอดกล่อง AG พร้อมผลตรวจ และกล่อง AG ใหม่ (S) พร้อมเหยื่อ/ป้าย ส่งใน `save_service_visit` ครั้งเดียว (M13)
  *   * ตรวจฟอร์มก่อนบันทึก (validate.ts) · หลังกด "บันทึก" ครั้งแรกช่องที่ขาด/ผิดขึ้นกรอบแดง อัปเดตสดตามที่แก้ ·
  *     รายการ "บันทึกไม่ได้ — ยังขาด" กดแล้วเลื่อนไปที่ช่อง
+ *   * โหมดชดเชย (`makeupMonth` ไม่ว่าง · DECISIONS 2.96): บันทึกด้วย `save_makeup_service_visit` ผูกกับเดือนที่ตก · ปุ่มเป็น "บันทึกบริการชดเชย" ·
+ *     ไม่มีปุ่มรายก่อนหน้า/ข้าม/ลบ (หน้าเป็นรายเดียว) · โหมดปกติ (ไม่ส่ง makeupMonth) ทำงานเหมือนเดิมทุกอย่าง
  *   * F1–F10 ไม่ให้กรอก (แสดงจากฐานข้อมูล) · ข้อมูลทุกอย่างมาจากฐานข้อมูล ไม่มีตัวเลขสมมติ
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -26,7 +28,7 @@ import { buildPayload } from "./buildPayload";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { loadStations } from "./data";
 import { FindingsSection } from "./FindingsSection";
-import { deleteServiceVisit, initializeStations, saveServiceVisit } from "./rpc";
+import { deleteServiceVisit, initializeStations, saveMakeupServiceVisit, saveServiceVisit } from "./rpc";
 import { buildInitPlan } from "./setup";
 import { baselineIndex, inUseIndex } from "./stationIndex";
 import { StationSetup } from "./StationSetup";
@@ -73,6 +75,7 @@ export function ServiceForm({
   onPrev,
   onSkip,
   guardLeave,
+  makeupMonth = null,
 }: {
   supabase: SupabaseClient;
   item: ContractListItem;
@@ -94,6 +97,8 @@ export function ServiceForm({
   onSkip: () => void;
   /** กล่องยืนยันก่อนออกจากรายที่ยังไม่บันทึก (ของ ServiceClient) — ใช้กับลิงก์ชื่อลูกค้า */
   guardLeave: (go: () => void) => void;
+  /** 'YYYY-MM' เดือนที่ตกบริการ = โหมดบันทึกบริการชดเชย · ไม่ส่ง/null = โหมดปกติ */
+  makeupMonth?: string | null;
 }) {
   const [showIssues, setShowIssues] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -188,7 +193,9 @@ export function ServiceForm({
         if (initialized) onSaved({ created: false, initialized: true, stay: true });
         return;
       }
-      const saved = await saveServiceVisit(supabase, built.payload);
+      const saved = makeupMonth
+        ? await saveMakeupServiceVisit(supabase, built.payload, makeupMonth)
+        : await saveServiceVisit(supabase, built.payload);
       if (!saved.ok) {
         setErrorMsg(saved.error.message);
         if (initialized) onSaved({ created: false, initialized: true, stay: true });
@@ -220,9 +227,11 @@ export function ServiceForm({
     <div className="flex min-w-0 flex-col gap-3 rounded-xl border border-border bg-surface">
       {/* หัวฟอร์ม */}
       <div className="flex flex-wrap items-center gap-2 border-b border-border px-4 py-3">
-        <span className="text-[12px] text-fg-muted num">
-          รายที่ {position.index} จาก {position.total}
-        </span>
+        {makeupMonth ? null : (
+          <span className="text-[12px] text-fg-muted num">
+            รายที่ {position.index} จาก {position.total}
+          </span>
+        )}
         {item.routineCountInMonth > 0 ? <Chip tone="ok">กรอกแล้ว · บันทึกซ้ำเพื่อแก้ไข</Chip> : null}
         <b className="text-[16px]">
           <CustomerLink customerId={item.customerId} context={customerLinkContexts.contract(item.contractId)} guardLeave={guardLeave}>
@@ -267,6 +276,7 @@ export function ServiceForm({
             {visitChoices.map((v, i) => (
               <Chip key={v.id} tone="info" selected={chosenVisitId === v.id} onClick={() => onChooseVisit(v.id)}>
                 ครั้งที่ {i + 1} · {v.visitDate.slice(8)}/{v.visitDate.slice(5, 7)}
+                {v.makeupForMonth ? " · ชดเชย" : ""}
               </Chip>
             ))}
             <Chip tone="na" selected={chosenVisitId === "new"} onClick={() => onChooseVisit("new")}>
@@ -371,16 +381,20 @@ export function ServiceForm({
           </Alert>
         ) : null}
         <div className="flex flex-wrap items-center gap-2">
-          <Button onClick={onPrev} aria-label="รายก่อนหน้า" title="รายก่อนหน้า" className="min-w-14" disabled={saving}>
-            ←
-          </Button>
+          {makeupMonth ? null : (
+            <Button onClick={onPrev} aria-label="รายก่อนหน้า" title="รายก่อนหน้า" className="min-w-14" disabled={saving}>
+              ←
+            </Button>
+          )}
           <Button variant="save" onClick={save} loading={saving}>
-            บันทึก + รายถัดไป
+            {makeupMonth ? "บันทึกบริการชดเชย" : "บันทึก + รายถัดไป"}
           </Button>
-          <Button onClick={onSkip} disabled={saving}>
-            ข้าม
-          </Button>
-          {form.isExisting ? (
+          {makeupMonth ? null : (
+            <Button onClick={onSkip} disabled={saving}>
+              ข้าม
+            </Button>
+          )}
+          {form.isExisting && !makeupMonth ? (
             <Button variant="danger" className="ml-auto" onClick={() => setConfirmDelete(true)} disabled={saving}>
               ลบการเข้านี้
             </Button>
