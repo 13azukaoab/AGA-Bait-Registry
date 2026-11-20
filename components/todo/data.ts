@@ -9,7 +9,7 @@
  *   * ตกบริการรอตัดสิน = list_pending_missed_services(p_month = เดือนของหน้า) — สูตรตก/เพดาน อยู่ที่ฐานข้อมูล
  *   * เรื่องที่ปิดแล้ว = missed_service_resolutions (ไม่ชดเชย/ชดเชยแล้ว) ล่าสุด CLOSED_LIMIT แถว
  *   * กล่อง AG รอถอด = stations ชนิด AG สถานะ pending_removal · ลูกค้ารอเก็บสถานี = v_contract_ig_collection + สัญญาที่จบแล้ว
- *   * ทุก query ที่อาจเกิน 1,000 แถว (max_rows ของ PostgREST ตัดเงียบๆ) ต้องดึงครบด้วย keyset (keysetFetch.ts) — ห้ามใช้ .limit(1000) เฉยๆ:
+ *   * ทุก query ที่อาจเกิน 1,000 แถว (max_rows ของ PostgREST ตัดเงียบๆ) ต้องดึงครบด้วย keyset (lib/supabase/fetchAll.ts) — ห้ามใช้ .limit(1000) เฉยๆ:
  *       - v_contract_ig_collection เรียงตาม contract_id · stations AG รอถอด เรียงตาม id · ตกบริการ (RPC) ถ้าได้เต็ม 1,000 ให้ดึงซ้ำรายสาขา
  *       - แบ่งก้อน id ตอนอ่านชื่อ/สถานะสัญญา (CHUNK) อยู่แล้ว · ถ้ายังชนเพดานจริงตั้ง `truncated` ให้หน้าจอเตือน
  *   * อ่านพลาด = คืน error ให้หน้าจอแจ้งชัด · ไม่แสดงตัวเลขสมมติ
@@ -22,7 +22,8 @@ import { effectiveEndDate } from "@/lib/rules";
 import { currentBangkokMonth, todayBangkok } from "@/lib/service/months";
 import { termMonthsOf } from "@/lib/service/termMonths";
 
-import { fetchAllKeyset, KEYSET_PAGE_SIZE } from "./keysetFetch";
+import { fetchAllKeyset, KEYSET_PAGE_SIZE } from "@/lib/supabase/fetchAll";
+import { loadPendingMissedRows } from "@/lib/supabase/pendingMissed";
 
 import {
   CLOSED_LIMIT,
@@ -112,45 +113,6 @@ async function loadContractNames(
     }
   }
   return { map, error: null };
-}
-
-type PendingRow = {
-  contract_id: string;
-  branch_id: string;
-  missed_month: string;
-  last_service_month: string;
-  makeup_deadline_month: string;
-  past_deadline: boolean;
-};
-
-/**
- * ตกบริการรอตัดสิน (RPC list_pending_missed_services · ผลถูกตัดที่ max_rows 1,000)
- * ครั้งแรกขอทุกสาขารวมเดียว · ถ้าได้เต็ม 1,000 = อาจถูกตัด → ดึงซ้ำ "รายสาขา" (แต่ละสาขาน้อยกว่าเพดาน) แล้วรวม
- * สาขาใดยังเต็มเพดานอีก → `truncated = true` ให้หน้าจอเตือน (ไม่ตัดเงียบ)
- */
-export async function loadPendingMissedRows(
-  supabase: SupabaseClient,
-  month: string,
-  branchIds: readonly string[],
-): Promise<{ rows: PendingRow[]; error: string | null; truncated: boolean }> {
-  const call = (branchId: string | null) =>
-    supabase.rpc("list_pending_missed_services", { p_branch_id: branchId, p_month: `${month}-01` });
-  const first = await call(null);
-  if (first.error) return { rows: [], error: first.error.message, truncated: false };
-  const firstRows = (first.data ?? []) as PendingRow[];
-  if (firstRows.length < MAX_ROWS) return { rows: firstRows, error: null, truncated: false };
-
-  const per = await Promise.all(branchIds.map((id) => call(id)));
-  const bad = per.find((r) => r.error);
-  if (bad?.error) return { rows: [], error: bad.error.message, truncated: false };
-  const merged = new Map<string, PendingRow>();
-  let truncated = false;
-  for (const r of per) {
-    const rows = (r.data ?? []) as PendingRow[];
-    if (rows.length >= MAX_ROWS) truncated = true;
-    for (const row of rows) merged.set(`${row.contract_id}|${row.missed_month}`, row);
-  }
-  return { rows: [...merged.values()], error: null, truncated };
 }
 
 export async function loadTodo(supabase: SupabaseClient): Promise<{ data: TodoData | null; error: string | null }> {

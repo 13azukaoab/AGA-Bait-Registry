@@ -16,7 +16,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { effectiveEndDate, igBase, isContractEnded, pickLastAction, splitHeld } from "./collectionRules";
 import type { CollectionRow, ContractStatus, HeldContract, TeamOption } from "./collectionTypes";
 import type { TeamKind } from "@/lib/service/teamKind";
-import { loadPendingMissedRows } from "@/components/todo/data";
+import { loadPendingMissedRows } from "@/lib/supabase/pendingMissed";
 
 export const COLLECTION_MAX_CONTRACTS = 3000;
 const PAGE = 1000;
