@@ -30,6 +30,20 @@ describe("isAppPath", () => {
   });
 });
 
+describe("/sales — Dashboard งานขาย (DECISIONS 2.91)", () => {
+  it("อยู่ในกลุ่มที่ต้องล็อกอิน · เฉพาะ host + admin เข้าได้", () => {
+    expect(isAppPath("/sales")).toBe(true);
+    expect(rolesForPath("/sales")).toEqual(["host", "admin"]);
+    expect(canAccessPath("host", "/sales")).toBe(true);
+    expect(canAccessPath("admin", "/sales")).toBe(true);
+    expect(canAccessPath("recorder", "/sales")).toBe(false);
+    expect(canAccessPath("viewer", "/sales")).toBe(false);
+  });
+  it("ไม่หลงกับเส้นทางที่ขึ้นต้นคล้ายกัน", () => {
+    expect(isAppPath("/sales-export")).toBe(false);
+  });
+});
+
 describe("rolesForPath / canAccessPath", () => {
   it("หน้าทะเบียนลูกค้า: host, admin, recorder เข้าได้ · viewer เข้าไม่ได้", () => {
     expect(rolesForPath("/customers")).toEqual(["host", "admin", "recorder"]);

@@ -35,6 +35,10 @@ describe("filterNavForRole", () => {
       expect(labelsFor(role)).not.toContain("ประวัติการแก้ไข");
     }
   });
+  it("เมนู 'Dashboard งานขาย (New/Renew)' (2.91): host / admin เห็น · recorder / viewer ไม่เห็น", () => {
+    for (const role of ["host", "admin"] as const) expect(labelsFor(role)).toContain("Dashboard งานขาย (New/Renew)");
+    for (const role of ["recorder", "viewer"] as const) expect(labelsFor(role)).not.toContain("Dashboard งานขาย (New/Renew)");
+  });
   it("viewer เห็นเฉพาะ Dashboard สรุป", () => {
     expect(labelsFor("viewer")).toEqual(["Dashboard สรุปมูลค่าทั้งหมด"]);
   });
