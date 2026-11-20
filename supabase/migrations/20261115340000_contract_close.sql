@@ -25,11 +25,17 @@
 --      * ตั้ง status = 'closed' · closed_at = now() · closed_by = ผู้กด · close_note
 --      * ถือคิวเดียวกับการเก็บ IG ของสัญญานั้น (advisory lock 'public.ig_collection:') + FOR UPDATE แถวสัญญา
 --      * ปิดแล้ว: AG007 เดิมล็อกการแก้ (เฉพาะ host แก้ได้) · ไม่มี RPC เปิดกลับ (นอกขอบเขต 2.99)
---   3. คอลัมน์ใหม่ `closed_by` / `close_note` — ผู้ใช้ล็อกอินเขียนตรงผ่าน REST ไม่ได้ (trigger `contracts_close_fields_guard`
---      → CL011) กันปลอมผู้ปิด · ส่วน status → 'closed' / closed_at ผ่าน REST **ยังเปิดอยู่ตามเดิม** (รอเจ้าของตัดสิน)
+--   3. ด่าน REST `contracts_closed_status_guard` (BEFORE INSERT OR UPDATE · ไม่ระบุ OF คอลัมน์):
+--      * คอลัมน์ใหม่ `closed_by` / `close_note` — ผู้ใช้ล็อกอินทุก role เขียนตรงไม่ได้ → CL011 (กันปลอมผู้ปิด)
+--      * เจ้าของเลือก ข (20 พ.ย. 2026): **admin** เปลี่ยนสถานะ เข้า/ออก 'closed' หรือแก้ closed_at ผ่าน REST ไม่ได้ → CL012
+--        (admin ดูอย่างเดียวเรื่องปิดสัญญา — 2.99) · **host ยังแก้ตรงได้** (ไว้แก้กรณีกดปิดผิด — ยังไม่มี RPC เปิดกลับ)
+--        · recorder ไม่มีสิทธิ์ UPDATE contracts อยู่แล้ว (RLS)
+--      * ชื่อ "contracts_closed_s…" เรียงหลัง contracts_closed_guard → admin แก้สัญญาที่ปิดแล้ว (รวมเปิดกลับ) ยังได้ AG007 เดิม
+--        · CL012 จึงเกิดเมื่อ admin ปิดสัญญาที่ยังไม่ปิด / ตั้ง closed_at ของสัญญาที่ยังไม่ปิด
 --   4. ยอดรายเดือน: ปิดหลังหมดอายุ = ไม่มีเดือนบริการหลังจากนี้ · lib/rules ไม่ดู closed · ไม่มี trigger snapshot (กฎ 7)
 --   * error ใหม่ (ข้อความไทยทั้งใน MESSAGE และ HINT — แบบ CL001–CL005 ของ M19b):
 --     CL006 ยังไม่หมดอายุ · CL007 ปิดแล้ว · CL008 ยกเลิกแล้ว · CL009 พักอยู่ · CL010 หมายเหตุยาวเกิน · CL011 แก้ช่องปิดตรงไม่ได้
+--     · CL012 admin เปลี่ยนสถานะปิด / closed_at ผ่าน REST ไม่ได้
 --     · (เดิม) 42501 ไม่มีสิทธิ์ · 22004 ไม่ส่ง contract_id · AG004 ไม่พบสัญญา
 --   * เทส: supabase/tests/60_contract_close.test.sql
 -- =====================================================================
@@ -50,9 +56,9 @@ COMMENT ON COLUMN public.contracts.close_note IS
   'M44a: หมายเหตุตอนปิดสัญญา (≤ 500 · ไม่บังคับ) · REST เขียนตรงไม่ได้ (CL011)';
 
 -- =====================================================================
--- 2. ด่าน REST: closed_by / close_note ตั้งได้จาก close_contract เท่านั้น
+-- 2. ด่าน REST: closed_by / close_note ตั้งได้จาก close_contract เท่านั้น · admin ปิดสัญญาผ่าน REST ไม่ได้
 -- =====================================================================
-CREATE FUNCTION public.contracts_close_fields_guard()
+CREATE FUNCTION public.contracts_closed_status_guard()
 RETURNS trigger
 LANGUAGE plpgsql
 SECURITY INVOKER
@@ -67,15 +73,23 @@ BEGIN
       USING ERRCODE = 'CL011',
             HINT = 'ผู้ปิดสัญญา / หมายเหตุการปิด แก้ตรงไม่ได้ — ใช้ปุ่ม "ปิดสัญญา"';
   END IF;
+  -- เจ้าของเลือก ข: เฉพาะ admin (host แก้ตรงได้ · recorder ไม่มีสิทธิ์ UPDATE)
+  IF current_user = 'authenticated' AND public.current_app_role() = 'admin'
+     AND ((TG_OP = 'INSERT' AND (NEW.status = 'closed' OR NEW.closed_at IS NOT NULL))
+          OR (TG_OP = 'UPDATE' AND ((NEW.status = 'closed') IS DISTINCT FROM (OLD.status = 'closed')
+                                    OR NEW.closed_at IS DISTINCT FROM OLD.closed_at))) THEN
+    RAISE EXCEPTION 'แอดมินปิดสัญญา / แก้วันปิดสัญญาไม่ได้ — ปิดสัญญาได้เฉพาะหัวหน้างานหรือผู้ดูแลระบบ'
+      USING ERRCODE = 'CL012',
+            HINT = 'แอดมินปิดสัญญา / แก้วันปิดสัญญาไม่ได้ — ปิดสัญญาได้เฉพาะหัวหน้างานหรือผู้ดูแลระบบ';
+  END IF;
   RETURN NEW;
 END;
 $$;
-REVOKE ALL ON FUNCTION public.contracts_close_fields_guard() FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.contracts_closed_status_guard() FROM PUBLIC, anon, authenticated;
 
--- ลำดับ trigger ไม่มีผล: ด่านนี้ดูเฉพาะ 2 ช่องใหม่ที่ trigger อื่นไม่ได้ใช้
-CREATE TRIGGER contracts_close_fields_guard
+CREATE TRIGGER contracts_closed_status_guard
   BEFORE INSERT OR UPDATE ON public.contracts
-  FOR EACH ROW EXECUTE FUNCTION public.contracts_close_fields_guard();
+  FOR EACH ROW EXECUTE FUNCTION public.contracts_closed_status_guard();
 
 -- =====================================================================
 -- 3. close_contract

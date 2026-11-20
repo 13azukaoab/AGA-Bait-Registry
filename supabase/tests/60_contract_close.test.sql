@@ -2,10 +2,10 @@
 --   * close_contract: host ทุกสาขา · recorder ในขอบเขต · recorder นอกขอบเขต / admin / viewer / anon → 42501
 --   * ยังไม่หมดอายุ (CL006) · ปิดซ้ำ (CL007) · ยกเลิกแล้ว (CL008) · พักอยู่ (CL009) · หมายเหตุยาวเกิน (CL010)
 --   * "หมดอายุ" = expired_pending_collection หรือ active ที่เลยวันสิ้นสุด (ไม่มีอะไรตั้ง expired ให้เอง)
---   * ปิดได้แม้ IG ยังเก็บไม่ครบ · IG ค้างยังอยู่ในรายการรอเก็บ + เก็บต่อได้ · ลง audit_log · closed_by/close_note แก้ตรงไม่ได้ (CL011)
+--   * ปิดได้แม้ IG ยังเก็บไม่ครบ · IG ค้างยังอยู่ในรายการรอเก็บ + เก็บต่อได้ · ลง audit_log · closed_by/close_note แก้ตรงไม่ได้ (CL011) · admin ปิดผ่าน REST ไม่ได้ (CL012) · host ได้
 -- ข้อมูลสมมติทั้งหมด (ไม่ใช่ข้อมูลลูกค้าจริง)
 BEGIN;
-SELECT plan(37);
+SELECT plan(43);
 
 INSERT INTO auth.users (id, instance_id, aud, role, email) VALUES
   ('00000000-0000-0000-0000-0000000000a1', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'host@test.local'),
@@ -71,7 +71,7 @@ SELECT has_column('public', 'contracts', 'close_note', 'contracts.close_note exi
 SELECT ok(NOT has_function_privilege('anon', 'public.close_contract(uuid, text)', 'EXECUTE')
           AND has_function_privilege('authenticated', 'public.close_contract(uuid, text)', 'EXECUTE'),
   'close_contract: anon cannot execute · logged-in can (role checked inside)');
-SELECT ok(NOT has_function_privilege('authenticated', 'public.contracts_close_fields_guard()', 'EXECUTE'),
+SELECT ok(NOT has_function_privilege('authenticated', 'public.contracts_closed_status_guard()', 'EXECUTE'),
   'guard trigger function is not callable directly');
 SELECT ok((SELECT prosecdef AND proconfig::text LIKE '%search_path=%' FROM pg_proc
             WHERE oid = 'public.close_contract(uuid, text)'::regprocedure),
@@ -157,6 +157,21 @@ SELECT throws_ok($$UPDATE contracts SET contract_no = 'C-1x' WHERE id = pg_temp.
 SELECT throws_ok($$INSERT INTO contracts (customer_id, contract_no, start_date, term_months, value_total, close_note)
                    VALUES (pg_temp.id('c1'), 'C-Z', pg_temp.m(0), 12, 1000, 'x')$$,
   'CL011', NULL, 'close_note cannot be set on insert through REST');
+-- เจ้าของเลือก ข (20 พ.ย. 2026): admin ปิดสัญญา / แก้ closed_at ผ่าน REST ไม่ได้ · host ได้
+SELECT throws_ok($$UPDATE contracts SET status = 'closed' WHERE id = pg_temp.id('d2')$$,
+  'CL012', NULL, 'admin cannot close a contract through REST');
+SELECT throws_ok($$UPDATE contracts SET closed_at = now() WHERE id = pg_temp.id('d2')$$,
+  'CL012', NULL, 'admin cannot set closed_at through REST');
+SELECT throws_ok($$UPDATE contracts SET status = 'active' WHERE id = pg_temp.id('d1')$$,
+  'AG007', NULL, 'admin cannot re-open a closed contract through REST (AG007 fires first)');
+SELECT throws_ok($$INSERT INTO contracts (customer_id, contract_no, start_date, term_months, value_total, status)
+                   VALUES (pg_temp.id('c1'), 'C-Y', pg_temp.m(0), 12, 1000, 'closed')$$,
+  'CL012', NULL, 'admin cannot insert a closed contract through REST');
+SELECT pg_temp.as_user('a1');
+SELECT lives_ok($$UPDATE contracts SET status = 'closed', closed_at = now() WHERE id = pg_temp.id('d2')$$,
+  'host can still close directly (option ข)');
+SELECT lives_ok($$UPDATE contracts SET status = 'active', closed_at = NULL WHERE id = pg_temp.id('d2')$$,
+  'host can undo a mistaken close directly');
 RESET ROLE;
 SELECT lives_ok($$UPDATE contracts SET close_note = 'แก้โดยผู้ดูแลฐานข้อมูล' WHERE id = pg_temp.id('d1')$$,
   'system path (postgres) can still fix the note');
