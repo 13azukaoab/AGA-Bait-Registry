@@ -50,9 +50,21 @@ export function cursorClause(sort: SortDef, c: Cursor): string {
   return parts.join(",");
 }
 
-/** ก้อนค้นหา: เลขสัญญา หรือ ชื่อลูกค้า (ILIKE · ใช้ * เป็นตัวแทนอักขระ) — `q` ต้องผ่าน sanitizeSearch แล้ว */
-export function searchClause(q: string): string {
-  return `contract_no.ilike.*${q}*,customers.name.ilike.*${q}*`;
+/**
+ * ก้อนค้นหา: เลขสัญญา (ILIKE · ใช้ * เป็นตัวแทนอักขระ) หรือ ลูกค้าที่ชื่อตรง (customer_id อยู่ในรายการ)
+ * PostgREST ไม่รับ OR ข้ามตาราง (`customers.name` ใน `.or()` → PGRST100 · พิสูจน์กับ DB จริง 20 พ.ย.) จึงหา id ลูกค้าจากชื่อก่อน
+ * (resolveSearchCustomerIds ใน registryData) แล้วส่งเข้ามาที่นี่ · `q` ต้องผ่าน sanitizeSearch แล้ว · id ต้องเป็น uuid
+ */
+export function searchClause(q: string, customerIds: readonly string[] = []): string {
+  const parts = [`contract_no.ilike.*${q}*`];
+  if (customerIds.length > 0) parts.push(`customer_id.in.(${customerIds.join(",")})`);
+  return parts.join(",");
+}
+
+/** ผลค้นหาที่ผ่านการหา id ลูกค้าแล้ว · null = ไม่ค้น */
+export interface SearchSpec {
+  q: string;
+  customerIds: string[];
 }
 
 /** รวมก้อน OR หลายก้อนเป็นนิพจน์เดียวสำหรับ `.or()` */
@@ -72,13 +84,13 @@ export function allowedBranchIds(f: Pick<RegistryFilters, "zones" | "branches">,
 
 /**
  * ใส่ตัวกรองทั้งหมดลงบน builder · คืน null เมื่อรู้แน่ว่าผลว่าง (ไม่ต้องยิง query)
- * `search` = คำค้นที่ผ่าน sanitizeSearch แล้ว ("" = ไม่ค้น)
+ * `search` = คำค้นที่ผ่าน sanitizeSearch แล้ว + id ลูกค้าที่ชื่อตรง (null = ไม่ค้น)
  */
 export function applyRegistryFilters<Q extends FilterLike>(
   query: Q,
   f: RegistryFilters,
   branches: readonly BranchRef[],
-  search: string,
+  search: SearchSpec | null,
   cursor: Cursor | null,
 ): Q | null {
   let qy = query;
@@ -94,7 +106,7 @@ export function applyRegistryFilters<Q extends FilterLike>(
   if (statuses) qy = qy.in("status", statuses);
 
   const orGroups: string[] = [];
-  if (search) orGroups.push(searchClause(search));
+  if (search) orGroups.push(searchClause(search.q, search.customerIds));
   if (cursor) orGroups.push(cursorClause(SORTS[f.sort], cursor));
   const combined = combineOrGroups(orGroups);
   if (combined) qy = qy.or(combined);

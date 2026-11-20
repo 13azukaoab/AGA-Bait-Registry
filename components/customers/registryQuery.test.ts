@@ -68,13 +68,13 @@ describe("allowedBranchIds", () => {
 describe("applyRegistryFilters", () => {
   it("ไม่มีตัวกรอง = ไม่ใส่เงื่อนไขอะไรเลย", () => {
     const q = new Rec();
-    expect(applyRegistryFilters(q, defaultFilters(), branches, "", null)).toBe(q);
+    expect(applyRegistryFilters(q, defaultFilters(), branches, null, null)).toBe(q);
     expect(q.calls).toEqual([]);
   });
 
   it("ตัวกรองหลายอย่างทำงานร่วมกัน (AND)", () => {
     const q = new Rec();
-    applyRegistryFilters(q, { ...defaultFilters(), zones: ["z1"], years: "3", statuses: ["near_end"] }, branches, "", null);
+    applyRegistryFilters(q, { ...defaultFilters(), zones: ["z1"], years: "3", statuses: ["near_end"] }, branches, null, null);
     expect(q.calls).toEqual([
       ["in", "customers.branch_id", ["b1", "b2"]],
       ["eq", "term_months", 36],
@@ -84,21 +84,27 @@ describe("applyRegistryFilters", () => {
 
   it("ปีสัญญา 1 = ทุกอย่างที่ไม่ใช่ 36 เดือน (Custom นับกลุ่ม 1 ปี)", () => {
     const q = new Rec();
-    applyRegistryFilters(q, { ...defaultFilters(), years: "1" }, branches, "", null);
+    applyRegistryFilters(q, { ...defaultFilters(), years: "1" }, branches, null, null);
     expect(q.calls).toEqual([["neq", "term_months", 36]]);
   });
 
   it("เขต/สาขาที่เลือกแล้วไม่มีสาขาตรงกัน = null (ผลว่าง ไม่ต้องยิง query)", () => {
-    expect(applyRegistryFilters(new Rec(), { ...defaultFilters(), zones: ["z1"], branches: ["b3"] }, branches, "", null)).toBeNull();
+    expect(applyRegistryFilters(new Rec(), { ...defaultFilters(), zones: ["z1"], branches: ["b3"] }, branches, null, null)).toBeNull();
+  });
+
+  it("ค้นหาที่ไม่มีลูกค้าชื่อตรง = ค้นแค่เลขที่สัญญา", () => {
+    const q = new Rec();
+    applyRegistryFilters(q, defaultFilters(), branches, { q: "CT-9", customerIds: [] }, null);
+    expect(q.calls).toEqual([["or", "contract_no.ilike.*CT-9*"]]);
   });
 
   it("ค้นหา + cursor รวมเป็น .or() ตัวเดียว", () => {
     const q = new Rec();
-    applyRegistryFilters(q, defaultFilters(), branches, "สมชาย", { value: "2026-05-01", id: "X" });
+    applyRegistryFilters(q, defaultFilters(), branches, { q: "สมชาย", customerIds: ["u1", "u2"] }, { value: "2026-05-01", id: "X" });
     expect(q.calls).toHaveLength(1);
     expect(q.calls[0]).toEqual([
       "or",
-      "and(or(contract_no.ilike.*สมชาย*,customers.name.ilike.*สมชาย*),or(start_date.lt.2026-05-01,and(start_date.eq.2026-05-01,id.lt.X)))",
+      "and(or(contract_no.ilike.*สมชาย*,customer_id.in.(u1,u2)),or(start_date.lt.2026-05-01,and(start_date.eq.2026-05-01,id.lt.X)))",
     ]);
   });
 });

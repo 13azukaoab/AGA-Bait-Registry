@@ -22,7 +22,7 @@ import { monthOf } from "@/lib/rules/date";
 import { TIER_RULE_COLUMNS, toTierRules, type TierRuleRow } from "@/lib/tierRules";
 
 import { needsPostFilter } from "./registryFilters";
-import { applyRegistryFilters, PAGE_SIZE, SORTS, type FilterLike } from "./registryQuery";
+import { applyRegistryFilters, PAGE_SIZE, SORTS, type FilterLike, type SearchSpec } from "./registryQuery";
 import { registryStatus } from "./registryStatus";
 import type { BranchRef, Cursor, DbContractStatus, RegistryFilters, RegistryRow } from "./registryTypes";
 
@@ -32,7 +32,15 @@ export const POST_CHUNK = 200;
 export const MAX_POST_CHUNKS = 5;
 /** ส่งออกสูงสุดกี่แถวต่อครั้ง — เกินนี้ตัดและแจ้งผู้ใช้ให้ลดตัวกรอง */
 export const MAX_EXPORT_ROWS = 20000;
-const EXPORT_CHUNK = 1000;
+/**
+ * ขนาดก้อนตอนส่งออก — ต้อง +1 แล้วไม่เกิน API_MAX_ROWS (PostgREST ตัดผลที่ max_rows = 1000 แถวเงียบๆ → ถ้าขอ 1001 จะได้ 1000
+ * แล้วคิดว่าหมดข้อมูล · พบจริงตอนลองกับ DB 20 พ.ย.) · ทั้ง POST_CHUNK / PAGE_SIZE / EXPORT_CHUNK ต้องเล็กกว่านี้
+ */
+export const API_MAX_ROWS = 1000;
+export const EXPORT_CHUNK = 500;
+
+/** ค้นชื่อลูกค้าได้สูงสุดกี่ราย (กัน URL ยาวเกิน) — เกินแล้วหน้าเตือนผู้ใช้ ไม่ตัดเงียบ */
+export const MAX_SEARCH_CUSTOMERS = 150;
 
 export type LoadResult<T> = { ok: true; data: T } | { ok: false; code: string };
 
@@ -49,6 +57,8 @@ export interface PageData {
   scanned: number;
   /** จำนวนสัญญาที่ตรงตัวกรองฝั่งฐานข้อมูล (นับเฉพาะตอนโหลดหน้าแรก · ไม่ใช่หน้าแรก = null) */
   dbTotal: number | null;
+  /** true = ชื่อที่ค้นตรงกับลูกค้ามากกว่า MAX_SEARCH_CUSTOMERS ราย — ผลค้นตามชื่อไม่ครบ (หน้าต้องเตือนให้พิมพ์ให้เจาะจงขึ้น) */
+  searchTooBroad: boolean;
 }
 
 /** วันนี้ตามเวลาไทย 'YYYY-MM-DD' */
@@ -166,6 +176,24 @@ export function matchesPostFilter(row: Pick<RegistryRow, "tier" | "status">, f: 
   return true;
 }
 
+// ---------- ค้นหา ----------
+
+/**
+ * คำค้น (ผ่าน sanitizeSearch แล้ว) → id ลูกค้าที่ชื่อตรง (ILIKE) · ดึง MAX_SEARCH_CUSTOMERS + 1 ราย เพื่อรู้ว่าเกินหรือไม่
+ * (PostgREST ทำ OR ข้ามตารางไม่ได้ — ดู registryQuery.searchClause)
+ */
+export async function resolveSearchCustomerIds(supabase: SupabaseClient, q: string): Promise<LoadResult<{ ids: string[]; tooBroad: boolean }>> {
+  const { data, error } = await supabase
+    .from("customers")
+    .select("id")
+    .ilike("name", `%${q}%`)
+    .order("id")
+    .limit(MAX_SEARCH_CUSTOMERS + 1);
+  if (error) return fail(error);
+  const ids = ((data ?? []) as { id: string }[]).map((r) => r.id);
+  return { ok: true, data: { ids: ids.slice(0, MAX_SEARCH_CUSTOMERS), tooBroad: ids.length > MAX_SEARCH_CUSTOMERS } };
+}
+
 // ---------- โหลดหนึ่งหน้า (keyset) ----------
 
 export interface PageContext {
@@ -187,6 +215,14 @@ export async function loadRegistryPage(
 ): Promise<LoadResult<PageData>> {
   const sort = SORTS[filters.sort];
   const post = needsPostFilter(filters);
+  let spec: SearchSpec | null = null;
+  let searchTooBroad = false;
+  if (search) {
+    const found = await resolveSearchCustomerIds(supabase, search);
+    if (!found.ok) return found;
+    spec = { q: search, customerIds: found.data.ids };
+    searchTooBroad = found.data.tooBroad;
+  }
   const chunk = post ? POST_CHUNK : limit;
   const maxChunks = post ? MAX_POST_CHUNKS : 1;
 
@@ -197,8 +233,8 @@ export async function loadRegistryPage(
 
   for (let i = 0; i < maxChunks; i++) {
     const base = supabase.from("contracts").select(SELECT, i === 0 && cursor === null ? { count: "exact" } : undefined);
-    const filtered = applyRegistryFilters(base as unknown as FilterLike, filters, ctx.refs.branches, search, cur);
-    if (filtered === null) return { ok: true, data: { rows: [], next: null, scanned: 0, dbTotal: 0 } };
+    const filtered = applyRegistryFilters(base as unknown as FilterLike, filters, ctx.refs.branches, spec, cur);
+    if (filtered === null) return { ok: true, data: { rows: [], next: null, scanned: 0, dbTotal: 0, searchTooBroad } };
 
     const ordered = (filtered as unknown as typeof base)
       .order(sort.column, { ascending: sort.ascending, nullsFirst: false })
@@ -220,16 +256,16 @@ export async function loadRegistryPage(
       if (rows.length >= limit) {
         // ครบหน้า — cursor = แถวสุดท้ายที่เอามาแสดง · ถ้ายังมีแถวเหลือในก้อน/ก้อนถัดไป = ยังมีต่อ
         const more = k < used.length - 1 || hasExtra;
-        return { ok: true, data: { rows, next: more ? cursorOf(raw, filters.sort) : null, scanned, dbTotal } };
+        return { ok: true, data: { rows, next: more ? cursorOf(raw, filters.sort) : null, scanned, dbTotal, searchTooBroad } };
       }
     }
-    if (!hasExtra) return { ok: true, data: { rows, next: null, scanned, dbTotal } };
+    if (!hasExtra) return { ok: true, data: { rows, next: null, scanned, dbTotal, searchTooBroad } };
     const last = used[used.length - 1];
-    if (!last) return { ok: true, data: { rows, next: null, scanned, dbTotal } };
+    if (!last) return { ok: true, data: { rows, next: null, scanned, dbTotal, searchTooBroad } };
     cur = cursorOf(last, filters.sort);
   }
   // สแกนครบงบก้อนแล้วแต่ยังไม่ครบหน้า และยังมีข้อมูลต่อ → ให้กดโหลดเพิ่ม
-  return { ok: true, data: { rows, next: cur, scanned, dbTotal } };
+  return { ok: true, data: { rows, next: cur, scanned, dbTotal, searchTooBroad } };
 }
 
 // ---------- ส่งออก ----------

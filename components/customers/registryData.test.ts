@@ -3,7 +3,8 @@ import { describe, expect, it } from "vitest";
 
 import type { TierRule } from "../../lib/rules";
 import { defaultFilters } from "./registryFilters";
-import { loadRegistryForExport, loadRegistryPage, matchesPostFilter, toRegistryRow, type RegistryRowDb } from "./registryData";
+import { PAGE_SIZE } from "./registryQuery";
+import { API_MAX_ROWS, EXPORT_CHUNK, POST_CHUNK, loadRegistryForExport, loadRegistryPage, matchesPostFilter, MAX_SEARCH_CUSTOMERS, toRegistryRow, type RegistryRowDb } from "./registryData";
 
 const RULES: TierRule[] = [
   { tier: "S", minAnnual: 0 },
@@ -183,6 +184,55 @@ describe("loadRegistryPage (keyset)", () => {
     } as unknown as SupabaseClient;
     const res = await loadRegistryPage(client, ctx, defaultFilters(), "", null);
     expect(res).toEqual({ ok: false, code: "42501" });
+  });
+});
+
+describe("ค้นหา (2 ขั้น: หา id ลูกค้าจากชื่อก่อน)", () => {
+  /** client ที่ตอบ customers (ค้นชื่อ) แยกจาก contracts */
+  function searchClient(custIds: string[], contractRows: RegistryRowDb[]) {
+    const orCalls: string[] = [];
+    const mk = (data: unknown[]) => {
+      const b: Record<string, unknown> = {};
+      for (const m of ["in", "eq", "neq", "ilike", "order", "limit"]) b[m] = () => b;
+      b.or = (e: string) => {
+        orCalls.push(e);
+        return b;
+      };
+      b.then = (resolve: (v: unknown) => void) => resolve({ data, error: null, count: null });
+      return b;
+    };
+    const client = {
+      from: (t: string) => ({ select: () => mk(t === "customers" ? custIds.map((id) => ({ id })) : contractRows) }),
+    } as unknown as SupabaseClient;
+    return { client, orCalls };
+  }
+
+  it("ใส่ id ลูกค้าที่ชื่อตรงเข้าเงื่อนไข OR พร้อมเลขที่สัญญา", async () => {
+    const { client, orCalls } = searchClient(["u1", "u2"], [raw(1)]);
+    const res = await loadRegistryPage(client, ctx, defaultFilters(), "สมชาย", null);
+    expect(res.ok && res.data.rows).toHaveLength(1);
+    expect(res.ok && res.data.searchTooBroad).toBe(false);
+    expect(orCalls).toEqual(["contract_no.ilike.*สมชาย*,customer_id.in.(u1,u2)"]);
+  });
+
+  it("ลูกค้าที่ชื่อตรงเกิน MAX_SEARCH_CUSTOMERS = เตือน (ไม่ตัดเงียบ) และใช้เท่าที่เพดาน", async () => {
+    const many = Array.from({ length: MAX_SEARCH_CUSTOMERS + 1 }, (_, i) => `u${i}`);
+    const { client, orCalls } = searchClient(many, []);
+    const res = await loadRegistryPage(client, ctx, defaultFilters(), "ลูกค้า", null);
+    expect(res.ok && res.data.searchTooBroad).toBe(true);
+    expect(orCalls[0]?.split(",").length).toBe(1 + MAX_SEARCH_CUSTOMERS);
+  });
+
+  it("ไม่ค้น = ไม่ยิง query ลูกค้า", async () => {
+    const { client, orCalls } = searchClient(["u1"], [raw(1)]);
+    await loadRegistryPage(client, ctx, defaultFilters(), "", null);
+    expect(orCalls).toEqual([]);
+  });
+});
+
+describe("ขนาดก้อนต้องไม่ชนเพดานแถวของ API (max_rows)", () => {
+  it("ขนาดก้อน + 1 (แถวไว้ตรวจว่ามีต่อ) ต้องไม่เกิน API_MAX_ROWS", () => {
+    for (const size of [PAGE_SIZE, POST_CHUNK, EXPORT_CHUNK]) expect(size + 1).toBeLessThanOrEqual(API_MAX_ROWS);
   });
 });
 

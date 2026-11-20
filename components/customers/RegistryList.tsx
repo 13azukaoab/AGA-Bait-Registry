@@ -68,7 +68,7 @@ function CustomerName({ row, role }: { row: RegistryRow; role: UserRole }) {
   return (
     <>
       {href ? (
-        <Link href={href} className="font-semibold text-accent-strong hover:underline" aria-label={`ดูรายละเอียดลูกค้า ${row.customerName}`}>
+        <Link href={href} className="font-semibold text-accent-strong hover:underline max-[767px]:inline-flex max-[767px]:min-h-11 max-[767px]:items-center" aria-label={`ดูรายละเอียดลูกค้า ${row.customerName}`}>
           {row.customerName || "(ไม่มีชื่อ)"}
         </Link>
       ) : (

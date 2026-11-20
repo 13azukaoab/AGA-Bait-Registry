@@ -23,7 +23,7 @@ import { RegistryFilterBar } from "./RegistryFilterBar";
 import { RegistryList } from "./RegistryList";
 import { registryCsv, registryFileName } from "./registryExport";
 import { defaultFilters, filtersToParams, needsPostFilter, sanitizeSearch } from "./registryFilters";
-import { loadRegistryForExport, loadRegistryPage, MAX_EXPORT_ROWS, todayBangkok, type PageData, type RegistryRefs } from "./registryData";
+import { loadRegistryForExport, loadRegistryPage, MAX_EXPORT_ROWS, MAX_SEARCH_CUSTOMERS, todayBangkok, type PageData, type RegistryRefs } from "./registryData";
 import { tierLegend } from "./registryStatus";
 import type { Cursor, RegistryFilters, RegistryRow } from "./registryTypes";
 
@@ -55,6 +55,7 @@ export function RegistryClient({ role, today, refs, initialFilters, initial }: P
   const [dbTotal, setDbTotal] = useState<number | null>(initial.dbTotal);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [tooBroad, setTooBroad] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [exportNote, setExportNote] = useState<string | null>(null);
   const reqId = useRef(0);
@@ -70,8 +71,13 @@ export function RegistryClient({ role, today, refs, initialFilters, initial }: P
 
   // URL ตามตัวกรอง (เฉพาะ id/enum)
   useEffect(() => {
+    // ไม่แตะ URL ถ้าผู้ใช้เริ่มเปลี่ยนไปหน้าอื่นแล้ว (กัน effect ดึง URL กลับมาหน้านี้ระหว่างเปลี่ยนหน้า)
+    if (window.location.pathname !== "/customers") return;
     const qs = filtersToParams(filters).toString();
-    window.history.replaceState(null, "", qs ? `?${qs}` : window.location.pathname);
+    const target = qs ? `?${qs}` : window.location.pathname;
+    if (target !== window.location.search && target !== window.location.pathname + window.location.search) {
+      window.history.replaceState(null, "", target);
+    }
   }, [filters]);
 
   const applyPage = useCallback((d: PageData, append: boolean) => {
@@ -79,6 +85,7 @@ export function RegistryClient({ role, today, refs, initialFilters, initial }: P
     setNext(d.next);
     setScanned((prev) => (append ? prev + d.scanned : d.scanned));
     if (d.dbTotal !== null) setDbTotal(d.dbTotal);
+    setTooBroad(d.searchTooBroad);
   }, []);
 
   // โหลดหน้าแรกใหม่เมื่อตัวกรอง/คำค้นเปลี่ยน (ข้ามครั้งแรก — server โหลดให้แล้ว)
@@ -202,6 +209,11 @@ export function RegistryClient({ role, today, refs, initialFilters, initial }: P
       {exportNote ? (
         <Alert variant={exportNote.startsWith("ส่งออกได้สูงสุด") ? "warn" : "ok"} className="mb-2">
           {exportNote}
+        </Alert>
+      ) : null}
+      {tooBroad ? (
+        <Alert variant="warn" title="คำค้นกว้างเกินไป" className="mb-2">
+          ชื่อที่ค้นตรงกับลูกค้ามากกว่า {fmtN(MAX_SEARCH_CUSTOMERS)} ราย — ผลค้นตามชื่อแสดงไม่ครบ ลองพิมพ์ชื่อให้เจาะจงขึ้น (ค้นด้วยเลขที่สัญญายังครบถ้วน)
         </Alert>
       ) : null}
       {error ? (
