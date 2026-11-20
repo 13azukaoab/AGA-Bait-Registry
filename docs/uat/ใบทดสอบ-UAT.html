@@ -1,0 +1,1319 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>ใบทดสอบ UAT · AGA Bait Registry</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* สีทั้งหมดคัดลอกจาก app/globals.css ของโปรเจกต์ (โหมดสว่าง + โหมดมืด) — ห้ามเพิ่มสีนอกชุดนี้ */
+:root {
+  --bg: #eef2f7;
+  --surface: #ffffff;
+  --surface-2: #f4f7fb;
+  --surface-3: #e9eff6;
+  --fg: #17212e;
+  --fg-muted: #5a6b7e;
+  --fg-faint: #8a98a8;
+  --border: #d8e0ea;
+  --border-strong: #c3cedb;
+  --accent: #1f5fa8;
+  --accent-strong: #164a85;
+  --accent-fg: #ffffff;
+  --accent-soft: #e6f0fb;
+  --ok: #1a8a5c;
+  --ok-soft: #e3f4ec;
+  --warn: #b4740a;
+  --warn-soft: #fbf0db;
+  --danger: #c23b2e;
+  --danger-soft: #fbe8e5;
+  --radius: 10px;
+  --font-sans: "Noto Sans Thai", "Segoe UI", system-ui, sans-serif;
+}
+@media screen and (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0e1621;
+    --surface: #16202c;
+    --surface-2: #1b2733;
+    --surface-3: #222f3d;
+    --fg: #e7eef5;
+    --fg-muted: #9fb0c1;
+    --fg-faint: #718394;
+    --border: #2a3744;
+    --border-strong: #36485a;
+    --accent: #4a90d9;
+    --accent-strong: #5fa0e3;
+    --accent-fg: #0b1420;
+    --accent-soft: #16304a;
+    --ok: #3bb183;
+    --ok-soft: #133227;
+    --warn: #d99b3e;
+    --warn-soft: #332713;
+    --danger: #e26657;
+    --danger-soft: #331a16;
+  }
+}
+
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+.wrap { max-width: 1040px; margin: 0 auto; padding: 0 16px 48px; }
+
+/* ---------- หัวกระดาษ ---------- */
+.brand {
+  background: var(--accent);
+  color: var(--accent-fg);
+}
+.brand-in { max-width: 1040px; margin: 0 auto; padding: 14px 16px; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 16px; }
+.brand b { font-size: 18px; font-weight: 700; letter-spacing: .2px; }
+.brand span { font-size: 14px; opacity: .92; }
+
+h1 { font-size: 26px; line-height: 1.3; margin: 24px 0 4px; }
+h2 { font-size: 20px; line-height: 1.35; margin: 0 0 6px; }
+h3 { font-size: 16px; line-height: 1.4; margin: 0; }
+h4 { font-size: 13px; margin: 0 0 6px; color: var(--accent-strong); font-weight: 600; }
+.lead { color: var(--fg-muted); margin: 0 0 16px; }
+
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px; margin: 0 0 16px; }
+.card h2 { font-size: 17px; }
+
+.head-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+.field { display: grid; gap: 4px; font-size: 13px; color: var(--fg-muted); }
+.field.wide { grid-column: 1 / -1; }
+.field input, .field textarea, .note textarea {
+  width: 100%;
+  font: inherit; font-size: 16px; color: var(--fg);
+  background: var(--surface); border: 1px solid var(--border-strong); border-radius: 8px;
+  padding: 8px 10px; min-height: 44px;
+}
+.field textarea, .note textarea { resize: vertical; min-height: 64px; }
+input:focus-visible, textarea:focus-visible, button:focus-visible, a:focus-visible, .r input:focus-visible + span {
+  outline: 2px solid var(--accent); outline-offset: 2px;
+}
+
+.before ul { margin: 6px 0 0; padding-left: 20px; }
+.before li { margin: 3px 0; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 10px; margin-top: 8px; font-size: 13px; }
+
+.tag { display: inline-block; font-size: 12px; font-weight: 600; line-height: 1.4; padding: 1px 8px; border-radius: 999px; background: var(--accent-soft); color: var(--accent-strong); border: 1px solid var(--accent); }
+.tag-perm { background: var(--danger-soft); color: var(--danger); border-color: var(--danger); }
+.tag-live { background: var(--warn-soft); color: var(--warn); border-color: var(--warn); }
+.tag-wait { background: var(--surface-3); color: var(--fg-muted); border-color: var(--border-strong); }
+
+nav.toc { margin: 0 0 16px; }
+nav.toc ul { list-style: none; padding: 0; margin: 0; display: flex; flex-wrap: wrap; gap: 8px; }
+nav.toc a { display: inline-block; padding: 8px 12px; min-height: 44px; border: 1px solid var(--border-strong); border-radius: 999px; background: var(--surface); color: var(--accent-strong); text-decoration: none; font-weight: 600; }
+nav.toc small { color: var(--fg-muted); font-weight: 400; }
+nav.toc li { display: flex; }
+nav.toc li a { display: flex; align-items: center; gap: 6px; }
+
+.toolbar { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 16px; }
+button.btn { font: inherit; min-height: 44px; padding: 8px 14px; border-radius: 8px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--fg); cursor: pointer; }
+button.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-fg); font-weight: 600; }
+button.btn:hover { background: var(--surface-3); }
+button.btn.primary:hover { background: var(--accent-strong); }
+.hint { font-size: 13px; color: var(--fg-muted); margin: 0 0 16px; }
+
+/* ---------- ส่วนของแต่ละตำแหน่ง ---------- */
+.role { margin: 28px 0 0; }
+.role-head { background: var(--surface); border: 1px solid var(--border); border-left: 6px solid var(--accent); border-radius: var(--radius); padding: 14px 16px; margin: 0 0 12px; }
+.role-intro { margin: 0 0 10px; color: var(--fg-muted); font-size: 14px; }
+.role-meta { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; }
+.tally { margin: 0; font-size: 14px; font-weight: 600; color: var(--fg-muted); }
+.tally .p { color: var(--ok); }
+.tally .f { color: var(--danger); }
+code { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: .9em; background: var(--surface-3); border: 1px solid var(--border); border-radius: 4px; padding: 0 4px; overflow-wrap: anywhere; }
+
+.item { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); margin: 0 0 12px; padding: 12px 14px; break-inside: avoid; page-break-inside: avoid; }
+.item-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 10px; margin: 0 0 8px; }
+.no { flex: none; display: inline-block; min-width: 36px; text-align: center; font-weight: 700; font-size: 14px; background: var(--accent); color: var(--accent-fg); border-radius: 6px; padding: 0 8px; }
+.item-head h3 { flex: 1 1 220px; }
+.tags { display: inline-flex; flex-wrap: wrap; gap: 4px; }
+.cols { display: grid; grid-template-columns: 1fr; gap: 10px 20px; }
+.col ol, .col ul { margin: 0; padding-left: 20px; font-size: 15px; }
+.col li { margin: 3px 0; }
+.col + .col { border-top: 1px dashed var(--border-strong); padding-top: 8px; }
+.result { display: grid; grid-template-columns: 1fr; gap: 10px; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); }
+.verdict { margin: 0; padding: 0; border: 0; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; min-width: 0; }
+.verdict legend { float: left; margin-right: 8px; padding: 0; font-weight: 600; font-size: 14px; line-height: 44px; }
+.r { display: inline-flex; }
+.r input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.r span { display: inline-flex; align-items: center; min-height: 44px; padding: 6px 16px; border: 1px solid var(--border-strong); border-radius: 8px; background: var(--surface-2); cursor: pointer; font-weight: 600; font-size: 15px; }
+.r span::before { content: "○"; margin-right: 6px; }
+.r input:checked + span::before { content: "●"; }
+.r-pass input:checked + span { background: var(--ok-soft); border-color: var(--ok); color: var(--ok); }
+.r-fail input:checked + span { background: var(--danger-soft); border-color: var(--danger); color: var(--danger); }
+.r-skip input:checked + span { background: var(--surface-3); border-color: var(--fg-muted); color: var(--fg); }
+.r-skip span { font-weight: 500; font-size: 14px; }
+.note { display: grid; gap: 4px; font-size: 13px; color: var(--fg-muted); }
+
+/* ---------- แบบแจ้งปัญหา / เกณฑ์จบ ---------- */
+.issue { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px; margin: 0 0 12px; break-inside: avoid; page-break-inside: avoid; }
+.issue h3 { margin: 0 0 8px; }
+.issue-grid { display: grid; grid-template-columns: 1fr; gap: 10px; }
+.criteria ol { margin: 8px 0 0; padding-left: 22px; }
+.criteria li { margin: 6px 0; }
+.sign { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-top: 12px; }
+.draft { font-size: 13px; color: var(--warn); font-weight: 600; }
+footer { margin-top: 32px; font-size: 13px; color: var(--fg-muted); }
+
+@media (min-width: 720px) {
+  .cols { grid-template-columns: 1fr 1fr; }
+  .col + .col { border-top: 0; padding-top: 0; border-left: 1px dashed var(--border-strong); padding-left: 20px; }
+  .result { grid-template-columns: minmax(0, 340px) minmax(0, 1fr); align-items: start; }
+  .issue-grid { grid-template-columns: 1fr 1fr; }
+  .role-meta { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); align-items: end; }
+}
+
+/* ---------- พิมพ์ ---------- */
+@media print {
+  @page { size: A4; margin: 12mm; }
+  body { background: var(--surface); font-size: 11pt; }
+  .brand { background: var(--surface); color: var(--fg); border-bottom: 2px solid var(--accent); }
+  .no-print, .toolbar, nav.toc, .hint { display: none !important; }
+  .wrap { max-width: none; padding: 0; }
+  .card, .item, .issue, .role-head { box-shadow: none; }
+  .item, .issue { break-inside: avoid; page-break-inside: avoid; }
+  .role { break-before: page; page-break-before: always; }
+  .role:first-of-type { break-before: auto; page-break-before: auto; }
+  .role-head { break-after: avoid; page-break-after: avoid; }
+  .cols { grid-template-columns: 1fr 1fr; }
+  .col + .col { border-top: 0; padding-top: 0; border-left: 1px dashed var(--border-strong); padding-left: 12px; }
+  .result { grid-template-columns: minmax(0, 300px) minmax(0, 1fr); }
+  .field input, .field textarea, .note textarea { border-color: var(--fg-muted); }
+  .note textarea { min-height: 52px; }
+  .r span { background: var(--surface); }
+  .issue-grid { grid-template-columns: 1fr 1fr; }
+  .tag { border-color: var(--fg-muted); background: var(--surface); color: var(--fg); }
+  h1 { margin-top: 8px; }
+}
+</style>
+</head>
+<body>
+<div class="brand"><div class="brand-in"><b>Advance Group Asia (AGA)</b><span>ใบทดสอบ UAT · ระบบทะเบียนบริการ Bait (AGA Bait Registry)</span></div></div>
+<main class="wrap">
+  <h1>ใบทดสอบ UAT — ทดสอบระบบก่อนส่งมอบ</h1>
+  <p class="lead">ทดสอบ 25–26 พ.ย. 2026 · ส่งมอบ 30 พ.ย. 2026 · เปิดใช้จริง 1 ธ.ค. 2026 · ผู้ทดสอบ = เจ้าของระบบ ทดสอบทีละตำแหน่งด้วยบัญชีทดสอบแยกกัน (4 ตำแหน่ง รวม 52 ข้อ)</p>
+
+  <section class="card" aria-label="ข้อมูลผู้ทดสอบ">
+    <h2>ข้อมูลการทดสอบ</h2>
+    <div class="head-grid">
+      <label class="field"><span>วันที่ทดสอบ</span><input type="text" name="h-date" placeholder="เช่น 25 พ.ย. 2026" autocomplete="off"></label>
+      <label class="field"><span>ชื่อผู้ทดสอบ</span><input type="text" name="h-tester" autocomplete="off"></label>
+      <label class="field"><span>อุปกรณ์ / เบราว์เซอร์ที่ใช้</span><input type="text" name="h-device" placeholder="เช่น คอม Windows · มือถือ Android" autocomplete="off"></label>
+    </div>
+    <p class="hint" style="margin:10px 0 0">บัญชีทดสอบของแต่ละตำแหน่งให้เขียนไว้ที่ต้นแต่ละส่วนด้านล่าง · <b>ห้ามเขียนรหัสผ่านลงในใบนี้</b></p>
+  </section>
+
+  <section class="card before" aria-label="ก่อนเริ่ม">
+    <h2>ก่อนเริ่ม — อ่านก่อน 1 นาที</h2>
+    <ul>
+      <li><b>ใช้บัญชีแยกตามตำแหน่ง</b> PM/OM สร้างให้ที่เมนู “จัดการผู้ใช้” · ข้อที่ติดป้าย <span class="tag">บัญชีใหม่</span> ต้องใช้บัญชีที่ยังไม่เคยเข้าระบบเลย จึงควรเตรียมบัญชีใหม่ไว้ตำแหน่งละ 1 บัญชี</li>
+      <li>ระบบที่ทดสอบคือ <b>ระบบจริง</b> ข้อมูลที่กรอกจะถูกบันทึกจริง · ให้ใช้ชื่อสมมติ เช่น “บริษัท ทดสอบ UAT จำกัด (สมมติ)” และเลขที่สัญญาสมมติ เช่น CT26-9990001 · ห้ามใช้ข้อมูลลูกค้าจริง · ถ้าจะแนบไฟล์ ใช้ PDF ตัวอย่างเท่านั้น</li>
+      <li>ข้อที่ติดป้าย <span class="tag tag-live">กระทบข้อมูลจริง</span> คือข้อที่บันทึก/ส่งข้อมูลขึ้นระบบจริง โดยเฉพาะการปิดเดือน, “ส่งตอนนี้”, และ “คำนวณ snapshot ใหม่ + ส่ง Dashboard” ที่ส่งตัวเลขขึ้น AGA Bait Dashboard จริง — <b>หยุดคิดก่อนกดปุ่มสุดท้ายของข้อเหล่านี้</b></li>
+      <li>ข้อที่ติดป้าย <span class="tag tag-wait">รอหน้าจริง</span> คือหน้าที่ยังเป็นหน้าโครงหรือยังไม่เปิดในระบบ — ให้ดูว่าไม่ทำให้ส่วนอื่นพัง แล้วเลือก “ข้าม” ไม่นับเป็นไม่ผ่าน</li>
+      <li>ข้อที่ติดป้าย <span class="tag tag-perm">สิทธิ์ · ต้องเข้าไม่ได้</span> คือลองเข้าสิ่งที่ตำแหน่งนี้ <b>ไม่ควรเข้าได้</b> · ถ้าเข้าได้ = ไม่ผ่านทันที (สำคัญที่สุดของใบนี้)</li>
+      <li><b>วิธีลองพิมพ์ลิงก์:</b> คลิกช่องที่อยู่เว็บด้านบน ลบท้ายลิงก์เดิม พิมพ์ท้ายลิงก์ใหม่ เช่น <code>/admin/users</code> แล้วกด Enter</li>
+      <li>สิ่งที่ติ๊กและพิมพ์บนจอนี้ <b>เก็บไว้ในเครื่อง/เบราว์เซอร์นี้เท่านั้น</b> ไม่ส่งไปที่ไหน · ถ้าจะส่งต่อหรือเก็บเป็นหลักฐาน ให้กด “พิมพ์ / บันทึกเป็น PDF” ด้านล่าง</li>
+    </ul>
+    <div class="legend"><span class="tag">บทสอนใช้งาน</span><span class="tag tag-perm">สิทธิ์ · ต้องเข้าไม่ได้</span><span class="tag">มือถือ</span><span class="tag tag-live">กระทบข้อมูลจริง</span><span class="tag tag-wait">รอหน้าจริง</span></div>
+  </section>
+
+  <nav class="toc" aria-label="สารบัญ"><ul><li><a href="#sec-admin">Admin (เปิดงาน)</a> <small>15 ข้อ</small></li><li><a href="#sec-sup">หัวหน้างาน</a> <small>15 ข้อ</small></li><li><a href="#sec-pm">Project Manager / OM</a> <small>14 ข้อ</small></li><li><a href="#sec-viewer">ผู้ดูอย่างเดียว</a> <small>8 ข้อ</small></li><li><a href="#sec-issues">แบบแจ้งปัญหา</a></li><li><a href="#sec-criteria">เกณฑ์จบ UAT</a></li></ul></nav>
+
+  <div class="toolbar no-print">
+    <button type="button" class="btn primary" id="btn-print">พิมพ์ / บันทึกเป็น PDF</button>
+    <button type="button" class="btn" id="btn-clear">ล้างที่กรอกทั้งหมด</button>
+  </div>
+  <p class="hint no-print" id="save-note">ผลที่ติ๊กจะเก็บในเครื่องนี้อัตโนมัติ</p>
+  <p class="tally no-print" id="tally-all" aria-live="polite"></p>
+
+  
+<section class="role" id="sec-admin" data-role="admin">
+  <div class="role-head">
+    <h2>ส่วนที่ 1 · Admin (เปิดงาน)</h2>
+    <p class="role-intro">ตำแหน่งที่เปิดงาน — บันทึกสัญญาใหม่ / ต่อสัญญาเข้าทะเบียน · เห็นเมนู 6 รายการ (ไม่มีกลุ่ม “ดูแลระบบ”) · หน้าแรกหลังเข้าระบบคือ “ทะเบียนลูกค้า/สัญญา”</p>
+    <div class="role-meta">
+      <label class="field"><span>บัญชีทดสอบที่ใช้ (ชื่อบัญชี/รหัสพนักงาน — ห้ามเขียนรหัสผ่าน)</span><input type="text" name="acct-admin" autocomplete="off"></label>
+      <p class="tally" data-tally="admin" aria-live="polite"></p>
+    </div>
+  </div>
+  
+<article class="item" id="i-A1" data-role="admin">
+  <header class="item-head"><span class="no">A1</span><h3>เข้าครั้งแรก · ตั้งรหัสใหม่ · บทสอนใช้งาน (เริ่มเอง ข้ามได้ ดูซ้ำได้)</h3><span class="tags"><span class="tag">บทสอนใช้งาน</span><span class="tag">บัญชีใหม่</span></span></header>
+  <div class="cols">
+    <section class="col"><h4>ให้ลองทำอะไร</h4><ol><li>ใช้บัญชี Admin ที่ <b>ยังไม่เคยเข้าระบบเลย</b> เข้าหน้า “เข้าสู่ระบบ” ใส่รหัสพนักงาน + รหัสชั่วคราวที่ PM/OM ให้ แล้วกด “เข้าสู่ระบบ”</li><li>ที่หน้า “ตั้งรหัสผ่านใหม่ก่อนเริ่มใช้งาน” ตั้งรหัสใหม่ + พิมพ์ซ้ำ แล้วกด “บันทึกรหัสผ่านใหม่”</li><li>ดูว่าบทเรียนเริ่มเองหรือไม่ · ลองกด “ถัดไป” / “ย้อน” / “ข้ามทั้งหมด (Esc)” · ในบทเรียนลองกดปุ่มบันทึกที่ไฟกระพริบ</li><li>ออกจากระบบแล้วเข้าใหม่ด้วยรหัสที่ตั้งเอง → กดปุ่ม “สอนใช้งาน” มุมขวาบน</li></ol></section>
+    <section class="col"><h4>ผลที่ควรได้</h4><ul><li>ต้องตั้งรหัสใหม่ให้เสร็จก่อน จึงเข้าหน้าอื่นได้</li><li>เข้าหน้าแรกแล้ว บทเรียน “เริ่มใช้งานครั้งแรก” <b>เริ่มเอง</b> แล้วต่อด้วยบทของ Admin (เปิดงาน)</li><li>กด “ข้ามทั้งหมด (Esc)” ได้ทุกเมื่อ · ปุ่มบันทึกในบทเรียนขึ้นข้อความ “โหมดฝึก · ไม่บันทึกข้อมูลจริง” และไม่บันทึกอะไรจริง</li><li>บางขั้นถูกข้ามไปเอง ไม่ค้าง (เช่นขั้นของหน้า “ทะเบียนลูกค้า/สัญญา” ที่ยังเป็นหน้าโครง) — ถือว่าปกติ</li><li>เข้าใหม่แล้วบทเรียน <b>ไม่เด้งซ้ำ</b> · ปุ่ม “สอนใช้งาน” เปิดเมนู “เปิดดูบทเรียนซ้ำ” ให้เลือกบทส่วนกลางและบทของ Admin ได้</li></ul></section>
+  </div>
+  <div class="result">
+    <fieldset class="verdict"><legend>ผล</legend>
+      <label class="r r-pass"><input type="radio" name="v-A1" value="pass"><span>ผ่าน</span></label>
+      <label class="r r-fail"><input type="radio" name="v-A1" value="fail"><span>ไม่ผ่าน</span></label>
+      
+    </fieldset>
+    <label class="note"><span>หมายเหตุ</span><textarea name="n-A1" rows="2" placeholder="จดสิ่งที่เห็น (ไม่บังคับ)"></textarea></label>
+  </div>
+</article>
+
+<article class="item" id="i-A2" data-role="admin">
+  <header class="item-head"><span class="no">A2</span><h3>เมนูซ้ายและหน้าแรกตรงตำแหน่ง</h3><span class="tags"><span class="tag tag-wait">รอหน้าจริง</span></span></header>
+  <div class="cols">
+    <section class="col"><h4>ให้ลองทำอะไร</h4><ol><li>ดูเมนูซ้าย (มือถือกด ☰ “เปิดเมนู”) แล้วจดรายการที่เห็น</li><li>กดโลโก้ AGA มุมซ้ายบน</li></ol></section>
+    <section class="col"><h4>ผลที่ควรได้</h4><ul><li>เห็นเมนูเหล่านี้ <b>เท่านั้น</b> — กลุ่ม “งานประจำวัน”: สถานะทะเบียนบริการ · ลูกค้ารอเก็บสถานี · กลุ่ม “ทะเบียนและสรุป”: ทะเบียนลูกค้า/สัญญา · เปิดงานเข้าทะเบียนบริการ · สรุปงานบริการรายเดือน · Dashboard สรุปมูลค่าทั้งหมด</li><li>ไม่มีกลุ่ม “ดูแลระบบ” และไม่มีเมนู “ลงข้อมูลทำบริการประจำเดือน” / “กล่อง AG นอกรอบประจำเดือน”</li><li>หน้าแรกคือ “ทะเบียนลูกค้า/สัญญา” — <b>ตอนนี้ยังเป็นหน้าโครง (รอหน้าจริง)</b> ให้กดเมนู “เปิดงานเข้าทะเบียนบริการ” แทน · “ลูกค้ารอเก็บสถานี” ก็ยังเป็นหน้าโครง</li></ul></section>
+  </div>
+  <div class="result">
+    <fieldset class="verdict"><legend>ผล</legend>
+      <label class="r r-pass"><input type="radio" name="v-A2" value="pass"><span>ผ่าน</span></label>
+      <label class="r r-fail"><input type="radio" name="v-A2" value="fail"><span>ไม่ผ่าน</span></label>
+      <label class="r r-skip"><input type="radio" name="v-A2" value="skip"><span>ข้าม (ไม่มีให้ลอง / หน้ายังไม่พร้อม)</span></label>
+    </fieldset>
+    <label class="note"><span>หมายเหตุ</span><textarea name="n-A2" rows="2" placeholder="จดสิ่งที่เห็น (ไม่บังคับ)"></textarea></label>
+  </div>
+</article>
+
+<article class="item" id="i-A3" data-role="admin">
+  <header class="item-head"><span class="no">A3</span><h3>เปิดงานใหม่ (ลูกค้า New) ลงตาราง</h3><span class="tags"><span class="tag tag-live">กระทบข้อมูลจริง</span></span></header>
+  <div class="cols">
+    <section class="col"><h4>ให้ลองทำอะไร</h4><ol><li>เมนู “เปิดงานเข้าทะเบียนบริการ” → เลือก <b>เดือนเปิดงาน</b> ให้ตรงเดือนที่สัญญาเริ่ม → กด “เพิ่มแถว”</li><li>กรอก: เลขที่สัญญา (เช่น CT26-9990001 <i>— สมมติ</i>) · รายชื่อ (เช่น “บริษัท ทดสอบ UAT จำกัด” <i>— สมมติ</i>) · ประเภทงาน = New · ผู้ขาย · สาขา (พิมพ์แล้วเลือกจากรายการ) · เริ่มสัญญา · มูลค่า 1 ปี</li><li>ดูช่อง เขต / Tier / สิ้นสุด และตัวนับใต้ตาราง</li></ol></section>
+    <section class="col"><h4>ผลที่ควรได้</h4><ul><li>ช่อง เขต · Tier · สิ้นสุด ระบบเติมให้เอง ไม่ต้องกรอก</li><li>ตัวนับใต้ตารางบอก “บันทึกได้ X จาก Y แถว” · ป้ายสถานะท้ายแถวขึ้นว่าครบ หรือบอกว่าขาดอะไร</li></ul></section>
+  </div>
+  <div class="result">
+    <fieldset class="verdict"><legend>ผล</legend>
+      <label class="r r-pass"><input type="radio" name="v-A3" value="pass"><span>ผ่าน</span></label>
+      <label class="r r-fail"><input type="radio" name="v-A3" value="fail"><span>ไม่ผ่าน</span></label>
+      
+    </fieldset>
+    <label class="note"><span>หมายเหตุ</span><textarea name="n-A3" rows="2" placeholder="จดสิ่งที่เห็น (ไม่บังคับ)"></textarea></label>
+  </div>
+</article>
+
+<article class="item" id="i-A4" data-role="admin">
+  <header class="item-head"><span class="no">A4</span><h3>ช่องที่ขาด และกติกามูลค่า / ระยะสัญญา</h3><span class="tags"></span></header>
+  <div class="cols">
+    <section class="col"><h4>ให้ลองทำอะไร</h4><ol><li>เว้นช่องจำเป็น (เช่น เลขที่สัญญา หรือ สาขา) แล้วดูแถว</li><li>กรอกทั้ง “มูลค่า 1 ปี” และ “มูลค่า 3 ปี” ในแถวเดียวกัน</li><li>กดลิงก์ “Custom…” ใต้ช่อง “มูลค่า 1 ปี” แล้วใส่จำนวนเดือน 12</li></ol></section>
+    <section class="col"><h4>ผลที่ควรได้</h4><ul><li>แถวที่ขาดข้อมูลมี <b>ขอบแดง</b> และป้ายท้ายแถวบอก เช่น “ขาด เลขที่สัญญา · สาขา”</li><li>กรอกมูลค่าสองช่อง → ขึ้น “กรอกมูลค่าได้ช่องเดียว (1 ปี หรือ 3 ปี)”</li><li>Custom ใส่ 12 → ขึ้น “ระยะสัญญา Custom ต้องเป็นจำนวนเดือน 1–35 (ไม่ใช่ 12)”</li></ul></section>
+  </div>
+  <div class="result">
+    <fieldset class="verdict"><legend>ผล</legend>
+      <label class="r r-pass"><input type="radio" name="v-A4" value="pass"><span>ผ่าน</span></label>
+      <label class="r r-fail"><input type="radio" name="v-A4" value="fail"><span>ไม่ผ่าน</span></label>
+      
+    </fieldset>
+    <label class="note"><span>หมายเหตุ</span><textarea name="n-A4" rows="2" placeholder="จดสิ่งที่เห็น (ไม่บังคับ)"></textarea></label>
+  </div>
+</article>
+
+<article class="item" id="i-A5" data-role="admin">
+  <header class="item-head"><span class="no">A5</span><h3>บันทึกเข้าทะเบียน</h3><span class="tags"><span class="tag tag-live">กระทบข้อมูลจริง</span></span></header>
+  <div class="cols">
+    <section class="col"><h4>ให้ลองทำอะไร</h4><ol><li>ทำแถวให้ครบแล้วกด “บันทึกเข้าทะเบียน” (มุมขวาล่างของตาราง)</li><li>ปิดแล้วเปิดหน้าเดิมใหม่ เลือกเดือนเดิม แล้วหาแถวนั้น</li></ol></section>
+    <section class="col"><h4>ผลที่ควรได้</h4><ul><li>ขึ้น “บันทึกเข้าทะเบียนครบ N แถว” (ถ้าบางแถวไม่ผ่านจะบอกว่า “บันทึกสำเร็จ … · ไม่สำเร็จ … แถว” และมีข้อความใต้แถว)</li><li>แถวที่บันทึกแล้วยังอยู่ในตารางของเดือนนั้นหลังเปิดใหม่</li></ul></section>
+  </div>
+  <div class="result">
+    <fieldset class="verdict"><legend>ผล</legend>
+      <label class="r r-pass"><input type="radio" name="v-A5" value="pass"><span>ผ่าน</span></label>
+      <label class="r r-fail"><input type="radio" name="v-A5" value="fail"><span>ไม่ผ่าน</span></label>
+      
+    </fieldset>
+    <label class="note"><span>หมายเหตุ</span><textarea name="n-A5" rows="2" placeholder="จดสิ่งที่เห็น (ไม่บังคับ)"></textarea></label>
+  </div>
+</article>
+
+<article class="item" id="i-A6" data-role="admin">
+  <header class="item-head"><span class="no">A6</span><h3>ลูกค้าชื่อซ้ำในสาขาเดียวกัน</h3><span class="tags"></span></header>
+  <div class="cols">
+    <section class="col"><h4>ให้ลองทำอะไร</h4><ol><li>เปิดงานอีกสัญญา โดยใช้ <b>ชื่อลูกค้าเดียวกัน</b> และสาขาเดียวกับข้อก่อน แล้วกด “บันทึกเข้าทะเบียน”</li></ol></section>
+    <section class="col"><h4>ผลที่ควรได้</h4><ul><li>ขึ้นหน้าต่าง “พบลูกค้าชื่อนี้ในสาขาแล้ว” มี 3 ทางเลือก: “ใช้ลูกค้ารายนี้” · “เป็นคนละราย · สร้างลูกค้าใหม่” · “ยกเลิก (ยังไม่บันทึกแถวนี้)”</li><li>ปิดหน้าต่างโดยไม่เลือก = ไม่บันทึกแถวนั้น และมีข้อความให้กดบันทึกใหม่เพื่อเลือก</li></ul></section>
+  </div>
+  <div class="result">
+    <fieldset class="verdict"><legend>ผล</legend>
+      <label class="r r-pass"><input type="radio" name="v-A6" value="pass"><span>ผ่าน</span></label>
+      <label class="r r-fail"><input type="radio" name="v-A6" value="fail"><span>ไม่ผ่าน</span></label>
+      
+    </fieldset>
+    <label class="note"><span>หมายเหตุ</span><textarea name="n-A6" rows="2" placeholder="จดสิ่งที่เห็น (ไม่บังคับ)"></textarea></label>
+  </div>
+</article>
+
+<article class="item" id="i-A7" data-role="admin">
+  <header class="item-head"><span class="no">A7</span><h3>ต่อสัญญา (Renew) ผูกกับสัญญาเดิม</h3><span class="tags"><span class="tag tag-live">กระทบข้อมูลจริง</span></span></header>
+  <div class="cols">
+    <section class="col"><h4>ให้ลองทำอะไร</h4><ol><li>เพิ่มแถวใหม่ → ประเภทงาน = Renew → กดช่อง “⚠ ยังไม่ผูก · ค้นหา”</li><li>ในหน้าต่าง “ผูกลูกค้าเดิม (Renew)” พิมพ์ชื่อลูกค้าหรือเลขที่สัญญาเดิมอย่างน้อย 2 ตัวอักษร แล้วเลือกสัญญาเก่า (ใช้สัญญาที่สร้างในข้อก่อน)</li><li>ลองตั้งวันเริ่มสัญญาใหม่ให้ <b>ก่อน</b> วันเริ่มสัญญาเก่า</li></ol></section>
+    <section class="col"><h4>ผลที่ควรได้</h4><ul><li>ผูกแล้ว สาขา/ชื่อลูกค้าของแถวใหม่ล็อกตามสัญญาเก่า (ไม่สร้างลูกค้าใหม่)</li><li>วันเริ่มใหม่ไม่หลังสัญญาเก่า → จอเตือนและบันทึกไม่ได้</li><li>กด ✕ ที่ช่องลูกค้าเดิม = เลิกผูก (ก่อนบันทึกเท่านั้น)</li></ul></section>
+  </div>
+  <div class="result">
+    <fieldset class="verdict"><legend>ผล</legend>
+      <label class="r r-pass"><input type="radio" name="v-A7" value="pass"><span>ผ่าน</span></label>
+      <label class="r r-fail"><input type="radio" name="v-A7" value="fail"><span>ไม่ผ่าน</span></label>
+      
+    </fieldset>
+    <label class="note"><span>หมายเหตุ</span><textarea name="n-A7" rows="2" placeholder="จดสิ่งที่เห็น (ไม่บังคับ)"></textarea></label>
+  </div>
+</article>
+
+<article class="item" id="i-A8" data-role="admin">
+  <header class="item-head"><span class="no">A8</span><h3>แนบไฟล์ PDF สัญญา</h3><span class="tags"></span></header>
+  <div class="cols">
+    <section class="col"><h4>ให้ลองทำอะไร</h4><ol><li>ที่ท้ายแถว กดปุ่ม “แนบ” → หน้าต่าง “ไฟล์แนบ” → “เลือกไฟล์ PDF” (ใช้ PDF เปล่า/ตัวอย่าง <b>ไม่ใช่สัญญาจริง</b> ขนาดไม่เกิน 5 MB)</li><li>ลองเลือกไฟล์ที่ใหญ่เกิน 5 MB (ถ้ามี)</li></ol></section>
+    <section class="col"><h4>ผลที่ควรได้</h4><ul><li>แนบแล้วปุ่มเปลี่ยนเป็น “PDF ✓” · มีปุ่ม “เปิดดู” และ “ลบ” (ลบจะถามยืนยันก่อน)</li><li>ไฟล์เกิน 5 MB → ขึ้น “PDF ต้องไม่เกิน 5 MB — …” และไม่รับไฟล์</li></ul></section>
+  </div>
+  <div class="result">
+    <fieldset class="verdict"><legend>ผล</legend>
+      <label class="r r-pass"><input type="radio" name="v-A8" value="pass"><span>ผ่าน</span></label>
+      <label class="r r-fail"><input type="radio" name="v-A8" value="fail"><span>ไม่ผ่าน</span></label>
+      
+    </fieldset>
+    <label class="note"><span>หมายเหตุ</span><textarea name="n-A8" rows="2" placeholder="จดสิ่งที่เห็น (ไม่บังคับ)"></textarea></label>
+  </div>
+</article>
+
+<article class="item" id="i-A9" data-role="admin">
+  <header class="item-head"><span class="no">A9</span><h3>แก้สัญญาที่บันทึกแล้ว</h3><span class="tags"></span></header>
+  <div class="cols">
+    <section class="col"><h4>ให้ลองทำอะไร</h4><ol><li>ใช้ช่อง “กรองในตารางนี้” หาแถวของสัญญาทดสอบ → กด “แก้” ท้ายแถว</li><li>แก้ค่าที่แก้ได้ (เช่น หมายเหตุ หรือมูลค่า) แล้วกด “บันทึก” · ลองกด “ยกเลิก” อีกรอบ</li><li>เอาเมาส์ชี้ (มือถือ: แตะ) ช่อง สาขา และ ชื่อลูกค้า</li></ol></section>
+    <section class="col"><h4>ผลที่ควรได้</h4><ul><li>ช่องกลายเป็นช่องกรอก · กด “บันทึก” ค่าเปลี่ยน · กด “ยกเลิก” ค่ากลับเป็นเดิม</li><li>สาขากับชื่อลูกค้าแก้ไม่ได้ และมีข้อความบอกเหตุผล (เช่น “แก้สาขาไม่ได้ — ถ้าลงผิดสาขาให้ลบสัญญานี้แล้วเปิดงานใหม่”)</li></ul></section>
+  </div>
+  <div class="result">
+    <fieldset class="verdict"><legend>ผล</legend>
+      <label class="r r-pass"><input type="radio" name="v-A9" value="pass"><span>ผ่าน</span></label>
+      <label class="r r-fail"><input type="radio" name="v-A9" value="fail"><span>ไม่ผ่าน</span></label>
+      
+    </fieldset>
+    <label class="note"><span>หมายเหตุ</span><textarea name="n-A9" rows="2" placeholder="จดสิ่งที่เห็น (ไม่บังคับ)"></textarea></label>
+  </div>
+</article>
+
+<article class="item" id="i-A10" data-role="admin">
+  <header class="item-head"><span class="no">A10</span><h3>ลบสัญญา</h3><span class="tags"><span class="tag tag-live">กระทบข้อมูลจริง</span></span></header>
+  <div class="cols">
+    <section class="col"><h4>ให้ลองทำอะไร</h4><ol><li>กดปุ่ม ✕ ท้ายแถวของ <b>สัญญาทดสอบที่ยังไม่มีผลบริการ</b></li><li>(ถ้ามีสัญญาที่หัวหน้างานลงผลบริการแล้ว ลองกด ✕ ที่สัญญานั้นด้วย)</li></ol></section>
+    <section class="col"><h4>ผลที่ควรได้</h4><ul><li>ระบบถามยืนยัน (ลบแล้วเอากลับไม่ได้ ไฟล์แนบถูกลบด้วย) → ยืนยันแล้วแถวหายไป</li><li>สัญญาที่มีผลบริการแล้ว → ขึ้น “ลบไม่ได้ เพราะสัญญานี้มีผลบริการ…” (ถ้าไม่มีสัญญาแบบนี้ให้เลือก “ข้าม”)</li></ul></section>
+  </div>
+  <div class="result">
+    <fieldset class="verdict"><legend>ผล</legend>
+      <label class="r r-pass"><input type="radio" name="v-A10" value="pass"><span>ผ่าน</span></label>
+      <label class="r r-fail"><input type="radio" name="v-A10" value="fail"><span>ไม่ผ่าน</span></label>
+      <label class="r r-skip"><input type="radio" name="v-A10" value="skip"><span>ข้าม (ไม่มีให้ลอง / หน้ายังไม่พร้อม)</span></label>
+    </fieldset>
+    <label class="note"><span>หมายเหตุ</span><textarea name="n-A10" rows="2" placeholder="จดสิ่งที่เห็น (ไม่บังคับ)"></textarea></label>
+  </div>
+</article>
+
+<article class="item" id="i-A11" data-role="admin">
+  <header class="item-head"><span class="no">A11</span><h3>ดูรายละเอียดลูกค้า</h3><span class="tags"></span></header>
+  <div class="cols">
+    <section class="col"><h4>ให้ลองทำอะไร</h4><ol><li>จากหน้าเปิดงาน กดชื่อลูกค้าของสัญญาทดสอบ เพื่อเปิดหน้ารายละเอียดลูกค้า</li><li>ลองเปิดแท็บ: ภาพรวม · สัญญา · สถานี · ประวัติทำบริการ · ไฟล์แนบ · ไทม์ไลน์</li><li>แก้ ผู้ติดต่อ / โทร / หมายเหตุ ในแผงข้อมูลลูกค้า (กดไอคอนดินสอ แล้วบันทึก)</li></ol></section>
+    <section class="col"><h4>ผลที่ควรได้</h4><ul><li>เห็นแท็บครบตามรายการ · แท็บ “ไทม์ไลน์” เป็นของ PM/OM — Admin <b>ไม่เห็นข้อมูลในแท็บนี้</b></li><li>แก้ข้อมูลติดต่อและบันทึกได้ · แท็บ “ไฟล์แนบ” ดู/ดาวน์โหลดได้</li></ul></section>
+  </div>
+  <div class="result">
+    <fieldset class="verdict"><legend>ผล</legend>
+      <label class="r r-pass"><input type="radio" name="v-A11" value="pass"><span>ผ่าน</span></label>
+      <label class="r r-fail"><input type="radio" name="v-A11" value="fail"><span>ไม่ผ่าน</span></label>
+      
+    </fieldset>
+    <label class="note"><span>หมายเหตุ</span><textarea name="n-A11" rows="2" placeholder="จดสิ่งที่เห็น (ไม่บังคับ)"></textarea></label>
+  </div>
+</article>
+
+<article class="item" id="i-A12" data-role="admin">
+  <header class="item-head"><span class="no">A12</span><h3>สถานะทะเบียนบริการ — ดูอย่างเดียว</h3><span class="tags"></span></header>
+  <div class="cols">
+    <section class="col"><h4>ให้ลองทำอะไร</h4><ol><li>เมนู “สถานะทะเบียนบริการ” → ดูกล่อง “เรื่องตกบริการรอตัดสิน” (ถ้ามีรายการ) แล้วดูปุ่ม “ไม่ชดเชย” / “บันทึกบริการชดเชย”</li></ol></section>
+    <section class="col"><h4>ผลที่ควรได้</h4><ul><li>ดูตัวเลขความคืบหน้าได้ · ปุ่มตัดสินเรื่องตกบริการใช้ไม่ได้ และขึ้น “ดูอย่างเดียว”</li></ul></section>
+  </div>
+  <div class="result">
+    <fieldset class="verdict"><legend>ผล</legend>
+      <label class="r r-pass"><input type="radio" name="v-A12" value="pass"><span>ผ่าน</span></label>
+      <label class="r r-fail"><input type="radio" name="v-A12" value="fail"><span>ไม่ผ่าน</span></label>
+      
+    </fieldset>
+    <label class="note"><span>หมายเหตุ</span><textarea name="n-A12" rows="2" placeholder="จดสิ่งที่เห็น (ไม่บังคับ)"></textarea></label>
+  </div>
+</article>
+
+<article class="item" id="i-A13" data-role="admin">
+  <header class="item-head"><span class="no">A13</span><h3>ต้องเข้าไม่ได้: งานของหัวหน้างาน และงานดูแลระบบ</h3><span class="tags"><span class="tag tag-perm">สิทธิ์ · ต้องเข้าไม่ได้</span></span></header>
+  <div class="cols">
+    <section class="col"><h4>ให้ลองทำอะไร</h4><ol><li>ดูเมนูซ้ายอีกรอบ — มีเมนู “ลงข้อมูลทำบริการประจำเดือน” หรือกลุ่ม “ดูแลระบบ” หรือไม่</li><li>พิมพ์ท้ายลิงก์ในช่องที่อยู่เว็บทีละหน้า: <code>/service</code> · <code>/bait</code> · <code>/admin/closure</code> · <code>/admin/users</code> · <code>/admin/settings</code> แล้วกด Enter</li></ol></section>
+    <section class="col"><h4>ผลที่ควรได้</h4><ul><li><b>ไม่มี</b>เมนูทั้งสองอย่างให้เห็น</li><li>ทุกลิงก์ที่พิมพ์ <b>เข้าไม่ได้</b> — ระบบพากลับหน้าแรกของ Admin (ทะเบียนลูกค้า/สัญญา) ไม่แสดงเนื้อหาของหน้านั้นเลย</li></ul></section>
+  </div>
+  <div class="result">
+    <fieldset class="verdict"><legend>ผล</legend>
+      <label class="r r-pass"><input type="radio" name="v-A13" value="pass"><span>ผ่าน</span></label>
+      <label class="r r-fail"><input type="radio" name="v-A13" value="fail"><span>ไม่ผ่าน</span></label>
+      
+    </fieldset>
+    <label class="note"><span>หมายเหตุ</span><textarea name="n-A13" rows="2" placeholder="จดสิ่งที่เห็น (ไม่บังคับ)"></textarea></label>
+  </div>
+</article>
+
+<article class="item" id="i-A14" data-role="admin">
+  <header class="item-head"><span class="no">A14</span><h3>Dashboard งานขาย (New / Renew)</h3><span class="tags"><span class="tag tag-wait">รอหน้าจริง</span></span></header>
+  <div class="cols">
+    <section class="col"><h4>ให้ลองทำอะไร</h4><ol><li>ถ้าเมนู/หน้า Dashboard งานขายเปิดแล้ว ให้ลองเปิดและดูข้อมูล New / Renew และรายการต่อสัญญาล่าช้า</li></ol></section>
+    <section class="col"><h4>ผลที่ควรได้</h4><ul><li><b>รอหน้าจริง</b> — ตอนนี้ยังไม่มีหน้านี้ในระบบ · ถ้ายังไม่พบเมนู ให้เลือก “ข้าม” และจดหมายเหตุว่า “ยังไม่พร้อม” (หน้านี้ตามแผน Admin และ PM/OM เห็น)</li></ul></section>
+  </div>
+  <div class="result">
+    <fieldset class="verdict"><legend>ผล</legend>
+      <label class="r r-pass"><input type="radio" name="v-A14" value="pass"><span>ผ่าน</span></label>
+      <label class="r r-fail"><input type="radio" name="v-A14" value="fail"><span>ไม่ผ่าน</span></label>
+      <label class="r r-skip"><input type="radio" name="v-A14" value="skip"><span>ข้าม (ไม่มีให้ลอง / หน้ายังไม่พร้อม)</span></label>
+    </fieldset>
+    <label class="note"><span>หมายเหตุ</span><textarea name="n-A14" rows="2" placeholder="จดสิ่งที่เห็น (ไม่บังคับ)"></textarea></label>
+  </div>
+</article>
+
+<article class="item" id="i-A15" data-role="admin">
+  <header class="item-head"><span class="no">A15</span><h3>ใช้งานบนมือถือ (กว้าง 375 พิกเซล)</h3><span class="tags"><span class="tag">มือถือ</span></span></header>
+  <div class="cols">
+    <section class="col"><h4>ให้ลองทำอะไร</h4><ol><li>เปิดระบบบนมือถือจริง (หรือย่อหน้าต่างให้แคบ) เข้าด้วยบัญชี Admin</li><li>กด ☰ “เปิดเมนู” / “ปิดเมนู” · เข้า “เปิดงานเข้าทะเบียนบริการ” · เพิ่มแถว กรอกและกดบันทึกเข้าทะเบียนให้ได้</li><li>กด “ออกจากระบบ” แล้วกดยืนยัน</li></ol></section>
+    <section class="col"><h4>ผลที่ควรได้</h4><ul><li>หน้าไม่เลื่อนซ้าย–ขวาทั้งหน้า (ตารางเลื่อนได้เฉพาะในกรอบตาราง) · ตัวหนังสือไม่ล้นจอ · ปุ่มกดง่าย</li><li>ออกจากระบบแล้วกลับหน้า “เข้าสู่ระบบ” พร้อมข้อความ “ออกจากระบบแล้ว”</li></ul></section>
+  </div>
+  <div class="result">
+    <fieldset class="verdict"><legend>ผล</legend>
+      <label class="r r-pass"><input type="radio" name="v-A15" value="pass"><span>ผ่าน</span></label>
+      <label class="r r-fail"><input type="radio" name="v-A15" value="fail"><span>ไม่ผ่าน</span></label>
+      
+    </fieldset>
+    <label class="note"><span>หมายเหตุ</span><textarea name="n-A15" rows="2" placeholder="จดสิ่งที่เห็น (ไม่บังคับ)"></textarea></label>
+  </div>
+</article>
+</section>
+
+<section class="role" id="sec-sup" data-role="sup">
+  <div class="role-head">
+    <h2>ส่วนที่ 2 · หัวหน้างาน</h2>
+    <p class="role-intro">ตำแหน่งที่กรอกผลบริการประจำเดือนแทนทีมหน้างาน · เห็นเมนู 8 รายการ (รวม “ส่งข้อมูล และสรุปงานประจำเดือน”) · หน้าแรกคือ “สถานะทะเบียนบริการ” · ต้องมีสัญญาทดสอบที่ Admin เปิดไว้ก่อน</p>
+    <div class="role-meta">
+      <label class="field"><span>บัญชีทดสอบที่ใช้ (ชื่อบัญชี/รหัสพนักงาน — ห้ามเขียนรหัสผ่าน)</span><input type="text" name="acct-sup" autocomplete="off"></label>
+      <p class="tally" data-tally="sup" aria-live="polite"></p>
+    </div>
+  </div>
+  
+<article class="item" id="i-S1" data-role="sup">
+  <header class="item-head"><span class="no">S1</span><h3>เข้าครั้งแรก · ตั้งรหัสใหม่ · บทสอนของหัวหน้างาน</h3><span class="tags"><span class="tag">บทสอนใช้งาน</span><span class="tag">บัญชีใหม่</span></span></header>
+  <div class="cols">
+    <section class="col"><h4>ให้ลองทำอะไร</h4><ol><li>ใช้บัญชีหัวหน้างานที่ <b>ยังไม่เคยเข้าระบบเลย</b> เข้าสู่ระบบ → ตั้งรหัสใหม่ที่หน้า “ตั้งรหัสผ่านใหม่ก่อนเริ่มใช้งาน” → “บันทึกรหัสผ่านใหม่”</li><li>ดูบทเรียนที่เริ่มเอง ลองกด “ถัดไป” จนจบ (หรือ “ข้ามทั้งหมด (Esc)”)</li><li>ออกจากระบบแล้วเข้าใหม่ · กดปุ่ม “สอนใช้งาน” → “เปิดดูบทเรียนซ้ำ”</li></ol></section>
+    <section class="col"><h4>ผลที่ควรได้</h4><ul><li>บทเรียนส่วนกลางเริ่มเอง แล้วต่อด้วยบทของหัวหน้างาน (ชี้ที่: งานของเดือนนี้ · ลงข้อมูลทำบริการประจำเดือน · IG / IC ปกติทั้งหมด · พบปลวก · กล่อง AG · กล่อง AG นอกรอบ · ลูกค้ารอเก็บสถานี · ส่งข้อมูลปลายเดือน)</li><li>ปุ่มบันทึกในบทเรียนไม่บันทึกจริง (ขึ้น “โหมดฝึก · ไม่บันทึกข้อมูลจริง”) · ขั้นที่หาจุดไม่เจอถูกข้ามเอง ไม่ค้าง</li><li>เข้าใหม่แล้วบทเรียนไม่เด้งซ้ำ · เปิดดูซ้ำได้จากปุ่ม “สอนใช้งาน”</li></ul></section>
+  </div>
+  <div class="result">
+    <fieldset class="verdict"><legend>ผล</legend>
+      <label class="r r-pass"><input type="radio" name="v-S1" value="pass"><span>ผ่าน</span></label>
+      <label class="r r-fail"><input type="radio" name="v-S1" value="fail"><span>ไม่ผ่าน</span></label>
+      
+    </fieldset>
+    <label class="note"><span>หมายเหตุ</span><textarea name="n-S1" rows="2" placeholder="จดสิ่งที่เห็น (ไม่บังคับ)"></textarea></label>
+  </div>
+</article>
+
+<article class="item" id="i-S2" data-role="sup">
+  <header class="item-head"><span class="no">S2</span><h3>เมนูซ้ายและหน้าแรกตรงตำแหน่ง</h3><span class="tags"><span class="tag tag-wait">รอหน้าจริง</span></span></header>
+  <div class="cols">
+    <section class="col"><h4>ให้ลองทำอะไร</h4><ol><li>ดูเมนูซ้าย (มือถือกด ☰) แล้วจดรายการที่เห็น · กดโลโก้ AGA</li></ol></section>
+    <section class="col"><h4>ผลที่ควรได้</h4><ul><li>เห็น 8 เมนู: สถานะทะเบียนบริการ · ลงข้อมูลทำบริการประจำเดือน · กล่อง AG นอกรอบประจำเดือน · ลูกค้ารอเก็บสถานี · ทะเบียนลูกค้า/สัญญา · สรุปงานบริการรายเดือน · Dashboard สรุปมูลค่าทั้งหมด · ส่งข้อมูล และสรุปงานประจำเดือน</li><li>หน้าแรกคือ “สถานะทะเบียนบริการ” · “ทะเบียนลูกค้า/สัญญา” กับ “ลูกค้ารอเก็บสถานี” <b>ยังเป็นหน้าโครง (รอหน้าจริง)</b></li></ul></section>
+  </div>
+  <div class="result">
+    <fieldset class="verdict"><legend>ผล</legend>
+      <label class="r r-pass"><input type="radio" name="v-S2" value="pass"><span>ผ่าน</span></label>
+      <label class="r r-fail"><input type="radio" name="v-S2" value="fail"><span>ไม่ผ่าน</span></label>
+      <label class="r r-skip"><input type="radio" name="v-S2" value="skip"><span>ข้าม (ไม่มีให้ลอง / หน้ายังไม่พร้อม)</span></label>
+    </fieldset>
+    <label class="note"><span>หมายเหตุ</span><textarea name="n-S2" rows="2" placeholder="จดสิ่งที่เห็น (ไม่บังคับ)"></textarea></label>
+  </div>
+</article>
+
+<article class="item" id="i-S3" data-role="sup">
+  <header class="item-head"><span class="no">S3</span><h3>สถานะทะเบียนบริการ (เช็กงานของเดือน)</h3><span class="tags"></span></header>
+  <div class="cols">
+    <section class="col"><h4>ให้ลองทำอะไร</h4><ol><li>เมนู “สถานะทะเบียนบริการ” ดูหัวข้อ “สถานะงานกรอกผล” และกล่อง “เรื่องตกบริการรอตัดสิน” · “ลูกค้ารอเก็บสถานี” · “กล่องเหยื่อรอถอด”</li><li>ที่รายการ “ยังไม่มีข้อมูล (ยังไม่กรอก)” กดลิงก์ “เปิดหน้ากรอกผลบริการ →”</li></ol></section>
+    <section class="col"><h4>ผลที่ควรได้</h4><ul><li>เห็น “กรอกผลแล้ว X / Y ราย” และ “เหลือยังไม่กรอก N ราย” ตรงกับสัญญาทดสอบที่มี</li><li>ลิงก์พาไปหน้า “ลงข้อมูลทำบริการประจำเดือน”</li></ul></section>
+  </div>
+  <div class="result">
+    <fieldset class="verdict"><legend>ผล</legend>
+      <label class="r r-pass"><input type="radio" name="v-S3" value="pass"><span>ผ่าน</span></label>
+      <label class="r r-fail"><input type="radio" name="v-S3" value="fail"><span>ไม่ผ่าน</span></label>
+      
+    </fieldset>
+    <label class="note"><span>หมายเหตุ</span><textarea name="n-S3" rows="2" placeholder="จดสิ่งที่เห็น (ไม่บังคับ)"></textarea></label>
+  </div>
+</article>
+
+<article class="item" id="i-S4" data-role="sup">
+  <header class="item-head"><span class="no">S4</span><h3>เลือกลูกค้าในหน้าลงข้อมูลทำบริการประจำเดือน</h3><span class="tags"></span></header>
+  <div class="cols">
+    <section class="col"><h4>ให้ลองทำอะไร</h4><ol><li>เมนู “ลงข้อมูลทำบริการประจำเดือน” → เลือก เขต · สาขา · เดือน ให้ตรงกับสัญญาทดสอบ</li><li>ลองพิมพ์ในช่อง “พิมพ์ชื่อลูกค้า หรือเลขที่สัญญา” · สลับมุมมอง “ยังไม่กรอก” / “กรอกแล้ว”</li><li>กดชื่อลูกค้าทดสอบ</li></ol></section>
+    <section class="col"><h4>ผลที่ควรได้</h4><ul><li>รายชื่อเปลี่ยนตามตัวกรอง และมีเฉพาะสัญญาที่อยู่ในช่วงบริการของเดือนที่เลือก</li><li>ฟอร์มกรอกผลขึ้นทางขวา (มือถือ: ขึ้นต่อจากรายชื่อ) ที่หัวฟอร์มบอก เลขที่สัญญา และ New/Renew</li></ul></section>
+  </div>
+  <div class="result">
+    <fieldset class="verdict"><legend>ผล</legend>
+      <label class="r r-pass"><input type="radio" name="v-S4" value="pass"><span>ผ่าน</span></label>
+      <label class="r r-fail"><input type="radio" name="v-S4" value="fail"><span>ไม่ผ่าน</span></label>
+      
+    </fieldset>
+    <label class="note"><span>หมายเหตุ</span><textarea name="n-S4" rows="2" placeholder="จดสิ่งที่เห็น (ไม่บังคับ)"></textarea></label>
+  </div>
+</article>
+
+<article class="item" id="i-S5" data-role="sup">
+  <header class="item-head"><span class="no">S5</span><h3>ลูกค้าใหม่: ระบุจำนวนสถานีครั้งแรก</h3><span class="tags"></span></header>
+  <div class="cols">
+    <section class="col"><h4>ให้ลองทำอะไร</h4><ol><li>เปิดสัญญาทดสอบที่ยังไม่เคยลงผล → ที่กล่อง “ระบุจำนวนสถานีครั้งแรก” ใส่ IG (จำนวน) และ IC (จำนวน) (เช่น 5 และ 3)</li></ol></section>
+    <section class="col"><h4>ผลที่ควรได้</h4><ul><li>ระบบสร้างเลขสถานีให้เอง (1 ถึงจำนวนที่ใส่) · ทำครั้งเดียวต่อสัญญา ครั้งต่อไปไม่ถามอีก</li></ul></section>
+  </div>
+  <div class="result">
+    <fieldset class="verdict"><legend>ผล</legend>
+      <label class="r r-pass"><input type="radio" name="v-S5" value="pass"><span>ผ่าน</span></label>
+      <label class="r r-fail"><input type="radio" name="v-S5" value="fail"><span>ไม่ผ่าน</span></label>
+      
+    </fieldset>
+    <label class="note"><span>หมายเหตุ</span><textarea name="n-S5" rows="2" placeholder="จดสิ่งที่เห็น (ไม่บังคับ)"></textarea></label>
+  </div>
+</article>
+
+<article class="item" id="i-S6" data-role="sup">
+  <header class="item-head"><span class="no">S6</span><h3>กรอกผล: ทุกจุดปกติ แล้วบันทึก</h3><span class="tags"><span class="tag tag-live">กระทบข้อมูลจริง</span></span></header>
+  <div class="cols">
+    <section class="col"><h4>ให้ลองทำอะไร</h4><ol><li>ที่ฟอร์ม เลือก ทีมที่เข้า (แล้วกด “เสร็จ”) · วันที่เข้า · เวลาเข้า 09:30 · เวลาออก 14:45 <i>(ตัวอย่าง)</i></li><li>กดปุ่ม “IG / IC ปกติทั้งหมด”</li><li>กด “บันทึก + รายถัดไป”</li></ol></section>
+    <section class="col"><h4>ผลที่ควรได้</h4><ul><li>“เวลาทำงานจริง (คำนวณเอง)” ขึ้นให้เอง ไม่ต้องกรอก · ปุ่มปกติทั้งหมดเปลี่ยนเป็น “กดแล้ว ✓”</li><li>ขึ้น “บันทึกผล “…” แล้ว” แล้วกระโดดไปรายถัดไปที่ยังไม่กรอกเอง · ทำครบทุกรายขึ้น “✓ กรอกครบทุกรายแล้ว”</li></ul></section>
+  </div>
+  <div class="result">
+    <fieldset class="verdict"><legend>ผล</legend>
+      <label class="r r-pass"><input type="radio" name="v-S6" value="pass"><span>ผ่าน</span></label>
+      <label class="r r-fail"><input type="radio" name="v-S6" value="fail"><span>ไม่ผ่าน</span></label>
+      
+    </fieldset>
+    <label class="note"><span>หมายเหตุ</span><textarea name="n-S6" rows="2" placeholder="จดสิ่งที่เห็น (ไม่บังคับ)"></textarea></label>
+  </div>
+</article>
+
+<article class="item" id="i-S7" data-role="sup">
+  <header class="item-head"><span class="no">S7</span><h3>กรอกไม่ครบ / ข้อมูลผิด ต้องบันทึกไม่ได้</h3><span class="tags"></span></header>
+  <div class="cols">
+    <section class="col"><h4>ให้ลองทำอะไร</h4><ol><li>เปิดรายใหม่ → ไม่เลือกทีม ไม่ใส่เวลา แล้วกดบันทึก</li><li>ใส่ เวลาออก ให้ <b>ก่อน</b> เวลาเข้า แล้วกดบันทึก</li></ol></section>
+    <section class="col"><h4>ผลที่ควรได้</h4><ul><li>ขึ้นกรอบ “บันทึกไม่ได้ — ยังขาด” บอกว่าขาดอะไร (เช่น ทีมที่เข้า · เวลาเข้า) กดที่รายการแล้วเลื่อนไปช่องนั้น</li><li>ขึ้น “เวลาออกต้องหลังเวลาเข้า” · ไม่มีอะไรถูกบันทึก</li></ul></section>
+  </div>
+  <div class="result">
+    <fieldset class="verdict"><legend>ผล</legend>
+      <label class="r r-pass"><input type="radio" name="v-S7" value="pass"><span>ผ่าน</span></label>
+      <label class="r r-fail"><input type="radio" name="v-S7" value="fail"><span>ไม่ผ่าน</span></label>
+      
+    </fieldset>
+    <label class="note"><span>หมายเหตุ</span><textarea name="n-S7" rows="2" placeholder="จดสิ่งที่เห็น (ไม่บังคับ)"></textarea></label>
+  </div>
+</article>
+
+<article class="item" id="i-S8" data-role="sup">
+  <header class="item-head"><span class="no">S8</span><h3>พบปลวก · เปลี่ยนไม้ล่อ · งานซ่อม</h3><span class="tags"><span class="tag tag-live">กระทบข้อมูลจริง</span></span></header>
+  <div class="cols">
+    <section class="col"><h4>ให้ลองทำอะไร</h4><ol><li>ในรายใหม่ กด “เพิ่มจุดที่พบปลวก” → เลือกสถานี + พิมพ์เลขสถานี + ชนิดปลวก</li><li>ลองกด “IG / IC ปกติทั้งหมด” ตอนที่มีจุดพบปลวกอยู่</li><li>กด “เพิ่มสถานีที่เปลี่ยนไม้” พิมพ์เลขหลายตัว เช่น <code>3, 5, 8-12</code> · กด “เพิ่มงานซ่อม” แล้วเลือกประเภทงาน</li></ol></section>
+    <section class="col"><h4>ผลที่ควรได้</h4><ul><li>ยอดสรุปที่หัวข้อพบปลวกขึ้นให้เอง (จำนวนจุด / เหยื่อรวม)</li><li>ปุ่มปกติทั้งหมดกดไม่ได้ ขึ้น “ลบออกก่อนจึงกด “ปกติทั้งหมด” ได้”</li><li>จำนวนไม้ล่อคำนวณให้เอง (ป้าย “อัตโนมัติ”) · งานซ่อม “สถานีหาย” / “อื่นๆ” ต้องใส่รายละเอียดก่อนจึงบันทึกได้</li></ul></section>
+  </div>
+  <div class="result">
+    <fieldset class="verdict"><legend>ผล</legend>
+      <label class="r r-pass"><input type="radio" name="v-S8" value="pass"><span>ผ่าน</span></label>
+      <label class="r r-fail"><input type="radio" name="v-S8" value="fail"><span>ไม่ผ่าน</span></label>
+      
+    </fieldset>
+    <label class="note"><span>หมายเหตุ</span><textarea name="n-S8" rows="2" placeholder="จดสิ่งที่เห็น (ไม่บังคับ)"></textarea></label>
+  </div>
+</article>
+
+<article class="item" id="i-S9" data-role="sup">
+  <header class="item-head"><span class="no">S9</span><h3>แก้ผลที่กรอกแล้ว</h3><span class="tags"></span></header>
+  <div class="cols">
+    <section class="col"><h4>ให้ลองทำอะไร</h4><ol><li>สลับมุมมองเป็น “กรอกแล้ว” → กดรายที่เพิ่งบันทึก → แก้ค่า (เช่น เวลาออก) → บันทึกใหม่</li><li>แก้ค่าอีกที แล้วกด “ข้าม” หรือเลือกรายอื่นโดยไม่บันทึก</li></ol></section>
+    <section class="col"><h4>ผลที่ควรได้</h4><ul><li>รายนั้นมีป้าย “กรอกแล้ว · บันทึกซ้ำเพื่อแก้ไข” · บันทึกใหม่แล้วค่าเปลี่ยน</li><li>ออกจากรายที่มีข้อมูลค้างยังไม่บันทึก → ขึ้น “ออกจากรายนี้โดยไม่บันทึก?” มีปุ่ม “กลับไปกรอกต่อ” / “ออกโดยไม่บันทึก”</li></ul></section>
+  </div>
+  <div class="result">
+    <fieldset class="verdict"><legend>ผล</legend>
+      <label class="r r-pass"><input type="radio" name="v-S9" value="pass"><span>ผ่าน</span></label>
+      <label class="r r-fail"><input type="radio" name="v-S9" value="fail"><span>ไม่ผ่าน</span></label>
+      
+    </fieldset>
+    <label class="note"><span>หมายเหตุ</span><textarea name="n-S9" rows="2" placeholder="จดสิ่งที่เห็น (ไม่บังคับ)"></textarea></label>
+  </div>
+</article>
+
+<article class="item" id="i-S10" data-role="sup">
+  <header class="item-head"><span class="no">S10</span><h3>กล่อง AG นอกรอบประจำเดือน</h3><span class="tags"><span class="tag tag-live">กระทบข้อมูลจริง</span></span></header>
+  <div class="cols">
+    <section class="col"><h4>ให้ลองทำอะไร</h4><ol><li>เมนู “กล่อง AG นอกรอบประจำเดือน” → เลือกลูกค้าทดสอบ (มุมมอง “มีกล่องค้างติดตาม” / “ทุกราย”)</li><li>ที่หัวข้อ “งานกล่องนอกรอบประจำเดือน” ใส่ทีมที่เข้า · วันที่เข้าจริง · เวลาเข้า/ออก → กด “+ ติดกล่องใหม่ (S)” ใส่เหยื่อ → กด “บันทึกงานกล่อง”</li><li>(ถ้าอยากลอง) บันทึกการเข้ารอบถัดไปของกล่องจุดเดิม แล้วดูสถานะจุด: ติดตามผล / รอถอด (ปลวกตาย) / ถอดแล้ว (จบปัญหา) — <b>อย่าเลือก “ถอดแล้ว” กับข้อมูลที่ยังต้องใช้ต่อ เพราะเปลี่ยนกลับไม่ได้</b></li></ol></section>
+    <section class="col"><h4>ผลที่ควรได้</h4><ul><li>ติดกล่องใหม่ไม่นับเป็นรอบตรวจ · การเข้าครั้งถัดไปเป็น F1 · เลขรอบ F ระบบนับให้เอง (ป้าย “อัตโนมัติ”)</li><li>ถ้าสัญญายังไม่ระบุจำนวนสถานี จะขึ้นข้อความให้ไปตั้งจำนวนที่หน้า “ลงข้อมูลทำบริการประจำเดือน” ก่อน</li></ul></section>
+  </div>
+  <div class="result">
+    <fieldset class="verdict"><legend>ผล</legend>
+      <label class="r r-pass"><input type="radio" name="v-S10" value="pass"><span>ผ่าน</span></label>
+      <label class="r r-fail"><input type="radio" name="v-S10" value="fail"><span>ไม่ผ่าน</span></label>
+      
+    </fieldset>
+    <label class="note"><span>หมายเหตุ</span><textarea name="n-S10" rows="2" placeholder="จดสิ่งที่เห็น (ไม่บังคับ)"></textarea></label>
+  </div>
+</article>
+
+<article class="item" id="i-S11" data-role="sup">
+  <header class="item-head"><span class="no">S11</span><h3>ตัดสินเรื่องตกบริการ</h3><span class="tags"><span class="tag tag-live">กระทบข้อมูลจริง</span></span></header>
+  <div class="cols">
+    <section class="col"><h4>ให้ลองทำอะไร</h4><ol><li>ที่ “สถานะทะเบียนบริการ” กล่อง “เรื่องตกบริการรอตัดสิน” (ต้องมีรายการตกบริการ) → กด “ไม่ชดเชย” ที่แถวหนึ่ง</li><li>กรอก “เหตุผล (บังคับ)” (<i>ตัวอย่างสมมติ:</i> ลูกค้ายินยอม ปิดอาคารทั้งเดือน) → กด “ไม่ชดเชย” → กด “ยืนยัน ไม่ชดเชย”</li><li>เปิดหัวข้อ “เรื่องที่ปิดแล้ว” แล้วกด “เปิดเรื่องกลับ” → ยืนยัน</li></ol></section>
+    <section class="col"><h4>ผลที่ควรได้</h4><ul><li>ไม่ใส่เหตุผลแล้วบันทึกไม่ได้ · ระบบถามยืนยันอีกรอบก่อนปิดเรื่อง</li><li>“เปิดเรื่องกลับ” ทำให้เรื่องกลับเป็นรอตัดสินอีกครั้ง</li><li>ถ้าตอนทดสอบไม่มีรายการตกบริการให้ลอง ให้เลือก “ข้าม” และจดหมายเหตุ</li></ul></section>
+  </div>
+  <div class="result">
+    <fieldset class="verdict"><legend>ผล</legend>
+      <label class="r r-pass"><input type="radio" name="v-S11" value="pass"><span>ผ่าน</span></label>
+      <label class="r r-fail"><input type="radio" name="v-S11" value="fail"><span>ไม่ผ่าน</span></label>
+      <label class="r r-skip"><input type="radio" name="v-S11" value="skip"><span>ข้าม (ไม่มีให้ลอง / หน้ายังไม่พร้อม)</span></label>
+    </fieldset>
+    <label class="note"><span>หมายเหตุ</span><textarea name="n-S11" rows="2" placeholder="จดสิ่งที่เห็น (ไม่บังคับ)"></textarea></label>
+  </div>
+</article>
+
+<article class="item" id="i-S12" data-role="sup">
+  <header class="item-head"><span class="no">S12</span><h3>สรุปงานบริการรายเดือน</h3><span class="tags"></span></header>
+  <div class="cols">
+    <section class="col"><h4>ให้ลองทำอะไร</h4><ol><li>เมนู “สรุปงานบริการรายเดือน” → เลือก เดือน และ สาขา → กด “ดูข้อมูล”</li><li>สลับแท็บ “การใช้อุปกรณ์” / “สรุปรายทีม” และดูหัวข้อ “สรุปตามประเภทงาน” · “ตรวจภายใน”</li></ol></section>
+    <section class="col"><h4>ผลที่ควรได้</h4><ul><li>ตัวเลขตรงกับที่เพิ่งกรอก (เช่น จุดพบปลวก เหยื่อที่ใช้ ไม้ล่อที่เปลี่ยน) · ไม่มีข้อมูลก็ขึ้นว่าง ไม่ขึ้นตัวเลขสมมติ</li></ul></section>
+  </div>
+  <div class="result">
+    <fieldset class="verdict"><legend>ผล</legend>
+      <label class="r r-pass"><input type="radio" name="v-S12" value="pass"><span>ผ่าน</span></label>
+      <label class="r r-fail"><input type="radio" name="v-S12" value="fail"><span>ไม่ผ่าน</span></label>
+      
+    </fieldset>
+    <label class="note"><span>หมายเหตุ</span><textarea name="n-S12" rows="2" placeholder="จดสิ่งที่เห็น (ไม่บังคับ)"></textarea></label>
+  </div>
+</article>
+
+<article class="item" id="i-S13" data-role="sup">
+  <header class="item-head"><span class="no">S13</span><h3>ปิดเดือน: ขั้นตอนและขอบเขตสิทธิ์</h3><span class="tags"><span class="tag tag-live">กระทบข้อมูลจริง</span></span></header>
+  <div class="cols">
+    <section class="col"><h4>ให้ลองทำอะไร</h4><ol><li>เมนู “ส่งข้อมูล และสรุปงานประจำเดือน” → เลือกเดือนที่ยังไม่ปิด → ส่วน “ส่วนกลาง” ไล่ 3 ขั้น: “ตรวจความครบ” → “ทบทวนตกบริการ” → “ยืนยันปิด”</li><li>ดูส่วน “ต่างจังหวัด” ของเดือนเดียวกัน</li><li><b>ระวัง:</b> ที่ขั้นสุดท้ายมีปุ่ม “ปิดส่วนกลาง … และส่ง Dashboard” — กดแล้วส่งตัวเลขขึ้น Dashboard จริงทันที <b>ให้ตัดสินใจก่อนกด</b> (ดูข้อ “ต้องให้เจ้าของตัดสิน” ในรายงาน) · ขั้น “ยืนยันปิด” ต้องพิมพ์คำยืนยันตามที่จอบอก</li></ol></section>
+    <section class="col"><h4>ผลที่ควรได้</h4><ul><li>เห็นครบ 3 ขั้นของส่วนกลาง · มีคำเตือนว่าปิดส่วนกลางมีผลกับทุกสาขาส่วนกลาง (24 สาขา)</li><li>ส่วน “ต่างจังหวัด” ขึ้น “เฉพาะ OM/PM ปิดส่วนนี้ได้” (หัวหน้างานปิดไม่ได้)</li><li>ถ้ามีสาขาที่บันทึกไม่ครบ ขึ้น “ยังมีสาขาที่บันทึกบริการไม่ครบ” และหัวหน้างานปิดข้ามไม่ได้</li></ul></section>
+  </div>
+  <div class="result">
+    <fieldset class="verdict"><legend>ผล</legend>
+      <label class="r r-pass"><input type="radio" name="v-S13" value="pass"><span>ผ่าน</span></label>
+      <label class="r r-fail"><input type="radio" name="v-S13" value="fail"><span>ไม่ผ่าน</span></label>
+      
+    </fieldset>
+    <label class="note"><span>หมายเหตุ</span><textarea name="n-S13" rows="2" placeholder="จดสิ่งที่เห็น (ไม่บังคับ)"></textarea></label>
+  </div>
+</article>
+
+<article class="item" id="i-S14" data-role="sup">
+  <header class="item-head"><span class="no">S14</span><h3>ต้องเข้าไม่ได้: เปิดงาน และงานดูแลระบบ</h3><span class="tags"><span class="tag tag-perm">สิทธิ์ · ต้องเข้าไม่ได้</span></span></header>
+  <div class="cols">
+    <section class="col"><h4>ให้ลองทำอะไร</h4><ol><li>ดูเมนูซ้ายว่ามี “เปิดงานเข้าทะเบียนบริการ” หรือเมนูกลุ่ม “ดูแลระบบ” อื่นนอกจาก “ส่งข้อมูล และสรุปงานประจำเดือน” หรือไม่</li><li>พิมพ์ท้ายลิงก์ในช่องที่อยู่เว็บทีละหน้า: <code>/customers/new</code> · <code>/admin/users</code> · <code>/admin/settings</code> · <code>/admin/port</code> · <code>/admin/sync</code> · <code>/admin/history</code> · <code>/admin</code> แล้วกด Enter</li></ol></section>
+    <section class="col"><h4>ผลที่ควรได้</h4><ul><li><b>ไม่มี</b>เมนูเหล่านั้นให้เห็น</li><li>ทุกลิงก์ที่พิมพ์ <b>เข้าไม่ได้</b> — ระบบพากลับ “สถานะทะเบียนบริการ” ไม่แสดงเนื้อหาของหน้านั้นเลย</li><li>(ลิงก์ <code>/admin/closure</code> ต้องเข้าได้ ตามข้อก่อนหน้า)</li></ul></section>
+  </div>
+  <div class="result">
+    <fieldset class="verdict"><legend>ผล</legend>
+      <label class="r r-pass"><input type="radio" name="v-S14" value="pass"><span>ผ่าน</span></label>
+      <label class="r r-fail"><input type="radio" name="v-S14" value="fail"><span>ไม่ผ่าน</span></label>
+      
+    </fieldset>
+    <label class="note"><span>หมายเหตุ</span><textarea name="n-S14" rows="2" placeholder="จดสิ่งที่เห็น (ไม่บังคับ)"></textarea></label>
+  </div>
+</article>
+
+<article class="item" id="i-S15" data-role="sup">
+  <header class="item-head"><span class="no">S15</span><h3>ใช้งานบนมือถือ (กว้าง 375 พิกเซล)</h3><span class="tags"><span class="tag">มือถือ</span></span></header>
+  <div class="cols">
+    <section class="col"><h4>ให้ลองทำอะไร</h4><ol><li>เปิดระบบบนมือถือจริง (หรือย่อหน้าต่างให้แคบ) เข้าด้วยบัญชีหัวหน้างาน</li><li>เปิดเมนู ☰ → “ลงข้อมูลทำบริการประจำเดือน” → เลือกลูกค้า → กรอกผลแล้วกดบันทึก</li><li>ลองเลื่อนหน้าให้ยาว ดูแถบปุ่มบันทึกด้านล่าง</li></ol></section>
+    <section class="col"><h4>ผลที่ควรได้</h4><ul><li>หน้าไม่เลื่อนซ้าย–ขวาทั้งหน้า · ตัวหนังสือไม่ล้นจอ · ช่องกรอกกับปุ่มกดสะดวก (ปุ่มไม่เล็กเกินไป)</li><li>แถบปุ่มบันทึกค้างอยู่ด้านล่างและไม่บังช่องที่กำลังกรอก</li></ul></section>
+  </div>
+  <div class="result">
+    <fieldset class="verdict"><legend>ผล</legend>
+      <label class="r r-pass"><input type="radio" name="v-S15" value="pass"><span>ผ่าน</span></label>
+      <label class="r r-fail"><input type="radio" name="v-S15" value="fail"><span>ไม่ผ่าน</span></label>
+      
+    </fieldset>
+    <label class="note"><span>หมายเหตุ</span><textarea name="n-S15" rows="2" placeholder="จดสิ่งที่เห็น (ไม่บังคับ)"></textarea></label>
+  </div>
+</article>
+</section>
+
+<section class="role" id="sec-pm" data-role="pm">
+  <div class="role-head">
+    <h2>ส่วนที่ 3 · Project Manager / OM</h2>
+    <p class="role-intro">ส่วนกลางที่ดูแลระบบ (PM กับ OM สิทธิ์เท่ากัน) · เห็นครบทุกเมนู 14 รายการ รวมกลุ่ม “ดูแลระบบ” · หน้าแรกคือ “สถานะทะเบียนบริการ” · PM/OM ยังเปิดงาน กรอกผลบริการ และตัดสินเรื่องตกบริการได้เหมือนสองตำแหน่งก่อนหน้า (ไม่ซ้ำในหัวข้อนี้)</p>
+    <div class="role-meta">
+      <label class="field"><span>บัญชีทดสอบที่ใช้ (ชื่อบัญชี/รหัสพนักงาน — ห้ามเขียนรหัสผ่าน)</span><input type="text" name="acct-pm" autocomplete="off"></label>
+      <p class="tally" data-tally="pm" aria-live="polite"></p>
+    </div>
+  </div>
+  
+<article class="item" id="i-P1" data-role="pm">
+  <header class="item-head"><span class="no">P1</span><h3>เข้าครั้งแรก · ตั้งรหัสใหม่ · บทสอนของ PM/OM</h3><span class="tags"><span class="tag">บทสอนใช้งาน</span><span class="tag">บัญชีใหม่</span></span></header>
+  <div class="cols">
+    <section class="col"><h4>ให้ลองทำอะไร</h4><ol><li>ใช้บัญชี PM หรือ OM ที่ <b>ยังไม่เคยเข้าระบบเลย</b> เข้าสู่ระบบ → ตั้งรหัสใหม่ → “บันทึกรหัสผ่านใหม่”</li><li>ดูบทเรียนที่เริ่มเอง กด “ถัดไป” จนจบ หรือ “ข้ามทั้งหมด (Esc)”</li></ol></section>
+    <section class="col"><h4>ผลที่ควรได้</h4><ul><li>บทเรียนส่วนกลางเริ่มเอง แล้วต่อด้วยบทของ PM/OM (ชี้ที่: เห็นครบทุกเมนู · จัดการผู้ใช้ · สร้างบัญชีใหม่ · ตั้งค่า · ลงข้อมูล Port · Dashboard Sync · ประวัติการแก้ไข)</li><li>ในบทเรียนปุ่มบันทึกไม่บันทึกจริง (ขึ้น “โหมดฝึก · ไม่บันทึกข้อมูลจริง”) · เปิดดูซ้ำได้จากปุ่ม “สอนใช้งาน”</li></ul></section>
+  </div>
+  <div class="result">
+    <fieldset class="verdict"><legend>ผล</legend>
+      <label class="r r-pass"><input type="radio" name="v-P1" value="pass"><span>ผ่าน</span></label>
+      <label class="r r-fail"><input type="radio" name="v-P1" value="fail"><span>ไม่ผ่าน</span></label>
+      
+    </fieldset>
+    <label class="note"><span>หมายเหตุ</span><textarea name="n-P1" rows="2" placeholder="จดสิ่งที่เห็น (ไม่บังคับ)"></textarea></label>
+  </div>
+</article>
+
+<article class="item" id="i-P2" data-role="pm">
+  <header class="item-head"><span class="no">P2</span><h3>เมนูครบและหน้าแรก</h3><span class="tags"><span class="tag tag-wait">รอหน้าจริง</span></span></header>
+  <div class="cols">
+    <section class="col"><h4>ให้ลองทำอะไร</h4><ol><li>ดูเมนูซ้ายทั้ง 3 กลุ่ม: “งานประจำวัน” · “ทะเบียนและสรุป” · “ดูแลระบบ” · กดโลโก้ AGA</li></ol></section>
+    <section class="col"><h4>ผลที่ควรได้</h4><ul><li>เห็นครบ 14 เมนู — งานประจำวัน 4 · ทะเบียนและสรุป 4 · ดูแลระบบ 6 (ส่งข้อมูล และสรุปงานประจำเดือน · ลงข้อมูล Port ต่างจังหวัด · Dashboard Sync · ประวัติการแก้ไข · จัดการผู้ใช้ · ตั้งค่า)</li><li>หน้าแรกคือ “สถานะทะเบียนบริการ” · “ทะเบียนลูกค้า/สัญญา” และ “ลูกค้ารอเก็บสถานี” <b>ยังเป็นหน้าโครง (รอหน้าจริง)</b></li></ul></section>
+  </div>
+  <div class="result">
+    <fieldset class="verdict"><legend>ผล</legend>
+      <label class="r r-pass"><input type="radio" name="v-P2" value="pass"><span>ผ่าน</span></label>
+      <label class="r r-fail"><input type="radio" name="v-P2" value="fail"><span>ไม่ผ่าน</span></label>
+      <label class="r r-skip"><input type="radio" name="v-P2" value="skip"><span>ข้าม (ไม่มีให้ลอง / หน้ายังไม่พร้อม)</span></label>
+    </fieldset>
+    <label class="note"><span>หมายเหตุ</span><textarea name="n-P2" rows="2" placeholder="จดสิ่งที่เห็น (ไม่บังคับ)"></textarea></label>
+  </div>
+</article>
+
+<article class="item" id="i-P3" data-role="pm">
+  <header class="item-head"><span class="no">P3</span><h3>จัดการผู้ใช้ · สร้างบัญชีใหม่</h3><span class="tags"><span class="tag tag-live">กระทบข้อมูลจริง</span></span></header>
+  <div class="cols">
+    <section class="col"><h4>ให้ลองทำอะไร</h4><ol><li>เมนู “จัดการผู้ใช้” → กด “สร้างบัญชี” → ใส่ รหัสพนักงาน (<i>สมมติ</i> เช่น รูปแบบ AG ตามด้วยเลข) · ชื่อ - นามสกุล (<i>สมมติ</i>) · เลือกตำแหน่ง → กด “สร้างบัญชี”</li><li>ดูหน้าต่าง “สร้างบัญชีแล้ว” → กด “คัดลอก” → “เสร็จสิ้น” · <b>ห้ามจดรหัสชั่วคราวลงใบนี้</b></li><li>ลองสร้างบัญชีที่ใช้รหัสพนักงานซ้ำ · ลองดูตัวเลือกตำแหน่ง</li></ol></section>
+    <section class="col"><h4>ผลที่ควรได้</h4><ul><li>รหัสชั่วคราวแสดงครั้งเดียว ปิดหน้าต่างแล้วดูอีกไม่ได้</li><li>บัญชีใหม่ขึ้นในตาราง มีป้าย “รอเปลี่ยนรหัส” จนกว่าเจ้าของบัญชีจะตั้งรหัสใหม่</li><li>รหัสพนักงานซ้ำสร้างไม่ได้ · ตัวเลือกตำแหน่งมี แอดมิน (Admin) · หัวหน้างาน (Supervisor) · Project Manager (PM) · Operation Manager (OM) — ไม่มี “เจ้าของ”</li></ul></section>
+  </div>
+  <div class="result">
+    <fieldset class="verdict"><legend>ผล</legend>
+      <label class="r r-pass"><input type="radio" name="v-P3" value="pass"><span>ผ่าน</span></label>
+      <label class="r r-fail"><input type="radio" name="v-P3" value="fail"><span>ไม่ผ่าน</span></label>
+      
+    </fieldset>
+    <label class="note"><span>หมายเหตุ</span><textarea name="n-P3" rows="2" placeholder="จดสิ่งที่เห็น (ไม่บังคับ)"></textarea></label>
+  </div>
+</article>
+
+<article class="item" id="i-P4" data-role="pm">
+  <header class="item-head"><span class="no">P4</span><h3>รีเซ็ตรหัส · เข้าด้วยรหัสใหม่ · บทสอนไม่เด้งซ้ำ</h3><span class="tags"><span class="tag">บทสอนใช้งาน</span><span class="tag tag-live">กระทบข้อมูลจริง</span></span></header>
+  <div class="cols">
+    <section class="col"><h4>ให้ลองทำอะไร</h4><ol><li>เลือกบัญชีทดสอบที่ <b>เคยเข้าและเรียนจบ/กดข้ามบทสอนไปแล้ว</b> (เช่น บัญชี Admin จากส่วนก่อนหน้า) → กด “รีเซ็ตรหัส” → ยืนยัน → “คัดลอก”</li><li>ลองเข้าสู่ระบบด้วยรหัสเดิม แล้วลองด้วยรหัสชั่วคราวใหม่</li><li>ตั้งรหัสใหม่ที่หน้า “ตั้งรหัสผ่านใหม่ก่อนเริ่มใช้งาน” แล้วดูว่าบทสอนขึ้นมาเองหรือไม่</li></ol></section>
+    <section class="col"><h4>ผลที่ควรได้</h4><ul><li>รหัสเดิมใช้ไม่ได้ทันที (ขึ้น “ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง”) · รหัสชั่วคราวใหม่เข้าได้ แล้วถูกบังคับให้ตั้งรหัสใหม่</li><li>ตั้งรหัสใหม่เสร็จแล้ว <b>บทสอนไม่เด้งขึ้นมาซ้ำ</b> (เพราะเรียนจบ/ข้ามไปแล้ว) · ยังเปิดดูเองได้จากปุ่ม “สอนใช้งาน”</li><li>ถ้ารีเซ็ตบัญชีที่ปิดอยู่ จอเตือนว่า “บัญชีนี้ปิดอยู่ — รีเซ็ตแล้วยังล็อกอินไม่ได้จนกว่าจะเปิดบัญชี”</li></ul></section>
+  </div>
+  <div class="result">
+    <fieldset class="verdict"><legend>ผล</legend>
+      <label class="r r-pass"><input type="radio" name="v-P4" value="pass"><span>ผ่าน</span></label>
+      <label class="r r-fail"><input type="radio" name="v-P4" value="fail"><span>ไม่ผ่าน</span></label>
+      
+    </fieldset>
+    <label class="note"><span>หมายเหตุ</span><textarea name="n-P4" rows="2" placeholder="จดสิ่งที่เห็น (ไม่บังคับ)"></textarea></label>
+  </div>
+</article>
+
+<article class="item" id="i-P5" data-role="pm">
+  <header class="item-head"><span class="no">P5</span><h3>แก้ตำแหน่ง · ปิด/เปิดบัญชี</h3><span class="tags"><span class="tag tag-live">กระทบข้อมูลจริง</span></span></header>
+  <div class="cols">
+    <section class="col"><h4>ให้ลองทำอะไร</h4><ol><li>กด “แก้ไข” ที่บัญชีทดสอบ → เปลี่ยนตำแหน่ง → “บันทึก” → ที่หน้าต่าง “ยืนยันเปลี่ยนตำแหน่ง” พิมพ์คำยืนยันตามที่จอบอก แล้วกด “ยืนยันเปลี่ยน” (ลองกด “กลับไปแก้” ด้วย) · เปลี่ยนกลับให้เหมือนเดิมหลังทดสอบ</li><li>กด “ปิดบัญชี” ที่บัญชีทดสอบ → ลองเข้าสู่ระบบด้วยบัญชีนั้น → กลับมากด “เปิดบัญชี”</li></ol></section>
+    <section class="col"><h4>ผลที่ควรได้</h4><ul><li>แก้รหัสพนักงานไม่ได้ · เปลี่ยนตำแหน่งต้องพิมพ์คำยืนยันก่อน</li><li>บัญชีที่ปิดเข้าไม่ได้ ขึ้น “บัญชีนี้ถูกปิดการใช้งาน ติดต่อ Host (QCS ส่วนกลาง Bait)” · เปิดบัญชีแล้วเข้าได้ (ข้อมูลที่เคยกรอกไม่หาย)</li></ul></section>
+  </div>
+  <div class="result">
+    <fieldset class="verdict"><legend>ผล</legend>
+      <label class="r r-pass"><input type="radio" name="v-P5" value="pass"><span>ผ่าน</span></label>
+      <label class="r r-fail"><input type="radio" name="v-P5" value="fail"><span>ไม่ผ่าน</span></label>
+      
+    </fieldset>
+    <label class="note"><span>หมายเหตุ</span><textarea name="n-P5" rows="2" placeholder="จดสิ่งที่เห็น (ไม่บังคับ)"></textarea></label>
+  </div>
+</article>
+
+<article class="item" id="i-P6" data-role="pm">
+  <header class="item-head"><span class="no">P6</span><h3>ตั้งค่า: เกณฑ์ Tier</h3><span class="tags"><span class="tag tag-live">กระทบข้อมูลจริง</span></span></header>
+  <div class="cols">
+    <section class="col"><h4>ให้ลองทำอะไร</h4><ol><li>เมนู “ตั้งค่า” → แท็บ “เกณฑ์ Tier” → แก้จุดเริ่มของ M / L / XL เล็กน้อย แล้วดู “ตัวอย่างตรวจสอบ” เปลี่ยนตาม</li><li>กด “คืนค่าเริ่มต้น” หรือ “ยกเลิกการแก้” ให้กลับเป็นเดิม</li><li>(ถ้าจะบันทึกจริง) กด “บันทึกเกณฑ์…” ดูหน้าต่างที่ถามเดือนเริ่มใช้ เหตุผล และคำยืนยัน — <b>บันทึกจริงมีผลกับการคำนวณของเดือนที่เลือก ให้กดเฉพาะเมื่อพร้อม</b></li></ol></section>
+    <section class="col"><h4>ผลที่ควรได้</h4><ul><li>แก้ได้เฉพาะจุดเริ่มของ M / L / XL (S เริ่มที่ 0 คงที่) ไม่มีช่องว่างหรือช่วงทับกัน</li><li>มีป้าย “มีการแก้ที่ยังไม่บันทึก” / “ตรงกับที่บันทึกไว้” · “คืนค่าเริ่มต้น” / “ยกเลิกการแก้” คืนค่าได้โดยยังไม่บันทึกอะไร</li><li>หน้าต่างบันทึกบังคับ เหตุผล (บังคับ) + คำยืนยัน และเลือก “เริ่มใช้ตั้งแต่เดือน” ได้เฉพาะเดือนที่ยังเปิด</li></ul></section>
+  </div>
+  <div class="result">
+    <fieldset class="verdict"><legend>ผล</legend>
+      <label class="r r-pass"><input type="radio" name="v-P6" value="pass"><span>ผ่าน</span></label>
+      <label class="r r-fail"><input type="radio" name="v-P6" value="fail"><span>ไม่ผ่าน</span></label>
+      
+    </fieldset>
+    <label class="note"><span>หมายเหตุ</span><textarea name="n-P6" rows="2" placeholder="จดสิ่งที่เห็น (ไม่บังคับ)"></textarea></label>
+  </div>
+</article>
+
+<article class="item" id="i-P7" data-role="pm">
+  <header class="item-head"><span class="no">P7</span><h3>ตั้งค่า: ประเภทลูกค้า และทีม</h3><span class="tags"><span class="tag tag-live">กระทบข้อมูลจริง</span></span></header>
+  <div class="cols">
+    <section class="col"><h4>ให้ลองทำอะไร</h4><ol><li>แท็บ “ประเภทลูกค้า” → กด “เพิ่มประเภท” ใส่ชื่อ (สมมติ เช่น “ประเภททดสอบ UAT”) เลือกหมวด → “บันทึก” → แล้ว “ลบ” ประเภทนั้น</li><li>แท็บ “ทีม” → กด “เพิ่มทีม” (ข้อมูลสมมติ) → “บันทึก” · ลองสวิตช์ “ใช้งาน” · แล้วลบทีมทดสอบ</li></ol></section>
+    <section class="col"><h4>ผลที่ควรได้</h4><ul><li>เพิ่มแล้วขึ้นในรายการ · ลบได้เมื่อยังไม่มีใครใช้ · ชื่อประเภทซ้ำไม่ได้</li><li>ทีมที่มีไอคอนกุญแจ (ทีมระบบ) ลบหรือปิดใช้ไม่ได้ · ทีมที่พักใช้ไม่ขึ้นให้เลือกในงานใหม่</li></ul></section>
+  </div>
+  <div class="result">
+    <fieldset class="verdict"><legend>ผล</legend>
+      <label class="r r-pass"><input type="radio" name="v-P7" value="pass"><span>ผ่าน</span></label>
+      <label class="r r-fail"><input type="radio" name="v-P7" value="fail"><span>ไม่ผ่าน</span></label>
+      
+    </fieldset>
+    <label class="note"><span>หมายเหตุ</span><textarea name="n-P7" rows="2" placeholder="จดสิ่งที่เห็น (ไม่บังคับ)"></textarea></label>
+  </div>
+</article>
+
+<article class="item" id="i-P8" data-role="pm">
+  <header class="item-head"><span class="no">P8</span><h3>เปิดงานในฐาน PM/OM: ประวัติสัญญา · Renew ที่ยังไม่ผูก</h3><span class="tags"></span></header>
+  <div class="cols">
+    <section class="col"><h4>ให้ลองทำอะไร</h4><ol><li>เมนู “เปิดงานเข้าทะเบียนบริการ” → ดูสัญญาของสาขาอื่น ๆ → กดปุ่ม “⟲ ประวัติ” ที่แถวสัญญาทดสอบที่เคยแก้</li><li>หาแถว Renew ที่ขึ้น “⚠ ยังไม่ผูก · เชื่อมสัญญาเก่า” (ถ้ามี) → กดเปิดหน้าต่าง “เชื่อมสัญญาเก่า (Renew)”</li></ol></section>
+    <section class="col"><h4>ผลที่ควรได้</h4><ul><li>เห็นสัญญาทุกสาขา (ไม่จำกัดขอบเขตเหมือน Admin ของบางสาขา) · “⟲ ประวัติ” แสดงรายการ เพิ่ม/แก้ไข/ลบ เรียงจากล่าสุด (ปุ่มนี้เป็นของ PM/OM เท่านั้น)</li><li>หน้าต่างเชื่อมสัญญาเก่า ค้นหา/เลือกสัญญาเก่าได้ หรือกด “ไม่มีสัญญาเก่าในระบบ” แล้ว “ยืนยัน ปิดรายการ” (ถ้าไม่มีแถว Renew แบบนี้ให้เลือก “ข้าม”)</li></ul></section>
+  </div>
+  <div class="result">
+    <fieldset class="verdict"><legend>ผล</legend>
+      <label class="r r-pass"><input type="radio" name="v-P8" value="pass"><span>ผ่าน</span></label>
+      <label class="r r-fail"><input type="radio" name="v-P8" value="fail"><span>ไม่ผ่าน</span></label>
+      <label class="r r-skip"><input type="radio" name="v-P8" value="skip"><span>ข้าม (ไม่มีให้ลอง / หน้ายังไม่พร้อม)</span></label>
+    </fieldset>
+    <label class="note"><span>หมายเหตุ</span><textarea name="n-P8" rows="2" placeholder="จดสิ่งที่เห็น (ไม่บังคับ)"></textarea></label>
+  </div>
+</article>
+
+<article class="item" id="i-P9" data-role="pm">
+  <header class="item-head"><span class="no">P9</span><h3>ลงข้อมูล Port ต่างจังหวัด</h3><span class="tags"><span class="tag tag-live">กระทบข้อมูลจริง</span></span></header>
+  <div class="cols">
+    <section class="col"><h4>ให้ลองทำอะไร</h4><ol><li>เมนู “ลงข้อมูล Port ต่างจังหวัด” → เลือกเดือน → กดแถวสาขาต่างจังหวัดหนึ่งสาขา → ดูแผงแก้ไขที่ขึ้นมา</li><li>ลองกรอก/วางตัวเลขตัวอย่าง แล้วดูปุ่มด้านล่าง: “บันทึกเป็น “อัปเดตแล้ว”” / “ยืนยันใช้ค่าเดิม (ไม่มีการเปลี่ยนแปลง)” / “คืนค่าเดิม”</li></ol></section>
+    <section class="col"><h4>ผลที่ควรได้</h4><ul><li>ตัวเลขสรุปด้านบนบอก “อัปเดตแล้ว” / “ยังไม่อัปเดต” ตามจำนวนสาขา · กรอกไม่ถูกต้องบันทึกไม่ได้ และบอกเหตุผล</li><li>บันทึกเก็บเป็นข้อมูลของสาขานั้นเดือนนั้น และส่ง Dashboard ในรอบถัดไป (ไม่ใช่ทันที) — ถ้าไม่พร้อมบันทึกจริง ให้ดูหน้าจอ/แผงเท่านั้นแล้วเลือก “ผ่าน” ตามที่เห็น</li></ul></section>
+  </div>
+  <div class="result">
+    <fieldset class="verdict"><legend>ผล</legend>
+      <label class="r r-pass"><input type="radio" name="v-P9" value="pass"><span>ผ่าน</span></label>
+      <label class="r r-fail"><input type="radio" name="v-P9" value="fail"><span>ไม่ผ่าน</span></label>
+      
+    </fieldset>
+    <label class="note"><span>หมายเหตุ</span><textarea name="n-P9" rows="2" placeholder="จดสิ่งที่เห็น (ไม่บังคับ)"></textarea></label>
+  </div>
+</article>
+
+<article class="item" id="i-P10" data-role="pm">
+  <header class="item-head"><span class="no">P10</span><h3>ปิดเดือน (ส่วนกลางและต่างจังหวัด) และคำนวณ snapshot ใหม่</h3><span class="tags"><span class="tag tag-live">กระทบข้อมูลจริง</span></span></header>
+  <div class="cols">
+    <section class="col"><h4>ให้ลองทำอะไร</h4><ol><li>เมนู “ส่งข้อมูล และสรุปงานประจำเดือน” → ส่วน “ส่วนกลาง” ไล่ 3 ขั้น “ตรวจความครบ” → “ทบทวนตกบริการ” → “ยืนยันปิด” · แล้วดูส่วน “ต่างจังหวัด”</li><li><b>ระวัง:</b> ปุ่ม “ปิดส่วนกลาง … และส่ง Dashboard” กับ “คำนวณ snapshot ใหม่ + ส่ง Dashboard” ส่งตัวเลขขึ้น Dashboard จริง — กดเมื่อเจ้าของตัดสินแล้วว่าจะทดสอบเดือนไหนเท่านั้น (หรือหยุดที่ขั้นยืนยัน ไม่พิมพ์คำยืนยัน)</li><li>เดือนที่ปิดแล้ว ลองให้หัวหน้างานแก้ผลย้อนหลัง</li></ol></section>
+    <section class="col"><h4>ผลที่ควรได้</h4><ul><li>ปิดได้ทั้งส่วนกลางและต่างจังหวัด (หัวหน้างานปิดต่างจังหวัดไม่ได้) · มีปุ่มปิดข้ามพร้อม “เหตุผลที่ปิดข้าม” เมื่อยังมีสาขาไม่ครบ</li><li>ปิดแล้วขึ้นผลการส่ง Dashboard · เดือนที่ปิดแล้วแก้ย้อนหลังได้ตามปกติ (มีข้อความ “เดือนนี้แก้ข้อมูลย้อนหลังได้ตามปกติ”) · ตัวเลขบน Dashboard เปลี่ยนเมื่อกด “คำนวณ snapshot ใหม่ + ส่ง Dashboard” เท่านั้น</li></ul></section>
+  </div>
+  <div class="result">
+    <fieldset class="verdict"><legend>ผล</legend>
+      <label class="r r-pass"><input type="radio" name="v-P10" value="pass"><span>ผ่าน</span></label>
+      <label class="r r-fail"><input type="radio" name="v-P10" value="fail"><span>ไม่ผ่าน</span></label>
+      
+    </fieldset>
+    <label class="note"><span>หมายเหตุ</span><textarea name="n-P10" rows="2" placeholder="จดสิ่งที่เห็น (ไม่บังคับ)"></textarea></label>
+  </div>
+</article>
+
+<article class="item" id="i-P11" data-role="pm">
+  <header class="item-head"><span class="no">P11</span><h3>Dashboard Sync · ประวัติการแก้ไข</h3><span class="tags"><span class="tag tag-live">กระทบข้อมูลจริง</span></span></header>
+  <div class="cols">
+    <section class="col"><h4>ให้ลองทำอะไร</h4><ol><li>เมนู “Dashboard Sync” → ดู “สถานะการส่งล่าสุด” และ “ประวัติการส่ง” (ลองกรองผลลัพธ์/ช่องทาง) · <b>กดปุ่ม “ส่งตอนนี้” เฉพาะเมื่อพร้อม</b> เพราะส่งขึ้น Dashboard จริง</li><li>เมนู “ประวัติการแก้ไข” → ลองตัวกรอง (ใคร · เขต · สาขา · เดือนของข้อมูล · เลขที่สัญญา) → กด “ส่งออก (CSV สำหรับ Excel)”</li></ol></section>
+    <section class="col"><h4>ผลที่ควรได้</h4><ul><li>Sync: เห็นรอบส่งล่าสุด รอบ Auto Sync ถัดไป (06:00 น.) และ “Export สำรอง” ขึ้นว่า “ยังไม่เปิดใช้” (ปกติของรุ่นนี้) · ส่งแล้วขึ้น “ส่ง Dashboard สำเร็จ” หรือ “ข้อมูลไม่เปลี่ยน”</li><li>ประวัติ: เห็นการสร้างบัญชี การแก้สัญญา และการแก้ผลบริการของที่ทดสอบ (ใคร แก้ อะไร เมื่อไหร่) · ส่งออกได้ไฟล์ที่เปิดด้วย Excel</li></ul></section>
+  </div>
+  <div class="result">
+    <fieldset class="verdict"><legend>ผล</legend>
+      <label class="r r-pass"><input type="radio" name="v-P11" value="pass"><span>ผ่าน</span></label>
+      <label class="r r-fail"><input type="radio" name="v-P11" value="fail"><span>ไม่ผ่าน</span></label>
+      
+    </fieldset>
+    <label class="note"><span>หมายเหตุ</span><textarea name="n-P11" rows="2" placeholder="จดสิ่งที่เห็น (ไม่บังคับ)"></textarea></label>
+  </div>
+</article>
+
+<article class="item" id="i-P12" data-role="pm">
+  <header class="item-head"><span class="no">P12</span><h3>Dashboard งานขาย (New / Renew)</h3><span class="tags"><span class="tag tag-wait">รอหน้าจริง</span></span></header>
+  <div class="cols">
+    <section class="col"><h4>ให้ลองทำอะไร</h4><ol><li>ถ้าเมนู/หน้า Dashboard งานขายเปิดแล้ว ให้ลองเปิดและกดตัวกรอง New / Renew / ทั้งหมด</li></ol></section>
+    <section class="col"><h4>ผลที่ควรได้</h4><ul><li><b>รอหน้าจริง</b> — ตอนนี้ยังไม่มีหน้านี้ในระบบ · ถ้ายังไม่พบเมนู ให้เลือก “ข้าม” และจดหมายเหตุ “ยังไม่พร้อม” (หน้านี้ตามแผน Admin และ PM/OM เห็น)</li></ul></section>
+  </div>
+  <div class="result">
+    <fieldset class="verdict"><legend>ผล</legend>
+      <label class="r r-pass"><input type="radio" name="v-P12" value="pass"><span>ผ่าน</span></label>
+      <label class="r r-fail"><input type="radio" name="v-P12" value="fail"><span>ไม่ผ่าน</span></label>
+      <label class="r r-skip"><input type="radio" name="v-P12" value="skip"><span>ข้าม (ไม่มีให้ลอง / หน้ายังไม่พร้อม)</span></label>
+    </fieldset>
+    <label class="note"><span>หมายเหตุ</span><textarea name="n-P12" rows="2" placeholder="จดสิ่งที่เห็น (ไม่บังคับ)"></textarea></label>
+  </div>
+</article>
+
+<article class="item" id="i-P13" data-role="pm">
+  <header class="item-head"><span class="no">P13</span><h3>ต้องเข้าไม่ได้: ล็อกบัญชีเจ้าของ · ไม่ล็อกอินเข้าหน้าระบบงานไม่ได้</h3><span class="tags"><span class="tag tag-perm">สิทธิ์ · ต้องเข้าไม่ได้</span></span></header>
+  <div class="cols">
+    <section class="col"><h4>ให้ลองทำอะไร</h4><ol><li>ที่ “จัดการผู้ใช้” หาบัญชี “เจ้าของ” (ถ้ามี) แล้วดูปุ่ม แก้ไข / รีเซ็ตรหัส / ปิดบัญชี · ลองปิดบัญชีของตัวเอง</li><li>กด “ออกจากระบบ” แล้วยืนยัน → พิมพ์ท้ายลิงก์: <code>/admin/users</code> · <code>/admin/settings</code> · <code>/todo</code></li></ol></section>
+    <section class="col"><h4>ผลที่ควรได้</h4><ul><li>ปุ่มของบัญชีเจ้าของกดไม่ได้ มีเหตุผล “บัญชีเจ้าของ แก้ไข รีเซ็ตรหัส หรือปิดจากหน้านี้ไม่ได้” · ปิดบัญชีตัวเองไม่ได้ · ปิดคนสุดท้ายของ PM/OM/เจ้าของไม่ได้</li><li>เมื่อไม่ได้ล็อกอิน ทุกลิงก์ที่พิมพ์ <b>เข้าไม่ได้</b> — ระบบพาไปหน้า “เข้าสู่ระบบ”</li></ul></section>
+  </div>
+  <div class="result">
+    <fieldset class="verdict"><legend>ผล</legend>
+      <label class="r r-pass"><input type="radio" name="v-P13" value="pass"><span>ผ่าน</span></label>
+      <label class="r r-fail"><input type="radio" name="v-P13" value="fail"><span>ไม่ผ่าน</span></label>
+      
+    </fieldset>
+    <label class="note"><span>หมายเหตุ</span><textarea name="n-P13" rows="2" placeholder="จดสิ่งที่เห็น (ไม่บังคับ)"></textarea></label>
+  </div>
+</article>
+
+<article class="item" id="i-P14" data-role="pm">
+  <header class="item-head"><span class="no">P14</span><h3>ใช้งานบนมือถือ (กว้าง 375 พิกเซล)</h3><span class="tags"><span class="tag">มือถือ</span></span></header>
+  <div class="cols">
+    <section class="col"><h4>ให้ลองทำอะไร</h4><ol><li>เปิดระบบบนมือถือจริง (หรือย่อหน้าต่างให้แคบ) เข้าด้วยบัญชี PM/OM</li><li>เปิดเมนู ☰ → ลอง “จัดการผู้ใช้” (สร้างบัญชีทดสอบ) · “ตั้งค่า” · “ส่งข้อมูล และสรุปงานประจำเดือน” (ดูอย่างเดียว)</li></ol></section>
+    <section class="col"><h4>ผลที่ควรได้</h4><ul><li>หน้าไม่เลื่อนซ้าย–ขวาทั้งหน้า (ตารางเลื่อนได้ในกรอบ) · หน้าต่างยืนยันอ่านและกดได้ครบ · แถบปุ่มบันทึกไม่บังช่องกรอก</li></ul></section>
+  </div>
+  <div class="result">
+    <fieldset class="verdict"><legend>ผล</legend>
+      <label class="r r-pass"><input type="radio" name="v-P14" value="pass"><span>ผ่าน</span></label>
+      <label class="r r-fail"><input type="radio" name="v-P14" value="fail"><span>ไม่ผ่าน</span></label>
+      
+    </fieldset>
+    <label class="note"><span>หมายเหตุ</span><textarea name="n-P14" rows="2" placeholder="จดสิ่งที่เห็น (ไม่บังคับ)"></textarea></label>
+  </div>
+</article>
+</section>
+
+<section class="role" id="sec-viewer" data-role="viewer">
+  <div class="role-head">
+    <h2>ส่วนที่ 4 · ผู้ดูอย่างเดียว</h2>
+    <p class="role-intro">ไม่มีบัญชี ไม่ต้องเข้าสู่ระบบ — เปิดหน้า “สรุปมูลค่าระบบเหยื่อ” (ท้ายลิงก์ <code>/summary</code>) · เห็นเฉพาะตัวเลขรวมระดับสาขา/เขต ไม่เห็นข้อมูลลูกค้า · <b>ไม่มีบทสอนใช้งาน</b> · ให้ทดสอบในหน้าต่างส่วนตัว หรือหลังออกจากระบบ</p>
+    <div class="role-meta">
+      <label class="field"><span>บัญชีทดสอบที่ใช้ (ชื่อบัญชี/รหัสพนักงาน — ห้ามเขียนรหัสผ่าน)</span><input type="text" name="acct-viewer" autocomplete="off"></label>
+      <p class="tally" data-tally="viewer" aria-live="polite"></p>
+    </div>
+  </div>
+  
+<article class="item" id="i-V1" data-role="viewer">
+  <header class="item-head"><span class="no">V1</span><h3>เปิดหน้าสรุปโดยไม่ต้องล็อกอิน</h3><span class="tags"></span></header>
+  <div class="cols">
+    <section class="col"><h4>ให้ลองทำอะไร</h4><ol><li>ออกจากระบบ (หรือเปิดหน้าต่างส่วนตัว) แล้วเปิดลิงก์ของระบบตามด้วย <code>/summary</code></li></ol></section>
+    <section class="col"><h4>ผลที่ควรได้</h4><ul><li>หน้า “สรุปมูลค่าระบบเหยื่อ” ขึ้นทันที ไม่ถามรหัสผ่าน · มีโลโก้ AGA กับปุ่ม “เข้าสู่ระบบ” มุมขวาบน</li></ul></section>
+  </div>
+  <div class="result">
+    <fieldset class="verdict"><legend>ผล</legend>
+      <label class="r r-pass"><input type="radio" name="v-V1" value="pass"><span>ผ่าน</span></label>
+      <label class="r r-fail"><input type="radio" name="v-V1" value="fail"><span>ไม่ผ่าน</span></label>
+      
+    </fieldset>
+    <label class="note"><span>หมายเหตุ</span><textarea name="n-V1" rows="2" placeholder="จดสิ่งที่เห็น (ไม่บังคับ)"></textarea></label>
+  </div>
+</article>
+
+<article class="item" id="i-V2" data-role="viewer">
+  <header class="item-head"><span class="no">V2</span><h3>เลือกมุมมองหน่วยงาน และการ์ดตัวเลข</h3><span class="tags"></span></header>
+  <div class="cols">
+    <section class="col"><h4>ให้ลองทำอะไร</h4><ol><li>สลับมุมมอง “ทั้งประเทศ” / “ส่วนกลาง” / “ต่างจังหวัด” แล้วดูการ์ด: มูลค่ารวม · จำนวนลูกค้า · สาขาที่ดีที่สุด · จำนวนสาขา</li></ol></section>
+    <section class="col"><h4>ผลที่ควรได้</h4><ul><li>ตัวเลขในการ์ดเปลี่ยนตามมุมมองที่เลือก · ถ้าเดือนที่เลือกยังไม่มีข้อมูลขึ้น “ยังไม่มีข้อมูลเดือนนี้” ไม่ขึ้นตัวเลขสมมติ</li></ul></section>
+  </div>
+  <div class="result">
+    <fieldset class="verdict"><legend>ผล</legend>
+      <label class="r r-pass"><input type="radio" name="v-V2" value="pass"><span>ผ่าน</span></label>
+      <label class="r r-fail"><input type="radio" name="v-V2" value="fail"><span>ไม่ผ่าน</span></label>
+      
+    </fieldset>
+    <label class="note"><span>หมายเหตุ</span><textarea name="n-V2" rows="2" placeholder="จดสิ่งที่เห็น (ไม่บังคับ)"></textarea></label>
+  </div>
+</article>
+
+<article class="item" id="i-V3" data-role="viewer">
+  <header class="item-head"><span class="no">V3</span><h3>ตัวกรองเดือน เขต สาขา การเรียงอันดับ</h3><span class="tags"></span></header>
+  <div class="cols">
+    <section class="col"><h4>ให้ลองทำอะไร</h4><ol><li>เลือก เดือน · เขต · สาขา · “เรียงอันดับตาม” (มูลค่ารวม / จำนวนลูกค้า) แล้วกด “ล้างตัวกรอง”</li></ol></section>
+    <section class="col"><h4>ผลที่ควรได้</h4><ul><li>การ์ด กราฟ และตารางเปลี่ยนตามตัวกรอง · “ล้างตัวกรอง” กลับเป็นค่าเริ่มต้น</li></ul></section>
+  </div>
+  <div class="result">
+    <fieldset class="verdict"><legend>ผล</legend>
+      <label class="r r-pass"><input type="radio" name="v-V3" value="pass"><span>ผ่าน</span></label>
+      <label class="r r-fail"><input type="radio" name="v-V3" value="fail"><span>ไม่ผ่าน</span></label>
+      
+    </fieldset>
+    <label class="note"><span>หมายเหตุ</span><textarea name="n-V3" rows="2" placeholder="จดสิ่งที่เห็น (ไม่บังคับ)"></textarea></label>
+  </div>
+</article>
+
+<article class="item" id="i-V4" data-role="viewer">
+  <header class="item-head"><span class="no">V4</span><h3>กราฟและอันดับสาขา</h3><span class="tags"></span></header>
+  <div class="cols">
+    <section class="col"><h4>ให้ลองทำอะไร</h4><ol><li>ดูกราฟ “มูลค่ารายเดือน · ส่วนกลาง vs ต่างจังหวัด” และหัวข้อ “Ranking สาขา” (กดแสดงทั้งหมดถ้ามีปุ่ม)</li></ol></section>
+    <section class="col"><h4>ผลที่ควรได้</h4><ul><li>กราฟแสดงทั้งส่วนกลางและต่างจังหวัดรายเดือน · อันดับสาขาเรียงตามที่เลือก · อ่านออกทั้งโหมดสว่างและโหมดมืด</li></ul></section>
+  </div>
+  <div class="result">
+    <fieldset class="verdict"><legend>ผล</legend>
+      <label class="r r-pass"><input type="radio" name="v-V4" value="pass"><span>ผ่าน</span></label>
+      <label class="r r-fail"><input type="radio" name="v-V4" value="fail"><span>ไม่ผ่าน</span></label>
+      
+    </fieldset>
+    <label class="note"><span>หมายเหตุ</span><textarea name="n-V4" rows="2" placeholder="จดสิ่งที่เห็น (ไม่บังคับ)"></textarea></label>
+  </div>
+</article>
+
+<article class="item" id="i-V5" data-role="viewer">
+  <header class="item-head"><span class="no">V5</span><h3>ตารางรายละเอียดรายสาขา</h3><span class="tags"></span></header>
+  <div class="cols">
+    <section class="col"><h4>ให้ลองทำอะไร</h4><ol><li>เลื่อนลงไปที่หัวข้อ “รายละเอียด 16 ฟิลด์ต่อสาขา (ส่งเข้า Dashboard)”</li></ol></section>
+    <section class="col"><h4>ผลที่ควรได้</h4><ul><li>มีตารางตัวเลขต่อสาขา (เลื่อนซ้ายขวาได้ในกรอบตาราง) · ตัวเลขชุดนี้เป็นชุดเดียวกับที่ส่งเข้า AGA Bait Dashboard</li></ul></section>
+  </div>
+  <div class="result">
+    <fieldset class="verdict"><legend>ผล</legend>
+      <label class="r r-pass"><input type="radio" name="v-V5" value="pass"><span>ผ่าน</span></label>
+      <label class="r r-fail"><input type="radio" name="v-V5" value="fail"><span>ไม่ผ่าน</span></label>
+      
+    </fieldset>
+    <label class="note"><span>หมายเหตุ</span><textarea name="n-V5" rows="2" placeholder="จดสิ่งที่เห็น (ไม่บังคับ)"></textarea></label>
+  </div>
+</article>
+
+<article class="item" id="i-V6" data-role="viewer">
+  <header class="item-head"><span class="no">V6</span><h3>ต้องไม่เห็นข้อมูลลูกค้า</h3><span class="tags"><span class="tag tag-perm">สิทธิ์ · ต้องเข้าไม่ได้</span></span></header>
+  <div class="cols">
+    <section class="col"><h4>ให้ลองทำอะไร</h4><ol><li>ไล่ดูทั้งหน้า ทั้งการ์ด กราฟ และตาราง หาชื่อลูกค้า เบอร์โทร ที่อยู่ เลขที่สัญญา หรือผลบริการรายราย</li></ol></section>
+    <section class="col"><h4>ผลที่ควรได้</h4><ul><li><b>ไม่มี</b>ข้อมูลรายลูกค้าอยู่ในหน้านี้เลย (มีแต่ตัวเลขรวมระดับสาขา/เขต) · ไม่มีเมนูของระบบงานแสดงให้เห็น</li></ul></section>
+  </div>
+  <div class="result">
+    <fieldset class="verdict"><legend>ผล</legend>
+      <label class="r r-pass"><input type="radio" name="v-V6" value="pass"><span>ผ่าน</span></label>
+      <label class="r r-fail"><input type="radio" name="v-V6" value="fail"><span>ไม่ผ่าน</span></label>
+      
+    </fieldset>
+    <label class="note"><span>หมายเหตุ</span><textarea name="n-V6" rows="2" placeholder="จดสิ่งที่เห็น (ไม่บังคับ)"></textarea></label>
+  </div>
+</article>
+
+<article class="item" id="i-V7" data-role="viewer">
+  <header class="item-head"><span class="no">V7</span><h3>ต้องเข้าไม่ได้: หน้าระบบงานทุกหน้า</h3><span class="tags"><span class="tag tag-perm">สิทธิ์ · ต้องเข้าไม่ได้</span></span></header>
+  <div class="cols">
+    <section class="col"><h4>ให้ลองทำอะไร</h4><ol><li>ขณะยังไม่ล็อกอิน พิมพ์ท้ายลิงก์ในช่องที่อยู่เว็บทีละหน้า: <code>/todo</code> · <code>/customers</code> · <code>/service</code> · <code>/material</code> · <code>/admin/users</code> แล้วกด Enter</li></ol></section>
+    <section class="col"><h4>ผลที่ควรได้</h4><ul><li>ทุกลิงก์ <b>เข้าไม่ได้</b> — ระบบพาไปหน้า “เข้าสู่ระบบ” ไม่แสดงเนื้อหาของหน้านั้นเลย</li></ul></section>
+  </div>
+  <div class="result">
+    <fieldset class="verdict"><legend>ผล</legend>
+      <label class="r r-pass"><input type="radio" name="v-V7" value="pass"><span>ผ่าน</span></label>
+      <label class="r r-fail"><input type="radio" name="v-V7" value="fail"><span>ไม่ผ่าน</span></label>
+      
+    </fieldset>
+    <label class="note"><span>หมายเหตุ</span><textarea name="n-V7" rows="2" placeholder="จดสิ่งที่เห็น (ไม่บังคับ)"></textarea></label>
+  </div>
+</article>
+
+<article class="item" id="i-V8" data-role="viewer">
+  <header class="item-head"><span class="no">V8</span><h3>ใช้งานบนมือถือ (กว้าง 375 พิกเซล)</h3><span class="tags"><span class="tag">มือถือ</span></span></header>
+  <div class="cols">
+    <section class="col"><h4>ให้ลองทำอะไร</h4><ol><li>เปิดหน้า <code>/summary</code> บนมือถือจริง (หรือย่อหน้าต่างให้แคบ) · ลองตัวกรอง · กดปุ่มโหมดสี (สลับ ตามเครื่อง / สว่าง / มืด) · เลื่อนไปที่ตาราง</li></ol></section>
+    <section class="col"><h4>ผลที่ควรได้</h4><ul><li>หน้าไม่เลื่อนซ้าย–ขวาทั้งหน้า (ตารางเลื่อนได้เฉพาะในกรอบตาราง) · ตัวกรองและปุ่มกดสะดวก · สลับโหมดสีแล้วอ่านออกทั้งสองโหมด</li></ul></section>
+  </div>
+  <div class="result">
+    <fieldset class="verdict"><legend>ผล</legend>
+      <label class="r r-pass"><input type="radio" name="v-V8" value="pass"><span>ผ่าน</span></label>
+      <label class="r r-fail"><input type="radio" name="v-V8" value="fail"><span>ไม่ผ่าน</span></label>
+      
+    </fieldset>
+    <label class="note"><span>หมายเหตุ</span><textarea name="n-V8" rows="2" placeholder="จดสิ่งที่เห็น (ไม่บังคับ)"></textarea></label>
+  </div>
+</article>
+</section>
+
+  <section class="role" id="sec-issues">
+    <div class="role-head">
+      <h2>แบบแจ้งปัญหา</h2>
+      <p class="role-intro">ทุกข้อที่เลือก “ไม่ผ่าน” ให้จดที่นี่ (1 ปัญหา = 1 กรอบ) แล้วแนบภาพหน้าจอ · ถ้าต้องการมากกว่า 8 ปัญหา พิมพ์ใบนี้ซ้ำหรือจดต่อในกระดาษ</p>
+    </div>
+    
+<article class="issue">
+  <h3>ปัญหาที่ 1</h3>
+  <div class="issue-grid">
+    <label class="field"><span>ตำแหน่งที่ใช้ตอนเจอ</span><input type="text" name="is-0-role" autocomplete="off"></label>
+    <label class="field"><span>ข้อทดสอบ (เช่น A5, S8)</span><input type="text" name="is-0-item" autocomplete="off"></label>
+    <label class="field"><span>หน้าที่เจอ (ชื่อเมนู/หน้า)</span><input type="text" name="is-0-page" autocomplete="off"></label>
+    <label class="field"><span>ภาพหน้าจอ (ชื่อไฟล์ หรือเขียนว่าแนบแล้ว)</span><input type="text" name="is-0-shot" autocomplete="off"></label>
+    <label class="field wide"><span>ทำอะไรอยู่</span><textarea name="is-0-did" rows="2"></textarea></label>
+    <label class="field wide"><span>เกิดอะไรขึ้น</span><textarea name="is-0-got" rows="2"></textarea></label>
+    <label class="field wide"><span>ที่ควรจะเป็น</span><textarea name="is-0-want" rows="2"></textarea></label>
+  </div>
+</article>
+
+<article class="issue">
+  <h3>ปัญหาที่ 2</h3>
+  <div class="issue-grid">
+    <label class="field"><span>ตำแหน่งที่ใช้ตอนเจอ</span><input type="text" name="is-1-role" autocomplete="off"></label>
+    <label class="field"><span>ข้อทดสอบ (เช่น A5, S8)</span><input type="text" name="is-1-item" autocomplete="off"></label>
+    <label class="field"><span>หน้าที่เจอ (ชื่อเมนู/หน้า)</span><input type="text" name="is-1-page" autocomplete="off"></label>
+    <label class="field"><span>ภาพหน้าจอ (ชื่อไฟล์ หรือเขียนว่าแนบแล้ว)</span><input type="text" name="is-1-shot" autocomplete="off"></label>
+    <label class="field wide"><span>ทำอะไรอยู่</span><textarea name="is-1-did" rows="2"></textarea></label>
+    <label class="field wide"><span>เกิดอะไรขึ้น</span><textarea name="is-1-got" rows="2"></textarea></label>
+    <label class="field wide"><span>ที่ควรจะเป็น</span><textarea name="is-1-want" rows="2"></textarea></label>
+  </div>
+</article>
+
+<article class="issue">
+  <h3>ปัญหาที่ 3</h3>
+  <div class="issue-grid">
+    <label class="field"><span>ตำแหน่งที่ใช้ตอนเจอ</span><input type="text" name="is-2-role" autocomplete="off"></label>
+    <label class="field"><span>ข้อทดสอบ (เช่น A5, S8)</span><input type="text" name="is-2-item" autocomplete="off"></label>
+    <label class="field"><span>หน้าที่เจอ (ชื่อเมนู/หน้า)</span><input type="text" name="is-2-page" autocomplete="off"></label>
+    <label class="field"><span>ภาพหน้าจอ (ชื่อไฟล์ หรือเขียนว่าแนบแล้ว)</span><input type="text" name="is-2-shot" autocomplete="off"></label>
+    <label class="field wide"><span>ทำอะไรอยู่</span><textarea name="is-2-did" rows="2"></textarea></label>
+    <label class="field wide"><span>เกิดอะไรขึ้น</span><textarea name="is-2-got" rows="2"></textarea></label>
+    <label class="field wide"><span>ที่ควรจะเป็น</span><textarea name="is-2-want" rows="2"></textarea></label>
+  </div>
+</article>
+
+<article class="issue">
+  <h3>ปัญหาที่ 4</h3>
+  <div class="issue-grid">
+    <label class="field"><span>ตำแหน่งที่ใช้ตอนเจอ</span><input type="text" name="is-3-role" autocomplete="off"></label>
+    <label class="field"><span>ข้อทดสอบ (เช่น A5, S8)</span><input type="text" name="is-3-item" autocomplete="off"></label>
+    <label class="field"><span>หน้าที่เจอ (ชื่อเมนู/หน้า)</span><input type="text" name="is-3-page" autocomplete="off"></label>
+    <label class="field"><span>ภาพหน้าจอ (ชื่อไฟล์ หรือเขียนว่าแนบแล้ว)</span><input type="text" name="is-3-shot" autocomplete="off"></label>
+    <label class="field wide"><span>ทำอะไรอยู่</span><textarea name="is-3-did" rows="2"></textarea></label>
+    <label class="field wide"><span>เกิดอะไรขึ้น</span><textarea name="is-3-got" rows="2"></textarea></label>
+    <label class="field wide"><span>ที่ควรจะเป็น</span><textarea name="is-3-want" rows="2"></textarea></label>
+  </div>
+</article>
+
+<article class="issue">
+  <h3>ปัญหาที่ 5</h3>
+  <div class="issue-grid">
+    <label class="field"><span>ตำแหน่งที่ใช้ตอนเจอ</span><input type="text" name="is-4-role" autocomplete="off"></label>
+    <label class="field"><span>ข้อทดสอบ (เช่น A5, S8)</span><input type="text" name="is-4-item" autocomplete="off"></label>
+    <label class="field"><span>หน้าที่เจอ (ชื่อเมนู/หน้า)</span><input type="text" name="is-4-page" autocomplete="off"></label>
+    <label class="field"><span>ภาพหน้าจอ (ชื่อไฟล์ หรือเขียนว่าแนบแล้ว)</span><input type="text" name="is-4-shot" autocomplete="off"></label>
+    <label class="field wide"><span>ทำอะไรอยู่</span><textarea name="is-4-did" rows="2"></textarea></label>
+    <label class="field wide"><span>เกิดอะไรขึ้น</span><textarea name="is-4-got" rows="2"></textarea></label>
+    <label class="field wide"><span>ที่ควรจะเป็น</span><textarea name="is-4-want" rows="2"></textarea></label>
+  </div>
+</article>
+
+<article class="issue">
+  <h3>ปัญหาที่ 6</h3>
+  <div class="issue-grid">
+    <label class="field"><span>ตำแหน่งที่ใช้ตอนเจอ</span><input type="text" name="is-5-role" autocomplete="off"></label>
+    <label class="field"><span>ข้อทดสอบ (เช่น A5, S8)</span><input type="text" name="is-5-item" autocomplete="off"></label>
+    <label class="field"><span>หน้าที่เจอ (ชื่อเมนู/หน้า)</span><input type="text" name="is-5-page" autocomplete="off"></label>
+    <label class="field"><span>ภาพหน้าจอ (ชื่อไฟล์ หรือเขียนว่าแนบแล้ว)</span><input type="text" name="is-5-shot" autocomplete="off"></label>
+    <label class="field wide"><span>ทำอะไรอยู่</span><textarea name="is-5-did" rows="2"></textarea></label>
+    <label class="field wide"><span>เกิดอะไรขึ้น</span><textarea name="is-5-got" rows="2"></textarea></label>
+    <label class="field wide"><span>ที่ควรจะเป็น</span><textarea name="is-5-want" rows="2"></textarea></label>
+  </div>
+</article>
+
+<article class="issue">
+  <h3>ปัญหาที่ 7</h3>
+  <div class="issue-grid">
+    <label class="field"><span>ตำแหน่งที่ใช้ตอนเจอ</span><input type="text" name="is-6-role" autocomplete="off"></label>
+    <label class="field"><span>ข้อทดสอบ (เช่น A5, S8)</span><input type="text" name="is-6-item" autocomplete="off"></label>
+    <label class="field"><span>หน้าที่เจอ (ชื่อเมนู/หน้า)</span><input type="text" name="is-6-page" autocomplete="off"></label>
+    <label class="field"><span>ภาพหน้าจอ (ชื่อไฟล์ หรือเขียนว่าแนบแล้ว)</span><input type="text" name="is-6-shot" autocomplete="off"></label>
+    <label class="field wide"><span>ทำอะไรอยู่</span><textarea name="is-6-did" rows="2"></textarea></label>
+    <label class="field wide"><span>เกิดอะไรขึ้น</span><textarea name="is-6-got" rows="2"></textarea></label>
+    <label class="field wide"><span>ที่ควรจะเป็น</span><textarea name="is-6-want" rows="2"></textarea></label>
+  </div>
+</article>
+
+<article class="issue">
+  <h3>ปัญหาที่ 8</h3>
+  <div class="issue-grid">
+    <label class="field"><span>ตำแหน่งที่ใช้ตอนเจอ</span><input type="text" name="is-7-role" autocomplete="off"></label>
+    <label class="field"><span>ข้อทดสอบ (เช่น A5, S8)</span><input type="text" name="is-7-item" autocomplete="off"></label>
+    <label class="field"><span>หน้าที่เจอ (ชื่อเมนู/หน้า)</span><input type="text" name="is-7-page" autocomplete="off"></label>
+    <label class="field"><span>ภาพหน้าจอ (ชื่อไฟล์ หรือเขียนว่าแนบแล้ว)</span><input type="text" name="is-7-shot" autocomplete="off"></label>
+    <label class="field wide"><span>ทำอะไรอยู่</span><textarea name="is-7-did" rows="2"></textarea></label>
+    <label class="field wide"><span>เกิดอะไรขึ้น</span><textarea name="is-7-got" rows="2"></textarea></label>
+    <label class="field wide"><span>ที่ควรจะเป็น</span><textarea name="is-7-want" rows="2"></textarea></label>
+  </div>
+</article>
+  </section>
+
+  <section class="role" id="sec-criteria">
+    <div class="role-head criteria">
+      <h2>เกณฑ์จบ UAT</h2>
+      <p class="draft">ร่างเกณฑ์ — เจ้าของปรับตัวเลขและข้อความได้ก่อนเริ่มทดสอบ</p>
+      <ol>
+        <li><b>ข้อ “สิทธิ์ · ต้องเข้าไม่ได้” ต้องผ่านครบทุกข้อ ทุกตำแหน่ง</b> (Admin · หัวหน้างาน · PM/OM · ผู้ดูอย่างเดียว) ไม่มีข้อยกเว้น</li>
+        <li>ข้อ “บทสอนใช้งาน” ต้องผ่านครบ: เข้าครั้งแรก → เปลี่ยนรหัส → บทเรียนเริ่มเอง ข้ามได้ ดูซ้ำได้ · และหลังรีเซ็ตรหัสแล้วบทเรียนไม่เด้งซ้ำ</li>
+        <li>ข้อ “มือถือ” ต้องผ่านบนมือถือจริงอย่างน้อย 1 เครื่อง ทุกตำแหน่ง</li>
+        <li>ข้อทดสอบการใช้งานที่เหลือ ต้องผ่านทุกข้อที่ไม่ติดป้าย “รอหน้าจริง” · ข้อที่ “ข้าม” เพราะไม่มีข้อมูลให้ลอง ต้องกลับมาลองให้ผ่านก่อนส่งมอบ</li>
+        <li>ทุกข้อที่ <b>ไม่ผ่าน</b> ต้องลงในแบบแจ้งปัญหา · แก้ให้เสร็จ · แล้ว <b>ทดสอบซ้ำจนผ่าน ก่อนส่งมอบ 30 พ.ย. 2026</b></li>
+        <li>ข้อที่ติดป้าย “รอหน้าจริง” ต้องมีหน้าจริงและทดสอบผ่านก่อนเปิดใช้ หรือเจ้าของยืนยันเป็นลายลักษณ์อักษรว่าเลื่อนไปทำหลังเปิดใช้</li>
+        <li>ก่อนเปิดใช้จริง 1 ธ.ค. 2026 ข้อมูลทดสอบที่สร้างในระบบ (ลูกค้า สัญญา บัญชีทดสอบ ผลบริการ) ต้องได้รับการจัดการตามที่เจ้าของตัดสิน (ลบ / ปิด / เก็บไว้) และไม่ค้างปนกับข้อมูลจริง</li>
+      </ol>
+      <div class="sign">
+        <label class="field"><span>สรุปผล (ผ่าน / ต้องแก้แล้วทดสอบซ้ำ)</span><input type="text" name="sig-result" autocomplete="off"></label>
+        <label class="field"><span>ลงชื่อผู้ทดสอบ</span><input type="text" name="sig-name" autocomplete="off"></label>
+        <label class="field"><span>วันที่</span><input type="text" name="sig-date" autocomplete="off"></label>
+      </div>
+    </div>
+  </section>
+
+  <footer>ใบทดสอบนี้ใช้ชื่อสมมติทั้งหมด ไม่มีข้อมูลลูกค้าจริงและไม่มีรหัสผ่าน · ชื่อเมนูและปุ่มคัดจากหน้าจอระบบ ณ วันที่จัดทำ (20 พ.ย. 2026) — ถ้าหน้าจอเปลี่ยน ให้ยึดหน้าจอจริง</footer>
+</main>
+
+<script>
+(function () {
+  var KEY = "aga-uat-sheet-v1";
+  var store = null;
+  try { store = window.localStorage; store.setItem("__t", "1"); store.removeItem("__t"); } catch (e) { store = null; }
+
+  function load() {
+    if (!store) return {};
+    try { return JSON.parse(store.getItem(KEY) || "{}") || {}; } catch (e) { return {}; }
+  }
+  function save(data) {
+    if (!store) return;
+    try { store.setItem(KEY, JSON.stringify(data)); } catch (e) { /* เต็ม/ถูกบล็อก — ใช้ต่อได้ แค่ไม่จำ */ }
+  }
+
+  var data = load();
+  var fields = document.querySelectorAll("input[type=text], textarea");
+  var radios = document.querySelectorAll("input[type=radio]");
+
+  Array.prototype.forEach.call(fields, function (el) { if (data[el.name] != null) el.value = data[el.name]; });
+  Array.prototype.forEach.call(radios, function (el) { if (data[el.name] === el.value) el.checked = true; });
+
+  function tally() {
+    var all = { pass: 0, fail: 0, skip: 0, total: 0 };
+    document.querySelectorAll("[data-tally]").forEach(function (box) {
+      var key = box.getAttribute("data-tally");
+      var items = document.querySelectorAll('.item[data-role="' + key + '"]');
+      var c = { pass: 0, fail: 0, skip: 0 };
+      items.forEach(function (it) {
+        var r = it.querySelector("input[type=radio]:checked");
+        if (r) c[r.value]++;
+      });
+      var left = items.length - c.pass - c.fail - c.skip;
+      box.innerHTML = 'ผ่าน <span class="p">' + c.pass + '</span> · ไม่ผ่าน <span class="f">' + c.fail + '</span> · ข้าม ' + c.skip + ' · ยังไม่ทำ ' + left + ' (จาก ' + items.length + ' ข้อ)';
+      all.pass += c.pass; all.fail += c.fail; all.skip += c.skip; all.total += items.length;
+    });
+    var t = document.getElementById("tally-all");
+    if (t) t.innerHTML = 'รวมทุกตำแหน่ง: ผ่าน <span class="p">' + all.pass + '</span> · ไม่ผ่าน <span class="f">' + all.fail + '</span> · ข้าม ' + all.skip + ' · ยังไม่ทำ ' + (all.total - all.pass - all.fail - all.skip) + ' (จาก ' + all.total + ' ข้อ)';
+  }
+
+  document.addEventListener("input", function (e) {
+    var el = e.target;
+    if (el.name && (el.tagName === "TEXTAREA" || el.type === "text")) { data[el.name] = el.value; save(data); }
+  });
+  document.addEventListener("change", function (e) {
+    var el = e.target;
+    if (el.type === "radio") { data[el.name] = el.value; save(data); tally(); }
+  });
+
+  document.getElementById("btn-print").addEventListener("click", function () { window.print(); });
+  document.getElementById("btn-clear").addEventListener("click", function () {
+    if (!window.confirm("ล้างผลและข้อความที่กรอกทั้งหมดในใบนี้ใช่หรือไม่ (เอากลับคืนไม่ได้)")) return;
+    data = {}; save(data);
+    Array.prototype.forEach.call(fields, function (el) { el.value = ""; });
+    Array.prototype.forEach.call(radios, function (el) { el.checked = false; });
+    tally();
+  });
+  if (!store) {
+    var n = document.getElementById("save-note");
+    if (n) n.textContent = "เบราว์เซอร์นี้ไม่ยอมให้จำผลที่ติ๊ก — กรอกแล้วให้พิมพ์ / บันทึกเป็น PDF ก่อนปิดหน้า";
+  }
+  tally();
+})();
+</script>
+</body>
+</html>
