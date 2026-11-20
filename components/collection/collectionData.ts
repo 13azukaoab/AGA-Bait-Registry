@@ -13,7 +13,7 @@
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-import { effectiveEndDate, igBase, isContractEnded, pickLastAction } from "./collectionRules";
+import { effectiveEndDate, igBase, isContractEnded, pickLastAction, splitHeld } from "./collectionRules";
 import type { CollectionRow, ContractStatus, HeldContract, TeamOption } from "./collectionTypes";
 import type { TeamKind } from "@/lib/service/teamKind";
 
@@ -193,12 +193,9 @@ export async function loadCollection(
       const prev = pendingBy.get(p.contract_id);
       if (!prev || p.missed_month < prev) pendingBy.set(p.contract_id, p.missed_month);
     }
-    rows = rows.filter((r) => {
-      const missed = pendingBy.get(r.contractId);
-      if (missed === undefined) return true;
-      held.push({ contractId: r.contractId, customerName: r.customerName, missedMonth: missed.slice(0, 7) });
-      return false;
-    });
+    const split = splitHeld(rows, pendingBy);
+    rows = split.visible;
+    held.push(...split.held);
   }
 
   rows.sort((a, b) => (a.endDate === b.endDate ? a.customerName.localeCompare(b.customerName, "th") : a.endDate < b.endDate ? 1 : -1));

@@ -21,7 +21,37 @@ export function effectiveEndDate(startDate: string, endDate: string | null, term
 
 /** สัญญา "หมดแล้ว" ตามกฎเดียวกับ CL001 */
 export function isContractEnded(status: ContractStatus, effectiveEnd: string, today: string): boolean {
+  // สัญญาพัก (paused · M29) ยังไม่จบ — ห้ามขึ้นรายการรอเก็บ (DB กันด้วย CP010)
+  if (status === "paused") return false;
   return status !== "active" || effectiveEnd < today;
+}
+
+/**
+ * ซ่อนสัญญาที่มีเรื่องตกบริการรอชดเชย (mockup: "ยังไม่ขึ้นรายการเก็บสถานี") — pure
+ * pendingMissed: contractId → เดือนที่ตกบริการเก่าสุด ('YYYY-MM' หรือ 'YYYY-MM-DD')
+ */
+export function splitHeld<T extends { contractId: string; customerName: string }>(
+  rows: readonly T[],
+  pendingMissed: ReadonlyMap<string, string>,
+): { visible: T[]; held: { contractId: string; customerName: string; missedMonth: string }[] } {
+  const visible: T[] = [];
+  const held: { contractId: string; customerName: string; missedMonth: string }[] = [];
+  for (const r of rows) {
+    const missed = pendingMissed.get(r.contractId);
+    if (missed === undefined) visible.push(r);
+    else held.push({ contractId: r.contractId, customerName: r.customerName, missedMonth: missed.slice(0, 7) });
+  }
+  return { visible, held };
+}
+
+/** ใครกด "ปิดสัญญา" ได้ — ค่าเริ่มต้น host เท่านั้น (รอ BE ยืนยันสิทธิ์ RPC) · แก้ที่จุดเดียวนี้ */
+export function canCloseContract(role: UserRole): boolean {
+  return role === "host";
+}
+
+/** แถวนี้ปิดสัญญาได้หรือไม่ (ยังไม่ปิด/ยกเลิก) */
+export function isClosable(status: ContractStatus): boolean {
+  return status === "active" || status === "expired_pending_collection";
 }
 
 function addDays(date: string, days: number): string {

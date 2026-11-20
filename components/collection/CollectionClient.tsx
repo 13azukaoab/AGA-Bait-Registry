@@ -14,7 +14,7 @@
  */
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { Alert, Button, Chip, Toast, cx } from "@/components/ui";
 import type { UserRole } from "@/lib/db/types";
@@ -23,8 +23,8 @@ import { monthLabel } from "@/lib/service/months";
 import { createClient } from "@/lib/supabase/client";
 
 import { CollectDialog, ReasonDialog, type DialogKind, type DialogSubmit } from "./CollectDialog";
-import { applyActionResult, canRecordRow, computeStats, endMonths, filterRows, igBase } from "./collectionRules";
-import { collectIgStations, skipIgCollection } from "./collectionRpc";
+import { applyActionResult, canCloseContract, canRecordRow, computeStats, endMonths, filterRows, igBase, isClosable } from "./collectionRules";
+import { CLOSE_CONTRACT_AVAILABLE, closeContract, collectIgStations, skipIgCollection } from "./collectionRpc";
 import type { CollectionRow, HeldContract, MonthFilter, StatusFilter, TeamOption } from "./collectionTypes";
 
 const CONTROL =
@@ -97,6 +97,8 @@ export function CollectionClient({
   const [reasonFor, setReasonFor] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [dialogError, setDialogError] = useState<string | null>(null);
+  const [closeId, setCloseId] = useState<string | null>(null);
+  const [closeError, setCloseError] = useState<string | null>(null);
   const [toast, setToast] = useState("");
 
   const teamCode = useCallback((id: string | null) => (id ? (teams.find((t) => t.id === id)?.code ?? null) : null), [teams]);
@@ -139,6 +141,23 @@ export function CollectionClient({
     setDialog(null);
     router.refresh();
   }
+
+  const closeRow = closeId ? (rows.find((r) => r.contractId === closeId) ?? null) : null;
+  async function doClose() {
+    if (!closeRow) return;
+    setBusy(true);
+    setCloseError(null);
+    const res = await closeContract(createClient(), closeRow.contractId);
+    setBusy(false);
+    if (!res.ok) {
+      setCloseError(res.error.message);
+      return;
+    }
+    setToast(`ปิดสัญญา ${closeRow.contractNo} แล้ว${closeRow.remaining > 0 ? ` · IG ที่เหลือ ${closeRow.remaining} สถานียังอยู่ในรายการรอเก็บ` : ""}`);
+    setCloseId(null);
+    router.refresh();
+  }
+  const showClose = CLOSE_CONTRACT_AVAILABLE && canCloseContract(role);
 
   const canAny = role === "host" || role === "recorder";
 
@@ -274,6 +293,11 @@ export function CollectionClient({
                   row={r}
                   canRecord={canRecordRow(role, divisionScope, r)}
                   showActions={canAny}
+                  showClose={showClose}
+                  onClose={() => {
+                    setCloseError(null);
+                    setCloseId(r.contractId);
+                  }}
                   teamCode={teamCode(r.last?.teamId ?? null)}
                   onOpen={(kind) => {
                     setDialogError(null);
@@ -288,7 +312,7 @@ export function CollectionClient({
       </div>
 
       {held.length > 0 ? (
-        <Alert variant="info" title="ยังไม่ขึ้นรายการเก็บสถานี (มีเรื่องรอชดเชย)" className="mt-3">
+        <Alert variant="info" title={`ยังไม่ขึ้นรายการเก็บสถานี ${held.length} ราย (มีเรื่องรอชดเชย)`} className="mt-3">
           {held.map((h) => `${h.customerName} · รอชดเชย ${monthLabel(h.missedMonth)}`).join(" · ")} — จะขึ้นรายการหลังบันทึกบริการชดเชย หรือกดไม่ชดเชย
         </Alert>
       ) : null}
@@ -313,6 +337,7 @@ export function CollectionClient({
           }}
         />
       ) : null}
+      {closeRow ? <ConfirmClose row={closeRow} busy={busy} error={closeError} onConfirm={doClose} onCancel={() => setCloseId(null)} /> : null}
       {reasonRow ? <ReasonDialog row={reasonRow} teamCode={teamCode(reasonRow.last?.teamId ?? null)} onClose={() => setReasonFor(null)} /> : null}
       <Toast message={toast} onClose={() => setToast("")} />
     </div>
@@ -324,6 +349,8 @@ function Row({
   canRecord,
   showActions,
   teamCode,
+  showClose,
+  onClose,
   onOpen,
   onReason,
 }: {
@@ -331,6 +358,8 @@ function Row({
   canRecord: boolean;
   showActions: boolean;
   teamCode: string | null;
+  showClose: boolean;
+  onClose: () => void;
   onOpen: (kind: DialogKind) => void;
   onReason: () => void;
 }) {
@@ -418,18 +447,68 @@ function Row({
         </div>
       </td>
       <td className="px-3 py-2.5 text-right align-top max-[767px]:px-0 max-[767px]:pb-0 max-[767px]:pt-2 max-[767px]:text-left">
-        {showActions && r.remaining > 0 ? (
+        {showActions && (r.remaining > 0 || (showClose && isClosable(r.status))) ? (
           <div className="flex flex-wrap justify-end gap-1.5 max-[767px]:justify-start">
-            <Button size="sm" variant="primary" disabled={!canRecord} title={disabledTip} className="max-[767px]:min-h-11 max-[767px]:px-4" onClick={() => onOpen("collected")}>
-              เก็บแล้ว
-            </Button>
-            <Button size="sm" disabled={!canRecord} title={disabledTip} className="max-[767px]:min-h-11 max-[767px]:px-4" onClick={() => onOpen("not_collected")}>
-              ไม่เก็บ
-            </Button>
+            {r.remaining > 0 ? (
+              <>
+                <Button size="sm" variant="primary" disabled={!canRecord} title={disabledTip} className="max-[767px]:min-h-11 max-[767px]:px-4" onClick={() => onOpen("collected")}>
+                  เก็บแล้ว
+                </Button>
+                <Button size="sm" disabled={!canRecord} title={disabledTip} className="max-[767px]:min-h-11 max-[767px]:px-4" onClick={() => onOpen("not_collected")}>
+                  ไม่เก็บ
+                </Button>
+              </>
+            ) : null}
+            {showClose && isClosable(r.status) ? (
+              <Button size="sm" className="max-[767px]:min-h-11 max-[767px]:px-4" onClick={onClose}>
+                ปิดสัญญา
+              </Button>
+            ) : null}
           </div>
         ) : null}
-        {finChip ? <div className={cx(showActions && r.remaining > 0 && "mt-1.5")}>{finChip}</div> : null}
+        {finChip ? <div className={cx(showActions && (r.remaining > 0 || (showClose && isClosable(r.status))) && "mt-1.5")}>{finChip}</div> : null}
       </td>
     </tr>
+  );
+}
+
+function ConfirmClose({ row, busy, error, onConfirm, onCancel }: { row: CollectionRow; busy: boolean; error: string | null; onConfirm: () => void; onCancel: () => void }) {
+  const ref = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    const dlg = ref.current;
+    if (dlg && !dlg.open) dlg.showModal();
+  }, []);
+  return (
+    <dialog
+      ref={ref}
+      onClose={onCancel}
+      aria-labelledby="collect-close-title"
+      className="m-auto w-[min(480px,calc(100vw-24px))] rounded-xl border border-border bg-surface p-0 text-fg shadow-[var(--shadow)] backdrop:bg-black/40"
+    >
+      <div className="px-4 py-4">
+        <h2 id="collect-close-title" className="m-0 text-base font-semibold">
+          ปิดสัญญา {row.contractNo}
+        </h2>
+        <p className="m-0 mt-1 text-[13px] text-fg-muted">
+          {row.customerName}
+          {row.remaining > 0
+            ? ` · มี IG ยังไม่เก็บ ${row.remaining} สถานี — ปิดสัญญาได้ และ IG เหล่านี้ยังอยู่ในรายการรอเก็บจนกด “เก็บแล้ว” หรือ “ไม่เก็บ”`
+            : " · IG เก็บครบแล้ว"}
+        </p>
+        {error ? (
+          <p role="alert" className="m-0 mt-3 rounded-lg border-l-4 border-l-danger bg-danger-soft px-3 py-2 text-[13px] text-danger">
+            {error}
+          </p>
+        ) : null}
+      </div>
+      <div className="flex justify-end gap-2 border-t border-border px-4 py-3">
+        <Button className="max-[767px]:min-h-11" disabled={busy} onClick={() => ref.current?.close()}>
+          ยกเลิก
+        </Button>
+        <Button className="max-[767px]:min-h-11" variant="primary" loading={busy} onClick={onConfirm}>
+          ยืนยัน ปิดสัญญา
+        </Button>
+      </div>
+    </dialog>
   );
 }

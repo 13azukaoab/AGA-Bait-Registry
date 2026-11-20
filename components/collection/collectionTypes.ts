@@ -9,7 +9,7 @@
  */
 import type { TeamKind } from "@/lib/service/teamKind";
 
-export type ContractStatus = "active" | "expired_pending_collection" | "closed" | "cancelled";
+export type ContractStatus = "active" | "expired_pending_collection" | "closed" | "cancelled" | "paused";
 
 /** การเก็บ/ไม่เก็บล่าสุดของสัญญา */
 export interface LastAction {

@@ -282,3 +282,51 @@ describe("ตรวจฟอร์ม (ตรงกับที่ RPC รับ
     expect(validateForm({ ...ok, kind: "not_collected", reason: "x".repeat(300) })).toBeNull();
   });
 });
+
+import { canCloseContract, isClosable, splitHeld } from "./collectionRules";
+import { CLOSE_CONTRACT_AVAILABLE, closeContract } from "./collectionRpc";
+
+describe("สัญญาพัก (paused) / CP010", () => {
+  it("paused ไม่ใช่สัญญาที่หมดแล้ว แม้วันจบผ่านไปแล้ว", () => {
+    expect(isContractEnded("paused", "2020-01-01", "2026-11-20")).toBe(false);
+  });
+  it("CP010 → ข้อความไทย ไม่ใช่บั๊ก", () => {
+    const e = describeCollectError({ code: "CP010", message: "raw" });
+    expect(e.message).toContain("พักอยู่");
+    expect(e.isBug).toBe(false);
+  });
+});
+
+describe("ซ่อนเรื่องรอชดเชย (splitHeld)", () => {
+  const rows = [
+    { contractId: "a", customerName: "เอ" },
+    { contractId: "b", customerName: "บี" },
+  ];
+  it("แยกแถวที่มีเรื่องรอชดเชยออกพร้อมเดือน", () => {
+    const r = splitHeld(rows, new Map([["b", "2026-09-01"]]));
+    expect(r.visible.map((x) => x.contractId)).toEqual(["a"]);
+    expect(r.held).toEqual([{ contractId: "b", customerName: "บี", missedMonth: "2026-09" }]);
+  });
+  it("ไม่มีเรื่องค้าง = ไม่ซ่อน", () => {
+    const r = splitHeld(rows, new Map());
+    expect(r.visible).toHaveLength(2);
+    expect(r.held).toEqual([]);
+  });
+});
+
+describe("ปิดสัญญา (รอ RPC)", () => {
+  it("ค่าเริ่มต้นซ่อนปุ่ม · host เท่านั้น · ปิดได้เฉพาะสัญญายังไม่ปิด/ยกเลิก", () => {
+    expect(CLOSE_CONTRACT_AVAILABLE).toBe(false);
+    expect(canCloseContract("host")).toBe(true);
+    for (const r of ["recorder", "admin", "viewer"] as const) expect(canCloseContract(r)).toBe(false);
+    expect(isClosable("active")).toBe(true);
+    expect(isClosable("closed")).toBe(false);
+    expect(isClosable("paused")).toBe(false);
+  });
+  it("ยังไม่มี RPC → ไม่เรียก DB เลย", async () => {
+    let called = false;
+    const r = await closeContract({ rpc: async () => ((called = true), { error: null }) } as never, "c1");
+    expect(r.ok).toBe(false);
+    expect(called).toBe(false);
+  });
+});

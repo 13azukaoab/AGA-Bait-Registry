@@ -84,3 +84,25 @@ export async function skipIgCollection(supabase: SupabaseClient, input: ActionIn
   const { data, error } = await supabase.rpc("skip_ig_collection", buildSkipPayload(input, reason));
   return handle(error, data);
 }
+
+// ───────────── ปิดสัญญา (รอ BE M44 · DECISIONS 2.99) ─────────────
+// ห้าม UPDATE contracts ตรง — เรียกผ่าน RPC เท่านั้น · ชื่อ/พารามิเตอร์ด้านล่างแก้ที่จุดเดียวเมื่อ BE แจ้ง signature จริง
+/** false = ซ่อนปุ่ม "ปิดสัญญา" (RPC ยังไม่มีบน main) — เปลี่ยนเป็น true เมื่อ RPC ขึ้นแล้ว */
+export const CLOSE_CONTRACT_AVAILABLE = false;
+export const CLOSE_CONTRACT_RPC = "close_contract";
+export const CLOSE_CONTRACT_PARAM = "p_contract_id";
+
+export type CloseResult = { ok: true } | { ok: false; error: CollectError };
+
+export async function closeContract(supabase: SupabaseClient, contractId: string): Promise<CloseResult> {
+  if (!CLOSE_CONTRACT_AVAILABLE) {
+    return { ok: false, error: { message: "ยังปิดสัญญาจากหน้านี้ไม่ได้", isBug: false, logCode: "unavailable" } };
+  }
+  const { error } = await supabase.rpc(CLOSE_CONTRACT_RPC, { [CLOSE_CONTRACT_PARAM]: contractId });
+  if (error) {
+    const described = describeCollectError(error);
+    console.error("[collection] close RPC error code", described.logCode);
+    return { ok: false, error: described };
+  }
+  return { ok: true };
+}
