@@ -244,7 +244,7 @@ footer { margin-top: 32px; font-size: 13px; color: var(--fg-muted); }
 <section class="role" id="sec-admin" data-role="admin">
   <div class="role-head">
     <h2>ส่วนที่ 1 · Admin (เปิดงาน)</h2>
-    <p class="role-intro">ตำแหน่งที่เปิดงาน — บันทึกสัญญาใหม่ / ต่อสัญญาเข้าทะเบียน · เห็นเมนู 6 รายการ (ไม่มีกลุ่ม “ดูแลระบบ”) · หน้าแรกหลังเข้าระบบคือ “ทะเบียนลูกค้า/สัญญา”</p>
+    <p class="role-intro">ตำแหน่งที่เปิดงาน — บันทึกสัญญาใหม่ / ต่อสัญญาเข้าทะเบียน · เห็นเมนู 7 รายการ (ไม่มีกลุ่ม “ดูแลระบบ”) · หน้าแรกหลังเข้าระบบคือ “ทะเบียนลูกค้า/สัญญา”</p>
     <p class="sw"><b>สลับบัญชี:</b> ก่อนเริ่มส่วนนี้ ให้ <b>ออกจากระบบ</b> (ปุ่ม “ออกจากระบบ” มุมขวาบน → ยืนยัน) แล้วเข้าด้วย <b>บัญชี Admin</b> · ข้อที่ต้องสลับไปใช้บัญชีอื่นจะมีแถบเหลืองบอกไว้ในข้อนั้น</p>
     <div class="role-meta">
       <label class="field"><span>บัญชีทดสอบที่ใช้ (ชื่อบัญชี/รหัสพนักงาน — ห้ามเขียนรหัสผ่าน · บัญชีทดสอบมี 3 บัญชี: PM/OM · Admin · หัวหน้างาน)</span><input type="text" name="acct-admin" autocomplete="off"></label>
@@ -274,7 +274,7 @@ footer { margin-top: 32px; font-size: 13px; color: var(--fg-muted); }
   
   <div class="cols">
     <section class="col"><h4>ให้ลองทำอะไร</h4><ol><li>ดูเมนูซ้าย (มือถือกด ☰ “เปิดเมนู”) แล้วจดรายการที่เห็น</li><li>กดโลโก้ AGA มุมซ้ายบน</li></ol></section>
-    <section class="col"><h4>ผลที่ควรได้</h4><ul><li>เห็นเมนูเหล่านี้ <b>เท่านั้น</b> — กลุ่ม “งานประจำวัน”: สถานะทะเบียนบริการ · ลูกค้ารอเก็บสถานี · กลุ่ม “ทะเบียนและสรุป”: ทะเบียนลูกค้า/สัญญา · เปิดงานเข้าทะเบียนบริการ · สรุปงานบริการรายเดือน · Dashboard สรุปมูลค่าทั้งหมด</li><li>ไม่มีกลุ่ม “ดูแลระบบ” และไม่มีเมนู “ลงข้อมูลทำบริการประจำเดือน” / “กล่อง AG นอกรอบประจำเดือน”</li><li>หน้าแรกคือ “ทะเบียนลูกค้า/สัญญา” — <b>ตอนนี้ยังเป็นหน้าโครง (รอหน้าจริง)</b> ให้กดเมนู “เปิดงานเข้าทะเบียนบริการ” แทน · “ลูกค้ารอเก็บสถานี” ก็ยังเป็นหน้าโครง</li></ul></section>
+    <section class="col"><h4>ผลที่ควรได้</h4><ul><li>เห็นเมนูเหล่านี้ <b>เท่านั้น</b> — กลุ่ม “งานประจำวัน”: สถานะทะเบียนบริการ · ลูกค้ารอเก็บสถานี · กลุ่ม “ทะเบียนและสรุป”: ทะเบียนลูกค้า/สัญญา · เปิดงานเข้าทะเบียนบริการ · สรุปงานบริการรายเดือน · Dashboard งานขาย (New/Renew) · Dashboard สรุปมูลค่าทั้งหมด</li><li>ไม่มีกลุ่ม “ดูแลระบบ” และไม่มีเมนู “ลงข้อมูลทำบริการประจำเดือน” / “กล่อง AG นอกรอบประจำเดือน”</li><li>หน้าแรกคือ “ทะเบียนลูกค้า/สัญญา” — <b>ตอนนี้ยังเป็นหน้าโครง (รอหน้าจริง)</b> ให้กดเมนู “เปิดงานเข้าทะเบียนบริการ” แทน · “ลูกค้ารอเก็บสถานี” ก็ยังเป็นหน้าโครง</li></ul></section>
   </div>
   <div class="result">
     <fieldset class="verdict"><legend>ผล</legend>
@@ -474,17 +474,17 @@ footer { margin-top: 32px; font-size: 13px; color: var(--fg-muted); }
 </article>
 
 <article class="item" id="i-A14" data-role="admin">
-  <header class="item-head"><span class="no">A14</span><h3>Dashboard งานขาย (New / Renew)</h3><span class="tags"><span class="tag tag-wait">รอหน้าจริง</span></span></header>
+  <header class="item-head"><span class="no">A14</span><h3>Dashboard งานขาย (New/Renew): ปุ่มกรอง · ตัวกรอง · แถบด้านบนติดตอนเลื่อน</h3><span class="tags"></span></header>
   
   <div class="cols">
-    <section class="col"><h4>ให้ลองทำอะไร</h4><ol><li>ถ้าเมนู/หน้า Dashboard งานขายเปิดแล้ว ให้ลองเปิดและดูข้อมูล New / Renew และรายการต่อสัญญาล่าช้า</li></ol></section>
-    <section class="col"><h4>ผลที่ควรได้</h4><ul><li><b>รอหน้าจริง</b> — ตอนนี้ยังไม่มีหน้านี้ในระบบ · ถ้ายังไม่พบเมนู ให้เลือก “ข้าม” และจดหมายเหตุว่า “ยังไม่พร้อม” (หน้านี้ตามแผน Admin และ PM/OM เห็น)</li></ul></section>
+    <section class="col"><h4>ให้ลองทำอะไร</h4><ol><li>เมนู “Dashboard งานขาย (New/Renew)” (กลุ่ม “ทะเบียนและสรุป”) → ดูการ์ด “งานใหม่ (New)” · “ต่อสัญญา (Renew)” · “ต่อสัญญาล่าช้า” · “รวมทั้งหมด”</li><li>กดปุ่มกลุ่ม “ประเภทงาน” ทีละปุ่ม: “ทั้งหมด” → “New” → “Renew” แล้วดูกราฟ “แนวโน้มรายเดือน” · “แยกตามเขต” · “อันดับผู้ขาย” · “ยอดรายสาขา” · “รายชื่อลูกค้า”</li><li>ลองตัวกรอง “ตั้งแต่เดือน” · “ถึงเดือน” · “เขต” · “สาขา” · “ผู้ขาย” แล้วกด “ล้างตัวกรอง”</li><li>เลื่อนหน้าลงไปกลางหน้า แล้วดูด้านบนของจอ · กดบรรทัดสรุปตัวกรองบนแถบนั้น</li><li>ในรายการ “รายชื่อลูกค้า” ลองกด “ต่อสัญญาล่าช้า” (ถ้ามี) และ “แสดงเพิ่ม” · กดชื่อลูกค้า 1 ราย</li></ol></section>
+    <section class="col"><h4>ผลที่ควรได้</h4><ul><li>เปิดหน้าได้ (Admin เข้าได้) · การ์ดสรุปไม่เปลี่ยนตามปุ่มประเภทงานแต่ไฮไลต์ให้ · กราฟ อันดับ และรายชื่อเปลี่ยนตามปุ่ม “ทั้งหมด / New / Renew”</li><li>ตัวกรองเปลี่ยนตัวเลขตามที่เลือก · “ล้างตัวกรอง” กลับค่าเริ่มต้น · ถ้าไม่มีงานตามตัวกรองขึ้น “ไม่มีงานตามตัวกรองนี้” (ไม่ขึ้นตัวเลขสมมติ)</li><li><b>แถบด้านบนติดอยู่</b>ตอนเลื่อนจอ มีปุ่ม “ทั้งหมด / New / Renew” + บรรทัดสรุปตัวกรอง · กดบรรทัดสรุปแล้วเลื่อนกลับไปที่ชุดตัวกรอง · บนมือถือแถบไม่ซ้อนทับแถบด้านบนของระบบ</li><li>งาน Renew ที่รับ Mail หลังวันที่ 15 ของเดือน ขึ้นเป็น “ล่าช้า” (สีแดง) · กดชื่อลูกค้าเปิดหน้าลูกค้า</li><li>ถ้าข้อมูลมากเกินโหลดครบ จะขึ้น “แสดงข้อมูลบางส่วน” — ถือว่าปกติ</li></ul></section>
   </div>
   <div class="result">
     <fieldset class="verdict"><legend>ผล</legend>
       <label class="r r-pass"><input type="radio" name="v-A14" value="pass"><span>ผ่าน</span></label>
       <label class="r r-fail"><input type="radio" name="v-A14" value="fail"><span>ไม่ผ่าน</span></label>
-      <label class="r r-skip"><input type="radio" name="v-A14" value="skip"><span>ข้าม (ไม่มีให้ลอง / หน้ายังไม่พร้อม)</span></label>
+      
     </fieldset>
     <label class="note"><span>หมายเหตุ</span><textarea name="n-A14" rows="2" placeholder="จดสิ่งที่เห็น (ไม่บังคับ)"></textarea></label>
   </div>
@@ -744,7 +744,7 @@ footer { margin-top: 32px; font-size: 13px; color: var(--fg-muted); }
   <header class="item-head"><span class="no">S14</span><h3>ต้องเข้าไม่ได้: เปิดงาน และงานดูแลระบบ</h3><span class="tags"><span class="tag tag-perm">สิทธิ์ · ต้องเข้าไม่ได้</span></span></header>
   
   <div class="cols">
-    <section class="col"><h4>ให้ลองทำอะไร</h4><ol><li>ดูเมนูซ้ายว่ามี “เปิดงานเข้าทะเบียนบริการ” หรือเมนูกลุ่ม “ดูแลระบบ” อื่นนอกจาก “ส่งข้อมูล และสรุปงานประจำเดือน” หรือไม่</li><li>พิมพ์ท้ายลิงก์ในช่องที่อยู่เว็บทีละหน้า: <code>/customers/new</code> · <code>/admin/users</code> · <code>/admin/settings</code> · <code>/admin/port</code> · <code>/admin/sync</code> · <code>/admin/history</code> · <code>/admin</code> แล้วกด Enter</li></ol></section>
+    <section class="col"><h4>ให้ลองทำอะไร</h4><ol><li>ดูเมนูซ้ายว่ามี “เปิดงานเข้าทะเบียนบริการ” หรือ “Dashboard งานขาย (New/Renew)” หรือเมนูกลุ่ม “ดูแลระบบ” อื่นนอกจาก “ส่งข้อมูล และสรุปงานประจำเดือน” หรือไม่</li><li>พิมพ์ท้ายลิงก์ในช่องที่อยู่เว็บทีละหน้า: <code>/customers/new</code> · <code>/sales</code> · <code>/admin/users</code> · <code>/admin/settings</code> · <code>/admin/port</code> · <code>/admin/sync</code> · <code>/admin/history</code> · <code>/admin</code> แล้วกด Enter</li></ol></section>
     <section class="col"><h4>ผลที่ควรได้</h4><ul><li><b>ไม่มี</b>เมนูเหล่านั้นให้เห็น</li><li>ทุกลิงก์ที่พิมพ์ <b>เข้าไม่ได้</b> — ระบบพากลับ “สถานะทะเบียนบริการ” ไม่แสดงเนื้อหาของหน้านั้นเลย</li><li>(ลิงก์ <code>/admin/closure</code> ต้องเข้าได้ ตามข้อก่อนหน้า)</li></ul></section>
   </div>
   <div class="result">
@@ -778,7 +778,7 @@ footer { margin-top: 32px; font-size: 13px; color: var(--fg-muted); }
 <section class="role" id="sec-pm" data-role="pm">
   <div class="role-head">
     <h2>ส่วนที่ 3 · Project Manager / OM</h2>
-    <p class="role-intro">ส่วนกลางที่ดูแลระบบ (PM กับ OM สิทธิ์เท่ากัน) · เห็นครบทุกเมนู 14 รายการ รวมกลุ่ม “ดูแลระบบ” · หน้าแรกคือ “สถานะทะเบียนบริการ” · PM/OM ยังเปิดงาน กรอกผลบริการ และตัดสินเรื่องตกบริการได้เหมือนสองตำแหน่งก่อนหน้า (ไม่ซ้ำในหัวข้อนี้)</p>
+    <p class="role-intro">ส่วนกลางที่ดูแลระบบ (PM กับ OM สิทธิ์เท่ากัน) · เห็นครบทุกเมนู 15 รายการ รวมกลุ่ม “ดูแลระบบ” · หน้าแรกคือ “สถานะทะเบียนบริการ” · PM/OM ยังเปิดงาน กรอกผลบริการ และตัดสินเรื่องตกบริการได้เหมือนสองตำแหน่งก่อนหน้า (ไม่ซ้ำในหัวข้อนี้)</p>
     <p class="sw"><b>สลับบัญชี:</b> ออกจากระบบ แล้วเข้าด้วย <b>บัญชี PM/OM</b> · ทำส่วนนี้หลังส่วน Admin และหัวหน้างาน เพื่อให้มีข้อมูลทดสอบให้ดู (ประวัติ · ปิดเดือน · สรุป)</p>
     <div class="role-meta">
       <label class="field"><span>บัญชีทดสอบที่ใช้ (ชื่อบัญชี/รหัสพนักงาน — ห้ามเขียนรหัสผ่าน · บัญชีทดสอบมี 3 บัญชี: PM/OM · Admin · หัวหน้างาน)</span><input type="text" name="acct-pm" autocomplete="off"></label>
@@ -808,7 +808,7 @@ footer { margin-top: 32px; font-size: 13px; color: var(--fg-muted); }
   
   <div class="cols">
     <section class="col"><h4>ให้ลองทำอะไร</h4><ol><li>ดูเมนูซ้ายทั้ง 3 กลุ่ม: “งานประจำวัน” · “ทะเบียนและสรุป” · “ดูแลระบบ” · กดโลโก้ AGA</li></ol></section>
-    <section class="col"><h4>ผลที่ควรได้</h4><ul><li>เห็นครบ 14 เมนู — งานประจำวัน 4 · ทะเบียนและสรุป 4 · ดูแลระบบ 6 (ส่งข้อมูล และสรุปงานประจำเดือน · ลงข้อมูล Port ต่างจังหวัด · Dashboard Sync · ประวัติการแก้ไข · จัดการผู้ใช้ · ตั้งค่า)</li><li>หน้าแรกคือ “สถานะทะเบียนบริการ” · “ทะเบียนลูกค้า/สัญญา” และ “ลูกค้ารอเก็บสถานี” <b>ยังเป็นหน้าโครง (รอหน้าจริง)</b></li></ul></section>
+    <section class="col"><h4>ผลที่ควรได้</h4><ul><li>เห็นครบ 15 เมนู — งานประจำวัน 4 · ทะเบียนและสรุป 5 · ดูแลระบบ 6 (ส่งข้อมูล และสรุปงานประจำเดือน · ลงข้อมูล Port ต่างจังหวัด · Dashboard Sync · ประวัติการแก้ไข · จัดการผู้ใช้ · ตั้งค่า)</li><li>หน้าแรกคือ “สถานะทะเบียนบริการ” · “ทะเบียนลูกค้า/สัญญา” และ “ลูกค้ารอเก็บสถานี” <b>ยังเป็นหน้าโครง (รอหน้าจริง)</b></li></ul></section>
   </div>
   <div class="result">
     <fieldset class="verdict"><legend>ผล</legend>
@@ -974,17 +974,17 @@ footer { margin-top: 32px; font-size: 13px; color: var(--fg-muted); }
 </article>
 
 <article class="item" id="i-P12" data-role="pm">
-  <header class="item-head"><span class="no">P12</span><h3>Dashboard งานขาย (New / Renew)</h3><span class="tags"><span class="tag tag-wait">รอหน้าจริง</span></span></header>
+  <header class="item-head"><span class="no">P12</span><h3>Dashboard งานขาย (New/Renew): ปุ่มกรอง · ตัวกรอง · แถบด้านบนติดตอนเลื่อน</h3><span class="tags"></span></header>
   
   <div class="cols">
-    <section class="col"><h4>ให้ลองทำอะไร</h4><ol><li>ถ้าเมนู/หน้า Dashboard งานขายเปิดแล้ว ให้ลองเปิดและกดตัวกรอง New / Renew / ทั้งหมด</li></ol></section>
-    <section class="col"><h4>ผลที่ควรได้</h4><ul><li><b>รอหน้าจริง</b> — ตอนนี้ยังไม่มีหน้านี้ในระบบ · ถ้ายังไม่พบเมนู ให้เลือก “ข้าม” และจดหมายเหตุ “ยังไม่พร้อม” (หน้านี้ตามแผน Admin และ PM/OM เห็น)</li></ul></section>
+    <section class="col"><h4>ให้ลองทำอะไร</h4><ol><li>เมนู “Dashboard งานขาย (New/Renew)” (กลุ่ม “ทะเบียนและสรุป”) → ดูการ์ด “งานใหม่ (New)” · “ต่อสัญญา (Renew)” · “ต่อสัญญาล่าช้า” · “รวมทั้งหมด”</li><li>กดปุ่มกลุ่ม “ประเภทงาน” ทีละปุ่ม: “ทั้งหมด” → “New” → “Renew” แล้วดูกราฟ “แนวโน้มรายเดือน” · “แยกตามเขต” · “อันดับผู้ขาย” · “ยอดรายสาขา” · “รายชื่อลูกค้า”</li><li>ลองตัวกรอง “ตั้งแต่เดือน” · “ถึงเดือน” · “เขต” · “สาขา” · “ผู้ขาย” แล้วกด “ล้างตัวกรอง”</li><li>เลื่อนหน้าลงไปกลางหน้า แล้วดูด้านบนของจอ · กดบรรทัดสรุปตัวกรองบนแถบนั้น</li><li>ในรายการ “รายชื่อลูกค้า” ลองกด “ต่อสัญญาล่าช้า” (ถ้ามี) และ “แสดงเพิ่ม” · กดชื่อลูกค้า 1 ราย</li></ol></section>
+    <section class="col"><h4>ผลที่ควรได้</h4><ul><li>เปิดหน้าได้ (Admin เข้าได้) · การ์ดสรุปไม่เปลี่ยนตามปุ่มประเภทงานแต่ไฮไลต์ให้ · กราฟ อันดับ และรายชื่อเปลี่ยนตามปุ่ม “ทั้งหมด / New / Renew”</li><li>ตัวกรองเปลี่ยนตัวเลขตามที่เลือก · “ล้างตัวกรอง” กลับค่าเริ่มต้น · ถ้าไม่มีงานตามตัวกรองขึ้น “ไม่มีงานตามตัวกรองนี้” (ไม่ขึ้นตัวเลขสมมติ)</li><li><b>แถบด้านบนติดอยู่</b>ตอนเลื่อนจอ มีปุ่ม “ทั้งหมด / New / Renew” + บรรทัดสรุปตัวกรอง · กดบรรทัดสรุปแล้วเลื่อนกลับไปที่ชุดตัวกรอง · บนมือถือแถบไม่ซ้อนทับแถบด้านบนของระบบ</li><li>งาน Renew ที่รับ Mail หลังวันที่ 15 ของเดือน ขึ้นเป็น “ล่าช้า” (สีแดง) · กดชื่อลูกค้าเปิดหน้าลูกค้า</li><li>ถ้าข้อมูลมากเกินโหลดครบ จะขึ้น “แสดงข้อมูลบางส่วน” — ถือว่าปกติ</li></ul></section>
   </div>
   <div class="result">
     <fieldset class="verdict"><legend>ผล</legend>
       <label class="r r-pass"><input type="radio" name="v-P12" value="pass"><span>ผ่าน</span></label>
       <label class="r r-fail"><input type="radio" name="v-P12" value="fail"><span>ไม่ผ่าน</span></label>
-      <label class="r r-skip"><input type="radio" name="v-P12" value="skip"><span>ข้าม (ไม่มีให้ลอง / หน้ายังไม่พร้อม)</span></label>
+      
     </fieldset>
     <label class="note"><span>หมายเหตุ</span><textarea name="n-P12" rows="2" placeholder="จดสิ่งที่เห็น (ไม่บังคับ)"></textarea></label>
   </div>
@@ -1142,7 +1142,7 @@ footer { margin-top: 32px; font-size: 13px; color: var(--fg-muted); }
   <header class="item-head"><span class="no">V7</span><h3>ต้องเข้าไม่ได้: หน้าระบบงานทุกหน้า</h3><span class="tags"><span class="tag tag-perm">สิทธิ์ · ต้องเข้าไม่ได้</span></span></header>
   
   <div class="cols">
-    <section class="col"><h4>ให้ลองทำอะไร</h4><ol><li>ขณะยังไม่ล็อกอิน พิมพ์ท้ายลิงก์ในช่องที่อยู่เว็บทีละหน้า: <code>/todo</code> · <code>/customers</code> · <code>/service</code> · <code>/material</code> · <code>/admin/users</code> แล้วกด Enter</li></ol></section>
+    <section class="col"><h4>ให้ลองทำอะไร</h4><ol><li>ขณะยังไม่ล็อกอิน พิมพ์ท้ายลิงก์ในช่องที่อยู่เว็บทีละหน้า: <code>/todo</code> · <code>/customers</code> · <code>/service</code> · <code>/material</code> · <code>/sales</code> · <code>/admin/users</code> แล้วกด Enter</li></ol></section>
     <section class="col"><h4>ผลที่ควรได้</h4><ul><li>ทุกลิงก์ <b>เข้าไม่ได้</b> — ระบบพาไปหน้า “เข้าสู่ระบบ” ไม่แสดงเนื้อหาของหน้านั้นเลย</li></ul></section>
   </div>
   <div class="result">

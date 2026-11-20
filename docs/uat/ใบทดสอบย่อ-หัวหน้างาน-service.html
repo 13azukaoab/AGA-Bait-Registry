@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>ใบทดสอบย่อ · หัวหน้างาน · กรอกผลบริการ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* สีทั้งหมดคัดลอกจาก app/globals.css (เหมือนใบทดสอบหลัก) — ห้ามเพิ่มสีนอกชุดนี้ */
+:root {
+  --bg: #eef2f7;
+  --surface: #ffffff;
+  --surface-2: #f4f7fb;
+  --surface-3: #e9eff6;
+  --fg: #17212e;
+  --fg-muted: #5a6b7e;
+  --fg-faint: #8a98a8;
+  --border: #d8e0ea;
+  --border-strong: #c3cedb;
+  --accent: #1f5fa8;
+  --accent-strong: #164a85;
+  --accent-fg: #ffffff;
+  --accent-soft: #e6f0fb;
+  --ok: #1a8a5c;
+  --ok-soft: #e3f4ec;
+  --warn: #b4740a;
+  --warn-soft: #fbf0db;
+  --danger: #c23b2e;
+  --danger-soft: #fbe8e5;
+  --radius: 10px;
+  --font-sans: "Noto Sans Thai", "Segoe UI", system-ui, sans-serif;
+}
+@media screen and (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0e1621;
+    --surface: #16202c;
+    --surface-2: #1b2733;
+    --surface-3: #222f3d;
+    --fg: #e7eef5;
+    --fg-muted: #9fb0c1;
+    --fg-faint: #718394;
+    --border: #2a3744;
+    --border-strong: #36485a;
+    --accent: #4a90d9;
+    --accent-strong: #5fa0e3;
+    --accent-fg: #0b1420;
+    --accent-soft: #16304a;
+    --ok: #3bb183;
+    --ok-soft: #133227;
+    --warn: #d99b3e;
+    --warn-soft: #332713;
+    --danger: #e26657;
+    --danger-soft: #331a16;
+  }
+}
+
+
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--fg); font-family: var(--font-sans); font-size: 16px; line-height: 1.55; overflow-wrap: anywhere; }
+.brand { background: var(--accent); color: var(--accent-fg); }
+.brand-in { max-width: 980px; margin: 0 auto; padding: 10px 16px; display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 14px; }
+.brand b { font-size: 17px; }
+.brand span { font-size: 13px; opacity: .92; }
+.wrap { max-width: 980px; margin: 0 auto; padding: 0 16px 32px; }
+h1 { font-size: 21px; line-height: 1.3; margin: 16px 0 2px; }
+.lead { margin: 0 0 10px; color: var(--fg-muted); font-size: 14px; }
+.head { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 8px; margin: 0 0 10px; }
+.field { display: grid; gap: 2px; font-size: 12px; color: var(--fg-muted); }
+input[type=text], textarea { width: 100%; font: inherit; font-size: 16px; color: var(--fg); background: var(--surface); border: 1px solid var(--border-strong); border-radius: 6px; padding: 6px 8px; min-height: 40px; resize: vertical; }
+.note { background: var(--warn-soft); border-left: 4px solid var(--warn); border-radius: 6px; padding: 6px 10px; font-size: 13px; margin: 0 0 10px; }
+.rows { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+.hd { display: none; }
+.row { display: grid; grid-template-columns: 28px 1fr; gap: 4px 8px; padding: 10px; border-top: 1px solid var(--border); break-inside: avoid; }
+.hd + .row { border-top: 0; }
+.n { grid-row: 1; width: 26px; height: 26px; border-radius: 6px; background: var(--accent); color: var(--accent-fg); font-weight: 700; text-align: center; line-height: 26px; font-size: 14px; }
+.t, .e, .v, .m { grid-column: 2; font-size: 15px; }
+.e { color: var(--fg-muted); }
+.e::before { content: "ควรเห็น: "; font-weight: 600; color: var(--accent-strong); }
+.v { display: flex; gap: 8px; }
+.v label { display: inline-flex; }
+.v input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.v span { display: inline-flex; align-items: center; min-height: 40px; padding: 4px 14px; border: 1px solid var(--border-strong); border-radius: 8px; background: var(--surface-2); font-weight: 600; cursor: pointer; }
+.v span::before { content: "○ "; white-space: pre; }
+.v input:checked + span::before { content: "● "; }
+.v label:first-child input:checked + span { background: var(--ok-soft); border-color: var(--ok); color: var(--ok); }
+.v label:last-child input:checked + span { background: var(--danger-soft); border-color: var(--danger); color: var(--danger); }
+.v input:focus-visible + span, textarea:focus-visible, input[type=text]:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.m textarea { min-height: 40px; }
+h2 { font-size: 16px; margin: 14px 0 6px; }
+.qs { display: grid; grid-template-columns: 1fr; gap: 8px; }
+.q { display: grid; gap: 2px; font-size: 14px; }
+.toolbar { margin: 12px 0 0; }
+button { font: inherit; min-height: 44px; padding: 8px 14px; border-radius: 8px; border: 1px solid var(--accent); background: var(--accent); color: var(--accent-fg); font-weight: 600; cursor: pointer; }
+@media (min-width: 720px) {
+  .hd, .row { grid-template-columns: 28px minmax(0, 3fr) minmax(0, 3fr) 150px minmax(0, 2fr); gap: 8px; align-items: start; }
+  .hd { display: grid; padding: 6px 10px; background: var(--surface-3); font-size: 12px; font-weight: 600; color: var(--fg-muted); }
+  .t, .e, .v, .m { grid-column: auto; }
+  .n { grid-row: auto; }
+  .e::before { content: none; }
+  .v { flex-direction: column; gap: 4px; }
+  .v span { min-height: 30px; padding: 0 10px; font-size: 14px; }
+  .qs { grid-template-columns: 1fr 1fr; }
+}
+@media print {
+  @page { size: A4; margin: 8mm; }
+  html, body { background: var(--surface); }
+  body { font-size: 10pt; line-height: 1.35; }
+  .brand { background: var(--surface); color: var(--fg); border-bottom: 2px solid var(--accent); }
+  .brand-in { padding: 4px 0; max-width: none; }
+  .wrap { max-width: none; padding: 0; }
+  h1 { font-size: 15pt; margin: 6px 0 0; }
+  .lead { font-size: 9.5pt; margin-bottom: 5px; }
+  .note { font-size: 9pt; padding: 3px 6px; margin-bottom: 5px; }
+  .toolbar { display: none; }
+  input[type=text], textarea { border-color: var(--fg-muted); font-size: 10pt; min-height: 22px; padding: 2px 4px; }
+  .head { grid-template-columns: repeat(4, 1fr); gap: 5px; margin-bottom: 5px; }
+  .hd, .row { display: grid; grid-template-columns: 20px 3fr 3fr 82px 1.7fr; gap: 6px; align-items: start; }
+  .hd { padding: 3px 6px; font-size: 8.5pt; }
+  .row { padding: 5px 6px; }
+  .n { width: 18px; height: 18px; line-height: 18px; font-size: 9pt; border-radius: 4px; }
+  .t, .e, .v, .m { grid-column: auto; font-size: 9.5pt; }
+  .e::before { content: none; }
+  .v { flex-direction: column; gap: 2px; }
+  .v span { min-height: 0; padding: 1px 6px; font-size: 9pt; border-radius: 4px; background: var(--surface); }
+  .m textarea { min-height: 34px; }
+  h2 { font-size: 11pt; margin: 8px 0 4px; }
+  .qs { grid-template-columns: 1fr 1fr; gap: 5px; }
+  .q { font-size: 9pt; }
+  .q textarea { min-height: 44px; }
+}
+</style>
+</head>
+<body>
+<div class="brand"><div class="brand-in"><b>Advance Group Asia (AGA)</b><span>ใบทดสอบย่อ · หน้า “ลงข้อมูลทำบริการประจำเดือน” · AGA Bait Registry</span></div></div>
+<main class="wrap">
+  <h1>ลองกรอกผลบริการ — หัวหน้างาน</h1>
+  <p class="lead">ใช้เวลาราว 1 ชั่วโมง · ลองทีละข้อตามลำดับ แล้วติ๊ก “ผ่าน” (ทำได้ตามที่เขียน) หรือ “ไม่ผ่าน” (ติด/งง/ไม่ตรง) · จดหมายเหตุสั้น ๆ ก็พอ</p>
+  <div class="head">
+    <label class="field"><span>วันที่ทดสอบ</span><input type="text" name="d" placeholder="26 พ.ย. 2026"></label>
+    <label class="field"><span>ชื่อผู้ทดสอบ</span><input type="text" name="n"></label>
+    <label class="field"><span>สาขา / ทีมที่ดูแล</span><input type="text" name="b"></label>
+    <label class="field"><span>บัญชีที่ใช้ (ห้ามเขียนรหัสผ่าน)</span><input type="text" name="a" autocomplete="off"></label>
+  </div>
+  <p class="note">ข้อมูลที่ลองกรอกเป็นข้อมูลทดสอบ (ลูกค้าสมมติที่ผู้ดูแลเตรียมไว้) · ไม่ต้องกลัวผิด · ถ้าติดจริง ๆ ให้ถามผู้ดูแลที่นั่งอยู่ข้าง ๆ แล้วจดไว้ในหมายเหตุ</p>
+  <div class="rows">
+    <div class="hd"><div>ข้อ</div><div>ให้ลองทำ</div><div>ควรเห็น</div><div>ผล</div><div>หมายเหตุ</div></div>
+    <div class="row"><div class="n">1</div><div class="t"><b>เข้าสู่ระบบ</b><br>ใส่ <b>รหัสพนักงาน</b> กับรหัสชั่วคราว กด “เข้าสู่ระบบ” → ตั้งรหัสใหม่ กด “บันทึกรหัสผ่านใหม่”</div><div class="e">เข้าหน้า “สถานะทะเบียนบริการ” ได้ (ถ้ามีบทสอนขึ้นมา กด “ถัดไป” หรือ “ข้ามทั้งหมด” ได้)</div><div class="v"><label><input type="radio" name="v0"><span>ผ่าน</span></label><label><input type="radio" name="v0"><span>ไม่ผ่าน</span></label></div><div class="m"><textarea name="m0" rows="1" aria-label="หมายเหตุข้อ 1"></textarea></div></div><div class="row"><div class="n">2</div><div class="t"><b>เลือกลูกค้า</b><br>กดเมนู “ลงข้อมูลทำบริการประจำเดือน” เลือก เขต · สาขา · เดือน แล้วกดชื่อลูกค้า 1 ราย</div><div class="e">ฟอร์มกรอกผลขึ้นมา มีเลขที่สัญญาที่หัวฟอร์ม</div><div class="v"><label><input type="radio" name="v1"><span>ผ่าน</span></label><label><input type="radio" name="v1"><span>ไม่ผ่าน</span></label></div><div class="m"><textarea name="m1" rows="1" aria-label="หมายเหตุข้อ 2"></textarea></div></div><div class="row"><div class="n">3</div><div class="t"><b>ลูกค้าใหม่ (ถ้าขึ้น)</b><br>ถ้ามีกล่อง “ระบุจำนวนสถานีครั้งแรก” ใส่ IG (จำนวน) กับ IC (จำนวน)</div><div class="e">ระบบสร้างเลขสถานีให้เอง (ไม่ขึ้นกล่องนี้ = ข้ามได้)</div><div class="v"><label><input type="radio" name="v2"><span>ผ่าน</span></label><label><input type="radio" name="v2"><span>ไม่ผ่าน</span></label></div><div class="m"><textarea name="m2" rows="1" aria-label="หมายเหตุข้อ 3"></textarea></div></div><div class="row"><div class="n">4</div><div class="t"><b>ข้อมูลการเข้า</b><br>เลือก ทีมที่เข้า (กด “เสร็จ”) · วันที่เข้า · เวลาเข้า · เวลาออก (เช่น 09:30 กับ 14:45)</div><div class="e">“เวลาทำงานจริง” ขึ้นให้เอง ไม่ต้องกรอก</div><div class="v"><label><input type="radio" name="v3"><span>ผ่าน</span></label><label><input type="radio" name="v3"><span>ไม่ผ่าน</span></label></div><div class="m"><textarea name="m3" rows="1" aria-label="หมายเหตุข้อ 4"></textarea></div></div><div class="row"><div class="n">5</div><div class="t"><b>ทุกจุดปกติ</b><br>กดปุ่มใหญ่ “IG / IC ปกติทั้งหมด”</div><div class="e">ปุ่มเปลี่ยนเป็น “กดแล้ว ✓”</div><div class="v"><label><input type="radio" name="v4"><span>ผ่าน</span></label><label><input type="radio" name="v4"><span>ไม่ผ่าน</span></label></div><div class="m"><textarea name="m4" rows="1" aria-label="หมายเหตุข้อ 5"></textarea></div></div><div class="row"><div class="n">6</div><div class="t"><b>พบปลวก</b><br>กด “เพิ่มจุดที่พบปลวก” เลือกสถานี ใส่เลขสถานี เลือกชนิดปลวก</div><div class="e">ยอดสรุปขึ้นให้ · ถ้ามีจุดพบปลวก ปุ่มปกติทั้งหมดจะกดไม่ได้ (ปกติ)</div><div class="v"><label><input type="radio" name="v5"><span>ผ่าน</span></label><label><input type="radio" name="v5"><span>ไม่ผ่าน</span></label></div><div class="m"><textarea name="m5" rows="1" aria-label="หมายเหตุข้อ 6"></textarea></div></div><div class="row"><div class="n">7</div><div class="t"><b>กล่อง AG</b><br>ดูหัวข้อ “กล่องเหยื่อ AG” กรอกจุดที่ตรวจ หรือติ๊ก “ไม่ได้ตรวจจุดนี้” / “รอบนี้ไม่ได้ตรวจกล่อง AG เลย (ข้ามทุกจุด)”</div><div class="e">เลขรอบ F ระบบนับเอง ไม่ต้องกรอก</div><div class="v"><label><input type="radio" name="v6"><span>ผ่าน</span></label><label><input type="radio" name="v6"><span>ไม่ผ่าน</span></label></div><div class="m"><textarea name="m6" rows="1" aria-label="หมายเหตุข้อ 7"></textarea></div></div><div class="row"><div class="n">8</div><div class="t"><b>บันทึก</b><br>กด “บันทึก + รายถัดไป” (ลองเว้นเวลาเข้าไว้ 1 ครั้ง แล้วกดบันทึก)</div><div class="e">เว้นช่อง → ขึ้น “บันทึกไม่ได้ — ยังขาด” บอกว่าขาดอะไร · ครบแล้วขึ้น “บันทึกผล … แล้ว” และไปรายถัดไปเอง</div><div class="v"><label><input type="radio" name="v7"><span>ผ่าน</span></label><label><input type="radio" name="v7"><span>ไม่ผ่าน</span></label></div><div class="m"><textarea name="m7" rows="1" aria-label="หมายเหตุข้อ 8"></textarea></div></div><div class="row"><div class="n">9</div><div class="t"><b>แก้ที่กรอกแล้ว</b><br>สลับเป็น “กรอกแล้ว” กดรายเดิม แก้เวลาออก แล้วบันทึกใหม่</div><div class="e">รายนั้นมีป้าย “กรอกแล้ว · บันทึกซ้ำเพื่อแก้ไข” และค่าเปลี่ยนตามที่แก้</div><div class="v"><label><input type="radio" name="v8"><span>ผ่าน</span></label><label><input type="radio" name="v8"><span>ไม่ผ่าน</span></label></div><div class="m"><textarea name="m8" rows="1" aria-label="หมายเหตุข้อ 9"></textarea></div></div>
+  </div>
+  <h2>ความเห็นของคุณ</h2>
+  <div class="qs"><label class="q"><span>1. ใช้ง่ายไหม (ง่ายมาก / พอใช้ / ยาก)</span><textarea name="q0" rows="2"></textarea></label><label class="q"><span>2. ติดหรืองงตรงไหนบ้าง</span><textarea name="q1" rows="2"></textarea></label><label class="q"><span>3. เทียบกับกรอกใน Excel เดิม เร็วกว่าหรือช้ากว่า เพราะอะไร</span><textarea name="q2" rows="2"></textarea></label><label class="q"><span>4. อยากให้เพิ่มหรือเอาอะไรออก</span><textarea name="q3" rows="2"></textarea></label></div>
+  <div class="toolbar"><button type="button" onclick="window.print()">พิมพ์ / บันทึกเป็น PDF</button></div>
+</main>
+</body>
+</html>
