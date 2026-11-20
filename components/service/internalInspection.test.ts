@@ -111,3 +111,27 @@ describe("ค่าเริ่มต้น / โหลดค่าเดิม�
     expect(formFromVisit(detail, visit()).internalInspection).toBe(false);
   });
 });
+
+describe("M43: แก้การเข้าเดิมที่เปลี่ยนจาก routine เป็นแบบอื่น / follow_up จาก /bait", () => {
+  const build = (f: FormState) => {
+    const r = buildPayload(f, "c1", []);
+    if (!r.ok) throw new Error(r.error);
+    return r.payload;
+  };
+  it("โหลดการเข้า routine ที่ติ๊กไว้ แล้วเปลี่ยนเป็น problem → ส่ง false (กัน CHECK 23514)", () => {
+    // หน้าจอไม่มีตัวเลือกเปลี่ยนประเภท แต่ทดสอบที่ตัวสร้าง payload ตามที่ฟอร์มเปลี่ยน visitType
+    const loaded = formFromVisit(detail, visit({ visitType: "routine", internalInspection: true }));
+    expect(build(loaded)[INTERNAL_INSPECTION_KEY]).toBe(true);
+    expect(build({ ...loaded, visitType: "problem" })[INTERNAL_INSPECTION_KEY]).toBe(false);
+    expect(build({ ...loaded, visitType: "follow_up" })[INTERNAL_INSPECTION_KEY]).toBe(false);
+  });
+  it("โหลดการเข้า problem ที่ค่าเดิมเป็น true (ข้อมูลเก่าผิดกฎ) → ส่ง false", () => {
+    const loaded = formFromVisit(detail, visit({ visitType: "problem", internalInspection: true }));
+    expect(build(loaded)[INTERNAL_INSPECTION_KEY]).toBe(false);
+  });
+  it("ฟอร์มแบบ /bait (follow_up ไม่มี field internalInspection) → ส่ง false ทั้งใหม่และแก้เดิม", () => {
+    expect(build(form({ visitType: "follow_up" }))[INTERNAL_INSPECTION_KEY]).toBe(false);
+    const loaded = formFromVisit(detail, visit({ visitType: "follow_up", internalInspection: null }));
+    expect(build(loaded)[INTERNAL_INSPECTION_KEY]).toBe(false);
+  });
+});

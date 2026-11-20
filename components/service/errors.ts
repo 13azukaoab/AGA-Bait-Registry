@@ -7,7 +7,8 @@
  *   * 22004 / 22023 / 23514 / 21000 = ข้อมูลที่หน้าจอส่งไปไม่ถูก (บั๊กหน้าจอ ไม่ใช่ความผิดผู้ใช้) →
  *     ข้อความทั่วไป + `isBug = true` ให้ผู้เรียก `console.error` ข้อความดิบ (ไม่โชว์ข้อความดิบให้ผู้ใช้)
  *   * M26/M33: TM004 ทีมปิด · TM005 ทีมหัวหน้างาน (DETAIL = รหัสทีม ใส่ในข้อความ) · TM006 เปิด/ปิดทีมเฉพาะ host · AG015 Renew ต้องบันทึกผ่านหน้าเปิดงาน
- *   * M37: SV012 ไม่ใช่กล่อง AG · SV013 สถานีถอด/กำจัด/หาย/ถอนแล้ว · SV014 แก้ชื่อจุดตรงไม่ได้ · 22001 ชื่อจุดยาวเกิน 40
+ *   * M43: 23514 จาก CHECK visits_internal_inspection_routine_only = ข้อความไทย "ติ๊กตรวจภายในได้เฉพาะการเข้าบริการประจำเดือน" (ไม่ใช่บั๊ก) · 23514 ตัวอื่นยังเป็นบั๊กหน้าจอ
+ * M37: SV012 ไม่ใช่กล่อง AG · SV013 สถานีถอด/กำจัด/หาย/ถอนแล้ว · SV014 แก้ชื่อจุดตรงไม่ได้ · 22001 ชื่อจุดยาวเกิน 40
  *   * 42501 = ไม่มีสิทธิ์ · อื่นๆ = ข้อความทั่วไป
  */
 
@@ -67,6 +68,8 @@ const RPC_ERRORS: Record<string, string> = {
 
 const BUG_CODES = new Set(["22004", "22023", "22P02", "23514", "21000", "23502"]);
 
+const INTERNAL_INSPECTION_ROUTINE_ONLY = "ติ๊กตรวจภายในได้เฉพาะการเข้าบริการประจำเดือน — เอาติ๊กออกหรือเปลี่ยนประเภทการเข้า แล้วบันทึกอีกครั้ง";
+
 const BUG_MESSAGE =
   "บันทึกไม่สำเร็จเพราะข้อมูลที่ส่งไม่ครบหรือไม่ถูกรูปแบบ (ข้อผิดพลาดของระบบ) กรุณาแจ้งผู้ดูแลระบบพร้อมบอกว่ากรอกอะไรไว้";
 
@@ -84,6 +87,11 @@ export function describeServiceError(error: DbErrorLike): ServiceError {
   // เลขสถานีชนกับสถานีที่ใช้งานอยู่ (unique stations_in_use_no_key) เช่น ย้อนงานซ่อมแล้วเลขซ้ำ
   if (code === "23505" && msg.includes("stations_in_use_no_key")) {
     return { message: "เลขสถานีซ้ำกับสถานีที่ยังใช้งานอยู่ — บันทึก/ลบรายการนี้ไม่ได้ ตรวจเลขสถานีของงานซ่อม/ฝังเพิ่มแล้วลองใหม่", isBug: true };
+  }
+  // M43 (DECISIONS 2.93): ติ๊ก "ตรวจภายใน" ได้เฉพาะ routine — CHECK visits_internal_inspection_routine_only (23514)
+  // ปกติหน้าจอไม่ส่งค่านี้ (payload ส่ง false เมื่อไม่ใช่ routine) แต่ถ้าหลุดมา ให้ข้อความที่ผู้ใช้เข้าใจ ไม่ใช่ "บั๊ก"
+  if (code === "23514" && (msg.includes("visits_internal_inspection_routine_only") || (error.details ?? "").toLowerCase().includes("visits_internal_inspection_routine_only"))) {
+    return { message: INTERNAL_INSPECTION_ROUTINE_ONLY, isBug: false };
   }
   if (BUG_CODES.has(code)) return { message: BUG_MESSAGE, isBug: true };
 
