@@ -112,6 +112,8 @@ export interface VisitSummary {
   visitType: VisitType;
   startTime: string;
   endTime: string;
+  /** 'YYYY-MM' เดือนที่ตกบริการที่การเข้านี้ชดเชยให้ (null/ไม่มี = บริการประจำเดือนปกติ) — DECISIONS 2.96 */
+  makeupForMonth?: string | null;
 }
 
 /** การเข้าที่โหลดมาแก้ (พร้อมทีม/ผลตรวจ/งานซ่อม) */

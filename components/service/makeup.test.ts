@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import type { SavePayload } from "./buildPayload";
-import { loadMakeupTarget } from "./data";
+import { loadContractCounts, loadMakeupTarget } from "./data";
 import { describeServiceError } from "./errors";
 import {
   MAKEUP_BLOCK_MESSAGE,
@@ -132,7 +132,7 @@ describe("loadMakeupTarget (ตัวปลอม)", () => {
     const rpc = vi.fn().mockResolvedValue(opts.pendingError ? { data: null, error: { code: "X" } } : { data: opts.pending ?? [], error: null });
     const from = vi.fn((table: string) => {
       const chain: Record<string, unknown> = {};
-      for (const m of ["select", "eq", "in", "gte", "lt"]) chain[m] = () => chain;
+      for (const m of ["select", "eq", "in", "gte", "lt", "is"]) chain[m] = () => chain;
       if (table === "contracts") {
         chain.maybeSingle = async () => (opts.contractError ? { data: null, error: { code: "X" } } : { data: opts.contract ?? null, error: null });
         chain.then = (r: (v: unknown) => void) => r({ data: { stations_initialized_at: "x" }, error: null, count: 0 });
@@ -188,5 +188,28 @@ describe("loadMakeupTarget (ตัวปลอม)", () => {
     expect(await call(fake({ contract: null }).client)).toEqual({ ok: false, reason: "not_found" });
     expect(await call(fake({ contractError: true }).client)).toEqual({ ok: false, reason: "load_error" });
     expect(await call(fake({ contract: contractRow, pendingError: true }).client)).toEqual({ ok: false, reason: "load_error" });
+  });
+});
+
+describe("การเข้าชดเชยไม่นับเป็นรอบประจำเดือนของเดือนที่ไปทำ (2.45/2.96)", () => {
+  it("นับ routine ของเดือนต้องกรอง makeup_for_month ว่างเท่านั้น", async () => {
+    const calls: { table: string; method: string; args: unknown[] }[] = [];
+    const client = {
+      from(table: string) {
+        const chain: Record<string, unknown> = {};
+        for (const m of ["select", "eq", "in", "gte", "lt", "is"]) {
+          chain[m] = (...args: unknown[]) => {
+            calls.push({ table, method: m, args });
+            return chain;
+          };
+        }
+        chain.maybeSingle = async () => ({ data: { stations_initialized_at: null }, error: null });
+        chain.then = (r: (v: unknown) => void) => r({ data: [], error: null, count: 0 });
+        return chain;
+      },
+    } as never;
+    await loadContractCounts(client, CID, "2026-11");
+    const visitCalls = calls.filter((c) => c.table === "visits");
+    expect(visitCalls.some((c) => c.method === "is" && c.args[0] === "makeup_for_month" && c.args[1] === null)).toBe(true);
   });
 });

@@ -132,6 +132,7 @@ export async function loadContractCounts(
       .select("id", { count: "exact", head: true })
       .eq("contract_id", contractId)
       .eq("visit_type", "routine")
+      .is("makeup_for_month", null) // การเข้าชดเชยไม่นับเป็นรอบประจำเดือนของเดือนที่ไปทำ (DECISIONS 2.45/2.96)
       .gte("visit_date", from)
       .lt("visit_date", toExclusive),
     supabase.from("contracts").select("stations_initialized_at").eq("id", contractId).maybeSingle(),
@@ -187,6 +188,7 @@ export async function loadContractList(
           .select("contract_id")
           .in("contract_id", part)
           .eq("visit_type", "routine")
+          .is("makeup_for_month", null) // การเข้าชดเชยไม่นับเป็นรอบประจำเดือนของเดือนที่ไปทำ (DECISIONS 2.45/2.96)
           .gte("visit_date", from)
           .lt("visit_date", toExclusive),
         supabase
@@ -273,13 +275,14 @@ export async function loadStations(
   return { stations: rows.map(toStation), truncated: rows.length >= STATION_LIMIT, error: null };
 }
 
-type VisitDb = { id: string; visit_date: string; visit_type: VisitType; start_time: string; end_time: string };
+type VisitDb = { id: string; visit_date: string; visit_type: VisitType; start_time: string; end_time: string; makeup_for_month?: string | null };
 const toVisit = (v: VisitDb): VisitSummary => ({
   id: v.id,
   visitDate: v.visit_date,
   visitType: v.visit_type,
   startTime: trimDbTime(v.start_time),
   endTime: trimDbTime(v.end_time),
+  makeupForMonth: v.makeup_for_month ? v.makeup_for_month.slice(0, 7) : null,
 });
 
 /** รายละเอียดสัญญาที่เลือก (สถานี · การเข้าในเดือน · ทีมล่าสุด · ประวัติ F · สถานีสัญญาเก่า) */
@@ -295,7 +298,7 @@ export async function loadContractDetail(
     loadStations(supabase, item.contractId),
     supabase
       .from("visits")
-      .select("id, visit_date, visit_type, start_time, end_time")
+      .select("id, visit_date, visit_type, start_time, end_time, makeup_for_month")
       .eq("contract_id", item.contractId)
       .neq("visit_type", "follow_up") // ติดตามผลนอกรอบอยู่ที่หน้า "กล่อง AG นอกรอบประจำเดือน" (/bait)
       .gte("visit_date", from)

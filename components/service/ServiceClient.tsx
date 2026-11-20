@@ -147,8 +147,8 @@ export function ServiceClient({
         setLoading(false);
         return;
       }
-      // โหมดชดเชย: เปิดการเข้าใหม่เสมอ (ไม่แก้การเข้าเดิมของเดือนนี้)
-      const preferred = makeup ? undefined : (detail.visitsInMonth.find((v) => v.visitType === "routine") ?? detail.visitsInMonth[0]);
+      // โหมดชดเชย: เปิดการเข้าใหม่เสมอ (ไม่แก้การเข้าเดิมของเดือนนี้) · โหมดปกติ: ข้ามการเข้าชดเชย (ไม่ใช่รอบประจำเดือนของเดือนนี้) — มีแต่การเข้าชดเชย = เปิดการเข้าใหม่
+      const preferred = makeup ? undefined : (detail.visitsInMonth.find((v) => v.visitType === "routine" && !v.makeupForMonth) ?? detail.visitsInMonth.find((v) => !v.makeupForMonth));
       const ok = await openVisit(item, detail, preferred ? preferred.id : "new", myReq);
       if (myReq === req.current) {
         setLoading(false);

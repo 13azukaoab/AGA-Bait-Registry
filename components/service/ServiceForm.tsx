@@ -276,6 +276,7 @@ export function ServiceForm({
             {visitChoices.map((v, i) => (
               <Chip key={v.id} tone="info" selected={chosenVisitId === v.id} onClick={() => onChooseVisit(v.id)}>
                 ครั้งที่ {i + 1} · {v.visitDate.slice(8)}/{v.visitDate.slice(5, 7)}
+                {v.makeupForMonth ? " · ชดเชย" : ""}
               </Chip>
             ))}
             <Chip tone="na" selected={chosenVisitId === "new"} onClick={() => onChooseVisit("new")}>
