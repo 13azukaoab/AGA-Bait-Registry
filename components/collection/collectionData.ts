@@ -16,13 +16,14 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { effectiveEndDate, igBase, isContractEnded, pickLastAction, splitHeld } from "./collectionRules";
 import type { CollectionRow, ContractStatus, HeldContract, TeamOption } from "./collectionTypes";
 import type { TeamKind } from "@/lib/service/teamKind";
+import { loadPendingMissedRows } from "@/components/todo/data";
 
 export const COLLECTION_MAX_CONTRACTS = 3000;
 const PAGE = 1000;
 const CHUNK = 150;
 
 export type CollectionLoadResult =
-  | { ok: true; rows: CollectionRow[]; teams: TeamOption[]; held: HeldContract[]; truncated: boolean }
+  | { ok: true; rows: CollectionRow[]; teams: TeamOption[]; held: HeldContract[]; truncated: boolean; pendingTruncated: boolean }
   | { ok: false; code: string };
 
 export interface ContractDb {
@@ -184,12 +185,19 @@ export async function loadCollection(
   }));
 
   const held: HeldContract[] = [];
-  const pend = await supabase.rpc("list_pending_missed_services", { p_branch_id: null, p_month: `${opts.currentMonth}-01` });
+  let pendingTruncated = false;
+  const branchRes = await supabase.from("branches").select("id").eq("is_active", true);
+  const pend = branchRes.error
+    ? { rows: [], error: branchRes.error.message, truncated: false }
+    : await loadPendingMissedRows(supabase, opts.currentMonth, ((branchRes.data ?? []) as { id: string }[]).map((b) => b.id));
   if (pend.error) {
-    console.error("[collection] pending-missed load error code", pend.error.code ?? "unknown");
+    // PDPA: ไม่ log ข้อความดิบ — แจ้งว่าอ่านเรื่องรอชดเชยไม่ได้ (หน้ายังแสดงตามปกติ)
+    console.error("[collection] pending-missed load failed");
+    pendingTruncated = true;
   } else {
+    pendingTruncated = pend.truncated;
     const pendingBy = new Map<string, string>();
-    for (const p of (pend.data ?? []) as { contract_id: string; missed_month: string }[]) {
+    for (const p of pend.rows) {
       const prev = pendingBy.get(p.contract_id);
       if (!prev || p.missed_month < prev) pendingBy.set(p.contract_id, p.missed_month);
     }
@@ -199,5 +207,5 @@ export async function loadCollection(
   }
 
   rows.sort((a, b) => (a.endDate === b.endDate ? a.customerName.localeCompare(b.customerName, "th") : a.endDate < b.endDate ? 1 : -1));
-  return { ok: true, rows, teams, held, truncated };
+  return { ok: true, rows, teams, held, truncated, pendingTruncated };
 }

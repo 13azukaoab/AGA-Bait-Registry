@@ -70,6 +70,7 @@ export function CollectionClient({
   teams,
   held,
   truncated,
+  pendingTruncated = false,
   role,
   divisionScope,
   currentMonth,
@@ -79,6 +80,8 @@ export function CollectionClient({
   teams: TeamOption[];
   held: HeldContract[];
   truncated: boolean;
+  /** อ่านเรื่องรอชดเชยไม่ครบ (เกินเพดาน/อ่านพลาด) → อาจมีลูกค้ารอชดเชยโผล่ในรายการเก็บสถานี */
+  pendingTruncated?: boolean;
   role: UserRole;
   divisionScope: string[];
   currentMonth: string;
@@ -176,6 +179,12 @@ export function CollectionClient({
       {truncated ? (
         <Alert variant="warn" title="แสดงไม่ครบทุกสัญญา" className="mb-3">
           มีสัญญาที่หมดแล้วมากกว่าที่หน้านี้โหลดได้ — แสดงเฉพาะสัญญาที่หมดล่าสุด · ค้นหาสัญญาเก่าที่หน้าทะเบียนลูกค้า
+        </Alert>
+      ) : null}
+
+      {pendingTruncated ? (
+        <Alert variant="warn" title="เรื่องรอชดเชยอาจไม่ครบ" className="mb-3">
+          อ่านรายการตกบริการที่รอชดเชยได้ไม่ครบ — ลูกค้าบางรายที่ยังมีเรื่องรอชดเชยอาจโผล่ในรายการเก็บสถานีนี้ · ตรวจที่หน้า “งานที่ต้องทำ” ก่อนเก็บ
         </Alert>
       ) : null}
 
