@@ -9,6 +9,7 @@
  *   * สิทธิ์ปุ่ม: host ทุกแถว · recorder เฉพาะสาขาที่อยู่ใน divisionScope (ตรง contract_in_scope) · admin/viewer ไม่มีปุ่ม
  *   * ตัวหาร IG บนจอ = igTotal − moved (IG ที่ย้ายไปสัญญา Renew ไม่นับเป็นค้าง/ไม่เก็บ — DECISIONS 2.50)
  */
+import { isContractEnded as centralIsContractEnded } from "@/components/todo/contractEnd";
 import { defaultEndDateForTerm } from "@/lib/rules/term";
 import type { UserRole } from "@/lib/db/types";
 
@@ -21,9 +22,8 @@ export function effectiveEndDate(startDate: string, endDate: string | null, term
 
 /** สัญญา "หมดแล้ว" ตามกฎเดียวกับ CL001 */
 export function isContractEnded(status: ContractStatus, effectiveEnd: string, today: string): boolean {
-  // สัญญาพัก (paused · M29) ยังไม่จบ — ห้ามขึ้นรายการรอเก็บ (DB กันด้วย CP010)
-  if (status === "paused") return false;
-  return status !== "active" || effectiveEnd < today;
+  // ใช้นิยามกลางของหน้าจอ (components/todo/contractEnd.ts) — paused ไม่จบเสมอ (DB กันด้วย CP010)
+  return centralIsContractEnded({ status, endDate: effectiveEnd }, today);
 }
 
 /**

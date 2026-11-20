@@ -512,6 +512,9 @@ function ConfirmClose({ row, busy, error, onConfirm, onCancel }: { row: Collecti
           onChange={(e) => setNote(e.target.value)}
           className="mt-1 w-full min-w-0 resize-y rounded-lg border border-border-strong bg-surface px-2.5 py-1.5 text-[13px] text-fg focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent max-[767px]:text-base"
         />
+        <p className="m-0 mt-3 rounded-lg bg-warn-soft px-3 py-2 text-[13px] text-warn">
+          ปิดสัญญาแล้ว เปิดกลับจากหน้าจอนี้ไม่ได้ (ต้องให้ Host แก้ที่ระบบโดยตรง) — ตรวจให้แน่ใจก่อนยืนยัน
+        </p>
         {error ? (
           <p role="alert" className="m-0 mt-3 rounded-lg border-l-4 border-l-danger bg-danger-soft px-3 py-2 text-[13px] text-danger">
             {error}
