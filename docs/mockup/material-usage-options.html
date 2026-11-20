@@ -1,0 +1,230 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ตัวอย่างหน้าตา: สรุปวัสดุแยกตามประเภทงาน (แบบ A / แบบ B)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@300;400;500;600;700&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<!--
+  Preview (DECISIONS 2.90 ทางเลือก ก) · เฉพาะส่วน "สรุปวัสดุแยกตามประเภทงาน" ของหน้า /material
+  ข้อมูลทั้งหมดเป็นข้อมูลสมมติ (ต.ค. 2026) ไม่ใช่ข้อมูลจริง
+  เปิดแบบเดียว: ?v=a หรือ ?v=b · โหมดมืด: ?theme=dark
+  ที่มาของตัวเลขเมื่อทำหน้าจริง: v_service_materials (+ visits.makeup_for_month, contracts.sale_type)
+-->
+<style>
+:root{
+  --bg:#eef2f7; --surface:#ffffff; --surface-2:#f4f7fb; --surface-3:#e9eff6;
+  --fg:#17212e; --fg-muted:#5a6b7e; --border:#d8e0ea; --border-strong:#c3cedb;
+  --accent:#1f5fa8; --accent-soft:#e6f0fb; --accent-fg:#ffffff;
+  --ok:#177a51; --ok-soft:#e3f4ec; --warn:#935f08; --warn-soft:#fbf0db; --danger:#be392d;
+  --nem:#1f5fa8; --nem-out:#4a90d9; --pow:#b4740a; --wood:#6d47b8;
+  --tier-m:#157a50; --tier-l:#a86c07; --tier-xl:#c2561f; --tier-s:#1f5fa8;
+  --radius:10px; --shadow:0 1px 2px rgba(20,40,70,.06),0 1px 3px rgba(20,40,70,.05);
+  color-scheme:light;
+}
+:root[data-theme="dark"]{
+  --bg:#0e1621; --surface:#16202c; --surface-2:#1b2733; --surface-3:#222f3d;
+  --fg:#e7eef5; --fg-muted:#9fb0c1; --border:#2a3744; --border-strong:#36485a;
+  --accent:#4a90d9; --accent-soft:#16304a; --accent-fg:#0b1420;
+  --ok:#3bb183; --ok-soft:#133227; --warn:#d99b3e; --warn-soft:#332713; --danger:#e57466;
+  --nem:#4a90d9; --nem-out:#7fb3e8; --pow:#d99b3e; --wood:#a588e0;
+  --tier-m:#3bb183; --tier-l:#d99b3e; --tier-xl:#e07a4e; --tier-s:#4a90d9;
+  --shadow:0 1px 2px rgba(0,0,0,.3); color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:"Noto Sans Thai","Segoe UI",system-ui,sans-serif;font-size:14px;line-height:1.55;font-variant-numeric:tabular-nums}
+.wrap{max-width:1100px;margin:0 auto;padding:16px}
+h1{font-size:20px;margin:0 0 4px} h2{font-size:16px;margin:0} h3{font-size:14px;margin:0}
+.sub{color:var(--fg-muted);font-size:13px;margin:0 0 12px}
+.fake{display:inline-block;background:var(--warn-soft);color:var(--warn);border:1px solid var(--warn);border-radius:999px;padding:1px 10px;font-size:12px;font-weight:600}
+.bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:12px 0}
+.seg{display:inline-flex;border:1px solid var(--border-strong);border-radius:9px;overflow:hidden;background:var(--surface)}
+.seg button{border:0;background:transparent;color:var(--fg);font:inherit;padding:8px 16px;min-height:44px;cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-fg);font-weight:600}
+.seg button:focus-visible,.btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.btn{border:1px solid var(--border-strong);background:var(--surface);color:var(--fg);font:inherit;border-radius:9px;padding:8px 14px;min-height:44px;cursor:pointer}
+select{font:inherit;font-size:16px;min-height:44px;border:1px solid var(--border-strong);border-radius:9px;background:var(--surface);color:var(--fg);padding:6px 10px}
+.panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:14px;margin-bottom:14px;min-width:0}
+.panel>h2{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:4px}
+.hint{font-size:12px;color:var(--fg-muted);margin:0 0 10px}
+.note{display:flex;gap:8px;background:var(--accent-soft);border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px;font-size:12.5px;margin-bottom:14px}
+.note svg{flex:none;width:18px;height:18px;stroke:var(--accent);fill:none;stroke-width:2;margin-top:2px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.grid4{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+@media (max-width:767px){.grid2,.grid4{grid-template-columns:1fr}.wrap{padding:16px}}
+.tw{overflow-x:auto;-webkit-overflow-scrolling:touch}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th,td{padding:8px 10px;border-bottom:1px solid var(--border);text-align:right;white-space:nowrap}
+th:first-child,td:first-child{text-align:left;white-space:normal}
+thead th{background:var(--surface-2);color:var(--fg-muted);font-weight:600;font-size:12px}
+tr.sub td{color:var(--fg-muted);font-size:12.5px;padding-left:26px}
+tr.sub td:first-child{padding-left:26px}
+tfoot td{font-weight:700;background:var(--surface-2)}
+.dot{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px;vertical-align:baseline}
+.chartbox{position:relative;height:300px}
+.chartbox.sm{height:240px}
+.card{border:1px solid var(--border);border-radius:var(--radius);padding:12px;background:var(--surface-2);min-width:0}
+.card .t{font-size:12.5px;color:var(--fg-muted);font-weight:600}
+.card .big{font-size:22px;font-weight:700;margin:2px 0}
+.card .row{display:flex;justify-content:space-between;font-size:12.5px;color:var(--fg-muted);gap:8px}
+.card .row b{color:var(--fg)}
+.bk{height:8px;border-radius:999px;background:var(--surface-3);display:flex;overflow:hidden;margin:8px 0}
+.bk i{display:block;height:100%}
+.chip{display:inline-flex;align-items:center;gap:4px;font-size:12px;border-radius:999px;padding:1px 8px;background:var(--surface-3);color:var(--fg-muted)}
+.up{color:var(--ok)} .down{color:var(--danger)}
+.opt{margin-top:22px}
+.optlabel{display:flex;gap:10px;align-items:center;margin-bottom:8px}
+.optlabel b{background:var(--accent);color:var(--accent-fg);border-radius:8px;padding:2px 12px;font-size:15px}
+[hidden]{display:none!important}
+@media (max-width:767px){.chartbox{height:260px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>สรุปวัสดุแยกตามประเภทงาน — ตัวอย่างหน้าตา 2 แบบ</h1>
+  <p class="sub">Advance Group Asia (AGA) · หน้าสรุปงานบริการรายเดือน › แท็บ "การใช้อุปกรณ์" · เดือน ต.ค. 2026 · <span class="fake">ข้อมูลสมมติ ไม่ใช่ข้อมูลจริง</span></p>
+
+  <div class="bar" id="switch">
+    <div class="seg" role="group" aria-label="เลือกแบบ">
+      <button type="button" data-v="a" aria-pressed="true">แบบ A · ตาราง + กราฟแท่ง</button>
+      <button type="button" data-v="b" aria-pressed="false">แบบ B · การ์ด + โดนัท + แนวโน้ม</button>
+    </div>
+    <button type="button" class="btn" id="themeBtn">สลับโหมดสว่าง/มืด</button>
+  </div>
+
+  <div class="note"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 8v.01M11 12h1v5h1"/></svg>
+    <span><b>ข้อจำกัดที่ต้องรู้:</b> งานซ่อมที่ทำในการเข้ารอบปกติ ถูกนับเป็น "บริการประจำเดือน" · วัสดุตอนเปิดงาน/ติดตั้งยังไม่ได้บันทึกในระบบ (จะเพิ่มหลังเปิดใช้งานจริง) จึงยังไม่รวมในตัวเลข ยกเว้นเหยื่อติดตั้ง AG ที่บันทึกตอนติดตั้งแล้ว</span></div>
+
+  <!-- ============ แบบ A ============ -->
+  <section id="optA" class="opt" aria-labelledby="hA">
+    <div class="optlabel"><b>แบบ A</b><span class="sub" style="margin:0">ตารางแยกยอด + กราฟแท่งซ้อน · ดูตัวเลขเทียบกันตรงๆ</span></div>
+
+    <div class="panel">
+      <h2 id="hA">มุมมอง 1 · ตามประเภทงาน</h2>
+      <p class="hint">บริการประจำเดือน = เข้ารอบ (routine) · แก้ไขปัญหา = เข้าแก้ปัญหา/ติดตามผล รวมเหยื่อติดตั้ง AG</p>
+      <div class="tw"><table>
+        <thead><tr><th>ประเภทงาน</th><th>เหยื่อนอก IG+IC (ก.)</th><th>เหยื่อใน AG (ก.)</th><th>เคมีผง (จุด)</th><th>เคมีผง (ก.)</th><th>ไม้ล่อ (ชิ้น)</th></tr></thead>
+        <tbody id="aWorkBody"></tbody>
+        <tfoot id="aWorkFoot"></tfoot>
+      </table></div>
+      <div class="chartbox" style="margin-top:12px"><canvas id="aWorkChart" role="img" aria-label="กราฟแท่งซ้อนการใช้วัสดุแยกตามประเภทงาน"></canvas></div>
+    </div>
+
+    <div class="panel">
+      <h2>มุมมอง 2 · ตามประเภทลูกค้า (New / Renew)</h2>
+      <p class="hint">วัสดุทั้งหมดที่ใช้กับลูกค้ากลุ่มนั้น (ทั้งรอบประจำเดือนและแก้ปัญหา)</p>
+      <div class="tw"><table>
+        <thead><tr><th>ประเภทลูกค้า</th><th>เหยื่อนอก IG+IC (ก.)</th><th>เหยื่อใน AG (ก.)</th><th>เคมีผง (จุด)</th><th>เคมีผง (ก.)</th><th>ไม้ล่อ (ชิ้น)</th></tr></thead>
+        <tbody id="aCustBody"></tbody><tfoot id="aCustFoot"></tfoot>
+      </table></div>
+      <div class="chartbox sm" style="margin-top:12px"><canvas id="aCustChart" role="img" aria-label="กราฟแท่งซ้อนการใช้วัสดุแยก New และ Renew"></canvas></div>
+    </div>
+  </section>
+
+  <!-- ============ แบบ B ============ -->
+  <section id="optB" class="opt" aria-labelledby="hB" hidden>
+    <div class="optlabel"><b>แบบ B</b><span class="sub" style="margin:0">การ์ดสรุป + โดนัทสัดส่วน + แนวโน้มรายเดือน · ดูภาพรวมและทิศทางเร็ว</span></div>
+
+    <div class="panel">
+      <h2 id="hB">มุมมอง 1 · ตามประเภทงาน</h2>
+      <p class="hint">การ์ดแต่ละใบ = 1 ประเภทงาน · แถบสี = สัดส่วนวัสดุของงานนั้น · % = เทียบเดือนก่อน (ข้อมูลสมมติ)</p>
+      <div class="grid4" id="bCards"></div>
+    </div>
+
+    <div class="grid2">
+      <div class="panel">
+        <h2>สัดส่วนตามประเภทงาน</h2>
+        <div class="bar" style="margin:4px 0 8px"><label for="bMat" class="hint" style="margin:0">วัสดุ</label>
+          <select id="bMat"><option value="out">เหยื่อนอก IG+IC (ก.)</option><option value="in">เหยื่อใน AG (ก.)</option><option value="pow">เคมีผง (จุด)</option><option value="wood">ไม้ล่อ (ชิ้น)</option></select></div>
+        <div class="chartbox sm"><canvas id="bDonutWork" role="img" aria-label="โดนัทสัดส่วนวัสดุตามประเภทงาน"></canvas></div>
+      </div>
+      <div class="panel">
+        <h2>มุมมอง 2 · ตามประเภทลูกค้า</h2>
+        <p class="hint" style="margin-top:4px">วัสดุเดียวกับที่เลือกทางซ้าย แยก New / Renew</p>
+        <div class="chartbox sm"><canvas id="bDonutCust" role="img" aria-label="โดนัทสัดส่วนวัสดุตาม New และ Renew"></canvas></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>แนวโน้ม 6 เดือน · เหยื่อรวม (นอก+ใน) แยกตามประเภทงาน</h2>
+      <p class="hint">ก.ค. – ต.ค. 2026 (ข้อมูลสมมติ)</p>
+      <div class="chartbox"><canvas id="bTrend" role="img" aria-label="กราฟแนวโน้มการใช้เหยื่อรายเดือน"></canvas></div>
+    </div>
+  </section>
+</div>
+
+<script>
+/* ข้อมูลสมมติ ต.ค. 2026 · หน่วย: out/in = กรัม, pow = จุด (0.3 ก./จุด), wood = ชิ้น */
+var WORK=[
+  {k:'routine',label:'บริการประจำเดือน',c:'--nem',out:5800,in:3450,pow:200,wood:840,prev:.96},
+  {k:'makeup',label:'  └ ชดเชย (ตกบริการเดือนก่อน)',c:'--nem-out',out:600,in:350,pow:20,wood:80,prev:1.1,sub:true},
+  {k:'problem',label:'แก้ไขปัญหา (รวมติดตั้ง AG)',c:'--pow',out:900,in:1250,pow:140,wood:220,prev:1.18}
+];
+var CUST=[
+  {k:'new',label:'ลูกค้าใหม่ (New)',c:'--tier-m',out:1500,in:1900,pow:90,wood:280},
+  {k:'renew',label:'ลูกค้าต่อสัญญา (Renew)',c:'--accent',out:5200,in:2800,pow:250,wood:780}
+];
+var TREND={labels:['ก.ค.','ส.ค.','ก.ย.','ต.ค.'],routine:[7600,7900,8100,8300],problem:[1800,1900,1700,2150]};
+function n(x){return x.toLocaleString('en-US')}
+function sum(a,f){return a.reduce(function(s,r){return s+r[f]},0)}
+function cv(v){return getComputedStyle(document.documentElement).getPropertyValue(v).trim()}
+function rowHtml(r){return '<tr'+(r.sub?' class="sub"':'')+'><td><span class="dot" style="background:var('+r.c+')"></span>'+r.label.trim()+'</td><td>'+n(r.out)+'</td><td>'+n(r.in)+'</td><td>'+n(r.pow)+'</td><td>'+(r.pow*.3).toFixed(0)+'</td><td>'+n(r.wood)+'</td></tr>'}
+function foot(rows,label){var t={out:sum(rows,'out'),in:sum(rows,'in'),pow:sum(rows,'pow'),wood:sum(rows,'wood')};return '<tr><td>'+label+'</td><td>'+n(t.out)+'</td><td>'+n(t.in)+'</td><td>'+n(t.pow)+'</td><td>'+(t.pow*.3).toFixed(0)+'</td><td>'+n(t.wood)+'</td></tr>'}
+var MAIN=WORK.filter(function(r){return !r.sub});           /* รวม = routine + problem (ชดเชยอยู่ใน routine แล้ว) */
+var WORKT=WORK.filter(function(r){return r.k!=='makeup'});
+function fill(){
+  /* ชดเชยเป็นส่วนย่อยของ routine: ตัวเลข routine ที่แสดงรวมชดเชยแล้ว */
+  document.getElementById('aWorkBody').innerHTML=WORK.map(rowHtml).join('');
+  document.getElementById('aWorkFoot').innerHTML=foot(WORKT,'รวมทุกประเภทงาน');
+  document.getElementById('aCustBody').innerHTML=CUST.map(rowHtml).join('');
+  document.getElementById('aCustFoot').innerHTML=foot(CUST,'รวมทุกกลุ่มลูกค้า');
+  document.getElementById('bCards').innerHTML=WORK.map(function(r){
+    var tot=r.out+r.in, pc=Math.round((r.prev-1)*100);
+    return '<div class="card"><div class="t"><span class="dot" style="background:var('+r.c+')"></span>'+r.label.trim()+'</div>'+
+    '<div class="big">'+n(tot)+' <span style="font-size:13px;font-weight:400;color:var(--fg-muted)">ก. เหยื่อรวม</span></div>'+
+    '<div class="bk" aria-hidden="true"><i style="width:'+(r.out/tot*100).toFixed(0)+'%;background:var(--nem-out)"></i><i style="width:'+(r.in/tot*100).toFixed(0)+'%;background:var(--nem)"></i></div>'+
+    '<div class="row"><span>นอก IG+IC</span><b>'+n(r.out)+' ก.</b></div><div class="row"><span>ใน AG</span><b>'+n(r.in)+' ก.</b></div>'+
+    '<div class="row"><span>เคมีผง</span><b>'+n(r.pow)+' จุด</b></div><div class="row"><span>ไม้ล่อ</span><b>'+n(r.wood)+' ชิ้น</b></div>'+
+    '<div style="margin-top:6px"><span class="chip '+(pc>=0?'up':'down')+'">'+(pc>=0?'▲':'▼')+' '+Math.abs(pc)+'% เทียบเดือนก่อน</span></div></div>'}).join('');
+}
+var charts=[];
+function kill(){charts.forEach(function(c){c.destroy()});charts=[]}
+function base(){Chart.defaults.font.family='"Noto Sans Thai",system-ui,sans-serif';Chart.defaults.font.size=12;Chart.defaults.color=cv('--fg-muted');Chart.defaults.animation=false}
+function stacked(id,rows){
+  var ds=[['เหยื่อนอก IG+IC (ก.)','out','--nem-out'],['เหยื่อใน AG (ก.)','in','--nem'],['เคมีผง (ก.)','powg','--pow']].map(function(d){
+    return {label:d[0],data:rows.map(function(r){return d[1]==='powg'?r.pow*.3:r[d[1]]}),backgroundColor:cv(d[2]),borderRadius:3}});
+  charts.push(new Chart(document.getElementById(id),{type:'bar',data:{labels:rows.map(function(r){return r.label.trim()}),datasets:ds},
+    options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,scales:{x:{stacked:true,grid:{color:cv('--border')}},y:{stacked:true,grid:{display:false}}},plugins:{legend:{position:'bottom'}}}}));
+}
+function donut(id,rows,f){
+  charts.push(new Chart(document.getElementById(id),{type:'doughnut',data:{labels:rows.map(function(r){return r.label.trim()}),datasets:[{data:rows.map(function(r){return r[f]}),backgroundColor:rows.map(function(r){return cv(r.c)}),borderColor:cv('--surface'),borderWidth:2}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:'60%',plugins:{legend:{position:'bottom'}}}}));
+}
+function render(){
+  kill();base();
+  var v=document.querySelector('#switch [aria-pressed="true"]').dataset.v;
+  document.getElementById('optA').hidden=v!=='a';document.getElementById('optB').hidden=v!=='b';
+  if(v==='a'){stacked('aWorkChart',[WORK[0],WORK[2]]);stacked('aCustChart',CUST)}
+  else{var f=document.getElementById('bMat').value;
+    var wr=[WORK[0],WORK[2]];
+    donut('bDonutWork',wr,f);donut('bDonutCust',CUST,f);
+    charts.push(new Chart(document.getElementById('bTrend'),{type:'line',data:{labels:TREND.labels,datasets:[
+      {label:'บริการประจำเดือน',data:TREND.routine,borderColor:cv('--nem'),backgroundColor:cv('--nem'),tension:.25},
+      {label:'แก้ไขปัญหา',data:TREND.problem,borderColor:cv('--pow'),backgroundColor:cv('--pow'),tension:.25}]},
+      options:{responsive:true,maintainAspectRatio:false,scales:{y:{beginAtZero:true,grid:{color:cv('--border')}},x:{grid:{display:false}}},plugins:{legend:{position:'bottom'}}}}));}
+}
+document.querySelectorAll('#switch [data-v]').forEach(function(b){b.addEventListener('click',function(){
+  document.querySelectorAll('#switch [data-v]').forEach(function(x){x.setAttribute('aria-pressed',x===b?'true':'false')});render()})});
+document.getElementById('bMat').addEventListener('change',render);
+document.getElementById('themeBtn').addEventListener('click',function(){
+  var d=document.documentElement;d.dataset.theme=d.dataset.theme==='dark'?'light':'dark';render()});
+var q=new URLSearchParams(location.search);
+if(q.get('theme')==='dark')document.documentElement.dataset.theme='dark';
+if(q.get('v')==='b'){document.querySelectorAll('#switch [data-v]').forEach(function(x){x.setAttribute('aria-pressed',x.dataset.v==='b'?'true':'false')})}
+fill();
+(document.fonts&&document.fonts.ready?document.fonts.ready:Promise.resolve()).then(render);
+</script>
+</body>
+</html>

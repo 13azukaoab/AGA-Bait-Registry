@@ -1,0 +1,93 @@
+/*
+ * สไตล์เฉพาะหน้า /material (สรุปงานบริการรายเดือน)
+ *
+ * สีวัสดุ 4 ตัว (--nem / --nem-out / --pow / --wood) มาจาก mockup FINAL #material (15 พ.ย.) — ยังไม่อยู่ใน app/globals.css
+ * จึงนิยามที่ .root ของหน้านี้ (ค่าเดียวกับ mockup ทั้งโหมดสว่าง/มืด) · ถ้า HQ ย้ายเข้า globals.css ให้ลบบล็อกนี้ได้เลย
+ * ส่วนอื่นอ้าง token กลางเท่านั้น (ไม่มี hex)
+ */
+.root {
+  --nem: #1f5fa8;
+  --nem-out: #4a90d9;
+  --pow: #b4740a;
+  --wood: #6d47b8;
+}
+:global(:root[data-theme="dark"]) .root {
+  --nem: #4a90d9;
+  --nem-out: #7fb3e8;
+  --pow: #d99b3e;
+  --wood: #a588e0;
+}
+@media (prefers-color-scheme: dark) {
+  :global(:root:not([data-theme="light"])) .root {
+    --nem: #4a90d9;
+    --nem-out: #7fb3e8;
+    --pow: #d99b3e;
+    --wood: #a588e0;
+  }
+}
+
+/* แท่งซ้อน (CSS ล้วน ไม่พึ่งไลบรารีกราฟ) */
+.track {
+  display: flex;
+  height: 14px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--surface-3);
+}
+.seg {
+  height: 100%;
+  min-width: 0;
+}
+.segOut {
+  background: var(--nem-out);
+}
+.segIn {
+  background: var(--nem);
+}
+.segPow {
+  background: var(--pow);
+}
+.dotOut {
+  background: var(--nem-out);
+}
+.dotIn {
+  background: var(--nem);
+}
+.dotPow {
+  background: var(--pow);
+}
+.dotWood {
+  background: var(--wood);
+}
+.statNem {
+  border-left-color: var(--nem);
+}
+.statPow {
+  border-left-color: var(--pow);
+}
+.statWood {
+  border-left-color: var(--wood);
+}
+.workFill {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--accent);
+}
+.workFillOver {
+  background: var(--warn);
+}
+.capMark {
+  position: absolute;
+  top: -3px;
+  bottom: -3px;
+  width: 2px;
+  background: var(--fg-muted);
+}
+
+/* ฟอร์มตัวกรอง: 16px บนจอ ≤767px กัน iOS ซูมเอง · ปุ่มสูง ≥44px */
+@media (max-width: 767px) {
+  .ctl {
+    min-height: 44px;
+    font-size: 16px;
+  }
+}
