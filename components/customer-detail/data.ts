@@ -19,6 +19,8 @@ import { termMonthsOf } from "@/lib/service/termMonths";
 import { TIER_RULE_COLUMNS, toTierRules, type TierRuleRow } from "@/lib/tierRules";
 import type { UserRole } from "@/lib/db/types";
 
+import { effectiveContractStatus } from "@/components/todo/contractEnd";
+
 import { changedFieldNames } from "./logic";
 import type {
   AuditEntry,
@@ -106,9 +108,15 @@ type ContractDb = {
 const CONTRACT_COLUMNS =
   "id, contract_no, start_date, end_date, term_months, value_total, sale_type, status, closed_at, cancelled_at, renewed_from_contract_id, stations_initialized_at, contract_teams ( teams ( code ) )";
 
-export function toContractRow(c: ContractDb, rules: TierRule[]): ContractRow {
+/**
+ * แปลงแถวสัญญา → ContractRow
+ * `status` = สถานะที่ใช้ตัดสินบนหน้าจอ: สัญญา active ที่เลยวันสิ้นสุด (เวลาไทย `today`) ถือเป็น expired_pending_collection
+ * (ไม่มีงานเบื้องหลังตั้งสถานะนี้ให้เอง — นิยามกลางที่ components/todo/contractEnd.ts) · สถานะดิบเก็บใน `dbStatus`
+ */
+export function toContractRow(c: ContractDb, rules: TierRule[], today: string = todayBangkok()): ContractRow {
   const termMonths = termMonthsOf(c.term_months);
   const valueTotal = Number(c.value_total);
+  const end = effectiveEndDate({ startDate: c.start_date, termMonths, ...(c.end_date ? { endDate: c.end_date } : {}) });
   return {
     id: c.id,
     no: c.contract_no,
@@ -117,7 +125,8 @@ export function toContractRow(c: ContractDb, rules: TierRule[]): ContractRow {
     termMonths,
     valueTotal,
     saleType: c.sale_type,
-    status: c.status,
+    status: effectiveContractStatus(c.status, end, today),
+    dbStatus: c.status,
     closedAt: c.closed_at,
     cancelledAt: c.cancelled_at,
     renewedFromId: c.renewed_from_contract_id,
@@ -175,7 +184,7 @@ export async function loadCustomerDetail(
   const tierRules = toTierRules((rulesRes.data ?? []) as TierRuleRow[]);
   let contracts: ContractRow[];
   try {
-    contracts = ((contractsRes.data ?? []) as unknown as ContractDb[]).map((x) => toContractRow(x, tierRules));
+    contracts = ((contractsRes.data ?? []) as unknown as ContractDb[]).map((x) => toContractRow(x, tierRules, todayBangkok()));
   } catch {
     return fail("อ่านข้อมูลสัญญาไม่ได้ (ค่าระยะสัญญาไม่ถูกต้อง)");
   }

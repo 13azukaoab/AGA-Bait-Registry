@@ -83,6 +83,7 @@ export type Tone = "ok" | "miss" | "pend" | "na" | "info";
 
 export const CONTRACT_STATUS_LABEL: Record<ContractStatus, { text: string; tone: Tone }> = {
   active: { text: "ใช้งาน", tone: "ok" },
+  paused: { text: "พักสัญญา", tone: "pend" },
   expired_pending_collection: { text: "หมดสัญญา · รอเก็บสถานี", tone: "pend" },
   closed: { text: "ปิดสัญญาแล้ว", tone: "na" },
   cancelled: { text: "ยกเลิก", tone: "miss" },
@@ -217,11 +218,12 @@ export function sortContracts(list: readonly ContractRow[]): ContractRow[] {
   return [...list].sort((a, b) => (a.startDate < b.startDate ? 1 : a.startDate > b.startDate ? -1 : 0));
 }
 
-/** สัญญาที่ใช้เป็นหัวการ์ด: ใช้งาน → หมดสัญญารอเก็บ → ล่าสุด */
+/** สัญญาที่ใช้เป็นหัวการ์ด: ใช้งาน → พัก → หมดสัญญารอเก็บ → ล่าสุด (status = สถานะที่ใช้ตัดสินบนหน้าจอ — ดู toContractRow) */
 export function primaryContract(list: readonly ContractRow[]): ContractRow | null {
   const sorted = sortContracts(list);
   return (
     sorted.find((c) => c.status === "active") ??
+    sorted.find((c) => c.status === "paused") ??
     sorted.find((c) => c.status === "expired_pending_collection") ??
     sorted[0] ??
     null

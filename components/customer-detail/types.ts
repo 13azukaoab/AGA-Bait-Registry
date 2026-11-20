@@ -6,7 +6,8 @@
  */
 import type { UserRole } from "@/lib/db/types";
 
-export type ContractStatus = "active" | "expired_pending_collection" | "closed" | "cancelled";
+/** สถานะสัญญา — `paused` = พักสัญญา (M29) · ⚠ ฟิลด์ `status` ของ ContractRow เป็นสถานะ "ที่ใช้ตัดสินบนหน้าจอ" (active ที่เลยวันสิ้นสุด = expired_pending_collection) ดู toContractRow */
+export type ContractStatus = "active" | "paused" | "expired_pending_collection" | "closed" | "cancelled";
 export type StationType = "IG" | "IC" | "AG";
 /** `eliminated` เป็นค่าเก่าใน enum (ไม่ใช้แล้ว) — อ่านได้ ไม่ให้หน้าพัง */
 export type StationStatus = "active" | "pending_removal" | "removed" | "lost" | "withdrawn" | "eliminated";
@@ -47,7 +48,10 @@ export interface ContractRow {
   termMonths: number;
   valueTotal: number;
   saleType: "new" | "renew" | null;
+  /** สถานะที่ใช้ตัดสินบนหน้าจอ: active ที่เลยวันสิ้นสุด (เวลาไทย) = expired_pending_collection (นิยามกลาง components/todo/contractEnd.ts) */
   status: ContractStatus;
+  /** สถานะดิบจาก contracts.status (ถ้าไม่ส่ง = เท่ากับ status) */
+  dbStatus?: ContractStatus;
   closedAt: string | null;
   cancelledAt: string | null;
   renewedFromId: string | null;
