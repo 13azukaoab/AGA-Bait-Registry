@@ -6,8 +6,9 @@
  * Logic summary:
  *   * ข้อมูลทั้งหมดมาจาก server (page.tsx) — ที่นี่ไม่อ่าน env/token · แสดงผลตาม `deriveSyncState`
  *   * สถานะ "ยังไม่ได้ตั้งค่าการเชื่อมต่อ" แสดงเป็นข้อมูล (สีน้ำเงิน) ไม่ใช่ error · ปุ่มส่งถูกปิดไว้จนกว่าจะตั้ง token
- *   * ปุ่ม "ส่งตอนนี้" แสดงเฉพาะเมื่อ `canTrigger` (host) → POST /api/dashboard/sync แล้วแปลงผลด้วย
- *     `interpretSyncResponse` (ไม่โชว์ข้อความดิบ) → `router.refresh()` ให้ประวัติอัปเดต
+ *   * ปุ่ม "ส่งตอนนี้" แสดงเฉพาะเมื่อ `canTrigger` (host) → เปิดกล่องยืนยัน (ConfirmSendDialog) ก่อนเสมอ
+ *     กด "ยืนยันส่ง" แล้วจึง POST /api/dashboard/sync แปลงผลด้วย `interpretSyncResponse` (ไม่โชว์ข้อความดิบ)
+ *     → `router.refresh()` ให้ประวัติอัปเดต · ยกเลิก/Esc = ไม่ส่ง · กดซ้ำระหว่างส่ง = ไม่ส่งซ้ำ (ดู confirmFlow.ts)
  *   * ประวัติ: กรองผล/ช่องทาง · รวมรอบ "ข้าม" ที่ติดกัน · กดดูรายละเอียดรายแถว (error แสดงสาเหตุ + วิธีแก้เป็นไทย)
  *   * Export สำรอง: ยังไม่มี endpoint ฝั่ง BE → แสดงเป็นกล่องข้อมูลว่ายังไม่เปิดใช้ (ไม่มีปุ่มหลอก)
  */
@@ -15,6 +16,8 @@ import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 
 import { Alert, Button, Chip, cx } from "@/components/ui";
+
+import { ConfirmSendDialog, useConfirmFlow } from "./ConfirmSendDialog";
 
 import {
   autoStreak,
@@ -140,6 +143,8 @@ export function DashboardSyncClient({ logs, tokenConfigured, nowIso, canTrigger,
     }
   }
 
+  const confirm = useConfirmFlow(send);
+
   function resetPaging(next: HistoryFilter) {
     setFilter(next);
     setShown(PAGE);
@@ -153,7 +158,7 @@ export function DashboardSyncClient({ logs, tokenConfigured, nowIso, canTrigger,
         variant={primary ? "primary" : "secondary"}
         loading={sending}
         disabled={notConfigured === true || state === "running"}
-        onClick={send}
+        onClick={confirm.request}
         className="max-[767px]:min-h-11"
       >
         <span className="inline-flex items-center gap-1.5"><Icon name="retry" />{sending ? "กำลังส่ง…" : "ส่งตอนนี้"}</span>
@@ -220,6 +225,20 @@ export function DashboardSyncClient({ logs, tokenConfigured, nowIso, canTrigger,
 
   return (
     <div>
+      <ConfirmSendDialog
+        open={confirm.phase !== "idle"}
+        running={confirm.phase === "running"}
+        title="ยืนยันส่งข้อมูลขึ้น Dashboard"
+        items={[
+          { label: "ส่งอะไร", value: "ตัวเลขสรุปบริการรายเดือน ไฟล์ dashboard_data.json" },
+          { label: "ส่วน", value: "ทั้งส่วนกลาง (24 สาขา) และต่างจังหวัด (19 สาขา) = 43 สาขา" },
+          { label: "ช่วงข้อมูล", value: lastOk && lastOk.monthCount !== null ? `ทุกเดือนที่ระบบมี (ครั้งล่าสุดในไฟล์ ${lastOk.monthCount} เดือน)` : "ทุกเดือนที่ระบบมี" },
+        ]}
+        destination={<>Dashboard ที่ผู้บริหารดู <span className="font-mono text-xs font-normal text-fg-muted">({repo} · {branch})</span></>}
+        note="ผู้บริหารจะเห็นตัวเลขใหม่ทันทีหลัง Netlify build (~30 วินาที) · ถ้าข้อมูลเหมือนเดิมระบบจะข้าม ไม่ส่งซ้ำ"
+        onConfirm={() => void confirm.confirm()}
+        onCancel={confirm.cancel}
+      />
       <div className="mb-3">
         <h1 className="m-0 text-xl font-semibold">Dashboard Sync</h1>
         <p className="mt-1 text-[13px] text-fg-muted">

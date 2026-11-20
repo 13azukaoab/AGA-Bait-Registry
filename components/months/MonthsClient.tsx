@@ -12,6 +12,8 @@
  *   * ปิดสำเร็จแต่ส่ง Dashboard ไม่สำเร็จ = เดือนปิดแล้ว แสดงสถานะส่งแยก · คำนวณ snapshot ใหม่ = host เท่านั้น
  *   * "แก้หลังปิด" (list_post_close_edits · M40): ป้าย N บนการ์ด/รายการเดือน (นับที่ server ตอนโหลดหน้า) + รายการในหน้ารายละเอียดส่วนที่ปิดแล้ว
  *     host เห็นทั้ง 2 ส่วน · recorder เห็นเฉพาะส่วนกลาง (ไม่เรียก/ไม่แสดงของต่างจังหวัด)
+ *   * ปุ่ม "คำนวณ snapshot ใหม่ + ส่ง Dashboard" เปิดกล่องยืนยัน (ConfirmSendDialog) ก่อนเสมอ + ต้องพิมพ์ key เดือน (OCT.26)
+ *     ตามแบบเดียวกับการปิดเดือน · ยกเลิก/Esc = ไม่ส่ง · กดซ้ำระหว่างส่ง = ไม่ส่งซ้ำ
  *   * ซ่อนปุ่มตามสิทธิ์เฉยๆ — ความปลอดภัยจริงอยู่ที่ server/DB
  */
 import { useRouter } from "next/navigation";
@@ -19,6 +21,8 @@ import { useState } from "react";
 
 import { Alert, Button, Chip, Toast, cx } from "@/components/ui";
 import { useUnsavedWork } from "@/components/shell/unsaved-work";
+
+import { ConfirmSendDialog, useConfirmFlow } from "@/components/dashboard-sync/ConfirmSendDialog";
 
 import { MissedReview } from "./MissedReview";
 import { ReadinessStep } from "./ReadinessStep";
@@ -387,11 +391,27 @@ function ClosedPanel(props: {
   canResync: boolean;
   busy: boolean;
   error: string;
-  onResync: () => void;
+  onResync: () => Promise<void>;
 }) {
   const { month, scope, perms, editCount, state, latestFailed, canResync: allowResync, busy, error, onResync } = props;
+  const confirm = useConfirmFlow(onResync);
   return (
     <div>
+      <ConfirmSendDialog
+        open={confirm.phase !== "idle"}
+        running={confirm.phase === "running"}
+        title="ยืนยันคำนวณ snapshot ใหม่ และส่ง Dashboard"
+        items={[
+          { label: "เดือน", value: `${monthTh(month)} (${confirmKeyFor(month)})` },
+          { label: "ส่วน", value: `${SCOPE_NAME[scope]} ${SCOPE_BRANCHES[scope]} สาขา` },
+          { label: "ช่วงข้อมูล", value: `คำนวณตัวเลขเดือนนี้ใหม่จากข้อมูลปัจจุบัน แล้วส่งไฟล์ครบ 43 สาขา` },
+        ]}
+        destination="Dashboard ที่ผู้บริหารดู"
+        note={`เดือนนี้ปิดแล้ว — ตัวเลข${SCOPE_NAME[scope]}ของ ${monthTh(month)} บน Dashboard จะเปลี่ยนเป็นค่าใหม่ทันที`}
+        phrase={confirmKeyFor(month)}
+        onConfirm={() => void confirm.confirm()}
+        onCancel={confirm.cancel}
+      />
       {latestFailed ? (
         <Alert variant="danger" title="รอบส่ง Dashboard ล่าสุดไม่สำเร็จ" className="mb-3">
           ส่วน{SCOPE_NAME[scope]}ปิดแล้ว แต่ Dashboard อาจยังแสดงค่าเดิม · ระบบจะลองส่งใหม่รอบ 06:00 น.{allowResync ? " หรือกดคำนวณใหม่ด้านล่าง" : " หรือแจ้ง OM/PM ให้กดส่ง"}
@@ -412,7 +432,7 @@ function ClosedPanel(props: {
       </Alert>
       {allowResync ? (
         <div className="mb-3">
-          <Button variant="primary" loading={busy} onClick={onResync} className="max-[767px]:min-h-11">
+          <Button variant="primary" loading={busy} onClick={confirm.request} className="max-[767px]:min-h-11">
             <Icon d={ICON_SEND} /> คำนวณ snapshot ใหม่ + ส่ง Dashboard
           </Button>
         </div>
