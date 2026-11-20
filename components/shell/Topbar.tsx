@@ -121,6 +121,19 @@ export const Topbar = forwardRef<HTMLButtonElement, TopbarProps>(function Topbar
       <div className="flex shrink-0 items-center gap-2">
         <TutorialButton />
         <ThemeToggle />
+        {/* เปลี่ยนรหัสผ่านเอง (หน้า /change-password รองรับกรณีไม่ถูกบังคับ) */}
+        <Link
+          href="/change-password"
+          aria-label="เปลี่ยนรหัสผ่าน"
+          title="เปลี่ยนรหัสผ่าน"
+          className="inline-flex h-[34px] shrink-0 items-center justify-center gap-1.5 rounded-lg border border-border bg-surface-2 px-2.5 text-[13px] text-fg no-underline hover:bg-surface-3 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent max-[600px]:min-h-11 max-[600px]:min-w-11"
+        >
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <circle cx="8" cy="15" r="4" />
+            <path d="M10.8 12.2L20 3M16 7l3 3M14 9l2 2" />
+          </svg>
+          <span className="max-[860px]:hidden">เปลี่ยนรหัสผ่าน</span>
+        </Link>
         <Link
           href={logoutHref}
           aria-label="ออกจากระบบ"
