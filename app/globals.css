@@ -59,6 +59,10 @@
   /* ตัวหนังสือบนพื้นเข้ม (สัญญา 3 ปี) */
   --on-tier: #ffffff;
 
+  /* สีงาน Renew ใน Dashboard งานขาย (DECISIONS 2.91) — คู่กับ New ที่ใช้ --accent */
+  --renew: #6d47b8;
+  --renew-soft: #efe9fa;
+
   --radius: 10px;
   --shadow: 0 1px 2px rgba(20, 40, 70, 0.06), 0 1px 3px rgba(20, 40, 70, 0.05);
   --font-sans: var(--font-noto-sans-thai), "Segoe UI", system-ui, sans-serif;
@@ -111,6 +115,10 @@
 
     --on-tier: #0b1420;
 
+    /* สีงาน Renew ใน Dashboard งานขาย (DECISIONS 2.91) — คู่กับ New ที่ใช้ --accent */
+    --renew: #a588e0;
+    --renew-soft: #2a2240;
+
     --shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
     color-scheme: dark;
   }
@@ -158,6 +166,10 @@
   --tier-xl-ink: #e07a4e;
 
   --on-tier: #0b1420;
+
+  /* สีงาน Renew ใน Dashboard งานขาย (DECISIONS 2.91) — คู่กับ New ที่ใช้ --accent */
+  --renew: #a588e0;
+  --renew-soft: #2a2240;
 
   --shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
   color-scheme: dark;
