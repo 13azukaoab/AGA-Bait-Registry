@@ -100,13 +100,16 @@ type ContractDb = {
   status: ContractStatus;
   closed_at: string | null;
   cancelled_at: string | null;
+  cancel_reason_code?: string | null;
+  cancel_reason?: string | null;
+  cancelled_by?: string | null;
   renewed_from_contract_id: string | null;
   stations_initialized_at: string | null;
   contract_teams: { teams: { code: string } | null }[];
 };
 
 const CONTRACT_COLUMNS =
-  "id, contract_no, start_date, end_date, term_months, value_total, sale_type, status, closed_at, cancelled_at, renewed_from_contract_id, stations_initialized_at, contract_teams ( teams ( code ) )";
+  "id, contract_no, start_date, end_date, term_months, value_total, sale_type, status, closed_at, cancelled_at, cancel_reason_code, cancel_reason, cancelled_by, renewed_from_contract_id, stations_initialized_at, contract_teams ( teams ( code ) )";
 
 /**
  * แปลงแถวสัญญา → ContractRow
@@ -129,6 +132,10 @@ export function toContractRow(c: ContractDb, rules: TierRule[], today: string = 
     dbStatus: c.status,
     closedAt: c.closed_at,
     cancelledAt: c.cancelled_at,
+    cancelReasonCode: c.cancel_reason_code ?? null,
+    cancelReason: c.cancel_reason ?? null,
+    // ชั่วคราวเป็น id ผู้กด — แปลงเป็นชื่อหลังอ่านโปรไฟล์ (ขั้นที่ 8 ใน loadCustomerDetail)
+    cancelledByName: c.cancelled_by ?? null,
     renewedFromId: c.renewed_from_contract_id,
     stationsInitializedAt: c.stations_initialized_at,
     teamCodes: c.contract_teams.map((t) => t.teams?.code).filter((x): x is string => !!x),
@@ -200,6 +207,7 @@ export async function loadCustomerDetail(
   const timber: TimberMonth[] = [];
   const userIds = new Set<string>();
   if (c.contact_updated_by) userIds.add(c.contact_updated_by);
+  for (const k of contracts) if (k.cancelledByName) userIds.add(k.cancelledByName);
 
   if (contractIds.length > 0) {
     // 3) สถานี + ที่ย้ายมา
@@ -479,6 +487,7 @@ export async function loadCustomerDetail(
   for (const f of files) f.uploadedByName = nm(f.uploadedByName);
   for (const r of resolutions) r.decidedByName = nm(r.decidedByName);
   for (const a of audit ?? []) a.byName = nm(a.byName);
+  for (const k of contracts) k.cancelledByName = nm(k.cancelledByName ?? null);
 
   const customer: CustomerInfo = {
     id: c.id,

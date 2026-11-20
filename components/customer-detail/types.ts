@@ -52,6 +52,11 @@ export interface ContractRow {
   status: ContractStatus;
   /** สถานะดิบจาก contracts.status (ถ้าไม่ส่ง = เท่ากับ status) */
   dbStatus?: ContractStatus;
+  /** เหตุผลยกเลิก (M44): 'entry_error' | 'customer_cancelled' | 'other' · null = ไม่มี (สัญญายกเลิกก่อน M44 / ไม่ได้ยกเลิก) */
+  cancelReasonCode?: string | null;
+  cancelReason?: string | null;
+  /** ผู้กดยกเลิก — ชื่อ (data.ts เติมหลังอ่านโปรไฟล์ · อ่านไม่ได้ = null) */
+  cancelledByName?: string | null;
   closedAt: string | null;
   cancelledAt: string | null;
   renewedFromId: string | null;
