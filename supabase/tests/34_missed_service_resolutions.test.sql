@@ -441,13 +441,12 @@ SELECT ok((SELECT cancelled_at IS NOT NULL FROM contracts WHERE id = pg_temp.id(
 SELECT throws_ok($$INSERT INTO contracts (id, customer_id, contract_no, start_date, term_months, value_total, status, cancelled_at)
                    VALUES (pg_temp.id('0f'), pg_temp.id('c1'), 'M-X', pg_temp.m(-18), 12, 24000, 'active', now())$$,
   '23514', NULL, 'an active contract with cancelled_at is refused (no guessing)');
-SET LOCAL ROLE authenticated;
+-- M44 (DECISIONS 2.97 ข้อ 6): ผู้ใช้ล็อกอินเปลี่ยนสถานะเข้า/ออก cancelled ผ่าน REST ไม่ได้แล้ว (CC009)
+--   → 2 ขั้นนี้รันด้วย postgres แทน authenticated (ข้อนี้ตรวจ trigger sync ของ cancelled_at ไม่ได้ตรวจสิทธิ์) · assertion เดิม
 SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a1', true);
 SELECT lives_ok($$UPDATE contracts SET status = 'cancelled' WHERE id = pg_temp.id('df')$$, 'host cancels a contract (M12 path)');
 RESET ROLE;
 SELECT ok((SELECT cancelled_at IS NOT NULL FROM contracts WHERE id = pg_temp.id('df')), 'cancelling fills cancelled_at');
-SET LOCAL ROLE authenticated;
-SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a1', true);
 SELECT lives_ok($$UPDATE contracts SET status = 'active' WHERE id = pg_temp.id('df')$$,
   'host un-cancels a contract by mistake (3.11 still allowed)');
 RESET ROLE;

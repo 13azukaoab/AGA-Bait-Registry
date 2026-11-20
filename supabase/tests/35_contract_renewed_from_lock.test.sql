@@ -141,7 +141,8 @@ SELECT is((SELECT note FROM contracts WHERE id = (SELECT contract_id FROM _r WHE
 -- ---------- M18 ข้อ 2: สัญญาใหม่ถูกยกเลิก → เรื่องค้างของ d1 กลับมา (ยังเป็นไปตามเดิม) ----------
 SET LOCAL ROLE authenticated;
 SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a1', true);
-SELECT lives_ok($$UPDATE contracts SET status = 'cancelled' WHERE id = (SELECT contract_id FROM _r WHERE tag = 'new')$$,
+-- M44 (DECISIONS 2.97 ข้อ 6): ผู้ใช้ล็อกอินเปลี่ยนสถานะเข้า/ออก cancelled ผ่าน REST ไม่ได้แล้ว (CC009) → แก้เฉพาะขั้นเตรียมข้อมูลให้ใช้ cancel_contract · assertion เดิม
+SELECT lives_ok($$SELECT * FROM public.cancel_contract((SELECT contract_id FROM _r WHERE tag = 'new'), 'entry_error', 'ทดสอบ (สมมติ)')$$,
   'host cancels the renewal contract');
 SELECT ok(cardinality(pg_temp.pending('d1')) > 0, 'M18: cancelling the renewal brings the old contract''s open months back');
 
