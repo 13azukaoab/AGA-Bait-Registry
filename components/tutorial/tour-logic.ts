@@ -120,6 +120,18 @@ export function isClickStep(act: "click" | undefined, targetDisabled: boolean): 
   return act === "click" && !targetDisabled;
 }
 
+/** ข้อความมาตรฐานแทนคำแนะนำ “ลองกด” เมื่อปุ่มที่ชี้ถูกปิดอยู่ */
+export const DEFAULT_DISABLED_HINT = "ปุ่มนี้ยังกดไม่ได้ในตอนนี้ จะกดได้เมื่อกรอกข้อมูลครบ";
+
+/**
+ * ข้อความที่แสดงตามสถานะปุ่ม: ขั้นให้ลองกด (act: click) แต่ปุ่มถูกปิดอยู่ → ใช้ `disabledBody` (ถ้ามี) แทน body
+ * และใช้ข้อความมาตรฐานแทนคำแนะนำให้ลองกด · อย่างอื่น → คืนค่าเดิม
+ */
+export function viewWhenDisabled(step: LessonStep, targetDisabled: boolean): LessonStep {
+  if (!targetDisabled || step.act !== "click") return step;
+  return { ...step, body: step.disabledBody ?? step.body, hint: DEFAULT_DISABLED_HINT };
+}
+
 /* ---------- เรขาคณิต ---------- */
 
 export type Rect = { left: number; top: number; right: number; bottom: number };
