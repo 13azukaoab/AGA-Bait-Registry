@@ -34,3 +34,23 @@ describe("describeServiceError — M37 ชื่อจุดกล่อง AG",
     expect(r.isBug).toBe(false);
   });
 });
+
+describe("describeServiceError — M43 ตรวจภายในเฉพาะ routine (23514)", () => {
+  const CHECK = 'new row for relation "visits" violates check constraint "visits_internal_inspection_routine_only"';
+  it("23514 ของ CHECK นี้ = ข้อความไทยเฉพาะ ไม่ใช่บั๊ก ไม่โชว์ข้อความดิบ", () => {
+    const r = describeServiceError({ code: "23514", message: CHECK });
+    expect(r.message).toBe("ติ๊กตรวจภายในได้เฉพาะการเข้าบริการประจำเดือน — เอาติ๊กออกหรือเปลี่ยนประเภทการเข้า แล้วบันทึกอีกครั้ง");
+    expect(r.isBug).toBe(false);
+    expect(r.message).not.toContain("visits_internal");
+  });
+  it("อ่านชื่อ constraint จาก details ก็ได้", () => {
+    const r = describeServiceError({ code: "23514", message: "x", details: "Failing row ... " + CHECK });
+    expect(r.isBug).toBe(false);
+    expect(r.message).toContain("ตรวจภายใน");
+  });
+  it("23514 ของ constraint อื่น = ยังเป็นบั๊กหน้าจอ (ข้อความทั่วไป)", () => {
+    const r = describeServiceError({ code: "23514", message: 'violates check constraint "other_check"' });
+    expect(r.isBug).toBe(true);
+    expect(r.message).not.toContain("ตรวจภายใน");
+  });
+});
