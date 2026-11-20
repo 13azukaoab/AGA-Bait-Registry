@@ -91,18 +91,38 @@ export async function skipIgCollection(supabase: SupabaseClient, input: ActionIn
 export const CLOSE_CONTRACT_AVAILABLE = false;
 export const CLOSE_CONTRACT_RPC = "close_contract";
 export const CLOSE_CONTRACT_PARAM = "p_contract_id";
+export const CLOSE_CONTRACT_NOTE_PARAM = "p_note";
+export const CLOSE_NOTE_MAX = 500;
 
-export type CloseResult = { ok: true } | { ok: false; error: CollectError };
+export type CloseResult = { ok: true; igRemaining: number } | { ok: false; error: CollectError };
 
-export async function closeContract(supabase: SupabaseClient, contractId: string): Promise<CloseResult> {
+/** ข้อความหลังปิดสำเร็จ — บอกจำนวน IG ที่ยังค้างเก็บถ้ามี */
+export function closeSuccessMessage(igRemaining: number): string {
+  return igRemaining > 0 ? `ปิดสัญญาแล้ว · ยังค้างเก็บ ${igRemaining} จุด` : "ปิดสัญญาแล้ว";
+}
+
+export function buildClosePayload(contractId: string, note: string): Record<string, string | null> {
+  const n = note.trim();
+  return { [CLOSE_CONTRACT_PARAM]: contractId, [CLOSE_CONTRACT_NOTE_PARAM]: n === "" ? null : n };
+}
+
+/** ผลของ close_contract = TABLE(contract_id, status, closed_at, updated_at, ig_remaining) → อ่าน ig_remaining */
+export function parseCloseResult(data: unknown): number | null {
+  const first = Array.isArray(data) ? data[0] : data;
+  if (!first || typeof first !== "object") return null;
+  const n = (first as { ig_remaining?: unknown }).ig_remaining;
+  return typeof n === "number" ? n : null;
+}
+
+export async function closeContract(supabase: SupabaseClient, contractId: string, note = ""): Promise<CloseResult> {
   if (!CLOSE_CONTRACT_AVAILABLE) {
     return { ok: false, error: { message: "ยังปิดสัญญาจากหน้านี้ไม่ได้", isBug: false, logCode: "unavailable" } };
   }
-  const { error } = await supabase.rpc(CLOSE_CONTRACT_RPC, { [CLOSE_CONTRACT_PARAM]: contractId });
+  const { data, error } = await supabase.rpc(CLOSE_CONTRACT_RPC, buildClosePayload(contractId, note));
   if (error) {
     const described = describeCollectError(error);
     console.error("[collection] close RPC error code", described.logCode);
     return { ok: false, error: described };
   }
-  return { ok: true };
+  return { ok: true, igRemaining: parseCloseResult(data) ?? 0 };
 }

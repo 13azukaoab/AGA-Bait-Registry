@@ -339,8 +339,36 @@ import { closeBlockReason } from "./collectionRules";
 
 describe("ปิดสัญญาเมื่อยังไม่หมดอายุ", () => {
   it("วันสิ้นสุด >= วันนี้ → ปิดไม่ได้ พร้อมข้อความ · < วันนี้ → ปิดได้", () => {
-    expect(closeBlockReason({ endDate: "2026-11-20" }, "2026-11-20")).toMatch(/ยังไม่หมดอายุ/);
-    expect(closeBlockReason({ endDate: "2027-01-01" }, "2026-11-20")).toMatch(/ยกเลิกสัญญา/);
-    expect(closeBlockReason({ endDate: "2026-11-19" }, "2026-11-20")).toBeNull();
+    expect(closeBlockReason({ endDate: "2026-11-20", status: "active" }, "2026-11-20")).toMatch(/ยังไม่หมดอายุ/);
+    expect(closeBlockReason({ endDate: "2027-01-01", status: "active" }, "2026-11-20")).toMatch(/ยกเลิกสัญญา/);
+    expect(closeBlockReason({ endDate: "2026-11-19", status: "active" }, "2026-11-20")).toBeNull();
+    // expired_pending_collection ปิดได้เสมอ (นิยามเดียวกับ BE)
+    expect(closeBlockReason({ endDate: "2027-01-01", status: "expired_pending_collection" }, "2026-11-20")).toBeNull();
+  });
+});
+
+import { buildClosePayload, closeSuccessMessage, parseCloseResult } from "./collectionRpc";
+
+describe("close_contract (M44) — payload / error / ข้อความ", () => {
+  it("payload: หมายเหตุว่าง = null · ตัดช่องว่าง", () => {
+    expect(buildClosePayload("c1", "  ")).toEqual({ p_contract_id: "c1", p_note: null });
+    expect(buildClosePayload("c1", " ลูกค้าแจ้งเลิก ")).toEqual({ p_contract_id: "c1", p_note: "ลูกค้าแจ้งเลิก" });
+  });
+  it.each(["42501", "22004", "AG004", "CL006", "CL007", "CL008", "CL009", "CL010", "CL011"])("%s → ข้อความไทย ไม่ใช่บั๊ก ไม่โชว์ดิบ", (code) => {
+    const e = describeCollectError({ code, message: "raw english hint" });
+    expect(e.message).toMatch(/[ก-๙]/);
+    expect(e.message).not.toContain("raw english");
+    expect(e.isBug).toBe(false);
+  });
+  it("ig_remaining → ข้อความหลังปิด", () => {
+    expect(closeSuccessMessage(3)).toBe("ปิดสัญญาแล้ว · ยังค้างเก็บ 3 จุด");
+    expect(closeSuccessMessage(0)).toBe("ปิดสัญญาแล้ว");
+    expect(parseCloseResult([{ ig_remaining: 4 }])).toBe(4);
+    expect(parseCloseResult({ ig_remaining: 0 })).toBe(0);
+    expect(parseCloseResult(null)).toBeNull();
+  });
+  it("เงื่อนไขแสดงปุ่ม: paused ปิดไม่ได้ · เฉพาะ active / expired_pending_collection", () => {
+    expect(isClosable("paused")).toBe(false);
+    expect(isClosable("expired_pending_collection")).toBe(true);
   });
 });

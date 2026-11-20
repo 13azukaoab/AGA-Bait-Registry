@@ -60,8 +60,9 @@ export function isClosable(status: ContractStatus): boolean {
 }
 
 /** ข้อความอธิบายเมื่อปิดสัญญาแถวนี้ไม่ได้เพราะสัญญายังไม่หมดอายุ (null = ปิดได้) · server ตรวจซ้ำ */
-export function closeBlockReason(row: Pick<CollectionRow, "endDate">, today: string): string | null {
-  return row.endDate >= today ? "สัญญายังไม่หมดอายุ ปิดไม่ได้ — ถ้าต้องการเลิกก่อนกำหนดให้ใช้ “ยกเลิกสัญญา”" : null;
+export function closeBlockReason(row: Pick<CollectionRow, "endDate" | "status">, today: string): string | null {
+  // หมดอายุ = expired_pending_collection หรือ active ที่วันสิ้นสุด < วันนี้ (นิยามเดียวกับ BE M44)
+  return row.status === "active" && row.endDate >= today ? "สัญญายังไม่หมดอายุ ปิดไม่ได้ — ถ้าต้องการเลิกก่อนกำหนดให้ใช้ “ยกเลิกสัญญา”" : null;
 }
 
 function addDays(date: string, days: number): string {

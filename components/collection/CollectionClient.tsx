@@ -16,6 +16,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import { useUnsavedWork } from "@/components/shell/unsaved-work";
 import { Alert, Button, Chip, Toast, cx } from "@/components/ui";
 import type { UserRole } from "@/lib/db/types";
 import { customerDetailHref, customerLinkContexts } from "@/lib/links/customerLink";
@@ -24,7 +25,7 @@ import { createClient } from "@/lib/supabase/client";
 
 import { CollectDialog, ReasonDialog, type DialogKind, type DialogSubmit } from "./CollectDialog";
 import { applyActionResult, canCloseContract, canRecordRow, closeBlockReason, computeStats, endMonths, filterRows, igBase, isClosable } from "./collectionRules";
-import { CLOSE_CONTRACT_AVAILABLE, closeContract, collectIgStations, skipIgCollection } from "./collectionRpc";
+import { CLOSE_CONTRACT_AVAILABLE, CLOSE_NOTE_MAX, closeContract, closeSuccessMessage, collectIgStations, skipIgCollection } from "./collectionRpc";
 import type { CollectionRow, HeldContract, MonthFilter, StatusFilter, TeamOption } from "./collectionTypes";
 
 const CONTROL =
@@ -143,17 +144,17 @@ export function CollectionClient({
   }
 
   const closeRow = closeId ? (rows.find((r) => r.contractId === closeId) ?? null) : null;
-  async function doClose() {
+  async function doClose(note: string) {
     if (!closeRow) return;
     setBusy(true);
     setCloseError(null);
-    const res = await closeContract(createClient(), closeRow.contractId);
+    const res = await closeContract(createClient(), closeRow.contractId, note);
     setBusy(false);
     if (!res.ok) {
       setCloseError(res.error.message);
       return;
     }
-    setToast(`ปิดสัญญา ${closeRow.contractNo} แล้ว${closeRow.remaining > 0 ? ` · IG ที่เหลือ ${closeRow.remaining} สถานียังอยู่ในรายการรอเก็บ` : ""}`);
+    setToast(`${closeSuccessMessage(res.igRemaining)} (${closeRow.contractNo})`);
     setCloseId(null);
     router.refresh();
   }
@@ -474,8 +475,10 @@ function Row({
   );
 }
 
-function ConfirmClose({ row, busy, error, onConfirm, onCancel }: { row: CollectionRow; busy: boolean; error: string | null; onConfirm: () => void; onCancel: () => void }) {
+function ConfirmClose({ row, busy, error, onConfirm, onCancel }: { row: CollectionRow; busy: boolean; error: string | null; onConfirm: (note: string) => void; onCancel: () => void }) {
   const ref = useRef<HTMLDialogElement>(null);
+  const [note, setNote] = useState("");
+  useUnsavedWork(note !== "");
   useEffect(() => {
     const dlg = ref.current;
     if (dlg && !dlg.open) dlg.showModal();
@@ -497,6 +500,18 @@ function ConfirmClose({ row, busy, error, onConfirm, onCancel }: { row: Collecti
             ? ` · มี IG ยังไม่เก็บ ${row.remaining} สถานี — ปิดสัญญาได้ และ IG เหล่านี้ยังอยู่ในรายการรอเก็บจนกด “เก็บแล้ว” หรือ “ไม่เก็บ”`
             : " · IG เก็บครบแล้ว"}
         </p>
+        <label htmlFor="cl-close-note" className="mt-3 block text-[12px] font-semibold text-fg-muted">
+          หมายเหตุ (ไม่บังคับ)
+        </label>
+        <textarea
+          id="cl-close-note"
+          rows={2}
+          maxLength={CLOSE_NOTE_MAX}
+          value={note}
+          disabled={busy}
+          onChange={(e) => setNote(e.target.value)}
+          className="mt-1 w-full min-w-0 resize-y rounded-lg border border-border-strong bg-surface px-2.5 py-1.5 text-[13px] text-fg focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent max-[767px]:text-base"
+        />
         {error ? (
           <p role="alert" className="m-0 mt-3 rounded-lg border-l-4 border-l-danger bg-danger-soft px-3 py-2 text-[13px] text-danger">
             {error}
@@ -507,7 +522,7 @@ function ConfirmClose({ row, busy, error, onConfirm, onCancel }: { row: Collecti
         <Button className="max-[767px]:min-h-11" disabled={busy} onClick={() => ref.current?.close()}>
           ยกเลิก
         </Button>
-        <Button className="max-[767px]:min-h-11" variant="primary" loading={busy} onClick={onConfirm}>
+        <Button className="max-[767px]:min-h-11" variant="primary" loading={busy} onClick={() => onConfirm(note)}>
           ยืนยัน ปิดสัญญา
         </Button>
       </div>
