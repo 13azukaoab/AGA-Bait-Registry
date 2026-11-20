@@ -292,7 +292,7 @@ export function BaitForm({
           </Alert>
         ) : null}
         <div className="flex flex-wrap items-center gap-2">
-          <Button variant="save" onClick={() => void save(false)} loading={saving} disabled={disabledForm}>
+          <Button data-tour="bait-add" variant="save" onClick={() => void save(false)} loading={saving} disabled={disabledForm}>
             {form.isExisting ? "บันทึกการแก้ไข" : "บันทึกงานกล่อง"}
           </Button>
           {form.isExisting ? null : (

@@ -374,7 +374,7 @@ export function PortEditor(p: PortEditorProps) {
       {/* แถบปุ่มล่าง */}
       {!readonly ? (
         <div data-sticky-savebar className="sticky bottom-0 flex flex-wrap items-center gap-2 rounded-b-[10px] border-t border-border bg-surface px-4 py-3">
-          <Button variant="save" disabled={!ev.canSave || p.saving} loading={p.saving} onClick={p.onSave} className="max-md:!h-11">
+          <Button data-tour="port-save" variant="save" disabled={!ev.canSave || p.saving} loading={p.saving} onClick={p.onSave} className="max-md:!h-11">
             {st.updated ? "บันทึกการแก้ไข" : "บันทึกเป็น “อัปเดตแล้ว”"}
           </Button>
           {st.canKeepSame && !dirty && !st.updated ? (

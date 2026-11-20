@@ -702,7 +702,7 @@ export function NewContractsClient({
             <tr>
               <th scope="col" className={cx(TH, "w-[44px] text-center")}>ลำดับ</th>
               <th scope="col" className={cx(TH, "w-[130px]")}>เลขที่สัญญา</th>
-              <th scope="col" className={cx(TH, "w-[300px]")}>รายชื่อ</th>
+              <th scope="col" data-tour="new-form" className={cx(TH, "w-[300px]")}>รายชื่อ</th>
               <th scope="col" className={cx(TH, "w-[52px] text-center")}>เบิกด่วน</th>
               <th scope="col" className={cx(TH, "w-[110px]")}>ประเภทงาน</th>
               <th scope="col" className={cx(TH, "w-[150px]")}>ลูกค้าเดิม (Renew)</th>
@@ -719,9 +719,9 @@ export function NewContractsClient({
               <th scope="col" className={cx(TH, "w-[130px]")}>สิ้นสุด</th>
               <th scope="col" className={cx(TH, "w-[120px] text-right")}>มูลค่า 1 ปี</th>
               <th scope="col" className={cx(TH, "w-[120px] text-right")}>มูลค่า 3 ปี</th>
-              <th scope="col" className={cx(TH, "w-[64px] text-center")}>Tier</th>
+              <th scope="col" data-tour="new-tier" className={cx(TH, "w-[64px] text-center")}>Tier</th>
               <th scope="col" className={cx(TH, "w-[200px]")}>หมายเหตุ</th>
-              <th scope="col" className={cx(TH, "w-[110px] text-center")}>ไฟล์แนบ</th>
+              <th scope="col" data-tour="cust-upload" className={cx(TH, "w-[110px] text-center")}>ไฟล์แนบ</th>
               <th scope="col" className={cx(TH, "w-[170px] text-center")}>สถานะ</th>
               <th scope="col" className={cx(TH, "w-[116px]")}>
                 <span className="sr-only">แก้ / ลบ</span>
@@ -996,6 +996,7 @@ export function NewContractsClient({
             แถว · แถวขอบแดงขาดข้อมูลจำเป็น · ยังไม่แนบไฟล์ = เตือน แต่บันทึกต่อได้
           </span>
           <Button
+            data-tour="new-save"
             variant="save"
             loading={saving}
             disabled={drafts.length === 0}

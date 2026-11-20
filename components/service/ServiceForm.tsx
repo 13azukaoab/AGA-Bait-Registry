@@ -297,6 +297,7 @@ export function ServiceForm({
 
         <button
           type="button"
+          data-tour="svc-allok"
           aria-pressed={form.normal}
           onClick={() => {
             if (!form.normal && (form.findings.length || form.timbers.length || form.works.some((w) => w.type !== "AG"))) {

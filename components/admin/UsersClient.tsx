@@ -204,7 +204,7 @@ export function UsersClient({
             </Chip>
           </p>
         </div>
-        <Button variant="add" onClick={() => setDialog({ kind: "create" })}>
+        <Button data-tour="usr-add" variant="add" onClick={() => setDialog({ kind: "create" })}>
           สร้างบัญชี
         </Button>
       </div>

@@ -338,7 +338,7 @@ function ScopeCard(props: { scope: Scope; state: ScopeState; selected: boolean; 
   const { scope, state, selected, canClose, editCount, onOpen } = props;
   const closed = state.status === "closed";
   return (
-    <div aria-current={selected} className={cx("rounded-[10px] border p-3", selected ? "border-accent bg-accent-soft" : "border-border bg-surface-2")}>
+    <div data-tour={scope === "central" ? "clo-send" : undefined} aria-current={selected} className={cx("rounded-[10px] border p-3", selected ? "border-accent bg-accent-soft" : "border-border bg-surface-2")}>
       <h3 className="m-0 mb-1 flex flex-wrap items-center gap-2 text-[13.5px] font-semibold">
         {SCOPE_NAME[scope]} {SCOPE_BRANCHES[scope]} สาขา <Chip tone={statusTone(state)}>{statusText(state)}</Chip>
         {editCount !== undefined ? <Chip tone="pend">แก้หลังปิด {editCount}</Chip> : null}

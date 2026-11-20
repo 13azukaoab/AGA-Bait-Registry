@@ -48,7 +48,7 @@ export function SettingsClient({ data }: { data: SettingsData }) {
         </p>
       </div>
 
-      <div role="tablist" aria-label="หมวดการตั้งค่า" className="mb-4 flex gap-1 overflow-x-auto border-b border-border">
+      <div role="tablist" aria-label="หมวดการตั้งค่า" data-tour="set-tabs" className="mb-4 flex gap-1 overflow-x-auto border-b border-border">
         {tabs.map((t, i) => {
           const on = tab === t.key;
           return (

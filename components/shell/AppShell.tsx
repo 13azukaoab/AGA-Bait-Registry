@@ -25,6 +25,7 @@ import {
   type CSSProperties,
   type ReactNode,
 } from "react";
+import { TutorialOverlay, TutorialProvider, type TutorialProfile } from "@/components/tutorial";
 import { NavDrawer } from "./NavDrawer";
 import {
   NAV_MINI_INIT_SCRIPT,
@@ -56,6 +57,11 @@ export type AppShellProps = {
   defaultMonth?: string;
   /** ปลายทางปุ่มออกจากระบบ */
   logoutHref?: string;
+  /**
+   * สถานะบทเรียนเริ่มใช้งาน (ตำแหน่ง + ดูจบ/ข้ามเมื่อไร) ที่ server อ่านมาให้แล้ว (ไม่ส่ง = บทเรียนอ่านเองฝั่ง browser 1 ครั้ง)
+   * ดู components/tutorial/TutorialProvider.tsx
+   */
+  tutorialProfile?: TutorialProfile | null;
   children: ReactNode;
 };
 
@@ -65,6 +71,7 @@ export function AppShell({
   months,
   defaultMonth,
   logoutHref = "/login",
+  tutorialProfile,
   children,
 }: AppShellProps) {
   const pathname = usePathname();
@@ -128,6 +135,8 @@ export function AppShell({
   }, [navOpen, setNavOpen]);
 
   return (
+    // TutorialProvider = บทเรียนเริ่มใช้งาน (E1) — เปิดครั้งแรกอัตโนมัติ + ปุ่ม “สอนใช้งาน” ใน Topbar (components/tutorial)
+    <TutorialProvider role={role} initialProfile={tutorialProfile}>
     <div
       className="min-h-dvh bg-bg text-fg"
       style={{ "--topbar-h": "57px" } as CSSProperties}
@@ -170,6 +179,8 @@ export function AppShell({
       </div>
       {/* กล่องแจ้ง "มีเวอร์ชันใหม่" (M34) — ลอยมุมล่างขวา แสดงเมื่อมี service worker ตัวใหม่รออยู่ */}
       <UpdateBanner />
+      <TutorialOverlay />
     </div>
+    </TutorialProvider>
   );
 }

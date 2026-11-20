@@ -1,0 +1,386 @@
+/*
+ * สไตล์บทเรียนเริ่มใช้งาน (E1) — กล่องลอยชี้ทีละจุด + หน้าจำลอง
+ * ใช้ CSS variable จาก app/globals.css เท่านั้น (ห้าม hex) · สลับ light/dark ตามธีมเอง
+ * ชั้น (z-index): หน้าจำลอง 50 · ไฮไลต์ 55 · กล่อง 60 · ข้อความแจ้ง 65
+ */
+
+.spot {
+  position: fixed;
+  z-index: 55;
+  pointer-events: none;
+  border-radius: 8px;
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+  /* ฉากมืดรอบจุดที่ชี้ (ไม่มี token scrim ในระบบ จึงผสมจากสีตัวหนังสือ) */
+  box-shadow: 0 0 0 9999px color-mix(in srgb, var(--fg) 45%, transparent);
+  transition:
+    left 0.2s,
+    top 0.2s,
+    width 0.2s,
+    height 0.2s;
+}
+
+.sandbox {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  overflow-y: auto;
+  background: var(--bg);
+  color: var(--fg);
+  padding: 16px 16px 340px;
+}
+
+.sandboxBanner {
+  margin: -16px -16px 16px;
+  padding: 8px 16px;
+  background: var(--warn-soft);
+  color: var(--warn);
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.sandboxCard {
+  max-width: 380px;
+  margin: 30px auto 0;
+  padding: 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
+.tip {
+  position: fixed;
+  z-index: 60;
+  width: 332px;
+  max-width: calc(100vw - 16px);
+  background: var(--surface);
+  color: var(--fg);
+  border: 1px solid var(--border-strong);
+  border-radius: 12px;
+  box-shadow: 0 8px 28px color-mix(in srgb, var(--fg) 22%, transparent);
+  padding: 14px 16px 12px;
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.tipCenter {
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+}
+
+/* จอเล็ก: เป็นแผ่นติดล่างเต็มความกว้าง (ตำแหน่ง bottom ตั้งจาก JS เพื่อหลบแถบบันทึก) */
+.tipSheet {
+  left: 8px;
+  right: 8px;
+  width: auto;
+  max-width: none;
+  max-height: 62vh;
+  overflow: auto;
+}
+
+.arrow {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  transform: rotate(45deg);
+  display: none;
+}
+.tip[data-side="bottom"] .arrow {
+  display: block;
+  top: -7px;
+  left: var(--ax, 40px);
+  border-right: 0;
+  border-bottom: 0;
+}
+.tip[data-side="top"] .arrow {
+  display: block;
+  bottom: -7px;
+  left: var(--ax, 40px);
+  border-left: 0;
+  border-top: 0;
+}
+.tip[data-side="right"] .arrow {
+  display: block;
+  left: -7px;
+  top: var(--ay, 30px);
+  border-right: 0;
+  border-top: 0;
+}
+.tip[data-side="left"] .arrow {
+  display: block;
+  right: -7px;
+  top: var(--ay, 30px);
+  border-left: 0;
+  border-bottom: 0;
+}
+
+.prog {
+  display: flex;
+  gap: 3px;
+  margin-bottom: 8px;
+}
+.prog i {
+  flex: 1;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--border);
+}
+.prog i[data-on="true"] {
+  background: var(--accent);
+}
+
+.meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+  font-size: 12px;
+  color: var(--fg-muted);
+}
+
+.badge {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 99px;
+  background: var(--warn-soft);
+  color: var(--warn);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.title {
+  margin: 0 0 4px;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.body {
+  margin: 0;
+  font-size: 14px;
+}
+
+.hint {
+  margin: 6px 0 0;
+  color: var(--accent);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.error {
+  margin: 6px 0 0;
+  color: var(--danger);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.acts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.btn {
+  display: inline-flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 6px 14px;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--fg);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+}
+.btn:hover:not(:disabled) {
+  background: var(--surface-2);
+}
+.btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.btnPri {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--accent-fg);
+}
+.btnPri:hover:not(:disabled) {
+  background: var(--accent-strong);
+}
+.btnSm {
+  flex: none;
+  min-height: 30px;
+  padding: 3px 10px;
+  font-size: 12px;
+}
+
+.link {
+  display: block;
+  margin: 8px auto 0;
+  padding: 6px 8px;
+  border: 0;
+  background: none;
+  color: var(--fg-muted);
+  font: inherit;
+  font-size: 13px;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.tip button:focus-visible,
+.sandbox button:focus-visible,
+.sandbox input:focus-visible,
+.menu button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* ---------- หน้าจำลอง ---------- */
+
+.field {
+  display: block;
+  margin-bottom: 12px;
+}
+.field > span {
+  display: block;
+  margin-bottom: 3px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--fg-muted);
+}
+.input {
+  width: 100%;
+  min-height: 38px;
+  padding: 6px 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--fg);
+  font: inherit;
+}
+.pwRow {
+  display: flex;
+  gap: 6px;
+}
+.pwRow .input {
+  flex: 1;
+}
+.rules {
+  list-style: none;
+  margin: 6px 0 12px;
+  padding: 0;
+  font-size: 13px;
+  color: var(--fg-muted);
+}
+.rules li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.rules li[data-ok="true"] {
+  color: var(--ok);
+}
+.sandboxErr {
+  min-height: 1.2em;
+  margin-bottom: 8px;
+  color: var(--danger);
+  font-size: 13px;
+}
+.sandboxNote {
+  margin: 10px 0 0;
+  font-size: 12px;
+  color: var(--fg-muted);
+}
+
+/* ---------- ปุ่ม “สอนใช้งาน” + เมนู ---------- */
+
+.menuWrap {
+  position: relative;
+}
+.menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 6px);
+  z-index: 45;
+  min-width: 250px;
+  padding: 6px;
+  background: var(--surface);
+  color: var(--fg);
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
+  box-shadow: 0 8px 28px color-mix(in srgb, var(--fg) 22%, transparent);
+}
+.menuTitle {
+  padding: 6px 10px 2px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--fg-muted);
+}
+.menuItem {
+  display: block;
+  width: 100%;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: var(--fg);
+  font: inherit;
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+}
+.menuItem:hover {
+  background: var(--accent-soft);
+}
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 20px;
+  z-index: 65;
+  max-width: 92vw;
+  padding: 8px 16px;
+  border-radius: 99px;
+  background: var(--fg);
+  color: var(--bg);
+  font-size: 13px;
+  text-align: center;
+  transform: translateX(-50%);
+}
+
+@media (max-width: 767px) {
+  .btn {
+    min-height: 44px;
+  }
+  .btnSm {
+    min-height: 44px;
+  }
+  .link {
+    min-height: 44px;
+  }
+  .input {
+    min-height: 44px;
+    font-size: 16px;
+  }
+  .menuItem {
+    min-height: 44px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spot {
+    transition: none;
+  }
+}
