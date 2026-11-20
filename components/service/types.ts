@@ -116,6 +116,8 @@ export interface VisitSummary {
 
 /** การเข้าที่โหลดมาแก้ (พร้อมทีม/ผลตรวจ/งานซ่อม) */
 export interface LoadedVisit extends VisitSummary {
+  /** visits.internal_inspection (null/ไม่มี = ไม่เคยระบุ → แสดงเป็นไม่ติ๊ก) */
+  internalInspection?: boolean | null;
   teamIds: string[];
   checks: CheckRow[];
   works: WorkRowDb[];
@@ -225,6 +227,8 @@ export interface FormState {
   timeIn: string;
   timeOut: string;
   visitType: VisitType;
+  /** ตรวจภายใน (DECISIONS 2.93) — ติ๊กได้เฉพาะ routine · ไม่มี/undefined = ไม่ติ๊ก (ส่งออกผ่าน internalInspectionToSend) */
+  internalInspection?: boolean;
   normal: boolean;
   findings: FindingRow[];
   timbers: TimberRow[];

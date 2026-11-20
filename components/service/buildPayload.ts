@@ -15,6 +15,8 @@
  *   * ป้ายจุดส่งเฉพาะจุดที่เปลี่ยน
  *   * เวลาส่ง HH:MM
  *   * ถอดกล่อง AG + ผลตรวจส่งครั้งเดียวได้ (M13 แก้ SV001) · กล่อง AG ใหม่ (S) ส่ง `installs` ใน works (M13)
+ *   * `internal_inspection` (ช่องติ๊ก "ตรวจภายใน" · DECISIONS 2.93): ส่งทุกครั้ง · ติ๊กได้เฉพาะ routine — visit_type อื่นส่ง false เสมอ
+ *     (ไม่ส่งค่าค้างจากตอนเป็น routine) · ชื่อ key อยู่ที่ค่าคงที่ INTERNAL_INSPECTION_KEY จุดเดียว (เผื่อ BE M43 เปลี่ยน)
  *   * `visit_type` มาจาก `form.visitType` — ผู้เรียกกำหนดเอง (/service = routine · /bait = follow_up · แก้การเข้าเดิมคงชนิดเดิม)
  */
 import { parseStationNumbers } from "@/lib/service/stationNumbers";
@@ -23,6 +25,19 @@ import { resolveBait, resolveEaten, resolvePowder } from "./bait";
 import { parseSingleNumber } from "./validate";
 import type { AgPointState, FormState, StationRow, StationType, WorkRow } from "./types";
 import { isInUse } from "./types";
+
+/** ชื่อ key ใน payload ของ save_service_visit — แก้ที่นี่ที่เดียวถ้า BE เปลี่ยน */
+export const INTERNAL_INSPECTION_KEY = "internal_inspection" as const;
+
+/** ช่อง "ตรวจภายใน" แสดงเฉพาะการเข้าแบบบริการประจำเดือน */
+export function showsInternalInspection(visitType: string): boolean {
+  return visitType === "routine";
+}
+
+/** ค่าที่ส่ง: routine = ตามที่ติ๊ก · อื่นๆ = false เสมอ */
+export function internalInspectionToSend(form: Pick<FormState, "visitType" | "internalInspection">): boolean {
+  return showsInternalInspection(form.visitType) && form.internalInspection === true;
+}
 
 export interface CheckPayload {
   station_id: string;
@@ -40,6 +55,7 @@ export interface SavePayload {
   contract_id: string;
   visit_date: string;
   visit_type: string;
+  [INTERNAL_INSPECTION_KEY]: boolean;
   start_time: string;
   end_time: string;
   team_ids: string[];
@@ -192,6 +208,7 @@ export function buildPayload(
       contract_id: contractId,
       visit_date: form.visitDate,
       visit_type: form.visitType,
+      [INTERNAL_INSPECTION_KEY]: internalInspectionToSend(form),
       start_time: form.timeIn,
       end_time: form.timeOut,
       team_ids: [...new Set(form.teamIds)],

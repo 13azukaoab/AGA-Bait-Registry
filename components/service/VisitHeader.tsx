@@ -6,12 +6,14 @@
  *
  * ไม่มีช่อง "ประเภทการเข้า" ให้เลือก (DECISIONS 2.38 ง): หน้าจริงตั้ง `visit_type` ให้เอง
  * (/service = routine · /bait = follow_up) · แก้การเข้าเดิมที่เป็นประเภทอื่น (เช่น แก้ปัญหา) คงชนิดเดิม แสดงเป็นข้อความอ่านอย่างเดียว
+ * ช่องติ๊ก "ตรวจภายใน" (DECISIONS 2.93): แสดงเฉพาะ routine · ซ่อนเมื่อเป็น problem / follow_up (payload ส่ง false ให้เอง)
  * `dateLabel` ใช้ได้ (หน้า /bait เรียก "วันที่เข้าจริง (ตามใบงาน)")
  */
 import { useRef } from "react";
 
 import { cx } from "@/components/ui/cx";
 
+import { showsInternalInspection } from "./buildPayload";
 import { INPUT, INVALID, LABEL } from "./styles";
 import { TeamSelect } from "./TeamSelect";
 import { formatDuration, formatTimeInput, isValidTime, workTime } from "./timeInput";
@@ -149,6 +151,24 @@ export function VisitHeader({
           )}
         </div>
       </div>
+
+      {showsInternalInspection(form.visitType) ? (
+        <label
+          htmlFor="sv-internal-inspection"
+          className="flex min-h-11 cursor-pointer items-center gap-2.5 rounded-lg border border-border bg-surface-2 px-3 py-2 text-[13px] sm:col-span-2 xl:col-span-4"
+        >
+          <input
+            id="sv-internal-inspection"
+            type="checkbox"
+            checked={form.internalInspection === true}
+            onChange={(e) => onChange({ internalInspection: e.target.checked })}
+            className="size-5 flex-none"
+          />
+          <span>
+            <b>ตรวจภายใน</b> <span className="text-fg-muted">· ติ๊กเมื่อการเข้าครั้งนี้มีการตรวจภายในอาคาร</span>
+          </span>
+        </label>
+      ) : null}
     </div>
   );
 }
