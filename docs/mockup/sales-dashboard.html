@@ -266,8 +266,13 @@ bind("#fFrom","from");bind("#fTo","to");bind("#fZone","zone");bind("#fBranch","b
 function sumText(){var m=MTH[S.from]+(S.from===S.to?"":" – "+MTH[S.to]);return m+" · "+(S.zone?"เขต "+S.zone:"ทุกเขต")+" · "+(S.branch||"ทุกสาขา")+" · "+(S.seller||"ทุกคน")}
 function syncBar(){$("#sumLine").textContent=sumText()}
 $("#sumLine").addEventListener("click",function(){var f=$("#filters");f.scrollIntoView({behavior:"smooth",block:"start"});var s1=$("#fFrom");if(s1)s1.focus({preventScroll:true})});
-function onScroll(){var b=$("#typeSeg");if(!b||!b.getBoundingClientRect)return;var top=parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--sticky-top"))||0;b.classList.toggle("stuck",b.getBoundingClientRect().top<=top+0.5&&window.scrollY>0)}
-window.addEventListener("scroll",onScroll,{passive:true});
+/* เงาตอนลอย: คำนวณจากตำแหน่งจริงทุกครั้งที่เลื่อน/ปรับขนาด/เลื่อนจบ + ตัวจับ IntersectionObserver (กันกรณี event ล่าช้าตอนหน้าอยู่เบื้องหลัง) */
+function updateStuck(){var b=$("#typeSeg");if(!b||!b.getBoundingClientRect)return;var top=parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--sticky-top"))||0;
+  var y=window.scrollY||(document.documentElement&&document.documentElement.scrollTop)||0;
+  b.classList.toggle("stuck",y>0&&b.getBoundingClientRect().top<=top+1)}
+var tick=false;function onScroll(){if(tick)return;tick=true;(window.requestAnimationFrame||function(f){return setTimeout(f,16)})(function(){tick=false;updateStuck()});updateStuck()}
+["scroll","resize","scrollend"].forEach(function(ev){window.addEventListener(ev,onScroll,{passive:true})});
+if(window.IntersectionObserver){var sent=document.createElement("div");sent.style.cssText="height:1px;margin-bottom:-1px;pointer-events:none";var bar0=$("#typeSeg");if(bar0&&bar0.parentNode&&bar0.parentNode.insertBefore){bar0.parentNode.insertBefore(sent,bar0);new IntersectionObserver(updateStuck,{rootMargin:"0px"}).observe(sent)}}
 function syncType(){document.querySelectorAll("#typeSeg [data-t]").forEach(function(b){b.classList.toggle("on",b.dataset.t===S.type)});$("#typeSeg").style.display=V==="a"?"none":"";syncBar()}
 document.querySelectorAll("#typeSeg [data-t]").forEach(function(b){b.onclick=function(){S.type=b.dataset.t;syncType();render()}});
 $("#fReset").addEventListener("click",function(){S={from:MON[0],to:MON[2],zone:"",branch:"",seller:"",chip:"all",metric:S.metric,type:"all"};syncType();buildFilters();render()});
