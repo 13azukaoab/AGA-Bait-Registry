@@ -28,6 +28,7 @@ export const APP_SECTIONS: readonly string[] = [
   "/collection",
   "/customers",
   "/material",
+  "/sales",
   "/admin",
 ];
 

@@ -49,6 +49,8 @@ export const NAV_GROUPS: readonly NavGroup[] = [
       { key: "new", label: "เปิดงานเข้าทะเบียนบริการ", href: "/customers/new", icon: "＋", roles: ["host", "admin"] },
       // ยังไม่มีหน้า — เส้นทางที่เสนอ
       { key: "material", label: "สรุปงานบริการรายเดือน", href: "/material", icon: "▥", roles: ["host", "admin", "recorder"] },
+      // Dashboard งานขาย (New/Renew) — DECISIONS 2.91 · เฉพาะ host + admin (ด่านจริง: middleware + page + RLS)
+      { key: "sales", label: "Dashboard งานขาย (New/Renew)", href: "/sales", icon: "◈", roles: ["host", "admin"] },
       // หน้า public อยู่นอกกลุ่ม (app) จึงไม่มีโครงหน้านี้ครอบ — ลิงก์ยังใช้ได้
       { key: "summary", label: "Dashboard สรุปมูลค่าทั้งหมด", href: "/summary", icon: "▦", roles: ["host", "admin", "recorder", "viewer"] },
     ],
