@@ -631,7 +631,7 @@ function UserForm({
             maxLength={20}
             autoComplete="off"
             autoCapitalize="none"
-            placeholder="เช่น AG-01234"
+            placeholder="เช่น ag-01234"
             readOnly={mode === "edit"}
             value={mode === "edit" ? usernameLabel(draft.username) : draft.username}
             onChange={(e) => setDraft((d) => ({ ...d, username: e.target.value }))}
