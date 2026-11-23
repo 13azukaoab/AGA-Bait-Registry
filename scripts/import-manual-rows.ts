@@ -30,7 +30,7 @@ import { readFileSync } from "node:fs";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-import { hasAllCentralFiles, loadCentralRegistry } from "../lib/import/centralRegistryFiles";
+import { hasAllCentralFiles, loadCentralRegistry, loadSellerIndex } from "../lib/import/centralRegistryFiles";
 import { REGISTRY_IMPORT_BATCH_OCT26 } from "../lib/import/centralRegistrySheets";
 import { runGuarded } from "../lib/import/cloudGuard";
 import {
@@ -132,7 +132,7 @@ async function main(): Promise<void> {
   const ctx = setupScript("import-manual-rows");
   const log: Record<string, unknown> = { status: "error", batch, month, verifyOnly };
   try {
-    const read = readManualRowsForm(readFormGrid(formPath), { knownRows: knownManualRows(dir) });
+    const read = readManualRowsForm(readFormGrid(formPath), { knownRows: knownManualRows(dir), sellerIndex: loadSellerIndex(dir) });
     const report: Record<string, unknown> = { batch, month, form: formReport(read) };
     log.form = report.form;
     const rules = await readTierRules(ctx.client);

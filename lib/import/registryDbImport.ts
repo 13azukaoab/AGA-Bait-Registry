@@ -23,6 +23,8 @@
  *   ตัวเดียวกับ Auto Sync → buildBranchSnapshot ใน lib/rules · ไม่มีสูตรใหม่) → เทียบกับ plan.expected ทุกช่อง (เงินเทียบสตางค์)
  *   + ทุกสัญญาของสาขามี import_batch = plan.importBatch (2.86) + ชุดเลขสัญญาใน DB = ชุดในแผน (แถวกรอกมือ/แถวที่กันไว้/แถวที่ตัดออกไม่หลุดเข้า DB) + จำนวน sale_name / am_name / ทีม
  *   + จำนวนลูกค้าที่มีที่อยู่ต่อสาขา = plan.addresses.withAddress (2.102 · อ่านค่าเข้าหน่วยความจำเพื่อนับเท่านั้น ไม่พิมพ์)
+ *   สัญญาของรอบแก้ `<plan.importBatch>-fixN` (2.104) และลูกค้าที่มีแต่สัญญารอบแก้ ไม่นับ — ตรวจรอบแรกได้ตลอดแม้มีรอบแก้เข้ามาแล้ว
+ *   (สัญญาที่ไม่มี batch / batch อื่น ยังนับและทำให้ไม่ผ่านเหมือนเดิม)
  *   verifyBatchImport (โหมด append): เทียบเหมือนกันทุกข้อ แต่อ่านเฉพาะสัญญาของ batch นี้ (ไม่ใช่ทั้งสาขา —
  *   สาขามีสัญญารอบแรกอยู่แล้ว) · ยอดที่คาด = buildBranchSnapshot ของแถวในรอบนี้เท่านั้น · สัญญาของ batch ที่สาขาไม่อยู่ในแผน = ไม่ผ่าน
  *
@@ -506,7 +508,14 @@ export async function verifyRegistryImport(client: SupabaseClient, plan: Registr
   const customers = await selectIn(client, "customers", "id, branch_id, address", "branch_id", targetIds);
   const customerIds = customers.map((c) => String(c.id));
   const contracts = await selectIn(client, "contracts", VERIFY_CONTRACT_COLUMNS, "customer_id", customerIds);
-  return compareWithPlan(plan, await loadVerifyExtras(client, { nameById, customers, contracts }));
+  // 2.104: สัญญาของรอบแก้ (`<batch>-fixN`) + ลูกค้าที่มีแต่สัญญารอบแก้ ไม่นับในการตรวจรอบแรก (ตรวจแยกด้วย verifyBatchImport)
+  const fixRe = new RegExp(`^${plan.importBatch.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}-fix\\d+$`);
+  const isFix = (c: Row) => typeof c.import_batch === "string" && fixRe.test(c.import_batch);
+  const mainContracts = contracts.filter((c) => !isFix(c));
+  const keepCustomers = new Set(mainContracts.map((c) => String(c.customer_id)));
+  const fixOnlyCustomers = new Set(contracts.filter(isFix).map((c) => String(c.customer_id)).filter((id) => !keepCustomers.has(id)));
+  const mainCustomers = customers.filter((c) => !fixOnlyCustomers.has(String(c.id)));
+  return compareWithPlan(plan, await loadVerifyExtras(client, { nameById, customers: mainCustomers, contracts: mainContracts }));
 }
 
 /**

@@ -395,6 +395,23 @@ describe("importRegistryPlan โหมด append (2.104)", () => {
     expect((await verifyBatchImport(f.client, trimmed)).ok).toBe(true);
   });
 
+  it("ตัวตรวจรอบแรก (verifyRegistryImport) ข้ามสัญญารอบแก้ -fixN: ตัวเลขเหมือนก่อนมีรอบแก้ · สัญญาในแอป (ไม่มี batch) ยังทำให้ไม่ผ่าน", async () => {
+    const f = fakeClient();
+    const main = { ...PLAN, importBatch: "registry-OCT26" };
+    await importRegistryPlan(f.client, main, { newId: f.newId });
+    const before = await verifyRegistryImport(f.client, main);
+    expect(before.ok).toBe(true);
+    await importRegistryPlan(f.client, fixPlan(), { mode: "append", newId: f.newId });
+    const after = await verifyRegistryImport(f.client, main);
+    expect(after).toEqual(before);
+    f.db.contracts!.push({
+      id: "app-2", customer_id: f.db.customers![0]!.id, contract_no: "CT26-0000777", start_date: "2026-01-01", end_date: "2026-12-31",
+      term_months: 12, value_total: "100.00", cancelled_at: null, stations_initialized_at: null, renewed_from_contract_id: null,
+      sale_name: null, am_name: null, import_batch: null,
+    });
+    expect((await verifyRegistryImport(f.client, main)).ok).toBe(false);
+  });
+
   it("verifyBatchImport: สัญญาของ batch อยู่สาขานอกแผน = ไม่ผ่าน", async () => {
     const f = fakeClient();
     const fix = fixPlan();

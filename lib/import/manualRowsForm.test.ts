@@ -22,6 +22,7 @@ import {
   type FormRow,
 } from "./manualRowsForm";
 import type { CellValue } from "./registrySheet";
+import type { SellerIndex } from "./sellerLookup";
 
 /** แถวแบบฟอร์มสมมติ (ค่าผ่านทุกช่อง) */
 function row(over: Partial<FormRow> = {}): FormRow {
@@ -175,6 +176,36 @@ describe("readManualRowsForm", () => {
       { phone: "020000002", label: null },
     ]);
     expect(a.cleaned).toMatchObject({ customerType: "อื่นๆ (ระบุในหมายเหตุ)", amName: "ผู้ขายสมมติ", saleName: null });
+  });
+
+  it("ผู้ขายว่าง → จับคู่ไฟล์เปิดงานด้วยเลขสัญญาในฟอร์ม (ตัวที่แก้แล้ว) · มีค่าในฟอร์ม = ใช้ค่าฟอร์ม · ไม่เจอ = ว่าง", () => {
+    const entry = (name: string, position: string) => ({ seller: { name, position }, conflict: false, noSellerColumn: false });
+    const sellerIndex: SellerIndex = {
+      entries: new Map([
+        ["CT26-9000001", entry("ผู้ขายสมมติ AM", "AM")],
+        ["CT26-9000002", entry("ผู้ขายสมมติ Sale", "Sale")],
+      ]),
+      contracts: 2,
+      sheetsRead: [],
+      sheetsWithoutSeller: [],
+      sheetsSkipped: [],
+      crossSourceConflicts: new Set(),
+    };
+    const res = readManualRowsForm(
+      grid([
+        row(), // เลขแก้แล้ว CT26-9000001 · ผู้ขายว่าง → AM
+        row({ excelRow: "55", contractNo: "CT26-9000002", seller: "ผู้ขายในฟอร์ม", sellerPosition: "AM" }), // ฟอร์มชนะ
+        row({ branch: "ปทุมวัน", sheet: "ปทุมวัน", excelRow: "7", contractNo: "CT26-9000003" }), // ไม่เจอ
+      ]),
+      { knownRows: KNOWN, sellerIndex },
+    );
+    expect(res.invalid).toEqual([]);
+    expect(res.counts.sellerMatched).toBe(1);
+    expect(res.accepted.map((a) => [a.cleaned.saleName, a.cleaned.amName])).toEqual([
+      [null, "ผู้ขายสมมติ AM"],
+      [null, "ผู้ขายในฟอร์ม"],
+      [null, null],
+    ]);
   });
 
   it("หัวคอลัมน์หาย/ถูกแก้ = หยุดทั้งไฟล์", () => {

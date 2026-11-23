@@ -12,7 +12,7 @@
  *      → สร้าง RawRow (key = SOURCE_COLUMNS) แล้วตรวจด้วย importContracts ตัวเดียวกับรอบแรก
  *        (allowMissingSeller + flagMalformedContractWithValue · ประเภทว่าง = อื่นๆ (ข3) · ตารางแปลงประเภทเดิม)
  *      · ระยะสัญญา = ช่องมูลค่า 1 ปี / 3 ปี (12 / 36 เดือน) + ช่อง "จำนวนเดือน" สำหรับ Custom (M30 · CLAUDE.md กฎ 5)
- *      · ผู้ขาย = ค่าในแบบฟอร์มเท่านั้น (ไม่จับคู่ไฟล์เปิดงานซ้ำ · ค่าเติมไว้ตั้งแต่สร้างฟอร์ม)
+ *      · ผู้ขาย = ค่าในแบบฟอร์ม · ช่องว่าง + ส่ง sellerIndex → จับคู่ไฟล์เปิดงานใหม่ด้วยเลขสัญญาในฟอร์ม (ตัวที่แก้แล้ว · เจ้าของเลือก 23 พ.ย.)
  *      · เบอร์: parseThaiPhones (ผิดรูป = ไม่เก็บเบอร์ + เตือน เหมือนรอบแรก 2.84) · ชื่อผู้ติดต่อ = ป้ายของเบอร์แรกที่ยังไม่มีป้าย
  *      · ที่อยู่: cleanAddress (2.102) · มีตัวอักษรควบคุม = แถวไม่ผ่าน
  *      · แถวที่ไม่อยู่ในรายการแถวกรอกมือ (knownRows) / ซ้ำ / ค่าผิด = รายงาน (สาขา + เลขแถว + เหตุผลที่ตัดค่าจริงออกแล้ว) แล้วข้าม
@@ -290,6 +290,8 @@ export interface FormReadResult {
     fixedOther: number;
     accepted: number;
     invalid: number;
+    /** แถว "ใช่" ที่ช่องผู้ขายว่างแล้วจับคู่จากไฟล์เปิดงานได้ (นับก่อนตรวจแถว) */
+    sellerMatched: number;
   };
 }
 
@@ -298,6 +300,11 @@ export interface FormReadOptions {
   knownRows?: ReadonlySet<string>;
   /** รหัสทีมที่มีจริง (ImportOptions.teamCodes) · ไม่ส่ง = ชุดตั้งต้น */
   teamCodes?: readonly string[];
+  /**
+   * ดัชนีผู้ขายจากไฟล์เปิดงาน (2569 ก่อน 2568 · เจ้าของเลือก 23 พ.ย. 2026):
+   * ช่องผู้ขายในฟอร์มว่าง → จับคู่ด้วยเลขสัญญาในฟอร์ม (ตัวที่แก้แล้ว) · ช่องผู้ขายมีค่า = ใช้ค่าฟอร์ม · ไม่ส่ง = ไม่จับคู่
+   */
+  sellerIndex?: SellerIndex;
 }
 
 const HEADER_SCAN_ROWS = 10;
@@ -354,7 +361,7 @@ export function readManualRowsForm(grid: CellValue[][], opts: FormReadOptions = 
   const { headerRow, col } = findFormHeader(grid);
   const targets = new Set(registryTargetBranches());
   const invalid: FormProblem[] = [];
-  const counts = { rows: 0, fixedYes: 0, fixedNo: 0, fixedBlank: 0, fixedOther: 0, accepted: 0, invalid: 0 };
+  const counts = { rows: 0, fixedYes: 0, fixedNo: 0, fixedBlank: 0, fixedOther: 0, accepted: 0, invalid: 0, sellerMatched: 0 };
   const seenKeys = new Set<string>();
 
   interface Pending {
@@ -425,6 +432,17 @@ export function readManualRowsForm(grid: CellValue[][], opts: FormReadOptions = 
     }
 
     const type = text(get("customerType"));
+    let seller = text(get("seller"));
+    let sellerPos = position ?? "";
+    if (seller === "" && opts.sellerIndex) {
+      const ct = normalizeContractNo(text(get("contractNo")));
+      const found = ct.isContractNo ? lookupSeller(opts.sellerIndex, ct.value) : null;
+      if (found?.status === "matched") {
+        seller = found.seller.name;
+        sellerPos = found.seller.position; // AM → am_name · อื่น → sale_name (sellerColumns · 2.73 ต1)
+        counts.sellerMatched++;
+      }
+    }
     pending.push({
       formRow,
       branch: branchText,
@@ -435,8 +453,8 @@ export function readManualRowsForm(grid: CellValue[][], opts: FormReadOptions = 
         รายชื่อ: text(get("customerName")),
         New: st === "NEW" ? "TRUE" : "",
         Renew: st === "RENEW" ? "TRUE" : "",
-        ผู้ขาย: text(get("seller")),
-        ตำแหน่ง: position ?? "",
+        ผู้ขาย: seller,
+        ตำแหน่ง: sellerPos,
         สาขา: branchText,
         ทีม: text(get("team")),
         // ข3: ประเภทว่าง = อื่นๆ (ระบุในหมายเหตุ) เหมือนรอบแรก
