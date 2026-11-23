@@ -3,7 +3,7 @@
  * ข้อความตาม mockup docs/mockup/tutorial.html · จุดชี้ = data-tour ในหน้าจริง
  *   nav-new → components/shell/NavLinks.tsx (ทุกเมนูมี data-tour="nav-<key>")
  *   new-form / new-tier / new-save / cust-upload → components/customers-new/NewContractsClient.tsx
- *   reg-search → ยังไม่มี (หน้า /customers ยังเป็นหน้าตัวอย่าง) — ขั้นนี้จะถูกข้ามเงียบๆ จนกว่าจะมีหน้าจริง
+ *   reg-search → components/customers/RegistryFilterBar.tsx (ช่องค้นหา)
  * ⚠ หน้าจริงแนบไฟล์ที่หน้าเปิดงาน (ปุ่ม "ไฟล์แนบ" ในตาราง) ไม่ใช่ที่หน้ารายละเอียดลูกค้า จึงปรับข้อความขั้น 5 ให้ตรงของจริง
  */
 import type { Lesson } from "./types";

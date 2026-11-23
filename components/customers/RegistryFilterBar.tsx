@@ -154,6 +154,7 @@ export function RegistryFilterBar({ filters, branches, search, exporting, onChan
           <span className="text-xs text-fg-muted">ค้นหา</span>
           <input
             type="search"
+            data-tour="reg-search"
             value={search}
             onChange={(e) => onSearch(e.target.value)}
             placeholder="ชื่อลูกค้า / เลขที่สัญญา"

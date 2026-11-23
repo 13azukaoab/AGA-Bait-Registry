@@ -2,7 +2,7 @@
  * บทเรียนตำแหน่งหัวหน้างาน · position_code = supervisor · 8 ขั้น
  * ข้อความตาม mockup docs/mockup/tutorial.html · จุดชี้ = data-tour ในหน้าจริง
  *   todo-stats → components/todo/SummaryCards.tsx · svc-* → components/service/ServiceForm.tsx / AgSection.tsx
- *   bait-add → components/bait/BaitForm.tsx · collect-list → หน้า /collection ยังเป็นหน้าตัวอย่าง (ข้ามเงียบๆ จนกว่าจะมีหน้าจริง)
+ *   bait-add → components/bait/BaitForm.tsx · collect-list → components/collection/CollectionClient.tsx (กรอบตารางรายการ)
  *   clo-send → components/months/MonthsClient.tsx
  * ⚠ ขั้น svc-* ต้องเลือกลูกค้าในรายการก่อนฟอร์มถึงจะโผล่ svc-allok / bait-add มีจุดสำรองชี้รายการลูกค้า (contract-list) ส่วน svc-termite / svc-ag ถ้าฟอร์มยังไม่ขึ้นจะถูกข้ามเงียบๆ
  */

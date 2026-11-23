@@ -108,7 +108,7 @@ function collectDataTourKeys(): Set<string> {
 }
 
 /** จุดชี้ที่หน้าจริงยังไม่มี (หน้ายังเป็นหน้าตัวอย่าง ScreenStub) — ตัวแสดงจะข้ามขั้นเหล่านี้เงียบๆ · เอาออกเมื่อหน้าจริงเสร็จ */
-const PENDING_PAGES = new Set(["reg-search", "collect-list"]);
+const PENDING_PAGES = new Set<string>();
 
 describe("จุดชี้ data-tour ในหน้าจริง", () => {
   const keys = collectDataTourKeys();
@@ -128,6 +128,11 @@ describe("จุดชี้ data-tour ในหน้าจริง", () => {
 
   it("รายการ “หน้ายังไม่เสร็จ” ต้องยังหาไม่เจอจริง (ถ้าเจอแล้วให้เอาออกจาก PENDING_PAGES)", () => {
     for (const key of PENDING_PAGES) expect(keys.has(key)).toBe(false);
+  });
+
+  it("หน้าทะเบียน (/customers) และรอเก็บ (/collection) เป็นหน้าจริงแล้ว — มีจุดชี้ reg-search และ collect-list", () => {
+    expect(keys.has("reg-search")).toBe(true);
+    expect(keys.has("collect-list")).toBe(true);
   });
 
   it("หัวหน้างาน (svc-allok, bait-add) และ PM/OM (port-save) มีจุดสำรอง", () => {
