@@ -16,6 +16,8 @@
  *      · ผู้ขาย รายงานเป็น "จำนวน" เท่านั้น (ไม่มีชื่อผู้ขาย)
  *   ตัวเลือกตามผลตัดสินเจ้าของ 18 พ.ย. 2026 (ทะเบียนส่วนกลาง · ค่าที่ใช้จริงอยู่ที่ REGISTRY_IMPORT_OPTIONS):
  *      readDateRangeText (ก1) · blankCustomerTypeAsOther (ข3) · flagMalformedContractWithValue (ค1) · holdRows = เลขสัญญาซ้ำข้ามสาขา (ง1)
+ *      excludeRows = รายการเลขสัญญาที่ต้องตัดออก (2.103 · centralRegistryCorrections.ts) — ต้องชี้แถวพร้อมนำเข้า + เลขตรง ไม่งั้นหยุด
+ *   ที่อยู่ (2.102): อ่านช่อง "ที่อยู่ลูกค้า" ของแถวพร้อมนำเข้าผ่าน addressCellOf → addresses.ts · รายงานเป็นจำนวนเท่านั้น
  *   4. ไม่ตัดสินวิธีล้างข้อมูลเอง — รายงานอย่างเดียว (เจ้าของเลือกวิธีแก้)
  *      รายการแถวที่ต้องกรอกมือ + ตารางแปลงประเภทสร้างต่อใน registryReport.ts
  */
@@ -32,6 +34,7 @@ import {
   type RegistryRow,
   type RegistryTierSummary,
 } from "./registrySheet";
+import { cleanAddress, summarizeAddresses, type AddressSummary } from "./addresses";
 import { parseThaiPhones, summarizePhones, type PhoneSummary } from "./phones";
 import { lookupSeller, type SellerIndex } from "./sellerLookup";
 import type { CleanedRow, ImportResult } from "./types";
@@ -48,6 +51,8 @@ export interface ImportRunSummary {
   ready: number;
   /** แถวที่ผ่านกฎแต่ถูกกันไว้ (holdRows) — เลขแถว Excel · lenient ว่างเสมอ */
   held: number[];
+  /** แถวที่ตัดออกตามรายการ (excludeRows · 2.103) — เลขแถว Excel · lenient ว่างเสมอ */
+  excluded: number[];
   mustFix: number;
   skipped: number;
   errors: RowsByKind;
@@ -72,6 +77,15 @@ export interface RowProblem {
 export interface HoldRow {
   excelRow: number;
   /** เหตุผล (ไม่มีข้อมูลลูกค้า) เช่น "มูลค่าสูงผิดปกติ" */
+  reason: string;
+}
+
+/** แถวที่ต้องตัดออกจากการนำเข้า (2.103 · อ้างเลขแถว + เลขสัญญา · เลขสัญญาไม่ใช่ข้อมูลส่วนบุคคล) */
+export interface ExcludeRow {
+  excelRow: number;
+  /** เลขสัญญาที่ต้องอยู่ในแถวนั้น (หลังล้างแล้ว) — ไม่ตรง = หยุด */
+  contractNo: string;
+  /** เหตุผล/ที่มา (ไม่มีข้อมูลลูกค้า) */
   reason: string;
 }
 
@@ -120,12 +134,18 @@ export interface BranchDryRun {
   strictProblems: RowProblem[];
   /** แถวที่กันไว้ + เหตุผล (เฉพาะแถวที่ผ่านกฎ · แถวที่ไม่ผ่านอยู่ใน strictProblems อยู่แล้ว) */
   heldRows: HoldRow[];
+  /** แถวที่ตัดออกตามรายการ (2.103) */
+  excludedRows: ExcludeRow[];
   /** ค่าประเภทลูกค้าดิบในแถวสัญญา → จำนวนแถว (ค่าประเภทไม่ใช่ข้อมูลส่วนบุคคล) · "" = ว่าง */
   customerTypeValues: Record<string, number>;
   /** null = ไม่ได้ส่งไฟล์เปิดงานมา */
   sellers: SellerMatchSummary | null;
   /** เบอร์โทรของแถวที่จะนำเข้า (strict ready) — จำนวนเท่านั้น · hasPhoneColumn = ชีทมีคอลัมน์เบอร์ */
   phones: PhoneSummary & { hasPhoneColumn: boolean };
+  /** ที่อยู่ของแถวที่จะนำเข้า (strict ready) — จำนวนเท่านั้น · hasAddressColumn = ชีทมีหัว "ที่อยู่ลูกค้า" (2.102) */
+  addresses: AddressSummary & { hasAddressColumn: boolean };
+  /** ป้ายหัวที่มีคำว่า "ที่อยู่" แต่ไม่ตรงตัว (ต้องรายงาน) */
+  addressHeaderVariants: string[];
   snapshots: Record<string, MonthlySnapshot>;
   /** บล็อกสรุปท้ายชีท (สูตร Excel ของสาขาเอง) */
   inSheetSummary: RegistryTierSummary | null;
@@ -163,7 +183,7 @@ function addTo(map: RowsByKind, msg: string, excelRow: number): void {
   slot.excelRows.push(excelRow);
 }
 
-function summarize(result: ImportResult, rows: RegistryRow[], held: number[] = []): ImportRunSummary {
+function summarize(result: ImportResult, rows: RegistryRow[], held: number[] = [], excluded: number[] = []): ImportRunSummary {
   const excel = (rowIndex: number) => rows[rowIndex - 1]?.excelRow ?? -1;
   const errors: RowsByKind = {};
   const warnings: RowsByKind = {};
@@ -179,6 +199,7 @@ function summarize(result: ImportResult, rows: RegistryRow[], held: number[] = [
   return {
     ready: result.summary.ready,
     held,
+    excluded,
     mustFix: result.summary.mustFix,
     skipped: result.summary.skipped,
     errors,
@@ -221,6 +242,8 @@ export interface DryRunOptions {
   sellerIndex?: SellerIndex;
   /** แถวที่กันไว้ไม่นำเข้า (เลขแถว Excel ของชีทนี้) */
   holdRows?: HoldRow[];
+  /** แถวที่ต้องตัดออก (2.103) — ต้องเป็นแถวพร้อมนำเข้าและเลขสัญญาตรง ไม่งั้น throw */
+  excludeRows?: ExcludeRow[];
   /**
    * ชื่อสาขาปลายทาง (ตามตารางชีท → สาขาที่ระบุเอง เช่น centralRegistrySheets.ts)
    * ต้องสะกดตรง master ทุกตัวอักษร · ไม่ส่ง = ใช้ชื่อชีท (แบบเขต 1)
@@ -250,10 +273,14 @@ export interface StrictImport {
   strictResult: ImportResult;
   /** แถวที่กันไว้ (เฉพาะที่ผ่านกฎ) */
   heldRows: HoldRow[];
+  /** แถวที่ตัดออกตามรายการ (เรียงตามเลขแถว) */
+  excludedRows: ExcludeRow[];
   /** rowIndex (เริ่ม 1) → เลขแถว Excel */
   excelOf: (rowIndex: number) => number;
   /** rowIndex → ค่าดิบในช่องเบอร์โทร (ชีทไม่มีคอลัมน์เบอร์ = null) · ⚠ เบอร์จริง ห้าม log */
   phoneCellOf: (rowIndex: number) => CellValue;
+  /** rowIndex → ค่าดิบในช่องที่อยู่ (ชีทไม่มีหัว "ที่อยู่ลูกค้า" = null) · ⚠ ที่อยู่จริง ห้าม log */
+  addressCellOf: (rowIndex: number) => CellValue;
 }
 
 /**
@@ -298,7 +325,9 @@ export function prepareStrictImport(sheetName: string, grid: CellValue[][], opts
   const holdSet = new Set((opts.holdRows ?? []).map((h) => h.excelRow));
   const readyExcelRows = new Set(rawStrict.ready.map((r) => excelOf(r.rowIndex)));
   const heldRows = (opts.holdRows ?? []).filter((h) => readyExcelRows.has(h.excelRow));
-  const strictReady = rawStrict.ready.filter((r) => !holdSet.has(excelOf(r.rowIndex)));
+  const excludedRows = checkExclusions(target, opts.excludeRows ?? [], rawStrict, excelOf, holdSet);
+  const excludeSet = new Set(excludedRows.map((x) => x.excelRow));
+  const strictReady = rawStrict.ready.filter((r) => !holdSet.has(excelOf(r.rowIndex)) && !excludeSet.has(excelOf(r.rowIndex)));
   const strictResult: ImportResult = {
     ...rawStrict,
     ready: strictReady,
@@ -307,12 +336,46 @@ export function prepareStrictImport(sheetName: string, grid: CellValue[][], opts
   const phoneCol = parsed.columns.phone;
   const phoneCellOf = (rowIndex: number): CellValue =>
     phoneCol === null ? null : (grid[excelOf(rowIndex) - 1]?.[phoneCol] ?? null);
-  return { ref, parsed, rawStrict, strictResult, heldRows, excelOf, phoneCellOf };
+  const addressCol = parsed.columns.address;
+  const addressCellOf = (rowIndex: number): CellValue =>
+    addressCol === null ? null : (grid[excelOf(rowIndex) - 1]?.[addressCol] ?? null);
+  return { ref, parsed, rawStrict, strictResult, heldRows, excludedRows, excelOf, phoneCellOf, addressCellOf };
+}
+
+/**
+ * ตรวจรายการตัดสัญญา (2.103) กับผล strict ก่อนกัน — ทุกรายการต้องชี้ "แถวพร้อมนำเข้า" ที่เลขสัญญาตรง
+ * ซ้ำ / แถวที่กันไว้ (ง1) / แถวกรอกมือ / ไม่พบ / เลขไม่ตรง = throw (ข้อความมีแค่สาขา เลขแถว เลขสัญญา)
+ */
+function checkExclusions(
+  branch: string,
+  list: readonly ExcludeRow[],
+  rawStrict: ImportResult,
+  excelOf: (rowIndex: number) => number,
+  holdSet: ReadonlySet<number>,
+): ExcludeRow[] {
+  if (list.length === 0) return [];
+  const readyByExcel = new Map(rawStrict.ready.map((r) => [excelOf(r.rowIndex), r]));
+  const mustFixExcel = new Set(rawStrict.mustFix.map((r) => excelOf(r.rowIndex)));
+  const seen = new Set<number>();
+  for (const x of list) {
+    const where = `รายการตัดสัญญา: ${branch} แถว ${x.excelRow} (${x.contractNo})`;
+    if (seen.has(x.excelRow)) throw new Error(`${where} ระบุซ้ำ — หยุด ตรวจรายการก่อน`);
+    seen.add(x.excelRow);
+    if (holdSet.has(x.excelRow)) throw new Error(`${where} เป็นแถวที่กันไว้แล้ว (ง1) — หยุด ตรวจรายการก่อน`);
+    if (mustFixExcel.has(x.excelRow)) throw new Error(`${where} เป็นแถวกรอกมือ (ไม่ได้นำเข้าอยู่แล้ว) — หยุด ตรวจรายการก่อน`);
+    const row = readyByExcel.get(x.excelRow);
+    if (!row) throw new Error(`${where} ไม่พบแถวสัญญาพร้อมนำเข้า (ไฟล์เปลี่ยน/แถวเลื่อน?) — หยุด ตรวจรายการก่อน`);
+    if (row.contractNo !== x.contractNo) {
+      throw new Error(`${where} เลขสัญญาในไฟล์ไม่ตรงรายการ (ไฟล์เปลี่ยน/แถวเลื่อน?) — หยุด ตรวจรายการก่อน`);
+    }
+  }
+  return [...list].sort((a, b) => a.excelRow - b.excelRow);
 }
 
 /** dry-run 1 ชีท (1 สาขา) */
 export function dryRunRegistrySheet(sheetName: string, grid: CellValue[][], opts: DryRunOptions): BranchDryRun {
-  const { ref, parsed, rawStrict, strictResult, heldRows, excelOf, phoneCellOf } = prepareStrictImport(sheetName, grid, opts);
+  const { ref, parsed, rawStrict, strictResult, heldRows, excludedRows, excelOf, phoneCellOf, addressCellOf } =
+    prepareStrictImport(sheetName, grid, opts);
   const rows = parsed.rows;
   const contractRows = rows.filter((r) => {
     const raw = r.raw as Record<string, string>;
@@ -442,16 +505,22 @@ export function dryRunRegistrySheet(sheetName: string, grid: CellValue[][], opts
       .filter((i) => !CONTRACT_LIKE.test(((rows[i - 1]?.raw as Record<string, string>)["เลขที่สัญญา"] ?? "").replace(/\s+/g, "").toUpperCase()))
       .map(excelOf)
       .sort((a, b) => a - b),
-    strict: summarize(strictResult, rows, heldRows.map((h) => h.excelRow)),
+    strict: summarize(strictResult, rows, heldRows.map((h) => h.excelRow), excludedRows.map((x) => x.excelRow)),
     lenient: summarize(lenientResult, rows),
     strictProblems,
     heldRows,
+    excludedRows,
     customerTypeValues,
     sellers,
     phones: {
       ...summarizePhones(strictResult.ready.map((r) => parseThaiPhones(phoneCellOf(r.rowIndex)))),
       hasPhoneColumn: parsed.columns.phone !== null,
     },
+    addresses: {
+      ...summarizeAddresses(strictResult.ready.map((r) => cleanAddress(addressCellOf(r.rowIndex)))),
+      hasAddressColumn: parsed.columns.address !== null,
+    },
+    addressHeaderVariants: parsed.addressHeaderVariants,
     snapshots,
     inSheetSummary: readRegistryTierSummary(grid),
     termMonths,

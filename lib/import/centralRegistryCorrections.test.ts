@@ -4,9 +4,12 @@
 import { describe, expect, it } from "vitest";
 import { CENTRAL_REGISTRY_FILES_OCT26 } from "./centralRegistrySheets";
 import {
+  CONTRACT_EXCLUSIONS_OCT26,
   CONTRACT_NO_CORRECTIONS_OCT26,
   applyContractNoCorrections,
+  assignContractExclusions,
   unusedCorrections,
+  type ContractExclusion,
   type ContractNoCorrection,
 } from "./centralRegistryCorrections";
 import type { CellValue } from "./registrySheet";
@@ -44,5 +47,42 @@ describe("applyContractNoCorrections", () => {
     }
     const keys = CONTRACT_NO_CORRECTIONS_OCT26.map((c) => `${c.file}|${c.sheet}|${c.excelRow}`);
     expect(new Set(keys).size).toBe(keys.length);
+  });
+});
+
+describe("รายการเลขสัญญาที่ต้องตัดออก (2.103)", () => {
+  const EX: ContractExclusion = { file: "f.xlsx", sheet: "สาทร", excelRow: 6, contractNo: "CT26-0000001", reason: "ทดสอบ (สมมติ)" };
+  const SHEETS = [
+    { file: "f.xlsx", sheet: "สาทร", branch: "สาทร" },
+    { file: "f.xlsx", sheet: "ปทุมวัน", branch: "ปทุมวัน" },
+  ];
+
+  it("แจกรายการให้ชีทตามไฟล์ + ชีท (ส่งต่อเลขแถว/เลขสัญญา/เหตุผล)", () => {
+    const m = assignContractExclusions(SHEETS, [EX]);
+    expect(m.get("สาทร")).toEqual([{ excelRow: 6, contractNo: "CT26-0000001", reason: "ทดสอบ (สมมติ)" }]);
+    expect(m.has("ปทุมวัน")).toBe(false);
+  });
+
+  it("รายการที่ไม่ตรงไฟล์/ชีทใด = หยุด (ไม่ข้ามเงียบ)", () => {
+    expect(() => assignContractExclusions(SHEETS, [{ ...EX, file: "อื่น.xlsx" }])).toThrow(/หยุด/);
+    expect(() => assignContractExclusions(SHEETS, [{ ...EX, sheet: "หัวหิน" }])).toThrow(/หยุด/);
+  });
+
+  it("รายการว่าง = ไม่ตัดอะไร", () => {
+    expect(assignContractExclusions(SHEETS, []).size).toBe(0);
+  });
+
+  it("ตารางจริง: ไฟล์ตรงตารางไฟล์ทะเบียน · เลขรูป CTyy-nnnnnnn · มีเหตุผล · ไม่ซ้ำตำแหน่ง/เลข", () => {
+    const files = new Set(CENTRAL_REGISTRY_FILES_OCT26.map((f) => f.file));
+    for (const c of CONTRACT_EXCLUSIONS_OCT26) {
+      expect(files.has(c.file)).toBe(true);
+      expect(c.contractNo).toMatch(/^CT\d{2}-\d{7}$/);
+      expect(c.reason.trim()).not.toBe("");
+      expect(c.excelRow).toBeGreaterThan(0);
+    }
+    const keys = CONTRACT_EXCLUSIONS_OCT26.map((c) => `${c.file}|${c.sheet}|${c.excelRow}`);
+    expect(new Set(keys).size).toBe(keys.length);
+    const nos = CONTRACT_EXCLUSIONS_OCT26.map((c) => c.contractNo);
+    expect(new Set(nos).size).toBe(nos.length);
   });
 });

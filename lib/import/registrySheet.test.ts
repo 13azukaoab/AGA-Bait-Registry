@@ -57,6 +57,8 @@ describe("parseRegistrySheet", () => {
     const res = parseRegistrySheet(grid, "หัวหิน", { sellerPlaceholder: "x" });
     expect(res.headerRows).toEqual([4, 5]);
     expect(res.columns).toMatchObject({ contractNo: 3, startDate: 7, endDate: 8, value1y: 9, value3y: 10, customerType: 11, isNew: 12, isRenew: 13, team: 14 });
+    expect(res.columns.address).toBe(2); // หัว "ที่อยู่ลูกค้า" อยู่แถวบน (แถวล่างว่าง)
+    expect(res.addressHeaderVariants).toEqual([]);
     expect(res.rows).toHaveLength(1);
     expect(res.rows[0]).toMatchObject({
       excelRow: 6,
@@ -69,6 +71,17 @@ describe("parseRegistrySheet", () => {
     const res = parseRegistrySheet(sheetNoIc([]), "พุทธมณฑล");
     expect(res.headerRows).toEqual([4, 5]);
     expect(res.columns).toMatchObject({ contractNo: 3, startDate: 6, endDate: 7, value1y: 8, value3y: 9, customerType: 10, isNew: 11, isRenew: 12, team: 13 });
+    expect(res.columns.address).toBe(2); // หัว "ที่อยู่ลูกค้า" อยู่แถวล่าง
+  });
+
+  it("ไม่มีหัว 'ที่อยู่ลูกค้า' = คอลัมน์ที่อยู่ null (ไม่เดา) · หัวสะกดต่างที่มีคำว่า 'ที่อยู่' ถูกรายงาน", () => {
+    const bottom = BOTTOM_NO_IC.map((c) => (c === "ที่อยู่ลูกค้า" ? "ที่อยู่ ลูกค้า (สมมติ)" : c));
+    const res = parseRegistrySheet([[], [], [], TOP_NO_IC, bottom], "พุทธมณฑล");
+    expect(res.columns.address).toBeNull();
+    expect(res.addressHeaderVariants).toEqual(["ที่อยู่ ลูกค้า (สมมติ)"]);
+    const none = parseRegistrySheet([[], [], [], TOP_NO_IC, BOTTOM_NO_IC.map((c) => (c === "ที่อยู่ลูกค้า" ? null : c))], "พุทธมณฑล");
+    expect(none.columns.address).toBeNull();
+    expect(none.addressHeaderVariants).toEqual([]);
   });
 
   it("วันที่ที่พิมพ์เป็นข้อความ ส่งต่อตามเดิม (ให้ importContracts ตรวจ) · ข้ามแถวว่าง", () => {
@@ -106,6 +119,7 @@ describe("parseRegistrySheet", () => {
     ];
     const res = parseRegistrySheet(grid, "สระบุรี");
     expect(res.headerRows).toEqual([3, 5]);
+    expect(res.columns.address).toBe(2); // หัว 3 แถว: ป้ายอยู่แถวที่ 1
     expect(res.columns).toMatchObject({ contractNo: 4, phone: 3, startDate: 7, endDate: 8, value1y: 9, value3y: 10, customerType: 11, isNew: 12, isRenew: 13, team: 14 });
     expect(res.rows.map((r) => r.excelRow)).toEqual([6]);
     expect(res.rows[0]!.raw).toMatchObject({ เลขที่สัญญา: "CT25-0000010", เริ่ม: "2025-03-01", "3 ปี": "45000", ประเภท: "T", Renew: "TRUE", ทีม: "C" });

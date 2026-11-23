@@ -27,7 +27,8 @@
  *   - ต่อผ่าน PostgREST (service_role) ไม่ต่อด้วย role postgres (CLAUDE.md กฎ Deploy) · ไม่ import lib/supabase/admin.ts (M21b)
  *   - เกณฑ์ Tier อ่านจาก tier_rules ใน DB (กฎ 3) · ตัวเลือกนำเข้า = REGISTRY_IMPORT_OPTIONS ตัวเดียวกับ dry-run
  *   - มีลูกค้าในสาขาเป้าหมาย / มีเลขสัญญาในแผนอยู่แล้ว = หยุด (รันซ้ำไม่เกิดแถวซ้ำ)
- *   - พิมพ์/บันทึกเฉพาะตัวเลขรวม/เลขแถว/ชื่อสาขา ไม่พิมพ์ชื่อลูกค้า เบอร์ ผู้ขาย หรือ key/URL (PDPA · log ผ่านตัวลบค่าลับ)
+ *   - พิมพ์/บันทึกเฉพาะตัวเลขรวม/เลขแถว/เลขสัญญาที่ตัด/ชื่อสาขา ไม่พิมพ์ชื่อลูกค้า เบอร์ ที่อยู่ ผู้ขาย หรือ key/URL (PDPA · log ผ่านตัวลบค่าลับ)
+ *   - ที่อยู่ (2.102) → customers.address · รายการตัดสัญญา (2.103) = CONTRACT_EXCLUSIONS_OCT26 ใน lib/import/centralRegistryCorrections.ts
  *   - ถอยกลับ: scripts/rollback-registry-import.ts --batch registry-OCT26
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -63,6 +64,22 @@ function planSummary(plan: RegistryImportPlan, skipped: string[]): Record<string
       sameNameGroups: plan.branches.reduce((n, b) => n + b.sameNameGroups.groups, 0),
       sameNameRows: plan.branches.reduce((n, b) => n + b.sameNameGroups.rows, 0),
       heldRows: plan.branches.filter((b) => b.heldRows.length).map((b) => `${b.branch}: ${b.heldRows.map((h) => h.excelRow).join(", ")}`),
+      // 2.103: เลขแถว + เลขสัญญาที่ตัดออก (เลขสัญญาไม่ใช่ข้อมูลส่วนบุคคล)
+      excludedRows: plan.branches
+        .filter((b) => b.excludedRows.length)
+        .map((b) => `${b.branch}: ${b.excludedRows.map((x) => `แถว ${x.excelRow} ${x.contractNo}`).join(", ")}`),
+      // 2.102: จำนวนเท่านั้น
+      addresses: {
+        withAddress: plan.totals.withAddress,
+        emptyRows: plan.branches.reduce((n, b) => n + b.addresses.emptyRows, 0),
+        numericRows: plan.branches.reduce((n, b) => n + b.addresses.numericRows, 0),
+        nonTextRows: plan.branches.reduce((n, b) => n + b.addresses.nonTextRows, 0),
+        sheetsWithoutAddressColumn: plan.branches.filter((b) => !b.addresses.hasAddressColumn).map((b) => b.branch),
+        headerVariants: plan.branches
+          .filter((b) => b.addressHeaderVariants.length)
+          .map((b) => `${b.branch}: ${b.addressHeaderVariants.join(" | ")}`),
+        byBranch: plan.branches.map((b) => `${b.branch}: มีที่อยู่ ${b.addresses.withAddress} / ${b.contracts.length}`),
+      },
       phones: {
         rowsWithPhones: plan.branches.reduce((n, b) => n + b.phones.rowsWithPhones, 0),
         phones: plan.branches.reduce((n, b) => n + b.phones.phones, 0),
@@ -95,7 +112,7 @@ async function main(): Promise<void> {
   try {
     const central = loadCentralRegistry(dir);
     const plan = planRegistryImport(
-      central.sheets.map((s) => ({ sheet: s.sheet, branch: s.branch, grid: s.grid })),
+      central.sheets.map((s) => ({ sheet: s.sheet, branch: s.branch, grid: s.grid, excludeRows: s.excludeRows })),
       { rules: await readTierRules(ctx.client), month: MONTH, sellerIndex: loadSellerIndex(dir), importBatch: REGISTRY_IMPORT_BATCH_OCT26 },
     );
     const summary = planSummary(plan, central.skipped.map((s) => `${s.sheet} (${s.reason})`));
@@ -111,7 +128,8 @@ async function main(): Promise<void> {
         confirmCount: (d) => d.planned.contracts,
         describe: (d) =>
           `[cloud dry-run] สาขา ${plan.branches.length} · จะเขียน ลูกค้า ${d.planned.customers} · เบอร์ ${d.planned.customerPhones}` +
-          ` · สัญญา ${d.planned.contracts} · ทีม ${d.planned.contractTeams}` +
+          ` · สัญญา ${d.planned.contracts} · ทีม ${d.planned.contractTeams} · มีที่อยู่ ${plan.totals.withAddress}` +
+          ` · ตัดออก ${plan.totals.excluded}` +
           ` · ข้อมูลเดิม: ลูกค้า ${d.existing.customersInBranches} / เลขสัญญา ${d.existing.contractNos}` +
           ` · ยอดคาด ${plan.month}: cust ${plan.branches.reduce((n, b) => n + b.expected.cust, 0)}` +
           ` / ${plan.branches.reduce((n, b) => n + b.expected.value, 0).toFixed(2)}`,
@@ -147,6 +165,7 @@ async function main(): Promise<void> {
           contracts: `${b.dbContracts}/${b.plannedContracts}`,
           expected: `${b.expected.cust} / ${b.expected.value.toFixed(2)}`,
           actual: `${b.actual.cust} / ${b.actual.value.toFixed(2)}`,
+          addresses: `${b.addresses.actual}/${b.addresses.expected}`,
           mismatches: b.mismatches,
         })),
       };
@@ -158,7 +177,13 @@ async function main(): Promise<void> {
       }
       return;
     }
-    summary.expectedOct = plan.branches.map((b) => ({ branch: b.branch, contracts: b.contracts.length, cust: b.expected.cust, value: b.expected.value.toFixed(2) }));
+    summary.expectedOct = plan.branches.map((b) => ({
+      branch: b.branch,
+      contracts: b.contracts.length,
+      withAddress: b.addresses.withAddress,
+      cust: b.expected.cust,
+      value: b.expected.value.toFixed(2),
+    }));
     log.expectedOct = summary.expectedOct;
     console.log(JSON.stringify(summary, null, 2));
   } catch (e) {

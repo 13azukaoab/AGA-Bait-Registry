@@ -6,7 +6,9 @@
  *   - แก้ที่ "ตารางเซลล์" (grid) ก่อนอ่านชีท → dry-run, ตัวหาเลขซ้ำข้ามสาขา และนำเข้าจริง เห็นเลขเดียวกันทุกขั้น
  *   - ด่าน: เลขเดิมในเซลล์ต้องตรง `from` (ไฟล์เปลี่ยน/แถวเลื่อน = หยุด) · รายการในตารางที่ไม่ถูกใช้ = หยุด
  *   - ใส่ได้เฉพาะเลขที่สัญญา **ห้ามใส่ชื่อลูกค้า/ข้อมูลส่วนบุคคล** (ชื่อพิมพ์ผิดให้ Admin แก้ในแอปหลังนำเข้า)
+ *   - ไฟล์นี้มีอีกตาราง: CONTRACT_EXCLUSIONS_OCT26 = แถวที่ "ไม่นำเข้า" (2.103 กลุ่มอาจกรอกซ้ำ) — ดูท้ายไฟล์
  */
+import type { ExcludeRow } from "./registryDryRun";
 import { parseRegistrySheet, type CellValue } from "./registrySheet";
 
 export interface ContractNoCorrection {
@@ -69,4 +71,57 @@ export function unusedCorrections(
   corrections: readonly ContractNoCorrection[] = CONTRACT_NO_CORRECTIONS_OCT26,
 ): ContractNoCorrection[] {
   return corrections.filter((c) => !applied.includes(c));
+}
+
+// ---------------------------------------------------------------------
+// รายการเลขสัญญาที่ต้องตัดออก (DECISIONS 2.103 · กลุ่มที่อาจกรอกซ้ำ 8 กลุ่ม)
+// ---------------------------------------------------------------------
+
+/**
+ * 1 รายการ = 1 แถวทะเบียนที่ไม่นำเข้า · อ้างด้วย ไฟล์ / ชีท / แถว Excel + เลขสัญญาในแถวนั้น (เลขสัญญาไม่ใช่ข้อมูลส่วนบุคคล)
+ * ด่าน (prepareStrictImport · registryDryRun.ts): แถวต้อง "พร้อมนำเข้า" และเลขตรง — กันไว้/กรอกมือ/ไม่พบ/เลขไม่ตรง/ซ้ำ = หยุด
+ * ห้ามใส่ชื่อ/ที่อยู่/เบอร์ลูกค้าในช่อง reason
+ */
+export interface ContractExclusion {
+  file: string;
+  sheet: string;
+  excelRow: number;
+  /** เลขสัญญาในแถว (หลังล้าง/หลังตารางแก้เลข) */
+  contractNo: string;
+  /** เหตุผล/ที่มา เช่น "กรอกซ้ำกับแถว 45 · เจ้าของตัดสิน dd/mm" */
+  reason: string;
+}
+
+/**
+ * ค่าเริ่มต้น = ว่าง (ยังไม่ตัดอะไร) · เจ้าของตัดสินกลุ่มที่อาจกรอกซ้ำกับ HQ แล้ว HQ ส่งรายการมา (ผ่านหมวด 4)
+ * ⚠ เพิ่มรายการแล้ว ต้องคิดตัวเลข "ทุกตัว" ในเทสไฟล์จริงใหม่ (registryImport.realfile.test.ts · centralRegistry.dryrun.test.ts ·
+ *   zone1Registry.dryrun.test.ts): จำนวนสัญญา 2,369 · ยอด OCT.26 · ชื่อซ้ำ 76/170 · เบอร์ · ที่อยู่ 2,317/52 · ผู้ขาย ·
+ *   New/Renew/ว่าง · ทีม · ยอดต่อสาขา — แล้วรันกับ DB ในเครื่องใหม่ 1 รอบ
+ */
+export const CONTRACT_EXCLUSIONS_OCT26: readonly ContractExclusion[] = [];
+
+/**
+ * แจกรายการตัดสัญญาให้แต่ละชีท → Map<สาขา, ExcludeRow[]> · รายการที่ไม่ตรงไฟล์/ชีทใดในรอบนี้ = throw
+ * (ตรวจแถว/เลขสัญญาต่อใน prepareStrictImport)
+ */
+export function assignContractExclusions(
+  sheets: readonly { file: string; sheet: string; branch: string }[],
+  exclusions: readonly ContractExclusion[] = CONTRACT_EXCLUSIONS_OCT26,
+): Map<string, ExcludeRow[]> {
+  const out = new Map<string, ExcludeRow[]>();
+  const unused: ContractExclusion[] = [];
+  for (const x of exclusions) {
+    const target = sheets.find((s) => s.file === x.file && s.sheet === x.sheet);
+    if (!target) {
+      unused.push(x);
+      continue;
+    }
+    out.set(target.branch, [...(out.get(target.branch) ?? []), { excelRow: x.excelRow, contractNo: x.contractNo, reason: x.reason }]);
+  }
+  if (unused.length > 0) {
+    throw new Error(
+      `รายการตัดสัญญา: ไม่พบไฟล์/ชีทของ ${unused.map((x) => `${x.sheet} แถว ${x.excelRow} (${x.contractNo})`).join(", ")} — หยุด`,
+    );
+  }
+  return out;
 }

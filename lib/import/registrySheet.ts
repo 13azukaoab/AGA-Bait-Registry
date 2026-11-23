@@ -15,6 +15,9 @@
  *   - วันที่ที่เป็นตัวเลข serial → 'YYYY-MM-DD' · วันที่ที่พิมพ์เป็นข้อความ → ส่งต่อตามเดิมให้ parseSourceDate ตรวจ
  *   - ไม่ส่งวันที่บริการ / จำนวนเดือน (ทะเบียนเก็บผลบริการรายเดือนแยกบล็อก) → ระยะสัญญาอ่านจากช่องมูลค่า + วันที่ (M30)
  *   - คืนเลขแถว Excel ของทุกแถว (excelRow) เพื่อรายงานปัญหาเป็น "เลขแถว" ไม่ต้องอ้างชื่อลูกค้า (PDPA)
+ *   - ที่อยู่ (DECISIONS 2.102): หัวต้องเป็น "ที่อยู่ลูกค้า" ตรงตัว · ไม่มี = columns.address null (ไม่เดา)
+ *     หัวที่มีคำว่า "ที่อยู่" แต่ไม่ตรงตัว → addressHeaderVariants ให้ผู้เรียกรายงาน · ค่าในช่องไม่อยู่ใน raw
+ *     (อ่านผ่าน addressCellOf ของ prepareStrictImport + addresses.ts)
  */
 import type { RawRow, SourceColumn } from "./types";
 
@@ -26,6 +29,8 @@ export interface RegistryColumns {
   name: number | null;
   contractNo: number;
   phone: number | null;
+  /** หัว "ที่อยู่ลูกค้า" ตรงตัว · null = ชีทไม่มีหัวนี้ (DECISIONS 2.102) */
+  address: number | null;
   startDate: number;
   endDate: number;
   value1y: number;
@@ -51,6 +56,8 @@ export interface RegistrySheetResult {
   /** เลขแถว Excel ของหัวตาราง (แถวบน, แถวล่าง) */
   headerRows: [number, number];
   columns: RegistryColumns;
+  /** ป้ายหัวที่มีคำว่า "ที่อยู่" แต่ไม่ใช่ "ที่อยู่ลูกค้า" ตรงตัว (ป้ายหัว ไม่ใช่ข้อมูลลูกค้า) — ต้องรายงาน ไม่เดา */
+  addressHeaderVariants: string[];
   rows: RegistryRow[];
 }
 
@@ -138,8 +145,10 @@ function findHeaderRows(grid: CellValue[][]): [number, number] {
   throw new Error("registrySheet: ไม่พบหัวตาราง (คอลัมน์ \"เลขที่สัญญา\")");
 }
 
+const ADDRESS_LABEL = "ที่อยู่ลูกค้า";
+
 /** รวมหัวหลายแถว: ต่อคอลัมน์ใช้ป้ายแถวล่างสุดที่ไม่ว่าง (ข้าม "False"/"True" ที่เป็นช่องติ๊ก) */
-function findColumns(headerRows: CellValue[][]): RegistryColumns {
+function mergeHeaderLabels(headerRows: CellValue[][]): string[] {
   const width = Math.max(...headerRows.map((r) => r.length));
   const merged: string[] = [];
   for (let i = 0; i < width; i++) {
@@ -152,6 +161,11 @@ function findColumns(headerRows: CellValue[][]): RegistryColumns {
       }
     }
   }
+  return merged;
+}
+
+function findColumns(headerRows: CellValue[][]): RegistryColumns {
+  const merged = mergeHeaderLabels(headerRows);
   const first = (pred: (s: string) => boolean): number | null => {
     const i = merged.findIndex(pred);
     return i >= 0 ? i : null;
@@ -181,6 +195,7 @@ function findColumns(headerRows: CellValue[][]): RegistryColumns {
     contractNo: need("เลขที่สัญญา", (s) => s === "เลขที่สัญญา"),
     // "เบอร์โทรลูกค้า" (ส่วนใหญ่) · "เบอร์ติดต่อ" (เขต 9 ปากช่อง)
     phone: first((s) => s.startsWith("เบอร์โทร") || s.startsWith("เบอร์ติดต่อ")),
+    address: first((s) => s === ADDRESS_LABEL),
     startDate: need("เริ่ม", (s) => START_LABELS.includes(s)),
     endDate: need("สิ้นสุด", (s) => END_LABELS.includes(s)),
     value1y: need("1 ปี", (s) => s === "1 ปี"),
@@ -202,7 +217,15 @@ export function parseRegistrySheet(
   opts: RegistrySheetOptions = {},
 ): RegistrySheetResult {
   const [top, bottom] = findHeaderRows(grid);
-  const cols = findColumns(grid.slice(top, bottom + 1).map((r) => r ?? []));
+  const headerRows = grid.slice(top, bottom + 1).map((r) => r ?? []);
+  const cols = findColumns(headerRows);
+  const addressHeaderVariants = [
+    ...new Set(headerRows.flatMap((r) => r.map(label)).filter((s) => s.includes("ที่อยู่") && s !== ADDRESS_LABEL)),
+  ];
+  // มีป้ายตรงตัวในแถวหัว แต่ถูกป้ายแถวล่างทับตอนรวมหัว → ไม่พบคอลัมน์ ต้องรายงาน (ไม่เงียบ)
+  if (cols.address === null && headerRows.some((r) => r.some((c) => label(c) === ADDRESS_LABEL))) {
+    addressHeaderVariants.push(`${ADDRESS_LABEL} (ถูกป้ายแถวล่างทับ)`);
+  }
   const keyCols = [cols.contractNo, cols.startDate, cols.endDate, cols.value1y, cols.value3y];
 
   const rows: RegistryRow[] = [];
@@ -241,7 +264,7 @@ export function parseRegistrySheet(
     });
   }
 
-  return { branch, headerRows: [top + 1, bottom + 1], columns: cols, rows };
+  return { branch, headerRows: [top + 1, bottom + 1], columns: cols, addressHeaderVariants, rows };
 }
 
 /** ตัวเลขจากบล็อก "สรุปมูลค่าลูกค้า แยกตามขนาดราคาและปี" ท้ายชีททะเบียน (สูตรของ Excel เอง) */

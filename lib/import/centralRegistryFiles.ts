@@ -5,14 +5,21 @@
  * Logic summary:
  *   - อ่านตาม CENTRAL_REGISTRY_FILES_OCT26 (ชีทไม่อยู่ในตาราง = throw · ลพบุรี = ข้าม)
  *   - หาเลขสัญญาซ้ำข้ามสาขาจากทั้ง 24 สาขา → holdRows ต่อสาขา (ง1) — เขต 1 ต้องใช้ผลนี้ด้วย เพราะคู่ซ้ำข้ามไฟล์
+ *   - รายการตัดสัญญา (2.103 · CONTRACT_EXCLUSIONS_OCT26) แจกให้แต่ละชีทใน excludeRows · รายการที่ไม่ตรงไฟล์/ชีท = throw
+ *     ผู้เรียกต้องส่ง excludeRows ต่อให้ planRegistryImport / dryRunRegistrySheet เอง
  *   - ไฟล์จริงมีข้อมูลลูกค้า (PDPA) — ห้าม log ค่าในเซลล์
  */
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { CENTRAL_REGISTRY_FILES_OCT26, REGISTRY_IMPORT_OPTIONS, resolveRegistrySheet, type RegistryFileSpec } from "./centralRegistrySheets";
-import { applyContractNoCorrections, unusedCorrections, type ContractNoCorrection } from "./centralRegistryCorrections";
+import {
+  applyContractNoCorrections,
+  assignContractExclusions,
+  unusedCorrections,
+  type ContractNoCorrection,
+} from "./centralRegistryCorrections";
 import { findCrossBranchDuplicates } from "./crossBranchDuplicates";
-import type { HoldRow } from "./registryDryRun";
+import type { ExcludeRow, HoldRow } from "./registryDryRun";
 import { parseRegistrySheet, type CellValue, type RegistrySheetResult } from "./registrySheet";
 import { buildSellerIndex, mergeSellerIndexes, type SellerIndex } from "./sellerLookup";
 import { readXlsx } from "./xlsx/readXlsx";
@@ -23,6 +30,8 @@ export interface CentralSheet {
   branch: string;
   grid: CellValue[][];
   parsed: RegistrySheetResult;
+  /** แถวที่ต้องตัดออก (2.103) · ไม่มี = undefined */
+  excludeRows?: ExcludeRow[];
 }
 
 export interface CentralRegistry {
@@ -62,6 +71,11 @@ export function loadCentralRegistry(dir: string): CentralRegistry {
   const unused = unusedCorrections(applied);
   if (unused.length > 0) {
     throw new Error(`ตารางแก้เลขสัญญา: ไม่พบไฟล์/ชีทของรายการ ${unused.map((c) => `${c.sheet} แถว ${c.excelRow}`).join(", ")} — หยุด`);
+  }
+  const exclusions = assignContractExclusions(sheets.map((s) => ({ file: s.spec.file, sheet: s.sheet, branch: s.branch })));
+  for (const s of sheets) {
+    const ex = exclusions.get(s.branch);
+    if (ex) s.excludeRows = ex;
   }
   const holds = findCrossBranchDuplicates(sheets.map((s) => ({ branch: s.branch, rows: s.parsed.rows })));
   return { sheets, skipped, holds };

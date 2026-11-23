@@ -60,6 +60,7 @@ describe.skipIf(!HAS_FILES)("dry-run ทะเบียนเขต 1 OCT.26 (�
       sellerIndex,
       branch: s.branch,
       holdRows: central!.holds.get(s.branch),
+      excludeRows: s.excludeRows,
       ...REGISTRY_IMPORT_OPTIONS,
     }),
   );
@@ -75,9 +76,9 @@ describe.skipIf(!HAS_FILES)("dry-run ทะเบียนเขต 1 OCT.26 (�
       expect(r.contractRows).toBeGreaterThan(0);
       expect(r.dateFromRangeTextRows).toEqual([]);
       expect(r.malformedContractRows).toEqual([]);
-      expect(r.strict.ready + r.strict.held.length + r.strict.mustFix).toBe(r.contractRows);
+      expect(r.strict.ready + r.strict.held.length + r.strict.excluded.length + r.strict.mustFix).toBe(r.contractRows);
       expect(r.lenient.ready + r.lenient.mustFix).toBe(r.contractRows);
-      expect(r.strict.ready + r.strict.held.length + r.strict.mustFix + r.strict.skipped).toBe(r.dataRows);
+      expect(r.strict.ready + r.strict.held.length + r.strict.excluded.length + r.strict.mustFix + r.strict.skipped).toBe(r.dataRows);
     }
   });
 

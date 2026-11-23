@@ -26,11 +26,11 @@ function sheet(rows: CellValue[][]): CellValue[][] {
 
 // สาขา ก (สาทร): 1 ปี · 3 ปี · ช่วงวันที่ข้อความ (ก1) · ประเภทว่าง (ข3) · เลขซ้ำข้ามสาขา (ง1) · เลขผิดรูปมีมูลค่า (ค1) · วันสิ้นสุดผิด (กรอกมือ) · หมดก่อน ต.ค.
 const SATHORN = sheet([
-  [1, "ลูกค้าสมมติ 1", "", "CT26-0000001", "081-000-0001 คุณสมมติ", 4, serial("2026-01-15"), serial("2027-01-14"), 15000, null, "H", true, false, "A"],
+  [1, "ลูกค้าสมมติ 1", "  99/1  หมู่ 2 ถนนสมมติ ", "CT26-0000001", "081-000-0001 คุณสมมติ", 4, serial("2026-01-15"), serial("2027-01-14"), 15000, null, "H", true, false, "A"],
   [2, "ลูกค้าสมมติ 2", "", "CT25-0000002", "12345", 4, serial("2025-06-01"), serial("2028-05-31"), null, 150000, "T", false, true, "B,C"],
   [3, "ลูกค้าสมมติ 3", "", "CT26-0000003", "", "01/03/2026-28/02/2027", null, null, 60000, null, "", true, false, "A"],
-  [4, "ลูกค้าสมมติ 4", "", "CT26-0000099", "", 4, serial("2026-02-01"), serial("2027-01-31"), 20000, null, "H", true, false, "A"],
-  [5, "ลูกค้าสมมติ 5", "", "CT26-00006", "", 4, serial("2026-02-01"), serial("2027-01-31"), 20000, null, "H", true, false, "A"],
+  [4, "ลูกค้าสมมติ 4", "ที่อยู่สมมติ แถวกันไว้", "CT26-0000099", "", 4, serial("2026-02-01"), serial("2027-01-31"), 20000, null, "H", true, false, "A"],
+  [5, "ลูกค้าสมมติ 5", "ที่อยู่สมมติ แถวกรอกมือ", "CT26-00006", "", 4, serial("2026-02-01"), serial("2027-01-31"), 20000, null, "H", true, false, "A"],
   [6, "ลูกค้าสมมติ 6", "", "CT26-0000007", "", 4, serial("2026-02-01"), serial("2026-08-20"), 9000, null, "H", true, false, "A"],
   [7, "ลูกค้าสมมติ 7", "", "CT24-0000008", "", 4, serial("2024-01-01"), serial("2024-12-31"), 12000, null, "R", false, false, "D"],
   [8, "ลูกค้าสมมติ 8", "", "CT26-0000009", "", 4, serial("2026-05-15"), serial("2026-10-14"), 50000, null, "H", false, false, ""],
@@ -82,6 +82,7 @@ describe("planRegistryImport", () => {
       expect(b.expected, input.branch).toEqual(dry.snapshots[MONTH]!.strict);
       expect(b.sellers, input.branch).toEqual({ saleName: dry.sellers!.saleName, amName: dry.sellers!.amName });
       expect(b.phones, input.branch).toEqual(dry.phones);
+      expect(b.addresses, input.branch).toEqual(dry.addresses);
     }
   });
 
@@ -116,15 +117,28 @@ describe("planRegistryImport", () => {
     expect(sathorn.phones).toEqual({ rows: 5, rowsWithPhones: 1, phones: 1, emptyRows: 3, invalidRows: 1, labelTooLong: 0, hasPhoneColumn: true });
   });
 
+  it("2.102 ที่อยู่ (สมมติ): ล้างช่องว่าง · ว่าง = null · แถวกันไว้/กรอกมือไม่นับ", () => {
+    const [c1, c2] = sathorn.contracts;
+    expect(c1!.address).toBe("99/1 หมู่ 2 ถนนสมมติ");
+    expect(c2!.address).toBeNull();
+    expect(sathorn.addresses).toEqual({ rows: 5, withAddress: 1, emptyRows: 4, numericRows: 0, nonTextRows: 0, controlCharRows: 0, hasAddressColumn: true });
+    expect(pathumwan.addresses.withAddress).toBe(0);
+    expect(plan.totals.withAddress).toBe(1);
+  });
+
   it("ยอดที่คาดของเดือน: นับเฉพาะสัญญาที่ครอบคลุมเดือน (หมดก่อน ต.ค. ไม่นับ)", () => {
     expect(sathorn.expected.cust).toBe(3);
     expect(sathorn.expected.value).toBe(15000 + 150000 + 60000); // 5 เดือน พ.ค.–ก.ย. ไม่ครอบ ต.ค.
-    expect(plan.totals).toEqual({ contracts: 6, held: 2, mustFix: 2 });
+    expect(plan.totals).toEqual({ contracts: 6, held: 2, mustFix: 2, excluded: 0, withAddress: 1 });
   });
 
   it("ไม่มีชื่อลูกค้า/เบอร์ใน heldRows / mustFixRows / totals (PDPA)", () => {
-    const text = JSON.stringify({ h: plan.branches.map((b) => [b.heldRows, b.mustFixRows, b.expected, b.phones]), t: plan.totals });
+    const text = JSON.stringify({
+      h: plan.branches.map((b) => [b.heldRows, b.mustFixRows, b.excludedRows, b.expected, b.phones, b.addresses]),
+      t: plan.totals,
+    });
     expect(text).not.toContain("081");
+    expect(text).not.toContain("สมมติ");
     expect(text).not.toContain("ลูกค้าสมมติ");
     expect(text).not.toContain("ผู้ขายสมมติ");
   });
@@ -154,5 +168,60 @@ describe("importStatusOf", () => {
     expect(importStatusOf("2026-09-30", "2026-10")).toBe("expired_pending_collection");
     expect(importStatusOf("2026-10-01", "2026-10")).toBe("active");
     expect(importStatusOf("2026-10-14", "2026-10")).toBe("active");
+  });
+});
+
+describe("planRegistryImport · รายการเลขสัญญาที่ต้องตัดออก (2.103 กลุ่มอาจกรอกซ้ำ)", () => {
+  const REASON = "ทดสอบ: กรอกซ้ำ (สมมติ)";
+  const withExclude = (rows: { excelRow: number; contractNo: string }[]): RegistrySheetInput[] => [
+    { ...INPUT[0]!, excludeRows: rows.map((r) => ({ ...r, reason: REASON })) },
+    INPUT[1]!,
+  ];
+  const run = (rows: { excelRow: number; contractNo: string }[]) =>
+    planRegistryImport(withExclude(rows), { rules: TIER_RULES, month: MONTH, sellerIndex: SELLERS, importBatch: BATCH });
+
+  it("ตัดแถวออกจากแผน · ยอดที่คาดคิดจากแผนที่ตัดแล้ว · รายงานเลขแถว + เลขสัญญา", () => {
+    const plan = run([{ excelRow: 7, contractNo: "CT25-0000002" }]);
+    const b = plan.branches.find((x) => x.branch === "สาทร")!;
+    expect(b.contracts.map((c) => c.excelRow)).toEqual([6, 8, 12, 13]);
+    expect(b.excludedRows).toEqual([{ excelRow: 7, contractNo: "CT25-0000002", reason: REASON }]);
+    expect(b.expected.cust).toBe(2);
+    expect(b.expected.value).toBe(15000 + 60000);
+    expect(plan.totals).toMatchObject({ contracts: 5, excluded: 1 });
+    expect(b.phones.rows).toBe(4);
+    expect(b.addresses.rows).toBe(4);
+  });
+
+  it("แผนที่ตัดแล้ว = dry-run ที่ตัดแถวเดียวกัน", () => {
+    const input = withExclude([{ excelRow: 7, contractNo: "CT25-0000002" }])[0]!;
+    const plan = run([{ excelRow: 7, contractNo: "CT25-0000002" }]);
+    const b = plan.branches.find((x) => x.branch === "สาทร")!;
+    const dry = dryRunRegistrySheet(input.sheet, input.grid, {
+      rules: TIER_RULES, months: [MONTH], sellerIndex: SELLERS, branch: input.branch,
+      holdRows: b.heldRows, excludeRows: input.excludeRows, ...REGISTRY_IMPORT_OPTIONS,
+    });
+    expect(b.contracts.length).toBe(dry.strict.ready);
+    expect(dry.strict.excluded).toEqual([7]);
+    expect(b.expected).toEqual(dry.snapshots[MONTH]!.strict);
+    expect(b.addresses).toEqual(dry.addresses);
+  });
+
+  it("ด่าน: เลขสัญญาในแถวไม่ตรงรายการ = หยุด", () => {
+    expect(() => run([{ excelRow: 7, contractNo: "CT25-0000099" }])).toThrow(/ไม่ตรง.*หยุด/);
+  });
+
+  it("ด่าน: แถวที่กันไว้ (ง1) / แถวกรอกมือ / แถวที่ไม่มี = หยุด (ไม่ข้ามเงียบ)", () => {
+    expect(() => run([{ excelRow: 9, contractNo: "CT26-0000099" }])).toThrow(/กันไว้.*หยุด/);
+    expect(() => run([{ excelRow: 10, contractNo: "CT26-00006" }])).toThrow(/กรอกมือ.*หยุด/);
+    expect(() => run([{ excelRow: 99, contractNo: "CT26-0000001" }])).toThrow(/ไม่พบ.*หยุด/);
+  });
+
+  it("ด่าน: ระบุแถวเดียวกันซ้ำ = หยุด", () => {
+    expect(() =>
+      run([
+        { excelRow: 7, contractNo: "CT25-0000002" },
+        { excelRow: 7, contractNo: "CT25-0000002" },
+      ]),
+    ).toThrow(/ซ้ำ.*หยุด/);
   });
 });

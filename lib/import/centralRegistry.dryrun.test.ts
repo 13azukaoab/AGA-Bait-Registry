@@ -76,6 +76,7 @@ describe.skipIf(!HAS_FILES)("dry-run ทะเบียนส่วนกลา�
       sellerIndex,
       branch: s.branch,
       holdRows: central.holds.get(s.branch),
+      excludeRows: s.excludeRows,
       ...REGISTRY_IMPORT_OPTIONS,
     });
     results.push(res);
@@ -119,9 +120,9 @@ describe.skipIf(!HAS_FILES)("dry-run ทะเบียนส่วนกลา�
   it("ทุกแถวถูกจัดกลุ่ม ไม่มีแถวหาย (ready + กันไว้ + ต้องแก้ = แถวสัญญา + แถวเลขผิดรูป)", () => {
     for (const r of results) {
       const x = extras.get(r.branch)!;
-      expect(r.strict.ready + r.strict.held.length + r.strict.mustFix, r.branch).toBe(r.contractRows + r.malformedContractRows.length);
+      expect(r.strict.ready + r.strict.held.length + r.strict.excluded.length + r.strict.mustFix, r.branch).toBe(r.contractRows + r.malformedContractRows.length);
       expect(r.lenient.ready + r.lenient.mustFix, r.branch).toBe(r.contractRows + r.malformedContractRows.length);
-      expect(r.strict.ready + r.strict.held.length + r.strict.mustFix + r.strict.skipped, r.branch).toBe(r.dataRows);
+      expect(r.strict.ready + r.strict.held.length + r.strict.excluded.length + r.strict.mustFix + r.strict.skipped, r.branch).toBe(r.dataRows);
       expect(x.skippedWithValue, r.branch).toEqual([]); // ค1: ไม่มีแถวมีมูลค่าถูกข้ามเงียบแล้ว
       expect(x.contractRowsBelowSummary, r.branch).toEqual([]);
     }
