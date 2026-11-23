@@ -94,7 +94,9 @@ export interface ContractExclusion {
 
 /**
  * ค่าเริ่มต้น = ว่าง (ยังไม่ตัดอะไร) · เจ้าของตัดสินกลุ่มที่อาจกรอกซ้ำกับ HQ แล้ว HQ ส่งรายการมา (ผ่านหมวด 4)
- * ⚠ เพิ่มรายการแล้ว ตัวเลขในเทสไฟล์จริง (registryImport.realfile.test.ts: 2,369 สัญญา · ยอด OCT.26) ต้องปรับตาม
+ * ⚠ เพิ่มรายการแล้ว ต้องคิดตัวเลข "ทุกตัว" ในเทสไฟล์จริงใหม่ (registryImport.realfile.test.ts · centralRegistry.dryrun.test.ts ·
+ *   zone1Registry.dryrun.test.ts): จำนวนสัญญา 2,369 · ยอด OCT.26 · ชื่อซ้ำ 76/170 · เบอร์ · ที่อยู่ 2,317/52 · ผู้ขาย ·
+ *   New/Renew/ว่าง · ทีม · ยอดต่อสาขา — แล้วรันกับ DB ในเครื่องใหม่ 1 รอบ
  */
 export const CONTRACT_EXCLUSIONS_OCT26: readonly ContractExclusion[] = [];
 
