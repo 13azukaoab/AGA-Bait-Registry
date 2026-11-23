@@ -7,6 +7,8 @@ import { cx } from "./cx";
 import { MenuToggle } from "./MenuToggle";
 import styles from "./shell.module.css";
 import { ThemeToggle } from "./ThemeToggle";
+import type { UserLabel } from "./userLabel";
+import { UserBadge } from "./UserBadge";
 import { ROLE_LABELS, ROLES, type MonthOption, type Role } from "./types";
 
 type TopbarProps = {
@@ -23,6 +25,8 @@ type TopbarProps = {
   onRoleChange?: (role: Role) => void;
   /** ปลายทางของปุ่มออกจากระบบ (ตอนนี้ลิงก์ไปหน้า login · ของจริงรอหมวด BE) */
   logoutHref: string;
+  /** ป้ายผู้ที่ล็อกอินอยู่ (จอกว้างเท่านั้น · จอเล็กย้ายไปบนสุดของลิ้นชัก) */
+  userLabel?: UserLabel | null;
 };
 
 const selectClass =
@@ -43,6 +47,7 @@ export const Topbar = forwardRef<HTMLButtonElement, TopbarProps>(function Topbar
     role,
     onRoleChange,
     logoutHref,
+    userLabel = null,
   },
   toggleRef,
 ) {
@@ -119,6 +124,7 @@ export const Topbar = forwardRef<HTMLButtonElement, TopbarProps>(function Topbar
       </div>
 
       <div className="flex shrink-0 items-center gap-2">
+        {userLabel ? <UserBadge label={userLabel} variant="topbar" /> : null}
         <TutorialButton />
         <ThemeToggle />
         {/* เปลี่ยนรหัสผ่านเอง (หน้า /change-password รองรับกรณีไม่ถูกบังคับ) */}
