@@ -14,14 +14,20 @@
  *      → 'expired_pending_collection' (หมดอายุ รอเก็บสถานี · SPEC §7.8) · อื่นๆ = 'active'
  *      (จบต้นเดือนที่นำเข้า เช่น 14 ต.ค. ยัง active · ไม่กระทบยอด — snapshot นับตามเดือนบริการ ไม่ดูสถานะ)
  *   6. เบอร์โทร: parseThaiPhones (phones.ts) ของช่องเบอร์แถวเดียวกัน — รูปแบบไม่ถูก = ไม่เก็บ (นับใน phones)
- *   ⚠ PlannedContract มีชื่อลูกค้า/ผู้ขาย (หน่วยความจำเท่านั้น) — ห้าม log · รายงานใช้ได้แค่ heldRows / mustFixRows / ตัวเลข
+ *   8. ที่อยู่ (DECISIONS 2.102): cleanAddress (addresses.ts) ของช่อง "ที่อยู่ลูกค้า" แถวเดียวกัน → customers.address
+ *      (ล้างช่องว่างเท่านั้น ไม่แก้เนื้อหา · ว่าง = null) · นับต่อสาขาใน addresses ให้ตัวตรวจหลังเขียนเทียบ
+ *      · ที่อยู่มีตัวอักษรควบคุม (DB text รับไม่ได้) = หยุด (ข้อความมีแค่สาขา/เลขแถว)
+ *   9. รายการตัดสัญญา (DECISIONS 2.103 · กลุ่มอาจกรอกซ้ำ): input.excludeRows → prepareStrictImport ตัดออกก่อนคิดยอด
+ *      → expected / จำนวน / ที่อยู่ / เบอร์ ทั้งหมดคิดจากแผนที่ตัดแล้ว · รายงานใน excludedRows (เลขแถว + เลขสัญญา)
+ *   ⚠ PlannedContract มีชื่อลูกค้า/ผู้ขาย/เบอร์/ที่อยู่ (หน่วยความจำเท่านั้น) — ห้าม log · รายงานใช้ได้แค่ heldRows / mustFixRows / excludedRows / ตัวเลข
  */
 import { buildBranchSnapshot } from "../rules/snapshot";
 import type { Contract, SnapshotRow, TierRule } from "../rules/types";
 import { REGISTRY_IMPORT_OPTIONS } from "./centralRegistrySheets";
 import { findCrossBranchDuplicates } from "./crossBranchDuplicates";
 import { parseThaiPhones, summarizePhones, type ParsedPhone, type PhoneSummary } from "./phones";
-import { prepareStrictImport, type HoldRow } from "./registryDryRun";
+import { cleanAddress, summarizeAddresses, type AddressSummary } from "./addresses";
+import { prepareStrictImport, type ExcludeRow, type HoldRow } from "./registryDryRun";
 import { parseRegistrySheet, type CellValue } from "./registrySheet";
 import type { SellerIndex } from "./sellerLookup";
 import type { SaleType } from "./types";
@@ -35,6 +41,8 @@ export interface RegistrySheetInput {
   /** สาขาปลายทาง (ตามตาราง centralRegistrySheets.ts · สะกดตรง master) */
   branch: string;
   grid: CellValue[][];
+  /** แถวที่ต้องตัดออก (2.103 · จาก CONTRACT_EXCLUSIONS_OCT26 ผ่าน assignContractExclusions) · ไม่ส่ง = ไม่ตัด */
+  excludeRows?: ExcludeRow[];
 }
 
 export interface PlanOptions {
@@ -69,6 +77,8 @@ export interface PlannedContract {
   status: ContractImportStatus;
   /** เบอร์โทร → customer_phones (phones.ts · รูปแบบไม่ถูก/ว่าง = []) · ⚠ เบอร์จริง */
   phones: ParsedPhone[];
+  /** ที่อยู่ → customers.address (addresses.ts · ว่าง = null) · ⚠ ที่อยู่จริง */
+  address: string | null;
 }
 
 export type ContractImportStatus = "active" | "expired_pending_collection";
@@ -97,6 +107,12 @@ export interface PlannedBranch {
   sameNameGroups: { groups: number; rows: number };
   /** สรุปเบอร์โทร (จำนวนเท่านั้น) · hasPhoneColumn = ชีทมีคอลัมน์เบอร์ */
   phones: PhoneSummary & { hasPhoneColumn: boolean };
+  /** สรุปที่อยู่ (จำนวนเท่านั้น · 2.102) · hasAddressColumn = ชีทมีหัว "ที่อยู่ลูกค้า" */
+  addresses: AddressSummary & { hasAddressColumn: boolean };
+  /** ป้ายหัวที่มีคำว่า "ที่อยู่" แต่ไม่ตรงตัว (ต้องรายงาน ไม่เดา) */
+  addressHeaderVariants: string[];
+  /** แถวที่ตัดออกตามรายการ (2.103) — ไม่เข้าแผน */
+  excludedRows: ExcludeRow[];
 }
 
 export interface RegistryImportPlan {
@@ -104,7 +120,7 @@ export interface RegistryImportPlan {
   /** ค่า contracts.import_batch ที่จะเขียน (DECISIONS 2.86) */
   importBatch: string;
   branches: PlannedBranch[];
-  totals: { contracts: number; held: number; mustFix: number };
+  totals: { contracts: number; held: number; mustFix: number; excluded: number; withAddress: number };
 }
 
 const MONTH_RE = /^\d{4}-(0[1-9]|1[0-2])$/;
@@ -151,12 +167,17 @@ export function planRegistryImport(sheets: RegistrySheetInput[], opts: PlanOptio
       branch: s.branch,
       sellerIndex: opts.sellerIndex,
       holdRows: holds.get(s.branch),
+      excludeRows: s.excludeRows,
       ...REGISTRY_IMPORT_OPTIONS,
     });
     const phoneResults = prep.strictResult.ready.map((r) => parseThaiPhones(prep.phoneCellOf(r.rowIndex)));
+    const addressResults = prep.strictResult.ready.map((r) => cleanAddress(prep.addressCellOf(r.rowIndex)));
     const contracts = prep.strictResult.ready.map((r, i): PlannedContract => {
       const excelRow = prep.excelOf(r.rowIndex);
       assertCents(r.valueTotal, excelRow, s.branch);
+      if (addressResults[i]!.status === "controlChar") {
+        throw new Error(`แผนนำเข้า: ${s.branch} แถว ${excelRow} ที่อยู่มีตัวอักษรควบคุม (DB รับไม่ได้) — หยุด ให้สาขาแก้ในไฟล์`);
+      }
       if (seenContract.has(r.contractNo)) {
         throw new Error(`แผนนำเข้า: ${s.branch} แถว ${excelRow} เลขที่สัญญาซ้ำกับแถวอื่นในแผน — หยุด`);
       }
@@ -177,6 +198,7 @@ export function planRegistryImport(sheets: RegistrySheetInput[], opts: PlanOptio
         teamCodes: [...new Set(r.teams)],
         status: importStatusOf(r.endDate, opts.month),
         phones: phoneResults[i]!.phones,
+        address: addressResults[i]!.address,
       };
     });
     const asRules: Contract[] = contracts.map((c) => ({
@@ -206,6 +228,9 @@ export function planRegistryImport(sheets: RegistrySheetInput[], opts: PlanOptio
       placeholderNames: contracts.filter((c) => c.customerName === NO_NAME_PLACEHOLDER).length,
       sameNameGroups: { groups: dupGroups.length, rows: dupGroups.reduce((a, n) => a + n, 0) },
       phones: { ...summarizePhones(phoneResults), hasPhoneColumn: prep.parsed.columns.phone !== null },
+      addresses: { ...summarizeAddresses(addressResults), hasAddressColumn: prep.parsed.columns.address !== null },
+      addressHeaderVariants: prep.parsed.addressHeaderVariants,
+      excludedRows: prep.excludedRows,
     };
   });
 
@@ -217,6 +242,8 @@ export function planRegistryImport(sheets: RegistrySheetInput[], opts: PlanOptio
       contracts: branches.reduce((n, b) => n + b.contracts.length, 0),
       held: branches.reduce((n, b) => n + b.heldRows.length, 0),
       mustFix: branches.reduce((n, b) => n + b.mustFixRows.length, 0),
+      excluded: branches.reduce((n, b) => n + b.excludedRows.length, 0),
+      withAddress: branches.reduce((n, b) => n + b.addresses.withAddress, 0),
     },
   };
 }

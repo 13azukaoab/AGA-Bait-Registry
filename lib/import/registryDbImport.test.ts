@@ -23,7 +23,7 @@ const PLAN: RegistryImportPlan = planRegistryImport(
       sheet: "สาทร",
       branch: "สาทร",
       grid: sheet([
-        [1, "ลูกค้าสมมติ 1", "", "CT26-0000001", "081-000-0001 คุณสมมติ / 02-000-0002", 4, serial("2026-01-15"), serial("2027-01-14"), 15000.5, null, "H", true, false, "A"],
+        [1, "ลูกค้าสมมติ 1", " บ้านสมมติ 1  ถนนสมมติ ", "CT26-0000001", "081-000-0001 คุณสมมติ / 02-000-0002", 4, serial("2026-01-15"), serial("2027-01-14"), 15000.5, null, "H", true, false, "A"],
         [2, "ลูกค้าสมมติ 2", "", "CT25-0000002", "081-000-00012 ผิดรูป", 4, serial("2025-06-01"), serial("2028-05-31"), null, 150000, "T", false, true, "B,C"],
         [3, "ลูกค้าสมมติ 3", "", "CT26-0000003", "", 4, serial("2026-05-15"), serial("2026-10-14"), 50000, null, "R", false, false, ""],
       ]),
@@ -31,7 +31,7 @@ const PLAN: RegistryImportPlan = planRegistryImport(
     {
       sheet: "ปทุมวัน",
       branch: "ปทุมวัน",
-      grid: sheet([[1, "ลูกค้าสมมติ 4", "", "CT26-0000004", "089-000-0004", 4, serial("2026-07-01"), serial("2027-06-30"), 45000, null, "H", true, false, "A"]]),
+      grid: sheet([[1, "ลูกค้าสมมติ 4", "ที่อยู่สมมติ 4", "CT26-0000004", "089-000-0004", 4, serial("2026-07-01"), serial("2027-06-30"), 45000, null, "H", true, false, "A"]]),
     },
   ],
   { rules: TIER_RULES, month: "2026-10", importBatch: "registry-TEST" },
@@ -39,6 +39,8 @@ const PLAN: RegistryImportPlan = planRegistryImport(
 
 interface FakeInit {
   failInsert?: string;
+  /** แก้แถวตอนเก็บ (จำลอง DB เก็บค่าไม่ตรงที่ส่ง) */
+  mutateInsert?: (table: string, row: Row) => Row;
   types?: Row[];
   teams?: Row[];
   customers?: Row[];
@@ -94,7 +96,8 @@ function fakeClient(init: FakeInit = {}) {
             return { error: { code: "23505", message: "duplicate key value violates unique constraint" } };
           }
           log.inserts++;
-          t.push(...payload.map((r) => ({ cancelled_at: null, stations_initialized_at: null, renewed_from_contract_id: null, ...r })));
+          const stored = payload.map((r) => ({ cancelled_at: null, stations_initialized_at: null, renewed_from_contract_id: null, ...r }));
+          t.push(...(init.mutateInsert ? stored.map((r) => init.mutateInsert!(table, r)) : stored));
           return { error: null };
         }
         const hit = t.filter((r) => filters.every((f) => f(r)));
@@ -178,6 +181,19 @@ describe("importRegistryPlan", () => {
     expect(teamOf("CT26-0000001")).toEqual(["t-A-sathorn"]);
     expect(teamOf("CT25-0000002")).toEqual(["t-B", "t-C"]);
     expect(teamOf("CT26-0000004")).toEqual(["t-A"]);
+  });
+
+  it("2.102: ที่อยู่ลง customers.address (ล้างช่องว่างแล้ว · ว่าง = null) — ที่อยู่สมมติ", async () => {
+    const f = fakeClient();
+    await importRegistryPlan(f.client, PLAN, { newId: f.newId });
+    expect(f.db.customers!.map((c) => c.address)).toEqual(["บ้านสมมติ 1 ถนนสมมติ", null, null, "ที่อยู่สมมติ 4"]);
+  });
+
+  it("2.102: อ่านกลับแล้วที่อยู่ไม่ตรง = หยุด · ข้อความไม่มีที่อยู่", async () => {
+    const f = fakeClient({ mutateInsert: (t, r) => (t === "customers" && r.address ? { ...r, address: `${String(r.address)}x` } : r) });
+    const err = await importRegistryPlan(f.client, PLAN, { newId: f.newId }).catch((e: Error) => e);
+    expect(String(err)).toMatch(/อ่านกลับไม่ตรง.*ช่องไม่ตรง 2/);
+    expect(String(err)).not.toContain("สมมติ");
   });
 
   it("รันซ้ำ = หยุดก่อนเขียน (ไม่เกิดแถวซ้ำ)", async () => {
@@ -265,6 +281,16 @@ describe("verifyRegistryImport", () => {
     f.db.contracts!.find((c) => c.contract_no === "CT26-0000004")!.import_batch = null;
     const v = await verifyRegistryImport(f.client, PLAN);
     expect(v.branches.map((b) => b.mismatches)).toEqual([[], ["import_batch"]]);
+  });
+
+  it("2.102: จำนวนลูกค้าที่มีที่อยู่ต่อสาขาไม่ตรงแผน → ไม่ผ่าน (บอกชื่อช่องเท่านั้น)", async () => {
+    const f = fakeClient();
+    await importRegistryPlan(f.client, PLAN, { newId: f.newId });
+    f.db.customers!.find((c) => c.address === "ที่อยู่สมมติ 4")!.address = null;
+    const v = await verifyRegistryImport(f.client, PLAN);
+    expect(v.branches.map((b) => b.mismatches)).toEqual([[], ["ที่อยู่"]]);
+    expect(v.branches.map((b) => b.addresses)).toEqual([{ expected: 1, actual: 1 }, { expected: 1, actual: 0 }]);
+    expect(JSON.stringify(v)).not.toContain("สมมติ");
   });
 
   it("เบอร์ใน DB ไม่ครบตามแผน → ไม่ผ่าน", async () => {

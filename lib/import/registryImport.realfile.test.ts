@@ -23,10 +23,10 @@ describe.skipIf(!HAS_FILES)("แผนนำเข้าทะเบียนส
   const sellerIndex = HAS_FILES ? loadSellerIndex(FIXTURES_DIR) : undefined;
   const plan: RegistryImportPlan = HAS_FILES
     ? planRegistryImport(
-        central.sheets.map((s) => ({ sheet: s.sheet, branch: s.branch, grid: s.grid })),
+        central.sheets.map((s) => ({ sheet: s.sheet, branch: s.branch, grid: s.grid, excludeRows: s.excludeRows })),
         { rules: TIER_RULES, month: OCT, sellerIndex, importBatch: REGISTRY_IMPORT_BATCH_OCT26 },
       )
-    : { month: OCT, importBatch: REGISTRY_IMPORT_BATCH_OCT26, branches: [], totals: { contracts: 0, held: 0, mustFix: 0 } };
+    : { month: OCT, importBatch: REGISTRY_IMPORT_BATCH_OCT26, branches: [], totals: { contracts: 0, held: 0, mustFix: 0, excluded: 0, withAddress: 0 } };
 
   it("ทุกสาขา: แผน = dry-run strict (จำนวน · แถวกรอกมือ · แถวที่กันไว้ · ยอด OCT.26 · ผู้ขาย)", () => {
     expect(plan.branches).toHaveLength(24);
@@ -37,6 +37,7 @@ describe.skipIf(!HAS_FILES)("แผนนำเข้าทะเบียนส
         sellerIndex,
         branch: s.branch,
         holdRows: central.holds.get(s.branch),
+      excludeRows: s.excludeRows,
         ...REGISTRY_IMPORT_OPTIONS,
       });
       const b = plan.branches.find((x) => x.branch === s.branch)!;
@@ -60,6 +61,19 @@ describe.skipIf(!HAS_FILES)("แผนนำเข้าทะเบียนส
     const sum = (f: (b: RegistryImportPlan["branches"][number]) => number) => plan.branches.reduce((n, b) => n + f(b), 0);
     expect(sum((b) => b.sellers.saleName)).toBe(512);
     expect(sum((b) => b.sellers.amName)).toBe(575);
+  });
+
+  it("2.102 ที่อยู่ (จำนวนเท่านั้น): ทุกชีทมีหัว 'ที่อยู่ลูกค้า' ตรงตัว · มีที่อยู่ 2,317 · ว่าง 52 · ไม่มีค่าแปลก", () => {
+    const sum = (k: "withAddress" | "emptyRows" | "numericRows" | "nonTextRows" | "controlCharRows") =>
+      plan.branches.reduce((n, b) => n + b.addresses[k], 0);
+    expect(plan.branches.every((b) => b.addresses.hasAddressColumn)).toBe(true);
+    expect(plan.branches.flatMap((b) => b.addressHeaderVariants)).toEqual([]);
+    expect([sum("withAddress"), sum("emptyRows"), sum("numericRows"), sum("nonTextRows"), sum("controlCharRows")]).toEqual([2317, 52, 0, 0, 0]);
+    expect(plan.totals.withAddress).toBe(2317);
+  });
+
+  it("2.103 รายการตัดสัญญา: ตอนนี้ว่าง (รอ HQ ส่งรายการจริง · เพิ่มแล้วต้องปรับตัวเลขในไฟล์นี้)", () => {
+    expect(plan.totals.excluded).toBe(0);
   });
 
   it("ยอด OCT.26 (2.80): พุทธมณฑล 230 / 14,496,636.86 · นครปฐม 31 / 1,972,860.07 · หัวหิน 71 / 5,450,904.16", () => {

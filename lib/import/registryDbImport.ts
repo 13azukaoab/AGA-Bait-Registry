@@ -12,12 +12,13 @@
  *      PostgREST 1 คำขอ = 1 transaction แต่ "ข้ามตาราง" ไม่ใช่ transaction เดียว → ถ้าคำขอไหนพัง
  *      ลบที่เขียนไปแล้วคืน (contracts ก่อน → contract_teams หายตาม cascade → customers → customer_phones หายตาม cascade) แล้ว throw
  *      (การลบคืนลง audit_log ด้วย — ยอมรับได้ · DB ในเครื่องเท่านั้น)
- *   5. อ่านกลับแล้วเทียบทุกช่อง (เลขสัญญา/วันที่/เดือน/มูลค่าสตางค์/ประเภทขาย/ผู้ขาย/ลูกค้า/ทีม) ไม่ตรง = throw
+ *   5. อ่านกลับแล้วเทียบทุกช่อง (เลขสัญญา/วันที่/เดือน/มูลค่าสตางค์/ประเภทขาย/ผู้ขาย/ลูกค้า/ที่อยู่/ทีม) ไม่ตรง = throw
  *
  * Logic summary — verifyRegistryImport (อ่านอย่างเดียว):
  *   อ่าน customers + contracts ของสาขาเป้าหมาย + tier_rules จาก DB → computeCentralRows (lib/dashboard/sources ·
  *   ตัวเดียวกับ Auto Sync → buildBranchSnapshot ใน lib/rules · ไม่มีสูตรใหม่) → เทียบกับ plan.expected ทุกช่อง (เงินเทียบสตางค์)
- *   + ทุกสัญญาของสาขามี import_batch = plan.importBatch (2.86) + ชุดเลขสัญญาใน DB = ชุดในแผน (แถวกรอกมือ/แถวที่กันไว้ไม่หลุดเข้า DB) + จำนวน sale_name / am_name / ทีม
+ *   + ทุกสัญญาของสาขามี import_batch = plan.importBatch (2.86) + ชุดเลขสัญญาใน DB = ชุดในแผน (แถวกรอกมือ/แถวที่กันไว้/แถวที่ตัดออกไม่หลุดเข้า DB) + จำนวน sale_name / am_name / ทีม
+ *   + จำนวนลูกค้าที่มีที่อยู่ต่อสาขา = plan.addresses.withAddress (2.102 · อ่านค่าเข้าหน่วยความจำเพื่อนับเท่านั้น ไม่พิมพ์)
  *
  * สิทธิ์: ผู้เรียกส่ง client ที่เป็น service_role ผ่าน PostgREST (CLAUDE.md กฎ Deploy: ห้ามต่อด้วย role postgres)
  *   trigger ที่ตรวจกฎหน้าจอ (AG012 Renew ไม่ผูก · team_links_guard ฯลฯ) ยกเว้น service_role ตามที่ออกแบบไว้สำหรับนำเข้า
@@ -190,7 +191,13 @@ export function buildInsertRows(plan: RegistryImportPlan, refs: ReferenceIds, ne
     for (const c of b.contracts) {
       const customerId = newId();
       const contractId = newId();
-      out.customers.push({ id: customerId, branch_id: bid, name: c.customerName, customer_type: refs.typeCode.get(c.customerTypeLabel)! });
+      out.customers.push({
+        id: customerId,
+        branch_id: bid,
+        name: c.customerName,
+        customer_type: refs.typeCode.get(c.customerTypeLabel)!,
+        address: c.address, // 2.102 · ⚠ ที่อยู่จริง
+      });
       c.phones.forEach((p, i) =>
         out.customerPhones.push({ customer_id: customerId, phone: p.phone, label: p.label, sort_order: i }),
       );
@@ -306,7 +313,7 @@ async function readBackAndCompare(client: SupabaseClient, rows: InsertRows): Pro
   const wantCustomer = new Map(rows.customers.map((r) => [String(r.id), r]));
   let customersFound = 0;
   for (const part of chunks([...wantCustomer.keys()])) {
-    const { data, error } = await client.from("customers").select("id, branch_id, name, customer_type").in("id", part);
+    const { data, error } = await client.from("customers").select("id, branch_id, name, customer_type, address").in("id", part);
     if (error) throw new Error(`นำเข้า: อ่านกลับ customers ไม่สำเร็จ: ${safeDbError(error)}`);
     for (const got of (data ?? []) as unknown as Row[]) {
       const want = wantCustomer.get(String(got.id));
@@ -314,6 +321,7 @@ async function readBackAndCompare(client: SupabaseClient, rows: InsertRows): Pro
       customersFound++;
       // ชื่อ: DB เก็บตามที่ส่ง (importContracts ตัดช่องว่างหัวท้ายแล้ว)
       for (const k of ["branch_id", "name", "customer_type"]) if (got[k] !== want[k]) mismatches++;
+      if ((got.address ?? null) !== (want.address ?? null)) mismatches++;
     }
   }
 
@@ -360,6 +368,8 @@ export interface BranchVerification {
   dbContracts: number;
   expected: { cust: number; value: number };
   actual: { cust: number; value: number };
+  /** จำนวนลูกค้าที่มีที่อยู่ (แผน / DB) — จำนวนเท่านั้น (2.102) */
+  addresses: { expected: number; actual: number };
   /** รายการที่ไม่ตรง (ชื่อช่องเท่านั้น) — ว่าง = ตรงทุกช่อง */
   mismatches: string[];
 }
@@ -375,6 +385,8 @@ export interface RegistryVerification {
     actualCust: number;
     expectedValue: number;
     actualValue: number;
+    expectedWithAddress: number;
+    actualWithAddress: number;
   };
 }
 
@@ -415,7 +427,14 @@ export async function verifyRegistryImport(client: SupabaseClient, plan: Registr
     return id;
   });
 
-  const customers = await selectIn(client, "customers", "id, branch_id", "branch_id", targetIds);
+  // address อ่านเพื่อนับว่ามี/ไม่มีเท่านั้น (ไม่เก็บ/ไม่พิมพ์ค่า)
+  const customers = await selectIn(client, "customers", "id, branch_id, address", "branch_id", targetIds);
+  const withAddress = new Map<string, number>();
+  for (const c of customers) {
+    if (c.address === null || c.address === undefined) continue;
+    const br = nameById.get(String(c.branch_id))!;
+    withAddress.set(br, (withAddress.get(br) ?? 0) + 1);
+  }
   const customerBranch = new Map(customers.map((c) => [String(c.id), nameById.get(String(c.branch_id))!]));
   const contracts = await selectIn(
     client,
@@ -474,12 +493,15 @@ export async function verifyRegistryImport(client: SupabaseClient, plan: Registr
     if (dbTeams !== b.contracts.reduce((n, c) => n + c.teamCodes.length, 0)) mismatches.push("ทีม");
     const dbPhones = phones.filter((p) => customerBranch.get(String(p.customer_id)) === b.branch).length;
     if (dbPhones !== b.phones.phones) mismatches.push("เบอร์โทร");
+    const dbAddresses = withAddress.get(b.branch) ?? 0;
+    if (dbAddresses !== b.addresses.withAddress) mismatches.push("ที่อยู่");
     return {
       branch: b.branch,
       plannedContracts: b.contracts.length,
       dbContracts: mine.length,
       expected: { cust: exp.cust, value: toCents(exp.value) / 100 },
       actual: { cust: got?.cust ?? 0, value: toCents(got?.value ?? 0) / 100 },
+      addresses: { expected: b.addresses.withAddress, actual: dbAddresses },
       mismatches,
     };
   });
@@ -496,6 +518,8 @@ export async function verifyRegistryImport(client: SupabaseClient, plan: Registr
       actualCust: sum((b) => b.actual.cust),
       expectedValue: toCents(sum((b) => b.expected.value)) / 100,
       actualValue: toCents(sum((b) => b.actual.value)) / 100,
+      expectedWithAddress: sum((b) => b.addresses.expected),
+      actualWithAddress: sum((b) => b.addresses.actual),
     },
   };
 }
