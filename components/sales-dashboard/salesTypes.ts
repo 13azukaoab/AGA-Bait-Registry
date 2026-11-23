@@ -3,13 +3,15 @@
  *
  * Logic summary:
  *   * 1 แถว = 1 สัญญา · ประเภท New/Renew มาจาก contracts.sale_type
- *   * เดือนของยอด = เดือนของ `mailDate` (contracts.mail_received_date) — เจ้าของยืนยัน 19 พ.ย. 2026
- *     สัญญาที่ไม่มีวันที่รับ Mail จะไม่อยู่ในยอด/กราฟ แต่ถูกนับเป็นหมายเหตุ ("ไม่มีวันที่รับ Mail N ราย")
+ *   * เดือนของยอด = เดือนของ `salesDate` = วันที่รับ Mail (contracts.mail_received_date) · สัญญานำเข้าที่ไม่มี Mail
+ *     ใช้วันเริ่มสัญญาแทน (`dateSource = "start"` · DECISIONS 2.101) · สัญญาไม่ใช่นำเข้าที่ไม่มีวันที่รับ Mail
+ *     ไม่อยู่ในยอด/กราฟ แต่ถูกนับเป็นหมายเหตุ ("ไม่มีวันที่รับ Mail N ราย")
  *   * `valueTotal` = มูลค่ารวมของสัญญา (value_total) ไม่ปรับเป็นต่อปี
  *   * `isLate` คำนวณครั้งเดียวตอนแปลงแถว (ด้วย isLateRenewal ใน lib/rules) — ห้ามเขียนสูตรซ้ำที่นี่
  */
 
 export type SaleKind = "new" | "renew";
+export type SalesDateSource = "mail" | "start";
 
 export interface SalesRow {
   contractId: string;
@@ -24,10 +26,15 @@ export interface SalesRow {
   saleType: SaleKind;
   saleName: string | null;
   amName: string | null;
-  /** 'YYYY-MM-DD' หรือ null ถ้าไม่ได้กรอก */
-  mailDate: string | null;
+  /**
+   * วันที่ที่ใช้จัดเดือนของยอด 'YYYY-MM-DD' (DECISIONS 2.91 + 2.101)
+   * = วันที่รับ Mail ถ้ามี · ไม่มี + เป็นสัญญานำเข้า = วันเริ่มสัญญา (ดู dateSource) · null = ไม่มีวันที่ใช้ได้
+   */
+  salesDate: string | null;
+  /** ที่มาของ salesDate: "mail" = วันที่รับ Mail · "start" = วันเริ่มสัญญา (สัญญานำเข้าไม่มี Mail) · null เมื่อ salesDate เป็น null */
+  dateSource: SalesDateSource | null;
   valueTotal: number;
-  /** Renew ที่รับ Mail หลังวันที่ 15 */
+  /** Renew ที่รับ Mail หลังวันที่ 15 · แถวที่ใช้วันเริ่มสัญญา (dateSource = "start") เป็น false เสมอ (DECISIONS 2.101) */
   isLate: boolean;
 }
 

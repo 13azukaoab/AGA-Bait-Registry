@@ -2,7 +2,7 @@
  * ตรรกะรวมยอดของหน้า Dashboard งานขาย — pure function ล้วน (ไม่แตะ DB/React) ทดสอบได้ตรงๆ
  *
  * Logic summary:
- *   * filterSales: กรองด้วย "เดือนของวันที่รับ Mail" + เขต + สาขา + ผู้ขาย (แถวไม่มี mailDate ไม่ผ่านตัวกรองเดือน)
+ *   * filterSales: กรองด้วย "เดือนของ salesDate (วันที่รับ Mail · สัญญานำเข้าไม่มี Mail ใช้วันเริ่มสัญญา — DECISIONS 2.101)" + เขต + สาขา + ผู้ขาย (แถวไม่มี salesDate ไม่ผ่านตัวกรองเดือน)
  *   * countNoMailDate: จำนวนสัญญาที่ไม่มีวันที่รับ Mail (ใช้ตัวกรองเขต/สาขา/ผู้ขายเดียวกัน) ไว้แสดงเป็นหมายเหตุ
  *   * sumRows / groupByBranch / groupByZone / groupByMonth: รวมยอด New/Renew (ราย + มูลค่า) และต่อสัญญาล่าช้า
  *     — ล่าช้านับเฉพาะสัญญา Renew ที่ `isLate` (สูตรอยู่ใน lib/rules/lateRenewal.ts ไม่คำนวณซ้ำที่นี่)
@@ -41,9 +41,9 @@ function addRow(t: SalesTotals, r: SalesRow): void {
 }
 
 /** เดือน 'YYYY-MM' ของวันที่รับ Mail · null ถ้าไม่มี/รูปแบบผิด */
-export function mailMonth(mailDate: string | null): string | null {
-  if (!mailDate) return null;
-  const m = mailDate.slice(0, 7);
+export function salesMonth(salesDate: string | null): string | null {
+  if (!salesDate) return null;
+  const m = salesDate.slice(0, 7);
   return MONTH_RE.test(m) ? m : null;
 }
 
@@ -77,13 +77,13 @@ function passesScope(r: SalesRow, f: SalesFilters): boolean {
 export function filterSales(rows: readonly SalesRow[], f: SalesFilters): SalesRow[] {
   return rows
     .filter((r) => {
-      const m = mailMonth(r.mailDate);
+      const m = salesMonth(r.salesDate);
       if (!m || m < f.fromMonth || m > f.toMonth) return false;
       return passesScope(r, f);
     })
     .sort(
       (a, b) =>
-        (b.mailDate ?? "").localeCompare(a.mailDate ?? "") ||
+        (b.salesDate ?? "").localeCompare(a.salesDate ?? "") ||
         a.customerName.localeCompare(b.customerName, "th") ||
         a.contractId.localeCompare(b.contractId),
     );
@@ -91,7 +91,7 @@ export function filterSales(rows: readonly SalesRow[], f: SalesFilters): SalesRo
 
 /** จำนวนสัญญาที่ไม่มีวันที่รับ Mail (ตามตัวกรองเขต/สาขา/ผู้ขาย) — ไม่อยู่ในยอดและกราฟรายเดือน */
 export function countNoMailDate(rows: readonly SalesRow[], f: SalesFilters): number {
-  return rows.filter((r) => mailMonth(r.mailDate) === null && passesScope(r, f)).length;
+  return rows.filter((r) => salesMonth(r.salesDate) === null && passesScope(r, f)).length;
 }
 
 export function sumRows(rows: readonly SalesRow[]): SalesTotals {
@@ -139,7 +139,7 @@ export function groupByZone(rows: readonly SalesRow[]): ZoneSales[] {
 export function groupByMonth(rows: readonly SalesRow[], fromMonth: string, toMonth: string): MonthSales[] {
   const map = new Map<string, MonthSales>(monthsBetween(fromMonth, toMonth).map((m) => [m, { ...emptyTotals(), month: m }]));
   for (const r of rows) {
-    const m = mailMonth(r.mailDate);
+    const m = salesMonth(r.salesDate);
     const slot = m ? map.get(m) : undefined;
     if (slot) addRow(slot, r);
   }

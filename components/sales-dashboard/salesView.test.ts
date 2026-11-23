@@ -19,7 +19,8 @@ function row(p: Partial<SalesRow>): SalesRow {
     saleType: "new",
     saleName: "ผู้ขาย 1",
     amName: null,
-    mailDate: "2026-11-10",
+    salesDate: "2026-11-10",
+    dateSource: "mail",
     valueTotal: 100,
     isLate: false,
     ...p,
@@ -29,9 +30,9 @@ const F: SalesFilters = { fromMonth: "2026-10", toMonth: "2026-11", zoneId: null
 const ROWS = [
   row({ saleType: "new", valueTotal: 100, branchId: "b1", branchName: "สาขา ก" }),
   row({ saleType: "new", valueTotal: 700, branchId: "b2", branchName: "สาขา ข", saleName: "ผู้ขาย 2" }),
-  row({ saleType: "renew", valueTotal: 300, mailDate: "2026-10-20", isLate: true, branchId: "b1", branchName: "สาขา ก" }),
-  row({ saleType: "renew", valueTotal: 200, mailDate: "2026-10-05", branchId: "b2", branchName: "สาขา ข", saleName: "ผู้ขาย 2" }),
-  row({ saleType: "renew", valueTotal: 50, mailDate: null }),
+  row({ saleType: "renew", valueTotal: 300, salesDate: "2026-10-20", isLate: true, branchId: "b1", branchName: "สาขา ก" }),
+  row({ saleType: "renew", valueTotal: 200, salesDate: "2026-10-05", branchId: "b2", branchName: "สาขา ข", saleName: "ผู้ขาย 2" }),
+  row({ saleType: "renew", valueTotal: 50, salesDate: null }),
 ];
 
 describe("filterByType", () => {
