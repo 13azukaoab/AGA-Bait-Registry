@@ -7,7 +7,7 @@ import {
   groupByBranch,
   groupByMonth,
   groupByZone,
-  mailMonth,
+  salesMonth,
   monthsBetween,
   rankSellers,
   sumRows,
@@ -30,7 +30,8 @@ function row(p: Partial<SalesRow>): SalesRow {
     saleType: "new",
     saleName: "ผู้ขาย 1",
     amName: "AM 1",
-    mailDate: "2026-11-10",
+    salesDate: "2026-11-10",
+    dateSource: "mail",
     valueTotal: 100,
     isLate: false,
     ...p,
@@ -40,14 +41,14 @@ function row(p: Partial<SalesRow>): SalesRow {
 const ALL: SalesFilters = { fromMonth: "2026-09", toMonth: "2026-11", zoneId: null, branchId: null, seller: null };
 
 const DATA: SalesRow[] = [
-  row({ saleType: "new", valueTotal: 100, mailDate: "2026-09-05" }),
-  row({ saleType: "renew", valueTotal: 200, mailDate: "2026-09-15", isLate: false }),
-  row({ saleType: "renew", valueTotal: 300, mailDate: "2026-10-16", isLate: true }),
-  row({ saleType: "new", valueTotal: 400, mailDate: "2026-11-02", branchId: "b2", branchName: "สาขา ข", saleName: "ผู้ขาย 2" }),
+  row({ saleType: "new", valueTotal: 100, salesDate: "2026-09-05" }),
+  row({ saleType: "renew", valueTotal: 200, salesDate: "2026-09-15", isLate: false }),
+  row({ saleType: "renew", valueTotal: 300, salesDate: "2026-10-16", isLate: true }),
+  row({ saleType: "new", valueTotal: 400, salesDate: "2026-11-02", branchId: "b2", branchName: "สาขา ข", saleName: "ผู้ขาย 2" }),
   row({
     saleType: "renew",
     valueTotal: 500,
-    mailDate: "2026-11-20",
+    salesDate: "2026-11-20",
     isLate: true,
     branchId: "b3",
     branchName: "สาขา ค",
@@ -56,16 +57,16 @@ const DATA: SalesRow[] = [
     zoneOrder: 2,
     saleName: "ผู้ขาย 2",
   }),
-  row({ saleType: "new", valueTotal: 999, mailDate: "2026-08-31" }), // นอกช่วงเดือน
-  row({ saleType: "renew", valueTotal: 50, mailDate: null, saleName: null, amName: null }), // ไม่มีวันที่รับ Mail
+  row({ saleType: "new", valueTotal: 999, salesDate: "2026-08-31" }), // นอกช่วงเดือน
+  row({ saleType: "renew", valueTotal: 50, salesDate: null, saleName: null, amName: null }), // ไม่มีวันที่รับ Mail
 ];
 
-describe("mailMonth / monthsBetween", () => {
+describe("salesMonth / monthsBetween", () => {
   it("แปลงวันที่เป็นเดือน · ว่าง/รูปแบบผิด = null", () => {
-    expect(mailMonth("2026-11-16")).toBe("2026-11");
-    expect(mailMonth(null)).toBeNull();
-    expect(mailMonth("2026-13-01")).toBeNull();
-    expect(mailMonth("xx")).toBeNull();
+    expect(salesMonth("2026-11-16")).toBe("2026-11");
+    expect(salesMonth(null)).toBeNull();
+    expect(salesMonth("2026-13-01")).toBeNull();
+    expect(salesMonth("xx")).toBeNull();
   });
   it("ช่วงเดือนข้ามปี ครบทุกเดือน · กลับด้าน = []", () => {
     expect(monthsBetween("2026-11", "2027-02")).toEqual(["2026-11", "2026-12", "2027-01", "2027-02"]);
@@ -79,10 +80,10 @@ describe("filterSales / countNoMailDate", () => {
   it("กรองตามเดือนของวันที่รับ Mail (ตัดนอกช่วง และแถวไม่มีวันที่)", () => {
     const r = filterSales(DATA, ALL);
     expect(r).toHaveLength(5);
-    expect(r.every((x) => x.mailDate !== null && x.mailDate >= "2026-09-01" && x.mailDate <= "2026-11-30")).toBe(true);
+    expect(r.every((x) => x.salesDate !== null && x.salesDate >= "2026-09-01" && x.salesDate <= "2026-11-30")).toBe(true);
   });
   it("เรียงวันที่รับ Mail ใหม่→เก่า", () => {
-    const dates = filterSales(DATA, ALL).map((x) => x.mailDate);
+    const dates = filterSales(DATA, ALL).map((x) => x.salesDate);
     expect(dates).toEqual(["2026-11-20", "2026-11-02", "2026-10-16", "2026-09-15", "2026-09-05"]);
   });
   it("ตัวกรองเขต/สาขา/ผู้ขาย/ช่วงเดือน ทำงานร่วมกัน", () => {

@@ -5,6 +5,9 @@ import {
   EXCLUDE_CANCELLED,
   KEEP_UNLESS_ENTRY_ERROR_CANCELLED,
   EXCLUDE_IMPORTED,
+  FLAG_LATE_ON_START_DATE_ROWS,
+  USE_START_DATE_FOR_IMPORTED,
+  resolveSalesDate,
   SALES_MAX_ROWS,
   SALES_PAGE_CHUNK,
   loadSalesRows,
@@ -20,6 +23,8 @@ const base: SalesRowDb = {
   sale_name: " ผู้ขาย 1 ",
   am_name: "",
   mail_received_date: "2026-11-16",
+  start_date: "2026-01-05",
+  import_batch: null,
   value_total: "12345.50",
   customers: {
     name: "ลูกค้าทดสอบ",
@@ -57,9 +62,45 @@ describe("toSalesRow", () => {
     expect(toSalesRow({ ...base, customers: null }, lateStub)).toBeNull();
     expect(toSalesRow({ ...base, customers: { ...base.customers!, branches: null } }, lateStub)).toBeNull();
   });
-  it("ไม่มีวันที่รับ Mail = mailDate null · มูลค่าผิดรูปแบบ = 0", () => {
+  it("ไม่มีวันที่รับ Mail + ไม่ใช่นำเข้า = salesDate null · มูลค่าผิดรูปแบบ = 0", () => {
     const r = toSalesRow({ ...base, mail_received_date: null, value_total: "abc" }, lateStub);
-    expect(r).toMatchObject({ mailDate: null, valueTotal: 0, isLate: false });
+    expect(r).toMatchObject({ salesDate: null, dateSource: null, valueTotal: 0, isLate: false });
+  });
+});
+
+// กฎวันที่จัดเดือน DECISIONS 2.101
+describe("resolveSalesDate / toSalesRow — สัญญานำเข้าใช้วันเริ่มสัญญา (2.101)", () => {
+  const imported = { ...base, import_batch: "batch-1", mail_received_date: null, start_date: "2026-09-20" };
+
+  it("ค่าคงที่เริ่มต้น: เปิดใช้วันเริ่มสัญญา · ไม่ติดป้ายล่าช้าบนแถววันเริ่มสัญญา", () => {
+    expect(USE_START_DATE_FOR_IMPORTED).toBe(true);
+    expect(FLAG_LATE_ON_START_DATE_ROWS).toBe(false);
+  });
+  it("ข้อ 1: มี Mail → ใช้ Mail (แม้เป็นสัญญานำเข้า)", () => {
+    expect(resolveSalesDate({ ...imported, mail_received_date: "2026-10-03" }, true)).toEqual({ date: "2026-10-03", source: "mail" });
+    expect(resolveSalesDate(base, true)).toEqual({ date: "2026-11-16", source: "mail" });
+  });
+  it("ข้อ 1: ไม่มี Mail + นำเข้า → ใช้วันเริ่มสัญญา", () => {
+    expect(resolveSalesDate(imported, true)).toEqual({ date: "2026-09-20", source: "start" });
+  });
+  it("ข้อ 2: ไม่มี Mail + ไม่ใช่นำเข้า → ไม่มีวันที่ (ไม่นับ)", () => {
+    expect(resolveSalesDate({ ...imported, import_batch: null }, true)).toEqual({ date: null, source: null });
+  });
+  it("ปิดสวิตช์ = กลับกฎ 2.91 เดิม (นำเข้าไม่มี Mail ไม่นับ)", () => {
+    expect(resolveSalesDate(imported, false)).toEqual({ date: null, source: null });
+  });
+  it("ข้อ 4: แถววันเริ่มสัญญาไม่ติดป้ายล่าช้า แม้วันเริ่มเป็นวันที่ > 15 · และไม่ส่ง start_date เข้า isLate", () => {
+    const seen: (string | null)[] = [];
+    const spy = (t: string, d: string | null) => {
+      seen.push(d);
+      return lateStub(t, d);
+    };
+    const r = toSalesRow({ ...imported, sale_type: "renew", start_date: "2026-09-20" }, spy);
+    expect(r).toMatchObject({ salesDate: "2026-09-20", dateSource: "start", isLate: false });
+    expect(seen).not.toContain("2026-09-20");
+  });
+  it("แถวที่ใช้ Mail ยังติดป้ายล่าช้าตามเดิม", () => {
+    expect(toSalesRow({ ...base, import_batch: "b" }, lateStub)).toMatchObject({ dateSource: "mail", isLate: true });
   });
 });
 
@@ -103,7 +144,7 @@ describe("loadSalesRows", () => {
     expect(res).toEqual({ ok: false, code: "bad_window" });
   });
 
-  it("query หลักเอาเฉพาะแถวที่มีวันที่รับ Mail ในช่วง (gte) · ไม่ดึงแถว null มาทั้งชุด · แยก query นับแบบ head", async () => {
+  it("query หลัก: or ของหน้าต่างเวลา (Mail ≥ ต้นช่วง หรือ ไม่มี Mail+นำเข้า+วันเริ่ม ≥ ต้นช่วง) AND กับ or ของตัวกรองยกเลิก · แยก query นับแบบ head", async () => {
     const { client, builders } = fakeSupabase({
       pages: () => ({ data: [base, { ...base, id: "c2", sale_type: null }], count: 2 }),
       noMail: { count: 2369 },
@@ -114,11 +155,17 @@ describe("loadSalesRows", () => {
     expect(res.ok && res.truncated).toBe(false);
     const main = builders.find((b) => !b.head)!;
     const count = builders.find((b) => b.head)!;
-    expect(hasCall(main, "gte", "mail_received_date", "2026-08-01")).toBe(true);
+    const ors = main.calls.filter((c) => c[0] === "or").map((c) => c[1][0]);
+    expect(ors).toHaveLength(2); // PostgREST: or ซ้ำ = AND กัน (ยืนยันกับ DB จริงแล้ว)
+    expect(ors).toContain(KEEP_UNLESS_ENTRY_ERROR_CANCELLED);
+    expect(ors).toContain(
+      "mail_received_date.gte.2026-08-01,and(mail_received_date.is.null,import_batch.not.is.null,start_date.gte.2026-08-01)",
+    );
+    expect(names(main)).not.toContain("gte");
+    // query นับ: ไม่มี Mail + ไม่ใช่นำเข้า (นำเข้าใช้วันเริ่มสัญญาแล้ว)
     expect(hasCall(count, "is", "mail_received_date", null)).toBe(true);
+    expect(hasCall(count, "is", "import_batch", null)).toBe(true);
     expect(names(count)).not.toContain("range"); // query นับไม่ดึงแถว
-    // ไม่ใช้ "mail_received_date หรือ null" อีกแล้ว (เงื่อนไข or ที่เหลือมีแค่ตัวกรองสัญญายกเลิก)
-    expect(main.calls.filter((c) => c[0] === "or").every((c) => c[1][0] === KEEP_UNLESS_ENTRY_ERROR_CANCELLED)).toBe(true);
     expect(builders).toHaveLength(2);
   });
 
@@ -151,19 +198,26 @@ describe("loadSalesRows", () => {
   it("ค่าเริ่มต้น (2.91 ล่าสุด): ไม่นับสัญญายกเลิกเพราะลงข้อมูลผิด · นับสัญญานำเข้า — ทั้ง query หลักและ query นับ", async () => {
     expect(EXCLUDE_CANCELLED).toBe(true);
     expect(EXCLUDE_IMPORTED).toBe(false);
-    expect(DEFAULT_SALES_LOAD_OPTIONS).toEqual({ excludeCancelled: true, excludeImported: false });
+    expect(DEFAULT_SALES_LOAD_OPTIONS).toEqual({ excludeCancelled: true, excludeImported: false, useStartDateForImported: true });
     const { client, builders } = fakeSupabase({ pages: () => ({ data: [], count: 0 }) });
     await loadSalesRows(client, "2026-08-01", lateStub);
     expect(builders).toHaveLength(2);
-    for (const b of builders) {
-      expect(hasCall(b, "or", KEEP_UNLESS_ENTRY_ERROR_CANCELLED)).toBe(true);
-      expect(hasCall(b, "is", "import_batch", null)).toBe(false);
-    }
+    for (const b of builders) expect(hasCall(b, "or", KEEP_UNLESS_ENTRY_ERROR_CANCELLED)).toBe(true);
+    // import_batch is null มีเฉพาะ query นับ (ไม่ใช่ query หลัก)
+    expect(hasCall(builders.find((b) => !b.head)!, "is", "import_batch", null)).toBe(false);
+  });
+
+  it("ปิด useStartDateForImported = กฎ 2.91 เดิม: or หน้าต่างเหลือ Mail อย่างเดียว · query นับไม่กรอง import_batch", async () => {
+    const { client, builders } = fakeSupabase({ pages: () => ({ data: [], count: 0 }) });
+    await loadSalesRows(client, "2026-08-01", lateStub, { excludeCancelled: true, excludeImported: false, useStartDateForImported: false });
+    const main = builders.find((b) => !b.head)!;
+    expect(hasCall(main, "gte", "mail_received_date", "2026-08-01")).toBe(true);
+    expect(hasCall(builders.find((b) => b.head)!, "is", "import_batch", null)).toBe(false);
   });
 
   it("ตัวเลือกปิดทั้งคู่ (นับทุกสัญญา) ยังทำงานได้", async () => {
     const { client, builders } = fakeSupabase({ pages: () => ({ data: [], count: 0 }) });
-    await loadSalesRows(client, "2026-08-01", lateStub, { excludeCancelled: false, excludeImported: false });
+    await loadSalesRows(client, "2026-08-01", lateStub, { excludeCancelled: false, excludeImported: false, useStartDateForImported: false });
     for (const b of builders) {
       expect(names(b)).not.toContain("or");
       expect(hasCall(b, "is", "import_batch", null)).toBe(false);
@@ -172,7 +226,7 @@ describe("loadSalesRows", () => {
 
   it("excludeCancelled = true → ใส่เงื่อนไขตัดเฉพาะ cancelled+entry_error ทั้ง 2 query", async () => {
     const { client, builders } = fakeSupabase({ pages: () => ({ data: [], count: 0 }) });
-    await loadSalesRows(client, "2026-08-01", lateStub, { excludeCancelled: true, excludeImported: false });
+    await loadSalesRows(client, "2026-08-01", lateStub, { excludeCancelled: true, excludeImported: false, useStartDateForImported: false });
     for (const b of builders) {
       expect(hasCall(b, "or", KEEP_UNLESS_ENTRY_ERROR_CANCELLED)).toBe(true);
       expect(hasCall(b, "is", "import_batch", null)).toBe(false);
@@ -181,16 +235,16 @@ describe("loadSalesRows", () => {
 
   it("excludeImported = true → เอาเฉพาะ import_batch ว่าง ทั้ง 2 query", async () => {
     const { client, builders } = fakeSupabase({ pages: () => ({ data: [], count: 0 }) });
-    await loadSalesRows(client, "2026-08-01", lateStub, { excludeCancelled: false, excludeImported: true });
+    await loadSalesRows(client, "2026-08-01", lateStub, { excludeCancelled: false, excludeImported: true, useStartDateForImported: true });
     for (const b of builders) {
       expect(hasCall(b, "is", "import_batch", null)).toBe(true);
-      expect(names(b)).not.toContain("or");
+      expect(hasCall(b, "or", KEEP_UNLESS_ENTRY_ERROR_CANCELLED)).toBe(false);
     }
   });
 
   it("เปิดทั้งสองตัวกรองพร้อมกันได้", async () => {
     const { client, builders } = fakeSupabase({ pages: () => ({ data: [], count: 0 }) });
-    await loadSalesRows(client, "2026-08-01", lateStub, { excludeCancelled: true, excludeImported: true });
+    await loadSalesRows(client, "2026-08-01", lateStub, { excludeCancelled: true, excludeImported: true, useStartDateForImported: true });
     for (const b of builders) {
       expect(hasCall(b, "or", KEEP_UNLESS_ENTRY_ERROR_CANCELLED)).toBe(true);
       expect(hasCall(b, "is", "import_batch", null)).toBe(true);

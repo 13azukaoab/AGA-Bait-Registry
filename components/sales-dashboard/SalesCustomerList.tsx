@@ -110,14 +110,14 @@ export function SalesCustomerList({ rows, chip, onChipChange, showLate }: SalesC
                 </div>
                 <div className="flex items-baseline justify-between gap-2 text-[13px]">
                   <span className="text-fg-muted">
-                    รับ Mail{" "}
+                    {r.dateSource === "start" ? "วันเริ่มสัญญา" : "รับ Mail"}{" "}
                     {r.isLate ? (
-                      <span tabIndex={0} title="ต่อสัญญาล่าช้า" aria-label={`${formatDate(r.mailDate)} ต่อสัญญาล่าช้า`} className="cursor-help font-bold text-danger">
+                      <span tabIndex={0} title="ต่อสัญญาล่าช้า" aria-label={`${formatDate(r.salesDate)} ต่อสัญญาล่าช้า`} className="cursor-help font-bold text-danger">
                         <LateIcon />
-                        {formatDate(r.mailDate)}
+                        {formatDate(r.salesDate)}
                       </span>
                     ) : (
-                      formatDate(r.mailDate)
+                      formatDate(r.salesDate)
                     )}
                   </span>
                   <span className="font-bold tabular-nums text-fg">{formatMoney(r.valueTotal)} บาท</span>

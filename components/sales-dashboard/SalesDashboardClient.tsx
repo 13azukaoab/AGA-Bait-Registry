@@ -29,7 +29,7 @@ export interface SalesDashboardClientProps {
   rows: readonly SalesRow[];
   /** ข้อมูลเกินเพดานที่โหลด (ตัดบางส่วน) */
   truncated: boolean;
-  /** จำนวนสัญญาที่ไม่มีวันที่รับ Mail (นับอย่างเดียวจาก server · ไม่แยกตามตัวกรองของหน้า) */
+  /** จำนวนสัญญา (ไม่ใช่นำเข้า) ที่ไม่มีวันที่รับ Mail (นับอย่างเดียวจาก server · ไม่แยกตามตัวกรองของหน้า) */
   noMailCount: number;
   /** เดือนปัจจุบันตามเวลาไทย 'YYYY-MM' */
   currentMonth: string;
@@ -57,6 +57,9 @@ export function SalesDashboardClient({ rows, truncated, noMailCount, currentMont
   const sellers = useMemo(() => distinctSellers(rows), [rows]);
   const hasUnnamedSeller = useMemo(() => rows.some((r) => !(r.saleName ?? "").trim()), [rows]);
 
+  // สัญญาจากทะเบียนเดิมที่ใช้วันเริ่มสัญญาแทนวันที่รับ Mail (DECISIONS 2.101) — นับจากแถวที่โหลดมา
+  const startDateCount = useMemo(() => rows.filter((r) => r.dateSource === "start").length, [rows]);
+
   const view = useMemo(() => buildSalesView(rows, filters, { type, chip }), [rows, filters, type, chip]);
 
   const summary = filterSummary(filters, {
@@ -74,7 +77,7 @@ export function SalesDashboardClient({ rows, truncated, noMailCount, currentMont
   return (
     <div className="mx-auto max-w-[1200px] p-4 max-[767px]:p-3">
       <h1 className="m-0 text-[22px] font-bold max-[767px]:text-xl">Dashboard งานขาย (New/Renew)</h1>
-      <p className="mb-3.5 mt-0.5 text-[13px] text-fg-muted">ยอดงานใหม่ (New) และต่อสัญญา (Renew) แยกตามสาขา เขต และผู้ขาย · นับตามเดือนที่รับ Mail · ไม่นับสัญญาที่ยกเลิกเพราะลงข้อมูลผิด</p>
+      <p className="mb-3.5 mt-0.5 text-[13px] text-fg-muted">ยอดงานใหม่ (New) และต่อสัญญา (Renew) แยกตามสาขา เขต และผู้ขาย · นับตามเดือนที่รับ Mail (สัญญาจากทะเบียนเดิมนับตามวันเริ่มสัญญา) · ไม่นับสัญญาที่ยกเลิกเพราะลงข้อมูลผิด</p>
 
       {truncated && (
         <Alert variant="warn" title="แสดงข้อมูลบางส่วน" className="mb-3">
@@ -104,6 +107,12 @@ export function SalesDashboardClient({ rows, truncated, noMailCount, currentMont
 
       <div className="grid gap-3.5">
         <SalesKpis kpis={view.kpis} highlight={view.highlight} />
+
+        {startDateCount > 0 && (
+          <p className="m-0 text-[12.5px] text-fg-muted">
+            สัญญาจากทะเบียนเดิม {startDateCount.toLocaleString("th-TH")} ราย ใช้วันเริ่มสัญญาแทนวันที่รับ Mail (ไม่ติดป้ายต่อสัญญาล่าช้า)
+          </p>
+        )}
 
         {noMailCount > 0 && (
           <p className="m-0 text-[12.5px] text-fg-muted">ไม่มีวันที่รับ Mail {noMailCount.toLocaleString("th-TH")} ราย ทั้งระบบ (ไม่นับในยอดและกราฟรายเดือน · ไม่แยกตามตัวกรอง)</p>

@@ -24,7 +24,8 @@ function row(n: number, p: Partial<SalesRow>): SalesRow {
     saleType: "new",
     saleName: "ผู้ขายทดสอบ 1",
     amName: "AM ทดสอบ",
-    mailDate: "2026-11-05",
+    salesDate: "2026-11-05",
+    dateSource: "mail",
     valueTotal: 100000,
     isLate: false,
     ...p,
@@ -32,9 +33,9 @@ function row(n: number, p: Partial<SalesRow>): SalesRow {
 }
 const ROWS: SalesRow[] = [
   row(1, { saleType: "new" }),
-  row(2, { saleType: "renew", mailDate: "2026-11-16", isLate: true, valueTotal: 250000 }),
-  row(3, { saleType: "renew", mailDate: "2026-11-10", branchId: "b2", branchName: "สาขาทดสอบ 2", zoneId: "z2", zoneName: "เขต 2", zoneOrder: 2, saleName: null }),
-  row(4, { saleType: "new", mailDate: null }),
+  row(2, { saleType: "renew", salesDate: "2026-11-16", isLate: true, valueTotal: 250000 }),
+  row(3, { saleType: "renew", salesDate: "2026-11-10", branchId: "b2", branchName: "สาขาทดสอบ 2", zoneId: "z2", zoneName: "เขต 2", zoneOrder: 2, saleName: null }),
+  row(4, { saleType: "new", salesDate: null }),
 ];
 const F: SalesFilters = { fromMonth: "2026-09", toMonth: "2026-11", zoneId: null, branchId: null, seller: null };
 const html = (el: React.ReactElement) => renderToStaticMarkup(el);
@@ -61,6 +62,15 @@ describe("SalesDashboardClient (render ฝั่ง server)", () => {
     expect(out).toContain("ล่าช้า");
     expect(out).toContain('title="ต่อสัญญาล่าช้า"');
     expect(out).toContain("ไม่มีวันที่รับ Mail 1 ราย ทั้งระบบ");
+  });
+  it("DECISIONS 2.101: แถววันเริ่มสัญญา → หมายเหตุ N ราย · ป้าย 'วันเริ่มสัญญา' · ไม่มีป้ายล่าช้า", () => {
+    const rows = [row(21, { saleType: "renew", salesDate: "2026-11-20", dateSource: "start", isLate: false })];
+    const o = html(<SalesDashboardClient rows={rows} truncated={false} noMailCount={0} currentMonth="2026-11" />);
+    expect(o).toContain("สัญญาจากทะเบียนเดิม 1 ราย ใช้วันเริ่มสัญญาแทนวันที่รับ Mail");
+    expect(o).toContain("วันเริ่มสัญญา");
+    expect(o).not.toContain('title="ต่อสัญญาล่าช้า"');
+    // ไม่มีแถวใช้วันเริ่มสัญญา → ไม่มีหมายเหตุ
+    expect(out).not.toContain("ใช้วันเริ่มสัญญาแทนวันที่รับ Mail");
   });
   it("ผู้ขายไม่มีชื่อแสดงเป็น 'ไม่ระบุผู้ขาย' · ไม่มีรหัสสี hex ในผลลัพธ์", () => {
     expect(out).toContain("ไม่ระบุผู้ขาย");

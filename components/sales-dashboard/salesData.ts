@@ -5,21 +5,25 @@
  *   * ใช้ client ของผู้ใช้จริงเสมอ (ไม่ใช้ service role) — RLS: host/admin/recorder อ่านสัญญาได้ **ทุกสาขา** โดยตั้งใจ (M21)
  *     ขอบเขตสาขา (admin) ใช้กับ "การแก้ไข" เท่านั้น ไม่ใช่การอ่าน → หน้านี้จึงเห็นทุกสาขาสำหรับ host/admin
  *     (หน้านี้ให้เฉพาะ host + admin เข้า — ด่านที่ middleware + page)
- *   * query หลัก: สัญญา New/Renew ที่ "มีวันที่รับ Mail" ตั้งแต่ `windowStart` ขึ้นไป เท่านั้น — ไม่โหลดแถวที่ไม่มีวันที่รับ Mail มาทั้งชุด
- *     (หลังนำเข้าข้อมูลมีสัญญานำเข้าหลักพันที่ไม่มีวันที่รับ Mail · ถ้าโหลดมาจะกินเพดานแล้วข้อมูลขายจริงถูกตัด)
- *   * จำนวนสัญญาที่ไม่มีวันที่รับ Mail = query นับอย่างเดียว (`head: true` ไม่ส่งแถวกลับ) แสดงเป็นหมายเหตุ
+ *   * วันที่จัดเดือนของยอด (DECISIONS 2.91 + 2.101 · `resolveSalesDate` จุดเดียว):
+ *       มี `mail_received_date` → ใช้วันนั้น · ไม่มี + สัญญานำเข้า (`import_batch` ไม่ว่าง) → ใช้ `start_date`
+ *       · ไม่ใช่นำเข้าและไม่มี Mail → ไม่นับ (แสดงเป็นหมายเหตุ)
+ *     แถวที่ใช้ `start_date` ไม่ติดป้ายล่าช้า (isLate = false · `FLAG_LATE_ON_START_DATE_ROWS`) และไม่ส่ง start_date เข้า isLateRenewal
+ *   * query หลัก: สัญญา New/Renew ที่วันที่จัดเดือน ≥ `windowStart` — `.or(windowFilter)` AND กับ `.or(ตัวกรองยกเลิก)`
+ *     (PostgREST รวม `or` หลายตัวด้วย AND) · ไม่โหลดแถวที่ไม่มีวันที่ใช้ได้มาทั้งชุด (กินเพดานแล้วข้อมูลจริงถูกตัด)
+ *   * จำนวนสัญญาที่ไม่มีวันที่รับ Mail และไม่ถูกนับ (ไม่ใช่นำเข้า) = query นับอย่างเดียว (`head: true`) แสดงเป็นหมายเหตุ
  *   * เพดาน SALES_MAX_ROWS แถว: เกินแล้ว `truncated = true` (ใช้ count จาก query หลัก — ไม่ตัดเงียบ หน้าแสดงคำเตือน)
  *     โหลดทีละ SALES_PAGE_CHUNK แถว
  *   * ตัวกรองสัญญายกเลิก / สัญญานำเข้า รวมที่จุดเดียว (`EXCLUDE_CANCELLED` / `EXCLUDE_IMPORTED`) — เจ้าของเลือกวิธีนับแบบ ก (DECISIONS 2.91):
  *     (กฎล่าสุดของเจ้าของ · M44 แยกเหตุผลยกเลิก `contracts.cancel_reason_code`)
  *     **ไม่นับเฉพาะสัญญาที่ status='cancelled' และเหตุผล = 'entry_error' (ลงข้อมูลผิด)** · ยกเลิกเพราะลูกค้ายกเลิกจริง/อื่นๆ/ไม่มีเหตุผล ยังนับ
- *     **นับสัญญานำเข้าที่มีวันที่รับ Mail** · ใช้กับทั้ง query หลักและ query นับ
+ *     **นับสัญญานำเข้า** (มี Mail ใช้ Mail · ไม่มีใช้วันเริ่มสัญญา) · ใช้กับทั้ง query หลักและ query นับ
  *   * ต่อสัญญาล่าช้า: ผู้เรียกส่งฟังก์ชัน `isLate` (= isLateRenewal จาก lib/rules) เข้ามา — ที่นี่ไม่มีสูตรของตัวเอง
  *   * ⚠ PDPA: ผลลัพธ์มีชื่อลูกค้า — ห้าม console.log · error คืนแค่ code (ไม่คืน message ดิบ)
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-import type { SaleKind, SalesRow } from "./salesTypes";
+import type { SaleKind, SalesDateSource, SalesRow } from "./salesTypes";
 
 export const SALES_PAGE_CHUNK = 1000;
 export const SALES_MAX_ROWS = 5000;
@@ -36,17 +40,31 @@ export const EXCLUDE_CANCELLED = true;
  * ⚠ ต้องมี `is.null` ของเหตุผลด้วย — SQL เทียบ NULL <> 'entry_error' ได้ค่า "ไม่รู้" (ไม่ผ่าน) ถ้าไม่ใส่ สัญญายกเลิกที่ไม่มีเหตุผลจะหายจากยอดโดยผิด
  */
 export const KEEP_UNLESS_ENTRY_ERROR_CANCELLED = "status.neq.cancelled,cancel_reason_code.is.null,cancel_reason_code.neq.entry_error";
+/**
+ * สัญญานำเข้าที่ไม่มีวันที่รับ Mail ใช้ "วันเริ่มสัญญา" จัดเดือนของยอดแทน (DECISIONS 2.101 · เจ้าของตัดสิน 22 พ.ย. 2026)
+ * false = กลับไปกฎ 2.91 เดิม (สัญญาที่ไม่มีวันที่รับ Mail ไม่นับ)
+ */
+export const USE_START_DATE_FOR_IMPORTED = true;
+/**
+ * แถวที่ใช้วันเริ่มสัญญา **ไม่ติดป้าย "ต่อสัญญาล่าช้า"** (เจ้าของยืนยัน 22 พ.ย. · กฎล่าช้านิยามจากวันที่รับ Mail ซึ่งไม่มี)
+ * จุดเดียวที่แก้ได้ · ห้ามส่ง start_date เข้า isLateRenewal
+ */
+export const FLAG_LATE_ON_START_DATE_ROWS = false;
+
 /** ไม่นับสัญญานำเข้า (contracts.import_batch ไม่ว่าง) · false = นับสัญญานำเข้าที่มีวันที่รับ Mail (DECISIONS 2.91 แบบ ก) */
 export const EXCLUDE_IMPORTED = false;
 
 export interface SalesLoadOptions {
   excludeCancelled: boolean;
   excludeImported: boolean;
+  /** สัญญานำเข้าที่ไม่มีวันที่รับ Mail ใช้วันเริ่มสัญญา (2.101) — ไม่มีผลถ้า excludeImported = true */
+  useStartDateForImported: boolean;
 }
 
 export const DEFAULT_SALES_LOAD_OPTIONS: SalesLoadOptions = {
   excludeCancelled: EXCLUDE_CANCELLED,
   excludeImported: EXCLUDE_IMPORTED,
+  useStartDateForImported: USE_START_DATE_FOR_IMPORTED,
 };
 
 export type SalesLoadResult =
@@ -55,7 +73,10 @@ export type SalesLoadResult =
       rows: SalesRow[];
       /** มีสัญญาในช่วงมากกว่า SALES_MAX_ROWS (โหลดมาแค่ส่วนแรก) */
       truncated: boolean;
-      /** จำนวนสัญญา New/Renew ที่ไม่มีวันที่รับ Mail (นับอย่างเดียว ไม่รวมในยอด) */
+      /**
+       * จำนวนสัญญา New/Renew ที่ไม่มีวันที่รับ Mail และ "ไม่ถูกนับในยอด" (นับอย่างเดียว)
+       * = ไม่ใช่สัญญานำเข้า (ถ้าเปิด useStartDateForImported สัญญานำเข้าใช้วันเริ่มสัญญาแล้ว จึงไม่รวมที่นี่)
+       */
       noMailCount: number;
     }
   | { ok: false; code: string };
@@ -68,6 +89,10 @@ export interface SalesRowDb {
   sale_name: string | null;
   am_name: string | null;
   mail_received_date: string | null;
+  /** วันเริ่มสัญญา (NOT NULL ใน DB) — ใช้แทนวันที่รับ Mail เฉพาะสัญญานำเข้า (2.101) */
+  start_date: string | null;
+  /** ไม่ว่าง = สัญญานำเข้าจากทะเบียนเดิม */
+  import_batch: string | null;
   value_total: number | string | null;
   customers: {
     name: string | null;
@@ -84,11 +109,30 @@ export interface SalesRowDb {
 export type LateFn = (saleType: SaleKind, mailReceivedDate: string | null) => boolean;
 
 const SELECT =
-  "id, customer_id, sale_type, sale_name, am_name, mail_received_date, value_total, " +
+  "id, customer_id, sale_type, sale_name, am_name, mail_received_date, start_date, import_batch, value_total, " +
   "customers!inner(name, branch_id, branches!inner(name, zone_id, zones!inner(name, sort_order)))";
 
+/**
+ * กฎเลือกวันที่จัดเดือนของยอด — จุดเดียว (DECISIONS 2.91 + 2.101):
+ *   1) มีวันที่รับ Mail → ใช้วันนั้น (source "mail")
+ *   2) ไม่มี และเป็นสัญญานำเข้า (import_batch ไม่ว่าง) → ใช้วันเริ่มสัญญา (source "start")
+ *   3) อื่นๆ → ไม่มีวันที่ (null) = ไม่นับ
+ */
+export function resolveSalesDate(
+  raw: Pick<SalesRowDb, "mail_received_date" | "start_date" | "import_batch">,
+  useStartDateForImported: boolean,
+): { date: string | null; source: SalesDateSource | null } {
+  if (raw.mail_received_date) return { date: raw.mail_received_date.slice(0, 10), source: "mail" };
+  if (useStartDateForImported && raw.import_batch && raw.start_date) return { date: raw.start_date.slice(0, 10), source: "start" };
+  return { date: null, source: null };
+}
+
 /** แปลงแถวดิบเป็น SalesRow · แถวที่ไม่ใช่ New/Renew หรือขาดสาขา/เขต = null (ข้าม) */
-export function toSalesRow(raw: SalesRowDb, isLate: LateFn): SalesRow | null {
+export function toSalesRow(
+  raw: SalesRowDb,
+  isLate: LateFn,
+  useStartDateForImported: boolean = USE_START_DATE_FOR_IMPORTED,
+): SalesRow | null {
   if (raw.sale_type !== "new" && raw.sale_type !== "renew") return null;
   const cust = raw.customers;
   const branch = cust?.branches;
@@ -97,6 +141,7 @@ export function toSalesRow(raw: SalesRowDb, isLate: LateFn): SalesRow | null {
   if (!zone) return null;
   const saleType: SaleKind = raw.sale_type;
   const mail = raw.mail_received_date ? raw.mail_received_date.slice(0, 10) : null;
+  const { date: salesDate, source: dateSource } = resolveSalesDate(raw, useStartDateForImported);
   const value = Number(raw.value_total ?? 0);
   return {
     contractId: raw.id,
@@ -110,9 +155,11 @@ export function toSalesRow(raw: SalesRowDb, isLate: LateFn): SalesRow | null {
     saleType,
     saleName: raw.sale_name?.trim() || null,
     amName: raw.am_name?.trim() || null,
-    mailDate: mail,
+    salesDate,
+    dateSource,
     valueTotal: Number.isFinite(value) ? value : 0,
-    isLate: isLate(saleType, mail),
+    // ล่าช้านิยามจากวันที่รับ Mail เท่านั้น — แถวที่ใช้วันเริ่มสัญญาไม่ติดป้าย (2.101) · ห้ามส่ง start_date เข้า isLate
+    isLate: dateSource === "mail" || FLAG_LATE_ON_START_DATE_ROWS ? isLate(saleType, mail) : false,
   };
 }
 
@@ -123,15 +170,27 @@ interface Chainable {
 }
 
 /** ต่อเงื่อนไขกรองสัญญายกเลิก/นำเข้าตามตัวเลือก — จุดเดียวของทั้งสอง query */
-function applyScope<T>(query: T, opt: SalesLoadOptions): T {
+function applyScope<T>(query: T, opt: SalesLoadOptions, noMailOnly = false): T {
   let q = query as unknown as Chainable;
   if (opt.excludeCancelled) q = q.or(KEEP_UNLESS_ENTRY_ERROR_CANCELLED);
   if (opt.excludeImported) q = q.is("import_batch", null);
+  // query นับ "ไม่มีวันที่รับ Mail": เมื่อสัญญานำเข้าใช้วันเริ่มสัญญาแล้ว ต้องไม่นับซ้ำ → เหลือเฉพาะที่ไม่ใช่สัญญานำเข้า
+  if (noMailOnly && opt.useStartDateForImported && !opt.excludeImported) q = q.is("import_batch", null);
   return q as unknown as T;
 }
 
 /**
- * โหลดสัญญา New/Renew ที่วันที่รับ Mail ตั้งแต่ `windowStart` ('YYYY-MM-DD') ขึ้นไป + นับสัญญาที่ไม่มีวันที่รับ Mail
+ * เงื่อนไขหน้าต่างเวลา (PostgREST `or`) — เป็น AND กับ `or` ของตัวกรองสัญญายกเลิก (PostgREST ถือ `or` ซ้ำเป็น AND กัน)
+ *   = มี Mail และ ≥ windowStart
+ *   หรือ (ไม่มี Mail + เป็นสัญญานำเข้า + วันเริ่มสัญญา ≥ windowStart) — ใช้เฉพาะเมื่อเปิด useStartDateForImported (ปิด = gte Mail ธรรมดา)
+ * windowStart ผ่านการตรวจรูปแบบ YYYY-MM-DD แล้วก่อนเรียก (ไม่ใช่ข้อความอิสระ)
+ */
+function windowFilter(windowStart: string): string {
+  return `mail_received_date.gte.${windowStart},and(mail_received_date.is.null,import_batch.not.is.null,start_date.gte.${windowStart})`;
+}
+
+/**
+ * โหลดสัญญา New/Renew ที่วันที่จัดเดือน (วันที่รับ Mail · สัญญานำเข้าไม่มี Mail ใช้วันเริ่มสัญญา) ตั้งแต่ `windowStart` ('YYYY-MM-DD') ขึ้นไป + นับสัญญาที่ไม่มีวันที่รับ Mail
  * `windowStart` ต้องเป็นวันที่รูปแบบ YYYY-MM-DD (ตรวจก่อนต่อเข้า query — ไม่รับข้อความอิสระ)
  */
 export async function loadSalesRows(
@@ -142,22 +201,22 @@ export async function loadSalesRows(
 ): Promise<SalesLoadResult> {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(windowStart)) return { ok: false, code: "bad_window" };
 
-  const page = (from: number, withCount: boolean) =>
-    applyScope(
-      supabase
-        .from("contracts")
-        .select(SELECT, withCount ? { count: "exact" } : undefined)
-        .not("sale_type", "is", null)
-        .gte("mail_received_date", windowStart)
-        .order("id", { ascending: true })
-        .range(from, from + SALES_PAGE_CHUNK - 1),
-      options,
-    );
+  const startDateOn = options.useStartDateForImported && !options.excludeImported;
+  const page = (from: number, withCount: boolean) => {
+    const base = supabase
+      .from("contracts")
+      .select(SELECT, withCount ? { count: "exact" } : undefined)
+      .not("sale_type", "is", null);
+    // เปิดวันเริ่มสัญญา = `or` 2 กรณี · ปิด = gte ของวันที่รับ Mail อย่างเดียว (กฎ 2.91 เดิม)
+    const windowed = startDateOn ? base.or(windowFilter(windowStart)) : base.gte("mail_received_date", windowStart);
+    return applyScope(windowed.order("id", { ascending: true }).range(from, from + SALES_PAGE_CHUNK - 1), options);
+  };
 
   // query นับอย่างเดียว (head) — ไม่ส่งแถวกลับ
   const noMailQuery = applyScope(
     supabase.from("contracts").select("id", { count: "exact", head: true }).not("sale_type", "is", null).is("mail_received_date", null),
     options,
+    true,
   );
 
   const [first, noMail] = await Promise.all([page(0, true), noMailQuery]);
@@ -167,7 +226,7 @@ export async function loadSalesRows(
   const out: SalesRow[] = [];
   const collect = (batch: SalesRowDb[]) => {
     for (const raw of batch) {
-      const r = toSalesRow(raw, isLate);
+      const r = toSalesRow(raw, isLate, options.useStartDateForImported);
       if (r) out.push(r);
     }
   };
