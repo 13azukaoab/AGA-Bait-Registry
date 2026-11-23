@@ -275,7 +275,7 @@ export function CollectionClient({
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-[10px] border border-border bg-surface shadow-[var(--shadow)] max-[767px]:overflow-visible max-[767px]:border-0 max-[767px]:bg-transparent max-[767px]:shadow-none">
+      <div data-tour="collect-list" className="overflow-hidden rounded-[10px] border border-border bg-surface shadow-[var(--shadow)] max-[767px]:overflow-visible max-[767px]:border-0 max-[767px]:bg-transparent max-[767px]:shadow-none">
         <table className="w-full border-collapse text-[13px] max-[767px]:block">
           <thead className="max-[767px]:hidden">
             <tr className="bg-surface-2 text-left text-[12px] text-fg-muted">
