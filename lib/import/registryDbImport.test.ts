@@ -4,7 +4,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { describe, expect, it } from "vitest";
 import { TIER_RULES } from "../rules/__fixtures__/tierRules";
-import { importRegistryPlan, safeDbError, verifyRegistryImport } from "./registryDbImport";
+import { FORM_COLUMNS, formHeaders, formRowValues, planManualRows, readManualRowsForm, type FormRow } from "./manualRowsForm";
+import { findExistingContracts, importRegistryPlan, safeDbError, verifyBatchImport, verifyRegistryImport } from "./registryDbImport";
 import { planRegistryImport, type RegistryImportPlan } from "./registryImportPlan";
 import type { CellValue } from "./registrySheet";
 
@@ -311,5 +312,96 @@ describe("verifyRegistryImport", () => {
     });
     const v = await verifyRegistryImport(f.client, PLAN);
     expect(v.branches[0]!.mismatches).toEqual(expect.arrayContaining(["ชุดเลขสัญญา", "จำนวนสัญญา", "cust"]));
+  });
+});
+
+// ---------------------------------------------------------------------
+// โหมด append — แบบฟอร์มกรอกแถวที่นำเข้าไม่ได้ (DECISIONS 2.104 · ข้อมูลสมมติ)
+// ---------------------------------------------------------------------
+
+function fixPlan(batch = "registry-OCT26-fix1", skip?: Set<string>): RegistryImportPlan {
+  const blank = Object.fromEntries(FORM_COLUMNS.map((c) => [c.key, ""])) as FormRow;
+  const r = (o: Partial<FormRow>): FormRow => ({
+    ...blank,
+    fixed: "ใช่",
+    customerType: "H",
+    startDate: "01/07/2026",
+    endDate: "30/06/2027",
+    value1y: "45000",
+    saleType: "Renew",
+    team: "A",
+    ...o,
+  });
+  const read = readManualRowsForm([
+    formHeaders(),
+    formRowValues(r({ branch: "สาทร", excelRow: "19", contractNo: "CT26-0000101", customerName: "ลูกค้าสมมติ 101", phone: "0810000101", address: "ที่อยู่สมมติ 101" })),
+    formRowValues(r({ branch: "ปทุมวัน", excelRow: "7", contractNo: "CT26-0000102", customerName: "ลูกค้าสมมติ 102", value1y: "", value3y: "150000", startDate: "01/01/2026", endDate: "31/12/2028" })),
+  ]);
+  expect(read.invalid).toEqual([]);
+  return planManualRows(read.accepted, { rules: TIER_RULES, month: "2026-10", importBatch: batch, skipContractNos: skip }).plan;
+}
+
+describe("importRegistryPlan โหมด append (2.104)", () => {
+  it("สาขามีข้อมูลรอบแรกอยู่แล้ว: full = หยุดเหมือนเดิม · append = เขียนได้ · ตรวจรอบด้วย verifyBatchImport ผ่าน", async () => {
+    const f = fakeClient();
+    await importRegistryPlan(f.client, PLAN, { newId: f.newId }); // รอบแรก (registry-TEST)
+    const fix = fixPlan();
+    await expect(importRegistryPlan(f.client, fix, { dryRun: true })).rejects.toThrow(/พบข้อมูลเดิมในสาขาเป้าหมาย/);
+    const dry = await importRegistryPlan(f.client, fix, { dryRun: true, mode: "append", newId: f.newId });
+    expect(dry.existing).toMatchObject({ customersInBranches: 4, contractNos: 0, batchContracts: 0 });
+    const res = await importRegistryPlan(f.client, fix, { mode: "append", newId: f.newId });
+    expect(res.written).toEqual({ customers: 2, customerPhones: 1, contracts: 2, contractTeams: 2 });
+    expect(f.db.contracts!.filter((c) => c.import_batch === "registry-OCT26-fix1").map((c) => c.contract_no)).toEqual(["CT26-0000101", "CT26-0000102"]);
+    expect(f.db.contracts!.filter((c) => c.import_batch === "registry-TEST")).toHaveLength(4); // รอบแรกไม่ถูกแตะ
+
+    const v = await verifyBatchImport(f.client, fix);
+    expect(v.ok).toBe(true);
+    expect(v.branches.map((b) => [b.branch, b.dbContracts, b.mismatches])).toEqual([
+      ["สาทร", 1, []],
+      ["ปทุมวัน", 1, []],
+    ]);
+    expect(v.totals).toMatchObject({ plannedContracts: 2, dbContracts: 2, expectedCust: 2, actualCust: 2, expectedValue: 195000, actualValue: 195000 });
+    // ตัวตรวจทะเบียนเต็มใช้กับรอบ append ไม่ได้ (นับสัญญารอบแรกด้วย) — เหตุที่ต้องมี verifyBatchImport
+    expect((await verifyRegistryImport(f.client, fix)).ok).toBe(false);
+    expect(JSON.stringify(v)).not.toContain("สมมติ");
+  });
+
+  it("ห้ามใช้ batch รอบแรก · batch นี้มีสัญญาแล้ว = หยุด (1 รอบ = 1 batch)", async () => {
+    const f = fakeClient();
+    await expect(importRegistryPlan(f.client, { ...fixPlan(), importBatch: "registry-OCT26" }, { dryRun: true, mode: "append" })).rejects.toThrow(
+      /ห้ามใช้ batch รอบแรก/,
+    );
+    await importRegistryPlan(f.client, fixPlan(), { mode: "append", newId: f.newId });
+    const again = fixPlan("registry-OCT26-fix1", new Set(["CT26-0000101", "CT26-0000102"]));
+    await expect(importRegistryPlan(f.client, again, { dryRun: true, mode: "append" })).rejects.toThrow(/batch registry-OCT26-fix1 มีสัญญาอยู่แล้ว 2/);
+  });
+
+  it("เลขสัญญาในแผนมีใน DB แล้ว = หยุด (ด่านสุดท้าย) · findExistingContracts บอก batch + สาขา แล้วตัดออกจากแผนได้", async () => {
+    const f = fakeClient();
+    await importRegistryPlan(f.client, PLAN, { newId: f.newId });
+    // จำลอง: แอดมินเปิดสัญญา CT26-0000101 ในแอปไปแล้ว (import_batch ว่าง)
+    f.db.contracts!.push({ id: "app-1", customer_id: f.db.customers![3]!.id, contract_no: "CT26-0000101", import_batch: null });
+    await expect(importRegistryPlan(f.client, fixPlan("registry-OCT26-fix2"), { dryRun: true, mode: "append" })).rejects.toThrow(
+      /เลขสัญญาในแผนมีใน DB แล้ว 1/,
+    );
+    const existing = await findExistingContracts(f.client, ["CT26-0000101", "CT26-0000102", "CT26-0000001"]);
+    expect([...existing.values()]).toEqual([
+      { contractNo: "CT26-0000001", importBatch: "registry-TEST", branch: "สาทร" },
+      { contractNo: "CT26-0000101", importBatch: null, branch: "ปทุมวัน" },
+    ]);
+    const trimmed = fixPlan("registry-OCT26-fix2", new Set(existing.keys()));
+    const res = await importRegistryPlan(f.client, trimmed, { mode: "append", newId: f.newId });
+    expect(res.written.contracts).toBe(1);
+    expect((await verifyBatchImport(f.client, trimmed)).ok).toBe(true);
+  });
+
+  it("verifyBatchImport: สัญญาของ batch อยู่สาขานอกแผน = ไม่ผ่าน", async () => {
+    const f = fakeClient();
+    const fix = fixPlan();
+    await importRegistryPlan(f.client, fix, { mode: "append", newId: f.newId });
+    const onlySathorn = { ...fix, branches: fix.branches.filter((b) => b.branch === "สาทร") };
+    const v = await verifyBatchImport(f.client, onlySathorn);
+    expect(v.ok).toBe(false);
+    expect(v.strayContracts).toBe(1);
   });
 });

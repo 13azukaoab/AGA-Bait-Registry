@@ -7,6 +7,10 @@
  *      · teams (รหัส → id: ทีมของสาขาก่อน ไม่มีใช้ทีมกลาง branch_id NULL · ห้าม supervisor / ปิดใช้งาน)
  *      หาไม่เจอแม้ตัวเดียว = หยุดก่อนเขียน (ไม่เดา)
  *   2. ด่านกันนำเข้าซ้ำ: มีลูกค้าในสาขาเป้าหมายอยู่แล้ว หรือมีเลขสัญญาในแผนอยู่แล้ว = หยุด (รันซ้ำไม่เกิดแถวซ้ำ)
+ *      โหมด append (DECISIONS 2.104 · แบบฟอร์มกรอกแถวที่นำเข้าไม่ได้ เป็นรอบๆ):
+ *        ไม่ใช้ด่าน "มีลูกค้าในสาขาแล้ว" (สาขามีข้อมูลรอบแรกอยู่แล้วเป็นปกติ · นับไว้แสดงอย่างเดียว)
+ *        แต่หยุดเมื่อ: importBatch = รอบแรก (registry-OCT26) · batch นี้มีสัญญาอยู่แล้ว (1 รอบ = 1 batch → ถอยแยกรอบได้)
+ *        · เลขสัญญาในแผนมีใน DB แล้ว (ผู้เรียกต้องตัดออกก่อนด้วย findExistingContracts — ตัวนี้เป็นด่านสุดท้าย)
  *   3. dryRun = จบตรงนี้ (ไม่เขียน)
  *   4. เขียนทีละตาราง customers → customer_phones → contracts → contract_teams (แบ่งชุดละ CHUNK แถว · id สร้างฝั่งนี้)
  *      PostgREST 1 คำขอ = 1 transaction แต่ "ข้ามตาราง" ไม่ใช่ transaction เดียว → ถ้าคำขอไหนพัง
@@ -19,6 +23,8 @@
  *   ตัวเดียวกับ Auto Sync → buildBranchSnapshot ใน lib/rules · ไม่มีสูตรใหม่) → เทียบกับ plan.expected ทุกช่อง (เงินเทียบสตางค์)
  *   + ทุกสัญญาของสาขามี import_batch = plan.importBatch (2.86) + ชุดเลขสัญญาใน DB = ชุดในแผน (แถวกรอกมือ/แถวที่กันไว้/แถวที่ตัดออกไม่หลุดเข้า DB) + จำนวน sale_name / am_name / ทีม
  *   + จำนวนลูกค้าที่มีที่อยู่ต่อสาขา = plan.addresses.withAddress (2.102 · อ่านค่าเข้าหน่วยความจำเพื่อนับเท่านั้น ไม่พิมพ์)
+ *   verifyBatchImport (โหมด append): เทียบเหมือนกันทุกข้อ แต่อ่านเฉพาะสัญญาของ batch นี้ (ไม่ใช่ทั้งสาขา —
+ *   สาขามีสัญญารอบแรกอยู่แล้ว) · ยอดที่คาด = buildBranchSnapshot ของแถวในรอบนี้เท่านั้น · สัญญาของ batch ที่สาขาไม่อยู่ในแผน = ไม่ผ่าน
  *
  * สิทธิ์: ผู้เรียกส่ง client ที่เป็น service_role ผ่าน PostgREST (CLAUDE.md กฎ Deploy: ห้ามต่อด้วย role postgres)
  *   trigger ที่ตรวจกฎหน้าจอ (AG012 Renew ไม่ผูก · team_links_guard ฯลฯ) ยกเว้น service_role ตามที่ออกแบบไว้สำหรับนำเข้า
@@ -28,7 +34,9 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { computeCentralRows, type BranchContract } from "../dashboard/sources";
+import type { TierRule } from "../rules/types";
 import { TIER_RULE_COLUMNS, toTierRules, type TierRuleRow } from "../tierRules";
+import { REGISTRY_IMPORT_BATCH_OCT26 } from "./centralRegistrySheets";
 import type { PlannedContract, RegistryImportPlan } from "./registryImportPlan";
 
 type Row = Record<string, unknown>;
@@ -132,6 +140,48 @@ export interface ExistingData {
   customersInBranches: number;
   /** เลขสัญญาในแผนที่มีอยู่แล้วใน DB */
   contractNos: number;
+  /** (โหมด append เท่านั้น) สัญญาที่มี import_batch เดียวกับรอบนี้อยู่แล้ว */
+  batchContracts?: number;
+}
+
+/** จำนวนสัญญาที่มี import_batch นี้อยู่แล้ว (โหมด append · 1 รอบ = 1 batch) */
+export async function countBatchContracts(client: SupabaseClient, batch: string): Promise<number> {
+  const res = await client.from("contracts").select("id", { count: "exact", head: true }).in("import_batch", [batch]);
+  if (res.error) throw new Error(`นำเข้า: ตรวจ batch เดิมไม่สำเร็จ: ${safeDbError(res.error)}`);
+  return res.count ?? 0;
+}
+
+/** สัญญาที่มีเลขอยู่แล้วใน DB (ข้อมูลที่ใช้รายงานว่าทำไมข้าม · ไม่มีข้อมูลลูกค้า) */
+export interface ExistingContract {
+  contractNo: string;
+  /** null = เปิดในแอป (ไม่ใช่สัญญานำเข้า) */
+  importBatch: string | null;
+  /** สาขาของลูกค้าเจ้าของสัญญา · null = หาไม่เจอ */
+  branch: string | null;
+}
+
+/** หาเลขสัญญาที่มีอยู่แล้วใน DB (โหมด append ใช้ตัดออกจากแผนก่อนนำเข้า · อ่านอย่างเดียว) */
+export async function findExistingContracts(
+  client: SupabaseClient,
+  contractNos: readonly string[],
+): Promise<Map<string, ExistingContract>> {
+  const out = new Map<string, ExistingContract>();
+  if (contractNos.length === 0) return out;
+  const rows = await selectIn(client, "contracts", "id, contract_no, import_batch, customer_id", "contract_no", [...new Set(contractNos)]);
+  const customerIds = [...new Set(rows.map((r) => String(r.customer_id)))];
+  const customers = customerIds.length ? await selectIn(client, "customers", "id, branch_id", "id", customerIds) : [];
+  const branches = await selectAll(client, "branches", "id, name");
+  const branchName = new Map(branches.map((b) => [String(b.id), String(b.name)]));
+  const customerBranch = new Map(customers.map((c) => [String(c.id), branchName.get(String(c.branch_id)) ?? null]));
+  for (const r of rows) {
+    const no = String(r.contract_no);
+    out.set(no, {
+      contractNo: no,
+      importBatch: typeof r.import_batch === "string" && r.import_batch !== "" ? r.import_batch : null,
+      branch: customerBranch.get(String(r.customer_id)) ?? null,
+    });
+  }
+  return out;
 }
 
 export async function findExistingData(
@@ -217,6 +267,11 @@ export interface RegistryDbImportOptions {
   dryRun?: boolean;
   /** ตัวสร้าง uuid (เทสส่งตัวที่คาดได้) */
   newId?: () => string;
+  /**
+   * "full" (ค่าเริ่มต้น) = นำเข้าทะเบียนเต็ม: สาขาเป้าหมายต้องว่าง (ด่านเดิม ไม่เปลี่ยน)
+   * "append" = นำเข้าเพิ่มเป็นรอบ (แบบฟอร์ม 2.104) — ดู Logic summary ข้อ 2
+   */
+  mode?: "full" | "append";
 }
 
 export interface RegistryDbImportResult {
@@ -241,12 +296,30 @@ export async function importRegistryPlan(
   opts: RegistryDbImportOptions = {},
 ): Promise<RegistryDbImportResult> {
   const dryRun = opts.dryRun ?? false;
+  const mode = opts.mode ?? "full";
+  if (mode === "append" && plan.importBatch === REGISTRY_IMPORT_BATCH_OCT26) {
+    throw new Error(`นำเข้า (append): ห้ามใช้ batch รอบแรก ${REGISTRY_IMPORT_BATCH_OCT26} — ตั้งชื่อรอบใหม่ (เช่น ${REGISTRY_IMPORT_BATCH_OCT26}-fix1)`);
+  }
   const refs = await loadReferenceIds(client, plan);
   const existing = await findExistingData(client, plan, refs);
-  if (existing.customersInBranches > 0 || existing.contractNos > 0) {
-    throw new Error(
-      `นำเข้า: พบข้อมูลเดิมในสาขาเป้าหมาย (ลูกค้า ${existing.customersInBranches} · เลขสัญญาในแผน ${existing.contractNos}) — หยุด ไม่เขียนซ้ำ`,
-    );
+  if (mode === "full") {
+    if (existing.customersInBranches > 0 || existing.contractNos > 0) {
+      throw new Error(
+        `นำเข้า: พบข้อมูลเดิมในสาขาเป้าหมาย (ลูกค้า ${existing.customersInBranches} · เลขสัญญาในแผน ${existing.contractNos}) — หยุด ไม่เขียนซ้ำ`,
+      );
+    }
+  } else {
+    existing.batchContracts = await countBatchContracts(client, plan.importBatch);
+    if (existing.batchContracts > 0) {
+      throw new Error(
+        `นำเข้า (append): batch ${plan.importBatch} มีสัญญาอยู่แล้ว ${existing.batchContracts} ฉบับ — หยุด (1 รอบ = 1 batch · ตั้งชื่อรอบใหม่)`,
+      );
+    }
+    if (existing.contractNos > 0) {
+      throw new Error(
+        `นำเข้า (append): เลขสัญญาในแผนมีใน DB แล้ว ${existing.contractNos} ฉบับ — หยุด (ต้องตัดออกก่อนด้วย findExistingContracts)`,
+      );
+    }
   }
   const rows = buildInsertRows(plan, refs, opts.newId ?? (() => crypto.randomUUID()));
   const planned = {
@@ -378,6 +451,8 @@ export interface RegistryVerification {
   month: string;
   ok: boolean;
   branches: BranchVerification[];
+  /** (verifyBatchImport เท่านั้น) สัญญาของ batch ที่สาขาไม่อยู่ในแผน — มี = ไม่ผ่าน */
+  strayContracts?: number;
   totals: {
     plannedContracts: number;
     dbContracts: number;
@@ -429,6 +504,60 @@ export async function verifyRegistryImport(client: SupabaseClient, plan: Registr
 
   // address อ่านเพื่อนับว่ามี/ไม่มีเท่านั้น (ไม่เก็บ/ไม่พิมพ์ค่า)
   const customers = await selectIn(client, "customers", "id, branch_id, address", "branch_id", targetIds);
+  const customerIds = customers.map((c) => String(c.id));
+  const contracts = await selectIn(client, "contracts", VERIFY_CONTRACT_COLUMNS, "customer_id", customerIds);
+  return compareWithPlan(plan, await loadVerifyExtras(client, { nameById, customers, contracts }));
+}
+
+/**
+ * ตรวจรอบนำเข้าแบบ append (แบบฟอร์ม 2.104) — อ่านเฉพาะสัญญาของ plan.importBatch (ดู Logic summary หัวไฟล์)
+ * ยอดที่เทียบ = ยอดของสัญญาในรอบนี้เท่านั้น (plan.expected ของแผนรอบนี้) ไม่ใช่ยอดทั้งสาขา
+ */
+export async function verifyBatchImport(client: SupabaseClient, plan: RegistryImportPlan): Promise<RegistryVerification> {
+  const branches = await selectAll(client, "branches", "id, name");
+  const nameById = new Map(branches.map((b) => [String(b.id), String(b.name)]));
+  const contracts = await selectIn(client, "contracts", VERIFY_CONTRACT_COLUMNS, "import_batch", [plan.importBatch]);
+  const customerIds = [...new Set(contracts.map((c) => String(c.customer_id)))];
+  const customers = customerIds.length ? await selectIn(client, "customers", "id, branch_id, address", "id", customerIds) : [];
+  const result = compareWithPlan(plan, await loadVerifyExtras(client, { nameById, customers, contracts }));
+  const planBranches = new Set(plan.branches.map((b) => b.branch));
+  const customerBranch = new Map(customers.map((c) => [String(c.id), nameById.get(String(c.branch_id)) ?? ""]));
+  const stray = contracts.filter((c) => !planBranches.has(customerBranch.get(String(c.customer_id)) ?? "")).length;
+  return stray > 0 ? { ...result, ok: false, strayContracts: stray } : result;
+}
+
+const VERIFY_CONTRACT_COLUMNS =
+  "id, customer_id, contract_no, start_date, end_date, term_months, value_total, cancelled_at, stations_initialized_at, renewed_from_contract_id, sale_name, am_name, import_batch";
+
+interface VerifyData {
+  nameById: Map<string, string>;
+  /** id, branch_id, address (address ใช้นับเท่านั้น) */
+  customers: Row[];
+  contracts: Row[];
+  phones: Row[];
+  teams: Row[];
+  rules: TierRule[];
+}
+
+async function loadVerifyExtras(
+  client: SupabaseClient,
+  base: Pick<VerifyData, "nameById" | "customers" | "contracts">,
+): Promise<VerifyData> {
+  const customerIds = base.customers.map((c) => String(c.id));
+  const phones = customerIds.length ? await selectIn(client, "customer_phones", "id, customer_id", "customer_id", customerIds) : [];
+  const contractIds = base.contracts.map((c) => String(c.id));
+  const teams = contractIds.length
+    ? await selectIn(client, "contract_teams", "contract_id, team_id", "contract_id", contractIds, ["contract_id", "team_id"])
+    : [];
+  const { data: tierData, error: tierErr } = await client.from("tier_rules").select(TIER_RULE_COLUMNS);
+  if (tierErr) throw new Error(`ตรวจยอด: อ่าน tier_rules ไม่สำเร็จ: ${safeDbError(tierErr)}`);
+  const rules = toTierRules((tierData ?? []) as unknown as TierRuleRow[]);
+  return { ...base, phones, teams, rules };
+}
+
+/** เทียบข้อมูลที่อ่านจาก DB กับแผนรายสาขา (ใช้ร่วมกันทั้งตรวจทะเบียนเต็มและตรวจรอบ append) */
+function compareWithPlan(plan: RegistryImportPlan, d: VerifyData): RegistryVerification {
+  const { nameById, customers, contracts, phones, teams, rules } = d;
   const withAddress = new Map<string, number>();
   for (const c of customers) {
     if (c.address === null || c.address === undefined) continue;
@@ -436,21 +565,6 @@ export async function verifyRegistryImport(client: SupabaseClient, plan: Registr
     withAddress.set(br, (withAddress.get(br) ?? 0) + 1);
   }
   const customerBranch = new Map(customers.map((c) => [String(c.id), nameById.get(String(c.branch_id))!]));
-  const contracts = await selectIn(
-    client,
-    "contracts",
-    "id, customer_id, contract_no, start_date, end_date, term_months, value_total, cancelled_at, stations_initialized_at, renewed_from_contract_id, sale_name, am_name, import_batch",
-    "customer_id",
-    [...customerBranch.keys()],
-  );
-  const phones = await selectIn(client, "customer_phones", "id, customer_id", "customer_id", [...customerBranch.keys()]);
-  const teams = await selectIn(client, "contract_teams", "contract_id, team_id", "contract_id", contracts.map((c) => String(c.id)), [
-    "contract_id",
-    "team_id",
-  ]);
-  const { data: tierData, error: tierErr } = await client.from("tier_rules").select(TIER_RULE_COLUMNS);
-  if (tierErr) throw new Error(`ตรวจยอด: อ่าน tier_rules ไม่สำเร็จ: ${safeDbError(tierErr)}`);
-  const rules = toTierRules((tierData ?? []) as unknown as TierRuleRow[]);
 
   const str = (v: unknown): string | undefined => (typeof v === "string" && v !== "" ? v : undefined);
   const registryContracts: BranchContract[] = contracts.map((c) => ({
