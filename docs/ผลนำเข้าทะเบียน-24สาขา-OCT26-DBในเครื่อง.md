@@ -249,13 +249,19 @@ npx vite-node --config vitest.config.ts scripts/import-central-registry.ts -- --
 - ตัดที่แกนเดียวกับ dry-run (`prepareStrictImport`) **ก่อนคิดยอด** → ยอดที่คาด / จำนวน / ที่อยู่ / เบอร์ และยอดที่ตรวจหลังเขียน คิดจากแผนที่ตัดแล้วทั้งหมด
 - ด่าน (หยุดทันที): ไฟล์/ชีทไม่ตรง · แถวไม่พบ · เลขสัญญาในแถวไม่ตรง · แถวที่กันไว้ (ง1) · แถวกรอกมือ · ระบุแถวซ้ำ
 - รายงาน: dry-run/สคริปต์พิมพ์ `excludedRows` = สาขา + เลขแถว + เลขสัญญา (เลขสัญญาไม่ใช่ข้อมูลส่วนบุคคล) · `totals.excluded`
-- ⚠ HQ ส่งรายการจริงเมื่อไร: เทสไฟล์จริงต้องคิดตัวเลขใหม่ทุกตัว (2,369 · ยอด OCT.26 · ชื่อซ้ำ 76/170 · เบอร์ · ที่อยู่ 2,317/52 · ผู้ขาย · New/Renew · ทีม) และรันกับ DB ใหม่ 1 รอบ
+- ✅ **เจ้าของตอบ 8 กลุ่มแล้ว (23 พ.ย. ผ่าน HQ): ไม่ตัดสัญญาใดเลย** → รายการ = ว่าง (คงกลไกไว้)
+- ⚠ ถ้าวันหลังเพิ่มรายการ: เทสไฟล์จริงต้องคิดตัวเลขใหม่ทุกตัว (2,369 · ยอด OCT.26 · ชื่อซ้ำ 76/170 · เบอร์ · ที่อยู่ 2,317/52 · ผู้ขาย · New/Renew · ทีม) และรันกับ DB ใหม่ 1 รอบ
 
-### 18.3 ผลกับ DB ในเครื่อง
-- ⏳ **รอคิว DB จาก HQ** — แผน: `db reset` → legacy → `--apply` (ตรวจยอดต่อทันที) → `db reset`
-- ค่าที่ต้องได้: ลูกค้า 2,369 · เบอร์ 2,278 · สัญญา 2,369 · มีที่อยู่ 2,317 (ต่อสาขาตามตารางข้างบน) · OCT.26 2,366 / 132,947,645.82 · verify ok
+### 18.3 ผลกับ DB ในเครื่อง (23 พ.ย. 2026 · ได้คิวจาก HQ)
+1. `main` ไม่มี migration ใหม่เทียบกับ worktree → `db reset` → legacy 903 แถว (cust 61,110 · 3,165,298,529.76)
+2. `--apply` (exit 0): customers 2,369 · customer_phones 2,278 · contracts 2,369 · contract_teams 2,369 · รายการตัด 0 → อ่านกลับทุกช่อง (รวม `address`) ตรง
+3. ตรวจยอด (verify ok): OCT.26 จาก DB = แผน **ทุกสาขาทุกช่อง** 2,366 / 132,947,645.82 · **มีที่อยู่ต่อสาขา DB = แผน ครบ 24 สาขา** (รวม 2,317 · ตรงตาราง 18.1)
+4. SQL อ่านอย่างเดียว (นับเท่านั้น): `address` ไม่ว่าง 2,317 / 2,369 · ค่าที่ยังมีช่องว่างเกิน/หัวท้าย 0 · สตริงว่าง 0 · `import_batch = 'registry-OCT26'` 2,369 · legacy 903 ไม่ถูกแตะ
+5. `db reset` คืน DB สะอาด (customers/contracts/snapshots/audit_log/auth.users = 0) · แจ้ง HQ + หมวด 4 แล้ว
+- สำหรับแผน cloud: เพิ่มด่านตรวจ "มีที่อยู่ 2,317 (ต่อสาขาตามตาราง 18.1)" (HQ แก้แผน)
 
 ## 11. ไฟล์ที่แตะ
 - ใหม่: `lib/import/phones.ts` (+ test) · `lib/import/registryImportPlan.ts` (+ test) · `lib/import/registryDbImport.ts` (+ test) · `lib/import/centralRegistryFiles.ts` · `lib/import/centralRegistryCorrections.ts` (+ test) · `lib/import/registryImport.realfile.test.ts` · `scripts/import-central-registry.ts` · เอกสารนี้
 - แก้: `lib/import/registrySheet.ts` (รับหัว "เบอร์ติดต่อ") · `lib/import/registryDryRun.ts` (แยกแกน `prepareStrictImport` ใช้ร่วม dry-run/นำเข้าจริง · ผลเดิมไม่เปลี่ยน) · `lib/import/centralRegistry.testkit.ts` (ส่งต่อจาก centralRegistryFiles) · เทส dry-run เขต 1 / 21 สาขา (ตัวเลขตาม 2.80) · รายการกรอกมือ 2 ไฟล์
+- 23 พ.ย. (2.102/2.103): ใหม่ `lib/import/addresses.ts` (+ test) · แก้ `registrySheet.ts` · `registryDryRun.ts` · `registryImportPlan.ts` · `registryDbImport.ts` · `centralRegistryCorrections.ts` · `centralRegistryFiles.ts` · `scripts/import-central-registry.ts` + เทสที่เกี่ยวข้อง
 - ไม่แตะ: `supabase/**` · `lib/rules/**` · `lib/dashboard/**` · `lib/import/index.ts` · fixtures (ไม่ commit)
