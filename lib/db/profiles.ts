@@ -16,7 +16,7 @@ import type { AppProfile, Division, UserRole } from "./types";
 
 /** คอลัมน์ที่ต้องใช้ — ประกาศไว้ที่เดียวเพื่อให้ select กับ type ตรงกันแน่นอน */
 const PROFILE_COLUMNS =
-  "user_id, display_name, username, role, position_code, division_scope, team_id, is_active, must_change_password, last_login, positions ( name_th )";
+  "user_id, display_name, username, role, position_code, division_scope, team_id, is_active, must_change_password, last_login, positions ( name_th, short_name_th )";
 
 /** รูปแบบแถวที่ PostgREST ส่งกลับตาม `PROFILE_COLUMNS` */
 type ProfileRow = {
@@ -31,7 +31,7 @@ type ProfileRow = {
   must_change_password: boolean;
   last_login: string | null;
   /** join แบบ to-one — ไม่มีตำแหน่งก็เป็น null */
-  positions: { name_th: string } | null;
+  positions: { name_th: string; short_name_th: string | null } | null;
 };
 
 function toAppProfile(row: ProfileRow): AppProfile {
@@ -42,6 +42,7 @@ function toAppProfile(row: ProfileRow): AppProfile {
     role: row.role,
     positionCode: row.position_code,
     positionName: row.positions?.name_th ?? null,
+    positionShortName: row.positions?.short_name_th ?? null,
     divisionScope: row.division_scope ?? [],
     teamId: row.team_id,
     isActive: row.is_active,

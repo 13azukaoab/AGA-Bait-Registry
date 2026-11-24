@@ -41,6 +41,7 @@ import { DEFAULT_TOPBAR_HEIGHT, topbarHeightPx } from "./topbar-height";
 import { Topbar } from "./Topbar";
 import { UpdateBanner } from "./UpdateBanner";
 import type { MonthOption, Role } from "./types";
+import type { UserLabel } from "./userLabel";
 
 const NAV_ID = "app-nav";
 /** จุดตัดจอกว้าง/จอเล็กของเมนู — ต้องตรงกับ `min-[861px]` / `max-[860px]` ใน NavDrawer */
@@ -56,6 +57,8 @@ export type AppShellProps = {
   months: readonly MonthOption[];
   /** เดือนที่เลือกตอนเริ่ม (ค่า `value` ของ months) — ไม่ระบุ = เดือนแรกในรายการ */
   defaultMonth?: string;
+  /** ป้ายผู้ที่ล็อกอินอยู่ (ข้อความล้วน) — ไม่ส่ง = ไม่แสดง */
+  userLabel?: UserLabel | null;
   /** ปลายทางปุ่มออกจากระบบ */
   logoutHref?: string;
   /**
@@ -72,6 +75,7 @@ export function AppShell({
   months,
   defaultMonth,
   logoutHref = "/login",
+  userLabel = null,
   tutorialProfile,
   children,
 }: AppShellProps) {
@@ -178,6 +182,7 @@ export function AppShell({
         role={role}
         onRoleChange={allowRoleSwitch ? setRoleOverride : undefined}
         logoutHref={logoutHref}
+        userLabel={userLabel}
       />
       <div className="mx-auto flex max-w-[1760px] items-start max-[860px]:block">
         <NavDrawer
@@ -188,6 +193,7 @@ export function AppShell({
           mini={mini}
           onToggleMini={() => setMiniByUser(!mini)}
           open={navOpen}
+          userLabel={userLabel}
           onClose={() => setNavOpen(false)}
         />
         {/* ไม่ใช้ <main> ที่นี่ เพราะแต่ละหน้ามี <main> ของตัวเองอยู่แล้ว */}

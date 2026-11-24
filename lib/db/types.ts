@@ -22,6 +22,8 @@ export type AppProfile = {
   positionCode: string | null;
   /** ชื่อตำแหน่งภาษาไทยที่ผู้ใช้เห็น (SPEC §5.1) เช่น "หัวหน้างาน" */
   positionName: string | null;
+  /** ชื่อตำแหน่งแบบสั้น (`positions.short_name_th`) เช่น "PM" — ใช้แสดงบนแถบบน */
+  positionShortName: string | null;
   divisionScope: Division[];
   teamId: string | null;
   isActive: boolean;

@@ -7,6 +7,8 @@ import { MenuToggle } from "./MenuToggle";
 import { NavLinks } from "./NavLinks";
 import styles from "./shell.module.css";
 import type { Role } from "./types";
+import type { UserLabel } from "./userLabel";
+import { UserBadge } from "./UserBadge";
 
 type NavDrawerProps = {
   role: Role;
@@ -14,6 +16,8 @@ type NavDrawerProps = {
   /** จอเล็ก: ลิ้นชักเปิดอยู่หรือไม่ (จอกว้างเมนูแสดงตลอด ไม่สนค่านี้) */
   open: boolean;
   onClose: () => void;
+  /** ป้ายผู้ที่ล็อกอินอยู่ — แสดงบนสุดของเมนูเมื่อจอ <1200px (แถบบนซ่อนป้ายช่วงนี้) */
+  userLabel?: UserLabel | null;
   /** id ของ <nav> — ปุ่ม ☰ ใช้อ้างด้วย aria-controls */
   id: string;
   /** จอกว้าง: เมนูย่ออยู่หรือไม่ (กำหนดข้อความของปุ่ม ☰ บนสุดของเมนู) */
@@ -31,7 +35,7 @@ type NavDrawerProps = {
  */
 export const NavDrawer = forwardRef<HTMLElement, NavDrawerProps>(
   function NavDrawer(
-    { role, currentPath, open, onClose, id, mini, onToggleMini },
+    { role, currentPath, open, onClose, userLabel = null, id, mini, onToggleMini },
     ref,
   ) {
     return (
@@ -51,6 +55,7 @@ export const NavDrawer = forwardRef<HTMLElement, NavDrawerProps>(
               : "max-[860px]:invisible max-[860px]:-translate-x-full",
           )}
         >
+          {userLabel ? <UserBadge label={userLabel} variant="drawer" /> : null}
           {/* จอกว้าง (≥861px) เท่านั้น: ปุ่มย่อ/ขยายเมนู อยู่บนสุด ตำแหน่งเดิมทั้งตอนย่อ (58px) และขยาย (238px)
               จอเล็กใช้ปุ่มในแถบบนแทน จึงไม่แสดงซ้ำในลิ้นชัก */}
           <MenuToggle

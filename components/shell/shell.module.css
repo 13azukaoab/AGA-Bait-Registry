@@ -74,6 +74,10 @@
     margin: 9px 6px;
     border-top: 1px solid var(--border);
   }
+  /* ตอนหุบ: ป้ายผู้ใช้เหลือไอคอนคน (ข้อความชื่อ/ตำแหน่งไม่พอใน 58px · ชี้เมาส์ = กางเมนูเห็นครบ) */
+  :global(html[data-nav-mini="1"]) .nav:not(:hover):not(:has(:focus-visible)) .navUserText {
+    display: none;
+  }
   /* ตอนหุบ: ซ่อนเลขเวอร์ชัน (แถบ 58px ไม่พอ) */
   :global(html[data-nav-mini="1"]) .nav:not(:hover):not(:has(:focus-visible)) .navVersion {
     display: none;
