@@ -1,9 +1,13 @@
+import styles from "./shell.module.css";
 import type { UserLabel } from "./userLabel";
 
 /**
  * ป้าย "ผู้ที่ล็อกอินอยู่" (ข้อความล้วน ไม่ใช่ปุ่ม)
- * - variant "topbar": แสดงเฉพาะจอกว้าง (≥861px) ชื่อตัดด้วย … ได้ ตำแหน่งเป็นป้ายเทาจาง
- * - variant "drawer": แสดงบนสุดของลิ้นชักเฉพาะจอเล็ก (≤860px) — ไม่เพิ่มความสูงแถบบนมือถือ
+ * - variant "topbar": แสดงเฉพาะจอ ≥1200px ชื่อตัดด้วย … ได้ ตำแหน่งเป็นป้ายเทาจาง
+ * - variant "drawer": แสดงบนสุดของเมนูซ้ายเมื่อจอ <1200px (ลิ้นชัก ☰ บนจอเล็ก · เมนูซ้ายติดที่บนจอ 861–1199px)
+ * - จุดตัด 1200px: ต่ำกว่านี้ป้ายบนแถบบนดันกลุ่มปุ่มจนแถบบนขึ้น 2 แถว หรือบีบชื่อระบบจนสูงขึ้น (วัดชื่อยาวสุด: 1100px สูง 72px · 1160px ขึ้นไป 57px) (เจ้าของเลือกซ่อน 24 พ.ย. 2026)
+ *   แถบบนจึงอยู่แถวเดียวเสมอ (วัดจริงที่ 900 / 1000 / 1024 / 1280px)
+ * - เมนูย่อ 58px: เหลือไอคอนคน (ชี้เมาส์เห็น title ชื่อเต็ม / เมนูกางแล้วเห็นข้อความ) — ดู .navUserText ใน shell.module.css
  */
 export function UserBadge({
   label,
@@ -26,10 +30,10 @@ export function UserBadge({
         role="group"
         title={label.full}
         aria-label={ariaLabel}
-        className="mb-3 flex items-center gap-2 border-b border-border px-2.5 pb-3 text-fg min-[861px]:hidden"
+        className="mb-3 flex items-center gap-2 border-b border-border px-2.5 pb-3 text-fg min-[1200px]:hidden"
       >
         {icon}
-        <div className="min-w-0">
+        <div className={`${styles.navUserText} min-w-0`}>
           <b className="block truncate text-sm font-semibold">{label.name}</b>
           {label.position ? (
             <span className="block truncate text-xs text-fg-muted">{label.position}</span>
@@ -44,7 +48,7 @@ export function UserBadge({
       role="group"
       title={label.full}
       aria-label={ariaLabel}
-      className="flex min-w-0 items-center gap-1.5 text-[13px] text-fg max-[860px]:hidden"
+      className="flex min-w-0 items-center gap-1.5 text-[13px] text-fg max-[1199px]:hidden"
     >
       {icon}
       <span className="max-w-[220px] truncate font-medium">{label.name}</span>
