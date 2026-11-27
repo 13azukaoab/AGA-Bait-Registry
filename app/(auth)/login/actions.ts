@@ -21,7 +21,7 @@ import { emailForUsername, isValidUsername, normalizeUsername } from "@/lib/auth
 import { fetchProfileByUserId } from "@/lib/db";
 import { createClient } from "@/lib/supabase/server";
 
-import type { LoginState } from "../form-state";
+import { LOGIN_GENERIC_HINT, type LoginState } from "../form-state";
 
 /** ข้อความเดียวสำหรับทั้ง "ไม่มีชื่อผู้ใช้นี้" และ "รหัสผ่านผิด" — กันการเดาชื่อผู้ใช้ */
 const GENERIC_ERROR = "ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง";
@@ -42,7 +42,7 @@ export async function loginAction(
   }
   // รูปแบบไม่ถูกต้องก็ตอบข้อความเดียวกัน ไม่บอกว่า "ชื่อผู้ใช้ผิดรูปแบบ"
   if (!isValidUsername(username)) {
-    return { error: GENERIC_ERROR };
+    return { error: GENERIC_ERROR, hint: LOGIN_GENERIC_HINT };
   }
 
   const supabase = await createClient();
@@ -54,7 +54,7 @@ export async function loginAction(
       password,
     });
     if (error || !data.user) {
-      return { error: GENERIC_ERROR };
+      return { error: GENERIC_ERROR, hint: LOGIN_GENERIC_HINT };
     }
     userId = data.user.id;
   } catch {
