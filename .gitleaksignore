@@ -1,0 +1,8 @@
+# gitleaks: ค่าที่ตรวจแล้วว่าไม่ใช่คีย์จริง (HQ ตรวจ 27 พ.ย. 2026)
+# - cloudGuard.test.ts JWT สมมติ (payload มีแค่ role · ลายเซ็น 12 ตัว) · userActions.test.ts รหัสชั่วคราวสมมติในเทสต์ · userAdmin.ts ชุดตัวอักษรสำหรับสุ่มรหัส
+a3bd5d4b8273027ac3fa2680fbd048ada5b3851e:lib/import/cloudGuard.test.ts:jwt:302
+02260c6d0247d128c61a73b8af8124d562c9bdc0:components/admin/userActions.test.ts:generic-api-key:61
+02260c6d0247d128c61a73b8af8124d562c9bdc0:components/admin/userActions.test.ts:generic-api-key:65
+02260c6d0247d128c61a73b8af8124d562c9bdc0:components/admin/userActions.test.ts:generic-api-key:134
+02260c6d0247d128c61a73b8af8124d562c9bdc0:components/admin/userActions.test.ts:generic-api-key:137
+a8bbd27190a77e4a095795e4f7e846c3dbf5e428:lib/admin/userAdmin.ts:generic-api-key:70
