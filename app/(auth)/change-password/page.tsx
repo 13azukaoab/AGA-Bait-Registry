@@ -28,12 +28,12 @@ export default async function ChangePasswordPage() {
       <p className={ALERT_INFO} role="status">
         {profile.mustChangePassword
           ? "บัญชีนี้ยังใช้รหัสผ่านที่ Host ตั้งให้ ต้องตั้งรหัสผ่านใหม่ก่อนเข้าใช้งานหน้าอื่น"
-          : "ตั้งรหัสผ่านใหม่สำหรับบัญชีนี้"}
+          : "กรอกรหัสผ่านเดิม แล้วตั้งรหัสผ่านใหม่สำหรับบัญชีนี้"}
         <br />
         <span className="text-fg">{who}</span>
       </p>
 
-      <ChangePasswordForm />
+      <ChangePasswordForm requireCurrentPassword={!profile.mustChangePassword} />
 
       <p className={PAGE_HELP}>
         จำรหัสผ่านใหม่ไม่ได้ ต้องให้ <b>Host (QCS ส่วนกลาง Bait)</b> รีเซ็ตให้ —

@@ -1,6 +1,11 @@
 "use client";
 
-/** ฟอร์มตั้งรหัสผ่านใหม่ — ตรวจความยาวและความตรงกันของ 2 ช่องซ้ำอีกครั้งฝั่ง server */
+/**
+ * ฟอร์มตั้งรหัสผ่านใหม่ — ตรวจความยาวและความตรงกันของ 2 ช่องซ้ำอีกครั้งฝั่ง server
+ *
+ * `requireCurrentPassword` (SEC-04): เปลี่ยนเอง = แสดงช่อง "รหัสผ่านเดิม" · บังคับเปลี่ยนครั้งแรก = ไม่แสดง
+ * ช่องนี้เป็นแค่การแสดงผล — server ตัดสินเองจากโปรไฟล์ว่าต้องตรวจรหัสเดิมไหม
+ */
 import { useActionState } from "react";
 
 import { PASSWORD_RULE_HINT } from "@/lib/auth/passwordStrength";
@@ -21,7 +26,11 @@ import {
 } from "../ui";
 import { changePasswordAction } from "./actions";
 
-export function ChangePasswordForm() {
+export function ChangePasswordForm({
+  requireCurrentPassword,
+}: {
+  requireCurrentPassword: boolean;
+}) {
   const [state, formAction, pending] = useActionState<ChangePasswordState, FormData>(
     changePasswordAction,
     CHANGE_PASSWORD_INITIAL_STATE,
@@ -39,6 +48,23 @@ export function ChangePasswordForm() {
         </p>
       ) : null}
 
+      {requireCurrentPassword ? (
+        <div className={FIELD_WRAP}>
+          <label className={FIELD_LABEL} htmlFor="current_password">
+            รหัสผ่านเดิม
+          </label>
+          <input
+            id="current_password"
+            name="current_password"
+            type="password"
+            className={inputClass}
+            autoComplete="current-password"
+            autoFocus
+            required
+          />
+        </div>
+      ) : null}
+
       <div className={FIELD_WRAP}>
         <label className={FIELD_LABEL} htmlFor="password">
           รหัสผ่านใหม่
@@ -50,7 +76,7 @@ export function ChangePasswordForm() {
           className={inputClass}
           autoComplete="new-password"
           minLength={PASSWORD_MIN_LENGTH}
-          autoFocus
+          autoFocus={!requireCurrentPassword}
           required
           aria-describedby="password-hint"
         />
