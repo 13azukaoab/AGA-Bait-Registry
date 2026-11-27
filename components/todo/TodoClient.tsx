@@ -7,20 +7,21 @@
  *   * รับข้อมูลที่ server โหลดแล้ว (data.ts) · ส่วนที่ต้องโต้ตอบ = กล่องตกบริการ (ไม่ชดเชย / เปิดเรื่องกลับ) + กล่องเตือนเดือนค้าง
  *   * หลังบันทึกสำเร็จ → router.refresh() ให้ server อ่านตัวเลขใหม่จากฐานข้อมูล (ไม่บวก/ลบตัวเลขเอง)
  *   * ข้อความผิดพลาดแปลเป็นไทยที่ logic.ts (describeTodoError) · สิทธิ์จริงบังคับที่ฐานข้อมูล
- *   * กล่องเตือนเดือนค้างแสดงครั้งเดียวต่อการเปิดหน้านี้ (state ในหน้า ไม่ใช้ storage)
+ *   * กล่องเตือนเดือนค้างแสดงครั้งเดียวต่อการเปิดหน้านี้ (state ในหน้า ไม่ใช้ storage) · ไม่เปิดขณะบทสอนทำงาน — เปิดเมื่อบทสอนจบ/ถูกข้าม
  */
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 
 import { ConfirmDialog } from "@/components/service/ConfirmDialog";
+import { useTutorial } from "@/components/tutorial";
 import { Alert, Toast } from "@/components/ui";
 import type { UserRole } from "@/lib/db/types";
 import { monthLabel } from "@/lib/service/months";
 import { createClient } from "@/lib/supabase/client";
 
 import type { TodoData } from "./data";
-import type { ClosedMissed, PendingMissed } from "./logic";
+import { shouldShowMonthAlert, type ClosedMissed, type PendingMissed } from "./logic";
 import { MissedBox } from "./MissedBox";
 import { MonthAlert } from "./MonthAlert";
 import { reopenMissedService, waiveMissedService } from "./rpc";
@@ -33,7 +34,11 @@ export function TodoClient({ data, role }: { data: TodoData; role: UserRole }) {
   const [waiving, setWaiving] = useState<PendingMissed | null>(null);
   const [reopening, setReopening] = useState<ClosedMissed | null>(null);
   const [toast, setToast] = useState("");
-  const [alertOpen, setAlertOpen] = useState(data.isBehind);
+  // alertDismissed = ผู้ใช้กด "ไว้ทีหลัง" แล้ว · กล่องจริงจะเปิดเมื่อบทสอนไม่ทำงาน (เหตุผล: ดู shouldShowMonthAlert)
+  // สถานะบทสอนอ่านจาก TutorialProvider (อยู่ใน AppShell ครอบทุกหน้า) ไม่ต้องเพิ่มช่องทางใหม่
+  const [alertDismissed, setAlertDismissed] = useState(false);
+  const { snapshot: tour } = useTutorial();
+  const alertOpen = shouldShowMonthAlert({ isBehind: data.isBehind, dismissed: alertDismissed, tourRunning: tour.running });
   const [reopenError, setReopenError] = useState<string | null>(null);
 
   async function submitWaive(reason: string, file: File | null): Promise<string | null> {
@@ -137,7 +142,7 @@ export function TodoClient({ data, role }: { data: TodoData; role: UserRole }) {
           currentMonth={data.currentMonth}
           unfilled={data.progress.remaining}
           pending={data.pending.length}
-          onClose={() => setAlertOpen(false)}
+          onClose={() => setAlertDismissed(true)}
         />
       ) : null}
       <Toast message={toast} onClose={() => setToast("")} />

@@ -251,3 +251,12 @@ export function summarizeCollect(rows: readonly CollectContractInput[], today: s
     stations: waiting.reduce((sum, r) => sum + r.remaining, 0),
   };
 }
+
+/**
+ * กล่องเตือน "ยังปิดงานเดือนไม่เสร็จ" ควรแสดงตอนนี้ไหม
+ * ระหว่างบทสอนทำงาน ห้ามเปิด — <dialog>.showModal() ทำให้ทั้งหน้า inert รวมเมนูที่บทสอนไฮไลต์ (UAT BUG-1)
+ * พอบทสอนจบ/ถูกข้าม กล่องเตือนจะขึ้นเอง (ถ้าผู้ใช้ยังไม่กด "ไว้ทีหลัง")
+ */
+export function shouldShowMonthAlert(s: { isBehind: boolean; dismissed: boolean; tourRunning: boolean }): boolean {
+  return s.isBehind && !s.dismissed && !s.tourRunning;
+}
