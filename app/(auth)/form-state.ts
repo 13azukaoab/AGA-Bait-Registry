@@ -6,8 +6,17 @@
  * เพื่อให้ทั้ง server action และฟอร์มฝั่ง client ใช้ร่วมกันได้
  */
 
-/** สถานะของฟอร์มเข้าสู่ระบบ — `error` = ข้อความที่แสดงให้ผู้ใช้ (null = ยังไม่มีข้อผิดพลาด) */
-export type LoginState = { error: string | null };
+/**
+ * สถานะของฟอร์มเข้าสู่ระบบ — `error` = ข้อความที่แสดงให้ผู้ใช้ (null = ยังไม่มีข้อผิดพลาด)
+ * `hint` = บรรทัดช่วยใต้ข้อความผิดพลาด (ไม่บังคับ)
+ */
+export type LoginState = { error: string | null; hint?: string };
+
+/**
+ * บรรทัดช่วยใต้ข้อความกลาง "ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง" (DECISIONS 2.109 · UAT BUG-3 ทาง ค)
+ * ไม่แยกข้อความ "บัญชีถูกปิด" ออกมา — กันคนนอกไล่เดาว่ามีชื่อผู้ใช้ไหนอยู่ในระบบ
+ */
+export const LOGIN_GENERIC_HINT = "ถ้าลืมรหัสหรือบัญชีถูกปิด ติดต่อ Host";
 
 export const LOGIN_INITIAL_STATE: LoginState = { error: null };
 

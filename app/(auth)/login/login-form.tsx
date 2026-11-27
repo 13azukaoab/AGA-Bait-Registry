@@ -36,6 +36,12 @@ export function LoginForm({ next }: { next: string }) {
         <p className={ALERT_DANGER} role="alert" aria-live="polite">
           <span aria-hidden="true">⚠ </span>
           {state.error}
+          {state.hint ? (
+            <>
+              <br />
+              <span className="text-sm">{state.hint}</span>
+            </>
+          ) : null}
         </p>
       ) : null}
 
