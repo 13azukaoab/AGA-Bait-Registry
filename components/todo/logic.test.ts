@@ -8,6 +8,7 @@ import {
   summarizeCollect,
   missedActionState,
   pickPageScope,
+  shouldShowMonthAlert,
   sortClosed,
   sortPending,
   toMonthKey,
@@ -192,5 +193,25 @@ describe("สิทธิ์เข้าหน้า /todo (DECISIONS 2.57)", ()
     expect(canAccessPath("recorder", "/todo")).toBe(true);
     expect(canAccessPath("admin", "/todo")).toBe(true);
     expect(canAccessPath("viewer", "/todo")).toBe(false);
+  });
+});
+
+describe("shouldShowMonthAlert — กล่องเตือนเดือนค้างไม่บังบทสอน", () => {
+  it("เดือนค้าง + ยังไม่กดปิด + บทสอนไม่ทำงาน → แสดง", () => {
+    expect(shouldShowMonthAlert({ isBehind: true, dismissed: false, tourRunning: false })).toBe(true);
+  });
+  it("บทสอนทำงานอยู่ → ยังไม่แสดง (ไม่ให้ dialog modal บังเมนูที่บทสอนไฮไลต์)", () => {
+    expect(shouldShowMonthAlert({ isBehind: true, dismissed: false, tourRunning: true })).toBe(false);
+  });
+  it("บทสอนจบ/ถูกข้าม (tourRunning กลับเป็น false) → กล่องเตือนขึ้น ไม่หายไปเฉยๆ", () => {
+    const during = shouldShowMonthAlert({ isBehind: true, dismissed: false, tourRunning: true });
+    const after = shouldShowMonthAlert({ isBehind: true, dismissed: false, tourRunning: false });
+    expect([during, after]).toEqual([false, true]);
+  });
+  it("ผู้ใช้กด ไว้ทีหลัง แล้ว → ไม่แสดงอีก แม้บทสอนเริ่ม/จบ", () => {
+    expect(shouldShowMonthAlert({ isBehind: true, dismissed: true, tourRunning: false })).toBe(false);
+  });
+  it("เดือนไม่ค้าง → ไม่แสดง", () => {
+    expect(shouldShowMonthAlert({ isBehind: false, dismissed: false, tourRunning: false })).toBe(false);
   });
 });

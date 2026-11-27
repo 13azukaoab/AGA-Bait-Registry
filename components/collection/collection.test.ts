@@ -5,6 +5,7 @@ import { buildRow, type ContractDb, type IgMonthlyDb, type IgSummaryDb } from ".
 import { describeCollectError } from "./collectionErrors";
 import {
   applyActionResult,
+  applyCloseResult,
   canRecordRow,
   computeStats,
   effectiveEndDate,
@@ -262,6 +263,16 @@ describe("ตัวกรอง + การ์ดสรุป", () => {
     expect(next.notCollected).toBe(2);
     expect(next.last?.reasons).toEqual(["เข้าไม่ถึง"]);
     expect(next.finishMonth).toBeNull();
+  });
+  it("applyCloseResult: ปิดสัญญาแล้วแถวเป็น closed + มีเวลาปิด · ตัวเลข IG ไม่เปลี่ยน", () => {
+    const before = rows[0] as CollectionRow;
+    const next = applyCloseResult(before, "2026-11-27T03:00:00.000Z");
+    expect(next.status).toBe("closed");
+    expect(next.closedAt).toBe("2026-11-27T03:00:00.000Z");
+    expect(next.remaining).toBe(before.remaining);
+    expect(next.collected).toBe(before.collected);
+    expect(next.contractId).toBe(before.contractId);
+    expect(before.status).not.toBe("closed"); // ไม่แก้แถวเดิม
   });
 });
 

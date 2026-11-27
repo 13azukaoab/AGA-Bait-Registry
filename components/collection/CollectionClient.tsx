@@ -24,7 +24,7 @@ import { monthLabel } from "@/lib/service/months";
 import { createClient } from "@/lib/supabase/client";
 
 import { CollectDialog, ReasonDialog, type DialogKind, type DialogSubmit } from "./CollectDialog";
-import { applyActionResult, canCloseContract, canRecordRow, closeBlockReason, computeStats, endMonths, filterRows, igBase, isClosable } from "./collectionRules";
+import { applyActionResult, applyCloseResult, canCloseContract, canRecordRow, closeBlockReason, computeStats, endMonths, filterRows, igBase, isClosable } from "./collectionRules";
 import { CLOSE_CONTRACT_AVAILABLE, CLOSE_NOTE_MAX, closeContract, closeSuccessMessage, collectIgStations, skipIgCollection } from "./collectionRpc";
 import type { CollectionRow, HeldContract, MonthFilter, StatusFilter, TeamOption } from "./collectionTypes";
 
@@ -157,6 +157,10 @@ export function CollectionClient({
       setCloseError(res.error.message);
       return;
     }
+    // อัปเดตแถวเป็น "ปิดสัญญาแล้ว" ทันทีจากผล RPC (ไม่รอ refresh — dev/เครือข่ายช้าจะเห็นแถวค้างสถานะเก่า) แล้วค่อย refresh ข้อมูลจริง
+    const closedId = closeRow.contractId;
+    const closedAtIso = new Date().toISOString();
+    setRows((prev) => prev.map((r) => (r.contractId === closedId ? applyCloseResult(r, closedAtIso) : r)));
     setToast(`${closeSuccessMessage(res.igRemaining)} (${closeRow.contractNo})`);
     setCloseId(null);
     router.refresh();
