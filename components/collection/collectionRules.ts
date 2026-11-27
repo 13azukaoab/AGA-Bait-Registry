@@ -223,3 +223,8 @@ export function applyActionResult(
     notCollectedThisMonth: row.notCollectedThisMonth + (inMonth && action.kind === "not_collected" ? action.count : 0),
   };
 }
+
+/** ใช้ผลปิดสัญญา (RPC close_contract สำเร็จ) อัปเดตแถวในหน้าทันที — ตัวเลข IG ไม่เปลี่ยน (ปิดสัญญาไม่แตะ IG) */
+export function applyCloseResult(row: CollectionRow, closedAtIso: string): CollectionRow {
+  return { ...row, status: "closed", closedAt: closedAtIso };
+}
