@@ -3,9 +3,16 @@ import { withSentryConfig } from "@sentry/nextjs/config";
 import type { NextConfig } from "next";
 
 import pkg from "./package.json";
+import { securityHeaders } from "./lib/security/headers";
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  // ไม่ส่ง X-Powered-By: Next.js (SEC-08)
+  poweredByHeader: false,
+  // security headers ทุกเส้นทาง (SEC-02) — ดู lib/security/headers.ts
+  async headers() {
+    return [{ source: "/:path*", headers: securityHeaders }];
+  },
   // ฝัง VERCEL_ENV ตอน build ให้ Sentry ฝั่ง browser/edge รู้ว่าเป็น production หรือไม่ (M32)
   // — Sentry ส่งเฉพาะ production เท่านั้น (lib/sentry/options.ts)
   env: {
