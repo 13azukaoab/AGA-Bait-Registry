@@ -36,6 +36,7 @@ import {
   type Tier,
 } from "./calc";
 import { formatBahtShort, formatInt, formatPct, formatShare } from "./format";
+import { defaultFilters, isDefaultFilters } from "./filters";
 import { TrendChart } from "./TrendChart";
 
 type Props = { rows: readonly SummaryRow[] };
@@ -104,12 +105,14 @@ export function SummaryDashboard({ rows }: Props) {
   const byMonth = useMemo(() => groupByMonth(rows), [rows]);
   const months = useMemo(() => [...byMonth.keys()].sort().reverse(), [byMonth]);
 
-  const [month, setMonth] = useState<string>(months[0] ?? "");
-  const [division, setDivision] = useState<Division | "all">("all");
-  const [zoneRaw, setZoneRaw] = useState("all");
-  const [branchRaw, setBranchRaw] = useState("all");
-  const [tiers, setTiers] = useState<ReadonlySet<Tier>>(new Set());
-  const [sortBy, setSortBy] = useState<RankSort>("value");
+  // ค่าเริ่มต้นของตัวกรองมาจาก defaultFilters ที่เดียว (ใช้ทั้งตอนโหลดหน้าและตอนกด "ล้างตัวกรอง")
+  const initial = useMemo(() => defaultFilters(months), [months]);
+  const [month, setMonth] = useState<string>(initial.month);
+  const [division, setDivision] = useState<Division | "all">(initial.division);
+  const [zoneRaw, setZoneRaw] = useState(initial.zone);
+  const [branchRaw, setBranchRaw] = useState(initial.branch);
+  const [tiers, setTiers] = useState<ReadonlySet<Tier>>(initial.tiers);
+  const [sortBy, setSortBy] = useState<RankSort>(initial.sortBy);
   const [showAllRank, setShowAllRank] = useState(false);
 
   const monthRows = useMemo(() => byMonth.get(month) ?? [], [byMonth, month]);
@@ -181,6 +184,17 @@ export function SummaryDashboard({ rows }: Props) {
       else next.add(t);
       return next;
     });
+
+  // เทียบด้วยค่าที่ใช้จริง (zone/branch หลังตรวจว่ายังมีในรายการ) ไม่ใช่ค่าดิบที่ค้างใน state
+  const filtersChanged = !isDefaultFilters({ month, division, zone, branch, tiers, sortBy }, months);
+  const resetFilters = () => {
+    setMonth(initial.month);
+    setDivision(initial.division);
+    setZoneRaw(initial.zone);
+    setBranchRaw(initial.branch);
+    setTiers(initial.tiers);
+    setSortBy(initial.sortBy);
+  };
 
   const zoneCount = new Set(monthRows.map((r) => r.zone)).size;
   const tierLabel = tiers.size ? ` · เฉพาะ Tier ${TIERS.filter((t) => tiers.has(t)).join(" + ")}` : "";
@@ -266,10 +280,10 @@ export function SummaryDashboard({ rows }: Props) {
             {t}
           </button>
         ))}
-        {tiers.size > 0 && (
+        {filtersChanged && (
           <button
             type="button"
-            onClick={() => setTiers(new Set())}
+            onClick={resetFilters}
             className="cursor-pointer rounded-md border-0 bg-transparent px-2 py-1 text-xs text-accent-strong underline focus-visible:outline-2 focus-visible:outline-accent"
           >
             ล้างตัวกรอง
