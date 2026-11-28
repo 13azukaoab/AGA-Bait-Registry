@@ -11,6 +11,8 @@
  *   * ฟอร์มที่แก้ค้างลงทะเบียนด้วย `useUnsavedWork` (กันอัปเดตเวอร์ชันรีโหลดทับ)
  *   * M38: ป้าย "รอแจ้งผู้ใช้" = ผู้ใช้ยังไม่ได้อ่านแจ้งเตือน "ตำแหน่งถูกเปลี่ยน" (RPC `list_notification_read_status` ผ่าน userData.ts
  *     · host เท่านั้น · ไม่เห็นเนื้อหา) · RPC ล้ม = ไม่แสดงป้าย หน้ายังใช้ได้
+ *   * ตารางเรียงได้ (mockup `docs/mockup/admin-users-table.html` · DECISIONS 2.114): กดหัวคอลัมน์เรียง · มือถือ (<768px) เป็นการ์ด + select "เรียงตาม"
+ *     · logic เรียง/นับวันไม่ได้เข้าใช้อยู่ใน `userSort.ts` (pure + test) · เลย์เอาต์ desktop ตามความกว้างกรอบเนื้อหา (@container)
  *   * บัญชีเจ้าของแก้จากหน้านี้ไม่ได้ (userAdmin PS003) จึงไม่มี "ตำแหน่งเจ้าของ" ในฟอร์มแก้ไข
  */
 import { useRouter } from "next/navigation";
@@ -46,6 +48,23 @@ import {
   type UserRoleName,
   type UserRow,
 } from "./userLogic";
+import {
+  DEFAULT_SORT,
+  IDLE_BAD_DAYS,
+  IDLE_WARN_DAYS,
+  SORT_COLUMNS,
+  columnOf,
+  idleDays,
+  idleLevel,
+  nextSort,
+  selectSortKey,
+  sortAnnouncement,
+  sortUsers,
+  toggleDir,
+  type SortColumn,
+  type SortKey,
+  type SortState,
+} from "./userSort";
 
 const ROLE_TONE: Record<UserRoleName, ChipTone> = {
   host: "info",
@@ -91,9 +110,17 @@ export function UsersClient({
   const [flashId, setFlashId] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [pending, startTransition] = useTransition();
+  const [sort, setSort] = useState<SortState>(DEFAULT_SORT);
+  const [sortNotice, setSortNotice] = useState("");
+
+  // "วันนี้" สำหรับนับวันไม่ได้เข้าใช้ — คำนวณใหม่เมื่อข้อมูลรีเฟรช
+  const now = useMemo(() => new Date(), [users]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const stats = useMemo(() => computeStats(users), [users]);
-  const rows = useMemo(() => users.filter((u) => matchesFilter(u, filter)), [users, filter]);
+  const rows = useMemo(
+    () => sortUsers(users.filter((u) => matchesFilter(u, filter)), sort, now),
+    [users, filter, sort, now],
+  );
   const selectable = useMemo(() => selectablePositions(positions), [positions]);
 
   const closeDialog = () => {
@@ -108,6 +135,11 @@ export function UsersClient({
       window.setTimeout(() => setFlashId(null), 2500);
     }
     router.refresh();
+  };
+
+  const applySort = (next: SortState) => {
+    setSort(next);
+    setSortNotice(sortAnnouncement(next));
   };
 
   const posLabel = (code: string | null) => positionOf(positions, code)?.shortNameTh ?? "ยังไม่ตั้งตำแหน่ง";
@@ -181,6 +213,47 @@ export function UsersClient({
         u.userId,
       );
     });
+  };
+
+  const emptyNote = (
+    <div className="px-4 py-8 text-center text-fg-muted">
+      ไม่พบบัญชีที่ตรงกับตัวกรอง ลองล้างคำค้นหาหรือเปลี่ยนตัวกรอง
+    </div>
+  );
+
+  const statusChips = (u: UserRow) => (
+    <div className="flex flex-wrap items-center gap-1">
+      <Chip tone={u.isActive ? "ok" : "na"}>{u.isActive ? "ใช้งาน" : "ปิดบัญชี"}</Chip>
+      {u.mustChangePassword ? <Chip tone="pend">รอเปลี่ยนรหัส</Chip> : null}
+      {u.hasUnreadPositionChange ? (
+        <span title={noticeTitle(u)}>
+          <Chip tone="pend">รอแจ้งผู้ใช้</Chip>
+        </span>
+      ) : null}
+    </div>
+  );
+
+  const renderActions = (u: UserRow, big: boolean) => {
+    const manageable = canManageRow(u, positions);
+    const lockedWhy = "บัญชีเจ้าของ แก้ไข รีเซ็ตรหัส หรือปิดจากหน้านี้ไม่ได้";
+    return (
+      <div className={cx("flex flex-wrap", big ? "gap-2" : "justify-end gap-1")} title={manageable ? undefined : lockedWhy}>
+        <RowButton big={big} disabled={!manageable} onClick={() => setDialog({ kind: "edit", user: u })}>
+          แก้ไข
+        </RowButton>
+        <RowButton big={big} disabled={!manageable} onClick={() => setDialog({ kind: "reset", user: u })}>
+          รีเซ็ตรหัส
+        </RowButton>
+        <RowButton
+          big={big}
+          disabled={!manageable}
+          danger={u.isActive}
+          onClick={() => setDialog({ kind: "toggle", user: u })}
+        >
+          {u.isActive ? "ปิดบัญชี" : "เปิดบัญชี"}
+        </RowButton>
+      </div>
+    );
   };
 
   const cards: { key: string; label: string; value: number; sub: string }[] = [
@@ -282,86 +355,151 @@ export function UsersClient({
         </Field>
       </div>
 
-      <div className="relative overflow-x-auto rounded-lg border border-border bg-surface shadow-[var(--shadow)]">
-        <table className="w-full border-collapse text-[13px]">
-          <thead>
-            <tr className="bg-surface-2 text-left text-xs text-fg-muted">
-              <th scope="col" className="px-3.5 py-2.5 font-medium">ชื่อ-นามสกุล</th>
-              <th scope="col" className="px-3.5 py-2.5 font-medium">ตำแหน่ง</th>
-              <th scope="col" className="px-3.5 py-2.5 font-medium">สถานะ</th>
-              <th scope="col" className="px-3.5 py-2.5 font-medium max-[640px]:hidden">เข้าใช้ล่าสุด</th>
-              <th scope="col" className="px-3.5 py-2.5"><span className="sr-only">จัดการ</span></th>
-            </tr>
-          </thead>
-          <tbody>
+      <div className="@container">
+        {/* มือถือ: เรียงด้วย select + ปุ่มสลับทิศ (แทนการกดหัวคอลัมน์) */}
+        <div className="mb-2.5 flex items-end gap-2 md:hidden">
+          <Field label="เรียงตาม" className="min-w-0 flex-1">
+            {(c) => (
+              <select
+                {...c}
+                className={cx(c.className, "min-h-11 text-base")}
+                value={sort.key}
+                onChange={(e) => applySort(selectSortKey(e.target.value as SortKey))}
+              >
+                {SORT_COLUMNS.map((col) => (
+                  <option key={col.key} value={col.key}>
+                    {col.label}
+                  </option>
+                ))}
+              </select>
+            )}
+          </Field>
+          <button
+            type="button"
+            onClick={() => applySort(toggleDir(sort))}
+            aria-label={`สลับทิศการเรียง (ตอนนี้: ${dirLabel(columnOf(sort.key), sort.dir)})`}
+            className="min-h-11 cursor-pointer whitespace-nowrap rounded-lg border border-border-strong bg-surface px-3 text-[13px] text-fg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+          >
+            {sort.dir === "asc" ? "▲" : "▼"} {dirLabel(columnOf(sort.key), sort.dir)}
+          </button>
+        </div>
+
+        <p className="mb-1.5 hidden text-xs text-fg-muted md:@max-[900px]:block">
+          เลื่อนตารางไปทางขวาเพื่อดูคอลัมน์อื่น · คอลัมน์ชื่อตรึงไว้ทางซ้าย
+        </p>
+        <div role="status" aria-live="polite" className="sr-only">
+          {sortNotice}
+        </div>
+
+        {/* ตาราง (จอ ≥ 768px) */}
+        <div className="relative overflow-x-auto rounded-lg border border-border bg-surface shadow-[var(--shadow)] max-md:hidden">
+          <table className="w-full border-collapse text-[13px] @max-[1180px]:min-w-[900px] @max-[900px]:min-w-[860px]">
+            <thead>
+              <tr className="bg-surface-2 text-left text-xs text-fg-muted">
+                <SortTh col={columnOf("name")} sort={sort} onSort={(k) => applySort(nextSort(sort, k))} className={cx(STICKY_HEAD, "@max-[900px]:bg-surface-2")} />
+                <SortTh col={columnOf("username")} sort={sort} onSort={(k) => applySort(nextSort(sort, k))} />
+                <SortTh col={columnOf("position")} sort={sort} onSort={(k) => applySort(nextSort(sort, k))} />
+                <SortTh col={columnOf("status")} sort={sort} onSort={(k) => applySort(nextSort(sort, k))} />
+                <SortTh col={columnOf("lastLogin")} sort={sort} onSort={(k) => applySort(nextSort(sort, k))} className="@max-[1180px]:hidden" />
+                <SortTh col={columnOf("idleDays")} sort={sort} onSort={(k) => applySort(nextSort(sort, k))} />
+                <th scope="col" className="px-3.5 py-2.5"><span className="sr-only">จัดการ</span></th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((u) => {
+                const isMe = u.userId === currentUserId;
+                return (
+                  <tr
+                    key={u.userId}
+                    className={cx(
+                      "border-t border-border align-middle",
+                      !u.isActive && "opacity-60",
+                      flashId === u.userId && "bg-accent-soft",
+                    )}
+                  >
+                    <td className={cx("min-w-[150px] px-3.5 py-2.5", STICKY_CELL)}>
+                      <span className="font-medium">
+                        {nameOf(u)}
+                        {isMe ? " (คุณ)" : ""}
+                      </span>
+                    </td>
+                    <td className="whitespace-nowrap px-3.5 py-2.5 font-mono text-[12.5px]">{usernameLabel(u.username)}</td>
+                    <td className="px-3.5 py-2.5">
+                      <Chip tone={ROLE_TONE[u.role]}>{posLabel(u.positionCode)}</Chip>
+                    </td>
+                    <td className="px-3.5 py-2.5">{statusChips(u)}</td>
+                    <td className="whitespace-nowrap px-3.5 py-2.5 text-fg-muted @max-[1180px]:hidden">
+                      {formatLastLogin(u.lastLogin, now)}
+                    </td>
+                    <td className="whitespace-nowrap px-3.5 py-2.5">
+                      <IdleCell user={u} now={now} />
+                      {u.lastLogin ? (
+                        <div className="mt-px hidden text-xs text-fg-muted @max-[1180px]:block">
+                          เข้าล่าสุด {formatLastLogin(u.lastLogin, now)}
+                        </div>
+                      ) : null}
+                    </td>
+                    <td className="min-w-[150px] px-3.5 py-2.5 text-right">{renderActions(u, false)}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+          {rows.length === 0 ? emptyNote : null}
+          <div className="flex flex-wrap gap-2 border-t border-border bg-surface-2 px-3.5 py-2 text-xs text-fg-muted">
+            <span>
+              แสดง {rows.length} จาก {users.length} บัญชี
+            </span>
+            <span className="flex-1" />
+            <span>ทุกการสร้าง/แก้ไข/ปิดบัญชี บันทึกในประวัติการแก้ไขอัตโนมัติ</span>
+          </div>
+        </div>
+
+        {/* การ์ดรายคน (มือถือ < 768px) */}
+        <div className="md:hidden">
+          <div className="grid gap-2.5">
             {rows.map((u) => {
-              const manageable = canManageRow(u, positions);
-              const lockedWhy = "บัญชีเจ้าของ แก้ไข รีเซ็ตรหัส หรือปิดจากหน้านี้ไม่ได้";
               const isMe = u.userId === currentUserId;
               return (
-                <tr
+                <article
                   key={u.userId}
                   className={cx(
-                    "border-t border-border align-middle",
-                    !u.isActive && "opacity-60",
-                    flashId === u.userId && "bg-accent-soft",
+                    "rounded-lg border border-border px-3.5 py-3 shadow-[var(--shadow)]",
+                    flashId === u.userId ? "bg-accent-soft" : u.isActive ? "bg-surface" : "bg-surface-2",
                   )}
                 >
-                  <td className="px-3.5 py-2.5">
-                    <div className="font-medium">
-                      {nameOf(u)}
-                      {isMe ? " (คุณ)" : ""}
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <div className={cx("text-[14.5px] font-medium", !u.isActive && "text-fg-muted")}>
+                        {nameOf(u)}
+                        {isMe ? " (คุณ)" : ""}
+                      </div>
+                      <div className="font-mono text-xs text-fg-muted">{usernameLabel(u.username)}</div>
                     </div>
-                    <div className="text-xs text-fg-muted">{usernameLabel(u.username)}</div>
-                  </td>
-                  <td className="px-3.5 py-2.5">
                     <Chip tone={ROLE_TONE[u.role]}>{posLabel(u.positionCode)}</Chip>
-                  </td>
-                  <td className="px-3.5 py-2.5">
-                    <div className="flex flex-wrap items-center gap-1">
-                      <Chip tone={u.isActive ? "ok" : "na"}>{u.isActive ? "ใช้งาน" : "ปิดบัญชี"}</Chip>
-                      {u.mustChangePassword ? <Chip tone="pend">รอเปลี่ยนรหัส</Chip> : null}
-                      {u.hasUnreadPositionChange ? (
-                        <span title={noticeTitle(u)}>
-                          <Chip tone="pend">รอแจ้งผู้ใช้</Chip>
-                        </span>
-                      ) : null}
+                  </div>
+                  <div className="mt-2">{statusChips(u)}</div>
+                  <dl className="m-0 mt-2.5 grid grid-cols-2 gap-x-3 gap-y-2 text-[13px]">
+                    <div>
+                      <dt className="text-xs text-fg-muted">เข้าใช้ล่าสุด</dt>
+                      <dd className="m-0 mt-px">{formatLastLogin(u.lastLogin, now)}</dd>
                     </div>
-                  </td>
-                  <td className="px-3.5 py-2.5 text-fg-muted max-[640px]:hidden">{formatLastLogin(u.lastLogin)}</td>
-                  <td className="px-3.5 py-2.5 text-right">
-                    <div className="flex flex-wrap justify-end gap-1" title={manageable ? undefined : lockedWhy}>
-                      <RowButton disabled={!manageable} onClick={() => setDialog({ kind: "edit", user: u })}>
-                        แก้ไข
-                      </RowButton>
-                      <RowButton disabled={!manageable} onClick={() => setDialog({ kind: "reset", user: u })}>
-                        รีเซ็ตรหัส
-                      </RowButton>
-                      <RowButton
-                        disabled={!manageable}
-                        danger={u.isActive}
-                        onClick={() => setDialog({ kind: "toggle", user: u })}
-                      >
-                        {u.isActive ? "ปิดบัญชี" : "เปิดบัญชี"}
-                      </RowButton>
+                    <div className="col-span-2 border-t border-dashed border-border pt-2">
+                      <dt className="text-xs text-fg-muted">ไม่ได้เข้าใช้มา</dt>
+                      <dd className="m-0 mt-px">
+                        <IdleCell user={u} now={now} />
+                      </dd>
                     </div>
-                  </td>
-                </tr>
+                  </dl>
+                  <div className="mt-3">{renderActions(u, true)}</div>
+                </article>
               );
             })}
-          </tbody>
-        </table>
-        {rows.length === 0 ? (
-          <div className="px-4 py-8 text-center text-fg-muted">
-            ไม่พบบัญชีที่ตรงกับตัวกรอง ลองล้างคำค้นหาหรือเปลี่ยนตัวกรอง
           </div>
-        ) : null}
-        <div className="flex flex-wrap gap-2 border-t border-border bg-surface-2 px-3.5 py-2 text-xs text-fg-muted">
-          <span>
-            แสดง {rows.length} จาก {users.length} บัญชี
-          </span>
-          <span className="flex-1" />
-          <span>ทุกการสร้าง/แก้ไข/ปิดบัญชี บันทึกในประวัติการแก้ไขอัตโนมัติ</span>
+          {rows.length === 0 ? <div className="rounded-lg border border-border bg-surface">{emptyNote}</div> : null}
+          <p className="mt-2.5 text-xs text-fg-muted">
+            แสดง {rows.length} จาก {users.length} บัญชี · ทุกการสร้าง/แก้ไข/ปิดบัญชี บันทึกในประวัติการแก้ไขอัตโนมัติ
+          </p>
         </div>
       </div>
 
@@ -499,11 +637,14 @@ function RowButton({
   onClick,
   disabled,
   danger,
+  big,
 }: {
   children: ReactNode;
   onClick: () => void;
   disabled?: boolean;
   danger?: boolean;
+  /** การ์ดมือถือ: ปุ่มสูง ≥ 44px กดง่ายด้วยนิ้ว */
+  big?: boolean;
 }) {
   return (
     <Button
@@ -511,10 +652,92 @@ function RowButton({
       variant={danger ? "danger" : "secondary"}
       disabled={disabled}
       onClick={onClick}
-      className="max-[640px]:min-h-11 max-[640px]:px-3 max-[640px]:text-[13px]"
+      className={big ? "min-h-11 flex-1 px-3 text-[13px]" : undefined}
     >
       {children}
     </Button>
+  );
+}
+
+/** ข้อความทิศการเรียงของคอลัมน์ ("ก → ฮ" ฯลฯ) */
+function dirLabel(col: SortColumn, dir: SortState["dir"]): string {
+  return dir === "asc" ? col.ascLabel : col.descLabel;
+}
+
+/** คอลัมน์แรก: ตรึงซ้ายเมื่อกรอบเนื้อหาแคบกว่า 900px (ตารางเลื่อนข้าง) */
+const STICKY_HEAD = "@max-[900px]:sticky @max-[900px]:left-0 @max-[900px]:z-[3] @max-[900px]:shadow-[1px_0_0_var(--border)]";
+const STICKY_CELL =
+  "@max-[900px]:sticky @max-[900px]:left-0 @max-[900px]:z-[2] @max-[900px]:bg-surface @max-[900px]:shadow-[1px_0_0_var(--border)]";
+
+/** หัวคอลัมน์ที่กดเรียงได้ — ปุ่มใน <th aria-sort> (คีย์บอร์ดกด Enter/Space ได้) */
+function SortTh({
+  col,
+  sort,
+  onSort,
+  className,
+}: {
+  col: SortColumn;
+  sort: SortState;
+  onSort: (key: SortKey) => void;
+  className?: string;
+}) {
+  const active = sort.key === col.key;
+  return (
+    <th
+      scope="col"
+      aria-sort={active ? (sort.dir === "asc" ? "ascending" : "descending") : "none"}
+      className={cx("px-3.5 py-1.5 font-medium", active && "text-fg", className)}
+    >
+      <button
+        type="button"
+        onClick={() => onSort(col.key)}
+        className="-mx-1.5 -my-1 inline-flex min-h-[30px] cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-md bg-transparent px-1.5 py-1 text-xs font-semibold text-inherit hover:bg-surface-3 hover:text-fg focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent"
+      >
+        {col.label}
+        <span aria-hidden="true" className="inline-flex flex-col gap-px text-[10px] leading-none">
+          <i className={cx("not-italic", active && sort.dir === "asc" ? "text-accent-strong" : "opacity-35")}>▲</i>
+          <i className={cx("not-italic", active && sort.dir === "desc" ? "text-accent-strong" : "opacity-35")}>▼</i>
+        </span>
+      </button>
+    </th>
+  );
+}
+
+/**
+ * "ไม่ได้เข้าใช้มา (วัน)" — ตัวเลข + ป้ายเตือน (มีข้อความเสมอ ไม่ใช้สีอย่างเดียว)
+ * บัญชีปิดใช้งาน = ตัวเลขสีจาง ไม่เตือน · ยังไม่เคยเข้า = ป้ายกลาง
+ */
+function IdleCell({ user, now }: { user: UserRow; now: Date }) {
+  const days = idleDays(user.lastLogin, now);
+  if (days === null) return <Chip tone="na">ยังไม่เคยเข้า</Chip>;
+  const level = idleLevel(user, now);
+  const numTone = !user.isActive ? "text-fg-muted" : level === "bad" ? "text-danger" : level === "warn" ? "text-warn" : "";
+  return (
+    <span className="inline-flex flex-wrap items-center gap-1.5">
+      <span>
+        <b className={cx("text-sm font-bold", numTone)}>{days === 0 ? "วันนี้" : days}</b>
+        {days === 0 ? "" : " วัน"}
+      </span>
+      {level === "bad" ? (
+        <Chip tone="miss">
+          <WarnIcon /> เกิน {IDLE_BAD_DAYS} วัน
+        </Chip>
+      ) : null}
+      {level === "warn" ? (
+        <Chip tone="pend">
+          <WarnIcon /> เกิน {IDLE_WARN_DAYS} วัน
+        </Chip>
+      ) : null}
+    </span>
+  );
+}
+
+function WarnIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
+      <path d="M12 3l10 18H2z" />
+      <path d="M12 10v5M12 18h.01" />
+    </svg>
   );
 }
 
