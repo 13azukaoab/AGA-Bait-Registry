@@ -2,7 +2,7 @@
  * TourController — เครื่องสถานะของบทเรียน (ไม่มี React/DOM/เครือข่าย)
  *
  * หน้าที่: จำว่าอยู่บทเรียนไหน ขั้นไหน · ถัดไป/ย้อน/ข้าม · ข้ามขั้นที่หาจุดชี้ไม่เจอ ·
- * ต่อบทเรียนส่วนกลาง → บทเรียนของตำแหน่ง · แจ้งตอนจบ **ครั้งเดียวต่อ 1 รอบ** ผ่าน `onFinish`
+ * แจ้งตอนจบ **ครั้งเดียวต่อ 1 รอบ** ผ่าน `onFinish`
  *
  * โหมดฝึก: ตัวนี้ไม่มีทางเรียกระบบจริงเอง — มีช่องทางเดียวที่ออกไปข้างนอกคือ `onFinish("done" | "skip")`
  * (ผู้ใช้โค้ดนี้ผูกกับ RPC complete_onboarding / skip_onboarding) ปุ่มบันทึกในบทเรียนจึงเป็นของหลอกเสมอ
@@ -22,8 +22,6 @@ export type TourSnapshot = {
 };
 
 export type TourDeps = {
-  /** บทเรียนของตำแหน่งผู้ใช้ (ใช้ตอนต่อจากบทส่วนกลาง) · null = ไม่มี */
-  positionLessonId: () => string | null;
   /** เรียกครั้งเดียวต่อรอบ ตอนจบจริง (ดูจบ / กดข้าม) */
   onFinish: (kind: FinishKind) => void;
   /** ตรวจเงื่อนไขของขั้นที่มี `guard` · คืนข้อความผิดพลาด หรือ null ถ้าผ่าน */
@@ -148,15 +146,6 @@ export class TourController {
   }
 
   private finish(kind: FinishKind) {
-    const lesson = this.lesson;
-    if (kind === "done" && lesson?.next === "@position") {
-      const nextId = this.deps.positionLessonId();
-      if (nextId && getLesson(nextId)) {
-        this.missing = new Set();
-        this.set({ lessonId: nextId, index: 0, dir: 1, guardError: null });
-        return;
-      }
-    }
     this.set({ running: false, lessonId: null, index: 0, dir: 1, guardError: null });
     if (this.finished) return;
     this.finished = true;
