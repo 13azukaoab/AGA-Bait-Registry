@@ -39,7 +39,36 @@ import { formatBahtShort, formatInt, formatPct, formatShare } from "./format";
 import { defaultFilters, isDefaultFilters } from "./filters";
 import { TrendChart } from "./TrendChart";
 
-type Props = { rows: readonly SummaryRow[] };
+type Props = {
+  rows: readonly SummaryRow[];
+  /** แสดงข้อความ "หน้า public ไม่มีข้อมูลลูกค้า" ใต้หัวข้อ — true = หน้าสาธารณะ (ไม่ login) · false = อยู่ในกรอบระบบ (DECISIONS 2.116) */
+  showPublicNote?: boolean;
+};
+
+/** คำบรรยายใต้หัวข้อ · ข้อความ "หน้า public …" แสดงเฉพาะหน้าสาธารณะ */
+export function SummarySubtitle({
+  branchCount,
+  zoneCount,
+  monthKey,
+  showPublicNote,
+}: {
+  branchCount: number;
+  zoneCount: number;
+  monthKey: string;
+  showPublicNote: boolean;
+}) {
+  return (
+    <p className="mt-1 text-[13px] text-fg-muted">
+      ทั่วไทย {branchCount} สาขา · {zoneCount} เขต · Status snapshot ({monthKey}) — ข้อมูลที่ส่งเข้า AGA Bait Dashboard
+      {showPublicNote ? (
+        <>
+          {" · "}
+          <b>หน้า public ไม่มีข้อมูลลูกค้า</b>
+        </>
+      ) : null}
+    </p>
+  );
+}
 
 const DIVISION_TABS: readonly { id: Division | "all"; label: string }[] = [
   { id: "all", label: "ทั้งประเทศ" },
@@ -101,7 +130,7 @@ function Delta({ value, suffix }: { value: number | null; suffix: string }) {
   );
 }
 
-export function SummaryDashboard({ rows }: Props) {
+export function SummaryDashboard({ rows, showPublicNote = true }: Props) {
   const byMonth = useMemo(() => groupByMonth(rows), [rows]);
   const months = useMemo(() => [...byMonth.keys()].sort().reverse(), [byMonth]);
 
@@ -204,10 +233,12 @@ export function SummaryDashboard({ rows }: Props) {
     <div>
       <div className="mb-1">
         <h1 className="m-0 text-[22px] font-bold text-fg max-[600px]:text-xl">สรุปมูลค่าระบบเหยื่อ</h1>
-        <p className="mt-1 text-[13px] text-fg-muted">
-          ทั่วไทย {monthRows.length} สาขา · {zoneCount} เขต · Status snapshot ({ymToKey(month)}) —
-          ข้อมูลที่ส่งเข้า AGA Bait Dashboard · <b>หน้า public ไม่มีข้อมูลลูกค้า</b>
-        </p>
+        <SummarySubtitle
+          branchCount={monthRows.length}
+          zoneCount={zoneCount}
+          monthKey={ymToKey(month)}
+          showPublicNote={showPublicNote}
+        />
       </div>
 
       {/* หน่วยงาน */}

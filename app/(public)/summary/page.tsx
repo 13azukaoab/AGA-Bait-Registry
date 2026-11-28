@@ -75,7 +75,7 @@ function SummaryContent({ result, inShell = false }: { result: SummaryResult; in
           </div>
         </div>
       ) : (
-        <SummaryDashboard rows={result.rows} />
+        <SummaryDashboard rows={result.rows} showPublicNote={!inShell} />
       )}
     </main>
   );
