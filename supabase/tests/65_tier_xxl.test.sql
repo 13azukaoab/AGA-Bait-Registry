@@ -76,7 +76,7 @@ SELECT results_eq(pg_temp.rows_of(2),
 SELECT is(
   (SELECT jsonb_array_length(public.save_tier_rule_set(jsonb_build_object(
      'effective_month', to_char(pg_temp.m(2), 'YYYY-MM'), 'min_m', 30000, 'min_l', 50000, 'min_xl', 100000,
-     'min_xxl', 300000, 'reason', 'ทดสอบ XXL')) -> 'rules'))),
+     'min_xxl', 300000, 'reason', 'ทดสอบ XXL')) -> 'rules')),
   5, 'RPC คืน rules 5 แถว (บันทึกซ้ำค่าเดิมได้)');
 SELECT is((SELECT count(*)::int FROM tier_rules_for_month(pg_temp.m(1))), 4,
   'เดือนก่อนชุดที่มี XXL ยังใช้ชุดเดิม 4 แถว (ไม่มี XXL)');
@@ -148,7 +148,7 @@ SELECT throws_ok(
 SELECT throws_ok(
   format($$INSERT INTO tier_rules (effective_month, tier, min_annual, max_annual) VALUES
            (%1$L, 'S', 0, 29999.99), (%1$L, 'M', 30000, 49999.99), (%1$L, 'L', 50000, 99999.99),
-           (%1$L, 'XL', 100000, 79999.99), (%1$L, 'XXL', 80000, NULL)$$, pg_temp.m(4)),
+           (%1$L, 'XL', 100000, 299999.99), (%1$L, 'XXL', 80000, NULL)$$, pg_temp.m(4)),
   'TR004', NULL, 'XXL ต่ำกว่า XL (ลำดับผิด) → TR004');
 SELECT throws_ok(
   format($$INSERT INTO tier_rules (effective_month, tier, min_annual, max_annual) VALUES
