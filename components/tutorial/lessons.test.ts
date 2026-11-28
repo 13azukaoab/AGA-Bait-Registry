@@ -8,6 +8,7 @@ import { describe, expect, it } from "vitest";
 import { NAV_GROUPS } from "@/components/shell/nav-items";
 
 import { LESSONS, getLesson, lessonIdForUser, POSITION_LESSON } from "./lessons";
+import { homeForRole } from "@/lib/auth/access";
 
 describe("เลือกบทเรียนตามตำแหน่ง", () => {
   it("position_code ในตาราง positions → บทเรียนของตำแหน่งนั้น", () => {
@@ -46,8 +47,9 @@ describe("เลือกบทเรียนตามตำแหน่ง", (
 });
 
 describe("ข้อมูลบทเรียน", () => {
-  it("จำนวนขั้นตรง mockup: ส่วนกลาง 7 · Admin 7 · หัวหน้างาน 8 · PM/OM 7", () => {
-    expect(LESSONS.central.steps).toHaveLength(7);
+  it("จำนวนขั้น (หลังตัดบท login/รหัสผ่าน · DECISIONS 2.111): Admin 7 · หัวหน้างาน 8 · PM/OM 7 · ไม่มีบทส่วนกลาง", () => {
+    expect(Object.keys(LESSONS).sort()).toEqual(["admin", "pmom", "recorder"]);
+    expect(getLesson("central")).toBeUndefined();
     expect(LESSONS.admin.steps).toHaveLength(7);
     expect(LESSONS.recorder.steps).toHaveLength(8);
     expect(LESSONS.pmom.steps).toHaveLength(7);
@@ -63,17 +65,31 @@ describe("ข้อมูลบทเรียน", () => {
     }
   });
 
-  it("บทส่วนกลางต่อบทตำแหน่ง · บทตำแหน่งไม่ต่อใคร", () => {
-    expect(LESSONS.central.next).toBe("@position");
-    expect(LESSONS.admin.next).toBeUndefined();
-    expect(LESSONS.recorder.next).toBeUndefined();
-    expect(LESSONS.pmom.next).toBeUndefined();
+  it("ไม่มีบทไหนต่อบทอื่น · ใช้หน้าจริงทั้งหมด (ไม่มีหน้าจำลอง login / เปลี่ยนรหัส)", () => {
+    for (const lesson of Object.values(LESSONS)) {
+      expect("next" in lesson).toBe(false);
+      expect(lesson.steps.every((s) => (s.screen ?? "app") === "app" && !s.guard)).toBe(true);
+    }
   });
 
-  it("บทส่วนกลางใช้หน้าจำลองทั้งหมด · บทตำแหน่งใช้หน้าจริงทั้งหมด", () => {
-    expect(LESSONS.central.steps.every((s) => s.screen && s.screen !== "app")).toBe(true);
+  it("ไม่มีขั้นสอน login / รหัสชั่วคราว / เปลี่ยนรหัสผ่าน ในบทใดเลย", () => {
+    // หมายเหตุ: ขั้น usr-add ของ PM/OM พูดถึง “รหัสชั่วคราว” ตอนสร้างบัญชีให้คนอื่น — เป็นเนื้อหาคนละเรื่อง คงไว้
+    const banned = /login-|chpw-|รหัสผ่านชั่วคราว|ตั้งรหัสผ่านใหม่|เปลี่ยนรหัสผ่าน|เข้าสู่ระบบ|ชื่อผู้ใช้ คือ/;
+    for (const lesson of Object.values(LESSONS)) {
+      for (const step of lesson.steps) {
+        const text = [step.target ?? "", step.title, step.body, step.hint ?? "", step.cta ?? ""].join(" ");
+        expect(text, `${lesson.id}:${step.target}`).not.toMatch(banned);
+      }
+    }
+  });
+
+  it("ขั้นแรกของทุกบทอยู่หน้าแรกของตำแหน่ง (path ตรง homeForRole หรือชี้เมนู/ไม่ระบุหน้า)", () => {
+    const roleOf = { admin: "admin", recorder: "recorder", pmom: "host" } as const;
     for (const id of ["admin", "recorder", "pmom"] as const) {
-      expect(LESSONS[id].steps.every((s) => (s.screen ?? "app") === "app")).toBe(true);
+      const first = LESSONS[id].steps[0]!;
+      expect(first.screen ?? "app").toBe("app");
+      // ไม่มี path = ชี้ได้ทุกหน้า (เมนูซ้าย) · มี path = ต้องเป็นหน้าแรกของ role นั้น
+      if (first.path) expect(first.path).toBe(homeForRole(roleOf[id]));
     }
   });
 });

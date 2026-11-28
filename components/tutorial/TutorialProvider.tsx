@@ -6,7 +6,7 @@
  * Logic summary:
  *   * อยู่ใน AppShell จึงคงอยู่ข้ามหน้า (เปลี่ยนหน้าระหว่างบทเรียนได้โดยสถานะไม่หาย)
  *   * ตอนเปิดแอป: อ่านสถานะ onboarding ของตัวเอง (หรือรับจาก prop `initialProfile` ถ้า server ส่งมาให้)
- *     → ถ้า completed/skipped ว่างทั้งคู่ เปิดบทเรียนส่วนกลางอัตโนมัติ 1 ครั้งต่อการโหลดแอป
+ *     → ถ้า completed/skipped ว่างทั้งคู่ เปิดบทเรียนของตำแหน่งตัวเองอัตโนมัติ 1 ครั้งต่อการโหลดแอป (เริ่มที่หน้าแรกของตำแหน่ง ไม่มีบทสอน login / เปลี่ยนรหัส — DECISIONS 2.111 · ผู้ใช้ที่ไม่มีบทเรียนตำแหน่ง เช่น viewer = ไม่เปิดและไม่บันทึกสถานะ)
  *   * จบ → complete_onboarding() · กดข้าม → skip_onboarding() (ผ่าน `onboarding.ts` เท่านั้น · เรียกครั้งเดียวต่อรอบ
  *     และเรียกเฉพาะเมื่อสถานะยังไม่เป็นสุดท้าย — ดู shouldRecord)
  *   * ปุ่ม “สอนใช้งาน” เรียก `start(id)` เปิดซ้ำได้ทุกเมื่อ
@@ -40,13 +40,13 @@ export type LessonOption = { id: LessonId; label: string };
 export type TutorialContextValue = {
   controller: TourController;
   snapshot: TourSnapshot;
-  /** บทเรียนที่เปิดดูซ้ำได้ (ส่วนกลาง + ของตำแหน่งตัวเอง) */
+  /** บทเรียนที่เปิดดูซ้ำได้ (ของตำแหน่งตัวเอง · ว่าง = ไม่มีบทเรียน) */
   lessonOptions: readonly LessonOption[];
   start: (id: LessonId) => void;
   /** ข้อความแจ้งสั้นๆ ของโหมดฝึก (เช่น “โหมดฝึก · ไม่บันทึกข้อมูลจริง”) */
   toast: string | null;
   showToast: (message: string) => void;
-  /** ช่องรหัสผ่านของหน้าจำลอง (ส่วนกลาง) */
+  /** ช่องรหัสผ่านของหน้าจำลอง (ยังไม่มีบทไหนใช้ — คงไว้เพราะตัวแสดงรองรับขั้น sandbox) */
   sandboxPw: { password: string; confirm: string };
   setSandboxPw: (next: { password: string; confirm: string }) => void;
 };
@@ -78,18 +78,15 @@ export function TutorialProvider({ role, initialProfile = null, autoOpen = true,
 
   // ค่าล่าสุดสำหรับ callback ของ controller (อัปเดตใน effect ไม่ใช่ตอน render)
   const profileRef = useRef<TutorialProfile | null>(profile);
-  const roleRef = useRef(role);
   const pwRef = useRef(sandboxPw);
   useEffect(() => {
     profileRef.current = profile;
-    roleRef.current = role;
     pwRef.current = sandboxPw;
-  }, [profile, role, sandboxPw]);
+  }, [profile, sandboxPw]);
 
   const controller = useMemo(
     () =>
       new TourController({
-        positionLessonId: () => lessonIdForUser(profileRef.current?.positionCode, roleRef.current),
         checkGuard: (step) =>
           step.guard === "pw" ? passwordGuardError(pwRef.current.password, pwRef.current.confirm) : null,
         onFinish: (kind: FinishKind) => {
@@ -134,10 +131,13 @@ export function TutorialProvider({ role, initialProfile = null, autoOpen = true,
   const autoOpened = useRef(false);
   useEffect(() => {
     if (!autoOpen || autoOpened.current || !shouldAutoOpen(profile)) return;
+    // เริ่มที่บทของตำแหน่งเลย · ไม่มีบทของตำแหน่ง (เช่น viewer) = ไม่เปิดอะไร
+    const lessonId = lessonIdForUser(profile?.positionCode, role);
+    if (!lessonId) return;
     autoOpened.current = true;
     setSandboxPw({ password: "", confirm: "" });
-    controller.start("central");
-  }, [autoOpen, profile, controller]);
+    controller.start(lessonId);
+  }, [autoOpen, profile, role, controller]);
 
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const showToast = useCallback((message: string) => {
@@ -162,9 +162,7 @@ export function TutorialProvider({ role, initialProfile = null, autoOpen = true,
 
   const positionLessonId = lessonIdForUser(profile?.positionCode, role);
   const lessonOptions = useMemo<LessonOption[]>(() => {
-    const list: LessonOption[] = [
-      { id: "central", label: "เริ่มใช้งานครั้งแรก (ล็อกอิน / เปลี่ยนรหัส)" },
-    ];
+    const list: LessonOption[] = [];
     if (positionLessonId) list.push({ id: positionLessonId, label: LESSONS[positionLessonId].title });
     return list;
   }, [positionLessonId]);

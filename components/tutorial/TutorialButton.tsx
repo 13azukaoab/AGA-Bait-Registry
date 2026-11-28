@@ -2,7 +2,7 @@
 
 /**
  * TutorialButton — ปุ่ม “สอนใช้งาน” บนแถบบน: เปิดเมนูเลือกบทเรียนมาดูซ้ำได้ทุกเมื่อ
- * (ส่วนกลาง + บทเรียนของตำแหน่งตัวเอง) · เป็นจุดชี้ `data-tour="help-btn"` ของขั้นท้ายๆ ในบทเรียน
+ * (บทเรียนของตำแหน่งตัวเอง) · เป็นจุดชี้ `data-tour="help-btn"` ของขั้นท้ายๆ ในบทเรียน
  * ปิดเมนูด้วย Esc / คลิกนอกเมนู / เลือกบทเรียน
  */
 import { useEffect, useId, useRef, useState } from "react";
@@ -61,6 +61,7 @@ export function TutorialButton() {
       {open && !running ? (
         <div id={menuId} role="menu" aria-label="บทเรียนสอนใช้งาน" className={styles.menu}>
           <p className={styles.menuTitle}>เปิดดูบทเรียนซ้ำ</p>
+          {lessonOptions.length === 0 ? <p className={styles.menuTitle}>ยังไม่มีบทสอนสำหรับตำแหน่งนี้</p> : null}
           {lessonOptions.map((option) => (
             <button
               key={option.id}

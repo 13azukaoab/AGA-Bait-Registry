@@ -4,10 +4,9 @@
  * ตำแหน่ง → บทเรียน (positions.code ใน supabase/migrations/20261110090300…):
  *   job_admin → admin · supervisor → recorder · pm / om / owner → pmom
  * ตำแหน่งที่ host เพิ่มเองภายหลัง (ไม่อยู่ในตาราง) → ใช้ role ของบัญชีแทน:
- *   admin → admin · recorder → recorder · host → pmom · viewer → ไม่มีบทเรียนเฉพาะ (ดูแค่ส่วนกลาง)
+ *   admin → admin · recorder → recorder · host → pmom · viewer → ไม่มีบทเรียน (ไม่เปิดบทสอน)
  */
 import { adminLesson } from "./adminLesson";
-import { centralLesson } from "./centralLesson";
 import { pmomLesson } from "./pmomLesson";
 import { recorderLesson } from "./recorderLesson";
 import type { Lesson, LessonId } from "./types";
@@ -15,7 +14,6 @@ import type { Lesson, LessonId } from "./types";
 export type { Lesson, LessonId, LessonStep, StepScreen } from "./types";
 
 export const LESSONS: Readonly<Record<LessonId, Lesson>> = {
-  central: centralLesson,
   admin: adminLesson,
   recorder: recorderLesson,
   pmom: pmomLesson,

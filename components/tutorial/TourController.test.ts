@@ -7,10 +7,9 @@ import { LESSONS } from "./lessons";
 import { TourController, type FinishKind } from "./TourController";
 import { passwordGuardError } from "./tour-logic";
 
-function make(positionLesson: string | null = "recorder", pw = { password: "", confirm: "" }) {
+function make(pw = { password: "", confirm: "" }) {
   const onFinish = vi.fn<(kind: FinishKind) => void>();
   const controller = new TourController({
-    positionLessonId: () => positionLesson,
     onFinish,
     checkGuard: (step) => (step.guard === "pw" ? passwordGuardError(pw.password, pw.confirm) : null),
   });
@@ -114,43 +113,23 @@ describe("ข้ามขั้นที่หาจุดไม่เจอ", (
   });
 });
 
-describe("ต่อบทเรียนส่วนกลาง → บทเรียนของตำแหน่ง", () => {
-  it("จบบทส่วนกลางแล้วเข้าบทของตำแหน่ง โดยยังไม่ถือว่าจบ (ไม่เรียก onFinish)", () => {
-    const { controller, onFinish, pw } = make("recorder");
-    controller.start("central");
-    pw.password = pw.confirm = "Bait2026ok";
-    for (let i = 0; i < LESSONS.central.steps.length; i++) controller.next();
-    expect(controller.getSnapshot()).toMatchObject({ running: true, lessonId: "recorder", index: 0 });
-    expect(onFinish).not.toHaveBeenCalled();
-  });
-
-  it("ผู้ใช้ไม่มีบทเรียนตำแหน่ง (viewer) → จบที่บทส่วนกลาง", () => {
-    const { controller, onFinish, pw } = make(null);
-    controller.start("central");
+describe("ไม่มีบทส่วนกลาง (ตัดบท login / เปลี่ยนรหัส · DECISIONS 2.111)", () => {
+  it("รหัส central เริ่มไม่ได้ · จบบทตำแหน่งแล้วจบเลย ไม่ต่อบทอื่น", () => {
+    const { controller, onFinish, pw } = make();
+    expect(controller.start("central")).toBe(false);
+    expect(controller.getSnapshot().running).toBe(false);
+    controller.start("recorder");
     finishAll(controller, pw);
     expect(controller.getSnapshot().running).toBe(false);
     expect(onFinish).toHaveBeenCalledTimes(1);
     expect(onFinish).toHaveBeenCalledWith("done");
   });
-
-  it("ขั้น guard รหัสผ่าน: รหัสไม่ผ่าน → ไม่ไปต่อ + มีข้อความ · ผ่านแล้วไปต่อ", () => {
-    const { controller, pw } = make("admin");
-    controller.start("central");
-    for (let i = 0; i < 5; i++) controller.next(); // ถึงขั้น chpw-save (index 5)
-    expect(controller.step?.guard).toBe("pw");
-    controller.next();
-    expect(controller.getSnapshot().index).toBe(5);
-    expect(controller.getSnapshot().guardError).toContain("ยังไม่ผ่านเงื่อนไข");
-    pw.password = pw.confirm = "Bait2026ok";
-    controller.next();
-    expect(controller.getSnapshot()).toMatchObject({ index: 6, guardError: null });
-  });
 });
 
 describe("complete / skip เรียกครั้งเดียว", () => {
   it("ดูจนจบ → onFinish('done') ครั้งเดียว · กดซ้ำหลังจบไม่เรียกอีก", () => {
-    const { controller, onFinish, pw } = make("pmom");
-    controller.start("central");
+    const { controller, onFinish, pw } = make();
+    controller.start("pmom");
     finishAll(controller, pw);
     expect(onFinish).toHaveBeenCalledTimes(1);
     expect(onFinish).toHaveBeenCalledWith("done");
@@ -161,8 +140,8 @@ describe("complete / skip เรียกครั้งเดียว", () => 
   });
 
   it("กดข้ามกลางทาง → onFinish('skip') ครั้งเดียว · กดข้ามรัวๆ ไม่เรียกซ้ำ", () => {
-    const { controller, onFinish } = make("admin");
-    controller.start("central");
+    const { controller, onFinish } = make();
+    controller.start("admin");
     controller.next();
     controller.skipAll();
     controller.skipAll();
@@ -179,7 +158,7 @@ describe("complete / skip เรียกครั้งเดียว", () => 
   });
 
   it("เปิดดูซ้ำ (รอบใหม่) → นับเป็นรอบใหม่ เรียก onFinish ได้อีก 1 ครั้งของรอบนั้น", () => {
-    const { controller, onFinish } = make("admin");
+    const { controller, onFinish } = make();
     controller.start("admin");
     controller.skipAll();
     controller.start("admin");
@@ -196,8 +175,8 @@ describe("โหมดฝึกไม่เรียก API", () => {
       return Promise.reject(new Error("ห้ามเรียกเครือข่ายในโหมดฝึก"));
     });
     try {
-      for (const id of ["central", "admin", "recorder", "pmom"] as const) {
-        const { controller, onFinish, pw } = make("pmom");
+      for (const id of ["admin", "recorder", "pmom"] as const) {
+        const { controller, onFinish, pw } = make();
         pw.password = pw.confirm = "Bait2026ok";
         controller.start(id);
         controller.next();

@@ -7,13 +7,13 @@
 
 | ไฟล์ | หน้าที่ |
 |---|---|
-| `lessons/*Lesson.ts` | **ข้อความบทเรียน** 1 ไฟล์ต่อกลุ่มตำแหน่ง: `centralLesson` (ส่วนกลาง 7 ขั้น) · `adminLesson` (7) · `recorderLesson` (8) · `pmomLesson` (7) · `index.ts` เลือกบทตามตำแหน่ง |
-| `TourController.ts` | เครื่องสถานะ: ถัดไป/ย้อน/ข้าม · ข้ามขั้นที่หาจุดไม่เจอ · ต่อบทส่วนกลาง→บทตำแหน่ง · แจ้งตอนจบ **ครั้งเดียวต่อรอบ** |
+| `lessons/*Lesson.ts` | **ข้อความบทเรียน** 1 ไฟล์ต่อกลุ่มตำแหน่ง: `adminLesson` (7) · `recorderLesson` (8) · `pmomLesson` (7) · `index.ts` เลือกบทตามตำแหน่ง · **ไม่มีบทส่วนกลาง/บทสอน login + เปลี่ยนรหัสแล้ว** (DECISIONS 2.111 — ผู้ใช้ทำจริงมาแล้ว) |
+| `TourController.ts` | เครื่องสถานะ: ถัดไป/ย้อน/ข้าม · ข้ามขั้นที่หาจุดไม่เจอ · แจ้งตอนจบ **ครั้งเดียวต่อรอบ** |
 | `tour-logic.ts` | ฟังก์ชันล้วน: เงื่อนไขเปิดอัตโนมัติ/บันทึกสถานะ · ตัดสินการคลิกในโหมดฝึก · วางกล่อง (หลบ `data-sticky-savebar`) · เลื่อนหน้า |
 | `onboarding.ts` | **ไฟล์เดียวที่คุยกับฐานข้อมูล**: อ่านสถานะตัวเอง · `complete_onboarding()` · `skip_onboarding()` |
 | `TutorialProvider.tsx` | ผูก controller เข้าแอป (อยู่ใน `AppShell`) · เปิดอัตโนมัติ · เรียก RPC ตอนจบ/ข้าม |
 | `TutorialOverlay.tsx` | ไฮไลต์ + กล่อง + ดักคลิก (โหมดฝึก) + คีย์ลัด |
-| `TutorialSandbox.tsx` | หน้าจำลอง “เข้าสู่ระบบ / ตั้งรหัสผ่านใหม่” ของบทส่วนกลาง |
+| `TutorialSandbox.tsx` | โครงหน้าจำลอง (sandbox login/เปลี่ยนรหัส) — **ตอนนี้ไม่มีบทไหนใช้** คงไว้เป็นโครงรองรับ ลบได้ถ้าไม่ต้องการ (ต้องแก้ `TutorialOverlay` / `TutorialProvider` / `tour-logic` ด้วย) |
 | `TutorialButton.tsx` | ปุ่ม “สอนใช้งาน” + เมนูเลือกบทเรียน (ใน `Topbar`) |
 | `tutorial.module.css` | สไตล์ (ใช้ CSS variable เท่านั้น ไม่มี hex) |
 
@@ -21,8 +21,8 @@
 
 1. ตอนเปิดแอป `TutorialProvider` อ่านสถานะของตัวเอง (`position_code`, `onboarding_completed_at`, `onboarding_skipped_at`)
    — ถ้า layout ส่ง `tutorialProfile` เข้า `AppShell` ก็ไม่ต้องอ่านซ้ำ
-2. ทั้ง completed และ skipped ว่าง → เปิดบทส่วนกลางอัตโนมัติ → จบแล้วต่อบทของตำแหน่ง
-   (`job_admin`→admin · `supervisor`→recorder · `pm`/`om`/`owner`→pmom · ตำแหน่งอื่นใช้ role แทน · viewer ดูแค่ส่วนกลาง)
+2. ทั้ง completed และ skipped ว่าง → เปิดบทของตำแหน่งอัตโนมัติ (เริ่มที่หน้าแรกของตำแหน่งเลย) · ตำแหน่งที่ไม่มีบท (viewer) = ไม่เปิดและไม่บันทึกสถานะ
+   (`job_admin`→admin · `supervisor`→recorder · `pm`/`om`/`owner`→pmom · ตำแหน่งอื่นใช้ role แทน · viewer ไม่มีบทสอน)
 3. แต่ละขั้นชี้จุดด้วย `data-tour="<ชื่อ>"` ในหน้าจริง · มี `path` = พาไปหน้านั้นก่อน
    · หา element ไม่เจอใน ~2.5 วิ (หลังเปลี่ยนหน้า ~5 วิ) = **ข้ามขั้นนั้นเงียบๆ** ไม่ค้าง
 4. จบ → `complete_onboarding()` · กดข้าม/Esc → `skip_onboarding()` (เรียกครั้งเดียวต่อรอบ และเฉพาะเมื่อสถานะยังไม่เป็นสุดท้าย)
