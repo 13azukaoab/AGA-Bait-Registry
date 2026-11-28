@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { summaryViewMode } from "./view-mode";
+import { summaryViewMode } from "./viewMode";
 
 describe("summaryViewMode", () => {
   it("ไม่ล็อกอิน (ไม่มีโปรไฟล์) = public", () => {

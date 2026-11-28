@@ -25,7 +25,7 @@ import { Alert } from "@/components/ui/Alert";
 import { getCurrentProfile } from "@/lib/auth/session";
 
 import { loadSummaryRows } from "./data";
-import { summaryViewMode } from "./view-mode";
+import { summaryViewMode } from "@/components/summary/viewMode";
 
 export const dynamic = "force-dynamic";
 
@@ -37,11 +37,14 @@ export const metadata: Metadata = {
 
 type SummaryResult = Awaited<ReturnType<typeof loadSummaryRows>>;
 
-/** เนื้อหาหลัก (ใช้ร่วมกันทั้งแบบในกรอบระบบและแบบสาธารณะ) */
-function SummaryContent({ result }: { result: SummaryResult }) {
+/**
+ * เนื้อหาหลัก (ใช้ร่วมกันทั้งแบบในกรอบระบบและแบบสาธารณะ)
+ * `inShell` = อยู่ใน AppShell ซึ่งมี `#content` (จุดข้ามไปเนื้อหา) อยู่แล้ว → ไม่ใส่ id ซ้ำ
+ */
+function SummaryContent({ result, inShell = false }: { result: SummaryResult; inShell?: boolean }) {
   return (
     <main
-      id="content"
+      id={inShell ? undefined : "content"}
       className="mx-auto max-w-[1280px] px-4 pt-5 pb-10 min-[601px]:px-6"
     >
       {!result.ok ? (
@@ -87,7 +90,7 @@ export default async function SummaryPage() {
   if (profile && summaryViewMode(profile) === "shell") {
     return (
       <AppShellFrame profile={profile}>
-        <SummaryContent result={result} />
+        <SummaryContent result={result} inShell />
       </AppShellFrame>
     );
   }
