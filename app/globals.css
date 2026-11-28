@@ -61,7 +61,7 @@
 
   /* XXL (DECISIONS 2.113 · ทอง 4 · 24K Metallic) — ค่าตาม CLAUDE.md ตาราง "สี Tier"
      tier=สีกลุ่ม · soft=พื้นอ่อนจุดแรก · ink=ตัวบนป้ายอ่อน · on=ตัวบนป้ายเข้ม (เข้ม ไม่ใช่ขาว) · ring=ขอบ
-     glow=แสงเรืองนิ่ง · sheen=สีประกายวิ่ง · xxl1-*/xxl3-*=จุดสีของพื้นไล่เฉด */
+     glow=แสงเรืองนิ่ง · sheen=สีประกายวิ่ง · --xxl1-a/b และ --xxl3-a/b/c = จุดสีของพื้นไล่เฉด */
   --tier-xxl: #e0b030;
   --tier-xxl-soft: #fffbe8;
   --tier-xxl-ink: #5a3f00;
