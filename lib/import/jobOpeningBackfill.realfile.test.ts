@@ -25,9 +25,9 @@ describe.skipIf(!HAS_FILES)("เติมวันรับ Mail / วันบ�
     expect(registry!.targets).toHaveLength(REGISTRY_CONTRACTS_OCT26);
     expect(s.plan.matched + s.notFound.total).toBe(s.plan.jobContracts);
     expect(Object.values(s.notFound.byReason).reduce((a, b) => a + b, 0)).toBe(s.notFound.total);
-    // ไม่มีชีทเดือนไหนหายจากการหาหัวตาราง (ม.ค.–พ.ย. 26)
-    expect(s.sheets.filter((x) => x.contractRows > 0)).toHaveLength(11);
-    expect(s.sheetsSkipped).toEqual(["2569:Reference", "2569:รายชื่อเซลล์"]);
+    // ไม่มีชีทเดือนไหนหายจากการหาหัวตาราง (ม.ค.–พ.ย. 26 · ไฟล์อาจมีเดือนใหม่เพิ่ม)
+    expect(s.sheets.filter((x) => x.contractRows > 0).length).toBeGreaterThanOrEqual(11);
+    expect(s.sheetsSkipped).toEqual(expect.arrayContaining(["2569:Reference", "2569:รายชื่อเซลล์"]));
     for (const f of ["mail", "service", "time"] as const) {
       // โหมดไฟล์ถือว่าช่องว่างทั้งหมด → ทุกสัญญาที่จับคู่ได้ = เติม / conflict / อ่านไม่ได้ / ว่าง (เวลา: + ไม่มีวันที่)
       const accounted = s.plan.fills[f] + s.plan.conflict[f] + s.plan.problemOnly[f] + s.plan.noValue[f] + (f === "time" ? s.plan.timeNoDate : 0);
