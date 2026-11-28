@@ -1,6 +1,6 @@
 import type { BranchRef, Contract, SnapshotRow, TierRule, Visit } from "./types";
 import { rulesForMonth, tierOf } from "./tier";
-import { annualValueForTerm, serviceMonthsForTerm, tierKey } from "./term";
+import { annualValueForTerm, dashboardTier, dashboardTierKey, serviceMonthsForTerm } from "./term";
 import { monthOf } from "./date";
 import { lastServiceMonth, trackingStartMonth } from "./missedResolution";
 import { isMissedService } from "./missedService";
@@ -14,6 +14,7 @@ import { isPausedMonth } from "./pauseMonth";
  * M29 (DECISIONS 2.87): เดือนที่พักสัญญา (contract.pauses) ไม่นับ (ลูกค้า/มูลค่าไม่อยู่ในยอดเดือนนั้น) ·
  *   การเข้า "ชดเชยจากพักสัญญา" หลังสัญญาจบ นับในเดือนที่เข้าจริงเหมือนชดเชยตกบริการ (2.45)
  * M30: ระยะเป็นเดือน (termMonths) · สัญญา Custom (ไม่ใช่ 12/36) นับในกลุ่ม 1 ปี (s1/m1/l1/xl1)
+ * XXL (DECISIONS 2.112): Dashboard ไม่มีช่อง XXL → XXL1 นับเข้า xl1 · XXL3 เข้า xl3 · มูลค่าเข้า vXL
  *
  * ⚠ สำหรับคนต่อ Dashboard Sync (ผลตรวจ M2): loader ต้องส่ง
  *   (1) visits = การเข้า **ทั้งหมด** ของสัญญา พร้อม makeupForMonth (visits.makeup_for_month)
@@ -77,10 +78,11 @@ export function buildBranchSnapshot(
     const av = annualValueForTerm(c.valueTotal, c.termMonths);
     const tier = tierOf(av, monthRules);
 
-    const countKey = tierKey(tier, c.termMonths);
+    // DECISIONS 2.112: XXL นับรวม XL (XXL1 → xl1 · XXL3 → xl3 · มูลค่า → vXL) · รูปแบบ 16 ฟิลด์ไม่เปลี่ยน
+    const countKey = dashboardTierKey(tier, c.termMonths);
     row[countKey] = row[countKey] + 1;
 
-    const valueKey = `v${tier}` as "vS" | "vM" | "vL" | "vXL";
+    const valueKey = `v${dashboardTier(tier)}` as const;
     row[valueKey] += c.valueTotal;
 
     row.cust += 1;

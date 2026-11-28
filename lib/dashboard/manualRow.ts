@@ -13,7 +13,7 @@
  * - `buildManualSnapshotRow` → รวมทั้งหมดไว้ในครั้งเดียว
  */
 import { tierOf } from "../rules/tier";
-import { annualValueForTerm } from "../rules/term";
+import { annualValueForTerm, dashboardTier } from "../rules/term";
 import type { Tier, TierRule } from "../rules/types";
 import { BRANCHES } from "./branches";
 import type { DashboardRow } from "./types";
@@ -206,7 +206,8 @@ export function checkTierBands(
     if (!Number.isFinite(value) || value <= 0) continue;
 
     const annual = annualValueForTerm(value / count, termMonthsOfKey(key));
-    const actual = tierOf(annual, rules, month);
+    // XXL (2.112): ช่อง XL ของ Dashboard รวม XXL → มูลค่าระดับ XXL ในช่อง XL ไม่เตือน
+    const actual = dashboardTier(tierOf(annual, rules, month));
     const expected = tierGroup(key);
     if (actual !== expected) {
       warnings.push(
