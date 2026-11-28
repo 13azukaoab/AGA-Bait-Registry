@@ -17,6 +17,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { annualValueForTerm, serviceMonthsForTerm, tierOf, type TierRule } from "@/lib/rules";
 import { monthOf } from "@/lib/rules/date";
+import { fetchAllKeyset, KEYSET_PAGE_SIZE } from "@/lib/supabase/fetchAll";
 import { TIER_RULE_COLUMNS, toTierRules, type TierRuleRow } from "@/lib/tierRules";
 
 import { contractMonthTag } from "./contractTag";
@@ -44,7 +45,6 @@ import type {
   ZoneOption,
 } from "./types";
 
-export const CONTRACT_LIMIT = 1000;
 const CHUNK = 80;
 const STATION_LIMIT = 1000;
 
@@ -146,7 +146,8 @@ export async function loadContractCounts(
 }
 
 /**
- * รายชื่อสัญญาของสาขาที่เลือกในเดือนที่เลือก
+ * รายชื่อสัญญาของสาขาที่เลือกในเดือนที่เลือก (รับได้หลายสาขาในคำขอเดียว — /todo ส่งทุกสาขาครั้งเดียว)
+ * อ่านสัญญาด้วย keyset (fetchAllKeyset) เรียงตาม contract_no → ไม่ติดเพดาน 1,000 แถว · ถ้าเกินเพดานจำนวนก้อนจริง `truncated` = true
  * `includeAgOutsideMonth` (หน้า /bait): เพิ่มสัญญาที่ "ไม่อยู่ในช่วงบริการของเดือนนี้" แต่ยังมีกล่อง AG ใช้งานค้างอยู่
  * (เช่น สัญญาหมดแล้วรอเก็บสถานี แต่กล่องยัง "รอถอด") — งานนอกรอบต้องเข้าถึงได้
  */
@@ -160,20 +161,31 @@ export async function loadContractList(
   if (branchIds.length === 0) return { items: [], truncated: false, error: null };
   const { from, toExclusive } = monthRange(month);
 
-  const { data, error } = await supabase
-    .from("contracts")
-    .select(
-      `id, contract_no, customer_id, start_date, term_months, value_total, status, renewed_from_contract_id,
+  // ดึงครบทุกแถวด้วย keyset ตาม contract_no (unique) — PostgREST ตัดเงียบที่ max_rows 1,000 ต่อคำขอ
+  // (เดิม .limit(1000) ครั้งเดียว → /todo ต้องแยกยิงรายสาขา ซึ่งช้ามากเพราะ RLS ทำงานต่อแถวทุกรอบ)
+  const branchList = [...branchIds];
+  const fetched = await fetchAllKeyset<ContractDb>(
+    async (after) => {
+      let q = supabase
+        .from("contracts")
+        .select(
+          `id, contract_no, customer_id, start_date, term_months, value_total, status, renewed_from_contract_id,
        stations_initialized_at, customers!inner ( name, branch_id )`,
-    )
-    .in("customers.branch_id", [...branchIds])
-    .in("status", ["active", "expired_pending_collection"])
-    .lt("start_date", toExclusive)
-    .order("contract_no", { ascending: true })
-    .limit(CONTRACT_LIMIT);
-  if (error) return { items: [], truncated: false, error: error.message };
+        )
+        .in("customers.branch_id", branchList)
+        .in("status", ["active", "expired_pending_collection"])
+        .lt("start_date", toExclusive)
+        .order("contract_no", { ascending: true })
+        .limit(KEYSET_PAGE_SIZE);
+      if (after !== null) q = q.gt("contract_no", after);
+      const res = await q;
+      return { data: (res.data ?? null) as unknown as ContractDb[] | null, error: res.error };
+    },
+    (row) => row.contract_no,
+  );
+  if (fetched.error) return { items: [], truncated: false, error: fetched.error };
 
-  const withCustomer = ((data ?? []) as unknown as ContractDb[]).filter((c) => c.customers);
+  const withCustomer = fetched.rows.filter((c) => c.customers);
   const coversMonth = (c: ContractDb) => serviceMonthsForTerm(c.start_date, termMonthsOf(c.term_months)).includes(month);
   const raw = options.includeAgOutsideMonth ? withCustomer : withCustomer.filter(coversMonth);
   const ids = raw.map((c) => c.id);
@@ -232,7 +244,7 @@ export async function loadContractList(
       monthTag: contractMonthTag(c.start_date, c.renewed_from_contract_id, month),
     };
   });
-  return { items, truncated: (data ?? []).length >= CONTRACT_LIMIT, error: null };
+  return { items, truncated: fetched.truncated, error: null };
 }
 
 type StationDb = {
