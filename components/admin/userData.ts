@@ -26,6 +26,8 @@ type ProfileDb = {
   is_active: boolean;
   must_change_password: boolean;
   last_login: string | null;
+  /** วันเปิดบัญชี (timestamptz ISO) · DECISIONS 2.114 */
+  created_at: string;
 };
 
 type PositionDb = {
@@ -38,7 +40,7 @@ type PositionDb = {
 };
 
 const PROFILE_COLUMNS =
-  "user_id, username, display_name, role, position_code, is_active, must_change_password, last_login";
+  "user_id, username, display_name, role, position_code, is_active, must_change_password, last_login, created_at";
 const POSITION_COLUMNS = "code, name_th, short_name_th, role, assignable, sort_order";
 
 /** ขอบบนจำนวนบัญชี (ทีมงานภายในหลักสิบ) — เกินนี้ต้องทำแบ่งหน้า */
@@ -68,6 +70,7 @@ export async function loadUsersPage(
     isActive: r.is_active,
     mustChangePassword: r.must_change_password,
     lastLogin: r.last_login,
+    createdAt: r.created_at,
   }));
 
   return {
