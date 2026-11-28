@@ -20,11 +20,17 @@
  *        ... -- --fixtures "<path>/fixtures" --rollback "<run log>.jsonl"            (ไม่ใส่ --apply = นับอย่างเดียว)
  *        ... -- --fixtures "<path>/fixtures" --rollback "<run log>.jsonl" --apply [--target cloud ...]   (พิมพ์ `ลบ <n>`)
  *
- * ตัวเลือก:
- *   --include-2568            อ่านไฟล์เปิดงานปี 2568 ด้วย (ค่าเริ่ม = 2569 อย่างเดียว · รอเจ้าของตัดสิน)
+ * ค่าเริ่มต้น = ผลตัดสินเจ้าของ DECISIONS 2.120 (28 พ.ย. 2026 · ไม่ต้องใส่ flag):
+ *   ② ไฟล์ 2569 อย่างเดียว · ③ ไม่เติมสัญญาที่ "ผิดชัด" (Mail หลังวันบริการ / วันที่เลยวันนี้) แต่รายงานเลขสัญญา+เหตุผล
+ *   ④ ไม่แตะสัญญาปิด/ยกเลิก · ⑤ ค่าซ้ำต่างกัน/อ่านไม่ได้ = ปล่อยว่าง · ⑥ วันบริการหลายวัน = วันแรก (ตัวอ่านไฟล์)
+ *   (① /sales นับสัญญานำเข้าตามวันเริ่มเสมอ — แก้ที่ components/sales-dashboard/salesData.ts ไม่ใช่สคริปต์นี้)
+ *
+ * ตัวเลือก (เปลี่ยนจากค่าที่เจ้าของตัดสิน — ใช้เมื่อเจ้าของสั่งใหม่เท่านั้น):
+ *   --include-2568            อ่านไฟล์เปิดงานปี 2568 ด้วย
  *   --batches <a,b>           import_batch ที่ยอมให้เติม (ค่าเริ่ม registry-OCT26 · เช่น เพิ่ม registry-OCT26-fix1)
  *   --include-closed          เติมสัญญาที่ปิด/ยกเลิกด้วย (ค่าเริ่ม = ไม่แตะ นับแยก)
- *   --skip-warned             ไม่เติมสัญญาที่มีคำเตือน (Mail หลังวันบริการ / บริการก่อนวันเริ่ม / หลังวันสิ้นสุด)
+ *   --skip-warned             ไม่เติมสัญญาที่มีคำเตือนทุกชนิด (รวม บริการก่อนวันเริ่ม / หลังวันสิ้นสุด)
+ *   --fill-clearly-wrong      เติมสัญญาที่ผิดชัดด้วย (ยกเลิกข้อ ③)
  *
  * env (เฉพาะ --db / --apply / --rollback --apply · ตั้งในเทอร์มินัลตอนรันเท่านั้น · ห้าม commit · ห้ามวางในแชท):
  *   NEXT_PUBLIC_SUPABASE_URL · SUPABASE_SERVICE_ROLE_KEY · AGA_CLOUD_PROJECT_REF (cloud) · AGA_IMPORT_LOG_DIR (แทน --log-dir)
@@ -41,6 +47,7 @@ import { fileURLToPath } from "node:url";
 import { resolveLogFile, runGuarded } from "../lib/import/cloudGuard";
 import { REGISTRY_IMPORT_BATCH_OCT26 } from "../lib/import/centralRegistrySheets";
 import {
+  CLEARLY_WRONG_WARNINGS,
   DEFAULT_SKIP_STATUSES,
   planJobOpeningBackfill,
   summarizeBackfill,
@@ -127,6 +134,7 @@ async function main(): Promise<void> {
     fillBatches: (flag("--batches") ?? REGISTRY_IMPORT_BATCH_OCT26).split(",").map((s) => s.trim()).filter(Boolean),
     skipStatuses: hasFlag("--include-closed") ? [] : DEFAULT_SKIP_STATUSES,
     skipWarned: hasFlag("--skip-warned"),
+    skipWarnings: hasFlag("--fill-clearly-wrong") ? [] : CLEARLY_WRONG_WARNINGS,
     // วันนี้ตามเวลาไทย (UTC+7) — วันที่ในไฟล์ที่เลยวันนี้ = เตือน
     asOf: new Date(Date.now() + 7 * 3_600_000).toISOString().slice(0, 10),
   };
@@ -158,6 +166,7 @@ async function main(): Promise<void> {
           options: opts,
           summary,
           warningsContractNos: plan.warnings,
+          skippedWarnedContracts: plan.skippedWarnedContracts,
           with2568,
         },
         null,
@@ -176,6 +185,7 @@ async function main(): Promise<void> {
     const summary = summarizeBackfill(index, plan, registry.notFound);
     log.summary = summary;
     log.warningsContractNos = plan.warnings;
+    log.skippedWarnedContracts = plan.skippedWarnedContracts;
     log.differentContractNos = plan.differentContractNos;
 
     let runLog: ReturnType<typeof runLogWriter> | null = null;

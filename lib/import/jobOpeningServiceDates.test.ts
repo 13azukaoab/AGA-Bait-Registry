@@ -35,10 +35,11 @@ describe("parseJobDate", () => {
     expect(parseJobDate("5/10/26")).toMatchObject({ iso: null, problem: "twoDigitYear" });
   });
 
-  it("หลายวันในช่องเดียว = ปัญหา (ไม่เดา)", () => {
-    expect(parseJobDate("12,13/01/26").problem).toBe("multiDay");
-    expect(parseJobDate("12-13/1/2026").problem).toBe("multiDay");
-    expect(parseJobDate("12/1-13/1/2026").problem).toBe("multiDay");
+  it("หลายวันในช่องเดียว → ใช้วันแรก (2.120 ข้อ 6) · ปี 2 หลักยังเป็นปัญหา", () => {
+    expect(parseJobDate("12-13/1/2026")).toEqual({ iso: "2026-01-12", fromText: true, multiDayFirst: true });
+    expect(parseJobDate("12/1-13/1/2026").iso).toBe("2026-01-12");
+    expect(parseJobDate("12,13/01/2026").iso).toBe("2026-01-12");
+    expect(parseJobDate("12,13/01/26")).toMatchObject({ iso: null, problem: "twoDigitYear", multiDayFirst: true });
   });
 
   it("ปีนอกช่วง 2023–2027 = ปัญหา (serial ปีเก่า / พิมพ์ปีผิด)", () => {
@@ -169,11 +170,11 @@ describe("buildJobOpeningIndex", () => {
 
   it("ปัญหา: เก็บชนิด + เลขแถว (ไม่เก็บค่าในเซลล์)", () => {
     const idx = buildJobOpeningIndex([
-      { label: "2569", sheets: [sheetNew("ต.ค.26", [rowNew("CT26-0000010", "3/10/26", "12,13/10/2026", "บ่าย")])] },
+      { label: "2569", sheets: [sheetNew("ต.ค.26", [rowNew("CT26-0000010", "3/10/26", "31/11/2026", "บ่าย")])] },
     ]);
     expect(idx.problems).toEqual([
       { source: "2569", sheet: "ต.ค.26", excelRow: 4, contractNo: "CT26-0000010", field: "mail", kind: "twoDigitYear" },
-      { source: "2569", sheet: "ต.ค.26", excelRow: 4, contractNo: "CT26-0000010", field: "service", kind: "multiDay" },
+      { source: "2569", sheet: "ต.ค.26", excelRow: 4, contractNo: "CT26-0000010", field: "service", kind: "notRealDate" },
       { source: "2569", sheet: "ต.ค.26", excelRow: 4, contractNo: "CT26-0000010", field: "time", kind: "wordTime" },
     ]);
     const e = idx.entries.get("CT26-0000010")!;

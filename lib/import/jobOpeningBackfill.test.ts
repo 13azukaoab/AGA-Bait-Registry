@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  CLEARLY_WRONG_WARNINGS,
   classifyNotFound,
   planJobOpeningBackfill,
   registryNotImportedFromPlan,
@@ -164,6 +165,24 @@ describe("planJobOpeningBackfill", () => {
     const strict = planJobOpeningBackfill(jobs, targets, { ...OPTS, skipWarned: true });
     expect(strict.updates).toHaveLength(0);
     expect(strict.counts.skippedWarned).toBe(3);
+  });
+
+  it("skipWarnings: ไม่เติมเฉพาะสัญญาที่มีคำเตือนชนิดผิดชัด (2.120 ข้อ 3) · ชนิดอื่นเติมตามปกติ · รายงานเลข + ชนิด", () => {
+    const p = planJobOpeningBackfill(
+      index([
+        job("CT26-0000026", "2026-10-10", "2026-10-03", null),
+        job("CT26-0000027", null, "2026-09-20", null),
+        job("CT26-0000028", "2026-12-01", "2026-12-02", null),
+      ]),
+      [target("CT26-0000026"), target("CT26-0000027"), target("CT26-0000028")],
+      { ...OPTS, asOf: "2026-11-28", skipWarnings: CLEARLY_WRONG_WARNINGS },
+    );
+    expect(p.updates.map((u) => u.contractNo)).toEqual(["CT26-0000027"]);
+    expect(p.counts.skippedWarned).toBe(2);
+    expect(p.skippedWarnedContracts).toEqual([
+      { contractNo: "CT26-0000026", kinds: ["mailAfterService"] },
+      { contractNo: "CT26-0000028", kinds: ["futureDate"] },
+    ]);
   });
 
   it("วันที่ที่จะเติมเลยวันนี้ (asOf) = เตือน futureDate · ไม่ส่ง asOf = ไม่ตรวจ", () => {

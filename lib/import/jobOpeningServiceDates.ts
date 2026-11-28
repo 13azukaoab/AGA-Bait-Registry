@@ -10,7 +10,9 @@
  *   2. แถวข้อมูล = เลขที่สัญญาผ่าน normalizeContractNo (ตัวเดียวกับ importContracts / sellerLookup) · แถวอื่นนับเป็น
  *      "ไม่ใช่แถวสัญญา" (ว่าง/บล็อกสรุปท้ายชีท) · ⚠ ชีทเดือนล่าสุดมีแถวว่างเป็นล้านแถว → loop ธรรมดา ห้าม spread
  *   3. วันที่ (parseJobDate): serial ของ Excel · ข้อความ วว/ดด/ปปปป (คั่น / - .) · ปปปป-ดด-วว
- *      ปี ≥ 2400 = พ.ศ. → ลบ 543 (นับไว้ใน fixes) · ปี 2 หลัก / หลายวันในช่องเดียว / อ่านไม่ออก / วันไม่มีจริง = ปัญหา (ไม่เดา)
+ *      ปี ≥ 2400 = พ.ศ. → ลบ 543 (นับไว้ใน fixes) · ปี 2 หลัก / อ่านไม่ออก / วันไม่มีจริง = ปัญหา (ไม่เดา)
+ *      หลายวันในช่องเดียว (12,13/01/2026 · 12-13/1/2026 · 12/1-13/1/2026) = ใช้วันแรก (DECISIONS 2.120 ข้อ 6 · นับใน multiDayFirst)
+ *      แล้วตรวจต่อตามกฎเดิม (เช่น ปี 2 หลัก ยังเป็นปัญหา)
  *      ปีนอกช่วง (ค่าเริ่ม 2023–2027) = ปัญหา (ไม่เติม)
  *   4. เวลา (parseJobTime): เศษของวัน (0 ≤ x < 1) · ข้อความ HH:MM / HH.MM (ตัด "น.") · ช่วงเวลา "09.00-10.00" หรือ "09.00/10.00"
  *      = ใช้เวลาเริ่ม (นับไว้ใน ranges) · ตัวเลข ≥ 1 (วันที่อยู่ในช่องเวลา) / คำว่า เช้า-บ่าย / อ่านไม่ออก = ปัญหา (ไม่เดา)
@@ -30,7 +32,6 @@ import { normalizeContractNo } from "./fields";
 export type DateProblem =
   | "unreadable" // อ่านไม่ออก
   | "twoDigitYear" // ปี 2 หลัก (ไม่เดาศตวรรษ/พ.ศ.)
-  | "multiDay" // หลายวันในช่องเดียว เช่น 12,13/01/26 หรือ 12-13/1/2026
   | "notRealDate" // วันที่ไม่มีจริง เช่น 31/11
   | "yearOutOfRange"; // ปีหลังแปลงอยู่นอกช่วงที่ยอมรับ
 
@@ -41,6 +42,8 @@ export interface DateParse {
   buddhistYear?: boolean;
   /** ค่าเป็นข้อความ (ไม่ใช่ช่องวันที่ของ Excel) */
   fromText?: boolean;
+  /** ช่องมีหลายวัน → ใช้วันแรก (2.120 ข้อ 6) */
+  multiDayFirst?: boolean;
   problem?: DateProblem;
 }
 
@@ -80,8 +83,12 @@ function finishDate(y: number, m: number, d: number, range: YearRange, fromText:
 
 const DMY = /^(\d{1,2})[/.-](\d{1,2})[/.-](\d+)$/;
 const YMD = /^(\d{4})-(\d{1,2})-(\d{1,2})$/;
-/** หลายวันในช่องเดียว: "12,13/01/26" · "12-13/1/2026" · "12/1-13/1/2026" */
-const MULTI_DAY = /^\d{1,2}\s*[,&]\s*\d{1,2}[/.-]|^\d{1,2}\s*-\s*\d{1,2}\s*\/|^\d{1,2}\/\d{1,2}\s*-\s*\d{1,2}\//;
+/** หลายวันในช่องเดียว → ข้อความวันแรก: "12,13/01/26" → "12/01/26" · "12-13/1/2026" → "12/1/2026" · "12/1-13/1/2026" → "12/1/2026" */
+const MULTI_DAY: readonly [RegExp, (m: RegExpExecArray) => string][] = [
+  [/^(\d{1,2})\s*[,&]\s*\d{1,2}([/.-]\d{1,2}[/.-]\d+)$/, (m) => `${m[1]}${m[2]}`],
+  [/^(\d{1,2})\s*-\s*\d{1,2}\s*(\/\d{1,2}\/\d+)$/, (m) => `${m[1]}${m[2]}`],
+  [/^(\d{1,2}\/\d{1,2})\s*-\s*\d{1,2}\/\d{1,2}(\/\d+)$/, (m) => `${m[1]}${m[2]}`],
+];
 
 /** ค่าเซลล์วันที่ของไฟล์เปิดงาน → 'YYYY-MM-DD' (ดู Logic summary ข้อ 3) */
 export function parseJobDate(v: CellValue | undefined, range: YearRange = DEFAULT_YEAR_RANGE): DateParse {
@@ -95,7 +102,10 @@ export function parseJobDate(v: CellValue | undefined, range: YearRange = DEFAUL
   }
   const text = v.replace(/\s+/g, " ").trim();
   if (text === "") return { iso: null };
-  if (MULTI_DAY.test(text)) return { iso: null, problem: "multiDay", fromText: true };
+  for (const [re, first] of MULTI_DAY) {
+    const m = re.exec(text);
+    if (m) return { ...parseJobDate(first(m), range), multiDayFirst: true };
+  }
   const ymd = YMD.exec(text);
   if (ymd) return finishDate(+ymd[1]!, +ymd[2]!, +ymd[3]!, range, true);
   const dmy = DMY.exec(text);
@@ -221,6 +231,8 @@ export interface JobSheetStats {
   buddhistYearFixes: number;
   /** วันที่เป็นข้อความที่อ่านได้ */
   textDates: number;
+  /** ช่องที่มีหลายวัน (ใช้วันแรก) */
+  multiDayFirst: number;
   /** เวลาเป็นช่วงที่ใช้เวลาเริ่ม */
   timeRanges: number;
   problems: number;
@@ -331,6 +343,7 @@ export function buildJobOpeningIndex(sources: readonly JobSourceInput[], range: 
         withTime: 0,
         buddhistYearFixes: 0,
         textDates: 0,
+        multiDayFirst: 0,
         timeRanges: 0,
         problems: 0,
       };
@@ -372,6 +385,7 @@ export function buildJobOpeningIndex(sources: readonly JobSourceInput[], range: 
         for (const [field, d] of [["mail", mail], ["service", service]] as const) {
           if (d.problem) note(field, d.problem);
           if (d.buddhistYear) stats.buddhistYearFixes += 1;
+          if (d.multiDayFirst) stats.multiDayFirst += 1;
           if (d.iso) {
             entry.values[field].add(d.iso);
             if (d.fromText) stats.textDates += 1;

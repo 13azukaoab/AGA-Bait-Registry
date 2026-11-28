@@ -14,7 +14,7 @@
  *   5. เวลา (มีเวลาต้องมีวันที่ · CHECK contracts_first_service_time_needs_date):
  *      เติมเวลาได้เมื่อวันที่บริการหลังเติม = วันที่บริการในไฟล์ (เติมพร้อมกัน หรือ DB มีวันเดียวกันอยู่แล้ว)
  *      DB มีวันที่อื่น → ไม่เติมเวลา (dateMismatch) · ไม่มีวันที่เลย → ไม่เติม (noDate)
- *   6. ค่าที่ดูแปลกแต่เป็นไปได้ (เตือน · เติมตามปกติ เว้นแต่ skipWarned): วันรับ Mail หลังวันบริการ ·
+ *   6. ค่าที่ดูแปลก (เตือน · เติมตามปกติ เว้นแต่ชนิดนั้นอยู่ใน skipWarnings / skipWarned = ทุกชนิด): วันรับ Mail หลังวันบริการ ·
  *      วันบริการก่อนวันเริ่มสัญญา · วันบริการหลังวันสิ้นสุด · วันที่ที่จะเติมเลยวันนี้ (asOf) → รายงานเลขสัญญา
  *   7. ผลกระทบ Dashboard งานขาย (2.91 / 2.101): สัญญานำเข้าที่ไม่มีวันรับ Mail ถูกนับตามเดือนวันเริ่มสัญญา ·
  *      เติมวันรับ Mail แล้วย้ายไปนับตามเดือนวันรับ Mail + Renew ที่วันรับ Mail > 15 กลายเป็น "ต่อสัญญาล่าช้า" → นับไว้รายงาน
@@ -56,11 +56,18 @@ export interface BackfillOptions {
   fillBatches: readonly string[];
   /** สถานะที่ไม่แตะ (ค่าเริ่ม DEFAULT_SKIP_STATUSES) */
   skipStatuses?: readonly string[];
-  /** true = สัญญาที่มีคำเตือน (ข้อ 6) ไม่เติมเลย */
+  /** true = สัญญาที่มีคำเตือนชนิดใดก็ได้ (ข้อ 6) ไม่เติมเลย */
   skipWarned?: boolean;
+  /** ชนิดคำเตือนที่ทำให้ "ไม่เติมทั้งสัญญา" (เช่น ผิดชัด: mailAfterService / futureDate · DECISIONS 2.120 ข้อ 3) */
+  skipWarnings?: readonly WarningKind[];
   /** วันที่ 'YYYY-MM-DD' ที่ถือเป็น "วันนี้" — วันที่ในไฟล์ที่เลยวันนี้ = เตือน futureDate · ไม่ส่ง = ไม่ตรวจ */
   asOf?: string;
 }
+
+export type WarningKind = "mailAfterService" | "serviceBeforeStart" | "serviceAfterEnd" | "futureDate";
+
+/** คำเตือนที่ "ผิดชัด" — ไม่เติม ส่งรายการให้แอดมินตรวจ (DECISIONS 2.120 ข้อ 3 แบบ ค) */
+export const CLEARLY_WRONG_WARNINGS: readonly WarningKind[] = ["mailAfterService", "futureDate"];
 
 export interface BackfillUpdate {
   id: string | null;
@@ -102,9 +109,11 @@ export interface BackfillPlan {
     otherBatch: Record<string, number>;
     /** จับคู่ได้แต่สถานะถูกข้าม (key = status) */
     skippedStatus: Record<string, number>;
-    /** สัญญาที่ไม่เติมเพราะมีคำเตือน (skipWarned) */
+    /** สัญญาที่ไม่เติมเพราะมีคำเตือน (skipWarned / skipWarnings) */
     skippedWarned: number;
   };
+  /** เลขสัญญาที่ไม่เติมเพราะคำเตือน → ชนิดคำเตือนของสัญญานั้น */
+  skippedWarnedContracts: { contractNo: string; kinds: WarningKind[] }[];
   /** คำเตือน (ข้อ 6) — เลขสัญญา */
   warnings: {
     mailAfterService: string[];
@@ -176,6 +185,7 @@ export function planJobOpeningBackfill(
       skippedWarned: 0,
     },
     warnings: { mailAfterService: [], serviceBeforeStart: [], serviceAfterEnd: [], futureDate: [] },
+    skippedWarnedContracts: [],
     targetsByStartMonth: {},
     differentContractNos: { mail: [], service: [], time: [] },
     fillsByStartMonth: {},
@@ -224,7 +234,9 @@ function usable(plan: BackfillPlan, job: JobEntry, field: JobField): string | nu
 }
 
 function planOne(plan: BackfillPlan, job: JobEntry, t: BackfillTarget, opts: BackfillOptions): void {
-  const skipWarned = opts.skipWarned === true;
+  const skipKinds = new Set<WarningKind>(
+    opts.skipWarned ? ["mailAfterService", "serviceBeforeStart", "serviceAfterEnd", "futureDate"] : (opts.skipWarnings ?? []),
+  );
   const c = plan.counts;
   const set: Partial<Record<DbField, string>> = {};
   const filled: JobField[] = [];
@@ -267,29 +279,22 @@ function planOne(plan: BackfillPlan, job: JobEntry, t: BackfillTarget, opts: Bac
   // คำเตือน (ข้อ 6) — ดูค่าหลังเติม
   const mailAfter = t.mail ?? mail;
   const serviceAfter = t.serviceDate ?? service;
-  let warned = false;
+  const kinds: WarningKind[] = [];
+  const warn = (kind: WarningKind) => {
+    plan.warnings[kind].push(t.contractNo);
+    kinds.push(kind);
+  };
   if (filled.length > 0) {
-    if (mailAfter && serviceAfter && mailAfter > serviceAfter) {
-      plan.warnings.mailAfterService.push(t.contractNo);
-      warned = true;
-    }
-    if (serviceAfter && serviceAfter < t.startDate) {
-      plan.warnings.serviceBeforeStart.push(t.contractNo);
-      warned = true;
-    }
-    if (serviceAfter && serviceAfter > t.endDate) {
-      plan.warnings.serviceAfterEnd.push(t.contractNo);
-      warned = true;
-    }
+    if (mailAfter && serviceAfter && mailAfter > serviceAfter) warn("mailAfterService");
+    if (serviceAfter && serviceAfter < t.startDate) warn("serviceBeforeStart");
+    if (serviceAfter && serviceAfter > t.endDate) warn("serviceAfterEnd");
     const asOf = opts.asOf;
-    if (asOf && [set.mail_received_date, set.first_service_date].some((d) => d !== undefined && d > asOf)) {
-      plan.warnings.futureDate.push(t.contractNo);
-      warned = true;
-    }
+    if (asOf && [set.mail_received_date, set.first_service_date].some((d) => d !== undefined && d > asOf)) warn("futureDate");
   }
   if (filled.length === 0) return;
-  if (warned && skipWarned) {
+  if (kinds.some((k) => skipKinds.has(k))) {
     c.skippedWarned += 1;
+    plan.skippedWarnedContracts.push({ contractNo: t.contractNo, kinds });
     return;
   }
 
