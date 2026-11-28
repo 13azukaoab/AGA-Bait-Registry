@@ -1,0 +1,608 @@
+<!doctype html>
+<html lang="th" data-theme="light" data-tone="a" data-play="always" data-rm="off">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AGA Bait Registry · mockup ป้าย Tier XXL</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@300;400;500;600;700&display=swap">
+<script>
+/* ตั้งธีมตามเครื่องก่อนวาดหน้า (กันกะพริบ) */
+try { if (window.matchMedia('(prefers-color-scheme: dark)').matches) document.documentElement.setAttribute('data-theme','dark'); } catch(e){}
+</script>
+<style>
+/* ============================================================================
+   Mockup: ป้าย Tier XXL (สูงกว่า XL) — สี gold neon + animation
+   ใช้ตัดสินใจเท่านั้น ไม่ใช่โค้ดแอป · ข้อมูลในตารางเป็นข้อมูลสมมติ
+
+   Logic สรุป (สำหรับทีมที่รับช่วงต่อ):
+   - token 8 แบบเดิม (S1..XL3) คัดลอกจาก app/globals.css ห้ามเปลี่ยน
+   - token ใหม่: --tier-xxl / --tier-xxl-soft / --tier-xxl-ink
+     (+ --on-xxl ตัวหนังสือบนพื้นทอง, --tier-xxl-glow, --tier-xxl-ring-b สำหรับ animation)
+     มี 2 โทนให้เลือก: A ทองอุ่น · B ทองสว่าง(นีออนจัด) → data-tone="a|b" ที่ <html>
+   - ป้ายอ่อน (XXL1) = พื้น soft + ตัว ink · ป้ายเข้ม (XXL3) = พื้นสีกลุ่ม + ตัวเข้ม
+     (ทองสว่างเกินไปสำหรับตัวขาว — ตัวขาวบนทอง ได้เพียง ~1.9:1)
+   - animation เลือกที่ data-anim="none|shimmer|glow|border" ของส่วน .live
+   - reduced motion: ทั้ง @media (prefers-reduced-motion) และสวิตช์จำลอง data-rm="on" → animation:none
+   - ค่า contrast คำนวณด้วย JS จากสีจริงที่เบราว์เซอร์ใช้ (WCAG relative luminance)
+   ============================================================================ */
+
+@property --ang { syntax: "<angle>"; inherits: false; initial-value: 0deg; }
+
+:root, [data-theme="light"] {
+  --bg:#eef2f7; --surface:#ffffff; --surface-2:#f4f7fb; --surface-3:#e9eff6;
+  --fg:#17212e; --fg-muted:#5a6b7e; --fg-faint:#8a98a8;
+  --border:#d8e0ea; --border-strong:#c3cedb;
+  --accent:#1f5fa8; --accent-fg:#ffffff; --accent-soft:#e6f0fb;
+  --ok:#1a8a5c; --warn:#b4740a; --danger:#c23b2e;
+  --tier-s:#1f5fa8; --tier-m:#157a50; --tier-l:#a86c07; --tier-xl:#c2561f;
+  --tier-s-soft:#e6f0fb; --tier-m-soft:#e3f4ec; --tier-l-soft:#fbf0db; --tier-xl-soft:#fce6da;
+  --tier-s-ink:#1f5fa8; --tier-m-ink:#157a50; --tier-l-ink:#976106; --tier-xl-ink:#ab4c1b;
+  --on-tier:#ffffff;
+  --radius:10px;
+  --shadow:0 1px 2px rgba(20,40,70,.06),0 1px 3px rgba(20,40,70,.05);
+  --font-sans:"Noto Sans Thai","Segoe UI",system-ui,sans-serif;
+  color-scheme:light;
+}
+[data-theme="dark"] {
+  --bg:#0e1621; --surface:#16202c; --surface-2:#1b2733; --surface-3:#222f3d;
+  --fg:#e8eef5; --fg-muted:#9fb0c3; --fg-faint:#6f8196;
+  --border:#2a3744; --border-strong:#36485a;
+  --accent:#4a90d9; --accent-fg:#0b1420; --accent-soft:#16304a;
+  --ok:#3bb183; --warn:#d99b3e; --danger:#e8695c;
+  --tier-s:#4a90d9; --tier-m:#3bb183; --tier-l:#d99b3e; --tier-xl:#e07a4e;
+  --tier-s-soft:#16304a; --tier-m-soft:#133227; --tier-l-soft:#332713; --tier-xl-soft:#3a2016;
+  --tier-s-ink:#5c9bdd; --tier-m-ink:#3bb183; --tier-l-ink:#d99b3e; --tier-xl-ink:#e07a4e;
+  --on-tier:#0b1420;
+  color-scheme:dark;
+}
+
+/* ---- token XXL: โทน A "ทองอุ่น" ---- */
+[data-tone="a"][data-theme="light"], :root[data-tone="a"] {
+  --tier-xxl:#f0b400; --tier-xxl-soft:#fff4c7; --tier-xxl-ink:#6b4a00;
+  --on-xxl:#241800; --tier-xxl-glow:rgba(240,180,0,.55); --tier-xxl-ring-b:#a87400;
+  --tier-xxl-sheen:rgba(255,255,255,.85);
+}
+[data-tone="a"][data-theme="dark"] {
+  --tier-xxl:#ffc21a; --tier-xxl-soft:#2e2506; --tier-xxl-ink:#ffd24d;
+  --on-xxl:#0b1420; --tier-xxl-glow:rgba(255,194,26,.5); --tier-xxl-ring-b:#fff1a8;
+  --tier-xxl-sheen:rgba(255,236,150,.55);
+}
+/* ---- token XXL: โทน B "ทองสว่าง (นีออนจัด)" ---- */
+[data-tone="b"][data-theme="light"] {
+  --tier-xxl:#ffd60a; --tier-xxl-soft:#fffbd1; --tier-xxl-ink:#665200;
+  --on-xxl:#1f1900; --tier-xxl-glow:rgba(255,214,10,.7); --tier-xxl-ring-b:#b08a00;
+  --tier-xxl-sheen:rgba(255,255,255,.9);
+}
+[data-tone="b"][data-theme="dark"] {
+  --tier-xxl:#ffe01f; --tier-xxl-soft:#2b2805; --tier-xxl-ink:#ffe14a;
+  --on-xxl:#0b1420; --tier-xxl-glow:rgba(255,224,31,.55); --tier-xxl-ring-b:#fffbc4;
+  --tier-xxl-sheen:rgba(255,246,170,.6);
+}
+
+* { box-sizing:border-box; }
+html { -webkit-text-size-adjust:100%; }
+body {
+  margin:0; background:var(--bg); color:var(--fg);
+  font-family:var(--font-sans); font-size:15px; line-height:1.55;
+}
+h1,h2,h3 { margin:0; line-height:1.3; }
+h1 { font-size:1.35rem; }
+h2 { font-size:1.15rem; margin-bottom:4px; }
+h3 { font-size:1rem; }
+p { margin:0 0 8px; }
+.muted { color:var(--fg-muted); }
+.faint { color:var(--fg-faint); font-size:.82rem; }
+.num { font-variant-numeric:tabular-nums; }
+code { font-size:.85em; background:var(--surface-3); padding:1px 5px; border-radius:4px; }
+
+/* ---------- แถบควบคุมด้านบน ---------- */
+.topbar {
+  position:sticky; top:0; z-index:20; background:var(--surface);
+  border-bottom:1px solid var(--border); box-shadow:var(--shadow);
+  padding:10px 16px;
+}
+.brand { font-weight:700; color:var(--accent); font-size:.85rem; letter-spacing:.02em; }
+.controls { display:flex; flex-wrap:wrap; gap:10px 18px; margin-top:8px; align-items:flex-end; }
+.cgroup { display:flex; flex-direction:column; gap:4px; }
+.cgroup > .lbl { font-size:.75rem; color:var(--fg-muted); font-weight:600; }
+.seg { display:inline-flex; border:1px solid var(--border-strong); border-radius:8px; overflow:hidden; background:var(--surface); }
+.seg button {
+  font:inherit; font-size:.85rem; min-height:44px; min-width:44px; padding:0 12px;
+  border:0; border-right:1px solid var(--border); background:transparent; color:var(--fg); cursor:pointer;
+}
+.seg button:last-child { border-right:0; }
+.seg button[aria-pressed="true"] { background:var(--accent); color:var(--accent-fg); font-weight:600; }
+.seg button:focus-visible, .chk:focus-within, .chip:focus-visible, .btn:focus-visible {
+  outline:2px solid var(--accent); outline-offset:2px;
+}
+.chk { display:inline-flex; align-items:center; gap:8px; min-height:44px; padding:0 4px; cursor:pointer; font-size:.85rem; border-radius:6px; }
+.chk input { width:22px; height:22px; accent-color:var(--accent); margin:0; cursor:pointer; }
+.rmstatus { font-size:.75rem; color:var(--fg-faint); }
+
+/* ---------- เลย์เอาต์ ---------- */
+main { max-width:1040px; margin:0 auto; padding:16px; display:flex; flex-direction:column; gap:20px; }
+section.card, .card {
+  background:var(--surface); border:1px solid var(--border); border-radius:var(--radius);
+  box-shadow:var(--shadow); padding:16px;
+}
+.grid { display:grid; gap:12px; }
+.g2 { grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); }
+.g5 { grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); }
+.scroll { overflow-x:auto; border:1px solid var(--border); border-radius:8px; }
+
+/* ---------- ป้าย Tier (8 แบบเดิม — ตรง app/globals.css) ---------- */
+.tier {
+  display:inline-block; padding:2px 8px; border-radius:6px;
+  font-size:.8rem; font-weight:600; line-height:1.4; position:relative; white-space:nowrap;
+  --play:running;
+}
+.tier.s1 { background:var(--tier-s-soft); color:var(--tier-s-ink); }
+.tier.s3 { background:var(--tier-s); color:var(--on-tier); }
+.tier.m1 { background:var(--tier-m-soft); color:var(--tier-m-ink); }
+.tier.m3 { background:var(--tier-m); color:var(--on-tier); }
+.tier.l1 { background:var(--tier-l-soft); color:var(--tier-l-ink); }
+.tier.l3 { background:var(--tier-l); color:var(--on-tier); }
+.tier.xl1 { background:var(--tier-xl-soft); color:var(--tier-xl-ink); }
+.tier.xl3 { background:var(--tier-xl); color:var(--on-tier); }
+
+/* ---------- ป้าย XXL (ใหม่) ----------
+   ฐานนิ่ง (ใช้ทุกโหมด รวมถึง reduced motion): พื้น + วงขอบทองบาง + แสงเรืองนิ่ง
+   ทำให้ต่างจาก XL ได้โดยไม่ต้องมี animation */
+.tier.xxl1, .tier.xxl3 {
+  --ring: color-mix(in srgb, var(--tier-xxl) 70%, var(--tier-xxl-ring-b));
+  box-shadow: inset 0 0 0 1px var(--ring), 0 0 6px var(--tier-xxl-glow);
+  overflow:hidden; isolation:isolate;
+}
+.tier.xxl1 { --fill:var(--tier-xxl-soft); background-color:var(--fill); color:var(--tier-xxl-ink); }
+.tier.xxl3 { --fill:var(--tier-xxl); background-color:var(--fill); color:var(--on-xxl); font-weight:700; }
+
+/* (ก) shimmer — ประกายวิ่งผ่าน ทุก ~3.6 วินาที (วิ่ง 40% ของรอบ แล้วพัก) */
+[data-anim="shimmer"] .tier.xxl1::after, [data-anim="shimmer"] .tier.xxl3::after {
+  content:""; position:absolute; inset:0; pointer-events:none; z-index:1;
+  background:linear-gradient(105deg, transparent 38%, var(--tier-xxl-sheen) 50%, transparent 62%);
+  transform:translateX(-130%);
+  animation:xxl-shimmer 3.6s ease-in-out infinite; animation-play-state:var(--play);
+}
+@keyframes xxl-shimmer { 0%{transform:translateX(-130%)} 40%{transform:translateX(130%)} 100%{transform:translateX(130%)} }
+
+/* (ข) glow pulse — เรืองแสงเต้นช้าๆ รอบละ ~5 วินาที (เปลี่ยนต่อเนื่อง ไม่กะพริบ) */
+[data-anim="glow"] .tier.xxl1, [data-anim="glow"] .tier.xxl3 {
+  animation:xxl-glow 2.6s ease-in-out infinite alternate; animation-play-state:var(--play);
+}
+@keyframes xxl-glow {
+  from { box-shadow: inset 0 0 0 1px var(--ring), 0 0 3px 0 var(--tier-xxl-glow); }
+  to   { box-shadow: inset 0 0 0 1px var(--ring), 0 0 12px 3px var(--tier-xxl-glow); }
+}
+
+/* (ค) ขอบไฟวิ่ง — conic gradient หมุนรอบป้าย รอบละ 4 วินาที */
+[data-anim="border"] .tier.xxl1, [data-anim="border"] .tier.xxl3 {
+  border:1.5px solid transparent; padding:.5px 6.5px;
+  background-image:
+    linear-gradient(var(--fill), var(--fill)),
+    conic-gradient(from var(--ang), var(--tier-xxl), var(--tier-xxl-ring-b), var(--tier-xxl), var(--tier-xxl-ring-b), var(--tier-xxl));
+  background-origin:border-box; background-clip:padding-box, border-box;
+  box-shadow:0 0 7px var(--tier-xxl-glow);
+  animation:xxl-spin 4s linear infinite; animation-play-state:var(--play);
+}
+@keyframes xxl-spin { to { --ang:360deg; } }
+
+/* โหมด "เล่นเฉพาะตอน hover/โฟกัส" */
+html[data-play="hover"] .tier.xxl1, html[data-play="hover"] .tier.xxl3 { --play:paused; }
+html[data-play="hover"] :is(tr, .chip, .setcell, .legitem, .sample, .tier):hover .tier.xxl1,
+html[data-play="hover"] :is(tr, .chip, .setcell, .legitem, .sample, .tier):hover .tier.xxl3,
+html[data-play="hover"] .tier.xxl1:hover, html[data-play="hover"] .tier.xxl3:hover,
+html[data-play="hover"] :is(.chip):focus-visible .tier { --play:running; }
+
+/* reduced motion = หยุดทุก animation (ป้ายยังเห็นต่างจาก XL ด้วยพื้นทอง + ขอบ + แสงนิ่ง) */
+@media (prefers-reduced-motion: reduce) {
+  .tier.xxl1, .tier.xxl3, .tier.xxl1::after, .tier.xxl3::after,
+  .tierbar.xxl, .tierbar.xxl::after { animation:none !important; }
+}
+html[data-rm="on"] .tier.xxl1, html[data-rm="on"] .tier.xxl3,
+html[data-rm="on"] .tier.xxl1::after, html[data-rm="on"] .tier.xxl3::after,
+html[data-rm="on"] .tierbar.xxl, html[data-rm="on"] .tierbar.xxl::after { animation:none !important; }
+
+/* ---------- ตัวอย่างเทียบ 10 แบบ ---------- */
+.sample { background:var(--surface-2); border:1px solid var(--border); border-radius:8px; padding:10px; display:flex; flex-direction:column; gap:6px; align-items:flex-start; }
+.sample .nm { font-size:.75rem; color:var(--fg-muted); }
+.ratio { font-size:.75rem; font-variant-numeric:tabular-nums; }
+.ok { color:var(--ok); font-weight:600; }
+.bad { color:var(--danger); font-weight:600; }
+.sample.new { border-color:var(--tier-xxl); box-shadow:0 0 0 1px var(--tier-xxl) inset; }
+
+/* ---------- ตาราง ---------- */
+table { width:100%; border-collapse:collapse; font-size:.88rem; min-width:560px; }
+th, td { padding:10px 12px; text-align:left; border-bottom:1px solid var(--border); white-space:nowrap; }
+th { background:var(--surface-2); font-weight:600; color:var(--fg-muted); font-size:.78rem; }
+td.r, th.r { text-align:right; }
+tbody tr:hover { background:var(--surface-2); }
+tbody tr:last-child td { border-bottom:0; }
+table.ct { min-width:640px; }
+
+/* ---------- แถบสี Tier ในหน้าตั้งค่า ---------- */
+.setcell { background:var(--surface-2); border:1px solid var(--border); border-radius:8px; padding:10px; display:flex; flex-direction:column; gap:6px; }
+.tierbar { height:10px; border-radius:5px; position:relative; overflow:hidden; }
+.tierbar.s { background:var(--tier-s); } .tierbar.m { background:var(--tier-m); }
+.tierbar.l { background:var(--tier-l); } .tierbar.xl { background:var(--tier-xl); }
+.tierbar.xxl { background:var(--tier-xxl); box-shadow:0 0 8px var(--tier-xxl-glow); }
+[data-anim="shimmer"] .tierbar.xxl::after {
+  content:""; position:absolute; inset:0;
+  background:linear-gradient(105deg, transparent 38%, var(--tier-xxl-sheen) 50%, transparent 62%);
+  transform:translateX(-130%); animation:xxl-shimmer 3.6s ease-in-out infinite;
+}
+[data-anim="glow"] .tierbar.xxl { animation:xxl-bar-glow 2.6s ease-in-out infinite alternate; }
+@keyframes xxl-bar-glow { from{box-shadow:0 0 3px var(--tier-xxl-glow)} to{box-shadow:0 0 12px 2px var(--tier-xxl-glow)} }
+[data-anim="border"] .tierbar.xxl {
+  background-image:linear-gradient(90deg, var(--tier-xxl), var(--tier-xxl-ring-b), var(--tier-xxl), var(--tier-xxl-ring-b), var(--tier-xxl));
+  background-size:200% 100%; animation:xxl-bar-run 4s linear infinite;
+}
+@keyframes xxl-bar-run { to{background-position:-200% 0} }
+html[data-play="hover"] .tierbar.xxl, html[data-play="hover"] .tierbar.xxl::after { animation-play-state:paused; }
+html[data-play="hover"] .setcell:hover .tierbar.xxl, html[data-play="hover"] .setcell:hover .tierbar.xxl::after { animation-play-state:running; }
+.setcell .rng { font-size:.8rem; }
+.setcell .rng.undef { color:var(--warn); font-weight:600; }
+
+/* ---------- legend + ตัวกรอง ---------- */
+.legend { display:flex; flex-wrap:wrap; gap:8px 18px; }
+.legitem { display:flex; align-items:center; gap:8px; min-height:44px; font-size:.85rem; }
+.dot { width:14px; height:14px; border-radius:4px; display:inline-block; }
+.dot.s{background:var(--tier-s)} .dot.m{background:var(--tier-m)} .dot.l{background:var(--tier-l)} .dot.xl{background:var(--tier-xl)}
+.dot.xxl{background:var(--tier-xxl); box-shadow:0 0 6px var(--tier-xxl-glow);}
+.chips { display:flex; flex-wrap:wrap; gap:8px; }
+.chip {
+  font:inherit; font-size:.88rem; font-weight:600; min-height:44px; min-width:64px; padding:0 14px;
+  border-radius:999px; cursor:pointer; display:inline-flex; align-items:center; gap:6px;
+  background:var(--surface); color:var(--c); border:1.5px solid var(--c);
+}
+.chip small { font-weight:500; opacity:.85; }
+.chip[aria-pressed="true"] { background:var(--c); color:var(--oc); }
+.chip.s{--c:var(--tier-s);--oc:var(--on-tier)} .chip.m{--c:var(--tier-m);--oc:var(--on-tier)}
+.chip.l{--c:var(--tier-l);--oc:var(--on-tier)} .chip.xl{--c:var(--tier-xl);--oc:var(--on-tier)}
+.chip.xxl{--c:var(--tier-xxl);--oc:var(--on-xxl); box-shadow:0 0 6px var(--tier-xxl-glow);}
+/* ตัวหนังสือชิป XXL แบบไม่เลือก ต้องอ่านออกบนพื้นขาว → ใช้ ink แทนสีกลุ่ม */
+.chip.xxl[aria-pressed="false"] { color:var(--tier-xxl-ink); }
+[data-theme="dark"] .chip.xxl[aria-pressed="false"] { color:var(--tier-xxl); }
+
+/* ---------- การ์ด animation ---------- */
+.acard { display:flex; flex-direction:column; gap:8px; }
+.acard .prev { background:var(--surface-2); border:1px solid var(--border); border-radius:8px; padding:14px; display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
+.pc { margin:0; padding:0; list-style:none; font-size:.85rem; }
+.pc li { padding-left:1.3em; position:relative; margin-bottom:3px; }
+.pc li::before { position:absolute; left:0; font-weight:700; }
+.pc.pro li::before { content:"+"; color:var(--ok); }
+.pc.con li::before { content:"−"; color:var(--danger); }
+.pc.eye li::before { content:"•"; color:var(--accent); }
+.tag { display:inline-block; font-size:.72rem; font-weight:700; padding:1px 8px; border-radius:999px; background:var(--accent-soft); color:var(--accent); margin-left:6px; }
+.note { background:var(--surface-2); border-left:4px solid var(--warn); border-radius:6px; padding:10px 12px; font-size:.88rem; }
+.note ul { margin:6px 0 0; padding-left:1.2em; }
+.note li { margin-bottom:3px; }
+.btn { font:inherit; min-height:44px; padding:0 14px; border:1px solid var(--border-strong); background:var(--surface); color:var(--fg); border-radius:8px; cursor:pointer; }
+
+@media (max-width:480px) {
+  main { padding:12px 16px; }
+  .controls { gap:8px 12px; }
+  .seg button { padding:0 10px; }
+}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">AGA · Advance Group Asia — mockup ป้าย Tier XXL (ให้เจ้าของเลือก)</div>
+  <div class="controls">
+    <div class="cgroup"><span class="lbl">ธีม</span>
+      <div class="seg" role="group" aria-label="ธีม" id="segTheme">
+        <button type="button" data-v="light" aria-pressed="true">สว่าง</button>
+        <button type="button" data-v="dark" aria-pressed="false">มืด</button>
+      </div></div>
+    <div class="cgroup"><span class="lbl">โทนทอง</span>
+      <div class="seg" role="group" aria-label="โทนทอง" id="segTone">
+        <button type="button" data-v="a" aria-pressed="true">A ทองอุ่น</button>
+        <button type="button" data-v="b" aria-pressed="false">B ทองสว่าง</button>
+      </div></div>
+    <div class="cgroup"><span class="lbl">animation (ใช้กับทุกตัวอย่างด้านล่าง)</span>
+      <div class="seg" role="group" aria-label="animation" id="segAnim">
+        <button type="button" data-v="none" aria-pressed="false">ไม่มี</button>
+        <button type="button" data-v="shimmer" aria-pressed="true">ก ประกาย</button>
+        <button type="button" data-v="glow" aria-pressed="false">ข เรืองแสง</button>
+        <button type="button" data-v="border" aria-pressed="false">ค ขอบไฟ</button>
+      </div></div>
+    <div class="cgroup"><span class="lbl">การเล่น</span>
+      <label class="chk"><input type="checkbox" id="chkHover"> เล่นเฉพาะตอน hover</label></div>
+    <div class="cgroup"><span class="lbl">จำลอง reduced motion</span>
+      <label class="chk"><input type="checkbox" id="chkRm"> เปิด (หยุด animation ทั้งหมด)</label></div>
+  </div>
+  <div class="rmstatus" id="rmStatus"></div>
+</header>
+
+<main>
+
+<!-- ===== 1. เทียบกับ 8 แบบเดิม ===== -->
+<section class="card live">
+  <h2>1) ป้ายทั้ง 10 แบบเรียงกัน</h2>
+  <p class="muted">8 แบบเดิมไม่เปลี่ยน · XXL1 = 1 ปี (พื้นอ่อน ตัว ink) · XXL3 = 3 ปี (พื้นทองเต็ม) · ตัวเลขใต้ป้ายคืออัตราส่วนความคมชัดของตัวหนังสือ เทียบพื้นป้าย (คำนวณจริงจากสีที่แสดงอยู่ตอนนี้ ต้อง ≥ 4.5)</p>
+  <div class="grid g5" id="samples"></div>
+</section>
+
+<!-- ===== 2. บริบทจริง ===== -->
+<section class="card live">
+  <h2>2) ชิปในตารางสัญญา</h2>
+  <p class="muted">ผสม S1…XL3 และ XXL1/XXL3 หลายแถว — ลองเลื่อนดูว่าป้าย XXL หลายแถวขยับพร้อมกันรบกวนสายตาหรือไม่ (ข้อมูลสมมติ)</p>
+  <div class="scroll">
+    <table>
+      <thead><tr><th>เลขสัญญา</th><th>ลูกค้า (สมมติ)</th><th>สาขา</th><th class="r">มูลค่าต่อปี (บาท)</th><th>Tier</th></tr></thead>
+      <tbody id="tbody"></tbody>
+    </table>
+  </div>
+</section>
+
+<section class="card live">
+  <h2>3) แถบสี Tier ในหน้าตั้งค่า (5 ช่อง)</h2>
+  <p class="muted">ตำแหน่งจริง: หน้าตั้งค่า &gt; เกณฑ์ Tier · ช่วงมูลค่า XXL ยังไม่กำหนด (ตัวเลขช่อง S–XL ด้านล่างเป็นตัวอย่างสมมติ)</p>
+  <div class="grid g5">
+    <div class="setcell"><div class="tierbar s"></div><strong>S</strong><span class="rng num">&lt; 30,000</span></div>
+    <div class="setcell"><div class="tierbar m"></div><strong>M</strong><span class="rng num">30,000 – 69,999</span></div>
+    <div class="setcell"><div class="tierbar l"></div><strong>L</strong><span class="rng num">70,000 – 149,999</span></div>
+    <div class="setcell"><div class="tierbar xl"></div><strong>XL</strong><span class="rng num">150,000 – (?)</span></div>
+    <div class="setcell"><div class="tierbar xxl"></div><strong>XXL</strong><span class="rng undef">ยังไม่กำหนดเกณฑ์</span></div>
+  </div>
+</section>
+
+<section class="card live">
+  <h2>4) Legend (คำอธิบายสี)</h2>
+  <p class="muted">ป้ายที่ไม่ระบุปี ใช้สีกลุ่มของ tier นั้น</p>
+  <div class="legend">
+    <span class="legitem"><i class="dot s"></i> S</span>
+    <span class="legitem"><i class="dot m"></i> M</span>
+    <span class="legitem"><i class="dot l"></i> L</span>
+    <span class="legitem"><i class="dot xl"></i> XL</span>
+    <span class="legitem"><i class="dot xxl"></i> XXL</span>
+    <span class="legitem faint">อ่อน = 1 ปี · เข้ม = 3 ปี</span>
+  </div>
+  <p style="margin-top:10px" class="muted">หรือแบบมีป้ายจริง:</p>
+  <div class="legend">
+    <span class="legitem"><span class="tier xxl1">XXL1</span> 1 ปี</span>
+    <span class="legitem"><span class="tier xxl3">XXL3</span> 3 ปี</span>
+  </div>
+</section>
+
+<section class="card live">
+  <h2>5) ตัวกรอง Tier (แบบหน้า /summary)</h2>
+  <p class="muted">กดเลือก/ไม่เลือกได้ — จุดกดสูง 44px</p>
+  <div class="chips" id="chips"></div>
+  <p class="faint" id="chipOut" style="margin-top:8px"></p>
+</section>
+
+<!-- ===== 3. animation 3 แบบ ===== -->
+<section class="card">
+  <h2>6) animation 3 แบบ — ข้อดี/ข้อเสีย</h2>
+  <p class="muted">แต่ละการ์ดเล่นแบบของตัวเองเสมอ (ไม่ขึ้นกับปุ่มด้านบน) · ยกเว้นเปิด "จำลอง reduced motion" จะหยุดหมด</p>
+  <div class="grid g2" style="margin-top:8px">
+
+    <div class="card acard" data-anim="shimmer">
+      <h3>ก) Shimmer — ประกายวิ่งผ่าน <span class="tag">แนะนำ</span></h3>
+      <div class="prev sample"><span class="tier xxl1">XXL1</span><span class="tier xxl3">XXL3</span></div>
+      <ul class="pc pro"><li>ดูหรู เหมือนป้ายทอง ไม่ฉูดฉาด</li><li>มีช่วงพัก (วิ่ง ~1.4 วิ แล้วนิ่ง ~2.2 วิ) ไม่รบกวนตอนอ่านตัวหนังสือ</li><li>เบา ใช้ CSS ล้วน</li></ul>
+      <ul class="pc con"><li>ตารางยาว ป้ายหลายแถววิ่งพร้อมกัน ตาจะไปจับที่ประกาย</li></ul>
+      <p class="faint">ข้อสังเกตสายตา</p>
+      <ul class="pc eye"><li>แนะนำให้ "เล่นเฉพาะตอน hover แถว" ในตาราง และเล่นอัตโนมัติเฉพาะ legend / หน้าตั้งค่า</li></ul>
+    </div>
+
+    <div class="card acard" data-anim="glow">
+      <h3>ข) Glow pulse — เรืองแสงเต้นเบาๆ</h3>
+      <div class="prev sample"><span class="tier xxl1">XXL1</span><span class="tier xxl3">XXL3</span></div>
+      <ul class="pc pro"><li>เห็น "นีออน" ชัดที่สุดตามโจทย์</li><li>เปลี่ยนค่าเรียบๆ ไม่มีจังหวะกะพริบ (รอบละ ~5 วิ)</li></ul>
+      <ul class="pc con"><li>แสงเรืองของแถวติดกันจะเบลอซ้อนกัน ดูรก</li><li>บนธีมสว่างแสงทองจางกว่าธีมมืด</li><li>แสงทำให้ป้ายดูใหญ่/เด่นกว่าป้ายอื่นมาก</li></ul>
+      <p class="faint">ข้อสังเกตสายตา</p>
+      <ul class="pc eye"><li>ป้ายหลายแถวเต้นพร้อมกันเห็นเป็นจังหวะเดียวกันทั้งตาราง — ควรใช้เฉพาะจุดเด่น เช่น ชิปตัวกรอง/หัวหน้ารายละเอียดลูกค้า</li></ul>
+    </div>
+
+    <div class="card acard" data-anim="border">
+      <h3>ค) ขอบไฟวิ่ง — กรอบไล่สีหมุนรอบป้าย</h3>
+      <div class="prev sample"><span class="tier xxl1">XXL1</span><span class="tier xxl3">XXL3</span></div>
+      <ul class="pc pro"><li>ตัวอักษรไม่ถูกบัง (animation อยู่ที่ขอบ)</li><li>ดูเป็น "ระดับสูงสุด" ชัดเจน</li></ul>
+      <ul class="pc con"><li>ป้ายเล็ก ขอบ 1.5px ทำให้ป้ายสูง/กว้างขึ้นเล็กน้อย</li><li>ใช้ <code>@property</code> — เบราว์เซอร์เก่ามากจะไม่หมุน (ยังเห็นขอบนิ่ง)</li><li>ขอบหมุนต่อเนื่องดึงสายตาที่สุดในสามแบบ</li></ul>
+      <p class="faint">ข้อสังเกตสายตา</p>
+      <ul class="pc eye"><li>ไม่ควรเปิดตลอดในตารางยาว · เหมาะกับหน้ารายละเอียดสัญญาที่มีป้ายเดียว</li></ul>
+    </div>
+
+    <div class="card acard">
+      <h3>ง) ไม่มี animation (ทางเลือกปลอดภัย)</h3>
+      <div class="prev sample" data-anim="none"><span class="tier xxl1">XXL1</span><span class="tier xxl3">XXL3</span></div>
+      <ul class="pc pro"><li>ไม่รบกวนสายตา ไม่มีปัญหาแบตมือถือ/ประสิทธิภาพ</li><li>ยังต่างจาก XL ชัด (พื้นทอง + ขอบ + แสงนิ่ง)</li></ul>
+      <ul class="pc con"><li>ขาดความ "นีออนมีชีวิต" ที่ขอไว้</li></ul>
+      <p class="faint">ผู้ใช้ที่เปิด reduced motion จะเห็นแบบนี้เสมอ ไม่ว่าเลือกแบบใด</p>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 4. ตาราง contrast ===== -->
+<section class="card">
+  <h2>7) ตารางอัตราส่วน contrast ทุกชุด (คำนวณสดจากสีจริง)</h2>
+  <p class="muted">เกณฑ์ตัวหนังสือ ≥ 4.5:1 · คอลัมน์ "พื้นป้ายเทียบพื้นหน้า" ให้ดูประกอบ — ทองสว่างบนพื้นขาวไม่ถึง 3:1 จึงต้องพึ่งขอบ/แสง และ <strong>ตัวอักษรบอกชื่อ "XXL" เสมอ ห้ามพึ่งสีอย่างเดียว</strong></p>
+  <div class="scroll">
+    <table class="ct">
+      <thead><tr><th>โทน / ธีม</th><th>ป้าย</th><th>ตัวหนังสือ</th><th>พื้นป้าย</th><th class="r">ตัวหนังสือ : พื้น</th><th>ผล</th><th class="r">พื้นป้าย : พื้นหน้า</th></tr></thead>
+      <tbody id="ctBody"></tbody>
+    </table>
+  </div>
+  <p class="faint" style="margin-top:8px">หมายเหตุ: XXL3 ใช้ตัวหนังสือเข้ม (ไม่ใช่ตัวขาว เหมือน 3 ปีของ tier อื่นในธีมสว่าง) เพราะตัวขาวบนทองได้เพียง ~1.9:1 · ในธีมมืด tier อื่นก็ใช้ตัวเข้ม <code>#0b1420</code> อยู่แล้ว จึงเข้ากัน</p>
+</section>
+
+<!-- ===== 5. หมายเหตุ ===== -->
+<section class="card">
+  <h2>หมายเหตุและคำถามถึงเจ้าของ</h2>
+  <div class="note">
+    <strong>ยังไม่ได้ตัดสินใจ / ต้องทำจริงภายหลัง</strong>
+    <ul>
+      <li>เกณฑ์มูลค่าของ XXL ยังไม่กำหนด (ตอนนี้ XL คือ "ตั้งแต่ 150,000 ขึ้นไป" ไม่มีเพดาน)</li>
+      <li>ของจริงต้องแก้ <code>lib/rules</code> (tierOf / ชนิด Tier), ตาราง <code>tier_rules</code> ในฐานข้อมูล (migration ใหม่ ห้ามแก้ไฟล์เก่า), หน้าตั้งค่า, ตัวกรอง /summary และ unit test</li>
+      <li><strong>Dashboard ปลายทาง:</strong> รูปแบบ <code>dashboard_data.json</code> ห้ามเปลี่ยน (16 ฟิลด์ต่อแถว) — XXL จะไปลงช่องไหน (รวมกับ XL หรือแยก) ต้องตัดสินก่อน</li>
+      <li>ข้อมูลในตารางหน้านี้ทั้งหมดเป็นข้อมูลสมมติ</li>
+    </ul>
+  </div>
+  <p style="margin-top:10px"><strong>คำถามที่ควรถาม:</strong> (1) โทน A หรือ B · (2) animation ก/ข/ค/ง · (3) เล่นอัตโนมัติทุกที่ หรือเฉพาะ hover + legend/ตั้งค่า · (4) ทอง XXL กับสีเหลืองอำพันของ L ใกล้กัน (L = <code>#a86c07</code>) — ยอมรับได้ไหม หรืออยากได้สีอื่นที่ห่างกว่า · (5) XXL ไปลงช่องไหนใน Dashboard</p>
+</section>
+
+</main>
+
+<script>
+(function () {
+  var root = document.documentElement;
+
+  /* ---------- ข้อมูลสมมติ ---------- */
+  var ROWS = [
+    ['C-0001','บริษัท ตัวอย่าง เอ จำกัด','นครปฐม',22000,'s1'],
+    ['C-0002','โรงงาน ตัวอย่าง บี','หัวหิน',95000,'l3'],
+    ['C-0003','โรงแรม ตัวอย่าง ซี','ภูเก็ต',620000,'xxl3'],
+    ['C-0004','ห้างสรรพสินค้า ตัวอย่าง ดี','เชียงใหม่',410000,'xxl1'],
+    ['C-0005','ร้านอาหาร ตัวอย่าง อี','นครปฐม',38000,'m1'],
+    ['C-0006','คลังสินค้า ตัวอย่าง เอฟ','ชลบุรี',160000,'xl1'],
+    ['C-0007','โรงเรียน ตัวอย่าง จี','ขอนแก่น',52000,'m3'],
+    ['C-0008','นิคมฯ ตัวอย่าง เอช','ระยอง',880000,'xxl3'],
+    ['C-0009','คอนโด ตัวอย่าง ไอ','กรุงเทพ',58000,'s3'],
+    ['C-0010','โรงงาน ตัวอย่าง เจ','สมุทรปราการ',230000,'xl3'],
+    ['C-0011','รีสอร์ท ตัวอย่าง เค','หัวหิน',540000,'xxl1'],
+    ['C-0012','โกดัง ตัวอย่าง แอล','นครปฐม',110000,'l1']
+  ];
+  var TIERS = ['s1','s3','m1','m3','l1','l3','xl1','xl3','xxl1','xxl3'];
+
+  function esc(s){ return String(s).replace(/[&<>]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;'}[c];}); }
+  function fmt(n){ return n.toLocaleString('en-US'); }
+
+  /* ---------- WCAG contrast ---------- */
+  function parseColor(str) {
+    var m = String(str).match(/-?\d*\.?\d+/g);
+    if (!m || m.length < 3) return null;
+    return [Number(m[0]), Number(m[1]), Number(m[2])];
+  }
+  function lum(c) {
+    var v = c.map(function (x) { x /= 255; return x <= 0.03928 ? x / 12.92 : Math.pow((x + 0.055) / 1.055, 2.4); });
+    return 0.2126 * v[0] + 0.7152 * v[1] + 0.0722 * v[2];
+  }
+  function ratio(a, b) {
+    var x = lum(a), y = lum(b);
+    return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05);
+  }
+  function badgeColors(el) {
+    var cs = getComputedStyle(el);
+    return { fg: parseColor(cs.color), bg: parseColor(cs.backgroundColor) };
+  }
+  function verdict(r) { return r >= 4.5 ? '<span class="ok">ผ่าน</span>' : '<span class="bad">ไม่ผ่าน</span>'; }
+  function hex(c) { return '#' + c.map(function (x) { return ('0' + Math.round(x).toString(16)).slice(-2); }).join(''); }
+
+  /* ---------- วาดส่วนต่างๆ ---------- */
+  function buildSamples() {
+    var host = document.getElementById('samples');
+    host.innerHTML = TIERS.map(function (t) {
+      var isNew = t.indexOf('xxl') === 0;
+      return '<div class="sample' + (isNew ? ' new' : '') + '" data-t="' + t + '">' +
+        '<span class="nm">' + (isNew ? 'ใหม่' : 'เดิม') + '</span>' +
+        '<span class="tier ' + t + '">' + t.toUpperCase() + '</span>' +
+        '<span class="ratio" data-r></span></div>';
+    }).join('');
+  }
+  function updateRatios() {
+    document.querySelectorAll('#samples .sample').forEach(function (s) {
+      var c = badgeColors(s.querySelector('.tier'));
+      var out = s.querySelector('[data-r]');
+      if (!c.fg || !c.bg) { out.textContent = '–'; return; }
+      var r = ratio(c.fg, c.bg);
+      out.innerHTML = r.toFixed(2) + ' : 1 ' + verdict(r);
+    });
+  }
+  function buildTable() {
+    document.getElementById('tbody').innerHTML = ROWS.map(function (r) {
+      return '<tr><td>' + r[0] + '</td><td>' + esc(r[1]) + '</td><td>' + esc(r[2]) + '</td>' +
+        '<td class="r num">' + fmt(r[3]) + '</td><td><span class="tier ' + r[4] + '">' + r[4].toUpperCase() + '</span></td></tr>';
+    }).join('');
+  }
+  var CHIPS = [['s','S'],['m','M'],['l','L'],['xl','XL'],['xxl','XXL']];
+  function buildChips() {
+    var host = document.getElementById('chips');
+    host.innerHTML = CHIPS.map(function (c) {
+      var n = ROWS.filter(function (r) { return r[4].replace(/\d$/, '') === c[0]; }).length;
+      return '<button type="button" class="chip ' + c[0] + '" aria-pressed="' + (c[0] === 'xxl' ? 'true' : 'false') + '" data-k="' + c[0] + '">' + c[1] + ' <small>(' + n + ')</small></button>';
+    }).join('');
+    host.addEventListener('click', function (e) {
+      var b = e.target.closest('.chip'); if (!b) return;
+      b.setAttribute('aria-pressed', b.getAttribute('aria-pressed') === 'true' ? 'false' : 'true');
+      chipOut();
+    });
+    chipOut();
+  }
+  function chipOut() {
+    var on = [].slice.call(document.querySelectorAll('#chips .chip[aria-pressed="true"]')).map(function (b) { return b.dataset.k.toUpperCase(); });
+    document.getElementById('chipOut').textContent = on.length ? 'กำลังกรอง: ' + on.join(', ') : 'ยังไม่เลือก Tier (แสดงทั้งหมด)';
+  }
+
+  /* ตาราง contrast: ใช้ probe element ที่มี data-theme/data-tone ของตัวเอง แล้วอ่านสีจริง */
+  function buildContrastTable() {
+    var rows = [];
+    ['a', 'b'].forEach(function (tone) {
+      ['light', 'dark'].forEach(function (theme) {
+        var probe = document.createElement('div');
+        probe.setAttribute('data-theme', theme);
+        probe.setAttribute('data-tone', tone);
+        probe.setAttribute('data-anim', 'none');
+        probe.style.cssText = 'position:absolute;left:-9999px;top:0;background:var(--surface);';
+        probe.innerHTML = '<span class="tier xxl1">XXL1</span><span class="tier xxl3">XXL3</span>';
+        document.body.appendChild(probe);
+        var surf = parseColor(getComputedStyle(probe).backgroundColor);
+        ['xxl1', 'xxl3'].forEach(function (k) {
+          var el = probe.querySelector('.' + k);
+          var c = badgeColors(el);
+          var r = ratio(c.fg, c.bg), rs = ratio(c.bg, surf);
+          rows.push('<tr><td>' + (tone === 'a' ? 'A ทองอุ่น' : 'B ทองสว่าง') + ' · ' + (theme === 'light' ? 'สว่าง' : 'มืด') + '</td>' +
+            '<td><span class="tier ' + k + '" style="animation:none">' + k.toUpperCase() + '</span></td>' +
+            '<td class="num">' + hex(c.fg) + '</td><td class="num">' + hex(c.bg) + '</td>' +
+            '<td class="r num">' + r.toFixed(2) + ' : 1</td><td>' + verdict(r) + '</td>' +
+            '<td class="r num">' + rs.toFixed(2) + ' : 1</td></tr>');
+        });
+        document.body.removeChild(probe);
+      });
+    });
+    document.getElementById('ctBody').innerHTML = rows.join('');
+  }
+
+  /* ---------- ปุ่มควบคุม ---------- */
+  function bindSeg(id, attrName, apply) {
+    var seg = document.getElementById(id);
+    seg.addEventListener('click', function (e) {
+      var b = e.target.closest('button'); if (!b) return;
+      seg.querySelectorAll('button').forEach(function (x) { x.setAttribute('aria-pressed', x === b ? 'true' : 'false'); });
+      apply(b.dataset.v);
+    });
+  }
+  function setAnim(v) {
+    document.querySelectorAll('.live').forEach(function (n) { n.setAttribute('data-anim', v); });
+    refresh();
+  }
+  function refresh() { updateRatios(); }
+
+  bindSeg('segTheme', 'data-theme', function (v) { root.setAttribute('data-theme', v); refresh(); });
+  bindSeg('segTone', 'data-tone', function (v) { root.setAttribute('data-tone', v); refresh(); });
+  bindSeg('segAnim', 'data-anim', setAnim);
+  document.getElementById('chkHover').addEventListener('change', function (e) { root.setAttribute('data-play', e.target.checked ? 'hover' : 'always'); });
+  document.getElementById('chkRm').addEventListener('change', function (e) { root.setAttribute('data-rm', e.target.checked ? 'on' : 'off'); });
+
+  /* ธีมเริ่มต้นตามเครื่อง → ให้ปุ่มตรงกัน */
+  (function syncThemeButtons() {
+    var t = root.getAttribute('data-theme');
+    document.querySelectorAll('#segTheme button').forEach(function (b) { b.setAttribute('aria-pressed', b.dataset.v === t ? 'true' : 'false'); });
+  })();
+
+  var mq = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : null;
+  document.getElementById('rmStatus').textContent = (mq && mq.matches)
+    ? 'เครื่องนี้ตั้ง reduced motion ไว้ → animation ถูกหยุดอยู่แล้ว (นี่คือสิ่งที่ผู้ใช้กลุ่มนี้จะเห็น)'
+    : 'เครื่องนี้ไม่ได้ตั้ง reduced motion · ใช้สวิตช์ "จำลอง reduced motion" เพื่อดูผล';
+
+  buildSamples(); buildTable(); buildChips();
+  setAnim('shimmer');
+  buildContrastTable();
+})();
+</script>
+</body>
+</html>
