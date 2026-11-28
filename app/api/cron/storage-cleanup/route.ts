@@ -28,7 +28,8 @@ export async function GET(request: Request) {
     return NextResponse.json({ ok: true, ...summary });
   } catch (error) {
     // อ่านคิวไม่ได้ / ไม่มี env — ตอบ 500 ให้ Vercel บันทึกว่ารอบนี้ล้ม (รอบหน้าทำต่อจากคิวเดิม)
-    const message = error instanceof Error ? error.message : "unknown error";
-    return NextResponse.json({ ok: false, error: message }, { status: 500 });
+    // SEC-11: คำตอบส่งแค่รหัสสั้น (แบบ /api/cron/sync) · รายละเอียด error อยู่ใน log ฝั่ง server เท่านั้น
+    console.error("[cron/storage-cleanup] run failed:", error instanceof Error ? error.message : error);
+    return NextResponse.json({ ok: false, errorCode: "cleanup_failed" }, { status: 500 });
   }
 }
