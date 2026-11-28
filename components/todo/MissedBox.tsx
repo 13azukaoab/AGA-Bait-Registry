@@ -9,6 +9,7 @@
  *   * เรื่องที่ปิดแล้ว: "ไม่ชดเชย" มีปุ่มเปิดเรื่องกลับ · "ชดเชยแล้ว" ดูอย่างเดียว
  *   * ข้อมูลทั้งหมดมาจากฐานข้อมูล (data.ts) — ไม่คำนวณสูตรตกบริการในหน้านี้
  *   * ค้างเยอะ (F2): แสดง 50 เรื่องแรกตามลำดับเดิม (เดือนที่ตกเก่าสุดก่อน) + ปุ่ม "แสดงเพิ่ม" ครั้งละ 50 · ตัวเลขในหัวกล่อง/การ์ดนับจากทั้งหมดเสมอ
+ *   * pending/closed เป็น null = กล่องนั้นโหลดไม่สำเร็จ → แสดง "โหลดส่วนนี้ไม่สำเร็จ" แทน (ไม่แสดง 0 · อีกส่วนยังแสดงปกติ)
  *   * เรื่องที่ปิดแล้วเป็นรายการ "ล่าสุด" CLOSED_LIMIT รายการ — เต็มเพดานแล้วเขียนกำกับให้ผู้ใช้รู้ ไม่ใช่ทั้งหมด
  */
 import Link from "next/link";
@@ -23,6 +24,7 @@ import type { UserRole } from "@/lib/db/types";
 
 import { CLOSED_LIMIT, MISSED_PAGE_SIZE, missedActionState, nextVisible, visibleSlice, type ClosedMissed, type PendingMissed } from "./logic";
 import { StatusChip } from "./StatusChip";
+import { BoxError } from "./SummaryCards";
 
 export function MissedBox({
   pending,
@@ -33,8 +35,10 @@ export function MissedBox({
   onReopen,
   initialVisible = MISSED_PAGE_SIZE,
 }: {
-  pending: readonly PendingMissed[];
-  closed: readonly ClosedMissed[];
+  /** null = โหลดไม่สำเร็จ */
+  pending: readonly PendingMissed[] | null;
+  /** null = โหลดไม่สำเร็จ */
+  closed: readonly ClosedMissed[] | null;
   role: UserRole;
   /** เดือนปัจจุบัน — บริการชดเชยบันทึกในเดือนที่ไปทำจริง */
   currentMonth: string;
@@ -46,18 +50,21 @@ export function MissedBox({
   const [showClosed, setShowClosed] = useState(false);
   const [visible, setVisible] = useState(initialVisible);
   const canDecide = role === "host" || role === "recorder";
-  const need = pending.length;
-  const shown = visibleSlice(pending, visible);
+  const pendingFailed = pending === null;
+  const need = pending?.length ?? 0;
+  const shown = visibleSlice(pending ?? [], visible);
 
   return (
     <section
       aria-labelledby="missed-title"
-      className={`mb-4 rounded-xl border bg-surface shadow-[var(--shadow)] ${need ? "border-danger" : "border-ok"}`}
+      className={`mb-4 rounded-xl border bg-surface shadow-[var(--shadow)] ${pendingFailed ? "border-border" : need ? "border-danger" : "border-ok"}`}
     >
       <h2 id="missed-title" className="m-0 flex flex-wrap items-center gap-2 border-b border-border px-4 py-3 text-[15px] font-semibold">
-        <span aria-hidden className={`size-2.5 rounded-full ${need ? "bg-danger" : "bg-ok"}`} />
+        <span aria-hidden className={`size-2.5 rounded-full ${pendingFailed || need ? "bg-danger" : "bg-ok"}`} />
         เรื่องตกบริการรอตัดสิน
-        <span className={`rounded-full px-2 text-xs ${need ? "bg-danger-soft text-danger" : "bg-ok-soft text-ok"}`}>{need}</span>
+        {pendingFailed ? null : (
+          <span className={`rounded-full px-2 text-xs ${need ? "bg-danger-soft text-danger" : "bg-ok-soft text-ok"}`}>{need}</span>
+        )}
         <span className="text-xs font-normal text-fg-muted">
           ค้างจากเดือนก่อน · ไปบริการชดเชยแล้วกด “บันทึกบริการชดเชย” หรือลูกค้ายินยอมกด “ไม่ชดเชย”
         </span>
@@ -69,7 +76,12 @@ export function MissedBox({
         {canDecide ? null : <span className="ml-auto text-xs font-normal text-fg-muted">ดูอย่างเดียว</span>}
       </h2>
 
-      {need === 0 ? <p className="m-0 px-4 py-4 text-[13px] text-fg-muted">ไม่มีเรื่องตกบริการค้างตัดสิน</p> : null}
+      {pendingFailed ? (
+        <div className="px-4 py-3">
+          <BoxError />
+        </div>
+      ) : null}
+      {!pendingFailed && need === 0 ? <p className="m-0 px-4 py-4 text-[13px] text-fg-muted">ไม่มีเรื่องตกบริการค้างตัดสิน</p> : null}
 
       <ul className="m-0 list-none p-0">
         {shown.map((it) => {
@@ -150,7 +162,11 @@ export function MissedBox({
         </div>
       ) : null}
 
-      {closed.length > 0 ? (
+      {closed === null ? (
+        <div className="border-t border-border px-4 py-3">
+          <BoxError />
+        </div>
+      ) : closed.length > 0 ? (
         <div className="border-t border-border px-4 py-2">
           <button
             type="button"

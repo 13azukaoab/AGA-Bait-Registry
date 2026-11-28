@@ -7,7 +7,7 @@ import type { ReactNode } from "react";
 
 import { CustomerLink } from "@/components/links/CustomerLink";
 import type { ContractListItem } from "@/components/service/types";
-import { TierBadge } from "@/components/ui";
+import { Alert, TierBadge } from "@/components/ui";
 import type { UserRole } from "@/lib/db/types";
 import { customerLinkContexts } from "@/lib/links/customerLink";
 import { monthLabel } from "@/lib/service/months";
@@ -17,6 +17,33 @@ import type { CollectSummary, Progress } from "./logic";
 
 const CARD = "rounded-xl border border-border bg-surface shadow-[var(--shadow)]";
 const LIST_LIMIT = 10;
+
+/** ข้อความเมื่อกล่องหนึ่งโหลดไม่สำเร็จ (กล่องอื่นยังแสดงปกติ · ห้ามแสดงตัวเลขสมมติแทน) */
+export const BOX_ERROR_TEXT = "โหลดส่วนนี้ไม่สำเร็จ ลองรีเฟรช";
+
+/** แถบแจ้ง "โหลดส่วนนี้ไม่สำเร็จ" ใช้ภายในกล่อง */
+export function BoxError({ className }: { className?: string }) {
+  return (
+    <Alert variant="danger" title={BOX_ERROR_TEXT} className={className}>
+      หากรีเฟรชแล้วยังไม่หาย ให้แจ้งผู้ดูแลระบบ
+    </Alert>
+  );
+}
+
+/** การ์ดที่มีหัวข้อ + ข้อความว่าโหลดไม่สำเร็จ (ใช้แทนการ์ดที่ข้อมูลโหลดไม่ได้) */
+export function FailedCard({ title, className }: { title: string; className?: string }) {
+  return (
+    <section className={`${CARD} ${className ?? ""}`}>
+      <h2 className="m-0 flex items-center gap-2 border-b border-border px-4 py-3 text-[15px] font-semibold">
+        <span aria-hidden className="size-2.5 rounded-full bg-danger" />
+        {title}
+      </h2>
+      <div className="px-4 py-3">
+        <BoxError />
+      </div>
+    </section>
+  );
+}
 
 export function ProgressCard({ month, progress }: { month: string; progress: Progress }) {
   return (
@@ -51,7 +78,7 @@ export function ProgressCard({ month, progress }: { month: string; progress: Pro
   );
 }
 
-function Stat({ tone, label, value, unit, sub }: { tone: "danger" | "warn" | "accent" | "ok"; label: string; value: number; unit?: string; sub: ReactNode }) {
+function Stat({ tone, label, value, unit, sub }: { tone: "danger" | "warn" | "accent" | "ok"; label: string; value: number | null; unit?: string; sub: ReactNode }) {
   const dot = { danger: "bg-danger", warn: "bg-warn", accent: "bg-accent", ok: "bg-ok" }[tone];
   return (
     <div className={`${CARD} px-4 py-3`}>
@@ -59,11 +86,24 @@ function Stat({ tone, label, value, unit, sub }: { tone: "danger" | "warn" | "ac
         <span aria-hidden className={`size-2.5 rounded-full ${dot}`} />
         {label}
       </div>
-      <div className="mt-1 text-[26px] font-bold tabular-nums">
-        {value}
-        {unit ? <span className="ml-1 text-sm font-medium text-fg-muted">{unit}</span> : null}
-      </div>
-      <div className="text-xs text-fg-muted">{sub}</div>
+      {value === null ? (
+        <>
+          <div className="mt-1 text-[26px] font-bold text-fg-muted" aria-label="โหลดไม่ได้">
+            –
+          </div>
+          <div role="alert" className="text-xs text-danger">
+            {BOX_ERROR_TEXT}
+          </div>
+        </>
+      ) : (
+        <>
+          <div className="mt-1 text-[26px] font-bold tabular-nums">
+            {value}
+            {unit ? <span className="ml-1 text-sm font-medium text-fg-muted">{unit}</span> : null}
+          </div>
+          <div className="text-xs text-fg-muted">{sub}</div>
+        </>
+      )}
     </div>
   );
 }
@@ -73,33 +113,34 @@ export function StatCards({
   collect,
   agPendingCount,
 }: {
-  missedCount: number;
-  collect: CollectSummary;
-  agPendingCount: number;
+  /** null = โหลดกล่องนั้นไม่สำเร็จ (แสดงว่าโหลดไม่ได้ ไม่แสดง 0) */
+  missedCount: number | null;
+  collect: CollectSummary | null;
+  agPendingCount: number | null;
 }) {
   return (
     <div className="mb-4 grid grid-cols-2 gap-3 max-[560px]:grid-cols-1 md:grid-cols-3">
       <Stat
-        tone={missedCount ? "danger" : "ok"}
+        tone={missedCount === 0 ? "ok" : "danger"}
         label="เรื่องตกบริการรอตัดสิน"
         value={missedCount}
         sub="ค้างจากเดือนก่อน · บันทึกบริการชดเชย หรือ ไม่ชดเชย"
       />
       <Stat
-        tone={collect.customers ? "warn" : "ok"}
+        tone={collect === null ? "danger" : collect.customers ? "warn" : "ok"}
         label="ลูกค้ารอเก็บสถานี"
-        value={collect.customers}
+        value={collect ? collect.customers : null}
         unit="ราย"
         sub={
           <>
-            IG เหลือ {collect.stations} สถานี ·{" "}
+            IG เหลือ {collect?.stations ?? 0} สถานี ·{" "}
             <Link href="/collection" className="inline-block py-2.5 -my-2.5 text-accent underline">
               ดูรายการ →
             </Link>
           </>
         }
       />
-      <Stat tone="accent" label="กล่องเหยื่อรอถอด" value={agPendingCount} sub="พบปลวกตายแล้ว · รอถอด" />
+      <Stat tone={agPendingCount === null ? "danger" : "accent"} label="กล่องเหยื่อรอถอด" value={agPendingCount} sub="พบปลวกตายแล้ว · รอถอด" />
     </div>
   );
 }
@@ -112,16 +153,20 @@ export function ListCard({
   footerHref,
   footerLabel,
   note,
+  failed = false,
   children,
 }: {
   title: string;
+  /** ไม่ใช้เมื่อ failed */
   count: number;
   tone: "danger" | "accent";
   empty: string;
   footerHref: string;
   footerLabel: string;
   note?: string;
-  children: ReactNode;
+  /** กล่องนี้โหลดไม่สำเร็จ → แสดงข้อความแทนรายการ/ตัวเลข (ไม่แสดง 0) */
+  failed?: boolean;
+  children?: ReactNode;
 }) {
   const dot = tone === "danger" ? "bg-danger" : "bg-accent";
   const badge = tone === "danger" ? "bg-danger-soft text-danger" : "bg-accent-soft text-accent-strong";
@@ -130,10 +175,18 @@ export function ListCard({
       <h2 className="m-0 flex items-center gap-2 border-b border-border px-4 py-3 text-[15px] font-semibold">
         <span aria-hidden className={`size-2.5 rounded-full ${dot}`} />
         {title}
-        <span className={`rounded-full px-2 text-xs ${badge}`}>{count}</span>
+        {failed ? null : <span className={`rounded-full px-2 text-xs ${badge}`}>{count}</span>}
       </h2>
-      {note ? <p className="m-0 border-b border-border px-4 py-2 text-xs text-fg-muted">{note}</p> : null}
-      {count === 0 ? <p className="m-0 px-4 py-4 text-[13px] text-fg-muted">{empty}</p> : <ul className="m-0 list-none p-0">{children}</ul>}
+      {failed ? null : note ? <p className="m-0 border-b border-border px-4 py-2 text-xs text-fg-muted">{note}</p> : null}
+      {failed ? (
+        <div className="px-4 py-3">
+          <BoxError />
+        </div>
+      ) : count === 0 ? (
+        <p className="m-0 px-4 py-4 text-[13px] text-fg-muted">{empty}</p>
+      ) : (
+        <ul className="m-0 list-none p-0">{children}</ul>
+      )}
       <div className="border-t border-border px-4 py-2">
         <Link href={footerHref} className="inline-flex min-h-11 items-center text-[13px] font-semibold text-accent md:min-h-10">
           {footerLabel}

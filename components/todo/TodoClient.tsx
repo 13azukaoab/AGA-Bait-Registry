@@ -5,6 +5,7 @@
  *
  * Logic summary:
  *   * รับข้อมูลที่ server โหลดแล้ว (data.ts) · ส่วนที่ต้องโต้ตอบ = กล่องตกบริการ (ไม่ชดเชย / เปิดเรื่องกลับ) + กล่องเตือนเดือนค้าง
+ *   * แต่ละกล่องใน data เป็น Section (ok / ไม่ ok) — กล่องที่โหลดไม่สำเร็จแสดง "โหลดส่วนนี้ไม่สำเร็จ ลองรีเฟรช" เฉพาะกล่องนั้น ไม่แสดงเป็น 0
  *   * หลังบันทึกสำเร็จ → router.refresh() ให้ server อ่านตัวเลขใหม่จากฐานข้อมูล (ไม่บวก/ลบตัวเลขเอง)
  *   * ข้อความผิดพลาดแปลเป็นไทยที่ logic.ts (describeTodoError) · สิทธิ์จริงบังคับที่ฐานข้อมูล
  *   * กล่องเตือนเดือนค้างแสดงครั้งเดียวต่อการเปิดหน้านี้ (state ในหน้า ไม่ใช้ storage) · ไม่เปิดขณะบทสอนทำงาน — เปิดเมื่อบทสอนจบ/ถูกข้าม
@@ -25,7 +26,7 @@ import { shouldShowMonthAlert, type ClosedMissed, type PendingMissed } from "./l
 import { MissedBox } from "./MissedBox";
 import { MonthAlert } from "./MonthAlert";
 import { reopenMissedService, waiveMissedService } from "./rpc";
-import { AgList, ListCard, ProgressCard, StatCards, UnfilledList } from "./SummaryCards";
+import { AgList, FailedCard, ListCard, ProgressCard, StatCards, UnfilledList } from "./SummaryCards";
 import { WaiveDialog } from "./WaiveDialog";
 
 export function TodoClient({ data, role }: { data: TodoData; role: UserRole }) {
@@ -40,6 +41,13 @@ export function TodoClient({ data, role }: { data: TodoData; role: UserRole }) {
   const { snapshot: tour } = useTutorial();
   const alertOpen = shouldShowMonthAlert({ isBehind: data.isBehind, dismissed: alertDismissed, tourRunning: tour.running });
   const [reopenError, setReopenError] = useState<string | null>(null);
+  // null = กล่องนั้นโหลดไม่สำเร็จ
+  const progress = data.progress.ok ? data.progress.value.progress : null;
+  const unfilled = data.progress.ok ? data.progress.value.unfilled : null;
+  const pending = data.pending.ok ? data.pending.value : null;
+  const closed = data.closed.ok ? data.closed.value : null;
+  const agPending = data.agPending.ok ? data.agPending.value : null;
+  const collect = data.collect.ok ? data.collect.value : null;
 
   async function submitWaive(reason: string, file: File | null): Promise<string | null> {
     if (!waiving) return "ไม่พบรายการ";
@@ -93,32 +101,38 @@ export function TodoClient({ data, role }: { data: TodoData; role: UserRole }) {
         </Alert>
       ) : null}
 
-      <ProgressCard month={data.month} progress={data.progress} />
-      <StatCards missedCount={data.pending.length} collect={data.collect} agPendingCount={data.agPending.length} />
-      <MissedBox pending={data.pending} closed={data.closed} role={role} currentMonth={data.currentMonth} onWaive={setWaiving} onReopen={(c) => setReopening(c)} />
+      {progress ? (
+        <ProgressCard month={data.month} progress={progress} />
+      ) : (
+        <FailedCard title={`สถานะงานกรอกผล · ${monthLabel(data.month)}`} className="mb-4" />
+      )}
+      <StatCards missedCount={pending?.length ?? null} collect={collect} agPendingCount={agPending?.length ?? null} />
+      <MissedBox pending={pending} closed={closed} role={role} currentMonth={data.currentMonth} onWaive={setWaiving} onReopen={(c) => setReopening(c)} />
 
       <div className="grid gap-4 md:grid-cols-2">
         <ListCard
           title="ยังไม่มีข้อมูล (ยังไม่กรอก)"
-          count={data.progress.remaining}
+          count={progress?.remaining ?? 0}
+          failed={!progress}
           tone="danger"
           empty="กรอกผลครบทุกรายแล้ว"
           footerHref={`/service?month=${data.month}`}
           footerLabel="เปิดหน้ากรอกผลบริการ →"
-          note={data.progress.remaining > 10 ? "แสดง 10 รายแรก (เรียงตามชื่อ) · ดูทั้งหมดที่หน้ากรอกผลบริการ" : undefined}
+          note={(progress?.remaining ?? 0) > 10 ? "แสดง 10 รายแรก (เรียงตามชื่อ) · ดูทั้งหมดที่หน้ากรอกผลบริการ" : undefined}
         >
-          <UnfilledList items={data.unfilled} role={role} />
+          <UnfilledList items={unfilled ?? []} role={role} />
         </ListCard>
         <ListCard
           title="กล่องเหยื่อรอถอด"
-          count={data.agPending.length}
+          count={agPending?.length ?? 0}
+          failed={!agPending}
           tone="accent"
           empty="ไม่มีกล่องเหยื่อรอถอด"
           footerHref="/bait"
           footerLabel="ดูกล่องติดตามผลทั้งหมด →"
-          note={data.agPending.length > 10 ? "แสดง 10 รายการแรก · ดูทั้งหมดที่หน้ากล่อง AG" : undefined}
+          note={(agPending?.length ?? 0) > 10 ? "แสดง 10 รายการแรก · ดูทั้งหมดที่หน้ากล่อง AG" : undefined}
         >
-          <AgList items={data.agPending} role={role} />
+          <AgList items={agPending ?? []} role={role} />
         </ListCard>
       </div>
 
@@ -140,8 +154,8 @@ export function TodoClient({ data, role }: { data: TodoData; role: UserRole }) {
         <MonthAlert
           month={data.month}
           currentMonth={data.currentMonth}
-          unfilled={data.progress.remaining}
-          pending={data.pending.length}
+          unfilled={progress?.remaining ?? null}
+          pending={pending?.length ?? null}
           onClose={() => setAlertDismissed(true)}
         />
       ) : null}

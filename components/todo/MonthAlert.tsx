@@ -21,8 +21,9 @@ export function MonthAlert({
 }: {
   month: string;
   currentMonth: string;
-  unfilled: number;
-  pending: number;
+  /** null = โหลดตัวเลขไม่สำเร็จ (บอกว่าโหลดไม่ได้ ไม่แสดง 0) */
+  unfilled: number | null;
+  pending: number | null;
   onClose: () => void;
 }) {
   const id = useId();
@@ -41,10 +42,26 @@ export function MonthAlert({
         </p>
         <ul className="m-0 mt-2 pl-5 text-[13px]">
           <li>
-            ยังไม่กรอกข้อมูล <b>{unfilled}</b> ราย
+            {unfilled === null ? (
+              <>
+                ยังไม่กรอกข้อมูล: <b>โหลดตัวเลขไม่สำเร็จ</b>
+              </>
+            ) : (
+              <>
+                ยังไม่กรอกข้อมูล <b>{unfilled}</b> ราย
+              </>
+            )}
           </li>
           <li>
-            ตกบริการรอตัดสิน <b>{pending}</b> ราย
+            {pending === null ? (
+              <>
+                ตกบริการรอตัดสิน: <b>โหลดตัวเลขไม่สำเร็จ</b>
+              </>
+            ) : (
+              <>
+                ตกบริการรอตัดสิน <b>{pending}</b> ราย
+              </>
+            )}
           </li>
         </ul>
         <p className="m-0 mt-2 text-xs text-fg-muted">กรอกให้ครบแล้วปิดเดือน หน้านี้จะเลื่อนไปเดือนถัดไปเอง</p>
