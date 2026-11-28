@@ -114,7 +114,7 @@ function MultiSelect({
                   checked={selected.includes(o.value)}
                   onChange={(e) => onChange(e.target.checked ? [...selected, o.value] : selected.filter((v) => v !== o.value))}
                 />
-                {o.label}
+                {o.value === "XXL" ? <span className="tier xxl1">XXL</span> : o.label}
               </label>
             ))
           )}

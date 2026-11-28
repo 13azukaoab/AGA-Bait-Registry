@@ -252,7 +252,7 @@ export function RegistryClient({ role, today, refs, initialFilters, initial }: P
       ) : null}
 
       {legend.length > 0 ? (
-        <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-fg-muted">
+        <div className="xxl-auto mt-4 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-fg-muted">
           {legend.map((l) => (
             <span key={l.tier} className="inline-flex items-center gap-1.5">
               <TierBadge tier={l.tier} years={1} /> <span className="num">{l.text}</span>

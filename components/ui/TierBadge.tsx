@@ -1,18 +1,19 @@
 /**
- * TierBadge — ป้าย Tier ตามเกณฑ์มูลค่า + ระยะสัญญา (รวม 8 แบบ)
+ * TierBadge — ป้าย Tier ตามเกณฑ์มูลค่า + ระยะสัญญา (รวม 10 แบบ: S/M/L/XL/XXL × 1/3 ปี)
  *  - รับ tier (S/M/L/XL) + ระยะ แล้วแสดงข้อความ S1, S3, M1 … XL3
  *  - ระยะส่งได้ 2 แบบ: `years` (1/3 · ป้าย legend ที่ไม่มีสัญญาจริง) หรือ `termMonths` (M30 · เดือนของสัญญา 1–36)
  *    `termMonths` 36 = กลุ่มสี 3 ปี · อื่นทั้งหมด = กลุ่มสี 1 ปี (ตรงกับ `colorGroup` ใน lib/rules)
  *    ระยะ Custom (ไม่ใช่ 12/36 เดือน) ใส่ป้ายเล็ก "Custom" ต่อท้าย · tooltip บอกจำนวนเดือน
- *  - class ต้องเป็น `tier s1` / `tier s3` … ครบ 8 แบบ (ไม่ใช่ `tier s` เฉยๆ)
+ *  - class ต้องเป็น `tier s1` / `tier s3` … ครบ 10 แบบ (รวม xxl1/xxl3) (ไม่ใช่ `tier s` เฉยๆ)
  *    สีอยู่ที่ `.tier.*` ใน app/globals.css (1 ปี = พื้นอ่อน · 3 ปี = พื้นเข้ม) ห้ามเขียน hex ที่นี่
  *  - เขียน class เป็นข้อความเต็มในตาราง เพื่อให้ค้นหา/grep เจอและ Tailwind สแกนได้
  */
-import { colorGroup, isCustomTerm } from "@/lib/rules";
+import { colorGroup, isCustomTerm, type Tier } from "@/lib/rules";
 
 import { cx } from "./cx";
 
-export type TierName = "S" | "M" | "L" | "XL";
+/** XXL (DECISIONS 2.112/2.113): class `tier xxl1` / `tier xxl3` — ทอง 4 + ประกายวิ่ง อยู่ที่ `.tier.xxl*` ใน app/globals.css */
+export type TierName = Tier;
 export type TierTermYears = 1 | 3;
 
 const TIER_CLASS: Record<TierName, Record<TierTermYears, string>> = {
@@ -20,6 +21,7 @@ const TIER_CLASS: Record<TierName, Record<TierTermYears, string>> = {
   M: { 1: "tier m1", 3: "tier m3" },
   L: { 1: "tier l1", 3: "tier l3" },
   XL: { 1: "tier xl1", 3: "tier xl3" },
+  XXL: { 1: "tier xxl1", 3: "tier xxl3" },
 };
 
 export type TierBadgeProps = {

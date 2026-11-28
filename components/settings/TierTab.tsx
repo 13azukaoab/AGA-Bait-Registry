@@ -34,6 +34,7 @@ import {
   formatMoney,
   isDraftValid,
   parseMoney,
+  parseOptionalMoney,
   rangeEnds,
   sameThresholds,
   setForMonth,
@@ -44,12 +45,12 @@ import {
   type TierThresholds,
 } from "./tierLogic";
 
-type Texts = { m: string; l: string; xl: string };
+type Texts = { m: string; l: string; xl: string; xxl: string };
 
 const STATUS_LABEL = { current: "ใช้อยู่ตอนนี้", upcoming: "จะเริ่มใช้", past: "ใช้ไปแล้ว" } as const;
 
 function toTexts(t: TierThresholds): Texts {
-  return { m: formatMoney(t.m), l: formatMoney(t.l), xl: formatMoney(t.xl) };
+  return { m: formatMoney(t.m), l: formatMoney(t.l), xl: formatMoney(t.xl), xxl: t.xxl === null ? "" : formatMoney(t.xxl) };
 }
 
 export function TierTab({ data, onToast }: { data: SettingsData; onToast: (m: string) => void }) {
@@ -60,14 +61,14 @@ export function TierTab({ data, onToast }: { data: SettingsData; onToast: (m: st
   const [texts, setTexts] = useState<Texts>(toTexts(saved));
   const [saving, setSaving] = useState(false);
 
-  const draft: TierDraft = { m: parseMoney(texts.m), l: parseMoney(texts.l), xl: parseMoney(texts.xl) };
+  const draft: TierDraft = { m: parseMoney(texts.m), l: parseMoney(texts.l), xl: parseMoney(texts.xl), xxl: parseOptionalMoney(texts.xxl) };
   const errors = validateTierDraft(draft);
   const valid = isDraftValid(draft);
   const dirty = !sameThresholds(draft, saved);
   useUnsavedWork(dirty);
 
   const ends = valid ? rangeEnds(draft) : null;
-  const preview: TierThresholds | null = valid ? { m: draft.m!, l: draft.l!, xl: draft.xl! } : null;
+  const preview: TierThresholds | null = valid ? { m: draft.m!, l: draft.l!, xl: draft.xl!, xxl: draft.xxl as number | null } : null;
   const current = setForMonth(ruleSets, currentMonth);
 
   // เดือนที่เริ่มใช้ (ใช้ร่วมกันระหว่างการ์ดผลกระทบกับ dialog บันทึก) · ตัวเลือกเดียวกับ dialog
@@ -84,14 +85,15 @@ export function TierTab({ data, onToast }: { data: SettingsData; onToast: (m: st
   const [month, setMonth] = useState(monthOptions[0] ?? data.currentMonth);
   const impact = useTierImpact({ month, draft: preview, enabled: dirty && valid });
 
-  const field = (key: keyof Texts, label: string) => (
+  const field = (key: keyof Texts, label: string, optional = false) => (
     <div>
       <div className="flex items-center gap-1.5">
         <input
           type="text"
           inputMode="decimal"
           autoComplete="off"
-          aria-label={`จุดเริ่ม Tier ${label} (บาทต่อปี)`}
+          aria-label={`จุดเริ่ม Tier ${label} (บาทต่อปี)${optional ? " เว้นว่างถ้าไม่มี XXL" : ""}`}
+          placeholder={optional ? "ไม่มี XXL" : undefined}
           aria-invalid={errors[key] ? true : undefined}
           aria-describedby={errors[key] ? `er-${key}` : undefined}
           value={texts[key]}
@@ -115,7 +117,7 @@ export function TierTab({ data, onToast }: { data: SettingsData; onToast: (m: st
         </div>
       ) : null}
       {valid && draft[key] !== saved[key] ? (
-        <div className="mt-1 text-xs text-fg-muted">เดิม {formatMoney(saved[key])}</div>
+        <div className="mt-1 text-xs text-fg-muted">เดิม {saved[key] === null ? "ไม่มี XXL" : formatMoney(saved[key])}</div>
       ) : null}
     </div>
   );
@@ -124,7 +126,8 @@ export function TierTab({ data, onToast }: { data: SettingsData; onToast: (m: st
     { tier: "S" as const, from: <span className="tabular-nums">0 <Chip tone="na">ค่าคงที่</Chip></span>, to: ends ? formatMoney(ends.s) : "—" },
     { tier: "M" as const, from: field("m", "M"), to: ends ? formatMoney(ends.m) : "—" },
     { tier: "L" as const, from: field("l", "L"), to: ends ? formatMoney(ends.l) : "—" },
-    { tier: "XL" as const, from: field("xl", "XL"), to: "ไม่จำกัด" },
+    { tier: "XL" as const, from: field("xl", "XL"), to: ends ? (ends.xl === null ? "ไม่จำกัด" : formatMoney(ends.xl)) : "—" },
+    { tier: "XXL" as const, from: field("xxl", "XXL", true), to: draft.xxl === null ? "ไม่มี XXL" : "ไม่จำกัด" },
   ];
 
   return (
@@ -136,6 +139,7 @@ export function TierTab({ data, onToast }: { data: SettingsData; onToast: (m: st
             <b>
               M ตั้งแต่ {formatMoney(current.thresholds.m)} · L ตั้งแต่ {formatMoney(current.thresholds.l)} · XL ตั้งแต่{" "}
               {formatMoney(current.thresholds.xl)}
+              {current.thresholds.xxl === null ? " · ไม่มี XXL" : ` · XXL ตั้งแต่ ${formatMoney(current.thresholds.xxl)}`}
             </b>{" "}
             บาท/ปี
           </>
@@ -148,8 +152,9 @@ export function TierTab({ data, onToast }: { data: SettingsData; onToast: (m: st
         <div className="flex flex-col gap-4">
           <Card title="เกณฑ์แบ่ง Tier" sub="มูลค่าต่อปี = มูลค่าสัญญา ÷ (จำนวนเดือน ÷ 12) · สัญญาสั้นกว่า 12 เดือนใช้มูลค่าจริง">
             <p className="m-0 px-4 pb-1.5 pt-3 text-[13px] text-fg-muted">
-              แก้เฉพาะ <b className="text-fg">จุดเริ่มของ M, L, XL</b> — ปลายช่วงของ Tier ก่อนหน้าระบบคำนวณให้
-              (จุดเริ่มถัดไป − 0.01) จึงไม่มีช่องว่างหรือช่วงทับกัน
+              แก้เฉพาะ <b className="text-fg">จุดเริ่มของ M, L, XL และ XXL</b> — ปลายช่วงของ Tier ก่อนหน้าระบบคำนวณให้
+              (จุดเริ่มถัดไป − 0.01) จึงไม่มีช่องว่างหรือช่วงทับกัน · <b className="text-fg">เว้นช่อง XXL ว่าง = ไม่มี Tier XXL</b>{" "}
+              (สัญญามูลค่าสูงนับเป็น XL)
             </p>
             <div className="relative overflow-x-auto">
               <table className="w-full border-collapse text-[13px]">
@@ -230,6 +235,7 @@ export function TierTab({ data, onToast }: { data: SettingsData; onToast: (m: st
                     <th scope="col" className="px-3 py-2 text-right font-medium">M เริ่ม</th>
                     <th scope="col" className="px-3 py-2 text-right font-medium">L เริ่ม</th>
                     <th scope="col" className="px-3 py-2 text-right font-medium">XL เริ่ม</th>
+                    <th scope="col" className="px-3 py-2 text-right font-medium">XXL เริ่ม</th>
                     <th scope="col" className="px-3 py-2 font-medium">สถานะ</th>
                   </tr>
                 </thead>
@@ -251,6 +257,9 @@ export function TierTab({ data, onToast }: { data: SettingsData; onToast: (m: st
                         <td className="px-3 py-2 text-right tabular-nums">{formatMoney(s.thresholds.m)}</td>
                         <td className="px-3 py-2 text-right tabular-nums">{formatMoney(s.thresholds.l)}</td>
                         <td className="px-3 py-2 text-right tabular-nums">{formatMoney(s.thresholds.xl)}</td>
+                        <td className="px-3 py-2 text-right tabular-nums">
+                          {s.thresholds.xxl === null ? <span className="text-fg-muted">—</span> : formatMoney(s.thresholds.xxl)}
+                        </td>
                         <td className="px-3 py-2">
                           <Chip tone={st === "current" ? "ok" : st === "upcoming" ? "info" : "na"}>{STATUS_LABEL[st]}</Chip>
                         </td>
@@ -291,20 +300,31 @@ export function TierTab({ data, onToast }: { data: SettingsData; onToast: (m: st
 
 /** แถบสัดส่วนช่วงมูลค่า (แสดงผลอย่างเดียว — XL ขยายเพื่อให้เห็นเป็นแถบ) */
 function ScaleBar({ t }: { t: TierThresholds }) {
-  const total = t.xl * 1.5;
+  // มี XXL = XL กว้างตามจริง (XXL − XL) + XXL ขยายครึ่งหนึ่ง · ไม่มี XXL = XL ขยาย (แบบเดิม 4 ช่อง)
+  const top = t.xxl ?? t.xl;
+  const total = top * 1.5;
   const seg = [
     { k: "S", w: t.m, cls: "bg-[var(--tier-s)]" },
     { k: "M", w: t.l - t.m, cls: "bg-[var(--tier-m)]" },
     { k: "L", w: t.xl - t.l, cls: "bg-[var(--tier-l)]" },
-    { k: "XL", w: t.xl * 0.5, cls: "bg-[var(--tier-xl)]" },
+    ...(t.xxl === null
+      ? [{ k: "XL", w: t.xl * 0.5, cls: "bg-[var(--tier-xl)]" }]
+      : [
+          { k: "XL", w: t.xxl - t.xl, cls: "bg-[var(--tier-xl)]" },
+          { k: "XXL", w: t.xxl * 0.5, cls: "xxl-bar" },
+        ]),
   ];
   return (
-    <div className="px-4 pb-3 pt-1">
+    <div className="xxl-auto px-4 pb-3 pt-1">
       <div role="img" aria-label="แถบแสดงสัดส่วนช่วงมูลค่าของแต่ละ Tier" className="flex h-7 overflow-hidden rounded-md">
         {seg.map((s) => (
           <div
             key={s.k}
-            className={cx("flex min-w-[28px] items-center justify-center text-xs font-semibold text-[var(--on-tier)]", s.cls)}
+            className={cx(
+              "flex min-w-[28px] items-center justify-center text-xs font-semibold",
+              s.k === "XXL" ? "text-[var(--on-xxl)]" : "text-[var(--on-tier)]",
+              s.cls,
+            )}
             style={{ width: `${(s.w / total) * 100}%` }}
           >
             {s.k}
@@ -411,7 +431,9 @@ function SaveDialog({
   const [pending, startTransition] = useTransition();
   useUnsavedWork(reason !== "" || confirm !== "");
 
-  const changes = (["m", "l", "xl"] as const).filter((k) => saved[k] !== next[k]);
+  const changes = (["m", "l", "xl", "xxl"] as const).filter((k) => saved[k] !== next[k]);
+  const removesXxl = saved.xxl !== null && next.xxl === null;
+  const showMoney = (v: number | null) => (v === null ? "ไม่มี XXL" : formatMoney(v));
 
   const submit = () => {
     const found = validateSaveForm({ month, options, reason, confirm });
@@ -424,6 +446,7 @@ function SaveDialog({
         m: next.m,
         l: next.l,
         xl: next.xl,
+        xxl: next.xxl,
         reason,
         confirm,
       });
@@ -439,7 +462,8 @@ function SaveDialog({
       <ul className="m-0 mb-3 list-none space-y-1 p-0 text-[13px]">
         {changes.map((k) => (
           <li key={k}>
-            จุดเริ่ม {k.toUpperCase()} <b className="tabular-nums">{formatMoney(saved[k])}</b> → <b className="tabular-nums">{formatMoney(next[k])}</b> บาท/ปี
+            จุดเริ่ม {k.toUpperCase()} <b className="tabular-nums">{showMoney(saved[k])}</b> → <b className="tabular-nums">{showMoney(next[k])}</b>
+            {saved[k] === null || next[k] === null ? "" : " บาท/ปี"}
           </li>
         ))}
         {changes.length === 0 ? <li>ไม่มีค่าที่เปลี่ยน</li> : null}
@@ -467,6 +491,11 @@ function SaveDialog({
             </select>
           )}
         </Field>
+        {removesXxl ? (
+          <Alert variant="warn">
+            <b>ชุดเกณฑ์นี้จะไม่มี Tier XXL</b> — สัญญามูลค่าสูงตั้งแต่เดือนที่เลือกจะนับเป็น XL · ถ้าไม่ได้ตั้งใจให้ยกเลิกแล้วใส่ค่า XXL กลับ
+          </Alert>
+        ) : null}
         <Alert variant="warn">
           {impact.status === "ready" && impact.summary.moved > 0 ? (
             <>

@@ -65,7 +65,7 @@ import {
   updateTeamAction,
 } from "./settingsActions";
 
-const TIER = { effectiveMonth: "2026-12", m: 30000, l: 50000, xl: 100000, reason: "ปรับตามต้นทุน", confirm: "ยืนยันแก้ไข" };
+const TIER = { effectiveMonth: "2026-12", m: 30000, l: 50000, xl: 100000, xxl: null as number | null, reason: "ปรับตามต้นทุน", confirm: "ยืนยันแก้ไข" };
 
 beforeEach(() => {
   state.user = { id: CALLER };
@@ -105,8 +105,23 @@ describe("เกณฑ์ Tier", () => {
   it("เรียก save_tier_rule_set ด้วย argument p เป็น JSON number", async () => {
     expect(await saveTierRuleSetAction(TIER)).toEqual({ ok: true });
     expect(rpcCalls).toEqual([
-      { name: "save_tier_rule_set", args: { p: { effective_month: "2026-12", min_m: 30000, min_l: 50000, min_xl: 100000, reason: "ปรับตามต้นทุน" } } },
+      { name: "save_tier_rule_set", args: { p: { effective_month: "2026-12", min_m: 30000, min_l: 50000, min_xl: 100000, min_xxl: null, reason: "ปรับตามต้นทุน" } } },
     ]);
+  });
+  it("ชุดที่มี XXL: ส่ง min_xxl ไปกับ payload ทุกครั้ง (กัน RPC ลบแถว XXL เดิม)", async () => {
+    expect(await saveTierRuleSetAction({ ...TIER, xxl: 300000 })).toEqual({ ok: true });
+    expect(rpcCalls[0]).toEqual({
+      name: "save_tier_rule_set",
+      args: { p: { effective_month: "2026-12", min_m: 30000, min_l: 50000, min_xl: 100000, min_xxl: 300000, reason: "ปรับตามต้นทุน" } },
+    });
+  });
+  it("client ไม่ส่งคีย์ xxl เลย / xxl ไม่ใช่ตัวเลข / xxl ไม่มากกว่า XL → INVALID_INPUT ไม่เรียก RPC (กันลบ XXL โดยไม่ตั้งใจ)", async () => {
+    const noXxl: Record<string, unknown> = { ...TIER };
+    delete noXxl.xxl;
+    expect(await saveTierRuleSetAction(noXxl as unknown as typeof TIER)).toMatchObject({ code: "INVALID_INPUT" });
+    expect(await saveTierRuleSetAction({ ...TIER, xxl: "abc" as unknown as number })).toMatchObject({ code: "INVALID_INPUT" });
+    expect(await saveTierRuleSetAction({ ...TIER, xxl: 100000 })).toMatchObject({ code: "INVALID_INPUT" });
+    expect(rpcCalls).toEqual([]);
   });
   it("ไม่พิมพ์ยืนยัน → BAD_CONFIRM · ค่าผิด/เหตุผลสั้น/เดือนผิด → INVALID_INPUT (ไม่เรียก RPC)", async () => {
     expect(await saveTierRuleSetAction({ ...TIER, confirm: "" })).toMatchObject({ code: "BAD_CONFIRM" });
