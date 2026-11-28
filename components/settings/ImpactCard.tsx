@@ -38,7 +38,8 @@ export function useTierImpact(args: { month: string; draft: TierThresholds | nul
   const m = draft?.m ?? null;
   const l = draft?.l ?? null;
   const xl = draft?.xl ?? null;
-  const key = enabled && m !== null && l !== null && xl !== null ? `${month}|${m}|${l}|${xl}` : null;
+  const xxl = draft?.xxl ?? null; // null = ไม่มี XXL
+  const key = enabled && m !== null && l !== null && xl !== null ? `${month}|${m}|${l}|${xl}|${xxl ?? "-"}` : null;
   const [settled, setSettled] = useState<Settled | null>(null);
 
   useEffect(() => {
@@ -47,7 +48,7 @@ export function useTierImpact(args: { month: string; draft: TierThresholds | nul
     const timer = window.setTimeout(async () => {
       let next: Settled["state"];
       try {
-        const res = await previewTierRuleChangeAction({ effectiveMonth: month, m, l, xl });
+        const res = await previewTierRuleChangeAction({ effectiveMonth: month, m, l, xl, xxl });
         next = res.ok ? { status: "ready", summary: summarizeImpact(res.rows) } : { status: "error", message: res.message };
       } catch {
         next = { status: "error", message: FAILED };
@@ -58,7 +59,7 @@ export function useTierImpact(args: { month: string; draft: TierThresholds | nul
       cancelled = true;
       window.clearTimeout(timer);
     };
-  }, [key, month, m, l, xl]);
+  }, [key, month, m, l, xl, xxl]);
 
   if (key === null) return { status: "idle" };
   if (settled?.key === key) return settled.state;
