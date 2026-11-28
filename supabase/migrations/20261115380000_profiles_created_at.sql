@@ -46,9 +46,12 @@ COMMENT ON COLUMN public.profiles.created_at IS
 -- =====================================================================
 -- 2. ด่าน: created_at ระบบตั้งเองเท่านั้น
 -- =====================================================================
+-- SECURITY DEFINER เหมือน profiles_owner_guard: authenticated ไม่มีสิทธิ์เรียก is_api_session() ตรง
+-- (ค่า session_user / role ที่ is_api_session() อ่าน ไม่เปลี่ยนตาม DEFINER จึงยังเห็นผู้เรียกจริง)
 CREATE FUNCTION public.profiles_created_at_guard()
 RETURNS trigger
 LANGUAGE plpgsql
+SECURITY DEFINER
 SET search_path = public, pg_temp
 AS $$
 BEGIN
