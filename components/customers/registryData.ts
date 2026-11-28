@@ -10,16 +10,16 @@
  *     ต่อจน "ครบหน้า" หรือสแกนครบ MAX_POST_CHUNKS ก้อน — ถ้ายังไม่ครบหน้าแต่ยังมีข้อมูลต่อ จะคืน `next` ให้กด "โหลดเพิ่ม"
  *     พร้อม `scanned` (จำนวนสัญญาที่ตรวจแล้ว) · ไม่ตัดเงียบและไม่แกล้งบอกว่าครบ
  *   * จำนวนทั้งหมด (`dbTotal`) นับจาก query หน้าแรก (count exact) เฉพาะตัวกรองที่ฐานข้อมูลทำได้
- *   * Tier = tierOf(annualValueForTerm(มูลค่า, ระยะ), เกณฑ์, เดือนเริ่มสัญญา) จาก lib/rules — ไม่มีสูตรของตัวเอง
+ *   * Tier = tierOf(annualValueForTerm(มูลค่า, ระยะ), เกณฑ์, เดือนปัจจุบันเวลาไทย · DECISIONS 2.119) จาก lib/rules — ไม่มีสูตรของตัวเอง
  *     เกณฑ์ที่ใช้กับเดือนนั้นไม่ได้ (rulesForMonth โยน error) → tier = null แสดง "—"
  *   * ⚠ PDPA: ผลลัพธ์มีชื่อลูกค้า — ห้าม console.log · error คืนแค่ code (ไม่คืน message ดิบ)
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { bangkokDate } from "@/components/customer-detail/logic";
-import { annualValueForTerm, effectiveEndDate, tierOf, type TierRule } from "@/lib/rules";
+import { annualValueForTerm, effectiveEndDate, type TierRule } from "@/lib/rules";
 import { monthOf } from "@/lib/rules/date";
-import { TIER_RULE_COLUMNS, toTierRules, type TierRuleRow } from "@/lib/tierRules";
+import { TIER_RULE_COLUMNS, contractTierForMonth, toTierRules, type TierRuleRow } from "@/lib/tierRules";
 
 import { needsPostFilter } from "./registryFilters";
 import { applyRegistryFilters, PAGE_SIZE, SORTS, type FilterLike, type SearchSpec } from "./registryQuery";
@@ -127,9 +127,9 @@ export function cursorOf(raw: Pick<RegistryRowDb, "id" | "start_date" | "end_dat
   return { value: v === null || v === undefined ? null : String(v), id: raw.id };
 }
 
-function tierFor(value: number, termMonths: number, startDate: string, rules: TierRule[]): RegistryRow["tier"] {
+function tierFor(value: number, termMonths: number, today: string, rules: TierRule[]): RegistryRow["tier"] {
   try {
-    return tierOf(annualValueForTerm(value, termMonths), rules, monthOf(startDate));
+    return contractTierForMonth(value, termMonths, rules, monthOf(today)); // 2.119: เกณฑ์ของเดือนปัจจุบัน ไม่ใช่เดือนเริ่มสัญญา
   } catch {
     return null;
   }
@@ -158,7 +158,7 @@ export function toRegistryRow(raw: RegistryRowDb, rules: TierRule[], today: stri
     termMonths,
     valueTotal: value,
     annualValue: annual,
-    tier: tierFor(value, termMonths, start, rules),
+    tier: tierFor(value, termMonths, today, rules),
     branchId: cust.branch_id,
     branchName: branch.name,
     zoneName: one(branch.zones)?.name ?? "",

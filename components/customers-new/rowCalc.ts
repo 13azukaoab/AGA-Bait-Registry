@@ -19,7 +19,6 @@ import {
   type Tier,
   type TierRule,
 } from "@/lib/rules";
-import { monthOf } from "@/lib/rules/date";
 import { currentBangkokMonth } from "@/lib/service/months";
 
 /** key ของป้าย Tier 10 แบบ (รวม xxl1/xxl3) เช่น `s1`, `xl3` (ตรงกับ class `tier s1`) */
@@ -67,20 +66,18 @@ export interface TierResult {
 
 /**
  * Tier + ระยะ (เดือน) → ป้าย 10 แบบ (รวม XXL1/XXL3) (Custom ใช้กลุ่มสี 1 ปี · มูลค่าจัด Tier ตาม `annualValueForTerm`) · ข้อมูลไม่ครบ = null
- * M20 / DECISIONS 2.49: ใช้เกณฑ์ของ "เดือนเริ่มสัญญา" · ยังไม่มีวันเริ่ม/วันเริ่มไม่ถูกต้อง = เกณฑ์ของเดือนปัจจุบัน (เวลาไทย)
+ * DECISIONS 2.119 (แก้จาก 2.49): ป้ายใช้เกณฑ์ของ "เดือนปัจจุบัน (เวลาไทย)" เสมอ ไม่ขึ้นกับวันเริ่มที่กรอก
  * `now` ไว้ฉีดวันที่ในเทส
  */
 export function tierFor(
   valueTotal: number | null,
   termMonths: number | null,
   rules: TierRule[],
-  startDate?: string | null,
   now?: Date,
 ): TierResult | null {
   if (valueTotal === null || termMonths === null || !isValidTermMonths(termMonths) || rules.length === 0) return null;
   const annual = annualValueForTerm(valueTotal, termMonths);
-  const month = startDate && isPlausibleDate(startDate) ? monthOf(startDate) : currentBangkokMonth(now);
-  const tier = tierOf(annual, rules, month);
+  const tier = tierOf(annual, rules, currentBangkokMonth(now));
   const key = tierKey(tier, termMonths);
   return { tier, key, label: `${tier}${colorGroup(termMonths)}`, annual };
 }
