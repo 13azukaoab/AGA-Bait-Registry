@@ -42,6 +42,7 @@ import {
 import {
   REASON_MAX,
   REASON_MIN,
+  buildPreviewRules,
   buildSavePayload,
   isDraftValid,
   parseImpactRows,
@@ -65,22 +66,36 @@ function dbFailure(where: string, error: { code?: string; message?: string; deta
 // เกณฑ์ Tier
 // ---------------------------------------------------------------------------
 
+/**
+ * อ่านค่าเกณฑ์จาก input ของ client — `xxl` ต้องมี key (ตัวเลข หรือ null) · ไม่มี key / ชนิดแปลก = null (INVALID_INPUT)
+ * กันกรณี client เก่าไม่ส่ง xxl แล้ว RPC ลบแถว XXL ของชุดเกณฑ์โดยไม่ตั้งใจ
+ */
+function parseThresholdsInput(input: { m: number; l: number; xl: number; xxl: number | null } | undefined): TierThresholds | null {
+  if (input === undefined || input === null || !("xxl" in input)) return null;
+  const xxl = input.xxl === null ? null : typeof input.xxl === "number" ? input.xxl : Number.NaN;
+  if (xxl !== null && !Number.isFinite(xxl)) return null;
+  return { m: Number(input.m), l: Number(input.l), xl: Number(input.xl), xxl };
+}
+
 export async function saveTierRuleSetAction(input: {
   effectiveMonth: string;
   m: number;
   l: number;
   xl: number;
+  /** ต้องส่งเสมอ: ตัวเลข = มี XXL · null = ไม่มี XXL (RPC ลบแถว XXL เดิมของเดือนนั้นถ้าไม่ส่ง จึงห้ามละ key นี้) */
+  xxl: number | null;
   reason: string;
   confirm: string;
 }): Promise<ActionResult> {
   const guard = await requireHostAction();
   if (!guard.ok) return guard;
 
-  const t: TierThresholds = { m: Number(input?.m), l: Number(input?.l), xl: Number(input?.xl) };
+  const t = parseThresholdsInput(input);
   const reason = typeof input?.reason === "string" ? input.reason.trim() : "";
   if (
     typeof input?.effectiveMonth !== "string" ||
     !/^\d{4}-(0[1-9]|1[0-2])$/.test(input.effectiveMonth) ||
+    t === null ||
     !isDraftValid(t) ||
     reason.length < REASON_MIN ||
     reason.length > REASON_MAX
@@ -106,14 +121,16 @@ export async function previewTierRuleChangeAction(input: {
   m: number;
   l: number;
   xl: number;
+  xxl: number | null;
 }): Promise<ActionResult<{ rows: ImpactRow[] }>> {
   const guard = await requireHostAction();
   if (!guard.ok) return guard;
 
-  const t: TierThresholds = { m: Number(input?.m), l: Number(input?.l), xl: Number(input?.xl) };
+  const t = parseThresholdsInput(input);
   if (
     typeof input?.effectiveMonth !== "string" ||
     !/^\d{4}-(0[1-9]|1[0-2])$/.test(input.effectiveMonth) ||
+    t === null ||
     !isDraftValid(t)
   ) {
     return failure("INVALID_INPUT");
@@ -121,7 +138,7 @@ export async function previewTierRuleChangeAction(input: {
 
   const { data, error } = await guard.supabase.rpc("preview_tier_rule_change", {
     p_effective_month: `${input.effectiveMonth}-01`,
-    p_rules: { min_m: t.m, min_l: t.l, min_xl: t.xl },
+    p_rules: buildPreviewRules(t),
   });
   if (error) return dbFailure("preview_tier_rule_change", error);
   const rows = parseImpactRows(data);

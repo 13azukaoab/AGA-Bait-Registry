@@ -50,7 +50,7 @@ import {
   updateCustomerTypeAction,
 } from "./settingsActions";
 
-const IN = { effectiveMonth: "2026-12", m: 30000, l: 50000, xl: 100000 };
+const IN = { effectiveMonth: "2026-12", m: 30000, l: 50000, xl: 100000, xxl: null as number | null };
 
 beforeEach(() => {
   state.isHost = true;
@@ -81,9 +81,17 @@ describe("previewTierRuleChangeAction", () => {
     expect(rpcCalls).toEqual([
       {
         name: "preview_tier_rule_change",
-        args: { p_effective_month: "2026-12-01", p_rules: { min_m: 30000, min_l: 50000, min_xl: 100000 } },
+        args: { p_effective_month: "2026-12-01", p_rules: { min_m: 30000, min_l: 50000, min_xl: 100000, min_xxl: null } },
       },
     ]);
+  });
+  it("ชุดที่มี XXL: ส่ง min_xxl ไป RPC ดูผลกระทบ · xxl ไม่มากกว่า XL → INVALID_INPUT", async () => {
+    state.rpcData = [];
+    await previewTierRuleChangeAction({ ...IN, xxl: 300000 });
+    expect(rpcCalls[0]).toMatchObject({ args: { p_rules: { min_xxl: 300000 } } });
+    rpcCalls.length = 0;
+    expect(await previewTierRuleChangeAction({ ...IN, xxl: 100000 })).toMatchObject({ code: "INVALID_INPUT" });
+    expect(rpcCalls).toEqual([]);
   });
   it("ร่างผิด/เดือนผิด → INVALID_INPUT ไม่เรียก RPC", async () => {
     expect(await previewTierRuleChangeAction({ ...IN, l: 100 })).toMatchObject({ code: "INVALID_INPUT" });
