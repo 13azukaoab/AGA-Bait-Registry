@@ -33,6 +33,8 @@
 --   4. ระยะชดเชย missed_makeup_deadline_months() (IMMUTABLE) อ่านครั้งเดียวเก็บในตัวแปร
 --   * ที่ยังเป็นทีละแถว (ไม่อยู่ในขอบเขตงานนี้): RLS policy ของ contracts/customers/visits เรียก current_app_role()
 --     ต่อแถว · list_voided_missed_services / central_unready_branches ยังเรียก helper ทีละแถว
+--   * ⚠ กฎข้อ 2 (ถูกแทน) และข้อ 3 (เดือนพัก) เขียนซ้ำในตัวเพื่อความเร็ว — แก้ contract_renewed_by /
+--     contract_month_paused เมื่อไหร่ ต้องแก้ที่นี่ด้วย · เทส 63 เทียบกับเนื้อเดิมที่เรียก helper ตัวจริง → ถ้าสองฝั่งไม่ตรงกัน เทสพัง
 --   * error ใหม่: ไม่มี
 -- =====================================================================
 

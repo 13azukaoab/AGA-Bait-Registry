@@ -303,7 +303,7 @@ SELECT ok(cardinality(pg_temp.months('e2')) > 0 AND cardinality(pg_temp.months('
   'closed and expired_pending_collection contracts are still listed');
 SELECT ok(pg_temp.months('f1') = '{}'::date[] AND pg_temp.months('f3') = '{}'::date[],
   'cancelled contracts and contracts without stations are not listed');
-SELECT is(pg_temp.months('f4')[1], pg_temp.m(-30), '36-month contract: tracking starts at the station setup month');
+SELECT is((pg_temp.months('f4'))[1], pg_temp.m(-30), '36-month contract: tracking starts at the station setup month');
 SELECT is(pg_temp.months('f5'), ARRAY[pg_temp.m(-8), pg_temp.m(-7), pg_temp.m(-6), pg_temp.m(-5), pg_temp.m(-4)],
   'custom 5-month contract: months end at start + 5 − 1');
 SELECT ok(NOT (pg_temp.m(-3) = ANY (pg_temp.months('e1'))) AND pg_temp.m(-4) = ANY (pg_temp.months('e1')),
