@@ -9,15 +9,16 @@
  *   * เพิ่มทีม: รหัส 1–4 ตัว ไม่ซ้ำแบบไม่สนตัวพิมพ์ แก้ไม่ได้หลังสร้าง · ประเภททีมต้องเลือก · ทีมใหม่เป็นส่วนกลาง (เฟส 1)
  *   * เปลี่ยนเป็น "ทีมหัวหน้างาน" ขณะมีงานผูก = TM003 · ลบทีมที่มีงานผูก = TM001 (ให้ DB ตัดสิน — ไม่เดาจากตัวเลขในตาราง)
  *   * เกณฑ์ Workload: อ่าน/เขียนผ่าน `app_settings` (RPC `save_workload_threshold`) พิมพ์ "ยืนยันแก้ไข" ก่อนบันทึก
+ *   * กดหัวคอลัมน์เรียงตารางได้ (ปุ่มใน <th aria-sort> · กดซ้ำสลับทิศ) · ตรรกะอยู่ `teamSort.ts` · ค่าเริ่มต้น = รหัสทีม A→Z
  *   * คอลัมน์ "สัญญาที่ใช้งานอยู่" = จำนวนสัญญาสถานะ active ที่ผูกกับทีม (mockup เรียก "งานเปิดอยู่เดือนนี้" — ดูรายงาน)
  */
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 
 import { Modal } from "@/components/customers-new/Modal";
 import { useUnsavedWork } from "@/components/shell/unsaved-work";
 import { Alert, Button, Chip, Field, cx, type ChipTone } from "@/components/ui";
-import { TEAM_KINDS, TEAM_KIND_LABEL, sortTeamsByKind, type TeamKind } from "@/lib/service/teamKind";
+import { TEAM_KINDS, TEAM_KIND_LABEL, type TeamKind } from "@/lib/service/teamKind";
 
 import {
   createTeamAction,
@@ -43,6 +44,16 @@ import {
   type TeamDraft,
   type TeamRow,
 } from "./settingsLogic";
+import {
+  DEFAULT_TEAM_SORT,
+  nextTeamSort,
+  sortTeams,
+  teamColumnOf,
+  teamSortAnnouncement,
+  type TeamSortColumn,
+  type TeamSortKey,
+  type TeamSortState,
+} from "./teamSort";
 import { formatMoney, parseMoney } from "./tierLogic";
 
 const KIND_TONE: Record<TeamKind, ChipTone> = { service: "info", install: "ok", supervisor: "pend" };
@@ -58,12 +69,20 @@ export function TeamsTab({ data, onToast }: { data: SettingsData; onToast: (m: s
   const [error, setError] = useState("");
   const [busyId, setBusyId] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
-  const teams = sortTeamsByKind(data.teams);
+  const [sort, setSort] = useState<TeamSortState>(DEFAULT_TEAM_SORT);
+  const [sortNotice, setSortNotice] = useState("");
+  const teams = useMemo(() => sortTeams(data.teams, sort), [data.teams, sort]);
   const activeCount = teams.filter((t) => t.isActive).length;
 
   const close = () => {
     setDialog(null);
     setError("");
+  };
+
+  const onSort = (key: TeamSortKey) => {
+    const next = nextTeamSort(sort, key);
+    setSort(next);
+    setSortNotice(teamSortAnnouncement(next));
   };
 
   const toggle = (t: TeamRow) => {
@@ -95,17 +114,20 @@ export function TeamsTab({ data, onToast }: { data: SettingsData; onToast: (m: s
           </Button>
         }
       >
+        <div role="status" aria-live="polite" className="sr-only">
+          {sortNotice}
+        </div>
         <div className="relative overflow-x-auto">
-          <table className="w-full border-collapse text-[13px]">
+          <table className="w-full min-w-[860px] border-collapse text-[13px] max-[640px]:min-w-[760px]">
             <thead>
               <tr className="bg-surface-2 text-left text-xs text-fg-muted">
-                <th scope="col" className="px-3.5 py-2 font-medium">ทีม</th>
-                <th scope="col" className="px-3.5 py-2 font-medium">ชื่อ / คำอธิบาย</th>
-                <th scope="col" className="px-3.5 py-2 font-medium">ประเภททีม</th>
-                <th scope="col" className="px-3.5 py-2 text-right font-medium">คนภาคสนาม</th>
-                <th scope="col" className="px-3.5 py-2 font-medium">ชม./คน/เดือน</th>
-                <th scope="col" className="px-3.5 py-2 text-right font-medium max-[640px]:hidden">สัญญาที่ใช้งานอยู่</th>
-                <th scope="col" className="px-3.5 py-2 font-medium">ใช้งาน</th>
+                <SortTh col={teamColumnOf("code")} sort={sort} onSort={onSort} />
+                <SortTh col={teamColumnOf("name")} sort={sort} onSort={onSort} />
+                <SortTh col={teamColumnOf("kind")} sort={sort} onSort={onSort} />
+                <SortTh col={teamColumnOf("headcount")} sort={sort} onSort={onSort} align="right" />
+                <SortTh col={teamColumnOf("workload")} sort={sort} onSort={onSort} />
+                <SortTh col={teamColumnOf("contracts")} sort={sort} onSort={onSort} align="right" className="max-[640px]:hidden" />
+                <SortTh col={teamColumnOf("active")} sort={sort} onSort={onSort} />
                 <th scope="col" className="px-3.5 py-2"><span className="sr-only">จัดการ</span></th>
               </tr>
             </thead>
@@ -246,6 +268,42 @@ export function TeamsTab({ data, onToast }: { data: SettingsData; onToast: (m: s
         </Modal>
       ) : null}
     </div>
+  );
+}
+
+/** หัวคอลัมน์ที่กดเรียงได้ — ปุ่มใน <th aria-sort> (คีย์บอร์ดกด Enter/Space ได้) · ไม่ตัดคำ · มือถือสูง ≥ 44px */
+function SortTh({
+  col,
+  sort,
+  onSort,
+  align,
+  className,
+}: {
+  col: TeamSortColumn;
+  sort: TeamSortState;
+  onSort: (key: TeamSortKey) => void;
+  align?: "right";
+  className?: string;
+}) {
+  const active = sort.key === col.key;
+  return (
+    <th
+      scope="col"
+      aria-sort={active ? (sort.dir === "asc" ? "ascending" : "descending") : "none"}
+      className={cx("px-3.5 py-1.5 font-medium", align === "right" && "text-right", active && "text-fg", className)}
+    >
+      <button
+        type="button"
+        onClick={() => onSort(col.key)}
+        className="-mx-1.5 -my-1 inline-flex min-h-[30px] cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-md bg-transparent px-1.5 py-1 text-xs font-semibold text-inherit hover:bg-surface-3 hover:text-fg focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent max-[640px]:min-h-11"
+      >
+        {col.label}
+        <span aria-hidden="true" className="inline-flex flex-col gap-px text-[10px] leading-none">
+          <i className={cx("not-italic", active && sort.dir === "asc" ? "text-accent-strong" : "opacity-35")}>▲</i>
+          <i className={cx("not-italic", active && sort.dir === "desc" ? "text-accent-strong" : "opacity-35")}>▼</i>
+        </span>
+      </button>
+    </th>
   );
 }
 
