@@ -33,6 +33,8 @@ export type UserRow = {
   isActive: boolean;
   mustChangePassword: boolean;
   lastLogin: string | null;
+  /** วันเปิดบัญชี (profiles.created_at · ISO timestamptz) · DECISIONS 2.114 — optional ให้ fixture เดิมไม่พัง */
+  createdAt?: string;
   /** M38: มีแจ้งเตือน "ตำแหน่งถูกเปลี่ยน" ที่ผู้ใช้ยังไม่อ่าน (RPC list_notification_read_status) */
   hasUnreadPositionChange?: boolean;
   unreadCount?: number;
