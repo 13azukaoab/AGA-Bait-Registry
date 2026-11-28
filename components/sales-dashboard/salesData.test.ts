@@ -12,6 +12,7 @@ import {
   SALES_PAGE_CHUNK,
   loadSalesRows,
   toSalesRow,
+  windowFilter,
   type SalesRowDb,
 } from "./salesData";
 
@@ -76,9 +77,12 @@ describe("resolveSalesDate / toSalesRow — สัญญานำเข้าใ
     expect(USE_START_DATE_FOR_IMPORTED).toBe(true);
     expect(FLAG_LATE_ON_START_DATE_ROWS).toBe(false);
   });
-  it("ข้อ 1: มี Mail → ใช้ Mail (แม้เป็นสัญญานำเข้า)", () => {
-    expect(resolveSalesDate({ ...imported, mail_received_date: "2026-10-03" }, true)).toEqual({ date: "2026-10-03", source: "mail" });
+  it("2.120: สัญญานำเข้าใช้วันเริ่มสัญญาเสมอ แม้มี Mail (Mail ที่เติมย้อนหลังไม่ขยับยอด) · สัญญาในแอปใช้ Mail", () => {
+    expect(resolveSalesDate({ ...imported, mail_received_date: "2026-10-03" }, true)).toEqual({ date: "2026-09-20", source: "start" });
     expect(resolveSalesDate(base, true)).toEqual({ date: "2026-11-16", source: "mail" });
+  });
+  it("2.120: ปิดสวิตช์ = กฎ 2.91 เดิม — สัญญานำเข้าที่มี Mail ใช้ Mail", () => {
+    expect(resolveSalesDate({ ...imported, mail_received_date: "2026-10-03" }, false)).toEqual({ date: "2026-10-03", source: "mail" });
   });
   it("ข้อ 1: ไม่มี Mail + นำเข้า → ใช้วันเริ่มสัญญา", () => {
     expect(resolveSalesDate(imported, true)).toEqual({ date: "2026-09-20", source: "start" });
@@ -99,8 +103,31 @@ describe("resolveSalesDate / toSalesRow — สัญญานำเข้าใ
     expect(r).toMatchObject({ salesDate: "2026-09-20", dateSource: "start", isLate: false });
     expect(seen).not.toContain("2026-09-20");
   });
-  it("แถวที่ใช้ Mail ยังติดป้ายล่าช้าตามเดิม", () => {
-    expect(toSalesRow({ ...base, import_batch: "b" }, lateStub)).toMatchObject({ dateSource: "mail", isLate: true });
+  it("2.120: สัญญานำเข้า Renew ที่เติม Mail วันที่ 20 → ไม่ล่าช้า · เดือนตามวันเริ่มสัญญา · ไม่ส่ง Mail/วันเริ่มเข้า isLate", () => {
+    const seen: (string | null)[] = [];
+    const spy = (t: string, d: string | null) => {
+      seen.push(d);
+      return lateStub(t, d);
+    };
+    const r = toSalesRow({ ...imported, sale_type: "renew", mail_received_date: "2026-08-20", start_date: "2026-09-01" }, spy);
+    expect(r).toMatchObject({ salesDate: "2026-09-01", dateSource: "start", isLate: false });
+    expect(seen).toEqual([]);
+  });
+  it("2.120: สัญญาที่เปิดในแอป Renew Mail วันที่ 20 → ล่าช้า · เดือนตาม Mail", () => {
+    const r = toSalesRow({ ...base, import_batch: null, mail_received_date: "2026-08-20", start_date: "2026-09-01" }, lateStub);
+    expect(r).toMatchObject({ salesDate: "2026-08-20", dateSource: "mail", isLate: true });
+  });
+  it("2.120: สัญญานำเข้าที่ไม่มี Mail → เหมือนเดิม (วันเริ่มสัญญา · ไม่ล่าช้า)", () => {
+    expect(toSalesRow({ ...imported, sale_type: "renew" }, lateStub)).toMatchObject({ salesDate: "2026-09-20", dateSource: "start", isLate: false });
+  });
+  it("2.120: หน้าต่างเวลา = (แอป AND Mail ≥ ต้นช่วง) OR (นำเข้า AND วันเริ่ม ≥ ต้นช่วง)", () => {
+    expect(windowFilter("2026-08-01")).toBe(
+      "and(import_batch.is.null,mail_received_date.gte.2026-08-01),and(import_batch.not.is.null,start_date.gte.2026-08-01)",
+    );
+  });
+  it("แถวที่ใช้ Mail ยังติดป้ายล่าช้าตามเดิม (สัญญาในแอป · หรือปิดสวิตช์)", () => {
+    expect(toSalesRow(base, lateStub)).toMatchObject({ dateSource: "mail", isLate: true });
+    expect(toSalesRow({ ...base, import_batch: "b" }, lateStub, false)).toMatchObject({ dateSource: "mail", isLate: true });
   });
 });
 
@@ -144,7 +171,7 @@ describe("loadSalesRows", () => {
     expect(res).toEqual({ ok: false, code: "bad_window" });
   });
 
-  it("query หลัก: or ของหน้าต่างเวลา (Mail ≥ ต้นช่วง หรือ ไม่มี Mail+นำเข้า+วันเริ่ม ≥ ต้นช่วง) AND กับ or ของตัวกรองยกเลิก · แยก query นับแบบ head", async () => {
+  it("query หลัก: or ของหน้าต่างเวลา (แอป+Mail ≥ ต้นช่วง หรือ นำเข้า+วันเริ่ม ≥ ต้นช่วง) AND กับ or ของตัวกรองยกเลิก · แยก query นับแบบ head", async () => {
     const { client, builders } = fakeSupabase({
       pages: () => ({ data: [base, { ...base, id: "c2", sale_type: null }], count: 2 }),
       noMail: { count: 2369 },
@@ -159,7 +186,7 @@ describe("loadSalesRows", () => {
     expect(ors).toHaveLength(2); // PostgREST: or ซ้ำ = AND กัน (ยืนยันกับ DB จริงแล้ว)
     expect(ors).toContain(KEEP_UNLESS_ENTRY_ERROR_CANCELLED);
     expect(ors).toContain(
-      "mail_received_date.gte.2026-08-01,and(mail_received_date.is.null,import_batch.not.is.null,start_date.gte.2026-08-01)",
+      "and(import_batch.is.null,mail_received_date.gte.2026-08-01),and(import_batch.not.is.null,start_date.gte.2026-08-01)",
     );
     expect(names(main)).not.toContain("gte");
     // query นับ: ไม่มี Mail + ไม่ใช่นำเข้า (นำเข้าใช้วันเริ่มสัญญาแล้ว)

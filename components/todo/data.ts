@@ -5,7 +5,11 @@
  *   * รับ Supabase client ของผู้ใช้จริง (RLS ทำงาน · ห้าม service role) · ทุก select ระบุคอลัมน์ ไม่ใช้ `select('*')`
  *   * เดือนของหน้า = oldest_open_month() ส่วนกลาง (ดู logic.ts pickPageScope)
  *   * ความคืบหน้า/รายการ "ยังไม่กรอก" ใช้ loadContractList ของหน้า /service (import อย่างเดียว) → ตัวเลขตรงกัน
- *     (รายสาขาแล้วรวม — ถ้าสาขาใดชนเพดาน 1,000 สัญญา จะตั้ง `truncated` ให้หน้าจอเตือน ไม่แสดงตัวเลขผิดเงียบๆ)
+ *     (เรียกครั้งเดียวด้วยทุกสาขา · loadContractList อ่านสัญญาแบบ keyset ทีละ 1,000 แถว → ไม่ติดเพดาน max_rows ·
+ *      เกินเพดานจำนวนก้อนจริง = ตั้ง `truncated` ให้หน้าจอเตือน ไม่แสดงตัวเลขผิดเงียบๆ)
+ *     ⚠ ห้ามกลับไปยิงรายสาขา (เดิม 24 คำขอพร้อมกัน): ตัวกรองสาขาอยู่บน customers!inner ทำให้ "ทุกคำขอ" ไล่สัญญาทั้งหมด
+ *       และเรียกฟังก์ชัน RLS (current_app_role/is_host) ต่อแถว — วัดบน production: 1 สาขา ~160 ms · 24 คำขอพร้อมกันเฉลี่ย ~500 ms
+ *       ต่อคำขอ → TTFB 4–6 วินาที · ยิงครั้งเดียวทุกสาขา (1,000 แถวแรก) ~53 ms (28 พ.ย. 2026)
  *   * ตกบริการรอตัดสิน = list_pending_missed_services(p_month = เดือนของหน้า) — สูตรตก/เพดาน อยู่ที่ฐานข้อมูล
  *   * เรื่องที่ปิดแล้ว = missed_service_resolutions (ไม่ชดเชย/ชดเชยแล้ว) ล่าสุด CLOSED_LIMIT แถว
  *   * กล่อง AG รอถอด = stations ชนิด AG สถานะ pending_removal · ลูกค้ารอเก็บสถานี = v_contract_ig_collection + สัญญาที่จบแล้ว
@@ -80,7 +84,7 @@ export interface TodoData {
   currentMonth: string;
   /** เดือนของหน้าเก่ากว่าเดือนปัจจุบัน (ยังปิดงานเดือนก่อนไม่เสร็จ) */
   isBehind: boolean;
-  /** สาขาใดสาขาหนึ่งชนเพดานแถว → ตัวเลขอาจต่ำกว่าจริง (นับเฉพาะกล่องที่โหลดสำเร็จ) */
+  /** กล่องใดกล่องหนึ่งชนเพดานแถว → ตัวเลขอาจต่ำกว่าจริง (นับเฉพาะกล่องที่โหลดสำเร็จ) */
   truncated: boolean;
   branchNames: Record<string, string>;
   progress: Section<ProgressSection>;
@@ -192,18 +196,16 @@ export async function loadTodo(supabase: SupabaseClient): Promise<{ data: TodoDa
   const branchIds = new Set(branches.map((b) => b.id));
   const tierRules = master.master.tierRules ?? [];
 
-  // 3–7) 5 กล่องไม่ขึ้นต่อกัน → ยิงพร้อมกัน (ความขนานภายในกล่อง progress = รายสาขาเหมือนเดิม ไม่เพิ่ม)
+  // 3–7) 5 กล่องไม่ขึ้นต่อกัน → ยิงพร้อมกัน
   const [progressStep, pendStep, closedStep, agStep, colStep] = await Promise.all([
-    // 3) ความคืบหน้า + รายการยังไม่กรอก (รายสาขาแล้วรวม — กันชนเพดานต่อคำขอ)
+    // 3) ความคืบหน้า + รายการยังไม่กรอก (คำขอเดียวทุกสาขา · keyset ภายใน loadContractList — ดูหัวไฟล์ว่าทำไมห้ามแยกรายสาขา)
     runBox<ProgressSection>("progress", async () => {
-      const lists = await Promise.all(branches.map((b) => loadContractList(supabase, month, [b.id], tierRules)));
-      const listError = lists.find((l) => l.error);
-      if (listError?.error) return { value: { progress: computeProgress([]), unfilled: [] }, error: listError.error };
-      const items = lists.flatMap((l) => l.items);
-      const unfilled = items
+      const list = await loadContractList(supabase, month, [...branchIds], tierRules);
+      if (list.error) return { value: { progress: computeProgress([]), unfilled: [] }, error: list.error };
+      const unfilled = list.items
         .filter((i) => i.routineCountInMonth === 0)
         .sort((a, b) => a.customerName.localeCompare(b.customerName, "th"));
-      return { value: { progress: computeProgress(items), unfilled }, truncated: lists.some((l) => l.truncated), error: null };
+      return { value: { progress: computeProgress(list.items), unfilled }, truncated: list.truncated, error: null };
     }),
     // 4) ตกบริการรอตัดสิน
     runBox("pending", async () => {

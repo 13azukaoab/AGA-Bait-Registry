@@ -36,6 +36,7 @@ import {
   parseMoney,
   parseOptionalMoney,
   rangeEnds,
+  resetThresholds,
   sameThresholds,
   setForMonth,
   statusOf,
@@ -196,9 +197,10 @@ export function TierTab({ data, onToast }: { data: SettingsData; onToast: (m: st
                 <Button
                   size="sm"
                   className={MOBILE_BTN}
-                  title="คืนเป็นเกณฑ์ชุดตั้งต้นของระบบ (ยังไม่บันทึกจนกว่าจะกดบันทึก)"
+                  title="คืน M / L / XL เป็นเกณฑ์ชุดตั้งต้นของระบบ · XXL คงค่าของชุดที่ใช้อยู่ (ยังไม่บันทึกจนกว่าจะกดบันทึก)"
                   onClick={() => {
-                    setTexts(toTexts(baseline.thresholds));
+                    // 2.122: คืนค่าเริ่มต้นแล้วยังมี XXL (ใช้ XXL ของชุดปัจจุบันถ้าชุดตั้งต้นไม่มี)
+                    setTexts(toTexts(resetThresholds(baseline.thresholds, current?.thresholds ?? null)));
                     onToast("คืนเป็นเกณฑ์ชุดตั้งต้นแล้ว (ยังไม่บันทึก)");
                   }}
                 >

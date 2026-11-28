@@ -2,7 +2,7 @@
  * ทดสอบ loadTodo (data.ts) — ข้อมูลทดสอบสมมติทั้งหมด · Supabase เป็นตัวปลอม
  *
  * ครอบคลุม: ทุกอย่างสำเร็จ (ผลตรงกับที่คาด) · กล่องหนึ่งพลาด (กล่องอื่นยังมีข้อมูล) · ขั้นจำเป็นพลาด (ทั้งหน้า error)
- * · อ่านชื่อสัญญาพลาด · 5 กล่องถูกยิงพร้อมกัน (ไม่ต่อกันทีละขั้น)
+ * · อ่านชื่อสัญญาพลาด · 5 กล่องถูกยิงพร้อมกัน (ไม่ต่อกันทีละขั้น) · ความคืบหน้าอ่านสัญญาครั้งเดียวทุกสาขา (ไม่แยกรายสาขา)
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -12,12 +12,16 @@ const mocks = vi.hoisted(() => ({
     items: [],
     truncated: false,
     error: null,
-  })) as (branchId: string) => { items: unknown[]; truncated: boolean; error: string | null },
+  })) as (branchIds: readonly string[]) => { items: unknown[]; truncated: boolean; error: string | null },
+  listCalls: [] as { month: string; branchIds: string[] }[],
 }));
 
 vi.mock("@/components/service/data", () => ({
   loadServiceMaster: async () => mocks.master,
-  loadContractList: async (_s: unknown, _m: string, branchIds: string[]) => mocks.listImpl(branchIds[0] as string),
+  loadContractList: async (_s: unknown, month: string, branchIds: readonly string[]) => {
+    mocks.listCalls.push({ month, branchIds: [...branchIds] });
+    return mocks.listImpl(branchIds);
+  },
 }));
 
 import { loadTodo, type TodoData } from "./data";
@@ -103,11 +107,13 @@ function makeSupabase(overrides: Handlers = {}) {
 let errorSpy: ReturnType<typeof vi.spyOn>;
 beforeEach(() => {
   mocks.master = { master: { tierRules: [] }, error: null };
-  mocks.listImpl = (branchId) => ({
-    items: [
-      { contractId: `${branchId}-1`, customerName: "ข ลูกค้า", routineCountInMonth: 1 },
-      { contractId: `${branchId}-2`, customerName: "ก ลูกค้า", routineCountInMonth: 0 },
-    ],
+  mocks.listCalls = [];
+  // คำขอเดียวคืนสัญญาของทุกสาขา (ลำดับตาม contract_no ไม่ใช่ตามชื่อ)
+  mocks.listImpl = (branchIds) => ({
+    items: branchIds.flatMap((b) => [
+      { contractId: `${b}-1`, customerName: "ข ลูกค้า", routineCountInMonth: 1 },
+      { contractId: `${b}-2`, customerName: b === "b1" ? "ง ลูกค้า" : "ก ลูกค้า", routineCountInMonth: 0 },
+    ]),
     truncated: false,
     error: null,
   });
@@ -136,7 +142,7 @@ describe("loadTodo — ทุกอย่างสำเร็จ", () => {
 
     // ความคืบหน้า: 2 สาขา × (1 กรอก + 1 ยังไม่กรอก) · รายการยังไม่กรอกเรียงตามชื่อ
     expect(d.progress.ok && d.progress.value.progress).toMatchObject({ total: 4, filled: 2, remaining: 2, percent: 50 });
-    expect(d.progress.ok && d.progress.value.unfilled.map((i) => i.contractId)).toEqual(["b1-2", "b2-2"]);
+    expect(d.progress.ok && d.progress.value.unfilled.map((i) => i.contractId)).toEqual(["b2-2", "b1-2"]);
 
     expect(d.pending.ok && d.pending.value).toHaveLength(1);
     expect(d.pending.ok && d.pending.value[0]).toMatchObject({
@@ -150,6 +156,12 @@ describe("loadTodo — ทุกอย่างสำเร็จ", () => {
     expect(d.agPending.ok && d.agPending.value[0]).toMatchObject({ stationId: "s1", contractNo: "T-3", label: "2" });
     expect(d.collect).toEqual({ ok: true, value: { customers: 1, stations: 2 } });
     expect(errorSpy).not.toHaveBeenCalled();
+  });
+
+  it("ความคืบหน้าอ่านสัญญาครั้งเดียวด้วยทุกสาขา (ไม่ยิงรายสาขา — RLS ต่อแถว × จำนวนสาขา ทำให้ช้า)", async () => {
+    await load();
+    expect(mocks.listCalls).toHaveLength(1);
+    expect(mocks.listCalls[0]).toEqual({ month: "2026-11", branchIds: ["b1", "b2"] });
   });
 
   it("5 กล่องถูกยิงพร้อมกัน — ทุกคำขอเริ่มก่อนที่คำขอใดของกล่องจะจบ (ไม่ต่อกันทีละขั้น)", async () => {
@@ -194,7 +206,7 @@ describe("loadTodo — กล่องหนึ่งพลาด กล่อ�
   }
 
   it("ความคืบหน้า (loadContractList) error → เฉพาะกล่อง progress ไม่ ok", async () => {
-    mocks.listImpl = (branchId) => (branchId === "b2" ? { items: [], truncated: false, error: "list boom" } : { items: [], truncated: false, error: null });
+    mocks.listImpl = () => ({ items: [], truncated: false, error: "list boom" });
     const { data } = await load();
     const d = need(data);
     expect(d.progress.ok).toBe(false);
@@ -222,7 +234,7 @@ describe("loadTodo — กล่องหนึ่งพลาด กล่อ�
   });
 
   it("กล่องที่พลาดไม่ถูกนับเข้า truncated · กล่องที่ผ่านยังตั้ง truncated ได้", async () => {
-    mocks.listImpl = (branchId) => ({ items: [], truncated: branchId === "b1", error: null });
+    mocks.listImpl = () => ({ items: [], truncated: true, error: null });
     const withTrunc = need((await load()).data);
     expect(withTrunc.truncated).toBe(true);
     mocks.listImpl = () => ({ items: [], truncated: true, error: "x" });
