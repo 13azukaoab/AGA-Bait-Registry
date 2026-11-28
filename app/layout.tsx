@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Noto_Sans_Thai } from "next/font/google";
 import "./globals.css";
 import { Clarity } from "@/components/analytics/Clarity";
+import { ServiceWorkerRegister } from "@/components/shell/ServiceWorkerRegister";
 
 // ฟอนต์ Noto Sans Thai (SPEC §3) — ผูกเป็น CSS variable ใช้ใน globals.css
 const notoSansThai = Noto_Sans_Thai({
@@ -37,6 +38,8 @@ export default function RootLayout({
       <body className={notoSansThai.variable}>
         {children}
         <Clarity />
+        {/* ลงทะเบียน service worker ทุกหน้า แบบจับ error เอง (next.config.ts register: false) */}
+        <ServiceWorkerRegister />
       </body>
     </html>
   );

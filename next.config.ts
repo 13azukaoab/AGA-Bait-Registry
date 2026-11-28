@@ -28,6 +28,9 @@ const withSerwist = withSerwistInit({
   swSrc: "app/sw.ts",
   swDest: "public/sw.js",
   disable: process.env.NODE_ENV === "development",
+  // ไม่ให้ Serwist ลงทะเบียน SW เอง (ไม่ catch error → unhandled rejection "Rejected" · Sentry AGA-BAIT-REGISTRY-2)
+  // ลงทะเบียนแทนที่ components/shell/ServiceWorkerRegister.tsx (ทุกหน้า · จับ error เอง · scope/sw.js เดิม)
+  register: false,
 });
 
 // Sentry (M32) ห่อนอกสุด: withSentryConfig(withSerwist(config))
