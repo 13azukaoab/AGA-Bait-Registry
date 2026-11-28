@@ -3,7 +3,7 @@
 /* ============================================================
    AGA Bait Registry — base theme + token สี Tier
    กฎ CLAUDE.md: ห้าม hardcode hex ในโค้ด ให้อ้าง CSS variable เสมอ
-   สีแยกตาม tier + จำนวนปีสัญญา รวม 8 แบบ (1 ปี = อ่อน · 3 ปี = เข้ม)
+   สีแยกตาม tier + จำนวนปีสัญญา รวม 10 แบบ (8 แบบเดิม + XXL1/XXL3 · 1 ปี = อ่อน · 3 ปี = เข้ม)
    ============================================================ */
 
 /* ชุด token ตรงกับ mockup (`docs/mockup/aga-bait-registry-prototype.html` บรรทัด 9–41)
@@ -58,6 +58,22 @@
 
   /* ตัวหนังสือบนพื้นเข้ม (สัญญา 3 ปี) */
   --on-tier: #ffffff;
+
+  /* XXL (DECISIONS 2.113 · ทอง 4 · 24K Metallic) — ค่าตาม CLAUDE.md ตาราง "สี Tier"
+     tier=สีกลุ่ม · soft=พื้นอ่อนจุดแรก · ink=ตัวบนป้ายอ่อน · on=ตัวบนป้ายเข้ม (เข้ม ไม่ใช่ขาว) · ring=ขอบ
+     glow=แสงเรืองนิ่ง · sheen=สีประกายวิ่ง · --xxl1-a/b และ --xxl3-a/b/c = จุดสีของพื้นไล่เฉด */
+  --tier-xxl: #e0b030;
+  --tier-xxl-soft: #fffbe8;
+  --tier-xxl-ink: #5a3f00;
+  --on-xxl: #241800;
+  --tier-xxl-ring: #9a7010;
+  --tier-xxl-glow: rgba(240, 190, 40, 0.55);
+  --tier-xxl-sheen: rgba(255, 255, 255, 0.85);
+  --xxl1-a: #fffbe8;
+  --xxl1-b: #fbeab0;
+  --xxl3-a: #fbe48a;
+  --xxl3-b: #e0b030;
+  --xxl3-c: #c9971a;
 
   /* สีงาน Renew ใน Dashboard งานขาย (DECISIONS 2.91) — คู่กับ New ที่ใช้ --accent */
   --renew: #6d47b8;
@@ -115,6 +131,20 @@
 
     --on-tier: #0b1420;
 
+    /* XXL ทอง 4 (dark) — ดูคำอธิบายที่ชุด light */
+    --tier-xxl: #f0c030;
+    --tier-xxl-soft: #2e2506;
+    --tier-xxl-ink: #ffd966;
+    --on-xxl: #0b1420;
+    --tier-xxl-ring: #fff0a8;
+    --tier-xxl-glow: rgba(255, 210, 70, 0.5);
+    --tier-xxl-sheen: rgba(255, 246, 190, 0.6);
+    --xxl1-a: #2e2506;
+    --xxl1-b: #40320a;
+    --xxl3-a: #ffe27a;
+    --xxl3-b: #e0b030;
+    --xxl3-c: #d9a21b;
+
     /* สีงาน Renew ใน Dashboard งานขาย (DECISIONS 2.91) — คู่กับ New ที่ใช้ --accent */
     --renew: #a588e0;
     --renew-soft: #2a2240;
@@ -166,6 +196,19 @@
   --tier-xl-ink: #e07a4e;
 
   --on-tier: #0b1420;
+  /* XXL ทอง 4 (dark) — ดูคำอธิบายที่ชุด light */
+  --tier-xxl: #f0c030;
+  --tier-xxl-soft: #2e2506;
+  --tier-xxl-ink: #ffd966;
+  --on-xxl: #0b1420;
+  --tier-xxl-ring: #fff0a8;
+  --tier-xxl-glow: rgba(255, 210, 70, 0.5);
+  --tier-xxl-sheen: rgba(255, 246, 190, 0.6);
+  --xxl1-a: #2e2506;
+  --xxl1-b: #40320a;
+  --xxl3-a: #ffe27a;
+  --xxl3-b: #e0b030;
+  --xxl3-c: #d9a21b;
 
   /* สีงาน Renew ใน Dashboard งานขาย (DECISIONS 2.91) — คู่กับ New ที่ใช้ --accent */
   --renew: #a588e0;
@@ -245,6 +288,54 @@ body {
 .tier.l3 { background: var(--tier-l); color: var(--on-tier); }
 .tier.xl1 { background: var(--tier-xl-soft); color: var(--tier-xl-ink); }
 .tier.xl3 { background: var(--tier-xl); color: var(--on-tier); }
+
+/* XXL (DECISIONS 2.113 · ทอง 4) — ฐานนิ่ง = พื้นไล่เฉด + ขอบ + แสงเรืองนิ่ง (ใช้ทุกโหมด รวม reduced motion)
+   ประกายวิ่ง (shimmer): รอบ 3.6 วิ · วิ่งครั้งเดียว ~1.4 วิ แล้วพัก (ไม่กะพริบ — ราว 0.3 ครั้ง/วินาที)
+   ตัวแปร --shim = ชื่อ animation หรือ none
+     * เล่นเอง: เฉพาะ legend + แถบสีหน้าตั้งค่า (ครอบด้วย class `xxl-auto`)
+     * เล่นตอนชี้/โฟกัส: ป้ายในตาราง และตัวกรอง (`.chip-xxl`)
+     * prefers-reduced-motion: reduce = หยุดทั้งหมด (ป้ายยังต่างจาก XL ด้วยพื้น/ขอบ/แสงนิ่ง) */
+.tier, .chip-xxl, .xxl-bar { --shim: none; }
+.tier.xxl1, .tier.xxl3 {
+  position: relative;
+  white-space: nowrap;
+  overflow: hidden;
+  isolation: isolate;
+  box-shadow: inset 0 0 0 1px var(--tier-xxl-ring), 0 0 6px var(--tier-xxl-glow);
+}
+.tier.xxl1 {
+  background: linear-gradient(135deg, var(--xxl1-a), var(--xxl1-b));
+  color: var(--tier-xxl-ink);
+}
+.tier.xxl3 {
+  background: linear-gradient(135deg, var(--xxl3-a), var(--xxl3-b), var(--xxl3-a), var(--xxl3-c));
+  color: var(--on-xxl);
+  font-weight: 700;
+}
+.tier.xxl1::after, .tier.xxl3::after, .chip-xxl::after, .xxl-bar::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  background: linear-gradient(105deg, transparent 38%, var(--tier-xxl-sheen) 50%, transparent 62%);
+  transform: translateX(-130%);
+  animation: var(--shim);
+}
+@keyframes xxl-shimmer {
+  0% { transform: translateX(-130%); }
+  40% { transform: translateX(130%); }
+  100% { transform: translateX(130%); }
+}
+.xxl-auto .tier, .xxl-auto .xxl-bar { --shim: xxl-shimmer 3.6s ease-in-out infinite; }
+.tier:hover, tr:hover .tier, tr:focus-within .tier,
+label:hover .tier, label:focus-within .tier,
+.chip-xxl:hover, .chip-xxl:focus-within { --shim: xxl-shimmer 3.6s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .tier::after, .chip-xxl::after, .xxl-bar::after { animation: none !important; }
+}
+/* สีกลุ่ม XXL ใช้กับแถบสี/legend/ตัวกรองที่ไม่ระบุปี */
+.xxl-bar { position: relative; overflow: hidden; isolation: isolate; background: linear-gradient(135deg, var(--xxl3-a), var(--xxl3-b), var(--xxl3-a), var(--xxl3-c)); }
 
 /* โครงหน้าจอชั่วคราว (scaffold) — จะถูกแทนด้วยหน้าจริงภายหลัง */
 .stub {

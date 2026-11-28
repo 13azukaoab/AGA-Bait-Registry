@@ -4,7 +4,11 @@
  * Logic summary:
  *   * **ห้าม hardcode เกณฑ์** — ค่าที่โชว์/คำนวณมาจาก `tier_rules` ทุกครั้ง (ตัวอย่างตรวจสอบใช้ `tierOf` ของ lib/rules กับ "ร่างที่กำลังแก้")
  *     แม้ปุ่ม "คืนค่าเริ่มต้น" ก็คืนเป็น "ชุดตั้งต้น" (effective_month เก่าสุดใน tier_rules) ไม่ใช่เลขตายตัว
- *   * 1 ชุด = 4 แถว S/M/L/XL · แก้เฉพาะจุดเริ่มของ M, L, XL (S เริ่ม 0) · ปลายช่วง = จุดเริ่มถัดไป − 0.01 (ไม่มีช่องว่าง/ซ้อนทับ)
+ *   * 1 ชุด = 4 แถว S/M/L/XL **หรือ 5 แถว S/M/L/XL/XXL** (DECISIONS 2.112/2.115) · แก้จุดเริ่มของ M, L, XL และ XXL (S เริ่ม 0)
+ *     ปลายช่วง = จุดเริ่มถัดไป − 0.01 (ไม่มีช่องว่าง/ซ้อนทับ) · XXL ว่างได้ = ชุดนี้ไม่มี XXL (สัญญาเหล่านั้นนับเป็น XL)
+ *   * **บันทึกชุดเกณฑ์ต้องไม่ลบ XXL เดิมโดยไม่ตั้งใจ**: RPC `save_tier_rule_set` ลบแถว XXL ของเดือนนั้นเมื่อไม่ส่ง `min_xxl`
+ *     จึงบังคับให้ `TierThresholds.xxl` เป็นฟิลด์ที่ต้องระบุเสมอ (number | null) และ `buildSavePayload` ส่ง `min_xxl` ทุกครั้ง
+ *     (ร่างเริ่มจากชุดที่บันทึกไว้ รวมค่า XXL เดิม — ผู้ใช้ต้องล้างช่อง XXL เองถึงจะเป็น "ไม่มี XXL")
  *   * เดือนที่เลือกเริ่มใช้ได้: ไม่ก่อน (ก) เดือนปัจจุบัน (ข) เดือนเริ่มใช้ระบบ `go_live_month` (ค) เดือนถัดจากเดือนที่ปิดล่าสุด
  *     และต้องอยู่หลังชุดตั้งต้น — ตรงกับด่าน TR001/TR002/TR005 ใน `save_tier_rule_set` (DB ยังบังคับจริงอีกชั้น)
  *   * ค่าเงินเป็น JSON number (DB เช็ก jsonb_typeof = 'number') ทศนิยมไม่เกิน 2 ตำแหน่ง ห่างกันอย่างน้อย 0.02
@@ -17,9 +21,21 @@ export const REASON_MAX = 500;
 export const CONFIRM_PHRASE = "ยืนยันแก้ไข";
 
 /** ค่า 3 จุดที่แก้ได้ (บาท/ปี) — null = ยังกรอกไม่ถูกรูปแบบ */
-export type TierDraft = { m: number | null; l: number | null; xl: number | null };
-export type TierThresholds = { m: number; l: number; xl: number };
-export type TierDraftErrors = Partial<Record<"m" | "l" | "xl", string>>;
+export type TierDraft = {
+  m: number | null;
+  l: number | null;
+  xl: number | null;
+  /** number = จุดเริ่ม XXL · null = เว้นว่าง (ชุดนี้ไม่มี XXL) · "invalid" = พิมพ์ไม่ใช่ตัวเลข */
+  xxl: number | null | "invalid";
+};
+export type TierThresholds = { m: number; l: number; xl: number; xxl: number | null };
+export type TierDraftErrors = Partial<Record<"m" | "l" | "xl" | "xxl", string>>;
+
+/** ช่อง XXL: ว่าง = ไม่มี XXL (null) · ตัวเลข = ค่า · อื่นๆ = "invalid" */
+export function parseOptionalMoney(raw: string): number | null | "invalid" {
+  if (raw.replace(/[,\s]/g, "") === "") return null;
+  return parseMoney(raw) ?? "invalid";
+}
 
 /** แปลงข้อความที่พิมพ์ ("30,000" / "30000.5") เป็นตัวเลข — ไม่ใช่ตัวเลขล้วน = null */
 export function parseMoney(raw: string): number | null {
@@ -59,21 +75,32 @@ export function validateTierDraft(d: TierDraft): TierDraftErrors {
   if (d.l !== null && d.xl !== null && !errors.l && !errors.xl && d.xl - d.l < 0.02 - 1e-9) {
     errors.xl = "จุดเริ่ม XL ต้องมากกว่า L (ห่างกันอย่างน้อย 0.02)";
   }
+  // XXL: ว่างได้ (ไม่มี XXL) · ถ้ากรอกต้องเป็นตัวเลข ≤ เพดาน ทศนิยม ≤ 2 และมากกว่า XL
+  if (d.xxl === "invalid") {
+    errors.xxl = "กรอกเป็นตัวเลข หรือเว้นว่างถ้าไม่ต้องการ Tier XXL";
+  } else if (d.xxl !== null) {
+    if (d.xxl <= 0) errors.xxl = "ต้องมากกว่า 0";
+    else if (d.xxl > TIER_MONEY_MAX) errors.xxl = "ค่ามากเกินไป";
+    else if (!twoDecimals(d.xxl)) errors.xxl = "ทศนิยมได้ไม่เกิน 2 ตำแหน่ง";
+    else if (d.xl !== null && !errors.xl && d.xxl - d.xl < 0.02 - 1e-9) {
+      errors.xxl = "จุดเริ่ม XXL ต้องมากกว่า XL (ห่างกันอย่างน้อย 0.02)";
+    }
+  }
   return errors;
 }
 
 export function isDraftValid(d: TierDraft): d is TierThresholds {
-  return d.m !== null && d.l !== null && d.xl !== null && Object.keys(validateTierDraft(d)).length === 0;
+  return d.m !== null && d.l !== null && d.xl !== null && d.xxl !== "invalid" && Object.keys(validateTierDraft(d)).length === 0;
 }
 
-/** ปลายช่วงของแต่ละ Tier = จุดเริ่มถัดไป − 0.01 (ปัดทศนิยม 2 ตำแหน่ง) */
-export function rangeEnds(t: TierThresholds): { s: number; m: number; l: number } {
+/** ปลายช่วงของแต่ละ Tier = จุดเริ่มถัดไป − 0.01 (ปัดทศนิยม 2 ตำแหน่ง) · `xl` = null เมื่อไม่มี XXL (XL ไม่จำกัด) */
+export function rangeEnds(t: TierThresholds): { s: number; m: number; l: number; xl: number | null } {
   const end = (v: number) => Math.round((v - 0.01) * 100) / 100;
-  return { s: end(t.m), m: end(t.l), l: end(t.xl) };
+  return { s: end(t.m), m: end(t.l), l: end(t.xl), xl: t.xxl === null ? null : end(t.xxl) };
 }
 
 export function sameThresholds(a: TierDraft, b: TierThresholds): boolean {
-  return a.m === b.m && a.l === b.l && a.xl === b.xl;
+  return a.m === b.m && a.l === b.l && a.xl === b.xl && a.xxl === b.xxl;
 }
 
 // ---------------------------------------------------------------------------
@@ -96,7 +123,7 @@ export type RuleSet = {
   isBaseline: boolean;
 };
 
-/** รวมแถวเป็นชุด (4 แถวต่อเดือน) เรียงเก่า→ใหม่ · ชุดที่ไม่ครบ M/L/XL ถูกข้าม */
+/** รวมแถวเป็นชุด (4 แถว S/M/L/XL หรือ 5 แถวมี XXL ต่อเดือน) เรียงเก่า→ใหม่ · ชุดที่ไม่ครบ M/L/XL ถูกข้าม · ไม่มีแถว XXL → xxl = null */
 export function groupRuleSets(rows: readonly TierRuleDbRow[]): RuleSet[] {
   const byMonth = new Map<string, Map<Tier, number>>();
   const reasons = new Map<string, string | null>();
@@ -115,7 +142,7 @@ export function groupRuleSets(rows: readonly TierRuleDbRow[]): RuleSet[] {
     const l = set.get("L");
     const xl = set.get("XL");
     if (m === undefined || l === undefined || xl === undefined) return;
-    out.push({ month, thresholds: { m, l, xl }, reason: reasons.get(month) ?? null, isBaseline: i === 0 });
+    out.push({ month, thresholds: { m, l, xl, xxl: set.get("XXL") ?? null }, reason: reasons.get(month) ?? null, isBaseline: i === 0 });
   });
   return out;
 }
@@ -169,7 +196,13 @@ export function effectiveMonthOptions(args: {
 
 /** ข้อมูลที่ส่ง RPC `save_tier_rule_set(p)` — ค่าเงินเป็น number (DB เช็กชนิด) */
 export function buildSavePayload(t: TierThresholds, month: string, reason: string) {
-  return { effective_month: month, min_m: t.m, min_l: t.l, min_xl: t.xl, reason: reason.trim() };
+  // min_xxl ต้องส่งทุกครั้ง (null = ไม่มี XXL) — ถ้าตกหล่น RPC จะลบแถว XXL เดิมของเดือนนั้น
+  return { effective_month: month, min_m: t.m, min_l: t.l, min_xl: t.xl, min_xxl: t.xxl, reason: reason.trim() };
+}
+
+/** ข้อมูลส่ง RPC `preview_tier_rule_change(p_rules)` — รูปเดียวกับ save (min_xxl null = ไม่มี XXL) */
+export function buildPreviewRules(t: TierThresholds) {
+  return { min_m: t.m, min_l: t.l, min_xl: t.xl, min_xxl: t.xxl };
 }
 
 export function validateSaveForm(args: {
@@ -193,7 +226,7 @@ export function validateSaveForm(args: {
 // ผลกระทบต่อสัญญา (RPC `preview_tier_rule_change` · M38 · DECISIONS 2.74)
 // ---------------------------------------------------------------------------
 
-export const TIER_ORDER: readonly Tier[] = ["S", "M", "L", "XL"];
+export const TIER_ORDER: readonly Tier[] = ["S", "M", "L", "XL", "XXL"];
 
 /** 1 แถวจาก RPC: จำนวนสัญญาที่ย้ายจาก Tier เดิม → Tier ใหม่ (กลุ่มสี 1 = 1 ปี/Custom · 3 = 3 ปี) — ไม่มีชื่อลูกค้า */
 export type ImpactRow = { from: Tier; to: Tier; termGroup: "1" | "3"; count: number };
@@ -230,7 +263,7 @@ export type ImpactSummary = {
   total: number;
   moved: number;
   perTier: ImpactTierLine[];
-  /** เฉพาะคู่ที่ Tier เปลี่ยนจริง (from ≠ to) เรียง S→XL */
+  /** เฉพาะคู่ที่ Tier เปลี่ยนจริง (from ≠ to) เรียง S→XXL */
   moves: ImpactMove[];
 };
 
@@ -258,7 +291,8 @@ export function summarizeImpact(rows: readonly ImpactRow[]): ImpactSummary {
   return {
     total,
     moved,
-    perTier: TIER_ORDER.map((tier) => {
+    // แถว XXL แสดงเมื่อมีสัญญา XXL ก่อนหรือหลังแก้เท่านั้น (ชุดเกณฑ์ที่ไม่มี XXL = ไม่ต้องโชว์แถว 0/0)
+    perTier: TIER_ORDER.filter((tier) => tier !== "XXL" || (before.get(tier) ?? 0) + (after.get(tier) ?? 0) > 0).map((tier) => {
       const b = before.get(tier) ?? 0;
       const a = after.get(tier) ?? 0;
       return { tier, before: b, after: a, diff: a - b };
@@ -273,12 +307,14 @@ export function summarizeImpact(rows: readonly ImpactRow[]): ImpactSummary {
 
 /** ร่างเกณฑ์ → TierRule[] ชุดเดียว (ไม่ใส่ effectiveMonth) ส่งเข้า `tierOf` ของ lib/rules */
 export function rulesFromThresholds(t: TierThresholds): TierRule[] {
-  return [
+  const rules: TierRule[] = [
     { tier: "S", minAnnual: 0 },
     { tier: "M", minAnnual: t.m },
     { tier: "L", minAnnual: t.l },
     { tier: "XL", minAnnual: t.xl },
   ];
+  if (t.xxl !== null) rules.push({ tier: "XXL", minAnnual: t.xxl });
+  return rules;
 }
 
 /** Tier + ปี (ป้าย 1 ปี/3 ปี) ของสัญญา `value` บาท ระยะ `termMonths` เดือน ตามร่างเกณฑ์ */
@@ -299,4 +335,5 @@ export const SAMPLE_CONTRACTS: readonly { value: number; termMonths: number }[] 
   { value: 150_000, termMonths: 12 },
   { value: 150_000, termMonths: 36 },
   { value: 500_000, termMonths: 36 },
+  { value: 400_000, termMonths: 12 },
 ];

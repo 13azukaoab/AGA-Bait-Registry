@@ -5,6 +5,7 @@
  * ค่าวันที่เป็น 'YYYY-MM-DD' · เดือนเป็น 'YYYY-MM'
  */
 import type { UserRole } from "@/lib/db/types";
+import type { Tier } from "@/lib/rules";
 
 /** สถานะสัญญา — `paused` = พักสัญญา (M29) · ⚠ ฟิลด์ `status` ของ ContractRow เป็นสถานะ "ที่ใช้ตัดสินบนหน้าจอ" (active ที่เลยวันสิ้นสุด = expired_pending_collection) ดู toContractRow */
 export type ContractStatus = "active" | "paused" | "expired_pending_collection" | "closed" | "cancelled";
@@ -63,7 +64,7 @@ export interface ContractRow {
   stationsInitializedAt: string | null;
   teamCodes: string[];
   /** ป้าย Tier ของสัญญา (เกณฑ์ของเดือนเริ่มสัญญา — lib/rules) */
-  tier: "S" | "M" | "L" | "XL";
+  tier: Tier;
 }
 
 export interface StationRow {

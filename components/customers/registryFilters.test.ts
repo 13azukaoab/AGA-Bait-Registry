@@ -31,7 +31,7 @@ describe("registryFilters", () => {
   });
 
   it("ค่าที่ผิดรูปแบบถูกทิ้ง (id ไม่ใช่ uuid · enum แปลก · sort แปลก)", () => {
-    const f = filtersFromParams(new URLSearchParams(`zone=${Z1},drop%20table&br=abc&size=S,XXL&yr=9&st=active,evil&sort=name`));
+    const f = filtersFromParams(new URLSearchParams(`zone=${Z1},drop%20table&br=abc&size=S,XXXL&yr=9&st=active,evil&sort=name`));
     expect(f.zones).toEqual([Z1]);
     expect(f.branches).toEqual([]);
     expect(f.sizes).toEqual(["S"]);

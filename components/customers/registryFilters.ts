@@ -11,7 +11,7 @@ import type { RegistryFilters, RegistryStatus, SizeCode, SortKey, YearsFilter } 
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-export const SIZE_ORDER: readonly SizeCode[] = ["S", "M", "L", "XL"];
+export const SIZE_ORDER: readonly SizeCode[] = ["S", "M", "L", "XL", "XXL"];
 export const SORT_KEYS: readonly SortKey[] = ["default", "end_asc", "end_desc", "value_asc", "value_desc"];
 
 /** ความยาวคำค้นสูงสุดที่ส่งเข้า query */

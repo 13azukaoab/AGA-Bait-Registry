@@ -16,13 +16,14 @@ import {
   serviceMonthsForTerm,
   tierKey,
   tierOf,
+  type Tier,
   type TierRule,
 } from "@/lib/rules";
 import { monthOf } from "@/lib/rules/date";
 import { currentBangkokMonth } from "@/lib/service/months";
 
-/** key ของป้าย Tier 8 แบบ เช่น `s1`, `xl3` (ตรงกับ class `tier s1`) */
-export type TierKey = "s1" | "s3" | "m1" | "m3" | "l1" | "l3" | "xl1" | "xl3";
+/** key ของป้าย Tier 10 แบบ (รวม xxl1/xxl3) เช่น `s1`, `xl3` (ตรงกับ class `tier s1`) */
+export type TierKey = "s1" | "s3" | "m1" | "m3" | "l1" | "l3" | "xl1" | "xl3" | "xxl1" | "xxl3";
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -58,14 +59,14 @@ export function formatMoney(n: number): string {
 }
 
 export interface TierResult {
-  tier: "S" | "M" | "L" | "XL";
+  tier: Tier;
   key: TierKey;
   label: string; // เช่น "S1"
   annual: number;
 }
 
 /**
- * Tier + ระยะ (เดือน) → ป้าย 8 แบบ (Custom ใช้กลุ่มสี 1 ปี · มูลค่าจัด Tier ตาม `annualValueForTerm`) · ข้อมูลไม่ครบ = null
+ * Tier + ระยะ (เดือน) → ป้าย 10 แบบ (รวม XXL1/XXL3) (Custom ใช้กลุ่มสี 1 ปี · มูลค่าจัด Tier ตาม `annualValueForTerm`) · ข้อมูลไม่ครบ = null
  * M20 / DECISIONS 2.49: ใช้เกณฑ์ของ "เดือนเริ่มสัญญา" · ยังไม่มีวันเริ่ม/วันเริ่มไม่ถูกต้อง = เกณฑ์ของเดือนปัจจุบัน (เวลาไทย)
  * `now` ไว้ฉีดวันที่ในเทส
  */

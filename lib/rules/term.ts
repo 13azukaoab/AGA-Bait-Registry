@@ -8,11 +8,12 @@
  *   - วันสิ้นสุดอัตโนมัติ = เริ่ม + m เดือน − 1 วัน ชนปลายเดือน (addMonthsMinusDay)
  *   - มูลค่าจัด Tier: m ≥ 12 → มูลค่า ÷ (m/12) · m < 12 → มูลค่าตามจริง (ไม่ขยายเป็นต่อปี)
  *   - กลุ่มสี / คีย์ Dashboard: 36 → "3" · อื่นทั้งหมด → "1" (Custom นับกลุ่ม 1 ปี · dashboard_data.json ไม่เปลี่ยน)
+ *   - XXL (2.112): ป้ายแยก xxl1/xxl3 (`tierKey`) · snapshot/Dashboard รวมเข้า xl1/xl3 (`dashboardTierKey`)
  *   - M30b: ลบฟังก์ชันแบบ "ปี" เดิม (`serviceMonths`, `defaultEndDate`, `annualValue`, `termMonthsFromYears`)
  *     และคอลัมน์ contracts.term_years แล้ว — ใช้ชุด `...ForTerm(…, termMonths)` นี้เท่านั้น (12 = 1 ปี · 36 = 3 ปี)
  *   - ตรงกับ SQL ใน 20261115200000_term_months.sql (+ M30b 20261115230000_drop_term_years.sql) — แก้ฝั่งหนึ่งต้องแก้อีกฝั่ง
  */
-import type { Tier } from "./types";
+import type { DashboardTier, Tier } from "./types";
 import { addMonthsMinusDay, listMonths, monthOf } from "./date";
 
 export const TERM_MONTHS_MIN = 1;
@@ -42,11 +43,25 @@ export function colorGroup(m: number): "1" | "3" {
   return m === 36 ? "3" : "1";
 }
 
-export type TierKey = "s1" | "s3" | "m1" | "m3" | "l1" | "l3" | "xl1" | "xl3";
+/** คีย์ป้าย Tier 10 แบบ (class `tier s1` … `tier xxl3`) — XXL แยกจาก XL ในระบบ Registry (2.113) */
+export type TierKey = "s1" | "s3" | "m1" | "m3" | "l1" | "l3" | "xl1" | "xl3" | "xxl1" | "xxl3";
 
-/** คีย์นับใน snapshot = tier + colorGroup เช่น ("XL", 12) → "xl1" · ("L", 5) → "l1" */
+/** คีย์นับใน snapshot / Dashboard 8 แบบ (ไม่มี xxl — dashboard_data.json ไม่เปลี่ยน · กฎ CLAUDE ข้อ 4) */
+export type DashboardTierKey = Exclude<TierKey, "xxl1" | "xxl3">;
+
+/** คีย์ป้าย = tier + colorGroup เช่น ("XL", 12) → "xl1" · ("L", 5) → "l1" · ("XXL", 36) → "xxl3" */
 export function tierKey(tier: Tier, m: number): TierKey {
   return `${tier.toLowerCase()}${colorGroup(m)}` as TierKey;
+}
+
+/** Tier บน Dashboard (DECISIONS 2.112): XXL นับรวม XL · tier อื่นคงเดิม */
+export function dashboardTier(tier: Tier): DashboardTier {
+  return tier === "XXL" ? "XL" : tier;
+}
+
+/** คีย์นับใน snapshot = dashboardTier + colorGroup เช่น ("XXL", 12) → "xl1" · ("XXL", 36) → "xl3" · ("L", 5) → "l1" */
+export function dashboardTierKey(tier: Tier, m: number): DashboardTierKey {
+  return tierKey(dashboardTier(tier), m) as DashboardTierKey;
 }
 
 /** เดือนบริการ 'YYYY-MM' = เดือนเริ่ม ต่อเนื่อง m เดือน (SPEC §7.2 · M30) */
