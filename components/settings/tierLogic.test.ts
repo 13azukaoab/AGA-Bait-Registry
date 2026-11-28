@@ -14,6 +14,7 @@ import {
   isDraftValid,
   parseMoney,
   rangeEnds,
+  resetThresholds,
   setForMonth,
   shiftMonthKey,
   statusOf,
@@ -211,5 +212,24 @@ describe("Tier XXL (DECISIONS 2.112 / 2.115)", () => {
     expect(some.perTier.map((r) => r.tier)).toEqual(["S", "M", "L", "XL", "XXL"]);
     expect(some.perTier.at(-1)).toEqual({ tier: "XXL", before: 0, after: 2, diff: 2 });
     expect(some.moves).toEqual([{ from: "XL", to: "XXL", y1: 2, y3: 0, total: 2 }]);
+  });
+});
+
+describe("resetThresholds (คืนค่าเริ่มต้นแล้วยังมี XXL · DECISIONS 2.122)", () => {
+  const baseNoXxl = { m: 30000, l: 50000, xl: 100000, xxl: null };
+  it("ชุดปัจจุบันมี XXL → M/L/XL จากชุดตั้งต้น + XXL จากชุดปัจจุบัน", () => {
+    expect(resetThresholds(baseNoXxl, { m: 31000, l: 55000, xl: 120000, xxl: 300000 })).toEqual({
+      m: 30000,
+      l: 50000,
+      xl: 100000,
+      xxl: 300000,
+    });
+  });
+  it("ชุดปัจจุบันไม่มี XXL (หรือไม่มีชุดปัจจุบัน) → XXL ว่างเหมือนเดิม", () => {
+    expect(resetThresholds(baseNoXxl, { m: 31000, l: 55000, xl: 120000, xxl: null })).toEqual(baseNoXxl);
+    expect(resetThresholds(baseNoXxl, null)).toEqual(baseNoXxl);
+  });
+  it("ชุดตั้งต้นมี XXL อยู่แล้ว → ใช้ของชุดตั้งต้น", () => {
+    expect(resetThresholds({ ...baseNoXxl, xxl: 250000 }, { m: 31000, l: 55000, xl: 120000, xxl: 300000 }).xxl).toBe(250000);
   });
 });

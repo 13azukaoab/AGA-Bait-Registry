@@ -154,6 +154,16 @@ export function setForMonth(sets: readonly RuleSet[], month: string): RuleSet | 
   return picked;
 }
 
+/**
+ * ค่าที่ได้เมื่อกด "คืนค่าเริ่มต้น" (DECISIONS 2.122 · เจ้าของ 28 พ.ย. 2026 "ให้คืนแล้วยังมี XXL")
+ *   * M / L / XL = ชุดตั้งต้น (baseline) เหมือนเดิม
+ *   * XXL = ของชุดตั้งต้นถ้ามี · ไม่มี → ใช้ XXL ของชุดที่ใช้อยู่ตอนนี้ (current) · ไม่มีทั้งคู่ → null (ไม่มี XXL)
+ *   * ไม่ hardcode ค่าเกณฑ์ใดๆ — อ่านจากชุดที่ส่งเข้ามาเท่านั้น
+ */
+export function resetThresholds(baseline: TierThresholds, current: TierThresholds | null): TierThresholds {
+  return { ...baseline, xxl: baseline.xxl ?? current?.xxl ?? null };
+}
+
 export type RuleSetStatus = "current" | "upcoming" | "past";
 
 export function statusOf(set: RuleSet, sets: readonly RuleSet[], currentMonth: string): RuleSetStatus {
