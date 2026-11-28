@@ -7,6 +7,8 @@
  *   * อ่านอย่างเดียว (ดูและตรวจความถูกต้อง) — กรอก/แก้ผลบริการไปที่เมนูลงข้อมูลบริการ · เปิดงานใหม่ที่ /customers/new
  *   * server ส่งหน้าแรก + ข้อมูลอ้างอิงมาให้ · ตัวกรองเปลี่ยน/พิมพ์ค้นหา (หน่วง 350ms) → โหลดหน้าแรกใหม่ · "โหลดเพิ่ม" → ต่อ keyset
  *   * ตอบกลับช้ากว่าคำขอใหม่ถูกทิ้ง (reqId) กันผลเก่าทับผลใหม่
+ *   * ตัวกรองฝั่งหน้า (Tier/สถานะ) → โหลดหน้าถัดไปต่อเองทีละหน้าจนตรวจครบ (registryAutoLoad.ts) · เพดาน AUTO_LOAD_CAP แล้วหยุดให้กดต่อเอง ·
+ *     error หยุด + ปุ่ม "ลองใหม่" · cursor ใช้ได้เฉพาะเมื่อ loadedKey ตรงกับตัวกรองปัจจุบัน (กันใช้ cursor เก่ากับตัวกรองใหม่)
  *   * URL เก็บเฉพาะ id/enum (replaceState) — คำค้นไม่อยู่ใน URL (PDPA)
  *   * จำนวน: ไม่มีกรอง Tier/สถานะ → "แสดง n จาก N สัญญา" · มีกรองซ้ำ → "ตรวจแล้ว x จาก N สัญญาที่ตรงตัวกรองอื่น" + บอกเมื่อครบ
  *   * ส่งออก CSV = ตัวกรอง/ลำดับ/คำค้นเดียวกับที่เห็น สูงสุด MAX_EXPORT_ROWS แถว (เกินแล้วแจ้ง ไม่ตัดเงียบ)
@@ -19,6 +21,7 @@ import { Alert, Button, cx, TierBadge } from "@/components/ui";
 import type { UserRole } from "@/lib/db/types";
 import { createClient } from "@/lib/supabase/client";
 
+import { AUTO_LOAD_CAP, capText, decideAutoLoad, progressText } from "./registryAutoLoad";
 import { RegistryFilterBar } from "./RegistryFilterBar";
 import { RegistryList } from "./RegistryList";
 import { registryCsv, registryFileName } from "./registryExport";
@@ -43,6 +46,8 @@ interface Props {
 }
 
 const fmtN = (n: number) => n.toLocaleString("en-US");
+/** กุญแจของ "ชุดตัวกรอง + คำค้น" — ไว้เช็กว่า cursor ที่ถืออยู่เป็นของตัวกรองปัจจุบัน */
+const queryKey = (f: RegistryFilters, search: string) => `${filtersToParams(f).toString()}|${search}`;
 
 export function RegistryClient({ role, today, refs, initialFilters, initial }: Props) {
   const supabase = useMemo(() => createClient(), []);
@@ -58,7 +63,11 @@ export function RegistryClient({ role, today, refs, initialFilters, initial }: P
   const [tooBroad, setTooBroad] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [exportNote, setExportNote] = useState<string | null>(null);
+  const [loadedKey, setLoadedKey] = useState(() => queryKey(initialFilters, ""));
+  const [autoLimit, setAutoLimit] = useState(AUTO_LOAD_CAP);
+  const [reloadTick, setReloadTick] = useState(0);
   const reqId = useRef(0);
+  const inflight = useRef<number | null>(null);
   const firstRun = useRef(true);
 
   const ctx = useMemo(() => ({ refs, today }), [refs, today]);
@@ -80,7 +89,8 @@ export function RegistryClient({ role, today, refs, initialFilters, initial }: P
     }
   }, [filters]);
 
-  const applyPage = useCallback((d: PageData, append: boolean) => {
+  const applyPage = useCallback((d: PageData, append: boolean, key: string) => {
+    setLoadedKey(key);
     setRows((prev) => (append ? [...prev, ...d.rows] : d.rows));
     setNext(d.next);
     setScanned((prev) => (append ? prev + d.scanned : d.scanned));
@@ -95,37 +105,58 @@ export function RegistryClient({ role, today, refs, initialFilters, initial }: P
       return;
     }
     const id = ++reqId.current;
+    inflight.current = id;
+    setAutoLimit(AUTO_LOAD_CAP);
     setLoading(true);
     setError(null);
     setExportNote(null);
+    const key = queryKey(filters, appliedSearch);
     void loadRegistryPage(supabase, ctx, filters, appliedSearch, null).then((res) => {
       if (id !== reqId.current) return;
+      inflight.current = null;
       setLoading(false);
       if (!res.ok) {
         console.error("[customers] load error code", res.code);
         setError(res.code);
         setRows([]);
         setNext(null);
+        setLoadedKey(key);
         return;
       }
-      applyPage(res.data, false);
+      applyPage(res.data, false, key);
     });
-  }, [filters, appliedSearch, supabase, ctx, applyPage]);
+  }, [filters, appliedSearch, supabase, ctx, applyPage, reloadTick]);
 
-  const loadMore = async () => {
-    if (!next || loading) return;
+  /** โหลดหน้าถัดไป (ทีละหน้า — ไม่ยิงซ้อน) */
+  const loadMore = useCallback(async () => {
+    if (!next || inflight.current !== null) return;
     const id = ++reqId.current;
+    inflight.current = id;
     setLoading(true);
     setError(null);
+    const key = queryKey(filters, appliedSearch);
     const res = await loadRegistryPage(supabase, ctx, filters, appliedSearch, next);
     if (id !== reqId.current) return;
+    inflight.current = null;
     setLoading(false);
     if (!res.ok) {
       console.error("[customers] load more error code", res.code);
       setError(res.code);
       return;
     }
-    applyPage(res.data, true);
+    applyPage(res.data, true, key);
+  }, [next, filters, appliedSearch, supabase, ctx, applyPage]);
+
+  /** ผู้ใช้กด "โหลดเพิ่ม" เอง — ถ้าถึงเพดานตรวจอัตโนมัติแล้ว เลื่อนเพดานให้อีกรอบ */
+  const loadMoreManual = () => {
+    setAutoLimit((lim) => (scanned >= lim ? scanned + AUTO_LOAD_CAP : lim));
+    void loadMore();
+  };
+
+  const retry = () => {
+    setError(null);
+    if (next) void loadMore();
+    else setReloadTick((t) => t + 1);
   };
 
   const reset = () => {
@@ -161,6 +192,15 @@ export function RegistryClient({ role, today, refs, initialFilters, initial }: P
   };
 
   const post = needsPostFilter(filters);
+  const cursorFresh = loadedKey === queryKey(filters, appliedSearch);
+  const decision = decideAutoLoad({ post, hasNext: next !== null, scanned, limit: autoLimit, hasError: error !== null });
+  const autoRunning = post && cursorFresh && decision.continue;
+  const hitCap = post && cursorFresh && !decision.continue && decision.reason === "cap";
+
+  // ตัวกรองฝั่งหน้า: โหลดหน้าถัดไปต่อเองจนครบ (ทีละหน้า · รอรอบก่อนเสร็จ · cursor ต้องเป็นของตัวกรองปัจจุบัน)
+  useEffect(() => {
+    if (autoRunning && !loading) void loadMore();
+  }, [autoRunning, loading, loadMore]);
   const legend = useMemo(() => tierLegend(refs.tierRules, today.slice(0, 7)), [refs.tierRules, today]);
 
   const countText = (() => {
@@ -203,7 +243,7 @@ export function RegistryClient({ role, today, refs, initialFilters, initial }: P
       />
 
       <div className="mb-2 flex flex-wrap items-center gap-2 text-[12.5px] font-semibold text-fg" role="status" aria-live="polite">
-        <span className="num">{loading ? "กำลังโหลด…" : countText}</span>
+        <span className="num">{autoRunning ? progressText(scanned, dbTotal, rows.length) : loading ? "กำลังโหลด…" : countText}</span>
       </div>
 
       {exportNote ? (
@@ -216,13 +256,21 @@ export function RegistryClient({ role, today, refs, initialFilters, initial }: P
           ชื่อที่ค้นตรงกับลูกค้ามากกว่า {fmtN(MAX_SEARCH_CUSTOMERS)} ราย — ผลค้นตามชื่อแสดงไม่ครบ ลองพิมพ์ชื่อให้เจาะจงขึ้น (ค้นด้วยเลขที่สัญญายังครบถ้วน)
         </Alert>
       ) : null}
+      {hitCap ? (
+        <Alert variant="warn" title="ตรวจยังไม่ครบ" className="mb-2">
+          {capText(scanned, dbTotal)}
+        </Alert>
+      ) : null}
       {error ? (
         <Alert variant="danger" title="โหลดทะเบียนไม่สำเร็จ" className="mb-2">
-          ลองกรองใหม่หรือรีเฟรชหน้า หากยังไม่ได้ให้แจ้งผู้ดูแลระบบ (รหัส {error})
+          ลองกรองใหม่หรือรีเฟรชหน้า หากยังไม่ได้ให้แจ้งผู้ดูแลระบบ (รหัส {error}){" "}
+          <Button size="sm" onClick={retry}>
+            ลองใหม่
+          </Button>
         </Alert>
       ) : null}
 
-      {rows.length === 0 && !loading && !error ? (
+      {rows.length === 0 && !loading && !autoRunning && !error ? (
         <div className="rounded-card border border-border bg-surface p-6 text-center text-[13px] text-fg-muted">
           {next ? (
             <>
@@ -238,14 +286,14 @@ export function RegistryClient({ role, today, refs, initialFilters, initial }: P
           )}
         </div>
       ) : (
-        <div className={cx(loading && "opacity-60")}>
+        <div className={cx(loading && !autoRunning && "opacity-60")}>
           <RegistryList rows={rows} today={today} role={role} sort={filters.sort} onSort={(sort) => setFilters((f) => ({ ...f, sort }))} />
         </div>
       )}
 
       {next ? (
         <div className="mt-3 flex justify-center">
-          <Button onClick={loadMore} loading={loading} className="max-[767px]:min-h-11 max-[767px]:w-full">
+          <Button onClick={loadMoreManual} loading={loading} className="max-[767px]:min-h-11 max-[767px]:w-full">
             โหลดเพิ่ม
           </Button>
         </div>
