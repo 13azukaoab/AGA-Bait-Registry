@@ -25,3 +25,18 @@ export const TIER_RULE_VERSIONS: TierRule[] = [
   { tier: "L", minAnnual: 60000, effectiveMonth: CHANGE_MONTH },
   { tier: "XL", minAnnual: 120000, effectiveMonth: CHANGE_MONTH },
 ];
+
+/**
+ * XXL (DECISIONS 2.115): ชุดเกณฑ์ 5 แถว — XXL เริ่ม 300,000/ปี (ค่าตั้งต้นที่เจ้าของให้ · ใช้ในเทสเท่านั้น
+ * ค่าจริงอ่านจาก tier_rules เสมอ ห้าม hardcode ในโค้ด)
+ */
+export const TIER_RULES_XXL: TierRule[] = [...TIER_RULES, { tier: "XXL", minAnnual: 300000 }];
+
+/** XXL: เดือนที่ชุดเกณฑ์ที่มี XXL เริ่มใช้ — **ข้อมูลสมมติสำหรับเทส** */
+export const XXL_MONTH = "2027-01";
+
+/** XXL: ชุดตั้งต้น 4 แถว (ไม่มี XXL) + ชุด 2027-01 ที่มี XXL 300,000 — รูปเดียวกับแถวจาก tier_rules ทั้งตาราง */
+export const TIER_RULE_VERSIONS_XXL: TierRule[] = [
+  ...TIER_RULES.map((r) => ({ ...r, effectiveMonth: BASELINE_MONTH })),
+  ...TIER_RULES_XXL.map((r) => ({ ...r, effectiveMonth: XXL_MONTH })),
+];

@@ -1,4 +1,11 @@
-export type Tier = "S" | "M" | "L" | "XL";
+/**
+ * Tier ของสัญญา · XXL (DECISIONS 2.112 / 2.115) = สูงกว่า XL — มีเฉพาะเดือนที่ชุดเกณฑ์ใน `tier_rules` มีแถว XXL
+ * (ชุดเกณฑ์ไม่มีแถว XXL = ไม่มีสัญญา XXL) · Dashboard ไม่มีช่อง XXL → นับรวม XL (`dashboardTier` ใน term.ts)
+ */
+export type Tier = "S" | "M" | "L" | "XL" | "XXL";
+
+/** Tier ที่ Dashboard มีช่อง (dashboard_data.json 16 ฟิลด์ — กฎ CLAUDE ข้อ 4) · XXL รวมเข้า XL */
+export type DashboardTier = Exclude<Tier, "XXL">;
 
 /**
  * เกณฑ์ Tier: ใช้ขอบล่าง (minAnnual) เรียงจากน้อยไปมาก เลือก tier ที่ minAnnual <= annual สูงสุด

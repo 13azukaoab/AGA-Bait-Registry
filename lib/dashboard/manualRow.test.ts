@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { CHANGE_MONTH, TIER_RULES, TIER_RULE_VERSIONS } from "../rules/__fixtures__/tierRules";
+import { CHANGE_MONTH, TIER_RULES, TIER_RULES_XXL, TIER_RULE_VERSIONS } from "../rules/__fixtures__/tierRules";
 import {
   buildManualRow,
   buildManualSnapshotRow,
@@ -174,6 +174,14 @@ describe("checkTierBands — เตือนเมื่อค่าเฉลี
 
   it("ช่องที่จำนวนหรือมูลค่าเป็น 0 ข้ามไป ไม่เตือน", () => {
     expect(checkTierBands({ ...EMPTY, s1: 2 }, TIER_RULES)).toEqual([]);
+  });
+
+  it("XXL (2.112): ช่อง XL รวม XXL → ค่าเฉลี่ยระดับ XXL ในช่อง XL ไม่เตือน · ช่องอื่นยังเตือน", () => {
+    expect(checkTierBands({ ...EMPTY, xl1: 1, v_xl1: 500000 }, TIER_RULES_XXL)).toEqual([]);
+    expect(checkTierBands({ ...EMPTY, xl3: 1, v_xl3: 1500000 }, TIER_RULES_XXL)).toEqual([]);
+    const warnings = checkTierBands({ ...EMPTY, l1: 1, v_l1: 500000 }, TIER_RULES_XXL);
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0]).toMatch(/เข้าเกณฑ์ XL ไม่ใช่ L/);
   });
 });
 

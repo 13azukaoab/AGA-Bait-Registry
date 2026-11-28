@@ -8,11 +8,12 @@
  *    สีอยู่ที่ `.tier.*` ใน app/globals.css (1 ปี = พื้นอ่อน · 3 ปี = พื้นเข้ม) ห้ามเขียน hex ที่นี่
  *  - เขียน class เป็นข้อความเต็มในตาราง เพื่อให้ค้นหา/grep เจอและ Tailwind สแกนได้
  */
-import { colorGroup, isCustomTerm } from "@/lib/rules";
+import { colorGroup, isCustomTerm, type Tier } from "@/lib/rules";
 
 import { cx } from "./cx";
 
-export type TierName = "S" | "M" | "L" | "XL";
+/** XXL (DECISIONS 2.112/2.113): class `tier xxl1` / `tier xxl3` — สีทอง 4 + animation ยังไม่ทำ (งานหมวด 1) */
+export type TierName = Tier;
 export type TierTermYears = 1 | 3;
 
 const TIER_CLASS: Record<TierName, Record<TierTermYears, string>> = {
@@ -20,6 +21,7 @@ const TIER_CLASS: Record<TierName, Record<TierTermYears, string>> = {
   M: { 1: "tier m1", 3: "tier m3" },
   L: { 1: "tier l1", 3: "tier l3" },
   XL: { 1: "tier xl1", 3: "tier xl3" },
+  XXL: { 1: "tier xxl1", 3: "tier xxl3" },
 };
 
 export type TierBadgeProps = {
