@@ -308,9 +308,10 @@ export function SummaryDashboard({ rows, showPublicNote = true }: Props) {
               tiers.has(t) ? "shadow-[inset_0_0_0_2px_currentColor]" : "opacity-80 hover:opacity-100"
             }`}
           >
-            {t}
+            {t === "XL" ? "XL (รวม XXL)" : t}
           </button>
         ))}
+        <span className="text-xs">· Dashboard ไม่แยก Tier XXL — สัญญา XXL นับรวมใน XL (DECISIONS 2.112)</span>
         {filtersChanged && (
           <button
             type="button"
