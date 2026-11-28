@@ -12,11 +12,11 @@
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-import { effectiveEndDate, tierOf, annualValueForTerm, type TierRule } from "@/lib/rules";
+import { effectiveEndDate, type TierRule } from "@/lib/rules";
 import { monthOf } from "@/lib/rules/date";
 import { currentBangkokMonth, todayBangkok } from "@/lib/service/months";
 import { termMonthsOf } from "@/lib/service/termMonths";
-import { TIER_RULE_COLUMNS, toTierRules, type TierRuleRow } from "@/lib/tierRules";
+import { TIER_RULE_COLUMNS, contractTierForMonth, toTierRules, type TierRuleRow } from "@/lib/tierRules";
 import type { UserRole } from "@/lib/db/types";
 
 import { effectiveContractStatus } from "@/components/todo/contractEnd";
@@ -139,7 +139,7 @@ export function toContractRow(c: ContractDb, rules: TierRule[], today: string = 
     renewedFromId: c.renewed_from_contract_id,
     stationsInitializedAt: c.stations_initialized_at,
     teamCodes: c.contract_teams.map((t) => t.teams?.code).filter((x): x is string => !!x),
-    tier: tierOf(annualValueForTerm(valueTotal, termMonths), rules, monthOf(c.start_date)),
+    tier: contractTierForMonth(valueTotal, termMonths, rules, monthOf(today)), // 2.119: เกณฑ์ของเดือนปัจจุบัน (เวลาไทย)
   };
 }
 

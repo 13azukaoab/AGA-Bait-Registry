@@ -15,9 +15,8 @@
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-import { annualValueForTerm, serviceMonthsForTerm, tierOf, type TierRule } from "@/lib/rules";
-import { monthOf } from "@/lib/rules/date";
-import { TIER_RULE_COLUMNS, toTierRules, type TierRuleRow } from "@/lib/tierRules";
+import { serviceMonthsForTerm, type TierRule } from "@/lib/rules";
+import { TIER_RULE_COLUMNS, contractTierForMonth, toTierRules, type TierRuleRow } from "@/lib/tierRules";
 
 import { contractMonthTag } from "./contractTag";
 import { monthRange, serviceTeams } from "@/lib/service/months";
@@ -222,8 +221,8 @@ export async function loadContractList(
       customerName: c.customers?.name ?? "",
       branchId: c.customers?.branch_id ?? "",
       status: c.status,
-      // 2.49: ป้ายตามเกณฑ์ของเดือนเริ่มสัญญา (คงที่ตลอดอายุสัญญา)
-      tier: tierOf(annualValueForTerm(Number(c.value_total), termMonths), [...tierRules], monthOf(c.start_date)),
+      // 2.119: ป้ายตามเกณฑ์ของเดือนที่เลือกในหน้า (เดือนบริการ)
+      tier: contractTierForMonth(Number(c.value_total), termMonths, tierRules, month),
       termMonths,
       renewedFromContractId: c.renewed_from_contract_id,
       stationsInitialized: c.stations_initialized_at !== null,
@@ -504,7 +503,7 @@ export async function loadMakeupTarget(
     customerName: c.customers.name,
     branchId,
     status: c.status,
-    tier: tierOf(annualValueForTerm(Number(c.value_total), termMonths), [...tierRules], monthOf(c.start_date)),
+    tier: contractTierForMonth(Number(c.value_total), termMonths, tierRules, currentMonth), // 2.119: เกณฑ์ของเดือนที่เลือกในหน้า
     termMonths,
     renewedFromContractId: c.renewed_from_contract_id,
     stationsInitialized: counts.stationsInitialized,
